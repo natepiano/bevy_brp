@@ -38,17 +38,22 @@ pub async fn handle(
 
 fn collect_all_examples(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
     let mut all_examples = Vec::new();
+    let mut seen_examples = std::collections::HashSet::new();
 
     // Use the iterator to find all cargo projects
     for path in scanning::iter_cargo_project_paths(search_paths) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
             let examples = detector.find_bevy_examples();
             for example in examples {
-                all_examples.push(json!({
-                    "name": example.name,
-                    "package_name": example.package_name,
-                    "manifest_path": example.manifest_path.display().to_string()
-                }));
+                // Create a unique key based on example name and package name
+                let key = format!("{}::{}", example.package_name, example.name);
+                if seen_examples.insert(key) {
+                    all_examples.push(json!({
+                        "name": example.name,
+                        "package_name": example.package_name,
+                        "manifest_path": example.manifest_path.display().to_string()
+                    }));
+                }
             }
         }
     }

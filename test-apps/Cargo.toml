@@ -4,21 +4,18 @@ name    = "bevy_brp_test_apps"
 publish = false                # Never publish test apps
 version = "0.1.0"
 
-# Binaries that point to example files - discoverable as apps
-[[bin]]
+# Disable automatic example discovery to ensure explicit control
+autoexamples = false
+
+# Example definitions
+[[example]]
 name = "extras_plugin"
 path = "examples/extras_plugin.rs"
 
-[[bin]]
+[[example]]
 name = "no_extras_plugin"
 path = "examples/no_extras_plugin.rs"
 
-# Examples - discoverable as examples
-[[example]]
-name = "extras_plugin"
-
-[[example]]
-name = "no_extras_plugin"
 
 [dependencies]
 bevy_brp_extras = { path = "../extras" }

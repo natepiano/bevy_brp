@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use rmcp::Error as McpError;
@@ -7,13 +8,33 @@ use crate::error::{Error, report_to_mcp_error};
 
 /// Iterator over all valid Cargo project paths found in the given search paths
 /// Yields paths to directories containing Cargo.toml files
-pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> impl Iterator<Item = PathBuf> + '_ {
-    search_paths.iter().flat_map(|root| {
-        let mut paths = Vec::new();
+/// Deduplicates paths to handle overlapping search roots
+/// Also deduplicates by workspace root to avoid processing the same workspace multiple times
+pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> impl Iterator<Item = PathBuf> {
+    let mut seen_paths = HashSet::new();
+    let mut seen_workspace_roots = HashSet::new();
+    let mut all_paths = Vec::new();
 
+    for root in search_paths {
         // Check the root itself
         if root.join("Cargo.toml").exists() {
-            paths.push(root.clone());
+            let canonical = root.canonicalize().unwrap_or_else(|_| root.clone());
+            if seen_paths.insert(canonical.clone()) {
+                // Check if this is part of a workspace we've already seen
+                if let Ok(metadata) = cargo_metadata::MetadataCommand::new()
+                    .current_dir(&canonical)
+                    .exec()
+                {
+                    let workspace_root: PathBuf = metadata.workspace_root.into();
+                    if seen_workspace_roots.insert(workspace_root.clone()) {
+                        // Use the workspace root instead of the member path
+                        all_paths.push(workspace_root);
+                    }
+                } else {
+                    // Not a valid cargo project or standalone project
+                    all_paths.push(canonical);
+                }
+            }
         }
 
         // Check immediate subdirectories
@@ -28,13 +49,29 @@ pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> impl Iterator<Item 
                             continue;
                         }
                     }
-                    paths.push(path);
+                    let canonical = path.canonicalize().unwrap_or(path);
+                    if seen_paths.insert(canonical.clone()) {
+                        // Check if this is part of a workspace we've already seen
+                        if let Ok(metadata) = cargo_metadata::MetadataCommand::new()
+                            .current_dir(&canonical)
+                            .exec()
+                        {
+                            let workspace_root: PathBuf = metadata.workspace_root.into();
+                            if seen_workspace_roots.insert(workspace_root.clone()) {
+                                // Use the workspace root instead of the member path
+                                all_paths.push(workspace_root);
+                            }
+                        } else {
+                            // Not a valid cargo project or standalone project
+                            all_paths.push(canonical);
+                        }
+                    }
                 }
             }
         }
+    }
 
-        paths.into_iter()
-    })
+    all_paths.into_iter()
 }
 
 /// Extract workspace name from workspace root path

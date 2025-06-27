@@ -1,9 +1,9 @@
 # About
 
 [![Crates.io](https://img.shields.io/crates/v/bevy_brp_mcp.svg)](https://crates.io/crates/bevy_brp_mcp)
-[![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](https://github.com/natepiano/bevy_brp_mcp#license)
+[![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](https://github.com/natepiano/bevy_brp/mcp#license)
 [![Crates.io](https://img.shields.io/crates/d/bevy_brp_mcp.svg)](https://crates.io/crates/bevy_brp_mcp)
-[![CI](https://github.com/natepiano/bevy_brp_mcp/workflows/CI/badge.svg)](https://github.com/natepiano/bevy_brp_mcp/actions)
+[![CI](https://github.com/natepiano/bevy_brp/workflows/CI/badge.svg)](https://github.com/natepiano/bevy_brp/actions)
 
 A Model Context Protocol (MCP) server that enables AI coding assistants to control launch, inspect and mutate Bevy applications via the Bevy Remote Protocol (BRP). This tool bridges the gap between coding agents and Bevy by providing comprehensive BRP integration as an MCP server.
 
@@ -88,7 +88,7 @@ fn main() {
 }
 ```
 
-For enhanced features like screenshots and format discovery, also add [bevy_brp_extras](https://github.com/natepiano/bevy_brp_extras):
+For enhanced features like screenshots and format discovery, also add [bevy_brp_extras](https://github.com/natepiano/bevy_brp/extras):
 
 ```rust
 use bevy::prelude::*;
@@ -106,7 +106,7 @@ In either case you'll need to make sure to enable bevy's "bevy_remote" feature.
 
 ## Integration with bevy_brp_extras
 
-This crate is designed to work seamlessly with [bevy_brp_extras](https://github.com/natepiano/bevy_brp_extras). When both are used together:
+This crate is designed to work seamlessly with [bevy_brp_extras](https://github.com/natepiano/bevy_brp/extras). When both are used together:
 
 1. Add `BrpExtrasPlugin` to your Bevy app for enhanced BRP features
 2. Use `bevy_brp_mcp` with your AI coding assistant

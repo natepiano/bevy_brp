@@ -25,5 +25,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Watch functionality for monitoring changes
 - Application and log management tools
 
-[0.2.1]: https://github.com/example/bevy_brp_mcp/compare/v0.1.4...v0.2.1
-[0.1.4]: https://github.com/example/bevy_brp_mcp/releases/tag/v0.1.4
+[0.2.1]: https://github.com/natepiano/bevy_brp/mcp/compare/v0.1.4...v0.2.1
+[0.1.4]: https://github.com/natepiano/bevy_brp/mcp/releases/tag/v0.1.4

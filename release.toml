@@ -1,5 +1,8 @@
 # Configure packages for independent releases
 [[package]]
+name = "bevy_brp_mcp"
+
+[[package]]
 name = "bevy_brp_extras"
 
 # Don't consolidate commits across packages

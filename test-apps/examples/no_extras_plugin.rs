@@ -1,9 +1,9 @@
 //! BRP test example WITHOUT `bevy_brp_extras` plugin
 //!
 //! This example demonstrates basic BRP functionality without extras plugin.
-//! Used for testing fallback behavior when bevy_brp_extras is not available.
+//! Used for testing fallback behavior when `bevy_brp_extras` is not available.
 //!
-//! Run with: cargo run --example no_extras_plugin
+//! Run with: cargo run --example `no_extras_plugin`
 
 use bevy::prelude::*;
 use bevy::remote::RemotePlugin;

@@ -2,9 +2,9 @@
 
 [![Crates.io](https://img.shields.io/crates/v/bevy_brp_extras.svg)](https://crates.io/crates/bevy_brp_extras)
 [![Documentation](https://docs.rs/bevy_brp_extras/badge.svg)](https://docs.rs/bevy_brp_extras/)
-[![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](https://github.com/natepiano/bevy_brp_extras#license)
+[![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](https://github.com/natepiano/bevy_brp/extras#license)
 [![Crates.io](https://img.shields.io/crates/d/bevy_brp_extras.svg)](https://crates.io/crates/bevy_brp_extras)
-[![CI](https://github.com/natepiano/bevy_brp_extras/workflows/CI/badge.svg)](https://github.com/natepiano/bevy_brp_extras/actions)
+[![CI](https://github.com/natepiano/bevy_brp/workflows/CI/badge.svg)](https://github.com/natepiano/bevy_brp/actions)
 
 bevy_brp_extras does two things
 1. Configures your app for bevy remote protocol (BRP)
@@ -80,7 +80,7 @@ bevy = { version = "0.16", features = ["png"] }
 ```
 Without this feature, screenshot files will be created but will be 0 bytes as Bevy cannot encode the image data.
 
-**Note**: If you're not using this with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp_mcp), you'll need to tell your AI agent that this method requires a `path` parameter, or let it discover this by trying the method and getting an error message.
+**Note**: If you're not using this with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), you'll need to tell your AI agent that this method requires a `path` parameter, or let it discover this by trying the method and getting an error message.
 
 ### Shutdown
 - **Method**: `brp_extras/shutdown`
@@ -157,7 +157,7 @@ curl -X POST http://localhost:15702/brp_extras/set_debug_mode \
 
 ## Integration with bevy_brp_mcp
 
-This crate is designed to work seamlessly with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp_mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps. When both are used together:
+This crate is designed to work seamlessly with [bevy_brp_mcp](https://github.com/natepiano/bevy_brp/mcp), which provides a Model Context Protocol (MCP) server for controlling Bevy apps. When both are used together:
 
 1. Add `BrpExtrasPlugin` to your Bevy app
 2. Use `bevy_brp_mcp` with your AI coding assistant

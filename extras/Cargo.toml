@@ -11,7 +11,7 @@ keywords = ["bevy", "brp", "debugging", "gamedev", "remote"]
 license = "MIT OR Apache-2.0"
 name = "bevy_brp_extras"
 readme = "README.md"
-repository = "https://github.com/natepiano/bevy_brp_extras"
+repository = "https://github.com/natepiano/bevy_brp/extras"
 version = "0.2.1"
 
 [dependencies]
@@ -31,11 +31,11 @@ bevy = { workspace = true, features = [
   "x11",
 ] }
 
-serde.workspace = true
-serde_json.workspace = true
-strum.workspace = true
+serde.workspace        = true
+serde_json.workspace   = true
+strum.workspace        = true
 strum_macros.workspace = true
-thiserror.workspace = true
+thiserror.workspace    = true
 
 [dev-dependencies]
 reqwest.workspace = true

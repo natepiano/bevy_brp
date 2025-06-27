@@ -39,6 +39,7 @@ pub async fn handle(
 
 fn collect_all_brp_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Value> {
     let mut all_apps = Vec::new();
+    let mut seen_apps = std::collections::HashSet::new();
     let profiles = vec![PROFILE_DEBUG, PROFILE_RELEASE];
 
     // Use the iterator to find all cargo projects
@@ -46,22 +47,26 @@ fn collect_all_brp_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::
         if let Ok(detector) = CargoDetector::from_path(&path) {
             let apps = detector.find_brp_enabled_apps();
             for app in apps {
-                let mut builds = json!({});
-                for profile in &profiles {
-                    let binary_path = app.get_binary_path(profile);
-                    builds[profile] = json!({
-                        "path": binary_path.display().to_string(),
-                        "built": binary_path.exists()
-                    });
-                }
+                // Create a unique key based on app name and workspace root
+                let key = format!("{}::{}", app.workspace_root.display(), app.name);
+                if seen_apps.insert(key) {
+                    let mut builds = json!({});
+                    for profile in &profiles {
+                        let binary_path = app.get_binary_path(profile);
+                        builds[profile] = json!({
+                            "path": binary_path.display().to_string(),
+                            "built": binary_path.exists()
+                        });
+                    }
 
-                all_apps.push(json!({
-                    "name": app.name,
-                    "workspace_root": app.workspace_root.display().to_string(),
-                    "manifest_path": app.manifest_path.display().to_string(),
-                    "builds": builds,
-                    "brp_enabled": true
-                }));
+                    all_apps.push(json!({
+                        "name": app.name,
+                        "workspace_root": app.workspace_root.display().to_string(),
+                        "manifest_path": app.manifest_path.display().to_string(),
+                        "builds": builds,
+                        "brp_enabled": true
+                    }));
+                }
             }
         }
     }
