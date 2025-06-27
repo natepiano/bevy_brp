@@ -1,5 +1,5 @@
 [workspace]
-members = ["extras"]
+members = ["extras", "test-apps"]
 resolver = "2"
 
 [workspace.dependencies]

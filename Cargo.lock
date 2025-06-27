@@ -436,6 +436,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_brp_test_apps"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_brp_extras",
+]
+
+[[package]]
 name = "bevy_color"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -2,7 +2,7 @@
 
 ## Test Configuration
 
-**Configuration Source**: `test_config.json` (in same directory)
+**Configuration Source**: `.claude/commands/test_config.json`
 **Test Name**: `$ARGUMENTS` (provided as command parameter)
 
 This command runs a single test from the test suite by name.
@@ -16,7 +16,7 @@ This command runs a single test from the test suite by name.
 
 ## Execution Instructions
 
-1. **Load Configuration**: Read `test_config.json` from the same directory
+1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
 2. **Find Test**: Search for test configuration where `test_name` matches `$ARGUMENTS`
 3. **Validate**: If test not found, report error and list available test names
 4. **Execute Test**: If found, run the single test using the Task tool
@@ -127,7 +127,7 @@ If no test configuration matches `$ARGUMENTS`:
 ```
 # Error: Test Not Found
 
-The test "$ARGUMENTS" was not found in test_config.json.
+The test "$ARGUMENTS" was not found in .claude/commands/test_config.json.
 
 Available tests:
 - app_launch_status

@@ -2,7 +2,7 @@
 
 ## Test Configuration
 
-**Configuration Source**: `test_config.json` (in same directory)
+**Configuration Source**: `.claude/commands/test_config.json`
 
 This file contains an array of test configurations with the following structure:
 - `test_name`: Identifier for the test
@@ -99,7 +99,7 @@ Configuration: Port [PORT], App [APP_NAME]
 
 **Execute ALL tests simultaneously using the Task tool:**
 
-1. **Load Configuration**: Read `test_config.json` from the same directory
+1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
 2. **For each test configuration object**:
    - Create a Task with description: "BRP [test_name] Tests"
    - Use the SubAgentPrompt template above, substituting values from `test_config.json`
