@@ -1,12 +1,8 @@
-# Configure packages for independent releases
-[[package]]
-name = "bevy_brp_mcp"
-
-[[package]]
-name = "bevy_brp_extras"
-
-# Don't consolidate commits across packages
-[workspace]
+# Configure independent releases for workspace packages
+allow-branch = ["main"]
 consolidate-commits = false
-# Each package has its own changelog
-unified-changelog = false
+shared-version = false
+
+# Tag format for each package
+tag-prefix = "{{crate_name}}-"
+tag-name = "{{prefix}}v{{version}}"
