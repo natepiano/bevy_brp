@@ -1,0 +1,57 @@
+[package]
+authors = ["natepiano <slicks.curable.0k@icloud.com>"]
+categories = [
+  "development-tools",
+  "development-tools::debugging",
+  "game-development",
+]
+description = "Extra BRP methods for Bevy apps including screenshot, shutdown, and keyboard input capabilities"
+edition = "2024"
+keywords = ["bevy", "brp", "debugging", "gamedev", "remote"]
+license = "MIT OR Apache-2.0"
+name = "bevy_brp_extras"
+readme = "README.md"
+repository = "https://github.com/natepiano/bevy_brp_extras"
+version = "0.2.1"
+
+[dependencies]
+bevy = { version = "0.16.1", default-features = false, features = [
+  "bevy_core_pipeline",
+  "bevy_log",
+  "bevy_remote",
+  "bevy_render",
+  "bevy_sprite",
+  "bevy_text",
+  "bevy_ui",
+  "bevy_window",
+  "bevy_winit",
+  "default_font",
+  "png",
+  "x11",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+strum = "0.27.1"
+strum_macros = "0.27.1"
+thiserror = "2.0"
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+# Our strict lints
+expect_used = "deny"
+panic       = "deny"
+unwrap_used = "deny"
+
+# Enable lint groups as errors (with lower priority so allows can override)
+all      = { level = "deny", priority = -1 }
+cargo    = { level = "deny", priority = -1 }
+nursery  = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+
+# Allow specific lints that conflict with Bevy patterns
+multiple_crate_versions = "allow"
