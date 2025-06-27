@@ -1,0 +1,6 @@
+Lists bevy_brp_mcp log files sorted newest first with size and timestamp metadata.
+
+Parameters:
+- app_name (optional): Filter by app name
+
+Returns: Log files from temp directory created when launching Bevy apps.

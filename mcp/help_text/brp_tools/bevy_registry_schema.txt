@@ -1,0 +1,21 @@
+Gets type schemas via bevy/registry/schema BRP method. Useful for understanding structures, building tools, validating data, generating docs.
+
+⚠️ WARNING: Can exceed 200k+ tokens. ALWAYS use filters.
+
+Parameters (all optional):
+- with_crates: Include only these crates
+- without_crates: Exclude these crates
+- with_types: Include only these reflect traits
+- without_types: Exclude these reflect traits
+- port: BRP port (default: 15702)
+
+REQUIRED Filter Examples:
+- Transform only: with_crates=["bevy_transform"]
+- Resources only: with_types=["Resource"]
+- Game components: with_crates=["my_game"], with_types=["Component"]
+
+Common crates: bevy_transform, bevy_render, bevy_pbr, bevy_sprite, bevy_ui
+Common types: Component, Resource, Default, Serialize
+
+Returns: Schema objects with shortPath, typePath, reflectTypes, properties
+Note: Only registered types with reflection available.

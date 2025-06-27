@@ -1,0 +1,17 @@
+List active watch subscriptions to audit running tasks, find log paths, or manage resources by identifying unneeded watches.
+
+Parameters: None
+
+Returns:
+- status: "success"
+- count: Number of active watches
+- watches: Array containing:
+  - watch_id: Numeric identifier
+  - entity_id: Entity being watched
+  - watch_type: "get" or "list"
+  - log_path: Path to log file
+  - port: BRP port connected to
+
+Log file naming: bevy_brp_mcp_watch_{watch_id}_{watch_type}_{entity_id}_{timestamp}.log
+
+Use to find watches for bevy_stop_watch or locate logs for read_log.

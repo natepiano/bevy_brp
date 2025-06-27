@@ -1,0 +1,26 @@
+Mutates resource fields via bevy/mutate_resource BRP method. Updates specific fields without replacing entire resource.
+
+Parameters:
+- resource (required): Fully-qualified resource type name
+- path (required): Field path (e.g., '.settings.volume')
+- value (required): New field value
+- port (optional): BRP port (default: 15702)
+
+Path syntax:
+- Nested: ".config.graphics.resolution"
+- Arrays: ".items[0]"
+- Maps: ".scores['player1']"
+- Tuples: ".0", ".1"
+- Leading dot required
+
+Example:
+```json
+{
+  "resource": "my_game::config::GameConfig",
+  "path": ".settings.sound.volume",
+  "value": 0.5
+}
+```
+
+Benefits: Preserves other fields, efficient for large resources, safer for concurrent mods.
+Note: Requires reflection support.

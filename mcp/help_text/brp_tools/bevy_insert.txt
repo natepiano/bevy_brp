@@ -1,0 +1,22 @@
+Inserts/replaces components on entities via bevy/insert BRP method. Useful for adding behaviors, modifying capabilities, and implementing state changes.
+
+Parameters:
+- entity_id (required): Target entity ID
+- components (required object): Component data - keys are fully-qualified type names, values are data
+- port (optional): BRP port (default: 15702)
+
+Behavior: Replaces existing components, adds new ones, preserves others.
+
+Example:
+```json
+{
+  "entity": 123,
+  "components": {
+    "bevy_sprite::sprite::Sprite": {
+      "color": {"r": 1.0, "g": 0.0, "b": 0.0, "a": 1.0}
+    }
+  }
+}
+```
+
+Note: Requires BRP registration

@@ -1,0 +1,14 @@
+Launches Bevy apps in detached mode with asset loading support, automatic logging, and proper CARGO_MANIFEST_DIR setup.
+
+Parameters:
+- app_name (required): Name of Bevy app to launch
+- profile (optional): Build profile - "debug" (default) or "release"
+- workspace (optional): Workspace name to use when multiple apps with the same name exist
+- port (optional): BRP port to use (default: 15702)
+
+Features: Non-blocking execution, temp directory logs, debug/release profiles.
+
+Notes:
+- App must be built first. Check with list_bevy_apps. View logs with list_logs/read_log.
+- If multiple apps with the same name exist in different workspaces, you must specify the workspace parameter. The error message will list available workspaces.
+- When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_PORT`.

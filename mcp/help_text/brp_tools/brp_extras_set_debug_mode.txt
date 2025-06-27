@@ -1,0 +1,8 @@
+Enable or disable debug mode in bevy_brp_extras plugin to control debug information output.
+
+Parameters:
+- enabled (required): true to enable debug output, false to disable
+
+When enabled, bevy_brp_extras will include additional debug information in its responses, particularly useful for format discovery operations.
+
+Note: This method requires bevy_brp_extras plugin to be registered in the Bevy application.

@@ -1,0 +1,12 @@
+Stops active watch subscriptions to free resources.
+
+Parameters:
+- watch_id (required): Watch ID from brp_get_watch or brp_list_watch
+
+Returns:
+- status: "success" or "error"
+- message: Result description
+
+Behavior: Stops streaming immediately, log file remains for analysis.
+
+Note: Always stop watches to free resources. Auto-stops when Bevy app shuts down.

@@ -1,0 +1,27 @@
+Sends keyboard input to Bevy apps via bevy_brp_extras. Performs complete press-hold-release cycles for testing, remote control, and automation.
+
+Parameters:
+- keys (required array): Key codes to send (e.g., ["KeyA", "Space", "Enter"])
+- duration_ms (optional): Hold duration in ms (default: 100, max: 60000)
+- port (optional): BRP port (default: 15702)
+
+Key formats: Letters (KeyA-Z), Digits (Digit0-9), Function (F1-F24), Modifiers (ShiftLeft/Right, ControlLeft/Right, AltLeft/Right, SuperLeft/Right), Navigation (Arrows, Home/End, PageUp/Down), Editing (Enter, Tab, Space, Backspace, Delete, Escape).
+
+Platform-specific modifiers:
+- macOS: Use "SuperLeft" or "SuperRight" for Command key (⌘)
+- Windows: Use "SuperLeft" or "SuperRight" for Windows key (⊞)
+- Linux: Use "SuperLeft" or "SuperRight" for Super/Meta key
+
+Examples:
+```json
+{"keys": ["KeyH", "KeyI"]}              // Type "hi"
+{"keys": ["Space"], "duration_ms": 2000} // Hold space 2 sec
+{"keys": ["ShiftLeft", "KeyA"]}         // Shift+A combo
+```
+
+Returns:
+- status: "success" or "error"
+- keys_sent: Array of sent keys
+- duration_ms: Hold duration used
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.

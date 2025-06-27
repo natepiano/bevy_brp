@@ -1,0 +1,8 @@
+Lists all registered resources via bevy/list_resources BRP method. Useful for discovering resources, debugging registration, and understanding architecture.
+
+Parameters:
+- port (optional): BRP port (default: 15702)
+
+Returns array of fully-qualified resource type names like "bevy_time::time::Time", "bevy_window::window::Windows".
+
+Note: Only BRP-registered resources with reflection traits appear.

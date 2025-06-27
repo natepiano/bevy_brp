@@ -1,0 +1,14 @@
+Toggle debug mode to control whether comprehensive BRP diagnostic information is included in responses.
+
+Parameters:
+- enabled (required): true to include debug_info field in responses, false to exclude it
+
+When enabled, adds a debug_info field containing detailed diagnostic messages about all BRP operations including:
+- Parameter extraction and validation
+- Method resolution 
+- Format discovery processes
+- Request processing steps
+
+This comprehensive debugging helps diagnose parameter parsing issues, method resolution problems, and format discovery failures. The debug information is included in all BRP responses (both success and error).
+
+This is particularly useful for troubleshooting BRP operations and understanding how parameters are processed throughout the request pipeline.

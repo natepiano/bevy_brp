@@ -1,0 +1,25 @@
+Queries entities via bevy/query BRP method. Searches entities by components, applies filters, returns data.
+
+Parameters:
+- data (required object): What to retrieve
+  - components: Types to include in results
+  - option: Optional components (won't fail if missing)
+  - has: Must exist (but not returned)
+- filter (object): Entity filters
+  - with: Components entities must have
+  - without: Components entities must NOT have
+- strict (boolean): Error on unknown types (default: false)
+  - false: Invalid components in components/with return empty; option/without ignored; has treated as absent
+- port (optional): BRP port (default: 15702)
+
+Examples:
+- All entities with Transform
+- Entities with Camera, returning Transform
+- Entities with Sprite but without Player
+
+WARNING: Large queries may hit token limits. Use specific filters to reduce results.
+Example: {"with": ["bevy_transform::components::transform::Transform", "bevy_render::camera::camera::Camera"]}
+
+Notes:
+- Requires BRP registration
+- strict=true returns error -23402 for unknown components

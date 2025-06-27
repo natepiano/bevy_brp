@@ -1,0 +1,8 @@
+Reads bevy_brp_mcp log file contents with optional filtering.
+
+Parameters:
+- filename (required): Log filename (e.g., bevy_brp_mcp_myapp_1234567890.log)
+- keyword (optional): Case-insensitive filter
+- tail_lines (optional): Read last N lines only
+
+Note: Only bevy_brp_mcp logs readable for security. Use list_logs to find files.

@@ -1,0 +1,14 @@
+Watches entity component list changes (additions/removals) with file logging. Useful for monitoring lifecycle, debugging transitions.
+
+Parameters:
+- entity (required): Entity ID to watch
+- port (optional): BRP port (default: 15702)
+
+Returns:
+- status: "success" if started
+- watch_id: Use with bevy_stop_watch
+- log_path: Log file location
+
+Behavior: Creates log at /tmp/bevy_brp_mcp_watch_*, logs LIST_UPDATE entries, runs until stopped.
+
+Note: Tracks structural changes, not value changes.

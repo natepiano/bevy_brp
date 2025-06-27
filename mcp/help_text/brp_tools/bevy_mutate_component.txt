@@ -1,0 +1,29 @@
+Mutates component fields via bevy/mutate_component BRP method. Updates specific fields without replacing entire component.
+
+Parameters:
+- entity (required): Entity ID with component
+- component (required): Fully-qualified component type name
+- path (required): Field path (e.g., 'translation.x')
+- value (required): New field value
+- port (optional): BRP port (default: 15702)
+
+Path syntax:
+- Nested: ".transform.translation.x"
+- Arrays: ".points[2]"
+- Tuples: ".0", ".1"
+- Leading dot required
+
+Example:
+```json
+{
+  "entity": 123,
+  "component": "bevy_transform::components::transform::Transform",
+  "path": ".translation.y",
+  "value": 10.5
+}
+```
+
+Benefits: Preserves other fields, efficient for updates, ideal for animation.
+
+Errors: Entity/component not found, invalid path, type mismatch.
+Note: Requires BRP registration and reflection.
