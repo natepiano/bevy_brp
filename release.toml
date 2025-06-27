@@ -1,0 +1,9 @@
+# Configure packages for independent releases
+[[package]]
+name = "bevy_brp_extras"
+
+# Don't consolidate commits across packages
+[workspace]
+consolidate-commits = false
+# Each package has its own changelog
+unified-changelog = false

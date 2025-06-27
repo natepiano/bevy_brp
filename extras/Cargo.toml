@@ -15,7 +15,8 @@ repository = "https://github.com/natepiano/bevy_brp_extras"
 version = "0.2.1"
 
 [dependencies]
-bevy = { version = "0.16.1", default-features = false, features = [
+# Extras needs many Bevy features
+bevy = { workspace = true, features = [
   "bevy_core_pipeline",
   "bevy_log",
   "bevy_remote",
@@ -29,29 +30,15 @@ bevy = { version = "0.16.1", default-features = false, features = [
   "png",
   "x11",
 ] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-strum = "0.27.1"
-strum_macros = "0.27.1"
-thiserror = "2.0"
+
+serde.workspace = true
+serde_json.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
-reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest.workspace = true
 
-[lints.rust]
-missing_docs = "deny"
-
-[lints.clippy]
-# Our strict lints
-expect_used = "deny"
-panic       = "deny"
-unwrap_used = "deny"
-
-# Enable lint groups as errors (with lower priority so allows can override)
-all      = { level = "deny", priority = -1 }
-cargo    = { level = "deny", priority = -1 }
-nursery  = { level = "deny", priority = -1 }
-pedantic = { level = "deny", priority = -1 }
-
-# Allow specific lints that conflict with Bevy patterns
-multiple_crate_versions = "allow"
+[lints]
+workspace = true

@@ -1,0 +1,36 @@
+[workspace]
+members = ["extras"]
+resolver = "2"
+
+[workspace.dependencies]
+# Bevy with no default features - each crate specifies what it needs
+bevy = { version = "0.16.1", default-features = false }
+
+# Core dependencies for extras
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+strum = "0.27.1"
+strum_macros = "0.27.1"
+thiserror = "2.0"
+
+# Dev dependencies
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+
+# Shared lints configuration
+[workspace.lints.rust]
+missing_docs = "deny"
+
+[workspace.lints.clippy]
+# Strict lints as specified in the migration plan
+expect_used = "deny"
+panic = "deny"
+unwrap_used = "deny"
+
+# Enable lint groups as errors (with lower priority so allows can override)
+all = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+
+# Allow specific lints that conflict with Bevy patterns
+multiple_crate_versions = "allow"
