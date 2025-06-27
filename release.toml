@@ -1,8 +1,16 @@
-# Configure independent releases for workspace packages
+# Configure releases for workspace packages
 allow-branch = ["main"]
-consolidate-commits = false
-shared-version = false
+consolidate-commits = true
+# Set to true for synchronized releases, false for independent
+shared-version = true
 
 # Tag format for each package
 tag-prefix = "{{crate_name}}-"
 tag-name = "{{prefix}}v{{version}}"
+
+# Don't push or publish automatically - we'll control this
+push = false
+publish = false
+
+# Pre-release hooks
+pre-release-hook = ["cargo", "build", "--all"]
