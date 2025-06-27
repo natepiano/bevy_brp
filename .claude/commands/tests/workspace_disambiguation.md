@@ -18,15 +18,15 @@ Validate workspace parameter handling when multiple apps or examples with the sa
 - Check error message provides clear guidance
 
 ### 3. Test App Launch With Workspace Parameter (If Conflicts Exist)
-- Execute launch with same app name but specify workspace
+- Execute `mcp__brp__brp_launch_bevy_app` with same app name but specify workspace
 - Use workspace parameter from error message
 - Verify successful launch from correct workspace
 - Check response includes workspace field
 
 ### 4. Test Example Launch Disambiguation (If Conflicts Exist)
 - Execute `mcp__brp__brp_list_bevy_examples` to check for duplicate example names
-- If duplicates exist, test launch without workspace (expect error)
-- Test launch with workspace parameter (expect success)
+- If duplicates exist, test launch using `mcp__brp__brp_launch_bevy_example` without workspace (expect error)
+- Test launch using `mcp__brp__brp_launch_bevy_example` with workspace parameter (expect success)
 - Verify correct example variant is launched
 
 ### 5. Validate Error Message Quality

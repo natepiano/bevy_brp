@@ -6,6 +6,7 @@ Validate application launch capabilities and BRP status monitoring functionality
 ## Test Steps
 
 ### 1. Launch Example
+- Use `mcp__brp__brp_launch_bevy_example` to launch the example specified in the test configuration
 - Verify launch response includes PID, log file path, working directory
 - Confirm example starts in background successfully
 
