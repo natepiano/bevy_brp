@@ -1,4 +1,17 @@
-# BRP Test Suite Runner - Parallel Execution
+# BRP Test Suite Runner
+
+## Overview
+
+This command runs BRP tests in two modes:
+- **Without arguments**: Runs all tests in parallel
+- **With argument**: Runs a single test by name
+
+## Usage Examples
+```
+/test_runner                    # Run all tests in parallel
+/test_runner debug_mode         # Run only the debug_mode test
+/test_runner data_operations    # Run only the data_operations test
+```
 
 ## Test Configuration
 
@@ -95,7 +108,74 @@ Configuration: Port [PORT], App [APP_NAME]
 
 </SubAgentPrompt>
 
-## Parallel Execution Instructions
+## Execution Mode Selection
+
+**First, check if `$ARGUMENTS` is provided:**
+- If `$ARGUMENTS` exists and is not empty: Execute **Single Test Mode**
+- If `$ARGUMENTS` is empty or not provided: Execute **Parallel Test Mode**
+
+## Single Test Mode (when $ARGUMENTS provided)
+
+### Execution Instructions
+
+1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
+2. **Find Test**: Search for test configuration where `test_name` matches `$ARGUMENTS`
+3. **Validate**: If test not found, report error and list available test names
+4. **Execute Test**: If found, run the single test using the Task tool
+
+### Single Test Execution
+
+**For the test configuration matching `$ARGUMENTS`**:
+- Create a Task with description: "BRP [test_name] Test"
+- Use the SubAgentPrompt template above, substituting values from the matched test configuration:
+  - [TEST_NAME] = `test_name` field
+  - [TEST_FILE] = `test_file` field
+  - [PORT] = `port` field
+  - [APP_NAME] = `app_name` field
+  - [LAUNCH_INSTRUCTION] = `launch_instruction` field
+  - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
+  - [TEST_OBJECTIVE] = `test_objective` field
+
+**Example Task Invocation:**
+```
+Task tool with:
+- Description: "BRP debug_mode Test"
+- Prompt: [SubAgentPrompt with values substituted from the debug_mode config object]
+```
+
+### Error Handling
+
+If no test configuration matches `$ARGUMENTS`:
+```
+# Error: Test Not Found
+
+The test "$ARGUMENTS" was not found in .claude/commands/test_config.json.
+
+Available tests:
+- app_launch_status
+- brp_extras_methods
+- data_operations
+- debug_mode
+- discovery
+- format_discovery_with_plugin
+- introspection
+- large_response
+- no_plugin_tests
+- registry_discovery
+- watch_commands
+- workspace_disambiguation
+
+Usage: /test_runner <test_name>
+Example: /test_runner debug_mode
+```
+
+### Final Output for Single Test
+
+After the Task completes, simply present the test results as returned by the sub-agent. No consolidation or summary needed since it's a single test.
+
+## Parallel Test Mode (when no $ARGUMENTS)
+
+### Parallel Execution Instructions
 
 **Execute ALL tests simultaneously using the Task tool:**
 
@@ -120,11 +200,11 @@ Task tool with:
 
 **Launch all 12 tasks simultaneously for maximum parallel execution efficiency.**
 
-## Results Consolidation
+### Results Consolidation
 
 After all sub-agents complete, collect their individual results and generate a consolidated summary:
 
-### Final Summary Format
+### Final Summary Format for All Tests
 
 # BRP Test Suite - Consolidated Results
 
