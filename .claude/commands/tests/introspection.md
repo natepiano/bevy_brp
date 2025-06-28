@@ -25,17 +25,25 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 - Verify registered resources are returned
 - Check for typical resources like Time
 
-### 5. Entity-Specific Component Listing
-- Execute `mcp__brp__bevy_list` with entity ID (try entity 0)
-- Verify components on specific entity are listed
+### 5. Entity-Specific Component Listing (Positive Case)
+- Execute `mcp__brp__bevy_query` to find existing entities
+- Pick a valid entity ID from the results
+- Execute `mcp__brp__bevy_list` with that valid entity ID
+- Verify components are listed for the existing entity
 - Check response format is correct
+
+### 6. Entity-Specific Component Listing (Negative Case)
+- Execute `mcp__brp__bevy_list` with invalid entity ID (0)
+- Verify proper error response is returned (not a crash)
+- Confirm error message indicates invalid entity ID
 
 ## Expected Results
 - ✅ RPC discovery returns complete method list
 - ✅ Registry schema provides filtered type information
 - ✅ Component listing shows registered types
 - ✅ Resource listing shows available resources  
-- ✅ Entity-specific listing works correctly
+- ✅ Entity-specific listing works with valid entities
+- ✅ Entity-specific listing properly rejects invalid entities with informative errors
 
 ## Failure Criteria
 STOP if: RPC discovery fails, schema operations error, or listing methods return malformed responses.

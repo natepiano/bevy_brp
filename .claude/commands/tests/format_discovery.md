@@ -13,15 +13,15 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 
 ### 2. Test Spawn with Wrong Format (Should Auto-Correct)
 - Execute `mcp__brp__bevy_spawn` with intentionally wrong Transform format:
-  - Use simple array: `[1.0, 2.0, 3.0]` instead of full structure
+  - Use array fields instead of objects: `{"translation": [1.0, 2.0, 3.0], "rotation": [0.0, 0.0, 0.0, 1.0], "scale": [1.0, 1.0, 1.0]}`
 - Enable debug mode to see correction process
 - Verify spawn succeeds with format correction
 - Check debug info shows "Tier 2: Direct Discovery" success
 
 ### 3. Test ClearColor Discovery  
 - Execute format discovery for `bevy_render::color::Color`
-- Test spawn with wrong LinearRgba format: `[0.8, 0.2, 0.1, 1.0]`
-- Verify auto-correction to proper object format
+- Test spawn with wrong LinearRgba format: `{"LinearRgba": [0.8, 0.2, 0.1, 1.0]}` (array instead of object fields)
+- Verify auto-correction to proper object format with named fields
 - Confirm entity spawns successfully
 
 ### 4. Mutation Path Discovery
