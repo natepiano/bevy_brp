@@ -12,7 +12,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 
 ### 2. Component Insertion
 - Execute `mcp__brp__bevy_insert` to add Name component to spawned entity
-- Use format: `{"bevy_core::name::Name": {"name": "TestEntity"}}`
+- Use format: `{"bevy_ecs::name::Name": "TestEntity"}`
 - Verify operation succeeds
 
 ### 3. Component Retrieval
