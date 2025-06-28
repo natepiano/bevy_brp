@@ -31,9 +31,10 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Confirm Transform component remains
 
 ### 6. Resource Operations
-- Execute `mcp__brp__bevy_get_resource` to retrieve Time resource
-- Execute `mcp__brp__bevy_mutate_resource` if possible (optional)
-- Verify resource data is accessible
+- Execute `mcp__brp__bevy_get_resource` to retrieve ClearColor resource
+- Execute `mcp__brp__bevy_mutate_resource` to change ClearColor value
+- Use path `.0` to mutate the color components (ClearColor wraps a Color)
+- Verify resource mutation succeeds and new value is retrievable
 
 ### 7. Entity Cleanup
 - Execute `mcp__brp__bevy_destroy` to remove test entity
@@ -45,7 +46,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - ✅ Component retrieval returns correct data
 - ✅ Component mutation works as expected
 - ✅ Component removal functions properly
-- ✅ Resource access is functional
+- ✅ Resource access and mutation is functional
 - ✅ Entity destruction completes cleanly
 
 ## Failure Criteria

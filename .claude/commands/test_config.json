@@ -36,8 +36,8 @@
     "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps"
   },
   {
-    "test_name": "format_discovery_with_plugin",
-    "test_file": ".claude/commands/tests/format_discovery_with_plugin.md",
+    "test_name": "format_discovery",
+    "test_file": ".claude/commands/tests/format_discovery.md",
     "port": 20105,
     "app_name": "extras_plugin",
     "launch_instruction": "Launch extras_plugin example on port 20105 using the BRP tool",
