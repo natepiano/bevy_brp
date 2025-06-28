@@ -528,7 +528,6 @@ fn parse_key_code(s: &str) -> Result<KeyCode, String> {
 }
 
 /// System that processes timed key releases
-#[allow(clippy::needless_pass_by_value)]
 pub fn process_timed_key_releases(
     mut commands: Commands,
     time: Res<Time>,

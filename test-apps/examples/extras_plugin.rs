@@ -63,7 +63,6 @@ fn main() {
 struct CurrentPort(u16);
 
 /// Setup test entities for format discovery
-#[allow(clippy::needless_pass_by_value)] // Bevy systems require Res<T> by value
 fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     info!("Setting up test entities...");
 
@@ -100,7 +99,6 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
 }
 
 /// Setup UI for keyboard input display
-#[allow(clippy::needless_pass_by_value)] // Bevy systems require Res<T> by value
 fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     // Camera
     commands.spawn(Camera2d);
@@ -208,7 +206,6 @@ fn track_keyboard_input(
 }
 
 /// Update the keyboard display
-#[allow(clippy::needless_pass_by_value)] // Bevy systems require Res<T> by value
 fn update_keyboard_display(
     history: Res<KeyboardInputHistory>,
     mut query: Query<&mut Text, With<KeyboardDisplayText>>,

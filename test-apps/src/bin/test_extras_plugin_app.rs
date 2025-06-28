@@ -1,4 +1,4 @@
-//! Test app with BrpExtrasPlugin for testing app launch and extras functionality
+//! Test app with `BrpExtrasPlugin` for testing app launch and extras functionality
 
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
@@ -12,7 +12,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: format!("Test Extras Plugin App - BRP Port {}", port),
+                title: format!("Test Extras Plugin App - BRP Port {port}"),
                 resolution: (400.0, 300.0).into(),
                 ..default()
             }),

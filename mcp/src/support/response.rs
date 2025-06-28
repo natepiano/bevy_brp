@@ -115,18 +115,16 @@ impl ResponseBuilder {
         brp_mcp_debug: Option<impl Serialize>,
         brp_extras_debug: Option<impl Serialize>,
     ) -> Self {
-        if !is_debug_enabled() {
-            return self;
-        }
-
-        // Only inject BRP MCP debug info if debug mode is enabled and debug info is provided
-        if let Some(debug_info) = brp_mcp_debug {
-            if let Ok(serialized) = serde_json::to_value(&debug_info) {
-                self.brp_mcp_debug_info = Some(serialized);
+        // Only inject BRP MCP debug info if MCP debug mode is enabled and debug info is provided
+        if is_debug_enabled() {
+            if let Some(debug_info) = brp_mcp_debug {
+                if let Ok(serialized) = serde_json::to_value(&debug_info) {
+                    self.brp_mcp_debug_info = Some(serialized);
+                }
             }
         }
 
-        // Only inject BRP extras debug info if debug mode is enabled and debug info is provided
+        // Always inject BRP extras debug info if it's provided (means extras debug is enabled)
         if let Some(debug_info) = brp_extras_debug {
             if let Ok(serialized) = serde_json::to_value(&debug_info) {
                 self.brp_extras_debug_info = Some(serialized);
