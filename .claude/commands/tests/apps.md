@@ -37,10 +37,11 @@ Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not exa
 - Verify entity ID is returned
 - Store entity ID for subsequent tests
 
-### 5. Query Operation
-- Execute `mcp__brp__bevy_query` to find entities with Rotator component
-- Verify at least one entity is found (from app setup)
-- Check Transform data is returned correctly
+### 5. Query Operation - Non-Reflected Component
+- Execute `mcp__brp__bevy_query` for `test_extras_plugin_app::Rotator` component (which lacks Reflect derive)
+- With default `strict: false`: Verify it returns empty results (0 entities)
+- With `strict: true`: Verify it returns error -23402 with message about component not being registered
+- This tests proper handling of components that exist in the app but aren't reflection-enabled
 
 ### 6. Mutate Component
 - Use `mcp__brp__bevy_mutate_component` on spawned entity
