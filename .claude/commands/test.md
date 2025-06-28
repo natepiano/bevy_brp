@@ -37,7 +37,7 @@ Configuration: Port [PORT], App [APP_NAME]
 
 **Your Task:**
 1. [LAUNCH_INSTRUCTION]
-2. Execute test procedures from file: tests/[TEST_FILE]
+2. Execute test procedures from file: [TEST_FILE]
 3. [SHUTDOWN_INSTRUCTION]
 4. Report results using the exact format below
 

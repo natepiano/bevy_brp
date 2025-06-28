@@ -1,16 +1,7 @@
 [
   {
-    "test_name": "app_launch_status",
-    "test_file": ".claude/commands/tests/app_launch_status.md",
-    "port": 20101,
-    "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20101 using the BRP tool",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test example launch and BRP status monitoring"
-  },
-  {
-    "test_name": "brp_extras_methods",
-    "test_file": ".claude/commands/tests/brp_extras_methods.md",
+    "test_name": "extras",
+    "test_file": ".claude/commands/tests/extras.md",
     "port": 20102,
     "app_name": "extras_plugin",
     "launch_instruction": "Launch extras_plugin example on port 20102 using the BRP tool",
@@ -106,5 +97,14 @@
     "launch_instruction": "Launch apps as needed on port 20110 (may use multiple apps for testing) using the BRP tool",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
     "test_objective": "Test workspace parameter handling for duplicate names"
+  },
+  {
+    "test_name": "apps",
+    "test_file": ".claude/commands/tests/apps.md",
+    "port": 20111,
+    "app_name": "test_extras_plugin_app",
+    "launch_instruction": "Launch test_extras_plugin_app application on port 20111 using the BRP tool",
+    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
   }
 ]

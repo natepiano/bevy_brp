@@ -4,8 +4,14 @@ name    = "bevy_brp_test_apps"
 publish = false                # Never publish test apps
 version = "0.1.0"
 
-# Disable automatic example discovery to ensure explicit control
+# Disable automatic discovery to ensure explicit control
 autoexamples = false
+autobins = false
+
+# Binary definitions
+[[bin]]
+name = "test_extras_plugin_app"
+path = "src/bin/test_extras_plugin_app.rs"
 
 # Example definitions
 [[example]]
