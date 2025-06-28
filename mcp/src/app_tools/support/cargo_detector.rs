@@ -99,9 +99,9 @@ impl CargoDetector {
             })
     }
 
-    /// Filter for packages that depend on Bevy
+    /// Filter for packages that depend on Bevy (excluding bevy_brp_mcp itself)
     fn bevy_app_filter(package: &Package) -> bool {
-        Self::package_depends_on_bevy(package)
+        package.name.as_str() != "bevy_brp_mcp" && Self::package_depends_on_bevy(package)
     }
 
     /// Filter for packages that have BRP support and are not `bevy_brp_mcp` itself
