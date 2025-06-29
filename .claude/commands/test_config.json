@@ -63,8 +63,8 @@
     "test_objective": "Test registry_schema file output for large responses"
   },
   {
-    "test_name": "no_plugin_tests",
-    "test_file": ".claude/commands/tests/no_plugin_tests.md",
+    "test_name": "no_plugin",
+    "test_file": ".claude/commands/tests/no_plugin.md",
     "port": 25000,
     "app_name": "extras_no_plugin",
     "launch_instruction": "Launch extras_no_plugin example (uses hard-coded port 25000) using the BRP tool",

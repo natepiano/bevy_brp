@@ -1,7 +1,7 @@
 # Registry Discovery Tests
 
 ## Objective
-Validate BRP behavior with components that lack proper registry traits (Serialize/Deserialize).
+Validate BRP behavior with components that lack Serialize/Deserialize traits but are still reflection-registered.
 
 ## Test Steps
 
@@ -25,9 +25,9 @@ Validate BRP behavior with components that lack proper registry traits (Serializ
 
 ### 4. Registry Requirements Validation
 - Execute `mcp__brp__bevy_list` to see registered components
-- Verify only properly registered components appear
-- Check that Transform, Name appear (have proper traits)
-- Confirm Visibility, Aabb don't appear in list (missing traits)
+- Verify all reflection-registered components appear
+- Check that Transform, Name appear (have Serialize/Deserialize traits)
+- Confirm Visibility, Aabb appear in list (registered but missing Serialize/Deserialize traits)
 
 ### 5. Error Message Quality Check
 - Verify all registry errors include:
@@ -37,10 +37,10 @@ Validate BRP behavior with components that lack proper registry traits (Serializ
   - Helpful suggestions for resolution
 
 ## Expected Results
-- ✅ Spawn fails appropriately for unregistered components
-- ✅ Insert fails appropriately for unregistered components  
-- ✅ Mutation works even for components with missing traits
-- ✅ Component listing shows only properly registered types
+- ✅ Spawn fails appropriately for components lacking Serialize/Deserialize
+- ✅ Insert fails appropriately for components lacking Serialize/Deserialize  
+- ✅ Mutation works for reflection-registered components (even without Serialize/Deserialize)
+- ✅ Component listing shows all reflection-registered types (regardless of Serialize/Deserialize)
 - ✅ Error messages are clear and actionable
 - ✅ Registration requirements are well explained
 

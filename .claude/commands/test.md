@@ -77,6 +77,7 @@ Configuration: Port [PORT], App [APP_NAME]
   - **Expected**: [what should happen]
   - **Actual**: [what happened]
   - **Impact**: [critical/minor]
+  - **Component/Resource**: [fully qualified type name or N/A if not applicable]
 
 ### ⚠️ SKIPPED
 - [Test description]: [reason for skipping]

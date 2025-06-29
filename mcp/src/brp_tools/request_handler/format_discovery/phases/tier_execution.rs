@@ -228,7 +228,8 @@ async fn tiered_type_format_discovery(
                     );
                 }
 
-                return (None, tier_manager.into_vec());
+                // Don't return early - continue to Tier 2 for format discovery
+                // Even if type has serialization support, we may need format correction
             }
             Err(e) => {
                 tier_manager.complete_tier(

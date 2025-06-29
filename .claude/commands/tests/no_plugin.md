@@ -1,4 +1,4 @@
-# No Plugin Tests (Consolidated)
+# No Plugin
 
 ## Objective
 Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT available.
@@ -8,7 +8,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 ### 1. Test BRP Extras Method Errors
 - Execute `mcp__brp__brp_extras_discover_format`
 - Verify helpful error about adding bevy_brp_extras with installation instructions
-- Execute `mcp__brp__brp_extras_screenshot`  
+- Execute `mcp__brp__brp_extras_screenshot`
 - Verify error includes bevy_brp_extras installation guidance
 - Execute `mcp__brp__brp_extras_send_keys`
 - Verify consistent error messaging
@@ -21,7 +21,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 ### 3. Tier 3/4 Format Discovery Fallback
 - Enable debug mode: `mcp__brp__brp_set_debug_mode` with `enabled: true`
 - Execute `mcp__brp__bevy_spawn` with wrong Transform format
-- Verify debug info shows "FAILED Tier 2: Direct Discovery" 
+- Verify debug info shows "FAILED Tier 2: Direct Discovery"
 - Verify fallback to pattern matching succeeds
 - Check debug info shows "SUCCESS Tier 3/4" messages
 
@@ -34,8 +34,8 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 ### 5. Registry Discovery Without Plugin
 - Test spawn with components lacking Serialize/Deserialize traits
 - Try spawning with Visibility component
-- Verify appropriate registry diagnostic errors
-- Confirm error messages are helpful
+- Verify error is "Unknown component type: `bevy_reflect::DynamicEnum`"
+- Confirm Tier 1 diagnostics identify missing Serialize/Deserialize traits
 
 ### 6. Path Error Discovery
 - Execute component mutation with wrong path (e.g., `.0.red` for ClearColor)
@@ -49,7 +49,8 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - ✅ Format discovery falls back to Tier 3/4 pattern matching
 - ✅ Debug info clearly shows tier progression (failed Tier 2 → success Tier 3/4)
 - ✅ Basic BRP functionality works without extras
-- ✅ Registry errors provide helpful diagnostics
+- ✅ Spawn with non-serializable enums fails with "Unknown component type: `bevy_reflect::DynamicEnum`"
+- ✅ Tier 1 diagnostics correctly identify missing Serialize/Deserialize traits
 - ✅ Path error suggestions are accurate
 
 ## Failure Criteria

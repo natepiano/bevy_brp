@@ -32,14 +32,18 @@ pub fn generate_primitive_example(type_name: &str) -> DiscoveryResult<Value> {
         // Boolean
         "bool" => json!(true),
 
-        // Bevy math types
-        "bevy_math::vec2::Vec2" => json!([1.0, 2.0]),
-        "bevy_math::vec3::Vec3" | "bevy_math::vec3a::Vec3A" => json!([1.0, 2.0, 3.0]),
-        "bevy_math::vec4::Vec4" => json!([1.0, 2.0, 3.0, 4.0]),
-        "bevy_math::quat::Quat" => json!([0.0, 0.0, 0.0, 1.0]),
-        "bevy_math::mat2::Mat2" => json!([[1.0, 0.0], [0.0, 1.0]]),
-        "bevy_math::mat3::Mat3" => json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
-        "bevy_math::mat4::Mat4" => json!([
+        // Bevy math types (both bevy_math and glam types)
+        "bevy_math::vec2::Vec2" | "glam::Vec2" => json!([1.0, 2.0]),
+        "bevy_math::vec3::Vec3" | "bevy_math::vec3a::Vec3A" | "glam::Vec3" | "glam::Vec3A" => {
+            json!([1.0, 2.0, 3.0])
+        }
+        "bevy_math::vec4::Vec4" | "glam::Vec4" => json!([1.0, 2.0, 3.0, 4.0]),
+        "bevy_math::quat::Quat" | "glam::Quat" => json!([0.0, 0.0, 0.0, 1.0]),
+        "bevy_math::mat2::Mat2" | "glam::Mat2" => json!([[1.0, 0.0], [0.0, 1.0]]),
+        "bevy_math::mat3::Mat3" | "glam::Mat3" => {
+            json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+        }
+        "bevy_math::mat4::Mat4" | "glam::Mat4" => json!([
             [1.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
