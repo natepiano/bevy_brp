@@ -13,16 +13,18 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 
 ### 2. Test Spawn with Wrong Format (Should Auto-Correct)
 - Execute `mcp__brp__bevy_spawn` with intentionally wrong Transform format:
-  - Use array fields instead of objects: `{"translation": [1.0, 2.0, 3.0], "rotation": [0.0, 0.0, 0.0, 1.0], "scale": [1.0, 1.0, 1.0]}`
+  - Use object fields instead of arrays: `{"translation": {"x": 1.0, "y": 2.0, "z": 3.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "scale": {"x": 1.0, "y": 1.0, "z": 1.0}}`
 - Enable debug mode to see correction process
-- Verify spawn succeeds with format correction
+- Verify spawn succeeds with format correction to arrays
 - Check debug info shows "Tier 2: Direct Discovery" success
 
-### 3. Test ClearColor Discovery  
-- Execute format discovery for `bevy_render::color::Color`
-- Test spawn with wrong LinearRgba format: `{"LinearRgba": [0.8, 0.2, 0.1, 1.0]}` (array instead of object fields)
-- Verify auto-correction to proper object format with named fields
-- Confirm entity spawns successfully
+### 3. Test Color Type Discovery (Verify Registration)
+- Execute format discovery for `bevy_color::color::Color` (correct type path)
+- Verify it IS registered and returns format info showing enum variants
+- Execute format discovery for `bevy_render::camera::clear_color::ClearColor`
+- Verify it IS registered but lacks Serialize/Deserialize traits
+- Test spawn attempt with ClearColor to confirm it fails with trait error
+- Verify error message indicates missing Serialize/Deserialize traits (not "type not registered")
 
 ### 4. Mutation Path Discovery
 - Execute format discovery for Transform

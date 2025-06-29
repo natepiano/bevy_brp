@@ -164,13 +164,8 @@ pub fn generate_field_mutation_paths(
     ));
 
     // Generate nested paths for complex types
-    if field_type.contains("Vec") {
-        debug_context.push(format!("Generating Vec mutation paths for {field_name}"));
-        paths.extend(generate_vec_mutation_paths(&base_path, field_type));
-    } else if field_type.contains("HashMap") || field_type.contains("BTreeMap") {
-        debug_context.push(format!("Generating Map mutation paths for {field_name}"));
-        paths.extend(generate_map_mutation_paths(&base_path, field_type));
-    } else if is_bevy_math_type(field_type) {
+    // Check for math types first before generic Vec to avoid catching Vec2/Vec3/Vec4
+    if is_bevy_math_type(field_type) {
         debug_context.push(format!(
             "Generating math type mutation paths for {field_name}"
         ));
@@ -180,6 +175,12 @@ pub fn generate_field_mutation_paths(
             "Generating Transform mutation paths for {field_name}"
         ));
         paths.extend(generate_transform_mutation_paths(&base_path));
+    } else if field_type.contains("Vec") {
+        debug_context.push(format!("Generating Vec mutation paths for {field_name}"));
+        paths.extend(generate_vec_mutation_paths(&base_path, field_type));
+    } else if field_type.contains("HashMap") || field_type.contains("BTreeMap") {
+        debug_context.push(format!("Generating Map mutation paths for {field_name}"));
+        paths.extend(generate_map_mutation_paths(&base_path, field_type));
     }
 
     Ok(paths)
@@ -315,7 +316,7 @@ fn generate_transform_mutation_paths(base_path: &str) -> Vec<FieldInfo> {
 
 /// Check if a type is a Bevy math type
 fn is_bevy_math_type(type_name: &str) -> bool {
-    type_name.starts_with("bevy_math::")
+    type_name.starts_with("bevy_math::") || type_name.starts_with("glam::")
 }
 
 /// Check if a type is a Bevy Transform type

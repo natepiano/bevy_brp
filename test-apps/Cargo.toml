@@ -5,8 +5,8 @@ publish = false                # Never publish test apps
 version = "0.1.0"
 
 # Disable automatic discovery to ensure explicit control
+autobins     = false
 autoexamples = false
-autobins = false
 
 # Binary definitions
 [[bin]]
