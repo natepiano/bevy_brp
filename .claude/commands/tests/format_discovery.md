@@ -30,18 +30,27 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Test mutation using discovered path
 - Confirm mutation succeeds
 
-### 5. Multiple Type Discovery
+### 5. Test Graceful Failure for Ambiguous Formats
+- Execute `mcp__brp__bevy_spawn` with truly ambiguous Transform format:
+  - Use bare array: `[1.0, 2.0, 3.0]` (unclear which field this represents)
+- Verify spawn fails gracefully with helpful error message
+- Check that error suggests using format discovery
+- Confirm debug info shows attempted discovery but explains why correction failed
+
+### 6. Multiple Type Discovery
 - Execute format discovery with multiple types array
 - Verify response includes format for all requested types
 - Check response structure is organized by type
 
 ## Expected Results
 - ✅ Direct format discovery returns detailed spawn formats
-- ✅ Wrong formats are auto-corrected during spawn
-- ✅ Debug info shows "Tier 2: Direct Discovery" success
+- ✅ Unambiguous wrong formats are auto-corrected during spawn (array fields → object fields)
+- ✅ Ambiguous formats fail gracefully with helpful error messages
+- ✅ Debug info shows "Tier 2: Direct Discovery" success for correctable cases
+- ✅ Debug info explains why ambiguous formats cannot be auto-corrected
 - ✅ Mutation paths are properly discovered
 - ✅ Multi-type discovery works correctly
 - ✅ Format corrections include helpful hints
 
 ## Failure Criteria
-STOP if: Format discovery fails, auto-correction doesn't work, or debug info doesn't show Tier 2 success.
+STOP if: Format discovery fails, correctable formats don't auto-correct, ambiguous formats don't fail gracefully, or debug info doesn't show appropriate Tier 2 behavior.
