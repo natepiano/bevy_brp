@@ -8,168 +8,203 @@
   },
   {
     "id": "2",
-    "content": "Add watch type parameter to logging functions in task.rs",
+    "content": "Add debug mode parameter to watch task functions and logger",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "3",
-    "content": "Build and fix any compile errors and warnings after adding watch type parameter",
+    "content": "Create helper method in BufferedWatchLogger for conditional debug logging",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "4",
-    "content": "Modify parse_sse_line to log EVERY line received including non-SSE lines",
+    "content": "Replace all DEBUG_* write_update calls with the new conditional helper method",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "5",
-    "content": "Add logging for successful JSON parsing and missing result fields in parse_sse_line",
+    "content": "Build and fix any compile errors and warnings after debug logging changes",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "6",
-    "content": "Add logging for parse failures in parse_sse_line",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (after debug logging)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "7",
-    "content": "Build and fix any compile errors and warnings after parse_sse_line modifications",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "8",
-    "content": "Modify process_chunk to log chunk sizes received",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "9",
-    "content": "Add logging for number of complete lines processed in process_chunk",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "10",
-    "content": "Add logging for incomplete lines in buffer in process_chunk",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "11",
-    "content": "Build and fix any compile errors and warnings after process_chunk modifications",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "12",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (mid-point check)",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "13",
     "content": "Fix any clippy issues following rules (no dead code, no underscore prefixes)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
+    "id": "8",
+    "content": "Add timeout_seconds parameter to bevy_list_watch and bevy_get_watch tools",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Create separate HTTP client for watches with configurable timeout",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Update watch task creation to use timeout parameter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Build and fix any compile errors and warnings after adding timeout support",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Add timeout detection logic to process_watch_stream error handling",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Create WATCH_TIMEOUT log entry type instead of DEBUG_STREAM_ERROR for timeouts",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
     "id": "14",
-    "content": "Modify process_watch_stream to log when stream starts",
+    "content": "Build and fix any compile errors and warnings after timeout detection",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "15",
-    "content": "Add logging for total number of chunks received in process_watch_stream",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (after timeout changes)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "16",
-    "content": "Add logging for when stream ends and why in process_watch_stream",
+    "content": "Fix any clippy issues following rules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "17",
-    "content": "Build and fix any compile errors and warnings after process_watch_stream modifications",
+    "content": "Add timeout_reason field to WatchInfo struct",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "18",
-    "content": "Add initial HTTP response status logging",
+    "content": "Update watch manager to track timeout status",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "19",
-    "content": "Add logging for first chunk to see initial response",
+    "content": "Update brp_list_active_watches to show timeout status",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "20",
-    "content": "Build and fix any compile errors and warnings after response debugging additions",
+    "content": "Build and fix any compile errors and warnings after status tracking",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "21",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (final check)",
+    "content": "Improve error messages to clearly indicate timeouts vs other errors",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "22",
-    "content": "Fix any final clippy issues following rules",
+    "content": "Add elapsed time to timeout log messages",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "23",
-    "content": "Run cargo +nightly fmt",
+    "content": "Build and fix any compile errors and warnings after message improvements",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "24",
-    "content": "Run cargo nextest run",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (final check)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "25",
+    "content": "Fix any final clippy issues following rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
     "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "CodeReview: Task subagent to review changes focusing on duplication and complexity",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "Review suggested changes from code review with user",
     "status": "pending",
     "priority": "medium",
     "notes": ""
