@@ -85,3 +85,7 @@ define_regex!(
     UNKNOWN_COMPONENT_TYPE_REGEX,
     r"Unknown component type(?::\s*)?[`']?([^`'\s]+)[`']?"
 );
+define_regex!(
+    ENUM_UNIT_VARIANT_REGEX,
+    r"Expected variant field access to access a ([a-zA-Z]+) variant, found a ([a-zA-Z]+) variant instead"
+);

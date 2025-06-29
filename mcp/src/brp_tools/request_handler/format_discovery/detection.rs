@@ -3,8 +3,8 @@
 use serde_json::Value;
 
 use super::constants::{
-    ACCESS_ERROR_REGEX, EXPECTED_TYPE_REGEX, MATH_TYPE_ARRAY_REGEX, MISSING_FIELD_REGEX,
-    TRANSFORM_SEQUENCE_REGEX, TUPLE_STRUCT_PATH_REGEX, TYPE_MISMATCH_REGEX,
+    ACCESS_ERROR_REGEX, ENUM_UNIT_VARIANT_REGEX, EXPECTED_TYPE_REGEX, MATH_TYPE_ARRAY_REGEX,
+    MISSING_FIELD_REGEX, TRANSFORM_SEQUENCE_REGEX, TUPLE_STRUCT_PATH_REGEX, TYPE_MISMATCH_REGEX,
     UNKNOWN_COMPONENT_REGEX, UNKNOWN_COMPONENT_TYPE_REGEX, VARIANT_TYPE_MISMATCH_REGEX,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult, execute_brp_method};
@@ -43,6 +43,11 @@ pub enum ErrorPattern {
     },
     /// Unknown component type from BRP
     UnknownComponent { component_path: String },
+    /// Enum unit variant mutation error
+    EnumUnitVariantMutation {
+        expected_variant_type: String,
+        actual_variant_type:   String,
+    },
 }
 
 /// Result of error pattern analysis
@@ -155,7 +160,17 @@ fn match_all_patterns(message: &str) -> Option<ErrorPattern> {
         });
     }
 
-    // 3. Missing field pattern
+    // 3. Enum unit variant mutation pattern
+    if let Some(captures) = ENUM_UNIT_VARIANT_REGEX.captures(message) {
+        let expected_variant_type = captures[1].to_string();
+        let actual_variant_type = captures[2].to_string();
+        return Some(ErrorPattern::EnumUnitVariantMutation {
+            expected_variant_type,
+            actual_variant_type,
+        });
+    }
+
+    // 4. Missing field pattern
     if let Some(captures) = MISSING_FIELD_REGEX.captures(message) {
         let type_name = captures[1].to_string();
         let field_name = captures[2].to_string();
@@ -165,13 +180,13 @@ fn match_all_patterns(message: &str) -> Option<ErrorPattern> {
         });
     }
 
-    // 4. Unknown component pattern
+    // 5. Unknown component pattern
     if let Some(captures) = UNKNOWN_COMPONENT_REGEX.captures(message) {
         let component_path = captures[1].to_string();
         return Some(ErrorPattern::UnknownComponent { component_path });
     }
 
-    // 5. Transform sequence pattern
+    // 6. Transform sequence pattern
     if let Some(captures) = TRANSFORM_SEQUENCE_REGEX.captures(message) {
         if let Ok(count) = captures[1].parse::<usize>() {
             return Some(ErrorPattern::TransformSequence {
@@ -180,25 +195,25 @@ fn match_all_patterns(message: &str) -> Option<ErrorPattern> {
         }
     }
 
-    // 6. Expected type pattern
+    // 7. Expected type pattern
     if let Some(captures) = EXPECTED_TYPE_REGEX.captures(message) {
         let expected_type = captures[1].to_string();
         return Some(ErrorPattern::ExpectedType { expected_type });
     }
 
-    // 7. Math type array pattern
+    // 8. Math type array pattern
     if let Some(captures) = MATH_TYPE_ARRAY_REGEX.captures(message) {
         let math_type = captures[1].to_string();
         return Some(ErrorPattern::MathTypeArray { math_type });
     }
 
-    // 8. Tuple struct path pattern
+    // 9. Tuple struct path pattern
     if let Some(captures) = TUPLE_STRUCT_PATH_REGEX.captures(message) {
         let field_path = captures[1].to_string();
         return Some(ErrorPattern::TupleStructAccess { field_path });
     }
 
-    // 9. Unknown component type pattern
+    // 10. Unknown component type pattern
     if let Some(captures) = UNKNOWN_COMPONENT_TYPE_REGEX.captures(message) {
         let component_type = captures[1].to_string();
         return Some(ErrorPattern::UnknownComponentType { component_type });

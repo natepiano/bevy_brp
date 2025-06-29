@@ -19,9 +19,12 @@ Validate BRP behavior with components that lack Serialize/Deserialize traits but
 
 ### 3. Mutation Should Work (Even Without Serialize/Deserialize)
 - Execute `mcp__brp__bevy_mutate_component` on Visibility component
-- Verify mutation succeeds despite spawn/insert limitations
-- Test mutation on Aabb component if entity has one
-- Confirm mutation works for registered components
+  - Entity: Use an entity with Visibility component
+  - Component: "bevy_render::view::visibility::Visibility"
+  - Path: "" (empty string)
+  - Value: "Visible"
+- Verify mutation succeeds
+- Test other variants with empty path: "Hidden", "Inherited"
 
 ### 4. Registry Requirements Validation
 - Execute `mcp__brp__bevy_list` to see registered components
@@ -35,6 +38,19 @@ Validate BRP behavior with components that lack Serialize/Deserialize traits but
   - Specific missing traits (Serialize, Deserialize)
   - Guidance on BRP registration requirements
   - Helpful suggestions for resolution
+
+### 6. Enum Mutation Error Message Test
+- Execute `mcp__brp__bevy_mutate_component` with INCORRECT syntax:
+  - Path: ".Visible"
+  - Value: {}
+- Verify error response includes:
+  - Error message mentioning variant access issue
+  - Format correction with:
+    - "usage" field explaining empty path requirement
+    - "valid_values" array listing all variants
+    - "examples" showing correct usage
+  - Hint text clearly stating: "Enum 'Visibility' requires empty path..."
+- This ensures users get helpful guidance when making this common mistake
 
 ## Expected Results
 - ✅ Spawn fails appropriately for components lacking Serialize/Deserialize

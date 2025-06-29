@@ -1,6 +1,6 @@
 //! Enum variant transformer for enum variant conversions and mismatches
 
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
 use super::FormatTransformer;
@@ -196,6 +196,54 @@ impl EnumVariantTransformer {
         None
     }
 
+    /// Extract enum variants dynamically from error messages or format info
+    fn extract_enum_variants(error_message: &str) -> Vec<String> {
+        // Try to extract variants from error message patterns
+        // Look for patterns like "expected one of: Variant1, Variant2, Variant3"
+        if let Some(start_idx) = error_message.find("expected one of:") {
+            let variants_str = &error_message[start_idx + 16..]; // Skip "expected one of:"
+            if let Some(end_idx) = variants_str.find(", found") {
+                let variants_part = &variants_str[..end_idx];
+                return variants_part
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(String::from)
+                    .collect();
+            }
+        }
+
+        // Try to extract from "valid values are: ..." pattern
+        if let Some(start_idx) = error_message.find("valid values are:") {
+            let variants_str = &error_message[start_idx + 17..]; // Skip "valid values are:"
+            if let Some(end_idx) = variants_str.find('.') {
+                let variants_part = &variants_str[..end_idx];
+                return variants_part
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(String::from)
+                    .collect();
+            }
+        }
+
+        // Fallback: try to parse variants from any comma-separated list in the error
+        if error_message.contains("variant") {
+            // Look for capitalized words that might be variants
+            error_message
+                .split_whitespace()
+                .filter(|word| {
+                    word.chars().next().is_some_and(char::is_uppercase)
+                        && word.chars().all(char::is_alphanumeric)
+                })
+                .take(5) // Limit to avoid too many false positives
+                .map(String::from)
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
     /// Handle missing field scenarios for enum variants
     fn handle_missing_field(
         type_name: &str,
@@ -269,6 +317,7 @@ impl FormatTransformer for EnumVariantTransformer {
                     .next()
                     .is_some_and(|c| c.is_ascii_uppercase())
             }
+            ErrorPattern::EnumUnitVariantMutation { .. } => true,
             _ => false,
         }
     }
@@ -299,70 +348,70 @@ impl FormatTransformer for EnumVariantTransformer {
         let type_name =
             extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
 
-        // Check if this is an enum variant related error
-        if Self::is_enum_variant_error(error) {
-            let message = &error.message;
+        // Analyze the error pattern
+        let pattern = super::super::detection::analyze_error_pattern(error).pattern;
 
-            // Look for specific variant type mismatch patterns
-            if message.contains("VariantTypeMismatch") {
-                // Try to extract expected and actual types
-                // This is a simple heuristic - in a real implementation, you might want more
-                // sophisticated parsing
-                if message.contains("tuple") && message.contains("struct") {
-                    if message.contains("Expected tuple") {
-                        return Self::handle_variant_type_mismatch(
-                            &type_name, value, "tuple", "struct", "Field",
-                        );
-                    } else if message.contains("Expected struct") {
-                        return Self::handle_variant_type_mismatch(
-                            &type_name,
-                            value,
-                            "struct",
-                            "tuple",
-                            "TupleIndex",
-                        );
-                    }
+        // Handle specific error patterns
+        match pattern {
+            Some(ErrorPattern::EnumUnitVariantMutation {
+                expected_variant_type,
+                actual_variant_type,
+            }) => {
+                // This is an enum unit variant mutation error
+                // Extract enum variants dynamically
+                let variants = Self::extract_enum_variants(&error.message);
+                let valid_values = if variants.is_empty() {
+                    vec![
+                        "<variant1>".to_string(),
+                        "<variant2>".to_string(),
+                        "<variant3>".to_string(),
+                    ]
+                } else {
+                    variants
+                };
+
+                // Return format correction that explains empty path usage
+                let format_info = json!({
+                    "usage": "Use empty path with variant name as value",
+                    "path": "",
+                    "valid_values": valid_values,
+                    "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+                });
+
+                let hint = format!(
+                    "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
+                    valid_values.join(", ")
+                );
+
+                Some((format_info, hint))
+            }
+            Some(ErrorPattern::TypeMismatch {
+                expected,
+                actual,
+                access,
+                is_variant,
+            }) => {
+                if is_variant {
+                    Self::handle_variant_type_mismatch(
+                        &type_name, value, &expected, &actual, &access,
+                    )
+                } else {
+                    Self::handle_type_mismatch(&type_name, value, &expected, &actual, &access)
                 }
             }
-
-            // Look for type mismatch patterns
-            if message.contains("TypeMismatch")
-                && message.contains("variant")
-                && message.contains("tuple_struct")
-            {
-                if message.contains("Expected variant") {
-                    return Self::handle_type_mismatch(
-                        &type_name,
-                        value,
-                        "variant",
-                        "tuple_struct",
-                        "Field",
-                    );
-                } else if message.contains("Expected tuple_struct") {
-                    return Self::handle_type_mismatch(
-                        &type_name,
-                        value,
-                        "tuple_struct",
-                        "variant",
-                        "TupleIndex",
-                    );
-                }
+            Some(ErrorPattern::MissingField { field_name, .. }) => {
+                Self::handle_missing_field(&type_name, value, &field_name)
             }
-
-            // Look for missing field patterns
-            if message.contains("MissingField") {
-                // Extract field name (this is a simple heuristic)
-                if let Some(field_start) = message.find('\'') {
-                    if let Some(field_end) = message[field_start + 1..].find('\'') {
-                        let field_name = &message[field_start + 1..field_start + 1 + field_end];
-                        return Self::handle_missing_field(&type_name, value, field_name);
-                    }
+            _ => {
+                // Check if this is still an enum variant related error
+                if Self::is_enum_variant_error(error) {
+                    // Fallback to generic transformation
+                    self.transform(value)
+                } else {
+                    None
                 }
             }
         }
-
-        // Fallback to generic transformation
-        self.transform(value)
     }
 
     #[cfg(test)]
@@ -625,5 +674,71 @@ mod tests {
         });
         assert_eq!(converted, expected);
         assert!(hint.contains("extracted enum variant value"));
+    }
+
+    #[test]
+    fn test_enum_unit_variant_mutation_pattern_handling() {
+        let transformer = EnumVariantTransformer::new();
+
+        // Test that we can handle the enum unit variant mutation pattern
+        let pattern = ErrorPattern::EnumUnitVariantMutation {
+            expected_variant_type: "Struct".to_string(),
+            actual_variant_type:   "Unit".to_string(),
+        };
+        assert!(transformer.can_handle(&pattern));
+
+        // Create an error that matches the pattern
+        let error = BrpError {
+            code: -1,
+            message: "Expected variant field access to access a Struct variant, found a Unit variant instead".to_string(),
+            data: None,
+        };
+
+        // Test with some dummy value
+        let value = json!({"field": "value"});
+        let result = transformer.transform_with_error(&value, &error);
+
+        assert!(result.is_some(), "Expected transformation to succeed");
+        let (transformed_value, hint) = result.unwrap();
+
+        // Check that the transformed value has the expected structure
+        assert!(transformed_value.is_object());
+        let obj = transformed_value.as_object().unwrap();
+        assert!(obj.contains_key("usage"));
+        assert!(obj.contains_key("path"));
+        assert!(obj.contains_key("valid_values"));
+        assert!(obj.contains_key("examples"));
+
+        // Check that the path is empty as required for unit variant mutation
+        assert_eq!(obj["path"], "");
+
+        // Check that the hint contains the expected information
+        assert!(hint.contains("requires empty path"));
+        assert!(hint.contains("Expected Struct variant, found Unit variant"));
+    }
+
+    #[test]
+    fn test_extract_enum_variants() {
+        // Test pattern: "expected one of: Variant1, Variant2, Variant3"
+        let error_msg = "Error: expected one of: Hidden, Inherited, Visible, found Unknown";
+        let variants = EnumVariantTransformer::extract_enum_variants(error_msg);
+        assert_eq!(variants, vec!["Hidden", "Inherited", "Visible"]);
+
+        // Test pattern: "valid values are: ..."
+        let error_msg2 = "Invalid variant. valid values are: Red, Green, Blue.";
+        let variants2 = EnumVariantTransformer::extract_enum_variants(error_msg2);
+        assert_eq!(variants2, vec!["Red", "Green", "Blue"]);
+
+        // Test fallback pattern - extract capitalized words
+        let error_msg3 = "Cannot mutate Unit variant Something to NewThing variant";
+        let variants3 = EnumVariantTransformer::extract_enum_variants(error_msg3);
+        assert!(variants3.contains(&"Unit".to_string()));
+        assert!(variants3.contains(&"Something".to_string()));
+        assert!(variants3.contains(&"NewThing".to_string()));
+
+        // Test with no recognizable pattern
+        let error_msg4 = "some error without any patterns";
+        let variants4 = EnumVariantTransformer::extract_enum_variants(error_msg4);
+        assert!(variants4.is_empty());
     }
 }
