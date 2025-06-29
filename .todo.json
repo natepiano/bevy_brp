@@ -1,0 +1,177 @@
+[
+  {
+    "id": "1",
+    "content": "MetaTodo: Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Add watch type parameter to logging functions in task.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Build and fix any compile errors and warnings after adding watch type parameter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Modify parse_sse_line to log EVERY line received including non-SSE lines",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Add logging for successful JSON parsing and missing result fields in parse_sse_line",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Add logging for parse failures in parse_sse_line",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Build and fix any compile errors and warnings after parse_sse_line modifications",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Modify process_chunk to log chunk sizes received",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Add logging for number of complete lines processed in process_chunk",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Add logging for incomplete lines in buffer in process_chunk",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Build and fix any compile errors and warnings after process_chunk modifications",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (mid-point check)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Fix any clippy issues following rules (no dead code, no underscore prefixes)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Modify process_watch_stream to log when stream starts",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Add logging for total number of chunks received in process_watch_stream",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Add logging for when stream ends and why in process_watch_stream",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Build and fix any compile errors and warnings after process_watch_stream modifications",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Add initial HTTP response status logging",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Add logging for first chunk to see initial response",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Build and fix any compile errors and warnings after response debugging additions",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings (final check)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Fix any final clippy issues following rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
