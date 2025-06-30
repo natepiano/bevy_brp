@@ -1,0 +1,184 @@
+[
+  {
+    "id": "meta-todo",
+    "content": "META: Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-1",
+    "content": "Implement recursive scanning logic in mcp/src/app_tools/support/scanning.rs - replace iter_cargo_project_paths with recursive implementation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-1",
+    "content": "Build and fix any compile errors and warnings after implementing recursive scanning",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-2",
+    "content": "Update parameter extraction in mcp/src/support/params.rs - rename extract_optional_workspace to extract_optional_path",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-2",
+    "content": "Build and fix any compile errors and warnings after updating parameter extraction",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-3",
+    "content": "Update mcp/src/app_tools/brp_launch_bevy_app.rs - change workspace parameter to path",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-3",
+    "content": "Build and fix any compile errors and warnings after updating brp_launch_bevy_app",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-4",
+    "content": "Update mcp/src/app_tools/brp_launch_bevy_example.rs - change workspace parameter to path",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-4",
+    "content": "Build and fix any compile errors and warnings after updating brp_launch_bevy_example",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-1-fix",
+    "content": "Fix any clippy issues found",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-5",
+    "content": "Update error messages in mcp/src/error.rs - update WorkspaceDisambiguation error or create PathDisambiguation error",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-5",
+    "content": "Build and fix any compile errors and warnings after updating error messages",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-6",
+    "content": "Update mcp/src/constants.rs if parameter constants exist - change workspace to path",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-6",
+    "content": "Build and fix any compile errors and warnings after updating constants",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-7",
+    "content": "Rename .claude/commands/tests/workspace_disambiguation.md to path_disambiguation.md",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-8",
+    "content": "Update .claude/commands/test_config.json test entry for renamed test",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-9",
+    "content": "Update test content in path_disambiguation.md to reflect new path-based approach",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-7",
+    "content": "Build and fix any compile errors and warnings after updating tests",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-2-fix",
+    "content": "Fix any clippy issues found",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "format",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test-review",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "code-review",
+    "content": "Task a new subagent to do code review focusing on duplication, complexity, and plan validation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "review-changes",
+    "content": "Review suggested changes from code review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
