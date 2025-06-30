@@ -1,7 +1,16 @@
-[workspace]
-members = ["test-app"]
-resolver = "2"
+[package]
+name = "test-app-a"
+version = "0.1.0"
+edition = "2024"
 
-[workspace.dependencies]
+[[bin]]
+name = "test_duplicate_app"
+path = "src/bin/test_duplicate_app.rs"
+
+[[example]]
+name = "extras_plugin"
+path = "examples/extras_plugin.rs"
+
+[dependencies]
 bevy = { version = "0.16.1", default-features = false, features = ["bevy_remote"] }
 bevy_brp_extras = { path = "../extras" }

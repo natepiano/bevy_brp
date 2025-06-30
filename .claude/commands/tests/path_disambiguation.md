@@ -1,33 +1,33 @@
-# Workspace Disambiguation Tests
+# Path Disambiguation Tests
 
 ## Objective
-Validate workspace parameter handling when multiple apps or examples with the same name exist across different workspaces.
+Validate path parameter handling when multiple apps or examples with the same name exist across different paths.
 
 ## Test Steps
 
-### 1. Check for Workspace Conflicts
+### 1. Check for Path Conflicts
 - Execute `mcp__brp__brp_list_bevy_apps`
-- Look for duplicate app names across different workspaces
+- Look for duplicate app names across different paths
 - If no conflicts found, mark tests as SKIPPED with reason
-- Note available workspaces for testing
+- Note available paths for testing
 
-### 2. Test App Launch Without Workspace (If Conflicts Exist)
+### 2. Test App Launch Without Path (If Conflicts Exist)
 - Execute `mcp__brp__brp_launch_bevy_app` with duplicate app name
-- Do NOT specify workspace parameter
-- Verify error response lists available workspaces
+- Do NOT specify path parameter
+- Verify error response lists available paths
 - Check error message provides clear guidance
 
-### 3. Test App Launch With Workspace Parameter (If Conflicts Exist)
-- Execute `mcp__brp__brp_launch_bevy_app` with same app name but specify workspace
-- Use workspace parameter from error message
-- Verify successful launch from correct workspace
-- Check response includes workspace field
+### 3. Test App Launch With Path Parameter (If Conflicts Exist)
+- Execute `mcp__brp__brp_launch_bevy_app` with same app name but specify path
+- Use path parameter from error message
+- Verify successful launch from correct path
+- Check response includes path field
 
 ### 4. Test Example Launch Disambiguation
 - Execute `mcp__brp__brp_list_bevy_examples` to check for duplicate example names
 - **CRITICAL**: If NO duplicate examples exist, you MUST mark this as a FAILED test with reason: "No duplicate examples found to test disambiguation logic"
-- If duplicates exist, test launch using `mcp__brp__brp_launch_bevy_example` without workspace (expect error)
-- Test launch using `mcp__brp__brp_launch_bevy_example` with workspace parameter (expect success)
+- If duplicates exist, test launch using `mcp__brp__brp_launch_bevy_example` without path (expect error)
+- Test launch using `mcp__brp__brp_launch_bevy_example` with path parameter (expect success)
 - Verify correct example variant is launched
 
 ### 5. Validate Error Message Quality
