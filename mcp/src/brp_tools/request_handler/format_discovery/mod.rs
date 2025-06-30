@@ -9,6 +9,7 @@ mod detection;
 mod engine;
 mod field_mapper;
 mod path_parser;
+mod path_suggestions;
 pub mod phases;
 mod transformers;
 pub mod types;
