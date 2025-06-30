@@ -218,6 +218,8 @@ After the Task completes, simply present the test results as returned by the sub
 
 **Execute tests 3 at a time with continuous execution:**
 
+**CRITICAL PARALLEL EXECUTION REQUIREMENT**: When executing multiple tests "at a time", you MUST invoke multiple Task tools in a SINGLE message. Sequential execution (one Task per message) is NOT parallel execution.
+
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
 2. **Initialize Execution State**:
    - Create queue of all test configurations
@@ -225,11 +227,11 @@ After the Task completes, simply present the test results as returned by the sub
    - Track completed tests and their results
    - Track failed tests for immediate stopping
 3. **Continuous Execution Loop**:
-   - **Start Phase**: Launch first 3 tests from queue using Task tool
+   - **Start Phase**: Launch first 3 tests from queue by invoking 3 Task tools IN ONE MESSAGE
    - **Monitor Phase**: Wait for any test to complete
    - **Result Phase**: Collect completed test results and check for failures
    - **Error Handling**: If any test reports failures, STOP immediately and report
-   - **Continue Phase**: If no failures, start next test from queue (maintaining 2 running)
+   - **Continue Phase**: If no failures, start next test from queue (maintaining 3 running)
    - **Repeat**: Continue until all tests complete or failure detected
 
 ### Error Detection and Immediate Stopping
@@ -262,12 +264,19 @@ After the Task completes, simply present the test results as returned by the sub
 
 **Example Execution Flow:**
 ```
-Start: Launch tests 1, 2 & 3
+Start: Launch tests 1, 2 & 3 (IN ONE MESSAGE with 3 Task tool invocations)
 Wait: Monitor for completion
 Complete: Test 1 finishes → Check for failures → Start test 4
 Complete: Test 2 finishes → Check for failures → Start test 5
 Complete: Test 3 finishes → Check for failures → Start test 6
 Continue: Maintain 3 running tests until queue empty
+
+CORRECT: Single message with:
+  <Task for test 1>
+  <Task for test 2>
+  <Task for test 3>
+
+WRONG: Three separate messages each with one Task
 ```
 
 ### Results Consolidation
