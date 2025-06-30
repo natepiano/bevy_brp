@@ -6,7 +6,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20102",
     "shutdown_instruction": "Shutdown via the brp_extras_shutdown method (part of test)",
-    "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods"
+    "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "data_operations",
@@ -15,7 +16,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20103",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test spawn, insert, get, remove, mutate operations"
+    "test_objective": "Test spawn, insert, get, remove, mutate operations",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "debug_mode",
@@ -24,7 +26,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20104",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test brp_set_debug_mode and brp_extras_set_debug_mode"
+    "test_objective": "Test brp_set_debug_mode and brp_extras_set_debug_mode",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "discovery",
@@ -33,7 +36,8 @@
     "app_name": "N/A",
     "launch_instruction": "No app launch required - discovery works from workspace metadata",
     "shutdown_instruction": "No cleanup required",
-    "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps"
+    "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps",
+    "expected_shutdown_method": "N/A"
   },
   {
     "test_name": "format_discovery",
@@ -42,7 +46,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20105",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test Tier 2 direct format discovery with bevy_brp_extras"
+    "test_objective": "Test Tier 2 direct format discovery with bevy_brp_extras",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "introspection",
@@ -51,7 +56,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20106",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test rpc_discover, registry_schema, list operations"
+    "test_objective": "Test rpc_discover, registry_schema, list operations",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "large_response",
@@ -60,16 +66,18 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20107",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test registry_schema file output for large responses"
+    "test_objective": "Test registry_schema file output for large responses",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "no_plugin",
     "test_file": ".claude/commands/tests/no_plugin.md",
     "port": 25000,
-    "app_name": "extras_no_plugin",
+    "app_name": "no_extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch no_extras_plugin example (uses hard-coded port 25000)",
     "shutdown_instruction": "Shutdown via process termination (no clean shutdown available)",
-    "test_objective": "Test fallback discovery and error handling without bevy_brp_extras"
+    "test_objective": "Test fallback discovery and error handling without bevy_brp_extras",
+    "expected_shutdown_method": "process_kill"
   },
   {
     "test_name": "registry_discovery",
@@ -78,7 +86,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20108",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test components without Serialize/Deserialize traits"
+    "test_objective": "Test components without Serialize/Deserialize traits",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "watch_commands",
@@ -87,7 +96,8 @@
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20109",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
+    "test_objective": "Test get_watch, list_watch, active_watches, stop_watch",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "path_disambiguation",
@@ -96,7 +106,8 @@
     "app_name": "various",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools as instructed on port 20110 (may use multiple apps for testing)",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
-    "test_objective": "Test path parameter handling for duplicate names"
+    "test_objective": "Test path parameter handling for duplicate names",
+    "expected_shutdown_method": "clean_shutdown"
   },
   {
     "test_name": "apps",
@@ -105,6 +116,7 @@
     "app_name": "test_extras_plugin_app",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_app tool to launch test_extras_plugin_app application on port 20111",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
+    "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app",
+    "expected_shutdown_method": "clean_shutdown"
   }
 ]

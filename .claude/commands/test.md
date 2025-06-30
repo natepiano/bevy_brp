@@ -3,12 +3,12 @@
 ## Overview
 
 This command runs BRP tests in two modes:
-- **Without arguments**: Runs all tests in parallel
+- **Without arguments**: Runs tests 2 at a time with continuous execution, stops immediately on any failure
 - **With argument**: Runs a single test by name
 
 ## Usage Examples
 ```
-/test_runner                    # Run all tests in parallel
+/test_runner                    # Run all tests 2 at a time, stop on first failure
 /test_runner debug_mode         # Run only the debug_mode test
 /test_runner data_operations    # Run only the data_operations test
 ```
@@ -25,8 +25,28 @@ This file contains an array of test configurations with the following structure:
 - `launch_instruction`: How to launch the app
 - `shutdown_instruction`: How to shutdown the app
 - `test_objective`: What the test validates
+- `expected_shutdown_method`: Expected shutdown behavior (`clean_shutdown`, `process_kill`, or `N/A`)
 
 **Total Tests**: 12 tests
+
+## Shutdown Validation
+
+All tests that launch apps must validate the shutdown method matches the expected behavior:
+
+### Expected Shutdown Methods
+- **clean_shutdown**: Apps with `BrpExtrasPlugin` (extras_plugin, test_extras_plugin_app)
+  - Message: "Successfully initiated graceful shutdown for '...' via bevy_brp_extras on port ..."
+  - Method field: `"clean_shutdown"`
+- **process_kill**: Apps without `BrpExtrasPlugin` (no_extras_plugin)  
+  - Message: "Terminated process '...' (PID: ...) using kill. Consider adding bevy_brp_extras for clean shutdown."
+  - Method field: `"process_kill"`
+- **N/A**: Tests with no app launch (discovery)
+
+### Validation Rules
+- Parse shutdown response `data.method` field
+- Compare against `expected_shutdown_method` from test config
+- Report mismatch as FAILED test with detailed explanation
+- Include both expected and actual methods in test results
 
 ## Sub-agent Prompt Template
 
@@ -46,6 +66,7 @@ Configuration: Port [PORT], App [APP_NAME]
 - Port: [PORT]
 - App: [APP_NAME]
 - Objective: [TEST_OBJECTIVE]
+- Expected Shutdown Method: [EXPECTED_SHUTDOWN_METHOD]
 
 **CRITICAL ERROR HANDLING:**
 - **ALWAYS use the specified port [PORT] for ALL BRP operations**
@@ -90,6 +111,9 @@ Configuration: Port [PORT], App [APP_NAME]
 
 ## Cleanup Status
 - **App Status**: [Shutdown Successfully/Still Running/N/A]
+- **Shutdown Method**: [clean_shutdown/process_kill/N/A]
+- **Expected Method**: [EXPECTED_SHUTDOWN_METHOD]
+- **Shutdown Validation**: [PASSED/FAILED - explanation if failed]
 - **Port Status**: [Available/Still in use]
 
 **CRITICAL ERROR HANDLING:**
@@ -107,13 +131,26 @@ Configuration: Port [PORT], App [APP_NAME]
   - Stop immediately and return results
   - Do not continue testing
 
+**SHUTDOWN VALIDATION REQUIREMENTS:**
+  - **CRITICAL**: After shutdown, verify the shutdown response `method` field matches [EXPECTED_SHUTDOWN_METHOD]
+  - If shutdown method doesn't match expected:
+    1. **Mark as FAILED test** in your results
+    2. Report actual vs expected shutdown method
+    3. Include full shutdown response in error details
+  - Expected behaviors:
+    - `clean_shutdown`: Apps with BrpExtrasPlugin (extras_plugin, test_extras_plugin_app)
+    - `process_kill`: Apps without BrpExtrasPlugin (no_extras_plugin)
+    - `N/A`: Tests with no app launch (discovery)
+  - Parse the shutdown response `data.method` field to get actual method
+  - **FAILURE EXAMPLE**: If expected `clean_shutdown` but got `process_kill`, this indicates BrpExtrasPlugin configuration issue
+
 </SubAgentPrompt>
 
 ## Execution Mode Selection
 
 **First, check if `$ARGUMENTS` is provided:**
 - If `$ARGUMENTS` exists and is not empty: Execute **Single Test Mode**
-- If `$ARGUMENTS` is empty or not provided: Execute **Parallel Test Mode**
+- If `$ARGUMENTS` is empty or not provided: Execute **Continuous Parallel Test Mode**
 
 ## Single Test Mode (when $ARGUMENTS provided)
 
@@ -136,6 +173,7 @@ Configuration: Port [PORT], App [APP_NAME]
   - [LAUNCH_INSTRUCTION] = `launch_instruction` field
   - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
   - [TEST_OBJECTIVE] = `test_objective` field
+  - [EXPECTED_SHUTDOWN_METHOD] = `expected_shutdown_method` field
 
 **Example Task Invocation:**
 ```
@@ -174,63 +212,114 @@ Example: /test_runner debug_mode
 
 After the Task completes, simply present the test results as returned by the sub-agent. No consolidation or summary needed since it's a single test.
 
-## Parallel Test Mode (when no $ARGUMENTS)
+## Continuous Parallel Test Mode (when no $ARGUMENTS)
 
-### Parallel Execution Instructions
+### Continuous Parallel Execution Instructions
 
-**Execute ALL tests simultaneously using the Task tool:**
+**Execute tests 2 at a time with continuous execution:**
 
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
-2. **For each test configuration object**:
-   - Create a Task with description: "BRP [test_name] Tests"
-   - Use the SubAgentPrompt template above, substituting values from `test_config.json`
-     - [TEST_NAME] = `test_name` field
-     - [TEST_FILE] = `test_file` field
-     - [PORT] = `port` field
-     - [APP_NAME] = `app_name` field
-     - [LAUNCH_INSTRUCTION] = `launch_instruction` field
-     - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
-     - [TEST_OBJECTIVE] = `test_objective` field
+2. **Initialize Execution State**:
+   - Create queue of all test configurations
+   - Track running tests (max 2 at a time)
+   - Track completed tests and their results
+   - Track failed tests for immediate stopping
+3. **Continuous Execution Loop**:
+   - **Start Phase**: Launch first 2 tests from queue using Task tool
+   - **Monitor Phase**: Wait for any test to complete
+   - **Result Phase**: Collect completed test results and check for failures
+   - **Error Handling**: If any test reports failures, STOP immediately and report
+   - **Continue Phase**: If no failures, start next test from queue (maintaining 2 running)
+   - **Repeat**: Continue until all tests complete or failure detected
 
-**Example Task Invocation:**
-```
-Task tool with:
-- Description: "BRP app_launch_status Tests"
-- Prompt: [SubAgentPrompt with values substituted from the app_launch_status config object]
-```
+### Error Detection and Immediate Stopping
 
-**Launch all 12 tasks simultaneously for maximum parallel execution efficiency.**
+**CRITICAL**: Monitor each completed test result for failure indicators:
+- Check for `### ❌ FAILED` sections with content
+- Check for `**Critical Issues**: Yes` in summary
+- Check for `**Shutdown Validation**: FAILED` in cleanup status
+- Check for any `CRITICAL FAILURE` mentions in results
+
+**On Error Detection**:
+1. **STOP immediately** - do not start any new tests
+2. **Collect results** from any currently running tests
+3. **Report failure immediately** with details from failed test
+4. **Skip consolidation** and provide immediate failure report
+
+### Test Configuration and Execution
+
+**For each test in the execution queue**:
+- Create a Task with description: "BRP [test_name] Test"
+- Use the SubAgentPrompt template above, substituting values from `test_config.json`
+  - [TEST_NAME] = `test_name` field
+  - [TEST_FILE] = `test_file` field
+  - [PORT] = `port` field
+  - [APP_NAME] = `app_name` field
+  - [LAUNCH_INSTRUCTION] = `launch_instruction` field
+  - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
+  - [TEST_OBJECTIVE] = `test_objective` field
+  - [EXPECTED_SHUTDOWN_METHOD] = `expected_shutdown_method` field
+
+**Example Execution Flow:**
+```
+Start: Launch tests 1 & 2
+Wait: Monitor for completion
+Complete: Test 1 finishes → Check for failures → Start test 3
+Complete: Test 2 finishes → Check for failures → Start test 4
+Continue: Maintain 2 running tests until queue empty
+```
 
 ### Results Consolidation
 
-After all sub-agents complete, collect their individual results and generate a consolidated summary:
+**Success Path**: After all tests complete successfully, generate consolidated summary
+**Failure Path**: If any test fails, provide immediate failure report instead
 
-### Final Summary Format for All Tests
+### Immediate Failure Report (when error detected)
+
+# BRP Test Suite - FAILED
+
+## ❌ CRITICAL FAILURE DETECTED
+
+**Failed Test**: [test_name]
+**Failure Type**: [Critical Issues/Failed Tests/Shutdown Validation/etc.]
+
+### Failure Details
+[Include full failure details from the failed test]
+
+### Tests Completed Before Failure
+- **Completed**: X tests
+- **Results**: [Brief summary of completed tests]
+
+### Tests Not Executed
+- **Remaining**: Y tests
+- **Reason**: Execution stopped due to failure
+
+**Recommendation**: Fix the failure in [test_name] before running remaining tests.
+
+### Final Summary Format for All Tests (Success Path Only)
 
 # BRP Test Suite - Consolidated Results
 
 ## Overall Statistics
 - **Total Tests**: 12
 - **Passed**: X
-- **Failed**: Y
-- **Skipped**: Z
-- **Critical Issues**: [Count]
-- **Total Execution Time**: ~X minutes (parallel)
+- **Failed**: 0 (execution stops on first failure)
+- **Skipped**: Y
+- **Critical Issues**: 0 (execution stops on critical issues)
+- **Total Execution Time**: ~X minutes (continuous parallel)
+- **Execution Strategy**: 2 tests at a time with continuous execution
 
 ## ✅ PASSED TESTS
-[List of successful tests with brief summaries]
-
-## ❌ FAILED TESTS
-[List of failed tests with key details]
+[List of successful tests with brief summaries, in execution order]
 
 ## ⚠️ SKIPPED TESTS
 [List of skipped tests with reasons]
 
-## Critical Issues Summary
-[Any issues requiring immediate attention]
+## Execution Flow Summary
+[Brief summary of test execution order and timing]
 
 ## Port Usage Summary
-[Status of all test ports]
+[Status of all test ports after completion]
 
 ## Recommendations
-[Based on test results]
+[Based on test results - all passed scenario]

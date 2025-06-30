@@ -1,7 +1,7 @@
 # Path Disambiguation Tests
 
 ## Objective
-Validate path parameter handling when multiple apps or examples with the same name exist across different paths. Tests the full path matching, partial path matching, and fallback to workspace name functionality.
+Validate path parameter handling when multiple apps or examples with the same name exist across different paths. Tests the full path matching and partial path matching functionality.
 
 ## Test Steps
 
@@ -36,11 +36,11 @@ Validate path parameter handling when multiple apps or examples with the same na
 - Verify appropriate error message about ambiguous path
 - Check error lists all matching paths
 
-#### 3d. Workspace Name Fallback Test
+#### 3d. Invalid Path Test
 - Execute `mcp__brp__brp_launch_bevy_app` with same app name
-- Use workspace name as path parameter (backwards compatibility test)
-- Verify successful launch for workspace members
-- Confirm fallback mechanism works
+- Use non-existent path parameter to test error handling
+- Verify appropriate error message about path not found
+- Confirm error handling is robust
 
 ### 4. Test Example Launch Disambiguation
 - Execute `mcp__brp__brp_list_bevy_examples` to check for duplicate example names
@@ -49,7 +49,7 @@ Validate path parameter handling when multiple apps or examples with the same na
   - Test launch without path (expect error with relative paths)
   - Test launch with full relative path (expect success)
   - Test launch with partial path (expect success if unambiguous)
-  - Test launch with workspace name fallback
+  - Test launch with invalid path (expect error)
 
 ### 5. Validate Error Message Quality
 - Check that disambiguation errors are clear and actionable
@@ -70,7 +70,7 @@ Validate path parameter handling when multiple apps or examples with the same na
 - ✅ Full relative path parameter resolves conflicts successfully
 - ✅ Partial path matching works when unambiguous
 - ✅ Ambiguous partial paths produce appropriate errors
-- ✅ Workspace name fallback works for backwards compatibility
+- ✅ Invalid path parameters produce appropriate error messages
 - ✅ Launched apps include path information in responses
 - ✅ Error handling is consistent between apps and examples
 
@@ -79,7 +79,7 @@ Validate path parameter handling when multiple apps or examples with the same na
 - **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment should provide duplicate examples for comprehensive testing
 - Tests adapt to available path configurations  
 - Focus is on error handling and path disambiguation logic
-- The path parameter accepts: full relative paths, partial paths (if unambiguous), and workspace names as fallback
+- The path parameter accepts: full relative paths and partial paths (if unambiguous)
 
 ## Failure Criteria
-STOP if: Path errors are unclear, path specification fails to resolve conflicts, incorrect app/example variants are launched, or path matching doesn't work as specified (full, partial, and fallback modes).
+STOP if: Path errors are unclear, path specification fails to resolve conflicts, incorrect app/example variants are launched, or path matching doesn't work as specified (full and partial modes).

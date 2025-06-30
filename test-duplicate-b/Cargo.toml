@@ -1,18 +1,20 @@
 [workspace]
 
 [package]
-name = "test-app-b"
-version = "0.1.0"
 edition = "2024"
+name    = "test-app-b"
+version = "0.1.0"
 
 [[bin]]
 name = "test_duplicate_app"
 path = "src/bin/test_duplicate_app.rs"
 
 [[example]]
-name = "extras_plugin"
+name = "extras_plugin_duplicate"
 path = "examples/extras_plugin.rs"
 
 [dependencies]
-bevy = { version = "0.16.1", default-features = false, features = ["bevy_remote"] }
+bevy = { version = "0.16.1", default-features = false, features = [
+  "bevy_remote",
+] }
 bevy_brp_extras = { path = "../extras" }
