@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::Instant;
 
 use rmcp::model::CallToolResult;
@@ -7,14 +6,12 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 
-use super::support::{launch_common, logging, process, scanning};
+use super::support::{launch_common, process, scanning};
 use crate::BrpMcpService;
 use crate::brp_tools::brp_set_debug_mode::is_debug_enabled;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
-use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::support::{params, service};
 
 pub async fn handle(
@@ -46,12 +43,14 @@ pub fn launch_bevy_example(
     let mut debug_info = Vec::new();
 
     // Find the example
+    let find_start = Instant::now();
     let example = scanning::find_required_example_with_path(
         example_name,
         path,
         search_paths,
         &mut debug_info,
     )?;
+    let find_duration = find_start.elapsed();
 
     // Get the manifest directory (parent of Cargo.toml)
     let manifest_dir = launch_common::validate_manifest_directory(&example.manifest_path)?;
@@ -79,39 +78,26 @@ pub fn launch_bevy_example(
         );
     }
 
-    // Create log file for example output (examples use cargo run, so we pass the command string)
-
-    let (log_file_path, _) = logging::create_log_file(
+    // Setup logging with package info
+    let log_setup_start = Instant::now();
+    let (log_file_path, log_file_for_redirect) = launch_common::setup_launch_logging(
         example_name,
         "Example",
         profile,
         &PathBuf::from(&cargo_command),
         manifest_dir,
         port,
+        Some(&format!("Package: {}", example.package_name)),
     )?;
-
-    // Add extra info to log file
-    logging::append_to_log_file(
-        &log_file_path,
-        &format!("Package: {}\n", example.package_name),
-    )?;
-
-    // Open log file for stdout/stderr redirection
-    let log_file_for_redirect = logging::open_log_file_for_redirect(&log_file_path)?;
+    let log_setup_duration = log_setup_start.elapsed();
 
     // Build cargo command
-    let mut cmd = Command::new("cargo");
-    cmd.arg("run").arg("--example").arg(example_name);
-
-    // Add profile flag if release
-    if profile == PROFILE_RELEASE {
-        cmd.arg("--release");
-    }
-
-    // Set BRP-related environment variables
-    launch_common::set_brp_env_vars(&mut cmd, port);
+    let cmd_setup_start = Instant::now();
+    let cmd = launch_common::build_cargo_example_command(example_name, profile, port);
+    let cmd_setup_duration = cmd_setup_start.elapsed();
 
     // Launch the process
+    let spawn_start = Instant::now();
     let pid = process::launch_detached_process(
         &cmd,
         manifest_dir,
@@ -119,30 +105,29 @@ pub fn launch_bevy_example(
         example_name,
         "spawn",
     )?;
+    let spawn_duration = spawn_start.elapsed();
     let launch_end = Instant::now();
 
     // Collect enhanced debug info if enabled
     if is_debug_enabled() {
-        let mut env_vars = Vec::new();
-        if let Some(port) = port {
-            env_vars.push(("BRP_PORT", port.to_string()));
-        }
-
-        launch_common::collect_enhanced_launch_debug_info(
-            example_name,
-            "example",
-            manifest_dir,
-            &cargo_command,
-            profile,
-            launch_start,
-            launch_end,
-            &env_vars
-                .iter()
-                .map(|(k, v)| (*k, v.as_str()))
-                .collect::<Vec<_>>(),
+        launch_common::collect_complete_launch_debug_info(
+            launch_common::LaunchDebugParams {
+                name: example_name,
+                name_type: "example",
+                manifest_dir,
+                binary_or_command: &cargo_command,
+                profile,
+                launch_start,
+                launch_end,
+                port,
+                package_name: Some(&example.package_name),
+                find_duration: Some(find_duration),
+                log_setup_duration: Some(log_setup_duration),
+                cmd_setup_duration: Some(cmd_setup_duration),
+                spawn_duration: Some(spawn_duration),
+            },
             &mut debug_info,
         );
-        debug_info.push(format!("Package: {}", example.package_name));
     }
 
     // Create additional example-specific data
@@ -170,37 +155,9 @@ pub fn launch_bevy_example(
 
     let base_response = launch_common::build_launch_success_response(response_params);
 
-    // Extract the inner JSON response and inject debug info using standard approach
-    if let Ok(json_str) = serde_json::to_string(&base_response.content) {
-        if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
-            let response = ResponseBuilder::success()
-                .message(format!(
-                    "Successfully launched '{example_name}' (PID: {pid})"
-                ))
-                .data(json_response)
-                .map_or_else(
-                    |_| {
-                        ResponseBuilder::error()
-                            .message("Failed to serialize response data")
-                            .build()
-                    },
-                    |builder| {
-                        builder
-                            .auto_inject_debug_info(
-                                if debug_info.is_empty() {
-                                    None
-                                } else {
-                                    Some(debug_info)
-                                },
-                                None::<Vec<String>>,
-                            )
-                            .build()
-                    },
-                );
-
-            return Ok(json_response_to_result(&response));
-        }
-    }
-
-    Ok(base_response)
+    Ok(launch_common::build_final_launch_response(
+        base_response,
+        debug_info,
+        format!("Successfully launched '{example_name}' (PID: {pid})"),
+    ))
 }

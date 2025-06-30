@@ -54,7 +54,7 @@ pub fn iter_cargo_project_paths(
 
     for root in search_paths {
         let canonical_root = safe_canonicalize(root, Some(debug_info));
-        recursive_scan(
+        shallow_scan(
             &canonical_root,
             &mut visited_canonical,
             &mut discovered_projects,
@@ -230,14 +230,14 @@ fn process_cargo_toml(
     }
 }
 
-/// Recursively scan a directory for Cargo projects
-fn recursive_scan(
+/// Shallow scan a directory for Cargo projects (current + immediate subdirectories only)
+fn shallow_scan(
     dir: &Path,
     visited_canonical: &mut HashSet<PathBuf>,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
     debug_info: &mut Vec<String>,
 ) {
-    recursive_scan_internal(
+    shallow_scan_internal(
         dir,
         visited_canonical,
         discovered_projects,
@@ -246,8 +246,9 @@ fn recursive_scan(
     );
 }
 
-/// Internal recursive scan that can skip the `should_skip` check for root paths
-fn recursive_scan_internal(
+/// Internal shallow scan that can skip the `should_skip` check for root paths
+/// Maximum depth: current directory + immediate subdirectories only (2 levels)
+fn shallow_scan_internal(
     dir: &Path,
     visited_canonical: &mut HashSet<PathBuf>,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
@@ -265,24 +266,26 @@ fn recursive_scan_internal(
         return;
     }
 
-    // Check if this directory contains a Cargo.toml
+    // Level 0: Check if this directory contains a Cargo.toml
     let cargo_toml = dir.join("Cargo.toml");
     if cargo_toml.exists() {
         process_cargo_toml(dir, discovered_projects, debug_info);
     }
 
-    // Recurse into all subdirectories (check skip for all subdirectories)
+    // Level 1: Check immediate subdirectories only (no recursion)
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() {
-                recursive_scan_internal(
-                    &path,
-                    visited_canonical,
-                    discovered_projects,
-                    debug_info,
-                    true,
-                );
+            if path.is_dir() && !should_skip_directory(&path) {
+                // Check for Cargo.toml in immediate subdirectory
+                let sub_cargo_toml = path.join("Cargo.toml");
+                if sub_cargo_toml.exists() {
+                    // Skip if we've already visited this canonical path
+                    let sub_canonical = safe_canonicalize(&path, Some(debug_info));
+                    if visited_canonical.insert(sub_canonical) {
+                        process_cargo_toml(&path, discovered_projects, debug_info);
+                    }
+                }
             }
         }
     }

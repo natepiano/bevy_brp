@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::Command;
 use std::time::Instant;
 
 use rmcp::model::CallToolResult;
@@ -7,15 +6,13 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 
-use super::support::{launch_common, logging, process, scanning};
+use super::support::{launch_common, process, scanning};
 use crate::BrpMcpService;
 use crate::brp_tools::brp_set_debug_mode::is_debug_enabled;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::support::{params, service};
 
 pub async fn handle(
@@ -87,18 +84,19 @@ pub fn launch_bevy_app(
         );
     }
 
-    // Create log file
-    let (log_file_path, _) =
-        logging::create_log_file(app_name, "App", profile, &binary_path, manifest_dir, port)?;
+    // Setup logging
+    let (log_file_path, log_file_for_redirect) = launch_common::setup_launch_logging(
+        app_name,
+        "App",
+        profile,
+        &binary_path,
+        manifest_dir,
+        port,
+        None,
+    )?;
 
-    // Open log file for stdout/stderr redirection
-    let log_file_for_redirect = logging::open_log_file_for_redirect(&log_file_path)?;
-
-    // Launch the binary
-    let mut cmd = Command::new(&binary_path);
-
-    // Set BRP-related environment variables
-    launch_common::set_brp_env_vars(&mut cmd, port);
+    // Build app command
+    let cmd = launch_common::build_app_command(&binary_path, port);
 
     let pid = process::launch_detached_process(
         &cmd,
@@ -111,23 +109,22 @@ pub fn launch_bevy_app(
 
     // Collect enhanced debug info if enabled
     if is_debug_enabled() {
-        let mut env_vars = Vec::new();
-        if let Some(port) = port {
-            env_vars.push(("BRP_PORT", port.to_string()));
-        }
-
-        launch_common::collect_enhanced_launch_debug_info(
-            app_name,
-            "app",
-            manifest_dir,
-            &binary_path.display().to_string(),
-            profile,
-            launch_start,
-            launch_end,
-            &env_vars
-                .iter()
-                .map(|(k, v)| (*k, v.as_str()))
-                .collect::<Vec<_>>(),
+        launch_common::collect_complete_launch_debug_info(
+            launch_common::LaunchDebugParams {
+                name: app_name,
+                name_type: "app",
+                manifest_dir,
+                binary_or_command: &binary_path.display().to_string(),
+                profile,
+                launch_start,
+                launch_end,
+                port,
+                package_name: None, // Apps don't have package names like examples do
+                find_duration: None,
+                log_setup_duration: None,
+                cmd_setup_duration: None,
+                spawn_duration: None,
+            },
             &mut debug_info,
         );
     }
@@ -152,35 +149,9 @@ pub fn launch_bevy_app(
 
     let base_response = launch_common::build_launch_success_response(response_params);
 
-    // Extract the inner JSON response and inject debug info using standard approach
-    if let Ok(json_str) = serde_json::to_string(&base_response.content) {
-        if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
-            let response = ResponseBuilder::success()
-                .message(format!("Successfully launched '{app_name}' (PID: {pid})"))
-                .data(json_response)
-                .map_or_else(
-                    |_| {
-                        ResponseBuilder::error()
-                            .message("Failed to serialize response data")
-                            .build()
-                    },
-                    |builder| {
-                        builder
-                            .auto_inject_debug_info(
-                                if debug_info.is_empty() {
-                                    None
-                                } else {
-                                    Some(debug_info)
-                                },
-                                None::<Vec<String>>,
-                            )
-                            .build()
-                    },
-                );
-
-            return Ok(json_response_to_result(&response));
-        }
-    }
-
-    Ok(base_response)
+    Ok(launch_common::build_final_launch_response(
+        base_response,
+        debug_info,
+        format!("Successfully launched '{app_name}' (PID: {pid})"),
+    ))
 }

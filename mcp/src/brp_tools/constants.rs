@@ -77,6 +77,9 @@ pub const DESC_PORT: &str = "The BRP port (default: 15702)";
 /// Network/Port Constants
 pub const DEFAULT_BRP_PORT: u16 = 15702;
 
+/// Environment variable name for BRP port
+pub const BRP_PORT_ENV_VAR: &str = "BRP_PORT";
+
 // ============================================================================
 // ERROR CONSTANTS
 // ============================================================================
