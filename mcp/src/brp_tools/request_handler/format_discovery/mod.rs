@@ -10,7 +10,7 @@
 //!
 //! ### Tier 1: Serialization Diagnostics
 //! - Checks if types support Serialize/Deserialize traits required for BRP operations
-//! - Provides early feedback on incompatible types (e.g., ClearColor without traits)
+//! - Provides early feedback on incompatible types (e.g., `ClearColor` without traits)
 //! - Uses `bevy_brp_extras/discover_format` when available
 //!
 //! ### Tier 2: Direct Discovery  

@@ -66,28 +66,26 @@ pub fn discover_type_as_response(
     world: &World,
     type_name: &str,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<TypeDiscoveryResponse> {
+) -> TypeDiscoveryResponse {
     debug_context.push(format!("Discovering type response for: {type_name}"));
 
     // Try to get type info from registry
     let type_info_result =
         get_type_info_from_registry(world, type_name, debug_context.as_mut_vec());
 
-    let (in_registry, type_info_opt, has_serialize, has_deserialize) = match type_info_result {
-        Ok(type_info) => {
-            // Check for Serialize/Deserialize traits using helper function
-            let (has_serialize, has_deserialize) = {
-                let registry = world.resource::<AppTypeRegistry>();
-                let registry_read = registry.read();
-                let registration = registry_read.get_with_type_path(type_name);
-                registration
-                    .map(check_serialization_traits)
-                    .unwrap_or((false, false))
-            };
-            (true, Some(type_info), has_serialize, has_deserialize)
-        }
-        Err(_) => (false, None, false, false),
-    };
+    let (in_registry, type_info_opt, has_serialize, has_deserialize) = type_info_result
+        .map_or_else(
+            |_| (false, None, false, false),
+            |type_info| {
+                // Check for Serialize/Deserialize traits using helper function
+                let (has_serialize, has_deserialize) = world
+                    .resource::<AppTypeRegistry>()
+                    .read()
+                    .get_with_type_path(type_name)
+                    .map_or((false, false), check_serialization_traits);
+                (true, Some(type_info), has_serialize, has_deserialize)
+            },
+        );
 
     // Determine supported operations
     let mut supported_operations = Vec::new();
@@ -106,22 +104,22 @@ pub fn discover_type_as_response(
     }
 
     // Get mutation paths if supported
-    let mutation_paths = if let Some(ref type_info) = type_info_opt {
-        if is_mutable_type(type_info) {
-            match generate_mutation_info(type_info, type_name, debug_context) {
-                Ok(mutation_info) => mutation_info
-                    .fields
-                    .into_iter()
-                    .map(|(path, field)| (path, field.description))
-                    .collect(),
-                Err(_) => HashMap::new(),
+    let mutation_paths = type_info_opt
+        .as_ref()
+        .map_or_else(HashMap::new, |type_info| {
+            if is_mutable_type(type_info) {
+                match generate_mutation_info(type_info, type_name, debug_context) {
+                    Ok(mutation_info) => mutation_info
+                        .fields
+                        .into_iter()
+                        .map(|(path, field)| (path, field.description))
+                        .collect(),
+                    Err(_) => HashMap::new(),
+                }
+            } else {
+                HashMap::new()
             }
-        } else {
-            HashMap::new()
-        }
-    } else {
-        HashMap::new()
-    };
+        });
 
     // Generate example values using recursive generation
     let mut example_values = HashMap::new();
@@ -135,50 +133,44 @@ pub fn discover_type_as_response(
     }
 
     // Determine type category
-    let type_category = if let Some(ref type_info) = type_info_opt {
-        format!("{:?}", analyze_type_info(type_info))
-    } else {
-        "Unknown".to_string()
-    };
+    let type_category = type_info_opt.as_ref().map_or_else(
+        || "Unknown".to_string(),
+        |type_info| format!("{:?}", analyze_type_info(type_info)),
+    );
 
     // Extract child types for complex types
-    let child_types = if let Some(ref type_info) = type_info_opt {
-        use bevy::reflect::TypeInfo;
+    let child_types = type_info_opt
+        .as_ref()
+        .map_or_else(HashMap::new, |type_info| {
+            use bevy::reflect::TypeInfo;
 
-        use super::types::{cast_type_info, extract_struct_fields, extract_tuple_struct_fields};
+            use super::types::{
+                cast_type_info, extract_struct_fields, extract_tuple_struct_fields,
+            };
 
-        match type_info {
-            TypeInfo::Struct(_) => {
-                if let Ok(struct_info) =
-                    cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")
-                {
-                    extract_struct_fields(struct_info)
-                        .into_iter()
-                        .map(|(name, type_path)| (name, type_path))
-                        .collect()
-                } else {
-                    HashMap::new()
-                }
-            }
-            TypeInfo::TupleStruct(_) => {
-                if let Ok(tuple_info) =
+            match type_info {
+                TypeInfo::Struct(_) => cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")
+                    .map_or_else(
+                        |_| HashMap::new(),
+                        |struct_info| extract_struct_fields(struct_info).into_iter().collect(),
+                    ),
+                TypeInfo::TupleStruct(_) => {
                     cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo")
-                {
-                    extract_tuple_struct_fields(tuple_info)
-                        .into_iter()
-                        .map(|(idx, type_path)| (format!(".{idx}"), type_path))
-                        .collect()
-                } else {
-                    HashMap::new()
+                        .map_or_else(
+                            |_| HashMap::new(),
+                            |tuple_info| {
+                                extract_tuple_struct_fields(tuple_info)
+                                    .into_iter()
+                                    .map(|(idx, type_path)| (format!(".{idx}"), type_path))
+                                    .collect()
+                            },
+                        )
                 }
+                _ => HashMap::new(),
             }
-            _ => HashMap::new(),
-        }
-    } else {
-        HashMap::new()
-    };
+        });
 
-    Ok(TypeDiscoveryResponse {
+    TypeDiscoveryResponse {
         type_name: type_name.to_string(),
         in_registry,
         has_serialize,
@@ -188,7 +180,7 @@ pub fn discover_type_as_response(
         example_values,
         type_category,
         child_types,
-    })
+    }
 }
 
 /// Discover format information for multiple component types

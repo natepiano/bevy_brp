@@ -429,15 +429,16 @@ pub fn detect_format_quality_issues(value: &Value) -> Option<String> {
         }
         Value::Object(obj) => {
             if let Some(type_field) = obj.get("_type") {
-                if let Some(note_field) = obj.get("_note") {
-                    Some(format!(
-                        "Complex type '{}' requires recursive discovery: {}",
-                        type_field.as_str().unwrap_or("unknown"),
-                        note_field.as_str().unwrap_or("no additional info")
-                    ))
-                } else {
-                    Some("Placeholder object detected".to_string())
-                }
+                obj.get("_note").map_or_else(
+                    || Some("Placeholder object detected".to_string()),
+                    |note_field| {
+                        Some(format!(
+                            "Complex type '{}' requires recursive discovery: {}",
+                            type_field.as_str().unwrap_or("unknown"),
+                            note_field.as_str().unwrap_or("no additional info")
+                        ))
+                    },
+                )
             } else {
                 // Check recursively
                 for (key, val) in obj {

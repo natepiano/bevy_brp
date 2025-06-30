@@ -81,10 +81,8 @@ async fn enhance_type_mismatch_error_with_context(
 
 /// Extract component type from discovery context
 fn extract_component_type_from_context(context: &DiscoveryContext) -> Option<String> {
-    context
-        .original_params
-        .as_ref()
-        .map_or(None, |params| match context.method.as_str() {
+    context.original_params.as_ref().and_then(|params| {
+        match context.method.as_str() {
             "bevy/mutate_component" => {
                 // Extract from "component" field
                 params
@@ -107,7 +105,8 @@ fn extract_component_type_from_context(context: &DiscoveryContext) -> Option<Str
                     .map(String::from)
             }
             _ => None,
-        })
+        }
+    })
 }
 
 /// Build corrected parameters from the discovered format corrections

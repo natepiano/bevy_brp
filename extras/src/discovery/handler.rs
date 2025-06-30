@@ -102,28 +102,17 @@ pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpR
 
     // Discover formats for the requested types using new response format
     let mut responses = HashMap::new();
-    let mut errors = HashMap::new();
 
     for type_name in &type_names {
         debug_info.push(format!("Processing type: {type_name}"));
 
         let mut type_debug_context = DebugContext::new();
-        match discover_type_as_response(world, type_name, &mut type_debug_context) {
-            Ok(type_response) => {
-                debug_info.push(format!("Successfully discovered type: {type_name}"));
-                if include_debug {
-                    debug_info.messages.extend(type_debug_context.messages);
-                }
-                responses.insert(type_name.clone(), type_response);
-            }
-            Err(error) => {
-                debug_info.push(format!("Failed to discover type: {type_name}"));
-                if include_debug {
-                    debug_info.messages.extend(type_debug_context.messages);
-                }
-                errors.insert(type_name.clone(), error.to_json_error());
-            }
+        let type_response = discover_type_as_response(world, type_name, &mut type_debug_context);
+        debug_info.push(format!("Successfully discovered type: {type_name}"));
+        if include_debug {
+            debug_info.messages.extend(type_debug_context.messages);
         }
+        responses.insert(type_name.clone(), type_response);
     }
 
     // Create comprehensive response
@@ -134,12 +123,6 @@ pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpR
         "discovered_count": responses.len()
     });
 
-    // Add errors if any types were undiscoverable
-    if !errors.is_empty() {
-        response["errors"] = json!(errors);
-        response["error_count"] = json!(errors.len());
-    }
-
     // Add debug info if enabled
     if include_debug && !debug_info.messages.is_empty() {
         response["debug_info"] = json!(debug_info.messages);
@@ -149,7 +132,7 @@ pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpR
     response["summary"] = json!({
         "total_requested": type_names.len(),
         "successful_discoveries": responses.len(),
-        "failed_discoveries": errors.len(),
+        "failed_discoveries": 0,
     });
 
     debug_info.push("Request processing complete".to_string());

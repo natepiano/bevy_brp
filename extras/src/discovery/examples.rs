@@ -169,14 +169,15 @@ pub fn generate_recursive_example_with_depth(
     visited_types.push(type_name.to_string());
 
     // Try to get type info from registry
-    let registry = world.resource::<AppTypeRegistry>().read();
-    let registration = registry.get_with_type_path(type_name);
-
-    let result = if let Some(registration) = registration {
-        let type_info = registration.type_info();
-        generate_example_from_type_info(world, type_info, type_name, visited_types, depth)
-    } else {
-        generate_default_example_for_type(type_name)
+    let result = {
+        let registry = world.resource::<AppTypeRegistry>().read();
+        registry.get_with_type_path(type_name).map_or_else(
+            || generate_default_example_for_type(type_name),
+            |registration| {
+                let type_info = registration.type_info();
+                generate_example_from_type_info(world, type_info, type_name, visited_types, depth)
+            },
+        )
     };
 
     // Remove from visited types
@@ -221,17 +222,22 @@ fn generate_struct_example(
 
     use super::types::{cast_type_info, extract_struct_fields};
 
-    if let Ok(struct_info) = cast_type_info(type_info, TypeInfo::as_struct, "StructInfo") {
-        let mut example_obj = serde_json::Map::new();
-        for (field_name, field_type) in extract_struct_fields(struct_info) {
-            let field_example =
-                generate_recursive_example_with_depth(world, &field_type, visited_types, depth + 1);
-            example_obj.insert(field_name, field_example);
-        }
-        json!(example_obj)
-    } else {
-        generate_default_example_for_type(type_name)
-    }
+    cast_type_info(type_info, TypeInfo::as_struct, "StructInfo").map_or_else(
+        |_| generate_default_example_for_type(type_name),
+        |struct_info| {
+            let mut example_obj = serde_json::Map::new();
+            for (field_name, field_type) in extract_struct_fields(struct_info) {
+                let field_example = generate_recursive_example_with_depth(
+                    world,
+                    &field_type,
+                    visited_types,
+                    depth + 1,
+                );
+                example_obj.insert(field_name, field_example);
+            }
+            json!(example_obj)
+        },
+    )
 }
 
 /// Generate example for tuple struct types
@@ -246,18 +252,22 @@ fn generate_tuple_struct_example(
 
     use super::types::{cast_type_info, extract_tuple_struct_fields};
 
-    if let Ok(tuple_info) = cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo")
-    {
-        let mut example_array = Vec::new();
-        for (_idx, field_type) in extract_tuple_struct_fields(tuple_info) {
-            let field_example =
-                generate_recursive_example_with_depth(world, &field_type, visited_types, depth + 1);
-            example_array.push(field_example);
-        }
-        json!(example_array)
-    } else {
-        generate_default_example_for_type(type_name)
-    }
+    cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo").map_or_else(
+        |_| generate_default_example_for_type(type_name),
+        |tuple_info| {
+            let mut example_array = Vec::new();
+            for (_idx, field_type) in extract_tuple_struct_fields(tuple_info) {
+                let field_example = generate_recursive_example_with_depth(
+                    world,
+                    &field_type,
+                    visited_types,
+                    depth + 1,
+                );
+                example_array.push(field_example);
+            }
+            json!(example_array)
+        },
+    )
 }
 
 /// Generate example for enum types
@@ -269,11 +279,10 @@ fn generate_enum_example(
     depth: usize,
 ) -> Value {
     // For enums, show the first variant as an example
-    if let Some(variant) = enum_info.iter().next() {
-        generate_variant_example(world, variant, visited_types, depth)
-    } else {
-        generate_default_example_for_type(type_name)
-    }
+    enum_info.iter().next().map_or_else(
+        || generate_default_example_for_type(type_name),
+        |variant| generate_variant_example(world, variant, visited_types, depth),
+    )
 }
 
 /// Generate example for enum variant

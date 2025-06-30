@@ -120,7 +120,7 @@ where
 /// }
 /// ```
 ///
-/// ## ClearColor Resource (No Serialize/Deserialize)
+/// ## `ClearColor` Resource (No Serialize/Deserialize)
 /// ```json
 /// {
 ///   "type_name": "bevy_render::camera::clear_color::ClearColor",

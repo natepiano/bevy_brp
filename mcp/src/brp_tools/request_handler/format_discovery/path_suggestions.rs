@@ -197,6 +197,225 @@ fn handle_array_paths(
 }
 
 /// Recursively traverse schema to generate all valid paths
+/// Handle struct type schema traversal
+fn handle_struct_type(
+    current_path: &str,
+    type_schema: &Value,
+    full_schema: &serde_json::Map<String, Value>,
+    paths: &mut Vec<String>,
+    visited: &mut HashSet<String>,
+    depth: usize,
+    max_depth: usize,
+) {
+    if let Some(properties) = type_schema.get("properties").and_then(Value::as_object) {
+        for (field_name, field_info) in properties {
+            let field_path = if current_path.is_empty() {
+                format!(".{field_name}")
+            } else {
+                format!("{current_path}.{field_name}")
+            };
+
+            // Always add intermediate paths (can set entire structures)
+            paths.push(field_path.clone());
+
+            // Recursively add deeper paths if not a terminal type
+            if let Some(field_type_ref) = extract_type_ref(field_info) {
+                if !visited.contains(&field_type_ref) && !is_terminal_type(&field_type_ref) {
+                    visited.insert(field_type_ref.clone());
+                    if let Some(field_type_schema) = full_schema.get(&field_type_ref) {
+                        traverse_schema(
+                            field_path,
+                            field_type_schema,
+                            full_schema,
+                            paths,
+                            visited,
+                            depth + 1,
+                            max_depth,
+                        );
+                    }
+                    visited.remove(&field_type_ref);
+                }
+            }
+        }
+    }
+}
+
+/// Handle tuple type schema traversal (used by both Tuple and `TupleStruct`)
+fn handle_tuple_type(
+    current_path: &str,
+    type_schema: &Value,
+    full_schema: &serde_json::Map<String, Value>,
+    paths: &mut Vec<String>,
+    visited: &mut HashSet<String>,
+    depth: usize,
+    max_depth: usize,
+) {
+    if let Some(prefix_items) = type_schema.get("prefixItems").and_then(Value::as_array) {
+        for (index, item_info) in prefix_items.iter().enumerate() {
+            let index_path = if current_path.is_empty() {
+                format!(".{index}")
+            } else {
+                format!("{current_path}.{index}")
+            };
+
+            // Always add intermediate paths
+            paths.push(index_path.clone());
+
+            // Recursively add deeper paths
+            if let Some(item_type_ref) = extract_type_ref(item_info) {
+                if !visited.contains(&item_type_ref) && !is_terminal_type(&item_type_ref) {
+                    visited.insert(item_type_ref.clone());
+                    if let Some(item_type_schema) = full_schema.get(&item_type_ref) {
+                        traverse_schema(
+                            index_path,
+                            item_type_schema,
+                            full_schema,
+                            paths,
+                            visited,
+                            depth + 1,
+                            max_depth,
+                        );
+                    }
+                    visited.remove(&item_type_ref);
+                }
+            }
+        }
+    }
+}
+
+/// Handle enum variant schema traversal
+fn handle_enum_variant(
+    variant_path: &str,
+    variant_info: &Value,
+    full_schema: &serde_json::Map<String, Value>,
+    paths: &mut Vec<String>,
+    visited: &mut HashSet<String>,
+    depth: usize,
+    max_depth: usize,
+) {
+    if let Some(variant_type) = variant_info.get("type").and_then(Value::as_str) {
+        match variant_type {
+            "Unit" => {
+                // Unit variants can't be mutated further
+                paths.push(format!("{variant_path} (unit variant - no fields)"));
+            }
+            "Struct" => {
+                paths.push(variant_path.to_string());
+                // Add fields of struct variant
+                if let Some(fields) = variant_info.get("fields").and_then(Value::as_object) {
+                    for (field_name, field_info) in fields {
+                        let field_path = format!("{variant_path}.{field_name}");
+                        paths.push(field_path.clone());
+
+                        // Recurse into field types
+                        handle_field_recursion(
+                            &field_path,
+                            field_info,
+                            full_schema,
+                            paths,
+                            visited,
+                            depth,
+                            max_depth,
+                        );
+                    }
+                }
+            }
+            "Tuple" => {
+                paths.push(variant_path.to_string());
+                // Add tuple indices
+                if let Some(fields) = variant_info.get("fields").and_then(Value::as_array) {
+                    for (idx, field_info) in fields.iter().enumerate() {
+                        let idx_path = format!("{variant_path}.{idx}");
+                        paths.push(idx_path.clone());
+
+                        // Recurse into field types
+                        handle_field_recursion(
+                            &idx_path,
+                            field_info,
+                            full_schema,
+                            paths,
+                            visited,
+                            depth,
+                            max_depth,
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Handle field recursion for type traversal
+fn handle_field_recursion(
+    field_path: &str,
+    field_info: &Value,
+    full_schema: &serde_json::Map<String, Value>,
+    paths: &mut Vec<String>,
+    visited: &mut HashSet<String>,
+    depth: usize,
+    max_depth: usize,
+) {
+    if let Some(field_type_ref) = extract_type_ref(field_info) {
+        if !visited.contains(&field_type_ref) && !is_terminal_type(&field_type_ref) {
+            visited.insert(field_type_ref.clone());
+            if let Some(field_type_schema) = full_schema.get(&field_type_ref) {
+                traverse_schema(
+                    field_path.to_string(),
+                    field_type_schema,
+                    full_schema,
+                    paths,
+                    visited,
+                    depth + 1,
+                    max_depth,
+                );
+            }
+            visited.remove(&field_type_ref);
+        }
+    }
+}
+
+/// Handle enum type schema traversal
+fn handle_enum_type(
+    current_path: &str,
+    type_schema: &Value,
+    full_schema: &serde_json::Map<String, Value>,
+    paths: &mut Vec<String>,
+    visited: &mut HashSet<String>,
+    depth: usize,
+    max_depth: usize,
+) {
+    // For enums, we need to handle variants
+    if let Some(variants) = type_schema.get("variants").and_then(Value::as_object) {
+        // Add a comment about enum access pattern
+        let enum_note = if current_path.is_empty() {
+            ".<variant_name>".to_string()
+        } else {
+            format!("{current_path}.<variant_name>")
+        };
+        paths.push(format!("{enum_note} (enum variant access)"));
+
+        // Add specific variant paths
+        for (variant_name, variant_info) in variants {
+            let variant_path = if current_path.is_empty() {
+                format!(".{variant_name}")
+            } else {
+                format!("{current_path}.{variant_name}")
+            };
+
+            handle_enum_variant(
+                &variant_path,
+                variant_info,
+                full_schema,
+                paths,
+                visited,
+                depth,
+                max_depth,
+            );
+        }
+    }
+}
+
 fn traverse_schema(
     current_path: String,
     type_schema: &Value,
@@ -213,110 +432,26 @@ fn traverse_schema(
     if let Some(kind) = type_schema.get("kind").and_then(Value::as_str) {
         match kind {
             "Struct" => {
-                if let Some(properties) = type_schema.get("properties").and_then(Value::as_object) {
-                    for (field_name, field_info) in properties {
-                        let field_path = if current_path.is_empty() {
-                            format!(".{field_name}")
-                        } else {
-                            format!("{current_path}.{field_name}")
-                        };
-
-                        // Always add intermediate paths (can set entire structures)
-                        paths.push(field_path.clone());
-
-                        // Recursively add deeper paths if not a terminal type
-                        if let Some(field_type_ref) = extract_type_ref(field_info) {
-                            if !visited.contains(&field_type_ref)
-                                && !is_terminal_type(&field_type_ref)
-                            {
-                                visited.insert(field_type_ref.clone());
-                                if let Some(field_type_schema) = full_schema.get(&field_type_ref) {
-                                    traverse_schema(
-                                        field_path,
-                                        field_type_schema,
-                                        full_schema,
-                                        paths,
-                                        visited,
-                                        depth + 1,
-                                        max_depth,
-                                    );
-                                }
-                                visited.remove(&field_type_ref);
-                            }
-                        }
-                    }
-                }
+                handle_struct_type(
+                    &current_path,
+                    type_schema,
+                    full_schema,
+                    paths,
+                    visited,
+                    depth,
+                    max_depth,
+                );
             }
-            "TupleStruct" => {
-                if let Some(prefix_items) = type_schema.get("prefixItems").and_then(Value::as_array)
-                {
-                    for (index, item_info) in prefix_items.iter().enumerate() {
-                        let index_path = if current_path.is_empty() {
-                            format!(".{index}")
-                        } else {
-                            format!("{current_path}.{index}")
-                        };
-
-                        // Always add intermediate paths
-                        paths.push(index_path.clone());
-
-                        // Recursively add deeper paths
-                        if let Some(item_type_ref) = extract_type_ref(item_info) {
-                            if !visited.contains(&item_type_ref)
-                                && !is_terminal_type(&item_type_ref)
-                            {
-                                visited.insert(item_type_ref.clone());
-                                if let Some(item_type_schema) = full_schema.get(&item_type_ref) {
-                                    traverse_schema(
-                                        index_path,
-                                        item_type_schema,
-                                        full_schema,
-                                        paths,
-                                        visited,
-                                        depth + 1,
-                                        max_depth,
-                                    );
-                                }
-                                visited.remove(&item_type_ref);
-                            }
-                        }
-                    }
-                }
-            }
-            "Tuple" => {
-                // Similar to TupleStruct
-                if let Some(prefix_items) = type_schema.get("prefixItems").and_then(Value::as_array)
-                {
-                    for (index, item_info) in prefix_items.iter().enumerate() {
-                        let index_path = if current_path.is_empty() {
-                            format!(".{index}")
-                        } else {
-                            format!("{current_path}.{index}")
-                        };
-
-                        paths.push(index_path.clone());
-
-                        if let Some(item_type_ref) = extract_type_ref(item_info) {
-                            if !visited.contains(&item_type_ref)
-                                && !is_terminal_type(&item_type_ref)
-                            {
-                                visited.insert(item_type_ref.clone());
-                                if let Some(item_type_schema) = full_schema.get(&item_type_ref) {
-                                    traverse_schema(
-                                        index_path,
-                                        item_type_schema,
-                                        full_schema,
-                                        paths,
-                                        visited,
-                                        depth + 1,
-                                        max_depth,
-                                    );
-                                }
-                                visited.remove(&item_type_ref);
-                            }
-                        }
-                    }
-                }
+            "TupleStruct" | "Tuple" => {
+                handle_tuple_type(
+                    &current_path,
+                    type_schema,
+                    full_schema,
+                    paths,
+                    visited,
+                    depth,
+                    max_depth,
+                );
             }
             "Array" => {
                 handle_array_paths(
@@ -330,112 +465,15 @@ fn traverse_schema(
                 );
             }
             "Enum" => {
-                // For enums, we need to handle variants
-                if let Some(variants) = type_schema.get("variants").and_then(Value::as_object) {
-                    // Add a comment about enum access pattern
-                    let enum_note = if current_path.is_empty() {
-                        ".<variant_name>".to_string()
-                    } else {
-                        format!("{current_path}.<variant_name>")
-                    };
-                    paths.push(format!("{enum_note} (enum variant access)"));
-
-                    // Add specific variant paths
-                    for (variant_name, variant_info) in variants {
-                        let variant_path = if current_path.is_empty() {
-                            format!(".{variant_name}")
-                        } else {
-                            format!("{current_path}.{variant_name}")
-                        };
-
-                        // Check variant type
-                        if let Some(variant_type) = variant_info.get("type").and_then(Value::as_str)
-                        {
-                            match variant_type {
-                                "Unit" => {
-                                    // Unit variants can't be mutated further
-                                    paths
-                                        .push(format!("{variant_path} (unit variant - no fields)"));
-                                }
-                                "Struct" => {
-                                    paths.push(variant_path.clone());
-                                    // Add fields of struct variant
-                                    if let Some(fields) =
-                                        variant_info.get("fields").and_then(Value::as_object)
-                                    {
-                                        for (field_name, field_info) in fields {
-                                            let field_path = format!("{variant_path}.{field_name}");
-                                            paths.push(field_path.clone());
-
-                                            // Recurse into field types
-                                            if let Some(field_type_ref) =
-                                                extract_type_ref(field_info)
-                                            {
-                                                if !visited.contains(&field_type_ref)
-                                                    && !is_terminal_type(&field_type_ref)
-                                                {
-                                                    visited.insert(field_type_ref.clone());
-                                                    if let Some(field_type_schema) =
-                                                        full_schema.get(&field_type_ref)
-                                                    {
-                                                        traverse_schema(
-                                                            field_path,
-                                                            field_type_schema,
-                                                            full_schema,
-                                                            paths,
-                                                            visited,
-                                                            depth + 1,
-                                                            max_depth,
-                                                        );
-                                                    }
-                                                    visited.remove(&field_type_ref);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                "Tuple" => {
-                                    paths.push(variant_path.clone());
-                                    // Add tuple indices
-                                    if let Some(fields) =
-                                        variant_info.get("fields").and_then(Value::as_array)
-                                    {
-                                        for (idx, field_info) in fields.iter().enumerate() {
-                                            let idx_path = format!("{variant_path}.{idx}");
-                                            paths.push(idx_path.clone());
-
-                                            // Recurse into field types
-                                            if let Some(field_type_ref) =
-                                                extract_type_ref(field_info)
-                                            {
-                                                if !visited.contains(&field_type_ref)
-                                                    && !is_terminal_type(&field_type_ref)
-                                                {
-                                                    visited.insert(field_type_ref.clone());
-                                                    if let Some(field_type_schema) =
-                                                        full_schema.get(&field_type_ref)
-                                                    {
-                                                        traverse_schema(
-                                                            idx_path,
-                                                            field_type_schema,
-                                                            full_schema,
-                                                            paths,
-                                                            visited,
-                                                            depth + 1,
-                                                            max_depth,
-                                                        );
-                                                    }
-                                                    visited.remove(&field_type_ref);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
+                handle_enum_type(
+                    &current_path,
+                    type_schema,
+                    full_schema,
+                    paths,
+                    visited,
+                    depth,
+                    max_depth,
+                );
             }
             _ => {
                 // Other types handled differently or skipped
