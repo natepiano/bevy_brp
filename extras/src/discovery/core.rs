@@ -6,13 +6,15 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::error::{DebugContext, DiscoveryResult};
 use super::mutation::generate_mutation_info;
 use super::registry::get_type_info_from_registry;
 use super::spawn::generate_spawn_format;
-use super::types::is_mutable_type;
+use super::types::{
+    TypeDiscoveryResponse, analyze_type_info, check_serialization_traits, is_mutable_type,
+};
 use crate::format::FormatInfo;
 
 /// Result of discovering multiple component formats
@@ -57,6 +59,135 @@ pub fn discover_component_format(
 
     debug_context.push("Successfully generated format info".to_string());
     Ok(format_info)
+}
+
+/// Discover type information as a factual response
+pub fn discover_type_as_response(
+    world: &World,
+    type_name: &str,
+    debug_context: &mut DebugContext,
+) -> DiscoveryResult<TypeDiscoveryResponse> {
+    debug_context.push(format!("Discovering type response for: {type_name}"));
+
+    // Try to get type info from registry
+    let type_info_result =
+        get_type_info_from_registry(world, type_name, debug_context.as_mut_vec());
+
+    let (in_registry, type_info_opt, has_serialize, has_deserialize) = match type_info_result {
+        Ok(type_info) => {
+            // Check for Serialize/Deserialize traits using helper function
+            let (has_serialize, has_deserialize) = {
+                let registry = world.resource::<AppTypeRegistry>().read();
+                let registration = registry.get_with_type_path(type_name);
+                registration
+                    .map(check_serialization_traits)
+                    .unwrap_or((false, false))
+            };
+            (true, Some(type_info), has_serialize, has_deserialize)
+        }
+        Err(_) => (false, None, false, false),
+    };
+
+    // Determine supported operations
+    let mut supported_operations = Vec::new();
+    if in_registry {
+        supported_operations.push("query".to_string());
+        supported_operations.push("get".to_string());
+        if has_serialize && has_deserialize {
+            supported_operations.push("spawn".to_string());
+            supported_operations.push("insert".to_string());
+        }
+        if let Some(ref type_info) = type_info_opt {
+            if is_mutable_type(type_info) {
+                supported_operations.push("mutate".to_string());
+            }
+        }
+    }
+
+    // Get mutation paths if supported
+    let mutation_paths = if let Some(ref type_info) = type_info_opt {
+        if is_mutable_type(type_info) {
+            match generate_mutation_info(type_info, type_name, debug_context) {
+                Ok(mutation_info) => mutation_info
+                    .fields
+                    .into_iter()
+                    .map(|(path, field)| (path, field.description))
+                    .collect(),
+                Err(_) => HashMap::new(),
+            }
+        } else {
+            HashMap::new()
+        }
+    } else {
+        HashMap::new()
+    };
+
+    // Generate example values using recursive generation
+    let mut example_values = HashMap::new();
+    if type_info_opt.is_some() && has_serialize && has_deserialize {
+        // Use recursive example generation
+        let mut visited_types = Vec::new();
+        let example =
+            super::examples::generate_recursive_example(world, type_name, &mut visited_types);
+        example_values.insert("spawn".to_string(), example);
+        debug_context.push("Generated recursive example for spawn".to_string());
+    }
+
+    // Determine type category
+    let type_category = if let Some(ref type_info) = type_info_opt {
+        format!("{:?}", analyze_type_info(type_info))
+    } else {
+        "Unknown".to_string()
+    };
+
+    // Extract child types for complex types
+    let child_types = if let Some(ref type_info) = type_info_opt {
+        use bevy::reflect::TypeInfo;
+
+        use super::types::{cast_type_info, extract_struct_fields, extract_tuple_struct_fields};
+
+        match type_info {
+            TypeInfo::Struct(_) => {
+                if let Ok(struct_info) =
+                    cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")
+                {
+                    extract_struct_fields(struct_info)
+                        .into_iter()
+                        .map(|(name, type_path)| (name, type_path))
+                        .collect()
+                } else {
+                    HashMap::new()
+                }
+            }
+            TypeInfo::TupleStruct(_) => {
+                if let Ok(tuple_info) =
+                    cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo")
+                {
+                    extract_tuple_struct_fields(tuple_info)
+                        .into_iter()
+                        .map(|(idx, type_path)| (format!(".{idx}"), type_path))
+                        .collect()
+                } else {
+                    HashMap::new()
+                }
+            }
+            _ => HashMap::new(),
+        }
+    } else {
+        HashMap::new()
+    };
+
+    Ok(TypeDiscoveryResponse {
+        type_name: type_name.to_string(),
+        in_registry,
+        has_serialize,
+        has_deserialize,
+        supported_operations,
+        mutation_paths,
+        example_values,
+        type_category,
+        child_types,
+    })
 }
 
 /// Discover format information for multiple component types
@@ -117,48 +248,4 @@ pub fn get_common_component_types() -> Vec<String> {
         "bevy_sprite::sprite::Sprite".to_string(),
         "bevy_render::camera::camera::Camera".to_string(),
     ]
-}
-
-/// Create a comprehensive discovery response with all metadata
-pub fn create_discovery_response(
-    discovery_result: &MultiDiscoveryResult,
-    requested_types: &[String],
-    debug_context: Option<&DebugContext>,
-) -> Value {
-    let mut response = json!({
-        "success": true,
-        "formats": discovery_result.formats,
-        "requested_types": requested_types,
-        "discovered_count": discovery_result.formats.len()
-    });
-
-    // Add errors if any types were undiscoverable
-    if !discovery_result.errors.is_empty() {
-        response["errors"] = json!(discovery_result.errors);
-        response["error_count"] = json!(discovery_result.errors.len());
-    }
-
-    // Add debug info if provided
-    if let Some(debug_ctx) = debug_context {
-        if !debug_ctx.messages.is_empty() {
-            response["debug_info"] = json!(debug_ctx.messages);
-        }
-    }
-
-    // Add summary information
-    response["summary"] = json!({
-        "total_requested": requested_types.len(),
-        "successful_discoveries": discovery_result.formats.len(),
-        "failed_discoveries": discovery_result.errors.len(),
-        "success_rate": if requested_types.is_empty() {
-            0.0
-        } else {
-            #[allow(clippy::cast_precision_loss)]
-            {
-                discovery_result.formats.len() as f64 / requested_types.len() as f64
-            }
-        }
-    });
-
-    response
 }

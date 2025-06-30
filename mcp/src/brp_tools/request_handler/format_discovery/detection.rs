@@ -389,3 +389,73 @@ pub fn tier_info_to_debug_strings(tier_info: &[TierInfo]) -> Vec<String> {
 
     debug_strings
 }
+
+/// Quality detection for discovered format values
+/// Returns true if the value appears to be a high-quality, usable format
+pub fn is_high_quality_format(value: &Value) -> bool {
+    match value {
+        // Strings that look like placeholders are low quality
+        Value::String(s) => {
+            !s.starts_with("example_")
+                && !s.starts_with("circular_reference_")
+                && !s.contains("_type")
+                && !s.contains("_note")
+        }
+        // Objects with _type or _note fields are low quality (our new format)
+        Value::Object(obj) => {
+            !obj.contains_key("_type") && 
+            !obj.contains_key("_note") &&
+            // Recursively check all values in the object
+            obj.values().all(is_high_quality_format)
+        }
+        // Arrays should have all high-quality elements
+        Value::Array(arr) => arr.iter().all(is_high_quality_format),
+        // Primitives are generally high quality
+        Value::Null | Value::Bool(_) | Value::Number(_) => true,
+    }
+}
+
+/// Enhanced quality detection that also checks for specific patterns
+pub fn detect_format_quality_issues(value: &Value) -> Option<String> {
+    match value {
+        Value::String(s) => {
+            if s.starts_with("example_") {
+                Some(format!("Placeholder value detected: {s}"))
+            } else if s.starts_with("circular_reference_") {
+                Some(format!("Circular reference detected: {s}"))
+            } else {
+                None
+            }
+        }
+        Value::Object(obj) => {
+            if let Some(type_field) = obj.get("_type") {
+                if let Some(note_field) = obj.get("_note") {
+                    Some(format!(
+                        "Complex type '{}' requires recursive discovery: {}",
+                        type_field.as_str().unwrap_or("unknown"),
+                        note_field.as_str().unwrap_or("no additional info")
+                    ))
+                } else {
+                    Some("Placeholder object detected".to_string())
+                }
+            } else {
+                // Check recursively
+                for (key, val) in obj {
+                    if let Some(issue) = detect_format_quality_issues(val) {
+                        return Some(format!("In field '{key}': {issue}"));
+                    }
+                }
+                None
+            }
+        }
+        Value::Array(arr) => {
+            for (idx, val) in arr.iter().enumerate() {
+                if let Some(issue) = detect_format_quality_issues(val) {
+                    return Some(format!("In array element {idx}: {issue}"));
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}

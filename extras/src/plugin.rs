@@ -95,7 +95,7 @@ impl Plugin for BrpExtrasPlugin {
             )
             .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}discover_format"),
-                discovery::handler,
+                discovery::factual_handler,
             )
             .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}send_keys"),

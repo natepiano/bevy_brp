@@ -37,7 +37,7 @@ pub async fn build_final_result(
         // Try to enhance the error with path suggestions
         let enhanced_error = enhance_type_mismatch_error_with_context(&original_error, context)
             .await
-            .unwrap_or_else(|_| original_error);
+            .unwrap_or(original_error);
 
         Ok(EnhancedBrpResult {
             result:             BrpResult::Error(enhanced_error),

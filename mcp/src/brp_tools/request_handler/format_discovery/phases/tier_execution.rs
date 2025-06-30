@@ -9,6 +9,7 @@ use crate::brp_tools::request_handler::format_discovery::constants::{
 };
 use crate::brp_tools::request_handler::format_discovery::detection::{
     TierInfo, TierManager, analyze_error_pattern, check_type_serialization,
+    detect_format_quality_issues, is_high_quality_format,
 };
 use crate::brp_tools::request_handler::format_discovery::engine::{
     FormatCorrection, ParameterLocation,
@@ -244,7 +245,9 @@ async fn tiered_type_format_discovery(
     }
 
     // ========== TIER 2: Direct Discovery ==========
-    if let Some(result) = try_direct_discovery(type_name, port, &mut tier_manager).await {
+    if let Some(result) =
+        try_direct_discovery(type_name, original_value, port, &mut tier_manager).await
+    {
         return (Some(result), tier_manager.into_vec());
     }
 
@@ -283,6 +286,7 @@ async fn tiered_type_format_discovery(
 /// Try direct discovery using `bevy_brp_extras/discover_format`
 async fn try_direct_discovery(
     type_name: &str,
+    original_value: &Value,
     port: Option<u16>,
     tier_manager: &mut TierManager,
 ) -> Option<(Value, String)> {
@@ -292,6 +296,19 @@ async fn try_direct_discovery(
         format!("Querying bevy_brp_extras for {type_name}"),
     );
 
+    let discovery_response = execute_discovery_request(type_name, port).await;
+
+    match discovery_response {
+        Some(data) => process_discovery_response(&data, type_name, original_value, tier_manager),
+        None => {
+            tier_manager.complete_tier(false, "Direct discovery unavailable or failed".to_string());
+            None
+        }
+    }
+}
+
+/// Execute the discovery request to bevy_brp_extras
+async fn execute_discovery_request(type_name: &str, port: Option<u16>) -> Option<Value> {
     let discover_params = serde_json::json!({
         "types": [type_name]
     });
@@ -304,27 +321,161 @@ async fn try_direct_discovery(
     .await
     .ok();
 
-    if let Some(BrpResult::Success(Some(data))) = result {
-        // Check for successful format discovery
-        if let Some(formats) = data.get("formats").and_then(|f| f.as_object()) {
-            if let Some(format_info) = formats.get(type_name) {
-                // Extract spawn_format and convert to corrected value
-                if let Some(spawn_format) = format_info
-                    .get("spawn_format")
-                    .and_then(|sf| sf.get("example"))
-                {
-                    tier_manager.complete_tier(
-                        true,
-                        format!("Direct discovery successful: found format for {type_name}"),
-                    );
-                    let hint = "Direct discovery from bevy_brp_extras".to_string();
-                    return Some((spawn_format.clone(), hint));
-                }
-            }
+    match result {
+        Some(BrpResult::Success(Some(data))) => Some(data),
+        _ => None,
+    }
+}
+
+/// Process the discovery response and extract format information
+fn process_discovery_response(
+    data: &Value,
+    type_name: &str,
+    original_value: &Value,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    // Try new TypeDiscoveryResponse format first
+    if let Some(result) = process_new_format(data, type_name, original_value, tier_manager) {
+        return Some(result);
+    }
+
+    // Fall back to legacy format
+    process_legacy_format(data, type_name, tier_manager)
+}
+
+/// Process new TypeDiscoveryResponse format
+fn process_new_format(
+    data: &Value,
+    type_name: &str,
+    original_value: &Value,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    let type_info = data.get("type_info")?.as_object()?;
+    let type_response = type_info.get(type_name)?;
+
+    // Try to extract spawn example
+    if let Some(result) = extract_spawn_example(type_response, type_name, tier_manager) {
+        return Some(result);
+    }
+
+    // Handle type in registry but no spawn example
+    handle_registry_type_without_spawn(type_response, type_name, original_value, tier_manager)
+}
+
+/// Extract and validate spawn example from type response
+fn extract_spawn_example(
+    type_response: &Value,
+    type_name: &str,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    let example_values = type_response.get("example_values")?.as_object()?;
+    let spawn_example = example_values.get("spawn")?;
+
+    if is_high_quality_format(spawn_example) {
+        tier_manager.complete_tier(
+            true,
+            format!("Direct discovery successful: found high-quality format for {type_name}"),
+        );
+
+        let hint = build_discovery_hint(type_response);
+        Some((spawn_example.clone(), hint))
+    } else {
+        handle_low_quality_format(spawn_example, tier_manager);
+        None
+    }
+}
+
+/// Build hint message from type response information
+fn build_discovery_hint(type_response: &Value) -> String {
+    let mut hint_parts = vec!["Direct discovery from bevy_brp_extras".to_string()];
+
+    if let Some(operations) = type_response
+        .get("supported_operations")
+        .and_then(|so| so.as_array())
+    {
+        let ops: Vec<String> = operations
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(String::from)
+            .collect();
+        if !ops.is_empty() {
+            hint_parts.push(format!("Supports: {}", ops.join(", ")));
         }
     }
-    tier_manager.complete_tier(false, "Direct discovery unavailable or failed".to_string());
-    None
+
+    hint_parts.join(". ")
+}
+
+/// Handle low quality format detection
+fn handle_low_quality_format(spawn_example: &Value, tier_manager: &mut TierManager) {
+    if let Some(quality_issue) = detect_format_quality_issues(spawn_example) {
+        tier_manager.complete_tier(
+            false,
+            format!("Direct discovery returned low-quality format: {quality_issue}"),
+        );
+    } else {
+        tier_manager.complete_tier(
+            false,
+            "Direct discovery returned low-quality format".to_string(),
+        );
+    }
+}
+
+/// Handle type in registry but without spawn example
+fn handle_registry_type_without_spawn(
+    type_response: &Value,
+    type_name: &str,
+    original_value: &Value,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    if !type_response
+        .get("in_registry")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
+        return None;
+    }
+
+    let has_serialize = type_response
+        .get("has_serialize")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let has_deserialize = type_response
+        .get("has_deserialize")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let reason = if !has_serialize || !has_deserialize {
+        "Type lacks Serialize/Deserialize traits required for BRP operations"
+    } else {
+        "Type format could not be determined"
+    };
+
+    tier_manager.complete_tier(true, format!("Type found but cannot be used: {reason}"));
+
+    Some((
+        original_value.clone(),
+        format!("Type '{type_name}' is registered but {reason}"),
+    ))
+}
+
+/// Process legacy format for backward compatibility
+fn process_legacy_format(
+    data: &Value,
+    type_name: &str,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    let formats = data.get("formats")?.as_object()?;
+    let format_info = formats.get(type_name)?;
+    let spawn_format = format_info.get("spawn_format")?.get("example")?;
+
+    tier_manager.complete_tier(
+        true,
+        format!("Direct discovery successful: found format for {type_name} (legacy format)"),
+    );
+
+    let hint = "Direct discovery from bevy_brp_extras".to_string();
+    Some((spawn_format.clone(), hint))
 }
 
 /// Test a component format by spawning a test entity

@@ -3,13 +3,14 @@
 //! This module provides the public API functions and handles BRP requests
 //! for format discovery operations.
 
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use bevy::remote::{BrpError, BrpResult, error_codes};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use super::core::{
-    create_discovery_response, discover_multiple_formats, discover_multiple_formats_with_debug,
-    get_common_component_types,
+    discover_multiple_formats, discover_type_as_response, get_common_component_types,
 };
 use super::error::DebugContext;
 use crate::format::FormatInfo;
@@ -31,45 +32,6 @@ pub fn discover_multiple_formats_public(
     type_names: &[String],
 ) -> super::core::MultiDiscoveryResult {
     discover_multiple_formats(world, type_names)
-}
-
-/// Handler for format discovery BRP requests
-///
-/// Processes incoming BRP requests for component format discovery and returns
-/// formatted responses with format information, errors, and debug data.
-pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
-    // Parse parameters - types parameter is required
-    let type_names = parse_types_parameter(params)?;
-
-    // Check if debug mode is enabled
-    let mut debug_info = DebugContext::new();
-    let include_debug = crate::debug_mode::is_debug_enabled();
-
-    debug_info.push(format!("Processing request for {} types", type_names.len()));
-    debug_info.push(format!("Debug mode enabled: {include_debug}"));
-
-    // Discover formats for the requested types
-    let discovery_result = if include_debug {
-        discover_multiple_formats_with_debug(world, &type_names, &mut debug_info)
-    } else {
-        discover_multiple_formats(world, &type_names)
-    };
-
-    // Create comprehensive response
-    let response = create_discovery_response(
-        &discovery_result,
-        &type_names,
-        if include_debug {
-            Some(&debug_info)
-        } else {
-            None
-        },
-    );
-
-    debug_info.push("Request processing complete".to_string());
-
-    // Return the discovered formats
-    Ok(response)
 }
 
 /// Create a BRP error for invalid parameters
@@ -119,4 +81,78 @@ fn parse_types_parameter(params: Option<Value>) -> Result<Vec<String>, BrpError>
 #[must_use]
 pub fn get_common_component_types_public() -> Vec<String> {
     get_common_component_types()
+}
+
+/// Handler for factual format discovery BRP requests using `TypeDiscoveryResponse`
+///
+/// This handler returns factual information about types instead of placeholder examples
+pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
+    // Parse parameters - types parameter is required
+    let type_names = parse_types_parameter(params)?;
+
+    // Check if debug mode is enabled
+    let mut debug_info = DebugContext::new();
+    let include_debug = crate::debug_mode::is_debug_enabled();
+
+    debug_info.push(format!(
+        "Processing factual request for {} types",
+        type_names.len()
+    ));
+    debug_info.push(format!("Debug mode enabled: {include_debug}"));
+
+    // Discover formats for the requested types using new response format
+    let mut responses = HashMap::new();
+    let mut errors = HashMap::new();
+
+    for type_name in &type_names {
+        debug_info.push(format!("Processing type: {type_name}"));
+
+        let mut type_debug_context = DebugContext::new();
+        match discover_type_as_response(world, type_name, &mut type_debug_context) {
+            Ok(type_response) => {
+                debug_info.push(format!("Successfully discovered type: {type_name}"));
+                if include_debug {
+                    debug_info.messages.extend(type_debug_context.messages);
+                }
+                responses.insert(type_name.clone(), type_response);
+            }
+            Err(error) => {
+                debug_info.push(format!("Failed to discover type: {type_name}"));
+                if include_debug {
+                    debug_info.messages.extend(type_debug_context.messages);
+                }
+                errors.insert(type_name.clone(), error.to_json_error());
+            }
+        }
+    }
+
+    // Create comprehensive response
+    let mut response = json!({
+        "success": true,
+        "type_info": responses,
+        "requested_types": type_names,
+        "discovered_count": responses.len()
+    });
+
+    // Add errors if any types were undiscoverable
+    if !errors.is_empty() {
+        response["errors"] = json!(errors);
+        response["error_count"] = json!(errors.len());
+    }
+
+    // Add debug info if enabled
+    if include_debug && !debug_info.messages.is_empty() {
+        response["debug_info"] = json!(debug_info.messages);
+    }
+
+    // Add summary information
+    response["summary"] = json!({
+        "total_requested": type_names.len(),
+        "successful_discoveries": responses.len(),
+        "failed_discoveries": errors.len(),
+    });
+
+    debug_info.push("Request processing complete".to_string());
+
+    Ok(response)
 }

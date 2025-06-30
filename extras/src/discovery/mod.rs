@@ -26,8 +26,8 @@ mod types;
 // Re-export public API to maintain compatibility
 pub use handler::{
     discover_component_format_simple as discover_component_format,
-    discover_multiple_formats_public as discover_multiple_formats,
-    get_common_component_types_public as get_common_component_types, handler,
+    discover_multiple_formats_public as discover_multiple_formats, factual_handler,
+    get_common_component_types_public as get_common_component_types,
 };
 
 // Re-export core discovery functions for advanced users

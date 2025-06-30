@@ -70,7 +70,10 @@ fn is_type_mismatch_error(message: &str) -> bool {
     message.contains("Expected")
         && message.contains("access")
         && message.contains("found")
-        && (message.contains("struct") || message.contains("tuple"))
+        && (message.contains("struct")
+            || message.contains("tuple")
+            || message.contains("enum")
+            || message.contains("variant"))
 }
 
 /// Extract paths from schema data recursively
@@ -85,7 +88,7 @@ fn extract_paths_from_schema(
     if let Some(schema_obj) = schema_data.as_object() {
         if let Some(type_schema) = schema_obj.get(type_name) {
             traverse_schema(
-                "".to_string(),
+                String::new(),
                 type_schema,
                 schema_obj,
                 &mut paths,
@@ -104,6 +107,93 @@ fn extract_paths_from_schema(
     });
 
     paths
+}
+
+/// Handle array path suggestions with improved guidance for empty arrays
+fn handle_array_paths(
+    current_path: &str,
+    type_schema: &Value,
+    full_schema: &serde_json::Map<String, Value>,
+    paths: &mut Vec<String>,
+    visited: &mut HashSet<String>,
+    depth: usize,
+    max_depth: usize,
+) {
+    // Provide index access patterns
+    let base_path = if current_path.is_empty() {
+        String::new()
+    } else {
+        current_path.to_string()
+    };
+
+    // Add general array access pattern
+    let index_path = if base_path.is_empty() {
+        "[0]".to_string()
+    } else {
+        format!("{base_path}[0]")
+    };
+    paths.push(format!("{index_path} (array index access)"));
+
+    // Add additional index examples for clarity
+    if base_path.is_empty() {
+        paths.push("[1], [2], ... (other array indices)".to_string());
+    } else {
+        paths.push(format!(
+            "{base_path}[1], {base_path}[2], ... (other array indices)"
+        ));
+    }
+
+    // If the array has a specific item type, provide guidance on element structure
+    if let Some(items_info) = type_schema.get("items") {
+        if let Some(item_type_ref) = extract_type_ref(items_info) {
+            if !visited.contains(&item_type_ref) && !is_terminal_type(&item_type_ref) {
+                visited.insert(item_type_ref.clone());
+                if let Some(item_type_schema) = full_schema.get(&item_type_ref) {
+                    // Provide paths for array element structure
+                    let element_description = if base_path.is_empty() {
+                        "[index]".to_string()
+                    } else {
+                        format!("{base_path}[index]")
+                    };
+
+                    // Create a temporary path list for element structure
+                    let mut element_paths = Vec::new();
+                    let mut element_visited = HashSet::new();
+
+                    traverse_schema(
+                        element_description.clone(),
+                        item_type_schema,
+                        full_schema,
+                        &mut element_paths,
+                        &mut element_visited,
+                        depth + 1,
+                        max_depth,
+                    );
+
+                    // Add element structure information
+                    if !element_paths.is_empty() {
+                        paths.push(format!(
+                            "// Array element structure for {element_description}:"
+                        ));
+                        for element_path in element_paths.into_iter().take(3) {
+                            // Limit to first 3 for brevity
+                            paths.push(format!("  {element_path}"));
+                        }
+                    }
+                }
+                visited.remove(&item_type_ref);
+            }
+        }
+    } else {
+        // For arrays without specific item type information
+        if base_path.is_empty() {
+            paths.push("// Array elements: replace [0] with actual index".to_string());
+        } else {
+            paths.push(format!(
+                "// Array elements: replace [0] with actual index in {base_path}[0]"
+            ));
+        }
+    }
 }
 
 /// Recursively traverse schema to generate all valid paths
@@ -229,16 +319,126 @@ fn traverse_schema(
                 }
             }
             "Array" => {
-                // For arrays, suggest index access
-                let array_path = if current_path.is_empty() {
-                    "[0]".to_string()
-                } else {
-                    format!("{current_path}[0]")
-                };
-                paths.push(array_path);
+                handle_array_paths(
+                    &current_path,
+                    type_schema,
+                    full_schema,
+                    paths,
+                    visited,
+                    depth,
+                    max_depth,
+                );
+            }
+            "Enum" => {
+                // For enums, we need to handle variants
+                if let Some(variants) = type_schema.get("variants").and_then(Value::as_object) {
+                    // Add a comment about enum access pattern
+                    let enum_note = if current_path.is_empty() {
+                        ".<variant_name>".to_string()
+                    } else {
+                        format!("{current_path}.<variant_name>")
+                    };
+                    paths.push(format!("{enum_note} (enum variant access)"));
+
+                    // Add specific variant paths
+                    for (variant_name, variant_info) in variants {
+                        let variant_path = if current_path.is_empty() {
+                            format!(".{variant_name}")
+                        } else {
+                            format!("{current_path}.{variant_name}")
+                        };
+
+                        // Check variant type
+                        if let Some(variant_type) = variant_info.get("type").and_then(Value::as_str)
+                        {
+                            match variant_type {
+                                "Unit" => {
+                                    // Unit variants can't be mutated further
+                                    paths
+                                        .push(format!("{variant_path} (unit variant - no fields)"));
+                                }
+                                "Struct" => {
+                                    paths.push(variant_path.clone());
+                                    // Add fields of struct variant
+                                    if let Some(fields) =
+                                        variant_info.get("fields").and_then(Value::as_object)
+                                    {
+                                        for (field_name, field_info) in fields {
+                                            let field_path = format!("{variant_path}.{field_name}");
+                                            paths.push(field_path.clone());
+
+                                            // Recurse into field types
+                                            if let Some(field_type_ref) =
+                                                extract_type_ref(field_info)
+                                            {
+                                                if !visited.contains(&field_type_ref)
+                                                    && !is_terminal_type(&field_type_ref)
+                                                {
+                                                    visited.insert(field_type_ref.clone());
+                                                    if let Some(field_type_schema) =
+                                                        full_schema.get(&field_type_ref)
+                                                    {
+                                                        traverse_schema(
+                                                            field_path,
+                                                            field_type_schema,
+                                                            full_schema,
+                                                            paths,
+                                                            visited,
+                                                            depth + 1,
+                                                            max_depth,
+                                                        );
+                                                    }
+                                                    visited.remove(&field_type_ref);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                "Tuple" => {
+                                    paths.push(variant_path.clone());
+                                    // Add tuple indices
+                                    if let Some(fields) =
+                                        variant_info.get("fields").and_then(Value::as_array)
+                                    {
+                                        for (idx, field_info) in fields.iter().enumerate() {
+                                            let idx_path = format!("{variant_path}.{idx}");
+                                            paths.push(idx_path.clone());
+
+                                            // Recurse into field types
+                                            if let Some(field_type_ref) =
+                                                extract_type_ref(field_info)
+                                            {
+                                                if !visited.contains(&field_type_ref)
+                                                    && !is_terminal_type(&field_type_ref)
+                                                {
+                                                    visited.insert(field_type_ref.clone());
+                                                    if let Some(field_type_schema) =
+                                                        full_schema.get(&field_type_ref)
+                                                    {
+                                                        traverse_schema(
+                                                            idx_path,
+                                                            field_type_schema,
+                                                            full_schema,
+                                                            paths,
+                                                            visited,
+                                                            depth + 1,
+                                                            max_depth,
+                                                        );
+                                                    }
+                                                    visited.remove(&field_type_ref);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
             }
             _ => {
-                // Other types (Enum, Value) - handled differently or skipped
+                // Other types handled differently or skipped
             }
         }
     }
@@ -292,13 +492,14 @@ fn format_path_suggestions(paths: &[String]) -> String {
     if paths.len() <= MAX_SUGGESTIONS {
         paths.join(", ")
     } else {
+        use std::fmt::Write;
         let mut result = paths
             .iter()
             .take(MAX_SUGGESTIONS)
             .cloned()
             .collect::<Vec<_>>()
             .join(", ");
-        result.push_str(&format!(" (and {} more)", paths.len() - MAX_SUGGESTIONS));
+        let _ = write!(result, " (and {} more)", paths.len() - MAX_SUGGESTIONS);
         result
     }
 }
@@ -360,6 +561,12 @@ mod tests {
         let long_paths: Vec<String> = (0..20).map(|i| format!(".field{i}")).collect();
         let result = format_path_suggestions(&long_paths);
         assert!(result.contains("(and 8 more)"));
-        assert!(result.len() < long_paths.iter().map(|s| s.len()).sum::<usize>());
+        assert!(
+            result.len()
+                < long_paths
+                    .iter()
+                    .map(std::string::String::len)
+                    .sum::<usize>()
+        );
     }
 }

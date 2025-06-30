@@ -5,3 +5,12 @@
 /// values However, the Transform component includes additional fields that bring the total to 12
 /// f32 values
 pub const TRANSFORM_SEQUENCE_F32_COUNT: usize = 12;
+
+/// Maximum recursion depth for example generation to prevent stack overflow
+/// Note: Currently used in extras module for recursive example generation
+pub const MAX_EXAMPLE_DEPTH: usize = 10;
+
+/// Default timeout in seconds for watch operations
+/// Note: Reserved for future watch operation improvements
+#[allow(dead_code)]
+pub const DEFAULT_WATCH_TIMEOUT_SECONDS: u64 = 30;
