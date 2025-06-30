@@ -4,7 +4,7 @@
     "test_file": ".claude/commands/tests/extras.md",
     "port": 20102,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20102 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20102",
     "shutdown_instruction": "Shutdown via the brp_extras_shutdown method (part of test)",
     "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods"
   },
@@ -13,7 +13,7 @@
     "test_file": ".claude/commands/tests/data_operations.md",
     "port": 20103,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20103 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20103",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test spawn, insert, get, remove, mutate operations"
   },
@@ -22,7 +22,7 @@
     "test_file": ".claude/commands/tests/debug_mode.md",
     "port": 20104,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20104 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20104",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test brp_set_debug_mode and brp_extras_set_debug_mode"
   },
@@ -40,7 +40,7 @@
     "test_file": ".claude/commands/tests/format_discovery.md",
     "port": 20105,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20105 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20105",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test Tier 2 direct format discovery with bevy_brp_extras"
   },
@@ -49,7 +49,7 @@
     "test_file": ".claude/commands/tests/introspection.md",
     "port": 20106,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20106 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20106",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test rpc_discover, registry_schema, list operations"
   },
@@ -58,7 +58,7 @@
     "test_file": ".claude/commands/tests/large_response.md",
     "port": 20107,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20107 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20107",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test registry_schema file output for large responses"
   },
@@ -67,7 +67,7 @@
     "test_file": ".claude/commands/tests/no_plugin.md",
     "port": 25000,
     "app_name": "extras_no_plugin",
-    "launch_instruction": "Launch extras_no_plugin example (uses hard-coded port 25000) using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch no_extras_plugin example (uses hard-coded port 25000)",
     "shutdown_instruction": "Shutdown via process termination (no clean shutdown available)",
     "test_objective": "Test fallback discovery and error handling without bevy_brp_extras"
   },
@@ -76,7 +76,7 @@
     "test_file": ".claude/commands/tests/registry_discovery.md",
     "port": 20108,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20108 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20108",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test components without Serialize/Deserialize traits"
   },
@@ -85,7 +85,7 @@
     "test_file": ".claude/commands/tests/watch_commands.md",
     "port": 20109,
     "app_name": "extras_plugin",
-    "launch_instruction": "Launch extras_plugin example on port 20109 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20109",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
   },
@@ -94,7 +94,7 @@
     "test_file": ".claude/commands/tests/path_disambiguation.md",
     "port": 20110,
     "app_name": "various",
-    "launch_instruction": "Launch apps when instructed on port 20110 (may use multiple apps for testing) using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools as instructed on port 20110 (may use multiple apps for testing)",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
     "test_objective": "Test path parameter handling for duplicate names"
   },
@@ -103,7 +103,7 @@
     "test_file": ".claude/commands/tests/apps.md",
     "port": 20111,
     "app_name": "test_extras_plugin_app",
-    "launch_instruction": "Launch test_extras_plugin_app application on port 20111 using the BRP tool",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_app tool to launch test_extras_plugin_app application on port 20111",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
   }
