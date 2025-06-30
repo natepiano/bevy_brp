@@ -81,8 +81,10 @@ async fn enhance_type_mismatch_error_with_context(
 
 /// Extract component type from discovery context
 fn extract_component_type_from_context(context: &DiscoveryContext) -> Option<String> {
-    if let Some(params) = &context.original_params {
-        match context.method.as_str() {
+    context
+        .original_params
+        .as_ref()
+        .map_or(None, |params| match context.method.as_str() {
             "bevy/mutate_component" => {
                 // Extract from "component" field
                 params
@@ -92,11 +94,10 @@ fn extract_component_type_from_context(context: &DiscoveryContext) -> Option<Str
             }
             "bevy/insert" | "bevy/spawn" => {
                 // Extract from "components" object keys
-                if let Some(components) = params.get("components").and_then(Value::as_object) {
-                    components.keys().next().cloned()
-                } else {
-                    None
-                }
+                params
+                    .get("components")
+                    .and_then(Value::as_object)
+                    .and_then(|components| components.keys().next().cloned())
             }
             "bevy/mutate_resource" | "bevy/insert_resource" => {
                 // Extract from "resource" field
@@ -106,10 +107,7 @@ fn extract_component_type_from_context(context: &DiscoveryContext) -> Option<Str
                     .map(String::from)
             }
             _ => None,
-        }
-    } else {
-        None
-    }
+        })
 }
 
 /// Build corrected parameters from the discovered format corrections

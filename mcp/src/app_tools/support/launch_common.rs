@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
+use chrono;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
@@ -20,6 +22,8 @@ pub struct LaunchResponseParams<'a> {
     pub log_file_path:   &'a Path,
     pub additional_data: Option<Value>,
     pub workspace_root:  Option<&'a PathBuf>,
+    pub launch_start:    Instant,
+    pub launch_end:      Instant,
 }
 
 /// Validates and extracts the manifest directory from a manifest path
@@ -61,13 +65,21 @@ pub fn collect_launch_debug_info(
 
 /// Creates a success response with common fields and workspace info
 pub fn build_launch_success_response(params: LaunchResponseParams) -> CallToolResult {
+    let launch_duration_ms = params
+        .launch_end
+        .duration_since(params.launch_start)
+        .as_millis() as u64;
+    let launch_timestamp = chrono::Utc::now().to_rfc3339();
+
     let mut response_data = json!({
         params.name_field: params.name,
         "pid": params.pid,
         "working_directory": params.manifest_dir.display().to_string(),
         "profile": params.profile,
         "log_file": params.log_file_path.display().to_string(),
-        "status": "running_in_background"
+        "status": "running_in_background",
+        "launch_duration_ms": launch_duration_ms,
+        "launch_timestamp": launch_timestamp
     });
 
     // Add any additional data specific to the launch type
@@ -106,5 +118,44 @@ pub fn build_launch_success_response(params: LaunchResponseParams) -> CallToolRe
 pub fn set_brp_env_vars(cmd: &mut Command, port: Option<u16>) {
     if let Some(port) = port {
         cmd.env("BRP_PORT", port.to_string());
+    }
+}
+
+/// Collects enhanced debug information for launch operations including timing details
+pub fn collect_enhanced_launch_debug_info(
+    name: &str,
+    name_type: &str, // "app" or "example"
+    manifest_dir: &Path,
+    binary_or_command: &str,
+    profile: &str,
+    launch_start: Instant,
+    launch_end: Instant,
+    env_vars: &[(&str, &str)],
+    debug_info: &mut Vec<String>,
+) {
+    let launch_duration_ms = launch_end.duration_since(launch_start).as_millis();
+
+    debug_info.push(format!(
+        "Launching {name_type} {name} from {}",
+        manifest_dir.display()
+    ));
+    debug_info.push(format!("Working directory: {}", manifest_dir.display()));
+    debug_info.push(format!("CARGO_MANIFEST_DIR: {}", manifest_dir.display()));
+    debug_info.push(format!("Profile: {profile}"));
+    debug_info.push(format!(
+        "{}: {binary_or_command}",
+        if name_type == "app" {
+            "Binary path"
+        } else {
+            "Command"
+        }
+    ));
+    debug_info.push(format!("Launch duration: {launch_duration_ms}ms"));
+
+    if !env_vars.is_empty() {
+        debug_info.push("Environment variables:".to_string());
+        for (key, value) in env_vars {
+            debug_info.push(format!("  {key}={value}"));
+        }
     }
 }

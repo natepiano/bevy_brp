@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Instant;
 
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
@@ -47,6 +48,7 @@ pub fn launch_bevy_app(
     port: Option<u16>,
     search_paths: &[PathBuf],
 ) -> Result<CallToolResult, McpError> {
+    let launch_start = Instant::now();
     let mut debug_info = Vec::new();
 
     // Find the app
@@ -105,6 +107,30 @@ pub fn launch_bevy_app(
         app_name,
         "launch",
     )?;
+    let launch_end = Instant::now();
+
+    // Collect enhanced debug info if enabled
+    if is_debug_enabled() {
+        let mut env_vars = Vec::new();
+        if let Some(port) = port {
+            env_vars.push(("BRP_PORT", port.to_string()));
+        }
+
+        launch_common::collect_enhanced_launch_debug_info(
+            app_name,
+            "app",
+            manifest_dir,
+            &binary_path.display().to_string(),
+            profile,
+            launch_start,
+            launch_end,
+            &env_vars
+                .iter()
+                .map(|(k, v)| (*k, v.as_str()))
+                .collect::<Vec<_>>(),
+            &mut debug_info,
+        );
+    }
 
     // Create additional app-specific data
     let additional_data = json!({
@@ -120,19 +146,15 @@ pub fn launch_bevy_app(
         log_file_path: &log_file_path,
         additional_data: Some(additional_data),
         workspace_root: Some(&app.workspace_root),
+        launch_start,
+        launch_end,
     };
 
     let base_response = launch_common::build_launch_success_response(response_params);
 
-    // Extract the inner JSON response and inject debug info
+    // Extract the inner JSON response and inject debug info using standard approach
     if let Ok(json_str) = serde_json::to_string(&base_response.content) {
-        if let Ok(mut json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
-            if is_debug_enabled() && !debug_info.is_empty() {
-                if let Some(obj) = json_response.as_object_mut() {
-                    obj.insert("brp_mcp_debug_info".to_string(), json!(debug_info));
-                }
-            }
-
+        if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
             let response = ResponseBuilder::success()
                 .message(format!("Successfully launched '{app_name}' (PID: {pid})"))
                 .data(json_response)
@@ -142,7 +164,18 @@ pub fn launch_bevy_app(
                             .message("Failed to serialize response data")
                             .build()
                     },
-                    ResponseBuilder::build,
+                    |builder| {
+                        builder
+                            .auto_inject_debug_info(
+                                if debug_info.is_empty() {
+                                    None
+                                } else {
+                                    Some(debug_info)
+                                },
+                                None::<Vec<String>>,
+                            )
+                            .build()
+                    },
                 );
 
             return Ok(json_response_to_result(&response));

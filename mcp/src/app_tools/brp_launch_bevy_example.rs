@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::Instant;
 
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
@@ -41,6 +42,7 @@ pub fn launch_bevy_example(
     port: Option<u16>,
     search_paths: &[PathBuf],
 ) -> Result<CallToolResult, McpError> {
+    let launch_start = Instant::now();
     let mut debug_info = Vec::new();
 
     // Find the example
@@ -75,7 +77,6 @@ pub fn launch_bevy_example(
             profile,
             &mut debug_info,
         );
-        debug_info.push(format!("Package: {}", example.package_name));
     }
 
     // Create log file for example output (examples use cargo run, so we pass the command string)
@@ -118,6 +119,31 @@ pub fn launch_bevy_example(
         example_name,
         "spawn",
     )?;
+    let launch_end = Instant::now();
+
+    // Collect enhanced debug info if enabled
+    if is_debug_enabled() {
+        let mut env_vars = Vec::new();
+        if let Some(port) = port {
+            env_vars.push(("BRP_PORT", port.to_string()));
+        }
+
+        launch_common::collect_enhanced_launch_debug_info(
+            example_name,
+            "example",
+            manifest_dir,
+            &cargo_command,
+            profile,
+            launch_start,
+            launch_end,
+            &env_vars
+                .iter()
+                .map(|(k, v)| (*k, v.as_str()))
+                .collect::<Vec<_>>(),
+            &mut debug_info,
+        );
+        debug_info.push(format!("Package: {}", example.package_name));
+    }
 
     // Create additional example-specific data
     let additional_data = json!({
@@ -138,19 +164,15 @@ pub fn launch_bevy_example(
         log_file_path: &log_file_path,
         additional_data: Some(additional_data),
         workspace_root: workspace_root.as_ref(),
+        launch_start,
+        launch_end,
     };
 
     let base_response = launch_common::build_launch_success_response(response_params);
 
-    // Extract the inner JSON response and inject debug info
+    // Extract the inner JSON response and inject debug info using standard approach
     if let Ok(json_str) = serde_json::to_string(&base_response.content) {
-        if let Ok(mut json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
-            if is_debug_enabled() && !debug_info.is_empty() {
-                if let Some(obj) = json_response.as_object_mut() {
-                    obj.insert("brp_mcp_debug_info".to_string(), json!(debug_info));
-                }
-            }
-
+        if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
             let response = ResponseBuilder::success()
                 .message(format!(
                     "Successfully launched '{example_name}' (PID: {pid})"
@@ -162,7 +184,18 @@ pub fn launch_bevy_example(
                             .message("Failed to serialize response data")
                             .build()
                     },
-                    ResponseBuilder::build,
+                    |builder| {
+                        builder
+                            .auto_inject_debug_info(
+                                if debug_info.is_empty() {
+                                    None
+                                } else {
+                                    Some(debug_info)
+                                },
+                                None::<Vec<String>>,
+                            )
+                            .build()
+                    },
                 );
 
             return Ok(json_response_to_result(&response));

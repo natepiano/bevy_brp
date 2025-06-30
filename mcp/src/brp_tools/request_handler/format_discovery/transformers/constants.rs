@@ -6,10 +6,6 @@
 /// f32 values
 pub const TRANSFORM_SEQUENCE_F32_COUNT: usize = 12;
 
-/// Maximum recursion depth for example generation to prevent stack overflow
-/// Note: Currently used in extras module for recursive example generation
-pub const MAX_EXAMPLE_DEPTH: usize = 10;
-
 /// Default timeout in seconds for watch operations
 /// Note: Reserved for future watch operation improvements
 #[allow(dead_code)]

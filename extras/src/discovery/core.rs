@@ -77,8 +77,9 @@ pub fn discover_type_as_response(
         Ok(type_info) => {
             // Check for Serialize/Deserialize traits using helper function
             let (has_serialize, has_deserialize) = {
-                let registry = world.resource::<AppTypeRegistry>().read();
-                let registration = registry.get_with_type_path(type_name);
+                let registry = world.resource::<AppTypeRegistry>();
+                let registry_read = registry.read();
+                let registration = registry_read.get_with_type_path(type_name);
                 registration
                     .map(check_serialization_traits)
                     .unwrap_or((false, false))
