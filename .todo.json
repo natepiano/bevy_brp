@@ -1,0 +1,212 @@
+[
+  {
+    "id": "meta-1",
+    "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-1",
+    "content": "Fix HashMap::new() function call with HashMap::new in map_or (extras/src/discovery/core.rs:107)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-1",
+    "content": "Build and fix any compile errors and warnings after HashMap::new fix",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-2",
+    "content": "Replace if let/else with map_or_else for type_category (extras/src/discovery/core.rs:134)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-2",
+    "content": "Build and fix any compile errors and warnings after type_category fix",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-3",
+    "content": "Replace if let/else with map_or_else in detection.rs:432",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-3",
+    "content": "Build and fix any compile errors and warnings after detection.rs fix",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-4",
+    "content": "Replace if let/else with map_or in result_building.rs:84",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-4",
+    "content": "Build and fix any compile errors and warnings after result_building.rs if let fix",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-5",
+    "content": "Replace map_or(None, ..) with and_then in result_building.rs:95",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-5",
+    "content": "Build and fix any compile errors and warnings after result_building.rs map_or_none fix",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-1",
+    "content": "Fix any clippy issues found after first batch of simple fixes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-6",
+    "content": "Replace if let/else with map_or_else for child_types (extras/src/discovery/core.rs:141-175)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-6",
+    "content": "Build and fix any compile errors and warnings after child_types fix",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-7",
+    "content": "Fix unnecessary Result wrapper in discover_type_as_response function (extras/src/discovery/core.rs:65)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-7",
+    "content": "Build and fix any compile errors and warnings after Result wrapper removal",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-2",
+    "content": "Fix any clippy issues found after API changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-8",
+    "content": "Analyze traverse_schema function complexity (path_suggestions.rs:200) for potential refactoring",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-9",
+    "content": "Refactor traverse_schema function to reduce cognitive complexity (38/25) and line count (210/100)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build-8",
+    "content": "Build and fix any compile errors and warnings after traverse_schema refactoring",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-final",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-final",
+    "content": "Fix any remaining clippy issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "format-1",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test-1",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test-review",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "code-review-prep",
+    "content": "STOP work here and return control to main agent",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "code-review-task",
+    "content": "Task new subagent to do code review focusing on duplication, complexity, and plan validation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "code-review-stop",
+    "content": "When subagent returns, STOP and review suggested changes with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
