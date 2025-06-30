@@ -298,16 +298,15 @@ async fn try_direct_discovery(
 
     let discovery_response = execute_discovery_request(type_name, port).await;
 
-    match discovery_response {
-        Some(data) => process_discovery_response(&data, type_name, original_value, tier_manager),
-        None => {
-            tier_manager.complete_tier(false, "Direct discovery unavailable or failed".to_string());
-            None
-        }
+    if let Some(data) = discovery_response {
+        process_discovery_response(&data, type_name, original_value, tier_manager)
+    } else {
+        tier_manager.complete_tier(false, "Direct discovery unavailable or failed".to_string());
+        None
     }
 }
 
-/// Execute the discovery request to bevy_brp_extras
+/// Execute the discovery request to `bevy_brp_extras`
 async fn execute_discovery_request(type_name: &str, port: Option<u16>) -> Option<Value> {
     let discover_params = serde_json::json!({
         "types": [type_name]
@@ -343,7 +342,7 @@ fn process_discovery_response(
     process_legacy_format(data, type_name, tier_manager)
 }
 
-/// Process new TypeDiscoveryResponse format
+/// Process new `TypeDiscoveryResponse` format
 fn process_new_format(
     data: &Value,
     type_name: &str,
@@ -430,7 +429,7 @@ fn handle_registry_type_without_spawn(
 ) -> Option<(Value, String)> {
     if !type_response
         .get("in_registry")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false)
     {
         return None;
@@ -438,11 +437,11 @@ fn handle_registry_type_without_spawn(
 
     let has_serialize = type_response
         .get("has_serialize")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
     let has_deserialize = type_response
         .get("has_deserialize")
-        .and_then(|v| v.as_bool())
+        .and_then(serde_json::Value::as_bool)
         .unwrap_or(false);
 
     let reason = if !has_serialize || !has_deserialize {
