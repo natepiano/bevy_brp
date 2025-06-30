@@ -133,6 +133,31 @@ fn resolve_brp_method(
     Ok(resolved_method)
 }
 
+/// Convert a `FormatCorrection` to JSON representation with metadata
+fn format_correction_to_json(correction: &FormatCorrection) -> Value {
+    let mut correction_json = json!({
+        "component": correction.component,
+        "original_format": correction.original_format,
+        "corrected_format": correction.corrected_format,
+        "hint": correction.hint
+    });
+
+    // Add rich metadata fields if available
+    if let Some(obj) = correction_json.as_object_mut() {
+        if let Some(ops) = &correction.supported_operations {
+            obj.insert("supported_operations".to_string(), json!(ops));
+        }
+        if let Some(paths) = &correction.mutation_paths {
+            obj.insert("mutation_paths".to_string(), json!(paths));
+        }
+        if let Some(cat) = &correction.type_category {
+            obj.insert("type_category".to_string(), json!(cat));
+        }
+    }
+
+    correction_json
+}
+
 /// Add only format corrections to response data (not debug info)
 fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[FormatCorrection]) {
     if format_corrections.is_empty() {
@@ -142,14 +167,7 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
     let corrections_value = json!(
         format_corrections
             .iter()
-            .map(|correction| {
-                json!({
-                    "component": correction.component,
-                    "original_format": correction.original_format,
-                    "corrected_format": correction.corrected_format,
-                    "hint": correction.hint
-                })
-            })
+            .map(format_correction_to_json)
             .collect::<Vec<_>>()
     );
 
@@ -261,14 +279,7 @@ fn process_error_response(
                 let corrections = enhanced_result
                     .format_corrections
                     .iter()
-                    .map(|c| {
-                        json!({
-                            "component": c.component,
-                            "hint": c.hint,
-                            "original_format": c.original_format,
-                            "corrected_format": c.corrected_format
-                        })
-                    })
+                    .map(format_correction_to_json)
                     .collect::<Vec<_>>();
                 map.insert(
                     JSON_FIELD_FORMAT_CORRECTIONS.to_string(),
