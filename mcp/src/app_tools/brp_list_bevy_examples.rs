@@ -49,10 +49,18 @@ fn collect_all_examples(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::
                 // Create a unique key based on example name and package name
                 let key = format!("{}::{}", example.package_name, example.name);
                 if seen_examples.insert(key) {
+                    // Compute relative path for the project
+                    let relative_path =
+                        scanning::compute_relative_path(&path, search_paths, &mut debug_info);
+
                     all_examples.push(json!({
                         "name": example.name,
                         "package_name": example.package_name,
-                        "manifest_path": example.manifest_path.display().to_string()
+                        "manifest_path": example.manifest_path.display().to_string(),
+                        // The relative_path field is designed for round-trip compatibility with launch functions.
+                        // This path can be used directly in brp_launch_bevy_example's path parameter
+                        // to disambiguate between examples with the same name in different locations.
+                        "relative_path": relative_path.display().to_string()
                     }));
                 }
             }

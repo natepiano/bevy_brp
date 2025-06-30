@@ -299,7 +299,14 @@ pub fn extract_workspace_name(workspace_root: &Path) -> Option<String> {
 
 /// Compute the relative path from the search roots to the given path
 /// This is used to provide a stable identifier for disambiguation
-fn compute_relative_path(
+///
+/// Special handling for empty relative paths:
+/// When the discovered path exactly matches a search path (e.g., when a Cargo project
+/// is directly in a search root), the relative path would be empty. In this case,
+/// we use the directory name itself as the identifier to ensure round-trip compatibility
+/// with path parameters. For example, if searching in "/workspace/test-app" and finding
+/// a project at that exact path, we return "test-app" rather than an empty path.
+pub fn compute_relative_path(
     path: &Path,
     search_paths: &[PathBuf],
     debug_info: &mut Vec<String>,
@@ -309,6 +316,17 @@ fn compute_relative_path(
         let search_canonical = safe_canonicalize(search_path, Some(debug_info));
         let path_canonical = safe_canonicalize(path, Some(debug_info));
         if let Ok(relative) = path_canonical.strip_prefix(&search_canonical) {
+            // Special case: If the relative path is empty (meaning path == search_path),
+            // we need a meaningful identifier for round-trip compatibility
+            if relative.as_os_str().is_empty() {
+                // Use the last component of the path as the identifier
+                // This ensures paths like "test-app" work in both list and launch functions
+                if let Some(name) = path_canonical.file_name() {
+                    return PathBuf::from(name);
+                }
+                // Fallback to "." if we can't get a name (shouldn't happen in practice)
+                return PathBuf::from(".");
+            }
             return relative.to_path_buf();
         }
     }
@@ -407,12 +425,7 @@ pub fn find_required_app_with_path(
     let all_apps = find_all_apps_by_name(app_name, search_paths);
     debug_info.push(format!("Found {} matching app(s)", all_apps.len()));
 
-    let filtered_apps = find_and_filter_by_path(
-        all_apps,
-        path,
-        |app| Some(app.workspace_root.clone()),
-        |app| &app.relative_path,
-    );
+    let filtered_apps = find_and_filter_by_path(all_apps, path, |app| &app.relative_path);
 
     validate_single_result_or_error(filtered_apps, app_name, "app", "app_name", |app| {
         &app.relative_path
@@ -435,12 +448,8 @@ pub fn find_required_example_with_path(
     let all_examples = find_all_examples_by_name(example_name, search_paths);
     debug_info.push(format!("Found {} matching example(s)", all_examples.len()));
 
-    let filtered_examples = find_and_filter_by_path(
-        all_examples,
-        path,
-        |example| get_workspace_root_from_manifest(&example.manifest_path),
-        |example| &example.relative_path,
-    );
+    let filtered_examples =
+        find_and_filter_by_path(all_examples, path, |example| &example.relative_path);
 
     validate_single_result_or_error(
         filtered_examples,
@@ -465,7 +474,7 @@ fn build_path_selection_error(
         .join("\n");
 
     format!(
-        "Found multiple {item_type} named '{item_name}' at:\n{path_list}\n\nPlease specify which path to use:\n{{\"{param_name}\": \"{item_name}\", \"path\": \"path_name\"}}"
+        "Found multiple {item_type} named '{item_name}' at:\n{path_list}\n\nPlease specify which path to use:\n{{\"{param_name}\": \"{item_name}\", \"path\": \"<one of the paths above>\"}}",
     )
 }
 
@@ -484,21 +493,10 @@ fn partial_path_match(relative_path: &Path, path_str: &str) -> bool {
     false
 }
 
-/// Check if the workspace name matches the provided path string (for disambiguation)
-fn workspace_name_match(workspace_root: Option<PathBuf>, path_str: &str) -> bool {
-    if let Some(root) = workspace_root {
-        if let Some(item_workspace) = extract_workspace_name(&root) {
-            return item_workspace == path_str;
-        }
-    }
-    false
-}
-
 /// Check if an item matches the given path using all available strategies
 fn item_matches_path<T>(
     item: &T,
     path_str: &str,
-    get_workspace_root: &impl Fn(&T) -> Option<PathBuf>,
     get_relative_path: &impl Fn(&T) -> &PathBuf,
 ) -> bool {
     let relative_path = get_relative_path(item);
@@ -509,28 +507,20 @@ fn item_matches_path<T>(
     }
 
     // Then try partial match
-    if partial_path_match(relative_path, path_str) {
-        return true;
-    }
-
-    // Finally, fall back to workspace name matching
-    workspace_name_match(get_workspace_root(item), path_str)
+    partial_path_match(relative_path, path_str)
 }
 
 /// Find items by name and filter by path if provided
-/// Supports full relative paths, partial paths, and workspace name fallback
+/// Supports full relative paths and partial paths
 fn find_and_filter_by_path<T>(
     all_items: Vec<T>,
     path: Option<&str>,
-    get_workspace_root: impl Fn(&T) -> Option<PathBuf>,
     get_relative_path: impl Fn(&T) -> &PathBuf,
 ) -> Vec<T> {
     if let Some(path_str) = path {
         all_items
             .into_iter()
-            .filter(|item| {
-                item_matches_path(item, path_str, &get_workspace_root, &get_relative_path)
-            })
+            .filter(|item| item_matches_path(item, path_str, &get_relative_path))
             .collect()
     } else {
         all_items
@@ -570,22 +560,29 @@ fn validate_single_result_or_error<T>(
             )
         }
         _ => {
-            let paths: Vec<String> = items
+            let all_paths: Vec<String> = items
                 .iter()
                 .map(|item| {
                     let relative_path = get_relative_path(item);
                     relative_path.to_string_lossy().to_string()
                 })
-                .filter(|path| !path.is_empty())
                 .collect();
 
-            let error_msg = build_path_selection_error(item_type, item_name, param_name, &paths);
+            let non_empty_paths: Vec<String> = all_paths
+                .iter()
+                .filter(|path| !path.is_empty())
+                .cloned()
+                .collect();
+
+            let error_msg =
+                build_path_selection_error(item_type, item_name, param_name, &non_empty_paths);
+
             Err(report_to_mcp_error(&error_stack::Report::new(
                 Error::PathDisambiguation {
                     message:         error_msg,
                     item_type:       item_type.to_string(),
                     item_name:       item_name.to_string(),
-                    available_paths: paths,
+                    available_paths: non_empty_paths,
                 },
             )))
         }
@@ -641,32 +638,24 @@ mod tests {
         // Create test items with relative paths
         #[derive(Debug, Clone)]
         struct TestItem {
-            relative_path:  PathBuf,
-            workspace_root: Option<PathBuf>,
+            relative_path: PathBuf,
         }
 
         let items = vec![
             TestItem {
-                relative_path:  PathBuf::from("workspace1/app1"),
-                workspace_root: Some(PathBuf::from("/home/user/workspace1")),
+                relative_path: PathBuf::from("workspace1/app1"),
             },
             TestItem {
-                relative_path:  PathBuf::from("workspace2/app1"),
-                workspace_root: Some(PathBuf::from("/home/user/workspace2")),
+                relative_path: PathBuf::from("workspace2/app1"),
             },
             TestItem {
-                relative_path:  PathBuf::from("workspace1/app2"),
-                workspace_root: Some(PathBuf::from("/home/user/workspace1")),
+                relative_path: PathBuf::from("workspace1/app2"),
             },
         ];
 
         // Test exact path matching
-        let filtered = find_and_filter_by_path(
-            items,
-            Some("workspace1/app1"),
-            |item| item.workspace_root.clone(),
-            |item| &item.relative_path,
-        );
+        let filtered =
+            find_and_filter_by_path(items, Some("workspace1/app1"), |item| &item.relative_path);
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].relative_path, PathBuf::from("workspace1/app1"));
@@ -677,32 +666,23 @@ mod tests {
         // Create test items with relative paths
         #[derive(Debug, Clone)]
         struct TestItem {
-            relative_path:  PathBuf,
-            workspace_root: Option<PathBuf>,
+            relative_path: PathBuf,
         }
 
         let items = vec![
             TestItem {
-                relative_path:  PathBuf::from("workspace1/app1"),
-                workspace_root: Some(PathBuf::from("/home/user/workspace1")),
+                relative_path: PathBuf::from("workspace1/app1"),
             },
             TestItem {
-                relative_path:  PathBuf::from("workspace2/app1"),
-                workspace_root: Some(PathBuf::from("/home/user/workspace2")),
+                relative_path: PathBuf::from("workspace2/app1"),
             },
             TestItem {
-                relative_path:  PathBuf::from("workspace1/app2"),
-                workspace_root: Some(PathBuf::from("/home/user/workspace1")),
+                relative_path: PathBuf::from("workspace1/app2"),
             },
         ];
 
         // Test suffix matching
-        let filtered = find_and_filter_by_path(
-            items,
-            Some("app1"),
-            |item| item.workspace_root.clone(),
-            |item| &item.relative_path,
-        );
+        let filtered = find_and_filter_by_path(items, Some("app1"), |item| &item.relative_path);
 
         assert_eq!(filtered.len(), 2);
         assert!(

@@ -60,10 +60,18 @@ fn collect_all_apps(search_paths: &[std::path::PathBuf]) -> Vec<serde_json::Valu
                         });
                     }
 
+                    // Compute relative path for the project
+                    let relative_path =
+                        scanning::compute_relative_path(&path, search_paths, &mut debug_info);
+
                     all_apps.push(json!({
                         "name": app.name,
                         "workspace_root": app.workspace_root.display().to_string(),
                         "manifest_path": app.manifest_path.display().to_string(),
+                        // The relative_path field is designed for round-trip compatibility with launch functions.
+                        // This path can be used directly in brp_launch_bevy_app's path parameter
+                        // to disambiguate between apps with the same name in different locations.
+                        "relative_path": relative_path.display().to_string(),
                         "builds": builds
                     }));
                 }
