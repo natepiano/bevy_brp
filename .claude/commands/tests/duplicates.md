@@ -23,8 +23,9 @@ Validate workspace parameter handling when multiple apps or examples with the sa
 - Verify successful launch from correct workspace
 - Check response includes workspace field
 
-### 4. Test Example Launch Disambiguation (If Conflicts Exist)
+### 4. Test Example Launch Disambiguation
 - Execute `mcp__brp__brp_list_bevy_examples` to check for duplicate example names
+- **CRITICAL**: If NO duplicate examples exist, you MUST mark this as a FAILED test with reason: "No duplicate examples found to test disambiguation logic"
 - If duplicates exist, test launch using `mcp__brp__brp_launch_bevy_example` without workspace (expect error)
 - Test launch using `mcp__brp__brp_launch_bevy_example` with workspace parameter (expect success)
 - Verify correct example variant is launched
@@ -49,7 +50,8 @@ Validate workspace parameter handling when multiple apps or examples with the sa
 - ✅ Error handling is consistent between apps and examples
 
 ## Special Notes
-- If no workspace conflicts exist, all sub-tests will be marked as SKIPPED
+- If no workspace conflicts exist for apps, app-related sub-tests will be marked as SKIPPED
+- **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment should provide duplicate examples for comprehensive testing
 - Tests adapt to available workspace configurations  
 - Focus is on error handling and disambiguation logic
 - Some environments may not have workspace ambiguity

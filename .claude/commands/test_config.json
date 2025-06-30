@@ -90,8 +90,8 @@
     "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
   },
   {
-    "test_name": "workspace_disambiguation",
-    "test_file": ".claude/commands/tests/workspace_disambiguation.md",
+    "test_name": "duplicates",
+    "test_file": ".claude/commands/tests/duplicates.md",
     "port": 20110,
     "app_name": "various",
     "launch_instruction": "Launch apps when instructed on port 20110 (may use multiple apps for testing) using the BRP tool",
