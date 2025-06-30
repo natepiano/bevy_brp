@@ -1,0 +1,191 @@
+[
+  {
+    "id": "terminal-title",
+    "content": "Set terminal title to indicate current work",
+    "status": "completed",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "meta-todo",
+    "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-1",
+    "content": "Update FormatCorrection struct in engine.rs to add optional fields: supported_operations, mutation_paths, type_category",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-1",
+    "content": "Build and fix any compile errors and warnings after updating FormatCorrection struct",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-2",
+    "content": "Remove test_component_format_with_spawn function from tier_execution.rs since it's no longer needed",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-2",
+    "content": "Build and fix any compile errors and warnings after removing test_component_format_with_spawn",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-3",
+    "content": "Modify try_direct_discovery in tier_execution.rs to gather facts but NOT return corrections (always return None)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-3",
+    "content": "Build and fix any compile errors and warnings after modifying try_direct_discovery",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-4",
+    "content": "Update process_discovery_response functions to extract and store facts instead of returning corrections",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-4",
+    "content": "Build and fix any compile errors and warnings after updating process_discovery_response",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy-1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-1",
+    "content": "Fix any clippy issues without using dead code markers or underscore prefixes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-5",
+    "content": "Create a context/data structure to pass discovered facts from Tier 2 to Tier 3",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-5",
+    "content": "Build and fix any compile errors and warnings after creating facts data structure",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-6",
+    "content": "Enhance apply_transformer_based_discovery to accept optional discovered facts and create rich responses",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-6",
+    "content": "Build and fix any compile errors and warnings after enhancing apply_transformer_based_discovery",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-7",
+    "content": "Update tier execution flow to pass facts from Tier 2 to Tier 3 and ensure Tier 3 always runs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-7",
+    "content": "Build and fix any compile errors and warnings after updating tier execution flow",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl-8",
+    "content": "Update FormatCorrection creation to include rich information when available from Tier 2 facts",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build-8",
+    "content": "Build and fix any compile errors and warnings after updating FormatCorrection creation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy-2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-2",
+    "content": "Fix any clippy issues without using dead code markers or underscore prefixes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "format",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "test",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "test-review",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code-review-subagent",
+    "content": "Task a new subagent to do a code review focusing on duplication, complexity, and validating the implementation plan was followed",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code-review-user",
+    "content": "When subagent returns, STOP and review the suggested changes with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
