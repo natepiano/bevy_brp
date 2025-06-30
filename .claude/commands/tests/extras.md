@@ -11,11 +11,11 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, an
 - Check method works correctly with plugin
 
 ### 2. Screenshot Capture
-- Execute `mcp__brp__brp_extras_screenshot` with path `test_screenshot_brp_extras_methods.png` (project root)
-- Verify screenshot file is created in project root
+- Execute `mcp__brp__brp_extras_screenshot` with absolute path (use current working directory + filename)
+- Verify screenshot file is created at the specified absolute path
 - Read screenshot file to confirm it's valid
 - Check window content is captured correctly
-- **IMPORTANT**: Clean up screenshot file from project root at end of test
+- **IMPORTANT**: Clean up screenshot file at end of test
 
 ### 3. Keyboard Input Tests
 - Test default duration: `mcp__brp__brp_extras_send_keys` with `["KeyA", "Space"]`
@@ -32,7 +32,7 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, an
 
 ### 5. Screenshot After Key Input
 - Send some keys to the app
-- Take screenshot to verify UI reflects key input (save to project root)
+- Take screenshot to verify UI reflects key input (use absolute path)
 - Read screenshot to confirm key display updated
 - Clean up this screenshot file as well
 

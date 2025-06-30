@@ -5,6 +5,16 @@ Validate handling of large responses that exceed context limits, particularly re
 
 **IMPORTANT**: Do NOT attempt to read or access the generated files. Only validate the response metadata.
 
+## Response Interpretation Guide
+
+**SUCCESS for Large Request (Step 1)**: Response contains `data.filepath` field - this means BRP server successfully wrote schema to file
+
+**SUCCESS for Filtered Request (Step 3)**: Response contains inline `data` with schema objects - this means response was small enough to return directly
+
+**NOT A FAILURE**: MCP tool blocking responses due to token limits - this is expected protective behavior
+
+**ACTUAL FAILURE**: Missing `filepath` field when expected, or BRP server error status
+
 ## Test Steps
 
 ### 1. Large Registry Schema Request

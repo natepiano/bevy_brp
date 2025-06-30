@@ -11,13 +11,14 @@ use reqwest::Client;
 /// Shared HTTP client instance with optimized connection pooling
 ///
 /// This client is configured for BRP usage patterns:
-/// - Connection pooling enabled for localhost connections
+/// - Connection pooling optimized for multiple concurrent apps (50 connections per host)
+/// - Extended keep-alive timeout for reduced reconnection overhead (5 minutes)
 /// - Reasonable timeouts for local services
-/// - Connection keep-alive for reduced overhead
+/// - Connection reuse for multiple localhost ports
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::builder()
-        .pool_idle_timeout(Duration::from_secs(30))
-        .pool_max_idle_per_host(10)
+        .pool_idle_timeout(Duration::from_secs(300))
+        .pool_max_idle_per_host(50)
         .timeout(Duration::from_secs(30))
         .connect_timeout(Duration::from_secs(5))
         .build()
@@ -27,9 +28,10 @@ static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
 /// Get the shared HTTP client instance
 ///
 /// This returns a reference to a singleton `reqwest::Client` that:
-/// - Reuses TCP connections via connection pooling
-/// - Prevents resource exhaustion under concurrent load
-/// - Is optimized for local BRP server communication
+/// - Reuses TCP connections via connection pooling (up to 50 per host)
+/// - Maintains connections for 5 minutes to reduce reconnection overhead
+/// - Prevents resource exhaustion under concurrent multi-app load
+/// - Is optimized for multiple simultaneous BRP server communication
 pub fn get_client() -> &'static Client {
     &HTTP_CLIENT
 }
@@ -38,8 +40,8 @@ pub fn get_client() -> &'static Client {
 ///
 /// This creates a new `reqwest::Client` with:
 /// - Custom timeout duration (or no timeout if None)
-/// - Connection pooling optimized for single-host usage
-/// - Suitable for long-running SSE connections
+/// - Connection pooling optimized for watch operations (20 connections per host)
+/// - Extended keep-alive for long-running SSE connections (5 minutes)
 ///
 /// # Arguments
 /// * `timeout_seconds` - Optional timeout in seconds (None = default 30s, Some(0) = never timeout)
@@ -48,8 +50,8 @@ pub fn create_watch_client(timeout_seconds: Option<u32>) -> Client {
         Some(0) => {
             // 0 = never timeout (no timeout set on client)
             Client::builder()
-                .pool_idle_timeout(Duration::from_secs(60))
-                .pool_max_idle_per_host(5)
+                .pool_idle_timeout(Duration::from_secs(300))
+                .pool_max_idle_per_host(20)
                 .connect_timeout(Duration::from_secs(5))
                 // No timeout() call means no request timeout
                 .build()
@@ -58,8 +60,8 @@ pub fn create_watch_client(timeout_seconds: Option<u32>) -> Client {
         Some(seconds) => {
             // Specific timeout in seconds
             Client::builder()
-                .pool_idle_timeout(Duration::from_secs(60))
-                .pool_max_idle_per_host(5)
+                .pool_idle_timeout(Duration::from_secs(300))
+                .pool_max_idle_per_host(20)
                 .connect_timeout(Duration::from_secs(5))
                 .timeout(Duration::from_secs(u64::from(seconds)))
                 .build()

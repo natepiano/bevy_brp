@@ -59,8 +59,8 @@ Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not exa
 - Check that Transform, Sprite, and other standard components are listed
 
 ### 9. Test Extras Functionality
-- Execute `mcp__brp__brp_extras_screenshot` with path `test_screenshot_apps.png`
-- Verify screenshot is created successfully
+- Execute `mcp__brp__brp_extras_screenshot` with path absolute path (use current working directory + filename) - using this filename`test_screenshot_apps.png`
+- Verify screenshot is created successfully at the specified path
 - Clean up screenshot file
 
 ### 10. Clean Shutdown

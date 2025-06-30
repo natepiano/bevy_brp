@@ -1,14 +1,17 @@
 # BRP Test Suite Runner
 
+## Configuration
+**PARALLEL_TESTS**: 6  # Number of tests to run concurrently
+
 ## Overview
 
 This command runs BRP tests in two modes:
-- **Without arguments**: Runs tests 3 at a time with continuous execution, stops immediately on any failure
+- **Without arguments**: Runs tests PARALLEL_TESTS at a time with continuous execution, stops immediately on any failure
 - **With argument**: Runs a single test by name
 
 ## Usage Examples
 ```
-/test_runner                    # Run all tests 3 at a time, stop on first failure
+/test_runner                    # Run all tests PARALLEL_TESTS at a time, stop on first failure
 /test_runner debug_mode         # Run only the debug_mode test
 /test_runner data_operations    # Run only the data_operations test
 ```
@@ -216,22 +219,24 @@ After the Task completes, simply present the test results as returned by the sub
 
 ### Continuous Parallel Execution Instructions
 
-**Execute tests 3 at a time with continuous execution:**
+**Execute tests PARALLEL_TESTS at a time with continuous execution:**
+
+**IMPORTANT**: When you see "PARALLEL_TESTS" in this document, substitute the value from the Configuration section at the top. This means launching PARALLEL_TESTS tests concurrently.
 
 **CRITICAL PARALLEL EXECUTION REQUIREMENT**: When executing multiple tests "at a time", you MUST invoke multiple Task tools in a SINGLE message. Sequential execution (one Task per message) is NOT parallel execution.
 
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
 2. **Initialize Execution State**:
    - Create queue of all test configurations
-   - Track running tests (max 3 at a time)
+   - Track running tests (max PARALLEL_TESTS at a time)
    - Track completed tests and their results
    - Track failed tests for immediate stopping
 3. **Continuous Execution Loop**:
-   - **Start Phase**: Launch first 3 tests from queue by invoking 3 Task tools IN ONE MESSAGE
+   - **Start Phase**: Launch first PARALLEL_TESTS tests from queue by invoking PARALLEL_TESTS Task tools IN ONE MESSAGE
    - **Monitor Phase**: Wait for any test to complete
    - **Result Phase**: Collect completed test results and check for failures
    - **Error Handling**: If any test reports failures, STOP immediately and report
-   - **Continue Phase**: If no failures, start next test from queue (maintaining 3 running)
+   - **Continue Phase**: If no failures, start next test from queue (maintaining PARALLEL_TESTS running)
    - **Repeat**: Continue until all tests complete or failure detected
 
 ### Error Detection and Immediate Stopping
@@ -262,22 +267,13 @@ After the Task completes, simply present the test results as returned by the sub
   - [TEST_OBJECTIVE] = `test_objective` field
   - [EXPECTED_SHUTDOWN_METHOD] = `expected_shutdown_method` field
 
-**Example Execution Flow:**
-```
-Start: Launch tests 1, 2 & 3 (IN ONE MESSAGE with 3 Task tool invocations)
-Wait: Monitor for completion
-Complete: Test 1 finishes → Check for failures → Start test 4
-Complete: Test 2 finishes → Check for failures → Start test 5
-Complete: Test 3 finishes → Check for failures → Start test 6
-Continue: Maintain 3 running tests until queue empty
+**Critical Implementation Note:**
+The key requirement is that when launching PARALLEL_TESTS tests, ALL Task tool invocations MUST be in a SINGLE message. This ensures true parallel execution.
 
-CORRECT: Single message with:
-  <Task for test 1>
-  <Task for test 2>
-  <Task for test 3>
+- ✅ **CORRECT**: One message containing PARALLEL_TESTS Task tool invocations
+- ❌ **WRONG**: Multiple separate messages, each with one Task tool invocation
 
-WRONG: Three separate messages each with one Task
-```
+The execution maintains exactly PARALLEL_TESTS running tests at all times. When any test completes, immediately start the next test from the queue (if any remain) to maintain the parallel count.
 
 ### Results Consolidation
 
@@ -317,7 +313,7 @@ WRONG: Three separate messages each with one Task
 - **Skipped**: Y
 - **Critical Issues**: 0 (execution stops on critical issues)
 - **Total Execution Time**: ~X minutes (continuous parallel)
-- **Execution Strategy**: 2 tests at a time with continuous execution
+- **Execution Strategy**: PARALLEL_TESTS tests at a time with continuous execution
 
 ## ✅ PASSED TESTS
 [List of successful tests with brief summaries, in execution order]
