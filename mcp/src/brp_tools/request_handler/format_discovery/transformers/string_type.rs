@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use super::super::detection::ErrorPattern;
 use super::FormatTransformer;
-use super::common::extract_type_name_from_error;
+use super::common::{extract_type_name_from_error, messages};
 use crate::brp_tools::request_handler::constants::{
     FIELD_LABEL, FIELD_NAME, FIELD_TEXT, FIELD_VALUE,
 };
@@ -28,13 +28,13 @@ impl StringTypeTransformer {
                 // Try common field names that might contain the string value
                 for field in [FIELD_NAME, FIELD_VALUE, FIELD_TEXT, FIELD_LABEL] {
                     if let Some(Value::String(s)) = obj.get(field) {
-                        return Some((s.clone(), format!("from `{field}` field")));
+                        return Some((s.clone(), messages::extracted_from_field(field)));
                     }
                 }
                 // For single-field objects, use the value
                 if obj.len() == 1 {
                     if let Some((field_name, Value::String(s))) = obj.iter().next() {
-                        return Some((s.clone(), format!("from `{field_name}` field")));
+                        return Some((s.clone(), messages::extracted_from_field(field_name)));
                     }
                 }
             }
@@ -42,7 +42,10 @@ impl StringTypeTransformer {
                 // If it's an array with one string, extract it
                 if arr.len() == 1 {
                     if let Value::String(s) = &arr[0] {
-                        return Some((s.clone(), "from single-element array".to_string()));
+                        return Some((
+                            s.clone(),
+                            "Extracted from single-element array".to_string(),
+                        ));
                     }
                 }
             }
@@ -72,7 +75,9 @@ impl StringTypeTransformer {
             Some((
                 Value::String(extracted_string),
                 format!(
-                    "`{type_name} Name component` expects string format, extracted {source_description} (was {format_type})"
+                    "{}, {} (was {format_type})",
+                    messages::expects_string_format(&format!("{type_name} Name component")),
+                    source_description
                 ),
             ))
         } else {
@@ -90,7 +95,11 @@ impl StringTypeTransformer {
         {
             Some((
                 Value::String(extracted_string),
-                format!("`{type_name}` expects string format, extracted {source_description}"),
+                format!(
+                    "{}, {}",
+                    messages::expects_string_format(type_name),
+                    source_description
+                ),
             ))
         } else {
             None

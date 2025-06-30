@@ -4,6 +4,29 @@ use serde_json::Value;
 
 use crate::brp_tools::support::brp_client::BrpError;
 
+/// Standard error message templates for consistency across transformers
+pub mod messages {
+    /// Format expectation message for array types
+    pub fn expects_array_format(type_name: &str, array_type: &str) -> String {
+        format!("`{type_name}` expects {array_type} array format")
+    }
+
+    /// Format expectation message for string types
+    pub fn expects_string_format(type_name: &str) -> String {
+        format!("`{type_name}` expects string format")
+    }
+
+    /// Format conversion success message
+    pub fn converted_to_format(format_type: &str) -> String {
+        format!("Converted to {format_type} format")
+    }
+
+    /// Field extraction message
+    pub fn extracted_from_field(field_name: &str) -> String {
+        format!("Extracted from `{field_name}` field")
+    }
+}
+
 /// Extract type name from error message by looking for text between backticks
 /// Returns `Some(type_name)` if found, `None` otherwise
 pub fn extract_type_name_from_error(error: &BrpError) -> Option<String> {

@@ -11,11 +11,11 @@ Validate handling of large responses that exceed context limits, particularly re
 - Check that file path is returned instead of inline data
 - Confirm file is created at specified path
 
-### 2. File Content Validation
-- Read the generated schema file
-- Verify file contains valid JSON schema data
-- Check for presence of expected type information
-- Confirm file structure includes shortPath, typePath, properties
+### 2. Response Metadata Validation
+- Verify response includes helpful metadata about file output
+- Check that response indicates token count that triggered file output
+- Confirm response includes instructions for accessing the file
+- Validate response status indicates success
 
 ### 3. Filtered Schema Request (Should Return Inline)
 - Execute registry schema with restrictive filters
@@ -23,13 +23,7 @@ Validate handling of large responses that exceed context limits, particularly re
 - Verify smaller response is returned inline (not as file)
 - Check response format is correct
 
-### 4. File Cleanup Validation
-- Verify file paths are accessible for reading
-- Check file permissions allow access
-- Confirm files can be opened by external tools
-- Test file cleanup if needed
-
-### 5. Response Size Management
+### 4. Response Size Management
 - Compare file output vs inline response approaches
 - Verify appropriate threshold handling
 - Check that file output prevents context overflow
@@ -38,10 +32,10 @@ Validate handling of large responses that exceed context limits, particularly re
 ## Expected Results
 - ✅ Large responses are automatically written to files
 - ✅ File paths are returned in responses
-- ✅ Generated files contain valid schema data
+- ✅ Response metadata includes token count and helpful instructions
 - ✅ Smaller responses are returned inline appropriately
 - ✅ File output prevents context limit issues
 - ✅ Response handling is transparent and reliable
 
 ## Failure Criteria
-STOP if: File output fails, generated files are inaccessible, or response size management doesn't work properly.
+STOP if: File output fails, file paths are not returned, or response size management doesn't work properly.

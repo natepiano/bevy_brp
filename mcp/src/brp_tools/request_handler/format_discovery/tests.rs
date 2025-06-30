@@ -6,6 +6,7 @@ use serde_json::json;
 
 use super::constants::*;
 use super::detection::{ErrorPattern, analyze_error_pattern};
+use super::engine::FormatCorrection;
 use super::phases::error_analysis::is_type_format_error;
 use super::transformers::TransformerRegistry;
 use crate::brp_tools::support::brp_client::BrpError;
@@ -317,4 +318,38 @@ fn test_fix_access_error_integration_with_pattern_matching() {
     // So we check if the value is either unchanged or transformed appropriately
     assert!(returned_value.is_object() || returned_value.is_array());
     assert!(hint.contains("tuple") || hint.contains("path") || hint.contains("extracted"));
+}
+
+#[test]
+fn test_format_correction_rich_fields() {
+    // Test that FormatCorrection fields are properly accessible and can be used
+    let correction = FormatCorrection {
+        component:            "test_component".to_string(),
+        original_format:      json!({"x": 1.0}),
+        corrected_format:     json!([1.0]),
+        hint:                 "Test hint".to_string(),
+        supported_operations: Some(vec!["spawn".to_string(), "insert".to_string()]),
+        mutation_paths:       Some(vec![".x".to_string(), ".y".to_string()]),
+        type_category:        Some("Component".to_string()),
+    };
+
+    // Verify all fields are accessible and contain expected data
+    assert_eq!(correction.component, "test_component");
+    assert!(correction.supported_operations.is_some());
+    assert!(correction.mutation_paths.is_some());
+    assert!(correction.type_category.is_some());
+
+    if let Some(operations) = &correction.supported_operations {
+        assert!(operations.contains(&"spawn".to_string()));
+        assert!(operations.contains(&"insert".to_string()));
+    }
+
+    if let Some(paths) = &correction.mutation_paths {
+        assert!(paths.contains(&".x".to_string()));
+        assert!(paths.contains(&".y".to_string()));
+    }
+
+    if let Some(category) = &correction.type_category {
+        assert_eq!(category, "Component");
+    }
 }

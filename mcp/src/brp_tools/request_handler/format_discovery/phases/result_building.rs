@@ -46,9 +46,16 @@ pub async fn build_final_result(
         })
     } else {
         // Apply corrections and retry
+        let corrections_with_metadata = discovery_data
+            .format_corrections
+            .iter()
+            .filter(|correction| correction.has_rich_metadata())
+            .count();
+
         context.add_debug(format!(
-            "Format Discovery: Found {} corrections, retrying request",
-            discovery_data.format_corrections.len()
+            "Format Discovery: Found {} corrections ({} with rich metadata), retrying request",
+            discovery_data.format_corrections.len(),
+            corrections_with_metadata
         ));
 
         // Build corrected params

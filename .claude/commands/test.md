@@ -3,12 +3,12 @@
 ## Overview
 
 This command runs BRP tests in two modes:
-- **Without arguments**: Runs tests 2 at a time with continuous execution, stops immediately on any failure
+- **Without arguments**: Runs tests 3 at a time with continuous execution, stops immediately on any failure
 - **With argument**: Runs a single test by name
 
 ## Usage Examples
 ```
-/test_runner                    # Run all tests 2 at a time, stop on first failure
+/test_runner                    # Run all tests 3 at a time, stop on first failure
 /test_runner debug_mode         # Run only the debug_mode test
 /test_runner data_operations    # Run only the data_operations test
 ```
@@ -37,7 +37,7 @@ All tests that launch apps must validate the shutdown method matches the expecte
 - **clean_shutdown**: Apps with `BrpExtrasPlugin` (extras_plugin, test_extras_plugin_app)
   - Message: "Successfully initiated graceful shutdown for '...' via bevy_brp_extras on port ..."
   - Method field: `"clean_shutdown"`
-- **process_kill**: Apps without `BrpExtrasPlugin` (no_extras_plugin)  
+- **process_kill**: Apps without `BrpExtrasPlugin` (no_extras_plugin)
   - Message: "Terminated process '...' (PID: ...) using kill. Consider adding bevy_brp_extras for clean shutdown."
   - Method field: `"process_kill"`
 - **N/A**: Tests with no app launch (discovery)
@@ -216,16 +216,16 @@ After the Task completes, simply present the test results as returned by the sub
 
 ### Continuous Parallel Execution Instructions
 
-**Execute tests 2 at a time with continuous execution:**
+**Execute tests 3 at a time with continuous execution:**
 
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
 2. **Initialize Execution State**:
    - Create queue of all test configurations
-   - Track running tests (max 2 at a time)
+   - Track running tests (max 3 at a time)
    - Track completed tests and their results
    - Track failed tests for immediate stopping
 3. **Continuous Execution Loop**:
-   - **Start Phase**: Launch first 2 tests from queue using Task tool
+   - **Start Phase**: Launch first 3 tests from queue using Task tool
    - **Monitor Phase**: Wait for any test to complete
    - **Result Phase**: Collect completed test results and check for failures
    - **Error Handling**: If any test reports failures, STOP immediately and report
@@ -262,11 +262,12 @@ After the Task completes, simply present the test results as returned by the sub
 
 **Example Execution Flow:**
 ```
-Start: Launch tests 1 & 2
+Start: Launch tests 1, 2 & 3
 Wait: Monitor for completion
-Complete: Test 1 finishes → Check for failures → Start test 3
-Complete: Test 2 finishes → Check for failures → Start test 4
-Continue: Maintain 2 running tests until queue empty
+Complete: Test 1 finishes → Check for failures → Start test 4
+Complete: Test 2 finishes → Check for failures → Start test 5
+Complete: Test 3 finishes → Check for failures → Start test 6
+Continue: Maintain 3 running tests until queue empty
 ```
 
 ### Results Consolidation

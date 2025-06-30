@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 
 use super::super::detection::ErrorPattern;
 use super::FormatTransformer;
-use super::common::extract_type_name_from_error;
+use super::common::{extract_type_name_from_error, messages};
 use super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use crate::brp_tools::support::brp_client::BrpError;
 
@@ -14,7 +14,7 @@ pub struct MathTypeTransformer;
 
 /// Helper function to format array expectation messages
 fn type_expects_array(type_name: &str, array_type: &str) -> String {
-    format!("`{type_name}` {array_type} expects array format")
+    messages::expects_array_format(type_name, array_type)
 }
 
 /// Generic function to convert object values to array format
@@ -100,7 +100,11 @@ impl MathTypeTransformer {
             if let Some(field_value) = obj.get(field) {
                 if let Some(vec3_array) = Self::convert_to_math_type_array(field_value, "Vec3") {
                     corrected.insert(field.to_string(), vec3_array);
-                    hint_parts.push(format!("`{field}` converted to Vec3 array format"));
+                    hint_parts.push(format!(
+                        "{} {}",
+                        messages::extracted_from_field(field),
+                        messages::converted_to_format("Vec3 array")
+                    ));
                 } else {
                     corrected.insert(field.to_string(), field_value.clone());
                 }
@@ -111,7 +115,11 @@ impl MathTypeTransformer {
         if let Some(rotation_value) = obj.get("rotation") {
             if let Some(quat_array) = Self::convert_to_math_type_array(rotation_value, "Quat") {
                 corrected.insert("rotation".to_string(), quat_array);
-                hint_parts.push("`rotation` converted to Quat array format".to_string());
+                hint_parts.push(format!(
+                    "{} {}",
+                    messages::extracted_from_field("rotation"),
+                    messages::converted_to_format("Quat array")
+                ));
             } else {
                 corrected.insert("rotation".to_string(), rotation_value.clone());
             }
@@ -141,7 +149,7 @@ impl FormatTransformer for MathTypeTransformer {
         // Try different math type conversions
         for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
             if let Some(converted) = Self::convert_to_math_type_array(value, math_type) {
-                let hint = format!("Converted to {math_type} array format");
+                let hint = messages::converted_to_format(&format!("{math_type} array"));
                 return Some((converted, hint));
             }
         }

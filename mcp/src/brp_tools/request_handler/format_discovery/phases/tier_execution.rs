@@ -1,7 +1,7 @@
 //! Tier execution phase for the format discovery engine
 //! This module handles the tiered approach to format discovery
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use super::context::DiscoveryContext;
 use crate::brp_tools::request_handler::format_discovery::constants::{
@@ -9,7 +9,6 @@ use crate::brp_tools::request_handler::format_discovery::constants::{
 };
 use crate::brp_tools::request_handler::format_discovery::detection::{
     TierInfo, TierManager, analyze_error_pattern, check_type_serialization,
-    detect_format_quality_issues, is_high_quality_format,
 };
 use crate::brp_tools::request_handler::format_discovery::engine::{
     FormatCorrection, ParameterLocation,
@@ -21,6 +20,35 @@ use crate::brp_tools::request_handler::format_discovery::utilities::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult, execute_brp_method};
 use crate::error::{Error, Result};
 use crate::tools::{BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_INSERT, BRP_METHOD_SPAWN};
+
+/// Facts discovered about a type from Tier 2 (BRP discovery)
+#[derive(Debug, Clone)]
+pub struct DiscoveredFacts {
+    pub spawn_example:        Option<Value>,
+    pub supported_operations: Option<Vec<String>>,
+    pub mutation_paths:       Option<Vec<String>>,
+    pub type_category:        Option<String>,
+    pub in_registry:          Option<bool>,
+    pub has_serialize:        Option<bool>,
+    pub has_deserialize:      Option<bool>,
+    pub legacy_format:        Option<Value>,
+}
+
+impl DiscoveredFacts {
+    /// Create a new empty facts instance for a type
+    pub const fn new() -> Self {
+        Self {
+            spawn_example:        None,
+            supported_operations: None,
+            mutation_paths:       None,
+            type_category:        None,
+            in_registry:          None,
+            has_serialize:        None,
+            has_deserialize:      None,
+            legacy_format:        None,
+        }
+    }
+}
 
 /// Data needed for building discovery result
 pub struct DiscoveryResultData {
@@ -115,7 +143,7 @@ async fn process_type_items_for_corrections(
 
     // Process each type item
     for (type_name, type_value) in type_items {
-        let (discovery_result, tier_info) = process_single_type_item(
+        let (discovery_result, tier_info, facts) = process_single_type_item(
             type_name,
             type_value,
             method,
@@ -134,6 +162,9 @@ async fn process_type_items_for_corrections(
                     original_format: type_value.clone(),
                     corrected_format: final_format.clone(),
                     hint,
+                    supported_operations: facts.supported_operations.clone(),
+                    mutation_paths: facts.mutation_paths.clone(),
+                    type_category: facts.type_category.clone(),
                 });
                 corrected_items.push((type_name.clone(), final_format));
             }
@@ -142,6 +173,8 @@ async fn process_type_items_for_corrections(
                 corrected_items.push((type_name.clone(), type_value.clone()));
             }
         }
+
+        // Facts are now embedded in FormatCorrection, no need to store separately
     }
 
     Ok((format_corrections, corrected_items, all_tier_info))
@@ -155,40 +188,64 @@ async fn process_single_type_item(
     port: Option<u16>,
     original_error: &BrpError,
     debug_info: &mut Vec<String>,
-) -> Result<(Option<(Value, String)>, Vec<TierInfo>)> {
+) -> Result<(Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts)> {
+    log_type_processing_start(type_name, type_value, debug_info);
+
+    let (discovery_result, tier_info, facts) =
+        perform_type_discovery(type_name, type_value, method, original_error, port).await;
+
+    let enriched_tier_info = enrich_tier_info_with_type_context(tier_info, type_name);
+
+    let result = build_discovery_result(discovery_result, type_name, debug_info);
+
+    Ok((result, enriched_tier_info, facts))
+}
+
+/// Log the start of type processing for debugging
+fn log_type_processing_start(type_name: &str, type_value: &Value, debug_info: &mut Vec<String>) {
     debug_info.push(format!(
         "Format Discovery: Checking type '{type_name}' with value: {type_value:?}"
     ));
+}
 
-    let (discovery_result, mut tier_info) =
-        tiered_type_format_discovery(type_name, type_value, method, original_error, port).await;
+/// Perform the actual type discovery using the tiered approach
+async fn perform_type_discovery(
+    type_name: &str,
+    type_value: &Value,
+    method: &str,
+    original_error: &BrpError,
+    port: Option<u16>,
+) -> (Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts) {
+    tiered_type_format_discovery(type_name, type_value, method, original_error, port).await
+}
 
-    // Add type context to tier info
+/// Add type context to tier info for better debugging
+fn enrich_tier_info_with_type_context(
+    mut tier_info: Vec<TierInfo>,
+    type_name: &str,
+) -> Vec<TierInfo> {
     for info in &mut tier_info {
-        info.action = format!("[{}] {}", type_name, info.action);
+        info.action = format!("[{type_name}] {}", info.action);
     }
+    tier_info
+}
 
+/// Build the final discovery result and log the outcome
+fn build_discovery_result(
+    discovery_result: Option<(Value, String)>,
+    type_name: &str,
+    debug_info: &mut Vec<String>,
+) -> Option<(Value, String)> {
     if let Some((corrected_value, hint)) = discovery_result {
         debug_info.push(format!(
             "Format Discovery: Found alternative for '{type_name}': {corrected_value:?}"
         ));
-
-        // For spawn, validate the format by testing; for insert, just trust it
-        let final_format = if method == BRP_METHOD_SPAWN {
-            match test_component_format_with_spawn(type_name, &corrected_value, port).await {
-                Ok(validated_format) => validated_format,
-                Err(_) => return Ok((None, tier_info)), // Skip this type if validation fails
-            }
-        } else {
-            corrected_value
-        };
-
-        Ok((Some((final_format, hint)), tier_info))
+        Some((corrected_value, hint))
     } else {
         debug_info.push(format!(
             "Format Discovery: No alternative found for '{type_name}'"
         ));
-        Ok((None, tier_info))
+        None
     }
 }
 
@@ -200,96 +257,152 @@ async fn tiered_type_format_discovery(
     method: &str,
     error: &BrpError,
     port: Option<u16>,
-) -> (Option<(Value, String)>, Vec<TierInfo>) {
+) -> (Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts) {
     let mut tier_manager = TierManager::new();
+    let mut facts = DiscoveredFacts::new();
+    let error_analysis = analyze_error_pattern(error);
 
     // ========== TIER 1: Serialization Diagnostics ==========
-    let error_analysis = analyze_error_pattern(error);
-    if method == BRP_METHOD_INSERT || method == BRP_METHOD_SPAWN {
-        tier_manager.start_tier(
-            TIER_SERIALIZATION,
-            "Serialization Diagnostics",
-            format!("Checking serialization support for type: {type_name}"),
-        );
-
-        match check_type_serialization(type_name, port).await {
-            Ok(serialization_check) => {
-                tier_manager.complete_tier(true, serialization_check.diagnostic_message.clone());
-
-                if serialization_check
-                    .diagnostic_message
-                    .contains("cannot be used with BRP")
-                {
-                    return (
-                        Some((
-                            original_value.clone(),
-                            serialization_check.diagnostic_message,
-                        )),
-                        tier_manager.into_vec(),
-                    );
-                }
-
-                // Don't return early - continue to Tier 2 for format discovery
-                // Even if type has serialization support, we may need format correction
-            }
-            Err(e) => {
-                tier_manager.complete_tier(
-                    false,
-                    Error::FormatDiscovery(format!(
-                        "failed to query serialization info for {type_name}: {e}"
-                    ))
-                    .to_string(),
-                );
-            }
-        }
+    if let Some((value, message)) = execute_tier1_serialization_check(
+        type_name,
+        original_value,
+        method,
+        port,
+        &mut tier_manager,
+    )
+    .await
+    {
+        return (Some((value, message)), tier_manager.into_vec(), facts);
     }
 
     // ========== TIER 2: Direct Discovery ==========
-    if let Some(result) =
-        try_direct_discovery(type_name, original_value, port, &mut tier_manager).await
-    {
-        return (Some(result), tier_manager.into_vec());
-    }
+    gather_direct_discovery_facts(
+        type_name,
+        original_value,
+        port,
+        &mut tier_manager,
+        &mut facts,
+    )
+    .await;
 
     // ========== TIERS 3 & 4: Smart Format Discovery ==========
+    if let Some((value, hint)) = execute_smart_format_discovery(
+        original_value,
+        error,
+        error_analysis.pattern.as_ref(),
+        &facts,
+        &mut tier_manager,
+    ) {
+        return (Some((value, hint)), tier_manager.into_vec(), facts);
+    }
+
+    tier_manager.complete_tier(false, "No format discovery succeeded".to_string());
+    (None, tier_manager.into_vec(), facts)
+}
+
+/// Execute Tier 1 serialization diagnostics check
+async fn execute_tier1_serialization_check(
+    type_name: &str,
+    original_value: &Value,
+    method: &str,
+    port: Option<u16>,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    if method != BRP_METHOD_INSERT && method != BRP_METHOD_SPAWN {
+        return None;
+    }
+
     tier_manager.start_tier(
-        TIER_DETERMINISTIC, // Still report as Tier 3 for compatibility
+        TIER_SERIALIZATION,
+        "Serialization Diagnostics",
+        format!("Checking serialization support for type: {type_name}"),
+    );
+
+    match check_type_serialization(type_name, port).await {
+        Ok(serialization_check) => {
+            tier_manager.complete_tier(true, serialization_check.diagnostic_message.clone());
+
+            if serialization_check
+                .diagnostic_message
+                .contains("cannot be used with BRP")
+            {
+                return Some((
+                    original_value.clone(),
+                    serialization_check.diagnostic_message,
+                ));
+            }
+            // Continue to Tier 2 for format discovery
+        }
+        Err(e) => {
+            tier_manager.complete_tier(
+                false,
+                Error::FormatDiscovery(format!(
+                    "failed to query serialization info for {type_name}: {e}"
+                ))
+                .to_string(),
+            );
+        }
+    }
+
+    None
+}
+
+/// Execute Tiers 3 & 4: Smart format discovery and generic fallback
+fn execute_smart_format_discovery(
+    original_value: &Value,
+    error: &BrpError,
+    error_pattern: Option<&super::super::detection::ErrorPattern>,
+    facts: &DiscoveredFacts,
+    tier_manager: &mut TierManager,
+) -> Option<(Value, String)> {
+    tier_manager.start_tier(
+        TIER_DETERMINISTIC,
         "Smart Format Discovery",
         "Applying pattern matching and transformation logic".to_string(),
     );
 
     let smart_result =
-        apply_transformer_based_discovery(original_value, error, error_analysis.pattern.as_ref());
+        apply_transformer_based_discovery(original_value, error, error_pattern, Some(facts));
 
     if let Some((corrected_value, hint)) = smart_result {
-        // Determine which tier actually succeeded based on the hint
-        if hint.contains("pattern") || hint.contains("AccessError") || hint.contains("MissingField")
-        {
-            tier_manager.complete_tier(true, format!("Applied pattern fix: {hint}"));
-        } else {
-            // This was a generic transformation
-            tier_manager.complete_tier(false, "Pattern matching failed".to_string());
-            tier_manager.start_tier(
-                TIER_GENERIC_FALLBACK,
-                "Generic Fallback",
-                "Trying generic format alternatives".to_string(),
-            );
-            tier_manager.complete_tier(true, format!("Found generic alternative: {hint}"));
-        }
-        return (Some((corrected_value, hint)), tier_manager.into_vec());
+        let result = handle_smart_discovery_result(corrected_value, hint, tier_manager);
+        Some(result)
+    } else {
+        tier_manager.complete_tier(false, "No format discovery succeeded".to_string());
+        None
     }
-
-    tier_manager.complete_tier(false, "No format discovery succeeded".to_string());
-    (None, tier_manager.into_vec())
 }
 
-/// Try direct discovery using `bevy_brp_extras/discover_format`
-async fn try_direct_discovery(
+/// Handle the result from smart format discovery
+fn handle_smart_discovery_result(
+    corrected_value: Value,
+    hint: String,
+    tier_manager: &mut TierManager,
+) -> (Value, String) {
+    if hint.contains("pattern") || hint.contains("AccessError") || hint.contains("MissingField") {
+        tier_manager.complete_tier(true, format!("Applied pattern fix: {hint}"));
+    } else {
+        // This was a generic transformation
+        tier_manager.complete_tier(false, "Pattern matching failed".to_string());
+        tier_manager.start_tier(
+            TIER_GENERIC_FALLBACK,
+            "Generic Fallback",
+            "Trying generic format alternatives".to_string(),
+        );
+        tier_manager.complete_tier(true, format!("Found generic alternative: {hint}"));
+    }
+
+    (corrected_value, hint)
+}
+
+/// Gather facts from direct discovery and populate the facts structure
+async fn gather_direct_discovery_facts(
     type_name: &str,
     original_value: &Value,
     port: Option<u16>,
     tier_manager: &mut TierManager,
-) -> Option<(Value, String)> {
+    facts: &mut DiscoveredFacts,
+) {
     tier_manager.start_tier(
         TIER_DIRECT_DISCOVERY,
         "Direct Discovery",
@@ -299,10 +412,11 @@ async fn try_direct_discovery(
     let discovery_response = execute_discovery_request(type_name, port).await;
 
     if let Some(data) = discovery_response {
-        process_discovery_response(&data, type_name, original_value, tier_manager)
+        // Gather facts and populate the facts structure
+        populate_facts_from_discovery(&data, type_name, original_value, facts);
+        tier_manager.complete_tier(true, "Direct discovery facts gathered".to_string());
     } else {
         tier_manager.complete_tier(false, "Direct discovery unavailable or failed".to_string());
-        None
     }
 }
 
@@ -326,68 +440,47 @@ async fn execute_discovery_request(type_name: &str, port: Option<u16>) -> Option
     }
 }
 
-/// Process the discovery response and extract format information
-fn process_discovery_response(
+/// Populate facts structure from discovery response data
+fn populate_facts_from_discovery(
     data: &Value,
     type_name: &str,
-    original_value: &Value,
-    tier_manager: &mut TierManager,
-) -> Option<(Value, String)> {
+    _original_value: &Value,
+    facts: &mut DiscoveredFacts,
+) {
     // Try new TypeDiscoveryResponse format first
-    if let Some(result) = process_new_format(data, type_name, original_value, tier_manager) {
-        return Some(result);
+    if let Some(type_info) = data.get("type_info").and_then(|ti| ti.as_object()) {
+        if let Some(type_response) = type_info.get(type_name) {
+            extract_facts_from_type_response(type_response, facts);
+        }
     }
 
-    // Fall back to legacy format
-    process_legacy_format(data, type_name, tier_manager)
+    // Also try legacy format
+    extract_legacy_format(data, type_name, facts);
 }
 
-/// Process new `TypeDiscoveryResponse` format
-fn process_new_format(
-    data: &Value,
-    type_name: &str,
-    original_value: &Value,
-    tier_manager: &mut TierManager,
-) -> Option<(Value, String)> {
-    let type_info = data.get("type_info")?.as_object()?;
-    let type_response = type_info.get(type_name)?;
-
-    // Try to extract spawn example
-    if let Some(result) = extract_spawn_example(type_response, type_name, tier_manager) {
-        return Some(result);
-    }
-
-    // Handle type in registry but no spawn example
-    handle_registry_type_without_spawn(type_response, type_name, original_value, tier_manager)
+/// Extract facts from the new `TypeDiscoveryResponse` format
+fn extract_facts_from_type_response(type_response: &Value, facts: &mut DiscoveredFacts) {
+    extract_spawn_example(type_response, facts);
+    extract_supported_operations(type_response, facts);
+    extract_mutation_paths(type_response, facts);
+    extract_registry_and_serialization_info(type_response, facts);
+    extract_type_category(type_response, facts);
 }
 
-/// Extract and validate spawn example from type response
-fn extract_spawn_example(
-    type_response: &Value,
-    type_name: &str,
-    tier_manager: &mut TierManager,
-) -> Option<(Value, String)> {
-    let example_values = type_response.get("example_values")?.as_object()?;
-    let spawn_example = example_values.get("spawn")?;
-
-    if is_high_quality_format(spawn_example) {
-        tier_manager.complete_tier(
-            true,
-            format!("Direct discovery successful: found high-quality format for {type_name}"),
-        );
-
-        let hint = build_discovery_hint(type_response);
-        Some((spawn_example.clone(), hint))
-    } else {
-        handle_low_quality_format(spawn_example, tier_manager);
-        None
+/// Extract spawn example from type response
+fn extract_spawn_example(type_response: &Value, facts: &mut DiscoveredFacts) {
+    if let Some(example_values) = type_response
+        .get("example_values")
+        .and_then(|ev| ev.as_object())
+    {
+        if let Some(spawn_example) = example_values.get("spawn") {
+            facts.spawn_example = Some(spawn_example.clone());
+        }
     }
 }
 
-/// Build hint message from type response information
-fn build_discovery_hint(type_response: &Value) -> String {
-    let mut hint_parts = vec!["Direct discovery from bevy_brp_extras".to_string()];
-
+/// Extract supported operations from type response
+fn extract_supported_operations(type_response: &Value, facts: &mut DiscoveredFacts) {
     if let Some(operations) = type_response
         .get("supported_operations")
         .and_then(|so| so.as_array())
@@ -398,135 +491,215 @@ fn build_discovery_hint(type_response: &Value) -> String {
             .map(String::from)
             .collect();
         if !ops.is_empty() {
-            hint_parts.push(format!("Supports: {}", ops.join(", ")));
+            facts.supported_operations = Some(ops);
         }
     }
-
-    hint_parts.join(". ")
 }
 
-/// Handle low quality format detection
-fn handle_low_quality_format(spawn_example: &Value, tier_manager: &mut TierManager) {
-    if let Some(quality_issue) = detect_format_quality_issues(spawn_example) {
-        tier_manager.complete_tier(
-            false,
-            format!("Direct discovery returned low-quality format: {quality_issue}"),
-        );
-    } else {
-        tier_manager.complete_tier(
-            false,
-            "Direct discovery returned low-quality format".to_string(),
-        );
+/// Extract mutation paths from type response
+fn extract_mutation_paths(type_response: &Value, facts: &mut DiscoveredFacts) {
+    if let Some(mutation_info) = type_response.get("mutation_info") {
+        if let Some(paths) = mutation_info
+            .get("available_paths")
+            .and_then(|ap| ap.as_array())
+        {
+            let mutation_paths: Vec<String> = paths
+                .iter()
+                .filter_map(|v| v.as_str())
+                .map(String::from)
+                .collect();
+            if !mutation_paths.is_empty() {
+                facts.mutation_paths = Some(mutation_paths);
+            }
+        }
     }
 }
 
-/// Handle type in registry but without spawn example
-fn handle_registry_type_without_spawn(
-    type_response: &Value,
-    type_name: &str,
-    original_value: &Value,
-    tier_manager: &mut TierManager,
-) -> Option<(Value, String)> {
-    if !type_response
+/// Extract registry and serialization information
+fn extract_registry_and_serialization_info(type_response: &Value, facts: &mut DiscoveredFacts) {
+    if let Some(in_registry) = type_response
         .get("in_registry")
         .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false)
     {
-        return None;
+        facts.in_registry = Some(in_registry);
     }
 
-    let has_serialize = type_response
+    if let Some(has_serialize) = type_response
         .get("has_serialize")
         .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-    let has_deserialize = type_response
+    {
+        facts.has_serialize = Some(has_serialize);
+    }
+
+    if let Some(has_deserialize) = type_response
         .get("has_deserialize")
         .and_then(serde_json::Value::as_bool)
-        .unwrap_or(false);
-
-    let reason = if !has_serialize || !has_deserialize {
-        "Type lacks Serialize/Deserialize traits required for BRP operations"
-    } else {
-        "Type format could not be determined"
-    };
-
-    tier_manager.complete_tier(true, format!("Type found but cannot be used: {reason}"));
-
-    Some((
-        original_value.clone(),
-        format!("Type '{type_name}' is registered but {reason}"),
-    ))
+    {
+        facts.has_deserialize = Some(has_deserialize);
+    }
 }
 
-/// Process legacy format for backward compatibility
-fn process_legacy_format(
-    data: &Value,
-    type_name: &str,
-    tier_manager: &mut TierManager,
-) -> Option<(Value, String)> {
-    let formats = data.get("formats")?.as_object()?;
-    let format_info = formats.get(type_name)?;
-    let spawn_format = format_info.get("spawn_format")?.get("example")?;
-
-    tier_manager.complete_tier(
-        true,
-        format!("Direct discovery successful: found format for {type_name} (legacy format)"),
-    );
-
-    let hint = "Direct discovery from bevy_brp_extras".to_string();
-    Some((spawn_format.clone(), hint))
+/// Extract type category from type response
+fn extract_type_category(type_response: &Value, facts: &mut DiscoveredFacts) {
+    if let Some(category) = type_response
+        .get("type_category")
+        .and_then(|tc| tc.as_str())
+    {
+        facts.type_category = Some(category.to_string());
+    }
 }
 
-/// Test a component format by spawning a test entity
-async fn test_component_format_with_spawn(
-    type_name: &str,
-    component_value: &Value,
-    port: Option<u16>,
-) -> Result<Value> {
-    let mut test_components = Map::new();
-    test_components.insert(type_name.to_string(), component_value.clone());
-
-    let test_params = serde_json::json!({
-        "components": test_components
-    });
-
-    match execute_brp_method(BRP_METHOD_SPAWN, Some(test_params), port).await? {
-        BrpResult::Success(Some(data)) => {
-            // Immediately clean up the test entity
-            if let Some(entity) = data.get("entity").and_then(serde_json::Value::as_u64) {
-                let destroy_params = serde_json::json!({
-                    "entity": entity
-                });
-                _ = execute_brp_method(
-                    crate::tools::BRP_METHOD_DESTROY,
-                    Some(destroy_params),
-                    port,
-                )
-                .await;
+/// Extract legacy format if available and not already populated
+fn extract_legacy_format(data: &Value, type_name: &str, facts: &mut DiscoveredFacts) {
+    if let Some(formats) = data.get("formats").and_then(|f| f.as_object()) {
+        if let Some(format_info) = formats.get(type_name) {
+            if let Some(spawn_format) = format_info
+                .get("spawn_format")
+                .and_then(|sf| sf.get("example"))
+            {
+                // Only set if we don't already have a spawn example from new format
+                if facts.spawn_example.is_none() {
+                    facts.legacy_format = Some(spawn_format.clone());
+                }
             }
-            Ok(component_value.clone())
         }
-        BrpResult::Success(None) | BrpResult::Error(_) => Err(error_stack::report!(
-            Error::FormatDiscovery("Test spawn failed with corrected format".to_string(),)
-        )),
     }
 }
 
 /// New transformer-based format discovery that replaces the old transformations.rs logic
 /// Uses the clean trait-based transformer system for maintainable format fixes
+///
+/// With optional discovered facts, this can create rich responses with educational content
 fn apply_transformer_based_discovery(
     original_value: &Value,
     error: &BrpError,
     error_pattern: Option<&super::super::detection::ErrorPattern>,
+    facts: Option<&DiscoveredFacts>,
 ) -> Option<(Value, String)> {
-    // First try deterministic pattern matching using new transformer system (Tier 3)
-    if let Some(pattern) = error_pattern {
+    // First try deterministic pattern matching (Tier 3)
+    if let Some(result) = try_pattern_based_transformation(original_value, error, error_pattern) {
+        return Some(result);
+    }
+
+    // If pattern matching didn't work but we have facts, try educational responses
+    if let Some(discovered_facts) = facts {
+        return create_fact_based_response(original_value, discovered_facts);
+    }
+
+    // No transformation found
+    None
+}
+
+/// Try pattern-based transformation using the transformer registry
+fn try_pattern_based_transformation(
+    original_value: &Value,
+    error: &BrpError,
+    error_pattern: Option<&super::super::detection::ErrorPattern>,
+) -> Option<(Value, String)> {
+    error_pattern.and_then(|pattern| {
         let registry = TransformerRegistry::with_defaults();
-        if let Some(result) = registry.transform(original_value, pattern, error) {
-            return Some(result);
+        registry.transform(original_value, pattern, error)
+    })
+}
+
+/// Create a response based on discovered facts
+fn create_fact_based_response(
+    original_value: &Value,
+    facts: &DiscoveredFacts,
+) -> Option<(Value, String)> {
+    // Check for spawn examples
+    if let Some(spawn_example) = &facts.spawn_example {
+        return Some((
+            spawn_example.clone(),
+            create_rich_educational_hint(facts, "Using correct format from type discovery"),
+        ));
+    }
+
+    // Check for legacy format
+    if let Some(legacy_format) = &facts.legacy_format {
+        return Some((
+            legacy_format.clone(),
+            create_rich_educational_hint(facts, "Using legacy format from type discovery"),
+        ));
+    }
+
+    // Check for registry/serialization issues
+    create_educational_response_for_issues(original_value, facts)
+}
+
+/// Create educational response for registry or serialization issues
+fn create_educational_response_for_issues(
+    original_value: &Value,
+    facts: &DiscoveredFacts,
+) -> Option<(Value, String)> {
+    if facts.in_registry == Some(false) {
+        // Type not in registry
+        Some((
+            original_value.clone(),
+            create_rich_educational_hint(
+                facts,
+                "Type not found in BRP registry - this type may not be accessible via BRP",
+            ),
+        ))
+    } else if facts.has_serialize == Some(false) || facts.has_deserialize == Some(false) {
+        // Serialization issues
+        Some((
+            original_value.clone(),
+            create_rich_educational_hint(
+                facts,
+                "Type serialization not supported - format cannot be corrected",
+            ),
+        ))
+    } else {
+        None
+    }
+}
+
+/// Create a rich educational hint that includes relevant discovered facts
+fn create_rich_educational_hint(facts: &DiscoveredFacts, base_message: &str) -> String {
+    use std::fmt::Write;
+
+    let mut hint = base_message.to_string();
+
+    // Add supported operations if available
+    if let Some(operations) = &facts.supported_operations {
+        write!(hint, " | Supported operations: {}", operations.join(", ")).unwrap();
+    }
+
+    // Add mutation paths if available
+    if let Some(paths) = &facts.mutation_paths {
+        if !paths.is_empty() {
+            write!(hint, " | Available mutation paths: {}", paths.join(", ")).unwrap();
         }
     }
 
-    // If pattern matching didn't work, no transformation found
-    None
+    // Add type category if available
+    if let Some(category) = &facts.type_category {
+        write!(hint, " | Type category: {category}").unwrap();
+    }
+
+    // Add registry status if explicitly known
+    if let Some(in_registry) = facts.in_registry {
+        write!(hint, " | In BRP registry: {in_registry}").unwrap();
+    }
+
+    // Add serialization info if available
+    match (facts.has_serialize, facts.has_deserialize) {
+        (Some(ser), Some(deser)) => {
+            write!(
+                hint,
+                " | Serialization support: serialize={ser}, deserialize={deser}"
+            )
+            .unwrap();
+        }
+        (Some(ser), None) => {
+            write!(hint, " | Serialize support: {ser}").unwrap();
+        }
+        (None, Some(deser)) => {
+            write!(hint, " | Deserialize support: {deser}").unwrap();
+        }
+        _ => {}
+    }
+
+    hint
 }

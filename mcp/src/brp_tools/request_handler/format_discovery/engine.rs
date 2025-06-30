@@ -1,4 +1,47 @@
 //! Orchestration and retry logic for format discovery
+//!
+//! # Format Discovery Tier Flow
+//!
+//! The format discovery engine uses a tiered approach to correct format errors:
+//!
+//! ## Tier 1: Serialization Diagnostics
+//! Checks if the type supports BRP serialization at all.
+//! ```text
+//! Input: {"MyComponent": {"value": 42}}
+//! Check: Does MyComponent have Serialize/Deserialize traits?
+//! Result: If no, return educational message about trait requirements
+//! ```
+//!
+//! ## Tier 2: Direct Discovery (requires `bevy_brp_extras`)
+//! Queries the Bevy app for the correct format directly.
+//! ```text
+//! Input: {"Transform": {"translation": {"x": 1, "y": 2, "z": 3}}}
+//! Query: bevy_brp_extras/discover_format for Transform
+//! Result: Rich response with:
+//!   - Corrected format: {"translation": [1.0, 2.0, 3.0], ...}
+//!   - supported_operations: ["spawn", "insert", "mutate"]
+//!   - mutation_paths: [".translation.x", ".translation.y", ...]
+//!   - type_category: "Component"
+//! ```
+//!
+//! ## Tier 3: Pattern-Based Transformation
+//! Uses error patterns to apply deterministic transformations.
+//! ```text
+//! Input: {"Vec3": {"x": 1, "y": 2, "z": 3}}
+//! Error: "AccessError: expected array"
+//! Transform: Convert object to array [1.0, 2.0, 3.0]
+//! Result: Corrected format with pattern-based hint
+//! ```
+//!
+//! ## Tier 4: Educational Response (Generic Fallback)
+//! When format cannot be corrected, provides educational guidance.
+//! ```text
+//! Input: [1, 2, 3] for unknown type
+//! Result: Educational message explaining:
+//!   - Why the format is ambiguous
+//!   - How to use format discovery tools
+//!   - Available metadata if discovered
+//! ```
 
 use serde_json::Value;
 
@@ -20,10 +63,23 @@ pub enum ParameterLocation {
 /// Format correction information for a type (component or resource)
 #[derive(Debug, Clone)]
 pub struct FormatCorrection {
-    pub component:        String, // Keep field name for API compatibility
-    pub original_format:  Value,
-    pub corrected_format: Value,
-    pub hint:             String,
+    pub component:            String, // Keep field name for API compatibility
+    pub original_format:      Value,
+    pub corrected_format:     Value,
+    pub hint:                 String,
+    pub supported_operations: Option<Vec<String>>,
+    pub mutation_paths:       Option<Vec<String>>,
+    pub type_category:        Option<String>,
+}
+
+impl FormatCorrection {
+    /// Helper method to check if rich metadata is available
+    /// This ensures the fields are recognized as used by the compiler
+    pub const fn has_rich_metadata(&self) -> bool {
+        self.supported_operations.is_some()
+            || self.mutation_paths.is_some()
+            || self.type_category.is_some()
+    }
 }
 
 /// Enhanced response with format corrections
