@@ -78,13 +78,8 @@ fn cleanup_log_files(
 
     // Delete the files
     for entry in log_entries {
-        match fs::remove_file(&entry.path) {
-            Ok(()) => {
-                deleted_files.push(entry.filename);
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to delete {}: {}", entry.filename, e);
-            }
+        if fs::remove_file(&entry.path).is_ok() {
+            deleted_files.push(entry.filename);
         }
     }
 

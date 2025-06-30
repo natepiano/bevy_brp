@@ -38,5 +38,8 @@ tracing-appender.workspace   = true
 tracing-subscriber.workspace = true
 uuid.workspace               = true
 
+[dev-dependencies]
+tempfile.workspace = true
+
 [lints]
 workspace = true

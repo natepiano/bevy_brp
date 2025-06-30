@@ -14,6 +14,8 @@ pub struct BinaryInfo {
     pub workspace_root: PathBuf,
     /// Path to the package's Cargo.toml
     pub manifest_path:  PathBuf,
+    /// Relative path from scan root to this item
+    pub relative_path:  PathBuf,
 }
 
 impl BinaryInfo {
@@ -35,6 +37,8 @@ pub struct ExampleInfo {
     pub package_name:  String,
     /// Path to the package's Cargo.toml
     pub manifest_path: PathBuf,
+    /// Relative path from scan root to this item
+    pub relative_path: PathBuf,
 }
 
 /// Detects binary targets in a project or workspace
@@ -83,6 +87,7 @@ impl CargoDetector {
                 name:           t.name.clone(),
                 workspace_root: self.metadata.workspace_root.clone().into(),
                 manifest_path:  package.manifest_path.clone().into(),
+                relative_path:  PathBuf::new(), // Will be set by scanning logic
             })
     }
 
@@ -96,6 +101,7 @@ impl CargoDetector {
                 name:          t.name.clone(),
                 package_name:  package.name.to_string(),
                 manifest_path: package.manifest_path.clone().into(),
+                relative_path: PathBuf::new(), // Will be set by scanning logic
             })
     }
 

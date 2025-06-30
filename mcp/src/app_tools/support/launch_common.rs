@@ -33,29 +33,30 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path, McpErr
     })
 }
 
-/// Prints common debug information for launch operations
-pub fn print_launch_debug_info(
+/// Collects common debug information for launch operations
+pub fn collect_launch_debug_info(
     name: &str,
     name_type: &str, // "app" or "example"
     manifest_dir: &Path,
     binary_or_command: &str,
     profile: &str,
+    debug_info: &mut Vec<String>,
 ) {
-    eprintln!(
+    debug_info.push(format!(
         "Launching {name_type} {name} from {}",
         manifest_dir.display()
-    );
-    eprintln!("Working directory: {}", manifest_dir.display());
-    eprintln!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
-    eprintln!("Profile: {profile}");
-    eprintln!(
+    ));
+    debug_info.push(format!("Working directory: {}", manifest_dir.display()));
+    debug_info.push(format!("CARGO_MANIFEST_DIR: {}", manifest_dir.display()));
+    debug_info.push(format!("Profile: {profile}"));
+    debug_info.push(format!(
         "{}: {binary_or_command}",
         if name_type == "app" {
             "Binary path"
         } else {
             "Command"
         }
-    );
+    ));
 }
 
 /// Creates a success response with common fields and workspace info

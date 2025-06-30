@@ -14,4 +14,4 @@ pub const PARAM_PROFILE: &str = "profile";
 pub const PARAM_PORT: &str = "port";
 pub const PARAM_APP_NAME: &str = "app_name";
 pub const PARAM_EXAMPLE_NAME: &str = "example_name";
-pub const PARAM_WORKSPACE: &str = "workspace";
+pub const PARAM_PATH: &str = "path";

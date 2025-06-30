@@ -3,12 +3,13 @@ Launches Bevy examples via cargo run --example in detached mode with auto-buildi
 Parameters:
 - example_name (required): Name of Bevy example to launch
 - profile (optional): Build profile - "debug" (default) or "release"
-- workspace (optional): Workspace name to use when multiple examples with the same name exist
+- path (optional): Path to use when multiple examples with the same name exist (supports full paths, partial paths, or workspace names)
 - port (optional): BRP port to use (default: 15702)
 
 Features: Non-blocking execution, auto-build if needed, temp directory logs, proper CARGO_MANIFEST_DIR.
 
 Notes:
 - Use list_bevy_examples to see available examples. View logs with list_logs/read_log.
-- If multiple examples with the same name exist in different workspaces, you must specify the workspace parameter. The error message will list available workspaces.
+- If multiple examples with the same name exist in different paths, you must specify the path parameter. The error message will list available paths.
+- Path matching supports: full relative paths (e.g., "bevy_brp/my-example"), partial paths (e.g., "my-example"), or workspace names for disambiguation.
 - When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_PORT`.

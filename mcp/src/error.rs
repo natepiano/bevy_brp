@@ -41,12 +41,12 @@ pub enum Error {
     #[error("Parameter extraction failed: {0}")]
     ParameterExtraction(String),
 
-    #[error("Workspace disambiguation required: {message}")]
-    WorkspaceDisambiguation {
-        message:              String,
-        item_type:            String,
-        item_name:            String,
-        available_workspaces: Vec<String>,
+    #[error("Path disambiguation required: {message}")]
+    PathDisambiguation {
+        message:         String,
+        item_type:       String,
+        item_name:       String,
+        available_paths: Vec<String>,
     },
 
     #[error("Log operation failed: {0}")]
@@ -180,8 +180,8 @@ impl From<Error> for McpError {
             | Error::FormatDiscovery(msg)
             | Error::Configuration(msg)
             | Error::ParameterExtraction(msg) => Self::invalid_params(msg, None),
-            Error::WorkspaceDisambiguation { message, .. } => {
-                // For workspace disambiguation, we want to preserve the detailed message
+            Error::PathDisambiguation { message, .. } => {
+                // For path disambiguation, we want to preserve the detailed message
                 // as an invalid_params error since it's a parameter issue that can be resolved
                 Self::invalid_params(message, None)
             }

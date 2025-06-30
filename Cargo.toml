@@ -1,5 +1,6 @@
 [workspace]
 members  = ["extras", "mcp", "test-app"]
+exclude  = ["test-duplicate-a", "test-duplicate-b"]
 resolver = "2"
 
 [workspace.dependencies]
@@ -37,6 +38,7 @@ uuid               = { version = "1.17.0", features = ["v4"] }
 
 # Dev dependencies
 reqwest = { version = "0.12", features = ["blocking", "json", "stream"] }
+tempfile = "3.14"
 
 # Shared lints configuration
 [workspace.lints.rust]

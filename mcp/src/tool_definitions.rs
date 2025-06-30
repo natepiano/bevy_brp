@@ -33,7 +33,7 @@ use crate::brp_tools::constants::{
     PARAM_SPAWNED_ENTITY, PARAM_STRICT, PARAM_TYPES, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
-use crate::constants::PARAM_WORKSPACE;
+use crate::constants::PARAM_PATH;
 use crate::tools::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
     BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
@@ -1107,14 +1107,14 @@ pub fn get_app_tools() -> Vec<BrpToolDef> {
     ]
 }
 
-/// Create standard launch tool parameters (profile, workspace, port)
+/// Create standard launch tool parameters (profile, path, port)
 fn create_launch_params(name_param: &'static str, name_desc: &'static str) -> Vec<ParamDef> {
     vec![
         ParamDef::string(name_param, name_desc, true),
         ParamDef::string("profile", "Build profile to use (debug or release)", false),
         ParamDef::string(
-            PARAM_WORKSPACE,
-            "Workspace name to use when multiple apps/examples with the same name exist",
+            PARAM_PATH,
+            "Path to use when multiple apps/examples with the same name exist",
             false,
         ),
         ParamDef::number(JSON_FIELD_PORT, "BRP port to use (default: 15702)", false),
