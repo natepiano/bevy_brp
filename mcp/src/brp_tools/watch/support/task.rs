@@ -18,24 +18,105 @@ use crate::brp_tools::support::BrpJsonRpcBuilder;
 use crate::error::{Error, Result};
 use crate::tools::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
 
+/// Parameters for a watch connection
+struct WatchConnectionParams {
+    watch_id:        u32,
+    entity_id:       u64,
+    watch_type:      String,
+    brp_method:      String,
+    params:          Value,
+    port:            u16,
+    timeout_seconds: Option<u32>,
+}
+
 /// Process a single SSE line and log the update if valid
-async fn parse_sse_line(line: &str, entity_id: u64, logger: &BufferedWatchLogger) -> Result<()> {
+async fn parse_sse_line(
+    line: &str,
+    entity_id: u64,
+    watch_type: &str,
+    logger: &BufferedWatchLogger,
+) -> Result<()> {
+    // Log EVERY line received for debugging
+    let _ = logger
+        .write_debug_update(
+            "DEBUG_LINE_RECEIVED",
+            serde_json::json!({
+                "watch_type": watch_type,
+                "entity": entity_id,
+                "line": line,
+                "line_length": line.len(),
+                "is_sse_data": line.starts_with("data: "),
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
+
     // Handle SSE format: "data: {json}"
     if let Some(json_str) = line.strip_prefix("data: ") {
         if let Ok(data) = serde_json::from_str::<Value>(json_str) {
-            debug!("Received watch update for entity {}: {:?}", entity_id, data);
+            debug!(
+                "[{}] Received watch update for entity {}: {:?}",
+                watch_type, entity_id, data
+            );
+
+            // Log successful JSON parsing
+            let _ = logger.write_debug_update(
+                "DEBUG_JSON_PARSED",
+                serde_json::json!({
+                    "watch_type": watch_type,
+                    "entity": entity_id,
+                    "has_result": data.get("result").is_some(),
+                    "has_error": data.get("error").is_some(),
+                    "has_id": data.get("id").is_some(),
+                    "json_keys": data.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                })
+            ).await;
 
             // Extract the result from JSON-RPC response
             if let Some(result) = data.get("result") {
                 log_update(logger, result.clone()).await?;
             } else {
-                debug!("No result in JSON-RPC response: {:?}", data);
+                debug!(
+                    "[{}] No result in JSON-RPC response: {:?}",
+                    watch_type, data
+                );
+
+                // Log missing result field
+                let _ = logger
+                    .write_debug_update(
+                        "DEBUG_NO_RESULT",
+                        serde_json::json!({
+                            "watch_type": watch_type,
+                            "entity": entity_id,
+                            "full_data": data,
+                            "timestamp": chrono::Local::now().to_rfc3339()
+                        }),
+                    )
+                    .await;
             }
         } else {
-            debug!("Failed to parse SSE data as JSON: {}", json_str);
+            debug!(
+                "[{}] Failed to parse SSE data as JSON: {}",
+                watch_type, json_str
+            );
+
+            // Log parse failure
+            let _ = logger
+                .write_debug_update(
+                    "DEBUG_JSON_PARSE_FAILED",
+                    serde_json::json!({
+                        "watch_type": watch_type,
+                        "entity": entity_id,
+                        "raw_data": json_str,
+                        "data_length": json_str.len(),
+                        "timestamp": chrono::Local::now().to_rfc3339()
+                    }),
+                )
+                .await;
         }
     } else {
-        debug!("Received non-SSE line: {}", line);
+        debug!("[{}] Received non-SSE line: {}", watch_type, line);
     }
     Ok(())
 }
@@ -58,8 +139,24 @@ async fn process_chunk(
     line_buffer: &mut String,
     total_buffer_size: &mut usize,
     entity_id: u64,
+    watch_type: &str,
     logger: &BufferedWatchLogger,
 ) -> Result<()> {
+    // Log chunk size
+    let _ = logger
+        .write_debug_update(
+            "DEBUG_CHUNK_RECEIVED",
+            serde_json::json!({
+                "watch_type": watch_type,
+                "entity": entity_id,
+                "chunk_size": bytes.len(),
+                "line_buffer_size_before": line_buffer.len(),
+                "total_buffer_size_before": *total_buffer_size,
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
+
     // Check chunk size limit
     if bytes.len() > MAX_CHUNK_SIZE {
         return Err(error_stack::Report::new(Error::InvalidState(format!(
@@ -73,7 +170,7 @@ async fn process_chunk(
     let text = match std::str::from_utf8(bytes) {
         Ok(text) => text,
         Err(e) => {
-            debug!("Invalid UTF-8 in stream chunk: {}", e);
+            debug!("[{}] Invalid UTF-8 in stream chunk: {}", watch_type, e);
             return Ok(());
         }
     };
@@ -90,6 +187,9 @@ async fn process_chunk(
     }
 
     // Process complete lines from the buffer
+    let mut lines_processed = 0;
+    let mut empty_lines = 0;
+
     while let Some(newline_pos) = line_buffer.find('\n') {
         let line = line_buffer.drain(..=newline_pos).collect::<String>();
         let line = line.trim_end_matches('\n').trim_end_matches('\r');
@@ -98,20 +198,149 @@ async fn process_chunk(
         *total_buffer_size = line_buffer.len();
 
         if line.trim().is_empty() {
+            empty_lines += 1;
             continue;
         }
 
-        parse_sse_line(line, entity_id, logger).await?;
+        lines_processed += 1;
+        parse_sse_line(line, entity_id, watch_type, logger).await?;
+    }
+
+    // Log number of lines processed
+    if lines_processed > 0 || empty_lines > 0 {
+        let _ = logger
+            .write_debug_update(
+                "DEBUG_LINES_PROCESSED",
+                serde_json::json!({
+                    "watch_type": watch_type,
+                    "entity": entity_id,
+                    "lines_processed": lines_processed,
+                    "empty_lines": empty_lines,
+                    "remaining_buffer_size": line_buffer.len(),
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
+    }
+
+    // Log incomplete lines in buffer
+    if !line_buffer.is_empty() {
+        let _ = logger
+            .write_debug_update(
+                "DEBUG_INCOMPLETE_LINE_IN_BUFFER",
+                serde_json::json!({
+                    "watch_type": watch_type,
+                    "entity": entity_id,
+                    "buffer_content": line_buffer,
+                    "buffer_size": line_buffer.len(),
+                    "contains_data_prefix": line_buffer.contains("data: "),
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
     }
 
     Ok(())
+}
+
+/// Handle stream error and determine if it's a timeout
+async fn handle_stream_error(
+    error: reqwest::Error,
+    entity_id: u64,
+    watch_type: &str,
+    logger: &BufferedWatchLogger,
+    start_time: std::time::Instant,
+    timeout_seconds: Option<u32>,
+    total_chunks: usize,
+) {
+    let elapsed = start_time.elapsed();
+    let error_string = error.to_string();
+
+    // Check if this is a timeout error
+    let is_timeout = error_string.contains("operation timed out")
+        || error_string.contains("timeout")
+        || (timeout_seconds.is_some()
+            && elapsed.as_secs() >= u64::from(timeout_seconds.unwrap_or(30)));
+
+    if is_timeout {
+        warn!("Watch stream timed out after {:?}: {}", elapsed, error);
+
+        // Log timeout specifically
+        let _ = logger
+            .write_update(
+                "WATCH_TIMEOUT",
+                serde_json::json!({
+                    "watch_type": watch_type,
+                    "entity": entity_id,
+                    "elapsed_seconds": elapsed.as_secs(),
+                    "configured_timeout_seconds": timeout_seconds,
+                    "error": error_string,
+                    "chunks_received_before_timeout": total_chunks,
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
+    } else {
+        error!("Error reading stream chunk: {}", error);
+
+        // Log non-timeout stream error
+        let _ = logger
+            .write_debug_update(
+                "DEBUG_STREAM_ERROR",
+                serde_json::json!({
+                    "watch_type": watch_type,
+                    "entity": entity_id,
+                    "error": error_string,
+                    "chunks_received_before_error": total_chunks,
+                    "elapsed_seconds": elapsed.as_secs(),
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
+    }
+}
+
+/// Log the first chunk of data for debugging
+async fn log_first_chunk(
+    bytes: &[u8],
+    entity_id: u64,
+    watch_type: &str,
+    logger: &BufferedWatchLogger,
+) {
+    let preview = if bytes.len() <= 500 {
+        String::from_utf8_lossy(bytes).to_string()
+    } else {
+        format!(
+            "{}... (truncated from {} bytes)",
+            String::from_utf8_lossy(&bytes[..500]),
+            bytes.len()
+        )
+    };
+
+    let _ = logger
+        .write_debug_update(
+            "DEBUG_FIRST_CHUNK",
+            serde_json::json!({
+                "watch_type": watch_type,
+                "entity": entity_id,
+                "chunk_size": bytes.len(),
+                "preview": preview,
+                "starts_with_data": String::from_utf8_lossy(bytes).starts_with("data:"),
+                "contains_newline": bytes.contains(&b'\n'),
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
 }
 
 /// Process the watch stream from the BRP server
 async fn process_watch_stream(
     response: reqwest::Response,
     entity_id: u64,
+    watch_type: &str,
     logger: &BufferedWatchLogger,
+    start_time: std::time::Instant,
+    timeout_seconds: Option<u32>,
 ) -> Result<()> {
     if !response.status().is_success() {
         let error_msg = format!(
@@ -125,25 +354,56 @@ async fn process_watch_stream(
         ))));
     }
 
+    // Log stream start
+    let _ = logger
+        .write_debug_update(
+            "DEBUG_STREAM_STARTED",
+            serde_json::json!({
+                "watch_type": watch_type,
+                "entity": entity_id,
+                "response_status": response.status().as_u16(),
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
+
     // Read the streaming response with bounded memory usage
     let mut stream = response.bytes_stream();
     let mut line_buffer = String::new();
     let mut total_buffer_size = 0;
+    let mut total_chunks = 0;
 
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(bytes) => {
+                total_chunks += 1;
+
+                // Special logging for first chunk
+                if total_chunks == 1 {
+                    log_first_chunk(&bytes, entity_id, watch_type, logger).await;
+                }
+
                 process_chunk(
                     &bytes,
                     &mut line_buffer,
                     &mut total_buffer_size,
                     entity_id,
+                    watch_type,
                     logger,
                 )
                 .await?;
             }
             Err(e) => {
-                error!("Error reading stream chunk: {}", e);
+                handle_stream_error(
+                    e,
+                    entity_id,
+                    watch_type,
+                    logger,
+                    start_time,
+                    timeout_seconds,
+                    total_chunks,
+                )
+                .await;
                 break;
             }
         }
@@ -152,38 +412,98 @@ async fn process_watch_stream(
     // Process any remaining incomplete line in the buffer
     if !line_buffer.trim().is_empty() {
         debug!(
-            "Processing remaining incomplete line: {}",
+            "[{}] Processing remaining incomplete line: {}",
+            watch_type,
             line_buffer.trim()
         );
-        parse_sse_line(line_buffer.trim(), entity_id, logger).await?;
+        parse_sse_line(line_buffer.trim(), entity_id, watch_type, logger).await?;
     }
 
-    info!("Watch stream ended for entity {}", entity_id);
+    // Log stream end with details
+    let _ = logger
+        .write_debug_update(
+            "DEBUG_STREAM_ENDED",
+            serde_json::json!({
+                "watch_type": watch_type,
+                "entity": entity_id,
+                "total_chunks_received": total_chunks,
+                "final_buffer_size": line_buffer.len(),
+                "had_incomplete_line": !line_buffer.trim().is_empty(),
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
+
+    info!(
+        "[{}] Watch stream ended for entity {}",
+        watch_type, entity_id
+    );
     Ok(())
 }
 
-/// Run the watch connection in a spawned task
-async fn run_watch_connection(
-    watch_id: u32,
-    entity_id: u64,
-    watch_type: String,
-    brp_method: String,
-    params: Value,
-    port: u16,
-    logger: BufferedWatchLogger,
+/// Handle connection errors and log appropriately
+async fn handle_connection_error(
+    error: reqwest::Error,
+    conn_params: &WatchConnectionParams,
+    logger: &BufferedWatchLogger,
+    start_time: std::time::Instant,
 ) {
+    let elapsed = start_time.elapsed();
+    let error_string = error.to_string();
+
+    // Check if this is a timeout error
+    let is_timeout =
+        error_string.contains("operation timed out") || error_string.contains("timeout");
+
+    if is_timeout {
+        warn!("Watch connection timed out after {:?}: {}", elapsed, error);
+        let _ = logger
+            .write_update(
+                "WATCH_TIMEOUT",
+                serde_json::json!({
+                    "watch_type": &conn_params.watch_type,
+                    "entity": conn_params.entity_id,
+                    "elapsed_seconds": elapsed.as_secs(),
+                    "configured_timeout_seconds": conn_params.timeout_seconds,
+                    "error": error_string,
+                    "phase": "connection",
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
+    } else {
+        error!("Failed to connect to BRP server: {}", error);
+        let _ = logger
+            .write_update(
+                "CONNECTION_ERROR",
+                serde_json::json!({
+                    "error": error_string,
+                    "elapsed_seconds": elapsed.as_secs(),
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                }),
+            )
+            .await;
+    }
+}
+
+/// Run the watch connection in a spawned task
+async fn run_watch_connection(conn_params: WatchConnectionParams, logger: BufferedWatchLogger) {
     info!(
         "Starting {} watch task for entity {} on port {}",
-        watch_type, entity_id, port
+        conn_params.watch_type, conn_params.entity_id, conn_params.port
     );
 
-    // Create HTTP client for streaming
-    let url = crate::brp_tools::support::brp_client::build_brp_url(port);
-    let client = crate::brp_tools::support::http_client::get_client();
+    // Track start time for timeout detection
+    let start_time = std::time::Instant::now();
+
+    // Create HTTP client for streaming with configurable timeout
+    let url = crate::brp_tools::support::brp_client::build_brp_url(conn_params.port);
+    let client =
+        crate::brp_tools::support::http_client::create_watch_client(conn_params.timeout_seconds);
 
     // Build JSON-RPC request for watching
-    let request_body = BrpJsonRpcBuilder::new(&brp_method)
-        .params(params)
+    let request_body = BrpJsonRpcBuilder::new(&conn_params.brp_method)
+        .params(conn_params.params.clone())
         .build()
         .to_string();
 
@@ -196,21 +516,35 @@ async fn run_watch_connection(
         .await
     {
         Ok(response) => {
-            if let Err(e) = process_watch_stream(response, entity_id, &logger).await {
+            // Log initial HTTP response
+            let _ = logger.write_debug_update(
+                "DEBUG_HTTP_RESPONSE",
+                serde_json::json!({
+                    "watch_type": &conn_params.watch_type,
+                    "entity": conn_params.entity_id,
+                    "status": response.status().as_u16(),
+                    "status_text": response.status().canonical_reason().unwrap_or("Unknown"),
+                    "headers_count": response.headers().len(),
+                    "content_type": response.headers().get("content-type").and_then(|v| v.to_str().ok()),
+                    "timestamp": chrono::Local::now().to_rfc3339()
+                })
+            ).await;
+
+            if let Err(e) = process_watch_stream(
+                response,
+                conn_params.entity_id,
+                &conn_params.watch_type,
+                &logger,
+                start_time,
+                conn_params.timeout_seconds,
+            )
+            .await
+            {
                 error!("Watch stream processing failed: {}", e);
             }
         }
         Err(e) => {
-            error!("Failed to connect to BRP server: {}", e);
-            let _ = logger
-                .write_update(
-                    "CONNECTION_ERROR",
-                    serde_json::json!({
-                        "error": e.to_string(),
-                        "timestamp": chrono::Local::now().to_rfc3339()
-                    }),
-                )
-                .await;
+            handle_connection_error(e, &conn_params, &logger, start_time).await;
         }
     }
 
@@ -219,7 +553,7 @@ async fn run_watch_connection(
         .write_update(
             "WATCH_ENDED",
             serde_json::json!({
-                "entity": entity_id,
+                "entity": conn_params.entity_id,
                 "timestamp": chrono::Local::now().to_rfc3339()
             }),
         )
@@ -228,15 +562,19 @@ async fn run_watch_connection(
     // Remove this watch from the active watches with defensive checks
     {
         let mut manager = WATCH_MANAGER.lock().await;
-        if manager.active_watches.remove(&watch_id).is_some() {
+        if manager
+            .active_watches
+            .remove(&conn_params.watch_id)
+            .is_some()
+        {
             info!(
                 "Watch {} for entity {} automatically cleaned up after connection ended",
-                watch_id, entity_id
+                conn_params.watch_id, conn_params.entity_id
             );
         } else {
             warn!(
                 "Watch {} for entity {} attempted to clean up but was not found in active watches - possible phantom watch removal",
-                watch_id, entity_id
+                conn_params.watch_id, conn_params.entity_id
             );
         }
     }
@@ -249,6 +587,7 @@ async fn start_watch_task(
     brp_method: &str,
     params: Value,
     port: u16,
+    timeout_seconds: Option<u32>,
 ) -> Result<(u32, PathBuf)> {
     // Prepare all data that doesn't require the watch_id
     let watch_type_owned = watch_type.to_string();
@@ -292,12 +631,15 @@ async fn start_watch_task(
 
     // Spawn task
     let handle = tokio::spawn(run_watch_connection(
-        watch_id,
-        entity_id,
-        watch_type_owned,
-        brp_method_owned,
-        params,
-        port,
+        WatchConnectionParams {
+            watch_id,
+            entity_id,
+            watch_type: watch_type_owned,
+            brp_method: brp_method_owned,
+            params,
+            port,
+            timeout_seconds,
+        },
         logger,
     ));
 
@@ -311,6 +653,7 @@ async fn start_watch_task(
                 watch_type: watch_type.to_string(),
                 log_path: log_path.clone(),
                 port,
+                timeout_reason: None,
             },
             handle,
         ),
@@ -327,6 +670,7 @@ pub async fn start_entity_watch_task(
     entity_id: u64,
     components: Option<Vec<String>>,
     port: u16,
+    timeout_seconds: Option<u32>,
 ) -> Result<(u32, PathBuf)> {
     // Validate components parameter
     let components = components.ok_or_else(|| {
@@ -346,14 +690,34 @@ pub async fn start_entity_watch_task(
         "components": components
     });
 
-    start_watch_task(entity_id, "get", BRP_METHOD_GET_WATCH, params, port).await
+    start_watch_task(
+        entity_id,
+        "get",
+        BRP_METHOD_GET_WATCH,
+        params,
+        port,
+        timeout_seconds,
+    )
+    .await
 }
 
 /// Start a background task for entity list watching
-pub async fn start_list_watch_task(entity_id: u64, port: u16) -> Result<(u32, PathBuf)> {
+pub async fn start_list_watch_task(
+    entity_id: u64,
+    port: u16,
+    timeout_seconds: Option<u32>,
+) -> Result<(u32, PathBuf)> {
     let params = serde_json::json!({
         "entity": entity_id
     });
 
-    start_watch_task(entity_id, "list", BRP_METHOD_LIST_WATCH, params, port).await
+    start_watch_task(
+        entity_id,
+        "list",
+        BRP_METHOD_LIST_WATCH,
+        params,
+        port,
+        timeout_seconds,
+    )
+    .await
 }

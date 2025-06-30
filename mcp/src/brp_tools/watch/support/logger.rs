@@ -58,6 +58,19 @@ impl BufferedWatchLogger {
             .await
             .map_err(|_| "Logger channel closed".to_string())
     }
+
+    /// Queue a debug log entry for writing only if debug mode is enabled
+    pub async fn write_debug_update(
+        &self,
+        update_type: &str,
+        data: serde_json::Value,
+    ) -> Result<(), String> {
+        if crate::brp_tools::brp_set_debug_mode::is_debug_enabled() {
+            self.write_update(update_type, data).await
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl Drop for BufferedWatchLogger {

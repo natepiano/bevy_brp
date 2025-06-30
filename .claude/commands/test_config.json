@@ -94,7 +94,7 @@
     "test_file": ".claude/commands/tests/workspace_disambiguation.md",
     "port": 20110,
     "app_name": "various",
-    "launch_instruction": "Launch apps as needed on port 20110 (may use multiple apps for testing) using the BRP tool",
+    "launch_instruction": "Launch apps when instructed on port 20110 (may use multiple apps for testing) using the BRP tool",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
     "test_objective": "Test workspace parameter handling for duplicate names"
   },

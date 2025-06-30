@@ -18,11 +18,12 @@ pub static WATCH_MANAGER: std::sync::LazyLock<Arc<Mutex<WatchManager>>> =
 /// Information about an active watch
 #[derive(Debug, Clone)]
 pub struct WatchInfo {
-    pub watch_id:   u32,
-    pub entity_id:  u64,
-    pub watch_type: String,
-    pub log_path:   PathBuf,
-    pub port:       u16,
+    pub watch_id:       u32,
+    pub entity_id:      u64,
+    pub watch_type:     String,
+    pub log_path:       PathBuf,
+    pub port:           u16,
+    pub timeout_reason: Option<String>,
 }
 
 /// Manager for watch subscriptions
