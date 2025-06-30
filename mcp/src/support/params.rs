@@ -120,6 +120,20 @@ pub fn extract_optional_string<'a>(
         .unwrap_or(default)
 }
 
+/// Extract an optional bool parameter from the request with a default value
+pub fn extract_optional_bool(
+    request: &CallToolRequestParam,
+    param_name: &str,
+    default: bool,
+) -> bool {
+    request
+        .arguments
+        .as_ref()
+        .and_then(|args| args.get(param_name))
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(default)
+}
+
 /// Extract an optional number parameter from the request with a default value
 pub fn extract_optional_number(
     request: &CallToolRequestParam,

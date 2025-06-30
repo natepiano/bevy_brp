@@ -8,7 +8,7 @@ use super::tier_execution::DiscoveryResultData;
 use crate::brp_tools::request_handler::format_discovery::detection::tier_info_to_debug_strings;
 use crate::brp_tools::request_handler::format_discovery::engine::EnhancedBrpResult;
 use crate::brp_tools::request_handler::format_discovery::path_suggestions::enhance_type_mismatch_error;
-use crate::brp_tools::request_handler::format_discovery::utilities::{
+use crate::brp_tools::request_handler::format_discovery::support::{
     apply_corrections, get_parameter_location,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult, execute_brp_method};

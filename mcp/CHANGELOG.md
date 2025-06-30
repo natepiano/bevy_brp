@@ -16,9 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable timeouts for watch operations (`bevy_get_watch` and `bevy_list_watch`) with `timeout_seconds` parameter
 - Debug logging integration for watch operations controlled by global debug mode
 - Timeout status tracking in `brp_list_active_watches` output
+- Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output
 
 ### Changed
 - Improved error messages when duplicate app/example names are found across workspaces
+- `brp_list_logs` returns minimal output by default to reduce token limit errors
 
 ## [0.1.4] - Initial Release
 

@@ -965,11 +965,18 @@ pub fn get_log_tools() -> Vec<BrpToolDef> {
             handler:         HandlerType::Local {
                 handler: "list_logs",
             },
-            params:          vec![ParamDef::string(
-                "app_name",
-                "Optional filter to list logs for a specific app only",
-                false,
-            )],
+            params:          vec![
+                ParamDef::string(
+                    "app_name",
+                    "Optional filter to list logs for a specific app only",
+                    false,
+                ),
+                ParamDef::boolean(
+                    "verbose",
+                    "Include full details (path, timestamps, size in bytes). Default is false for minimal output",
+                    false,
+                ),
+            ],
             param_extractor: ParamExtractorType::Passthrough,
             formatter:       FormatterDef::default(),
         },

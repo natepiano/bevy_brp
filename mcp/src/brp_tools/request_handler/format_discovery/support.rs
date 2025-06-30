@@ -1,4 +1,4 @@
-//! Shared utilities for format discovery
+//! Shared support functionality for format discovery
 //!
 //! This module contains common functionality used across format discovery phases
 //! to avoid code duplication.

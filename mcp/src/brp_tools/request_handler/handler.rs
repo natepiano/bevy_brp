@@ -1,6 +1,3 @@
-use std::fs;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
@@ -15,13 +12,12 @@ use crate::BrpMcpService;
 use crate::brp_tools::brp_set_debug_mode;
 use crate::brp_tools::constants::{
     JSON_FIELD_DATA, JSON_FIELD_DEBUG_INFO, JSON_FIELD_FORMAT_CORRECTIONS,
-    JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT, MAX_RESPONSE_TOKENS,
+    JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{BrpMetadata, ResponseFormatter};
 use crate::error::{Error, report_to_mcp_error};
-
-const CHARS_PER_TOKEN: usize = 4;
+use crate::support::large_response::handle_brp_large_response;
 
 /// Result of parameter extraction from a request
 pub struct RequestParams {
@@ -137,63 +133,6 @@ fn resolve_brp_method(
     Ok(resolved_method)
 }
 
-/// Check if response exceeds token limit and save to file if needed
-fn handle_large_response(
-    response_data: &Value,
-    method_name: &str,
-) -> Result<Option<Value>, McpError> {
-    let response_json = serde_json::to_string(response_data).map_err(|e| -> McpError {
-        report_to_mcp_error(
-            &error_stack::Report::new(Error::General("Failed to serialize response".to_string()))
-                .attach_printable(format!("Serialization error: {e}")),
-        )
-    })?;
-
-    let estimated_tokens = response_json.len() / CHARS_PER_TOKEN;
-
-    if estimated_tokens > MAX_RESPONSE_TOKENS {
-        // Generate timestamp for unique filename
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| -> McpError {
-                report_to_mcp_error(
-                    &error_stack::Report::new(Error::General(
-                        "Failed to get timestamp".to_string(),
-                    ))
-                    .attach_printable(format!("System time error: {e}")),
-                )
-            })?
-            .as_secs();
-
-        let sanitized_method = method_name.replace('/', "_");
-        let filename = format!("brp_response_{sanitized_method}_{timestamp}.json");
-        let filepath = std::env::temp_dir().join(&filename);
-
-        // Save response to file
-        fs::write(&filepath, &response_json).map_err(|e| -> McpError {
-            report_to_mcp_error(
-                &error_stack::Report::new(Error::FileOperation(format!(
-                    "Failed to write response to {}",
-                    filepath.display()
-                )))
-                .attach_printable(format!("IO error: {e}")),
-            )
-        })?;
-
-        // Return fallback response with file information
-        let fallback_response = json!({
-            "status": "success",
-            "message": format!("Response too large ({estimated_tokens} tokens). Saved to {}", filepath.display()),
-            "filepath": filepath.to_string_lossy(),
-            "instructions": "Use Read tool to examine, Grep to search, or jq commands to filter the data."
-        });
-
-        Ok(Some(fallback_response))
-    } else {
-        Ok(None)
-    }
-}
-
 /// Add only format corrections to response data (not debug info)
 fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[FormatCorrection]) {
     if format_corrections.is_empty() {
@@ -264,7 +203,8 @@ fn process_success_response(
     let updated_formatter = context.formatter_factory.create(new_formatter_context);
 
     // Check if response is too large and use file fallback if needed
-    let final_data = handle_large_response(&response_data, method_name)?
+    let final_data = handle_brp_large_response(&response_data, method_name)
+        .map_err(|e| report_to_mcp_error(&e))?
         .map_or(response_data, |fallback_response| fallback_response);
 
     Ok(updated_formatter.format_success(&final_data, context.metadata))

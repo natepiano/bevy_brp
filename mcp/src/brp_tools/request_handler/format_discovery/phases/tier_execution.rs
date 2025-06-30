@@ -13,10 +13,10 @@ use crate::brp_tools::request_handler::format_discovery::detection::{
 use crate::brp_tools::request_handler::format_discovery::engine::{
     FormatCorrection, ParameterLocation,
 };
-use crate::brp_tools::request_handler::format_discovery::transformers::TransformerRegistry;
-use crate::brp_tools::request_handler::format_discovery::utilities::{
+use crate::brp_tools::request_handler::format_discovery::support::{
     extract_type_items, get_parameter_location,
 };
+use crate::brp_tools::request_handler::format_discovery::transformers::TransformerRegistry;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult, execute_brp_method};
 use crate::error::{Error, Result};
 use crate::tools::{BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_INSERT, BRP_METHOD_SPAWN};

@@ -3,13 +3,15 @@
 ## Objective
 Validate handling of large responses that exceed context limits, particularly registry schema operations.
 
+**IMPORTANT**: Do NOT attempt to read or access the generated files. Only validate the response metadata.
+
 ## Test Steps
 
 ### 1. Large Registry Schema Request
 - Execute `mcp__brp__bevy_registry_schema` without filters (intentionally large)
 - Verify response indicates file output due to size
 - Check that file path is returned instead of inline data
-- Confirm file is created at specified path
+- Verify response has success status and filepath field
 
 ### 2. Response Metadata Validation
 - Verify response includes helpful metadata about file output

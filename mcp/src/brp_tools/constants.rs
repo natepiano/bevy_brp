@@ -102,5 +102,3 @@ pub const JSONRPC_FIELD_PARAMS: &str = "params";
 // ============================================================================
 // Claude code MPC limitation: 25_000 tokens - but we're using heuristics so we buffer
 // ============================================================================
-/// Response size limits
-pub const MAX_RESPONSE_TOKENS: usize = 20_000;

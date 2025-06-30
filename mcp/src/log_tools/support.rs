@@ -84,7 +84,17 @@ pub struct LogFileEntry {
 
 impl LogFileEntry {
     /// Converts the entry to a JSON value for API responses
-    pub fn to_json(&self) -> serde_json::Value {
+    /// If verbose is false, returns only filename and `app_name` for minimal output
+    pub fn to_json(&self, verbose: bool) -> serde_json::Value {
+        if !verbose {
+            // Minimal output - just filename and app_name
+            return json!({
+                "filename": self.filename,
+                "app_name": self.app_name,
+            });
+        }
+
+        // Full verbose output
         let size = self.metadata.len();
         let modified = self
             .metadata
