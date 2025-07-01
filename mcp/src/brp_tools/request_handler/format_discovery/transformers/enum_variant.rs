@@ -244,6 +244,41 @@ impl EnumVariantTransformer {
         }
     }
 
+    /// Common handler for enum unit variant errors that generates enhanced error messages
+    fn handle_enum_unit_variant_error(
+        type_name: &str,
+        expected_variant_type: &str,
+        actual_variant_type: &str,
+        error_message: &str,
+    ) -> (Value, String) {
+        // Extract enum variants dynamically
+        let variants = Self::extract_enum_variants(error_message);
+        let valid_values = if variants.is_empty() {
+            vec![
+                "<variant1>".to_string(),
+                "<variant2>".to_string(),
+                "<variant3>".to_string(),
+            ]
+        } else {
+            variants
+        };
+
+        // Return format correction that explains empty path usage
+        let format_info = json!({
+            "usage": "Use empty path with variant name as value",
+            "path": "",
+            "valid_values": valid_values,
+            "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+        });
+
+        let hint = format!(
+            "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
+            valid_values.join(", ")
+        );
+
+        (format_info, hint)
+    }
+
     /// Handle missing field scenarios for enum variants
     fn handle_missing_field(
         type_name: &str,
@@ -317,7 +352,8 @@ impl FormatTransformer for EnumVariantTransformer {
                     .next()
                     .is_some_and(|c| c.is_ascii_uppercase())
             }
-            ErrorPattern::EnumUnitVariantMutation { .. } => true,
+            ErrorPattern::EnumUnitVariantMutation { .. }
+            | ErrorPattern::EnumUnitVariantAccessError { .. } => true,
             _ => false,
         }
     }
@@ -353,38 +389,22 @@ impl FormatTransformer for EnumVariantTransformer {
 
         // Handle specific error patterns
         match pattern {
-            Some(ErrorPattern::EnumUnitVariantMutation {
-                expected_variant_type,
-                actual_variant_type,
-            }) => {
-                // This is an enum unit variant mutation error
-                // Extract enum variants dynamically
-                let variants = Self::extract_enum_variants(&error.message);
-                let valid_values = if variants.is_empty() {
-                    vec![
-                        "<variant1>".to_string(),
-                        "<variant2>".to_string(),
-                        "<variant3>".to_string(),
-                    ]
-                } else {
-                    variants
-                };
-
-                // Return format correction that explains empty path usage
-                let format_info = json!({
-                    "usage": "Use empty path with variant name as value",
-                    "path": "",
-                    "valid_values": valid_values,
-                    "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
-                });
-
-                let hint = format!(
-                    "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
-                    valid_values.join(", ")
-                );
-
-                Some((format_info, hint))
-            }
+            Some(
+                ErrorPattern::EnumUnitVariantMutation {
+                    expected_variant_type,
+                    actual_variant_type,
+                }
+                | ErrorPattern::EnumUnitVariantAccessError {
+                    access: _,
+                    expected_variant_type,
+                    actual_variant_type,
+                },
+            ) => Some(Self::handle_enum_unit_variant_error(
+                &type_name,
+                &expected_variant_type,
+                &actual_variant_type,
+                &error.message,
+            )),
             Some(ErrorPattern::TypeMismatch {
                 expected,
                 actual,

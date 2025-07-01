@@ -89,3 +89,7 @@ define_regex!(
     ENUM_UNIT_VARIANT_REGEX,
     r"Expected variant field access to access a ([a-zA-Z]+) variant, found a ([a-zA-Z]+) variant instead"
 );
+define_regex!(
+    ENUM_UNIT_VARIANT_ACCESS_ERROR_REGEX,
+    r"Error accessing element with `([^`]+)` access(?:\s*\(offset \d+\))?: Expected variant field access to access a ([a-zA-Z]+) variant, found a ([a-zA-Z]+) variant instead"
+);
