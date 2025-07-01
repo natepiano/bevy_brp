@@ -69,147 +69,30 @@ pub fn discover_type_as_response(
 ) -> TypeDiscoveryResponse {
     debug_context.push(format!("Discovering type response for: {type_name}"));
 
-    // Try to get type info from registry
-    let type_info_result =
-        get_type_info_from_registry(world, type_name, debug_context.as_mut_vec());
+    let (in_registry, type_info_opt, has_serialize, has_deserialize) =
+        determine_type_capabilities(world, type_name);
 
-    let (in_registry, type_info_opt, has_serialize, has_deserialize) = type_info_result
-        .map_or_else(
-            |_| (false, None, false, false),
-            |type_info| {
-                // Check for Serialize/Deserialize traits using helper function
-                let (has_serialize, has_deserialize) = world
-                    .resource::<AppTypeRegistry>()
-                    .read()
-                    .get_with_type_path(type_name)
-                    .map_or((false, false), check_serialization_traits);
-                (true, Some(type_info), has_serialize, has_deserialize)
-            },
-        );
-
-    // Determine supported operations
-    let mut supported_operations = Vec::new();
-    if in_registry {
-        supported_operations.push("query".to_string());
-        supported_operations.push("get".to_string());
-        if has_serialize && has_deserialize {
-            supported_operations.push("spawn".to_string());
-            supported_operations.push("insert".to_string());
-        }
-        if let Some(ref type_info) = type_info_opt {
-            if is_mutable_type(type_info) {
-                supported_operations.push("mutate".to_string());
-            }
-        }
-    }
-
-    // Get mutation paths if supported
-    let mutation_paths = type_info_opt
-        .as_ref()
-        .map_or_else(HashMap::new, |type_info| {
-            if is_mutable_type(type_info) {
-                match generate_mutation_info(type_info, type_name, debug_context) {
-                    Ok(mutation_info) => mutation_info
-                        .fields
-                        .into_iter()
-                        .map(|(path, field)| (path, field.description))
-                        .collect(),
-                    Err(_) => HashMap::new(),
-                }
-            } else {
-                HashMap::new()
-            }
-        });
-
-    // Generate example values using recursive generation
-    let mut example_values = HashMap::new();
-    if type_info_opt.is_some() && has_serialize && has_deserialize {
-        // Use recursive example generation
-        let mut visited_types = Vec::new();
-        let example =
-            super::examples::generate_recursive_example(world, type_name, &mut visited_types);
-        example_values.insert("spawn".to_string(), example);
-        debug_context.push("Generated recursive example for spawn".to_string());
-    }
-
-    // Determine type category
-    let type_category = type_info_opt.as_ref().map_or_else(
-        || "Unknown".to_string(),
-        |type_info| format!("{:?}", analyze_type_info(type_info)),
+    let supported_operations = determine_supported_operations(
+        in_registry,
+        has_serialize,
+        has_deserialize,
+        type_info_opt.as_ref(),
     );
 
-    // Extract child types for complex types
-    let child_types = type_info_opt
-        .as_ref()
-        .map_or_else(HashMap::new, |type_info| {
-            use bevy::reflect::TypeInfo;
+    let mutation_paths = extract_mutation_paths(type_info_opt.as_ref(), type_name, debug_context);
 
-            use super::types::{
-                cast_type_info, extract_struct_fields, extract_tuple_struct_fields,
-            };
+    let example_values = generate_example_values(
+        world,
+        type_name,
+        type_info_opt.as_ref(),
+        has_serialize,
+        has_deserialize,
+        debug_context,
+    );
 
-            match type_info {
-                TypeInfo::Struct(_) => cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")
-                    .map_or_else(
-                        |_| HashMap::new(),
-                        |struct_info| extract_struct_fields(struct_info).into_iter().collect(),
-                    ),
-                TypeInfo::TupleStruct(_) => {
-                    cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo")
-                        .map_or_else(
-                            |_| HashMap::new(),
-                            |tuple_info| {
-                                extract_tuple_struct_fields(tuple_info)
-                                    .into_iter()
-                                    .map(|(idx, type_path)| (format!(".{idx}"), type_path))
-                                    .collect()
-                            },
-                        )
-                }
-                _ => HashMap::new(),
-            }
-        });
-
-    // Extract enum variant information
-    let enum_info = type_info_opt.as_ref().and_then(|type_info| {
-        use bevy::reflect::TypeInfo;
-
-        if let TypeInfo::Enum(_) = type_info {
-            use super::types::{cast_type_info, extract_enum_variants};
-            
-            cast_type_info(type_info, TypeInfo::as_enum, "EnumInfo")
-                .ok()
-                .map(|enum_info| {
-                    let variants = extract_enum_variants(enum_info);
-                    
-                    // Build the enum_info structure expected by MCP
-                    let mut enum_map = serde_json::Map::new();
-                    let variant_array: Vec<Value> = variants
-                        .into_iter()
-                        .map(|(name, variant_info)| {
-                            let mut variant_map = serde_json::Map::new();
-                            variant_map.insert("name".to_string(), Value::String(name));
-                            
-                            // Add variant type information
-                            use bevy::reflect::VariantType;
-                            let variant_type = match variant_info.variant_type() {
-                                VariantType::Unit => "Unit",
-                                VariantType::Tuple => "Tuple",
-                                VariantType::Struct => "Struct",
-                            };
-                            variant_map.insert("type".to_string(), Value::String(variant_type.to_string()));
-                            
-                            Value::Object(variant_map)
-                        })
-                        .collect();
-                    
-                    enum_map.insert("variants".to_string(), Value::Array(variant_array));
-                    enum_map
-                })
-        } else {
-            None
-        }
-    });
+    let type_category = determine_type_category(type_info_opt.as_ref());
+    let child_types = extract_child_types(type_info_opt.as_ref());
+    let enum_info = extract_enum_information(type_info_opt.as_ref());
 
     TypeDiscoveryResponse {
         type_name: type_name.to_string(),
@@ -223,6 +106,178 @@ pub fn discover_type_as_response(
         child_types,
         enum_info,
     }
+}
+
+/// Determine type capabilities including registry status and serialization traits
+fn determine_type_capabilities(
+    world: &World,
+    type_name: &str,
+) -> (bool, Option<bevy::reflect::TypeInfo>, bool, bool) {
+    let type_info_result = get_type_info_from_registry(world, type_name, &mut Vec::new());
+
+    type_info_result.map_or_else(
+        |_| (false, None, false, false),
+        |type_info| {
+            let (has_serialize, has_deserialize) = world
+                .resource::<AppTypeRegistry>()
+                .read()
+                .get_with_type_path(type_name)
+                .map_or((false, false), check_serialization_traits);
+            (true, Some(type_info), has_serialize, has_deserialize)
+        },
+    )
+}
+
+/// Determine which operations are supported for the type
+fn determine_supported_operations(
+    in_registry: bool,
+    has_serialize: bool,
+    has_deserialize: bool,
+    type_info_opt: Option<&bevy::reflect::TypeInfo>,
+) -> Vec<String> {
+    let mut supported_operations = Vec::new();
+
+    if in_registry {
+        supported_operations.push("query".to_string());
+        supported_operations.push("get".to_string());
+
+        if has_serialize && has_deserialize {
+            supported_operations.push("spawn".to_string());
+            supported_operations.push("insert".to_string());
+        }
+
+        if let Some(type_info) = type_info_opt {
+            if is_mutable_type(type_info) {
+                supported_operations.push("mutate".to_string());
+            }
+        }
+    }
+
+    supported_operations
+}
+
+/// Extract mutation paths for mutable types
+fn extract_mutation_paths(
+    type_info_opt: Option<&bevy::reflect::TypeInfo>,
+    type_name: &str,
+    debug_context: &mut DebugContext,
+) -> HashMap<String, String> {
+    type_info_opt.map_or_else(HashMap::new, |type_info| {
+        if is_mutable_type(type_info) {
+            match generate_mutation_info(type_info, type_name, debug_context) {
+                Ok(mutation_info) => mutation_info
+                    .fields
+                    .into_iter()
+                    .map(|(path, field)| (path, field.description))
+                    .collect(),
+                Err(_) => HashMap::new(),
+            }
+        } else {
+            HashMap::new()
+        }
+    })
+}
+
+/// Generate example values for serializable types
+fn generate_example_values(
+    world: &World,
+    type_name: &str,
+    type_info_opt: Option<&bevy::reflect::TypeInfo>,
+    has_serialize: bool,
+    has_deserialize: bool,
+    debug_context: &mut DebugContext,
+) -> HashMap<String, Value> {
+    let mut example_values = HashMap::new();
+
+    if type_info_opt.is_some() && has_serialize && has_deserialize {
+        let mut visited_types = Vec::new();
+        let example =
+            super::examples::generate_recursive_example(world, type_name, &mut visited_types);
+        example_values.insert("spawn".to_string(), example);
+        debug_context.push("Generated recursive example for spawn".to_string());
+    }
+
+    example_values
+}
+
+/// Determine the category of the type
+fn determine_type_category(type_info_opt: Option<&bevy::reflect::TypeInfo>) -> String {
+    type_info_opt.map_or_else(
+        || "Unknown".to_string(),
+        |type_info| format!("{:?}", analyze_type_info(type_info)),
+    )
+}
+
+/// Extract child types for complex types like structs and tuples
+fn extract_child_types(type_info_opt: Option<&bevy::reflect::TypeInfo>) -> HashMap<String, String> {
+    use bevy::reflect::TypeInfo;
+
+    use super::types::{cast_type_info, extract_struct_fields, extract_tuple_struct_fields};
+
+    type_info_opt.map_or_else(HashMap::new, |type_info| match type_info {
+        TypeInfo::Struct(_) => cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")
+            .map_or_else(
+                |_| HashMap::new(),
+                |struct_info| extract_struct_fields(struct_info).into_iter().collect(),
+            ),
+        TypeInfo::TupleStruct(_) => {
+            cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo").map_or_else(
+                |_| HashMap::new(),
+                |tuple_info| {
+                    extract_tuple_struct_fields(tuple_info)
+                        .into_iter()
+                        .map(|(idx, type_path)| (format!(".{idx}"), type_path))
+                        .collect()
+                },
+            )
+        }
+        _ => HashMap::new(),
+    })
+}
+
+/// Extract enum variant information
+fn extract_enum_information(
+    type_info_opt: Option<&bevy::reflect::TypeInfo>,
+) -> Option<serde_json::Map<String, Value>> {
+    use bevy::reflect::{TypeInfo, VariantType};
+
+    use super::types::{cast_type_info, extract_enum_variants};
+
+    type_info_opt.and_then(|type_info| {
+        if let TypeInfo::Enum(_) = type_info {
+            cast_type_info(type_info, TypeInfo::as_enum, "EnumInfo")
+                .ok()
+                .map(|enum_info| {
+                    let variants = extract_enum_variants(enum_info);
+
+                    let mut enum_map = serde_json::Map::new();
+                    let variant_array: Vec<Value> = variants
+                        .into_iter()
+                        .map(|(name, variant_info)| {
+                            let mut variant_map = serde_json::Map::new();
+                            variant_map.insert("name".to_string(), Value::String(name));
+
+                            let variant_type = match variant_info.variant_type() {
+                                VariantType::Unit => "Unit",
+                                VariantType::Tuple => "Tuple",
+                                VariantType::Struct => "Struct",
+                            };
+                            variant_map.insert(
+                                "type".to_string(),
+                                Value::String(variant_type.to_string()),
+                            );
+
+                            Value::Object(variant_map)
+                        })
+                        .collect();
+
+                    enum_map.insert("variants".to_string(), Value::Array(variant_array));
+                    enum_map
+                })
+        } else {
+            None
+        }
+    })
 }
 
 /// Discover format information for multiple component types

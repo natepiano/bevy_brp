@@ -165,10 +165,7 @@ impl ResponseFormatter {
         }
 
         // Auto-inject debug info at response level if debug mode is enabled
-        builder = builder.auto_inject_debug_info(
-            self.context.brp_mcp_debug_info.as_ref(),
-            brp_extras_debug_info.as_ref(),
-        );
+        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
 
         Ok(builder.build())
     }
@@ -200,8 +197,7 @@ impl ResponseFormatter {
             }
 
             // Build the error response, handling Results from ResponseBuilder methods
-            let response = self
-                .build_error_response(&error, metadata_obj, metadata)
+            let response = Self::build_error_response(&error, metadata_obj, metadata)
                 .unwrap_or_else(|_| {
                     ResponseBuilder::error()
                         .message("Failed to format error response")
@@ -213,7 +209,6 @@ impl ResponseFormatter {
     }
 
     fn build_error_response(
-        &self,
         error: &BrpError,
         metadata_obj: Value,
         metadata: &BrpMetadata,
@@ -266,10 +261,7 @@ impl ResponseFormatter {
         }
 
         // Auto-inject debug info at response level if debug mode is enabled
-        builder = builder.auto_inject_debug_info(
-            self.context.brp_mcp_debug_info.as_ref(),
-            brp_extras_debug_info.as_ref(),
-        );
+        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
 
         Ok(builder.build())
     }
@@ -504,8 +496,7 @@ mod tests {
         };
 
         let context = FormatterContext {
-            params:             Some(json!({ "entity": 123 })),
-            brp_mcp_debug_info: None,
+            params: Some(json!({ "entity": 123 })),
         };
 
         let formatter = ResponseFormatter::new(config, context);
@@ -533,8 +524,7 @@ mod tests {
         };
 
         let context = FormatterContext {
-            params:             Some(json!({ "entity": 456 })),
-            brp_mcp_debug_info: None,
+            params: Some(json!({ "entity": 456 })),
         };
 
         let formatter = ResponseFormatter::new(config, context);
@@ -561,10 +551,7 @@ mod tests {
             use_default_error:     true,
         };
 
-        let context = FormatterContext {
-            params:             None,
-            brp_mcp_debug_info: None,
-        };
+        let context = FormatterContext { params: None };
 
         let formatter = ResponseFormatter::new(config, context);
         let metadata = BrpMetadata::new("bevy/test", DEFAULT_BRP_PORT);
@@ -591,8 +578,7 @@ mod tests {
             .build();
 
         let context = FormatterContext {
-            params:             Some(json!({ "entity": 789 })),
-            brp_mcp_debug_info: None,
+            params: Some(json!({ "entity": 789 })),
         };
 
         let formatter = factory.create(context);
@@ -608,10 +594,7 @@ mod tests {
     fn test_pass_through_builder() {
         let factory = ResponseFormatterFactory::pass_through().build();
 
-        let context = FormatterContext {
-            params:             None,
-            brp_mcp_debug_info: None,
-        };
+        let context = FormatterContext { params: None };
 
         let formatter = factory.create(context);
         let metadata = BrpMetadata::new("bevy/query", DEFAULT_BRP_PORT);
@@ -626,11 +609,10 @@ mod tests {
     #[test]
     fn test_extractors() {
         let context = FormatterContext {
-            params:             Some(json!({
+            params: Some(json!({
                 "entity": 100,
                 "resource": "TestResource"
             })),
-            brp_mcp_debug_info: None,
         };
 
         let data = json!({"result": "success"});
@@ -654,10 +636,9 @@ mod tests {
 
         // Test components_from_params extractor
         let components_context = FormatterContext {
-            params:             Some(json!({
+            params: Some(json!({
                 "components": ["Transform", "Sprite"]
             })),
-            brp_mcp_debug_info: None,
         };
         assert_eq!(
             extractors::components_from_params(&data, &components_context),

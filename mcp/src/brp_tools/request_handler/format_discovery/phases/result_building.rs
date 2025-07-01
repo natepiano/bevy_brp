@@ -2,6 +2,7 @@
 //! This module handles building the final enhanced BRP result
 
 use serde_json::Value;
+use tracing::trace;
 
 use super::context::DiscoveryContext;
 use super::tier_execution::DiscoveryResultData;
@@ -16,16 +17,16 @@ use crate::error::Result;
 
 /// Builds the final enhanced BRP result with debug information
 pub async fn build_final_result(
-    context: &mut DiscoveryContext,
+    context: &DiscoveryContext,
     discovery_data: DiscoveryResultData,
 ) -> Result<EnhancedBrpResult> {
-    // Add tier information to debug_info
-    context
-        .debug_info
-        .extend(tier_info_to_debug_strings(&discovery_data.all_tier_info));
+    // Log tier information to tracing
+    for debug_line in tier_info_to_debug_strings(&discovery_data.all_tier_info) {
+        trace!("Tier info: {}", debug_line);
+    }
 
     if discovery_data.format_corrections.is_empty() {
-        context.add_debug("Format Discovery: No corrections were possible".to_string());
+        DiscoveryContext::add_debug("Format Discovery: No corrections were possible".to_string());
 
         // Return the original error, enhanced with path suggestions if applicable
         let original_error = context.initial_error.clone().unwrap_or_else(|| BrpError {
@@ -42,7 +43,6 @@ pub async fn build_final_result(
         Ok(EnhancedBrpResult {
             result:             BrpResult::Error(enhanced_error),
             format_corrections: Vec::new(),
-            debug_info:         context.debug_info.clone(),
         })
     } else {
         // Apply corrections and retry
@@ -52,7 +52,7 @@ pub async fn build_final_result(
             .filter(|correction| correction.has_rich_metadata())
             .count();
 
-        context.add_debug(format!(
+        DiscoveryContext::add_debug(format!(
             "Format Discovery: Found {} corrections ({} with rich metadata), retrying request",
             discovery_data.format_corrections.len(),
             corrections_with_metadata
@@ -65,12 +65,11 @@ pub async fn build_final_result(
         let result =
             execute_brp_method(&context.method, Some(corrected_params), context.port).await?;
 
-        context.add_debug(format!("Format Discovery: Retry result: {result:?}"));
+        DiscoveryContext::add_debug(format!("Format Discovery: Retry result: {result:?}"));
 
         Ok(EnhancedBrpResult {
             result,
             format_corrections: discovery_data.format_corrections,
-            debug_info: context.debug_info.clone(),
         })
     }
 }

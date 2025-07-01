@@ -2,6 +2,7 @@
 //! This module handles the tiered approach to format discovery
 
 use serde_json::Value;
+use tracing::{debug, trace};
 
 use super::context::DiscoveryContext;
 use crate::brp_tools::request_handler::format_discovery::constants::{
@@ -64,7 +65,7 @@ pub struct DiscoveryResultData {
 
 /// Runs the discovery tiers to find correct format
 /// This is the main entry point for attempting format discovery after an error
-pub async fn run_discovery_tiers(context: &mut DiscoveryContext) -> Result<DiscoveryResultData> {
+pub async fn run_discovery_tiers(context: &DiscoveryContext) -> Result<DiscoveryResultData> {
     let error = context
         .initial_error
         .as_ref()
@@ -79,14 +80,9 @@ pub async fn run_discovery_tiers(context: &mut DiscoveryContext) -> Result<Disco
     let (_location, type_items) = extract_discovery_context(context)?;
 
     // Phase 2: Processing
-    let (format_corrections, corrected_items, all_tier_info) = process_type_items_for_corrections(
-        &type_items,
-        &context.method,
-        context.port,
-        &error,
-        &mut context.debug_info,
-    )
-    .await?;
+    let (format_corrections, corrected_items, all_tier_info) =
+        process_type_items_for_corrections(&type_items, &context.method, context.port, &error)
+            .await?;
 
     Ok(DiscoveryResultData {
         format_corrections,
@@ -97,16 +93,16 @@ pub async fn run_discovery_tiers(context: &mut DiscoveryContext) -> Result<Disco
 
 /// Extract parameter location and type items from params
 fn extract_discovery_context(
-    context: &mut DiscoveryContext,
+    context: &DiscoveryContext,
 ) -> Result<(ParameterLocation, Vec<(String, Value)>)> {
-    context.add_debug(format!(
+    DiscoveryContext::add_debug(format!(
         "Format Discovery: Attempting discovery for method '{}'",
         context.method
     ));
 
     // Get parameter location based on method
     let location = get_parameter_location(&context.method);
-    context.add_debug(format!(
+    DiscoveryContext::add_debug(format!(
         "Format Discovery: Parameter location: {location:?}"
     ));
 
@@ -120,13 +116,13 @@ fn extract_discovery_context(
     let type_items = extract_type_items(params, location);
 
     if type_items.is_empty() {
-        context.add_debug("Format Discovery: No type items found in params".to_string());
+        DiscoveryContext::add_debug("Format Discovery: No type items found in params".to_string());
         return Err(error_stack::report!(Error::InvalidState(
             "No type items found for format discovery".to_string(),
         )));
     }
 
-    context.add_debug(format!(
+    DiscoveryContext::add_debug(format!(
         "Format Discovery: Found {} type items to check",
         type_items.len()
     ));
@@ -140,7 +136,6 @@ async fn process_type_items_for_corrections(
     method: &str,
     port: Option<u16>,
     original_error: &BrpError,
-    debug_info: &mut Vec<String>,
 ) -> Result<(Vec<FormatCorrection>, Vec<(String, Value)>, Vec<TierInfo>)> {
     let mut format_corrections = Vec::new();
     let mut corrected_items = Vec::new();
@@ -148,15 +143,8 @@ async fn process_type_items_for_corrections(
 
     // Process each type item
     for (type_name, type_value) in type_items {
-        let (discovery_result, tier_info, facts) = process_single_type_item(
-            type_name,
-            type_value,
-            method,
-            port,
-            original_error,
-            debug_info,
-        )
-        .await?;
+        let (discovery_result, tier_info, facts) =
+            process_single_type_item(type_name, type_value, method, port, original_error).await?;
 
         all_tier_info.extend(tier_info);
 
@@ -192,32 +180,25 @@ async fn process_single_type_item(
     method: &str,
     port: Option<u16>,
     original_error: &BrpError,
-    debug_info: &mut Vec<String>,
 ) -> Result<(Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts)> {
-    log_type_processing_start(type_name, type_value, debug_info);
+    log_type_processing_start(type_name, type_value);
 
-    let (discovery_result, tier_info, facts) = perform_type_discovery(
-        type_name,
-        type_value,
-        method,
-        original_error,
-        port,
-        debug_info,
-    )
-    .await;
+    let (discovery_result, tier_info, facts) =
+        perform_type_discovery(type_name, type_value, method, original_error, port).await;
 
     let enriched_tier_info = enrich_tier_info_with_type_context(tier_info, type_name);
 
-    let result = build_discovery_result(discovery_result, type_name, debug_info);
+    let result = build_discovery_result(discovery_result, type_name);
 
     Ok((result, enriched_tier_info, facts))
 }
 
 /// Log the start of type processing for debugging
-fn log_type_processing_start(type_name: &str, type_value: &Value, debug_info: &mut Vec<String>) {
-    debug_info.push(format!(
-        "Format Discovery: Checking type '{type_name}' with value: {type_value:?}"
-    ));
+fn log_type_processing_start(type_name: &str, type_value: &Value) {
+    debug!(
+        "Format Discovery: Checking type '{}' with value: {:?}",
+        type_name, type_value
+    );
 }
 
 /// Perform the actual type discovery using the tiered approach
@@ -227,17 +208,8 @@ async fn perform_type_discovery(
     method: &str,
     original_error: &BrpError,
     port: Option<u16>,
-    debug_info: &mut Vec<String>,
 ) -> (Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts) {
-    tiered_type_format_discovery(
-        type_name,
-        type_value,
-        method,
-        original_error,
-        port,
-        debug_info,
-    )
-    .await
+    tiered_type_format_discovery(type_name, type_value, method, original_error, port).await
 }
 
 /// Add type context to tier info for better debugging
@@ -255,17 +227,15 @@ fn enrich_tier_info_with_type_context(
 fn build_discovery_result(
     discovery_result: Option<(Value, String)>,
     type_name: &str,
-    debug_info: &mut Vec<String>,
 ) -> Option<(Value, String)> {
     if let Some((corrected_value, hint)) = discovery_result {
-        debug_info.push(format!(
-            "Format Discovery: Found alternative for '{type_name}': {corrected_value:?}"
-        ));
+        debug!(
+            "Format Discovery: Found alternative for '{}': {:?}",
+            type_name, corrected_value
+        );
         Some((corrected_value, hint))
     } else {
-        debug_info.push(format!(
-            "Format Discovery: No alternative found for '{type_name}'"
-        ));
+        debug!("Format Discovery: No alternative found for '{}'", type_name);
         None
     }
 }
@@ -278,7 +248,6 @@ async fn tiered_type_format_discovery(
     method: &str,
     error: &BrpError,
     port: Option<u16>,
-    debug_info: &mut Vec<String>,
 ) -> (Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts) {
     let mut tier_manager = TierManager::new();
     let mut facts = DiscoveredFacts::new();
@@ -304,7 +273,6 @@ async fn tiered_type_format_discovery(
         port,
         &mut tier_manager,
         &mut facts,
-        debug_info,
     )
     .await;
 
@@ -425,7 +393,6 @@ async fn gather_direct_discovery_facts(
     port: Option<u16>,
     tier_manager: &mut TierManager,
     facts: &mut DiscoveredFacts,
-    debug_info: &mut Vec<String>,
 ) {
     tier_manager.start_tier(
         TIER_DIRECT_DISCOVERY,
@@ -437,21 +404,22 @@ async fn gather_direct_discovery_facts(
 
     if let Some(data) = discovery_response {
         // Add debug logging here
-        debug_info.push(format!(
-            "Direct discovery response received for {type_name}: {data:?}"
-        ));
-        populate_facts_from_discovery(&data, type_name, original_value, facts, debug_info);
-        debug_info.push(format!(
+        debug!(
+            "Direct discovery response received for {}: {:?}",
+            type_name, data
+        );
+        populate_facts_from_discovery(&data, type_name, original_value, facts);
+        debug!(
             "Facts after direct discovery - enum_variants: {:?}",
             facts.enum_variants
-        ));
+        );
         tier_manager.complete_tier(true, "Direct discovery facts gathered".to_string());
     } else {
-        debug_info.push("Direct discovery failed, trying schema fallback".to_string());
+        debug!("Direct discovery failed, trying schema fallback");
         // Try schema fallback when bevy_brp_extras is unavailable
         let schema_response = execute_schema_fallback_request(type_name, port).await;
         if let Some(schema_data) = schema_response {
-            populate_facts_from_schema(&schema_data, type_name, facts, debug_info);
+            populate_facts_from_schema(&schema_data, type_name, facts);
             tier_manager.complete_tier(true, "Schema fallback facts gathered".to_string());
         } else {
             tier_manager.complete_tier(
@@ -516,24 +484,21 @@ fn populate_facts_from_discovery(
     type_name: &str,
     _original_value: &Value,
     facts: &mut DiscoveredFacts,
-    debug_info: &mut Vec<String>,
 ) {
-    debug_info.push(format!(
+    trace!(
         "populate_facts_from_discovery - raw data keys: {:?}",
         data.as_object().map(|o| o.keys().collect::<Vec<_>>())
-    ));
+    );
 
     // Try new TypeDiscoveryResponse format first
     if let Some(type_info) = data.get("type_info").and_then(|ti| ti.as_object()) {
-        debug_info.push(format!(
+        trace!(
             "Found type_info with keys: {:?}",
             type_info.keys().collect::<Vec<_>>()
-        ));
+        );
         if let Some(type_response) = type_info.get(type_name) {
-            debug_info.push(format!(
-                "Found type_response for {type_name}: {type_response:?}"
-            ));
-            extract_facts_from_type_response(type_response, facts, debug_info);
+            trace!("Found type_response for {}: {:?}", type_name, type_response);
+            extract_facts_from_type_response(type_response, facts);
         }
     }
 
@@ -542,17 +507,13 @@ fn populate_facts_from_discovery(
 }
 
 /// Extract facts from the new `TypeDiscoveryResponse` format
-fn extract_facts_from_type_response(
-    type_response: &Value,
-    facts: &mut DiscoveredFacts,
-    debug_info: &mut Vec<String>,
-) {
+fn extract_facts_from_type_response(type_response: &Value, facts: &mut DiscoveredFacts) {
     extract_spawn_example(type_response, facts);
     extract_supported_operations(type_response, facts);
     extract_mutation_paths(type_response, facts);
     extract_registry_and_serialization_info(type_response, facts);
     extract_type_category(type_response, facts);
-    extract_enum_variants(type_response, facts, debug_info);
+    extract_enum_variants(type_response, facts);
 }
 
 /// Extract spawn example from type response
@@ -638,26 +599,19 @@ fn extract_type_category(type_response: &Value, facts: &mut DiscoveredFacts) {
 }
 
 /// Extract enum variants from type response
-fn extract_enum_variants(
-    type_response: &Value,
-    facts: &mut DiscoveredFacts,
-    debug_info: &mut Vec<String>,
-) {
-    debug_info.push(format!(
+fn extract_enum_variants(type_response: &Value, facts: &mut DiscoveredFacts) {
+    trace!(
         "extract_enum_variants - type_response keys: {:?}",
         type_response
             .as_object()
             .map(|o| o.keys().collect::<Vec<_>>())
-    ));
+    );
 
     if let Some(enum_info) = type_response.get("enum_info") {
-        debug_info.push(format!("Found enum_info: {enum_info:?}"));
+        trace!("Found enum_info: {:?}", enum_info);
         if let Some(variants) = enum_info.get("variants").and_then(|v| v.as_array()) {
-            debug_info.push(format!(
-                "Found variants array with {} items",
-                variants.len()
-            ));
-            debug_info.push(format!("First variant structure: {:?}", variants.first()));
+            trace!("Found variants array with {} items", variants.len());
+            trace!("First variant structure: {:?}", variants.first());
 
             let variant_names: Vec<String> = variants
                 .iter()
@@ -665,20 +619,21 @@ fn extract_enum_variants(
                     let name = variant
                         .get("name")
                         .and_then(|name| name.as_str().map(String::from));
-                    debug_info.push(format!(
-                        "Variant extraction - variant: {variant:?}, extracted name: {name:?}"
-                    ));
+                    trace!(
+                        "Variant extraction - variant: {:?}, extracted name: {:?}",
+                        variant, name
+                    );
                     name
                 })
                 .collect();
 
-            debug_info.push(format!("Extracted variant names: {variant_names:?}"));
+            trace!("Extracted variant names: {:?}", variant_names);
             if !variant_names.is_empty() {
                 facts.enum_variants = Some(variant_names);
             }
         }
     } else {
-        debug_info.push("No enum_info found in type_response".to_string());
+        trace!("No enum_info found in type_response");
     }
 }
 
@@ -700,70 +655,60 @@ fn extract_legacy_format(data: &Value, type_name: &str, facts: &mut DiscoveredFa
 }
 
 /// Populate facts structure from schema response data
-fn populate_facts_from_schema(
-    schema_data: &Value,
-    type_name: &str,
-    facts: &mut DiscoveredFacts,
-    debug_info: &mut Vec<String>,
-) {
-    debug_info.push("populate_facts_from_schema - Using schema fallback path".to_string());
-    debug_info.push(format!(
+fn populate_facts_from_schema(schema_data: &Value, type_name: &str, facts: &mut DiscoveredFacts) {
+    trace!("populate_facts_from_schema - Using schema fallback path");
+    trace!(
         "Schema data keys: {:?}",
         schema_data
             .as_object()
             .map(|o| o.keys().collect::<Vec<_>>())
-    ));
+    );
 
     // Schema data contains type information at "types" key
     if let Some(types) = schema_data.get("types").and_then(|t| t.as_object()) {
-        debug_info.push(format!("Found {} types in schema", types.len()));
+        trace!("Found {} types in schema", types.len());
         if let Some(type_info) = types.get(type_name) {
-            debug_info.push(format!(
-                "Found type_info for {type_name} in schema: {type_info:?}"
-            ));
-            extract_schema_facts(type_info, facts, debug_info);
+            trace!(
+                "Found type_info for {} in schema: {:?}",
+                type_name, type_info
+            );
+            extract_schema_facts(type_info, facts);
         } else {
-            debug_info.push(format!("Type {type_name} not found in schema"));
+            trace!("Type {} not found in schema", type_name);
         }
     }
 }
 
 /// Extract facts from schema type information
-fn extract_schema_facts(
-    type_info: &Value,
-    facts: &mut DiscoveredFacts,
-    debug_info: &mut Vec<String>,
-) {
-    debug_info.push("extract_schema_facts - Extracting from schema".to_string());
-    debug_info.push(format!(
+fn extract_schema_facts(type_info: &Value, facts: &mut DiscoveredFacts) {
+    trace!("extract_schema_facts - Extracting from schema");
+    trace!(
         "Schema type_info keys: {:?}",
         type_info.as_object().map(|o| o.keys().collect::<Vec<_>>())
-    ));
+    );
 
     // Mark as in registry since we found it in the schema
     facts.in_registry = Some(true);
 
     // Extract enum variants from schema enum_info
     if let Some(enum_info) = type_info.get("enum_info") {
-        debug_info.push(format!("Found enum_info in schema: {enum_info:?}"));
+        trace!("Found enum_info in schema: {:?}", enum_info);
         if let Some(variants) = enum_info.get("variants").and_then(|v| v.as_array()) {
-            debug_info.push(format!(
+            trace!(
                 "Found variants array in schema with {} items",
                 variants.len()
-            ));
+            );
             let variant_names: Vec<String> = variants
                 .iter()
                 .filter_map(|variant| variant.as_str().map(String::from))
                 .collect();
-            debug_info.push(format!(
-                "Extracted variant names from schema: {variant_names:?}"
-            ));
+            trace!("Extracted variant names from schema: {:?}", variant_names);
             if !variant_names.is_empty() {
                 facts.enum_variants = Some(variant_names);
             }
         }
     } else {
-        debug_info.push("No enum_info found in schema type_info".to_string());
+        trace!("No enum_info found in schema type_info");
     }
 
     // Extract type category from reflect types

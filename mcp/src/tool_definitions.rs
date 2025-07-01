@@ -36,19 +36,19 @@ use crate::brp_tools::constants::{
 use crate::constants::PARAM_PATH;
 use crate::tools::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
-    BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
-    BRP_METHOD_GET_RESOURCE, BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_LIST,
-    BRP_METHOD_LIST_RESOURCES, BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE,
-    BRP_METHOD_REMOVE, BRP_METHOD_REMOVE_RESOURCE, BRP_METHOD_RPC_DISCOVER, DESC_BEVY_DESTROY,
-    DESC_BEVY_GET, DESC_BEVY_GET_RESOURCE, DESC_BEVY_INSERT, DESC_BEVY_INSERT_RESOURCE,
-    DESC_BEVY_LIST, DESC_BEVY_LIST_RESOURCES, DESC_BEVY_MUTATE_COMPONENT,
-    DESC_BEVY_MUTATE_RESOURCE, DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_RPC_DISCOVER,
+    BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_GET, BRP_METHOD_GET_RESOURCE, BRP_METHOD_INSERT,
+    BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_LIST, BRP_METHOD_LIST_RESOURCES,
+    BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_REMOVE,
+    BRP_METHOD_REMOVE_RESOURCE, BRP_METHOD_RPC_DISCOVER, DESC_BEVY_DESTROY, DESC_BEVY_GET,
+    DESC_BEVY_GET_RESOURCE, DESC_BEVY_INSERT, DESC_BEVY_INSERT_RESOURCE, DESC_BEVY_LIST,
+    DESC_BEVY_LIST_RESOURCES, DESC_BEVY_MUTATE_COMPONENT, DESC_BEVY_MUTATE_RESOURCE,
+    DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_RPC_DISCOVER,
     DESC_BRP_EXTRAS_DISCOVER_FORMAT, DESC_BRP_EXTRAS_SCREENSHOT, DESC_BRP_EXTRAS_SEND_KEYS,
-    DESC_BRP_EXTRAS_SET_DEBUG_MODE, TOOL_BEVY_DESTROY, TOOL_BEVY_GET, TOOL_BEVY_GET_RESOURCE,
-    TOOL_BEVY_INSERT, TOOL_BEVY_INSERT_RESOURCE, TOOL_BEVY_LIST, TOOL_BEVY_LIST_RESOURCES,
+    TOOL_BEVY_DESTROY, TOOL_BEVY_GET, TOOL_BEVY_GET_RESOURCE, TOOL_BEVY_INSERT,
+    TOOL_BEVY_INSERT_RESOURCE, TOOL_BEVY_LIST, TOOL_BEVY_LIST_RESOURCES,
     TOOL_BEVY_MUTATE_COMPONENT, TOOL_BEVY_MUTATE_RESOURCE, TOOL_BEVY_REMOVE,
     TOOL_BEVY_REMOVE_RESOURCE, TOOL_BEVY_RPC_DISCOVER, TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
-    TOOL_BRP_EXTRAS_SCREENSHOT, TOOL_BRP_EXTRAS_SEND_KEYS, TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
+    TOOL_BRP_EXTRAS_SCREENSHOT, TOOL_BRP_EXTRAS_SEND_KEYS,
 };
 
 /// Represents a parameter definition for a BRP tool
@@ -756,36 +756,6 @@ pub fn get_standard_tools() -> Vec<BrpToolDef> {
                     },
                     ResponseField {
                         name:      "duration_ms",
-                        extractor: ExtractorType::PassThroughData,
-                    },
-                ],
-            },
-        },
-        BrpToolDef {
-            name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
-            description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-            handler:         HandlerType::Brp {
-                method: BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
-            },
-            params:          vec![
-                ParamDef::boolean(
-                    "enabled",
-                    "Set to true to enable debug output, false to disable",
-                    true,
-                ),
-                ParamDef::port(),
-            ],
-            param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef {
-                formatter_type:  FormatterType::Simple,
-                template:        "{message}",
-                response_fields: vec![
-                    ResponseField {
-                        name:      "message",
-                        extractor: ExtractorType::PassThroughData,
-                    },
-                    ResponseField {
-                        name:      "debug_enabled",
                         extractor: ExtractorType::PassThroughData,
                     },
                 ],

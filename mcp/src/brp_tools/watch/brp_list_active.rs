@@ -61,7 +61,7 @@ fn build_response(watches_json: &[Value]) -> Result<crate::support::response::Js
         .message(format!("Found {} active watches", watches_json.len()))
         .add_field(JSON_FIELD_WATCHES, watches_json)?
         .add_field(JSON_FIELD_COUNT, watches_json.len())?
-        .auto_inject_debug_info(None::<&serde_json::Value>, None::<&serde_json::Value>)
+        .auto_inject_debug_info(None::<&serde_json::Value>)
         .build();
 
     Ok(response)

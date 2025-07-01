@@ -111,7 +111,6 @@ define_method!(brp_extras, shutdown);
 define_method!(brp_extras, screenshot);
 define_method!(brp_extras, discover_format);
 define_method!(brp_extras, send_keys);
-define_method!(brp_extras, set_debug_mode);
 
 // -----------------------------------------------------------------------------
 // Server-Only BRP Tools (not direct protocol methods)
@@ -121,7 +120,8 @@ define_method!(brp_extras, set_debug_mode);
 define_method!(brp, status);
 define_method!(brp, stop_watch);
 define_method!(brp, list_active_watches);
-define_method!(brp, set_debug_mode);
+define_method!(brp, set_tracing_level);
+define_method!(brp, get_trace_log_path);
 
 // -----------------------------------------------------------------------------
 // Application Management Tools

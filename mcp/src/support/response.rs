@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::app_tools::support::scanning::extract_workspace_name;
-use crate::brp_tools::brp_set_debug_mode::is_debug_enabled;
 use crate::error::{Error, Result};
 
 /// Standard JSON response structure for all tools
@@ -14,8 +13,6 @@ pub struct JsonResponse {
     pub message:               String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data:                  Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub brp_mcp_debug_info:    Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brp_extras_debug_info: Option<Value>,
 }
@@ -51,7 +48,6 @@ pub struct ResponseBuilder {
     status:                ResponseStatus,
     message:               String,
     data:                  Option<Value>,
-    brp_mcp_debug_info:    Option<Value>,
     brp_extras_debug_info: Option<Value>,
 }
 
@@ -61,7 +57,6 @@ impl ResponseBuilder {
             status:                ResponseStatus::Success,
             message:               String::new(),
             data:                  None,
-            brp_mcp_debug_info:    None,
             brp_extras_debug_info: None,
         }
     }
@@ -71,7 +66,6 @@ impl ResponseBuilder {
             status:                ResponseStatus::Error,
             message:               String::new(),
             data:                  None,
-            brp_mcp_debug_info:    None,
             brp_extras_debug_info: None,
         }
     }
@@ -110,20 +104,7 @@ impl ResponseBuilder {
 
     /// Auto-inject debug info if debug mode is enabled
     /// This should be called before `build()` to ensure debug info is included when appropriate
-    pub fn auto_inject_debug_info(
-        mut self,
-        brp_mcp_debug: Option<impl Serialize>,
-        brp_extras_debug: Option<impl Serialize>,
-    ) -> Self {
-        // Only inject BRP MCP debug info if MCP debug mode is enabled and debug info is provided
-        if is_debug_enabled() {
-            if let Some(debug_info) = brp_mcp_debug {
-                if let Ok(serialized) = serde_json::to_value(&debug_info) {
-                    self.brp_mcp_debug_info = Some(serialized);
-                }
-            }
-        }
-
+    pub fn auto_inject_debug_info(mut self, brp_extras_debug: Option<impl Serialize>) -> Self {
         // Always inject BRP extras debug info if it's provided (means extras debug is enabled)
         if let Some(debug_info) = brp_extras_debug {
             if let Ok(serialized) = serde_json::to_value(&debug_info) {
@@ -139,7 +120,6 @@ impl ResponseBuilder {
             status:                self.status,
             message:               self.message,
             data:                  self.data,
-            brp_mcp_debug_info:    self.brp_mcp_debug_info,
             brp_extras_debug_info: self.brp_extras_debug_info,
         }
     }

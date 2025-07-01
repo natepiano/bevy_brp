@@ -118,5 +118,15 @@
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app",
     "expected_shutdown_method": "clean_shutdown"
+  },
+  {
+    "test_name": "tracing",
+    "test_file": ".claude/commands/tests/tracing.md",
+    "port": 20112,
+    "app_name": "extras_plugin",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20112",
+    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "test_objective": "Test MCP tracing system, extras debug mode, and integration with 'do no harm' validation",
+    "expected_shutdown_method": "clean_shutdown"
   }
 ]

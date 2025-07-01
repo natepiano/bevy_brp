@@ -65,7 +65,11 @@ impl BufferedWatchLogger {
         update_type: &str,
         data: serde_json::Value,
     ) -> Result<(), String> {
-        if crate::brp_tools::brp_set_debug_mode::is_debug_enabled() {
+        if matches!(
+            crate::brp_tools::brp_set_tracing_level::get_current_level(),
+            crate::support::tracing::TracingLevel::Debug
+                | crate::support::tracing::TracingLevel::Trace
+        ) {
             self.write_update(update_type, data).await
         } else {
             Ok(())

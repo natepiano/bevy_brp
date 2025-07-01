@@ -339,14 +339,11 @@ pub fn build_final_launch_response(
                     },
                     |builder| {
                         builder
-                            .auto_inject_debug_info(
-                                if debug_info.is_empty() {
-                                    None
-                                } else {
-                                    Some(debug_info)
-                                },
-                                None::<Vec<String>>,
-                            )
+                            .auto_inject_debug_info(if debug_info.is_empty() {
+                                None
+                            } else {
+                                Some(debug_info)
+                            })
                             .build()
                     },
                 );

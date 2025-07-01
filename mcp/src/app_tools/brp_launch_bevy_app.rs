@@ -8,11 +8,12 @@ use serde_json::json;
 
 use super::support::{launch_common, process, scanning};
 use crate::BrpMcpService;
-use crate::brp_tools::brp_set_debug_mode::is_debug_enabled;
+use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
 use crate::error::{Error, report_to_mcp_error};
+use crate::support::tracing::TracingLevel;
 use crate::support::{params, service};
 
 pub async fn handle(
@@ -73,7 +74,10 @@ pub fn launch_bevy_app(
     // Get the manifest directory (parent of Cargo.toml)
     let manifest_dir = launch_common::validate_manifest_directory(&app.manifest_path)?;
 
-    if is_debug_enabled() {
+    if matches!(
+        get_current_level(),
+        TracingLevel::Debug | TracingLevel::Trace
+    ) {
         launch_common::collect_launch_debug_info(
             app_name,
             "app",
@@ -108,7 +112,10 @@ pub fn launch_bevy_app(
     let launch_end = Instant::now();
 
     // Collect enhanced debug info if enabled
-    if is_debug_enabled() {
+    if matches!(
+        get_current_level(),
+        TracingLevel::Debug | TracingLevel::Trace
+    ) {
         launch_common::collect_complete_launch_debug_info(
             launch_common::LaunchDebugParams {
                 name: app_name,
