@@ -8,6 +8,7 @@ use super::constants::*;
 use super::detection::{ErrorPattern, analyze_error_pattern};
 use super::engine::FormatCorrection;
 use super::phases::error_analysis::is_type_format_error;
+use super::phases::tier_execution::DiscoveredFacts;
 use super::transformers::TransformerRegistry;
 use crate::brp_tools::support::brp_client::BrpError;
 
@@ -120,7 +121,8 @@ fn test_apply_pattern_fix_linear_rgba_case() {
         data:    None,
     };
 
-    let result = registry.transform(&original_value, &pattern, &error);
+    let facts = DiscoveredFacts::new();
+    let result = registry.transform(&original_value, &pattern, &error, &facts);
     assert!(result.is_some());
 
     let (corrected_value, hint) = result.unwrap();
@@ -154,7 +156,8 @@ fn test_apply_pattern_fix_transform_sequence() {
         data:    None,
     };
 
-    let result = registry.transform(&original_value, &pattern, &error);
+    let facts = DiscoveredFacts::new();
+    let result = registry.transform(&original_value, &pattern, &error, &facts);
     assert!(result.is_some());
 
     let (corrected_value, hint) = result.unwrap();
@@ -187,7 +190,8 @@ fn test_apply_pattern_fix_expected_type_name() {
         data:    None,
     };
 
-    let result = registry.transform(&original_value, &pattern, &error);
+    let facts = DiscoveredFacts::new();
+    let result = registry.transform(&original_value, &pattern, &error, &facts);
     assert!(result.is_some());
 
     let (corrected_value, hint) = result.unwrap();
@@ -212,7 +216,8 @@ fn test_apply_pattern_fix_math_type_array() {
         data:    None,
     };
 
-    let result = registry.transform(&original_value, &pattern, &error);
+    let facts = DiscoveredFacts::new();
+    let result = registry.transform(&original_value, &pattern, &error, &facts);
     assert!(result.is_some());
 
     let (corrected_value, hint) = result.unwrap();
@@ -269,7 +274,8 @@ fn test_fix_access_error_generic_enum_suggestions() {
         data:    None,
     };
 
-    let result = registry.transform(&original_value, &pattern, &error);
+    let facts = DiscoveredFacts::new();
+    let result = registry.transform(&original_value, &pattern, &error, &facts);
     assert!(result.is_some());
 
     let (corrected_value, hint) = result.unwrap();
@@ -306,7 +312,8 @@ fn test_fix_access_error_integration_with_pattern_matching() {
 
     // Use the transformer registry
     let registry = TransformerRegistry::with_defaults();
-    let result = registry.transform(&original_value, pattern, &error);
+    let facts = DiscoveredFacts::new();
+    let result = registry.transform(&original_value, pattern, &error, &facts);
 
     // If no transformer handles this pattern, that's okay - the test was checking integration
     if result.is_none() {

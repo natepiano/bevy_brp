@@ -18,13 +18,14 @@ Validate BRP behavior with components that lack Serialize/Deserialize traits but
 - Check error message is helpful and actionable
 
 ### 3. Mutation Should Work (Even Without Serialize/Deserialize)
-- Execute `mcp__brp__bevy_mutate_component` on Visibility component
+- Execute `mcp__brp__bevy_mutate_component` on Visibility component with explicit port
   - Entity: Use an entity with Visibility component
   - Component: "bevy_render::view::visibility::Visibility"
   - Path: "" (empty string)
   - Value: "Visible"
+  - Port: 20108 (EXPLICIT PORT FOR TESTING)
 - Verify mutation succeeds
-- Test other variants with empty path: "Hidden", "Inherited"
+- Test other variants with empty path: "Hidden", "Inherited" (also with port 20108)
 
 ### 4. Registry Requirements Validation
 - Execute `mcp__brp__bevy_list` to see registered components

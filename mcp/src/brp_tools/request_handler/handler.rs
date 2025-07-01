@@ -53,7 +53,36 @@ fn extract_request_params(
         debug_info.push(format!("Extracted method: {method}"));
     }
 
-    debug_info.push(format!("Extracted port: {}", extracted.port));
+    // Check if port was explicitly provided in the request
+    let port_provided = request
+        .arguments
+        .as_ref()
+        .and_then(|args| args.get(JSON_FIELD_PORT))
+        .is_some();
+
+    if port_provided {
+        debug_info.push(format!(
+            "Extracted port: {} (explicitly provided)",
+            extracted.port
+        ));
+    } else {
+        debug_info.push(format!(
+            "Extracted port: {} (using default - NOT provided in request)",
+            extracted.port
+        ));
+    }
+
+    // Add more detailed port debugging for mutate_component operations
+    if request.name.contains("mutate_component") {
+        debug_info.push(format!(
+            "CRITICAL PORT DEBUG: mutate_component operation - port source: {}",
+            if port_provided {
+                "explicit"
+            } else {
+                "DEFAULT (missing port parameter!)"
+            }
+        ));
+    }
 
     if let Some(ref params) = extracted.params {
         // Log specific extracted parameters based on common BRP patterns

@@ -3,6 +3,7 @@
 use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
+use super::super::phases::tier_execution::DiscoveredFacts;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::support::brp_client::BrpError;
@@ -227,21 +228,8 @@ impl EnumVariantTransformer {
             }
         }
 
-        // Fallback: try to parse variants from any comma-separated list in the error
-        if error_message.contains("variant") {
-            // Look for capitalized words that might be variants
-            error_message
-                .split_whitespace()
-                .filter(|word| {
-                    word.chars().next().is_some_and(char::is_uppercase)
-                        && word.chars().all(char::is_alphanumeric)
-                })
-                .take(5) // Limit to avoid too many false positives
-                .map(String::from)
-                .collect()
-        } else {
-            Vec::new()
-        }
+        // No reliable way to extract variants from error message
+        Vec::new()
     }
 
     /// Common handler for enum unit variant errors that generates enhanced error messages
@@ -275,6 +263,73 @@ impl EnumVariantTransformer {
             "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
             valid_values.join(", ")
         );
+
+        (format_info, hint)
+    }
+
+    /// Enhanced handler for enum unit variant errors that uses discovered facts for real enum
+    /// variants
+    fn handle_enum_unit_variant_error_with_facts(
+        type_name: &str,
+        expected_variant_type: &str,
+        actual_variant_type: &str,
+        error_message: &str,
+        facts: &DiscoveredFacts,
+    ) -> (Value, String) {
+        // Use enum variants from facts if available, otherwise fall back to error message
+        // extraction
+        let valid_values = facts.enum_variants.as_ref().map_or_else(
+            || {
+                // No facts available, try error message extraction
+                let extracted = Self::extract_enum_variants(error_message);
+                if extracted.is_empty() {
+                    vec![
+                        "<variant1>".to_string(),
+                        "<variant2>".to_string(),
+                        "<variant3>".to_string(),
+                    ]
+                } else {
+                    extracted
+                }
+            },
+            |enum_variants| {
+                if enum_variants.is_empty() {
+                    // Facts available but empty, try error message extraction
+                    let extracted = Self::extract_enum_variants(error_message);
+                    if extracted.is_empty() {
+                        vec![
+                            "<variant1>".to_string(),
+                            "<variant2>".to_string(),
+                            "<variant3>".to_string(),
+                        ]
+                    } else {
+                        extracted
+                    }
+                } else {
+                    enum_variants.clone()
+                }
+            },
+        );
+
+        // Return format correction that explains empty path usage
+        let format_info = json!({
+            "usage": "Use empty path with variant name as value",
+            "path": "",
+            "valid_values": valid_values,
+            "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+        });
+
+        let hint = if facts.enum_variants.is_some() {
+            format!(
+                "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants from schema: {}",
+                valid_values.join(", ")
+            )
+        } else {
+            format!(
+                "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
+                valid_values.join(", ")
+            )
+        };
 
         (format_info, hint)
     }
@@ -430,6 +485,45 @@ impl FormatTransformer for EnumVariantTransformer {
                 } else {
                     None
                 }
+            }
+        }
+    }
+
+    fn transform_with_facts(
+        &self,
+        value: &Value,
+        error: &BrpError,
+        facts: &DiscoveredFacts,
+    ) -> Option<(Value, String)> {
+        // Extract type name from error for better messaging
+        let type_name =
+            extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
+
+        // Analyze the error pattern
+        let pattern = super::super::detection::analyze_error_pattern(error).pattern;
+
+        // Handle specific error patterns with enhanced enum variant information
+        match pattern {
+            Some(
+                ErrorPattern::EnumUnitVariantMutation {
+                    expected_variant_type,
+                    actual_variant_type,
+                }
+                | ErrorPattern::EnumUnitVariantAccessError {
+                    access: _,
+                    expected_variant_type,
+                    actual_variant_type,
+                },
+            ) => Some(Self::handle_enum_unit_variant_error_with_facts(
+                &type_name,
+                &expected_variant_type,
+                &actual_variant_type,
+                &error.message,
+                facts,
+            )),
+            _ => {
+                // For other patterns, fall back to the existing transform_with_error logic
+                self.transform_with_error(value, error)
             }
         }
     }
@@ -749,12 +843,13 @@ mod tests {
         let variants2 = EnumVariantTransformer::extract_enum_variants(error_msg2);
         assert_eq!(variants2, vec!["Red", "Green", "Blue"]);
 
-        // Test fallback pattern - extract capitalized words
+        // Test fallback pattern - should return empty vector (no longer extracts capitalized words)
         let error_msg3 = "Cannot mutate Unit variant Something to NewThing variant";
         let variants3 = EnumVariantTransformer::extract_enum_variants(error_msg3);
-        assert!(variants3.contains(&"Unit".to_string()));
-        assert!(variants3.contains(&"Something".to_string()));
-        assert!(variants3.contains(&"NewThing".to_string()));
+        assert!(
+            variants3.is_empty(),
+            "Should not extract capitalized words as fallback"
+        );
 
         // Test with no recognizable pattern
         let error_msg4 = "some error without any patterns";

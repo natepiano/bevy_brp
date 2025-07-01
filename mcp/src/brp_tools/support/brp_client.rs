@@ -118,6 +118,103 @@ fn build_request_body(method: &str, params: Option<Value>) -> String {
 }
 
 /// Send the HTTP request to the BRP server
+fn handle_http_error(
+    e: reqwest::Error,
+    url: &str,
+    request_body: &str,
+    method: &str,
+    port: u16,
+) -> Result<reqwest::Response> {
+    // Always log HTTP errors to help debug intermittent failures
+    warn!("BRP execute_brp_method: HTTP request failed - error={}", e);
+
+    // Write detailed error to temp file for debugging
+    let port_source = if port == DEFAULT_BRP_PORT {
+        " (DEFAULT - port parameter missing!)"
+    } else {
+        " (explicit)"
+    };
+    let error_details = format!(
+        "HTTP Error at {}\nMethod: {}\nPort: {}{}\nURL: {}\nError: {:?}\n",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+        method,
+        port,
+        port_source,
+        url,
+        e
+    );
+    if let Some(temp_dir) = std::env::temp_dir().to_str() {
+        let error_file = format!(
+            "{}/bevy_brp_http_error_{}.log",
+            temp_dir,
+            std::process::id()
+        );
+        let _ = std::fs::write(&error_file, &error_details);
+        if is_debug_enabled() {
+            debug!("HTTP error details written to: {}", error_file);
+        }
+    }
+
+    // Extract additional context from the request body for better error reporting
+    let mut context_info = vec![
+        format!("Method: {method}"),
+        format!("Port: {port}"),
+        format!("URL: {url}"),
+    ];
+
+    // Try to parse request body to extract component/entity info for mutations
+    if let Ok(body_json) = serde_json::from_str::<Value>(request_body) {
+        if let Some(params) = body_json.get("params").and_then(|p| p.as_object()) {
+            if let Some(entity) = params.get("entity") {
+                context_info.push(format!("Entity: {entity}"));
+            }
+            if let Some(component) = params.get("component").and_then(|c| c.as_str()) {
+                context_info.push(format!("Component: {component}"));
+            }
+            if let Some(path) = params.get("path").and_then(|p| p.as_str()) {
+                context_info.push(format!("Path: {path}"));
+            }
+        }
+    }
+
+    // Determine error type and details
+    let error_type = if e.is_timeout() {
+        "Timeout"
+    } else if e.is_connect() {
+        "Connection failed"
+    } else if e.is_request() {
+        "Request error"
+    } else if e.is_body() {
+        "Body error"
+    } else if e.is_decode() {
+        "Decode error"
+    } else {
+        "Unknown error type"
+    };
+
+    context_info.push(format!("Error type: {error_type}"));
+
+    // Add port source information
+    if port == DEFAULT_BRP_PORT {
+        context_info.push("Port source: DEFAULT (port parameter missing!)".to_string());
+    } else {
+        context_info.push(format!("Port source: explicit ({port})"));
+    }
+
+    let error_msg = format!("HTTP request failed for {method} operation - {error_type}: {e}");
+
+    Err(error_stack::Report::new(Error::JsonRpc(error_msg))
+        .attach_printable(context_info.join(", "))
+        .attach_printable(format!("Full error: {e:?}"))
+        .attach_printable(format!(
+            "Request body (first 500 chars): {}",
+            &request_body.chars().take(500).collect::<String>()
+        )))
+}
+
 async fn send_http_request(
     url: &str,
     request_body: String,
@@ -133,7 +230,7 @@ async fn send_http_request(
     let response = client
         .post(url)
         .header("Content-Type", "application/json")
-        .body(request_body)
+        .body(request_body.clone())
         .timeout(Duration::from_secs(30))
         .send()
         .await;
@@ -148,16 +245,7 @@ async fn send_http_request(
             }
             Ok(resp)
         }
-        Err(e) => {
-            if is_debug_enabled() {
-                warn!("BRP execute_brp_method: HTTP request failed - error={}", e);
-            }
-            Err(
-                error_stack::Report::new(Error::JsonRpc("HTTP request failed".to_string()))
-                    .attach_printable(format!("Method: {method}, Port: {port}, URL: {url}"))
-                    .attach_printable(format!("Error: {e}")),
-            )
-        }
+        Err(e) => handle_http_error(e, url, &request_body, method, port),
     }
 }
 

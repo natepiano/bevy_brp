@@ -19,7 +19,10 @@ use crate::brp_tools::request_handler::format_discovery::support::{
 use crate::brp_tools::request_handler::format_discovery::transformers::TransformerRegistry;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult, execute_brp_method};
 use crate::error::{Error, Result};
-use crate::tools::{BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_INSERT, BRP_METHOD_SPAWN};
+use crate::tools::{
+    BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_INSERT, BRP_METHOD_REGISTRY_SCHEMA,
+    BRP_METHOD_SPAWN,
+};
 
 /// Facts discovered about a type from Tier 2 (BRP discovery)
 #[derive(Debug, Clone)]
@@ -32,6 +35,7 @@ pub struct DiscoveredFacts {
     pub has_serialize:        Option<bool>,
     pub has_deserialize:      Option<bool>,
     pub legacy_format:        Option<Value>,
+    pub enum_variants:        Option<Vec<String>>,
 }
 
 impl DiscoveredFacts {
@@ -46,6 +50,7 @@ impl DiscoveredFacts {
             has_serialize:        None,
             has_deserialize:      None,
             legacy_format:        None,
+            enum_variants:        None,
         }
     }
 }
@@ -191,8 +196,15 @@ async fn process_single_type_item(
 ) -> Result<(Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts)> {
     log_type_processing_start(type_name, type_value, debug_info);
 
-    let (discovery_result, tier_info, facts) =
-        perform_type_discovery(type_name, type_value, method, original_error, port).await;
+    let (discovery_result, tier_info, facts) = perform_type_discovery(
+        type_name,
+        type_value,
+        method,
+        original_error,
+        port,
+        debug_info,
+    )
+    .await;
 
     let enriched_tier_info = enrich_tier_info_with_type_context(tier_info, type_name);
 
@@ -215,8 +227,17 @@ async fn perform_type_discovery(
     method: &str,
     original_error: &BrpError,
     port: Option<u16>,
+    debug_info: &mut Vec<String>,
 ) -> (Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts) {
-    tiered_type_format_discovery(type_name, type_value, method, original_error, port).await
+    tiered_type_format_discovery(
+        type_name,
+        type_value,
+        method,
+        original_error,
+        port,
+        debug_info,
+    )
+    .await
 }
 
 /// Add type context to tier info for better debugging
@@ -257,6 +278,7 @@ async fn tiered_type_format_discovery(
     method: &str,
     error: &BrpError,
     port: Option<u16>,
+    debug_info: &mut Vec<String>,
 ) -> (Option<(Value, String)>, Vec<TierInfo>, DiscoveredFacts) {
     let mut tier_manager = TierManager::new();
     let mut facts = DiscoveredFacts::new();
@@ -282,6 +304,7 @@ async fn tiered_type_format_discovery(
         port,
         &mut tier_manager,
         &mut facts,
+        debug_info,
     )
     .await;
 
@@ -402,6 +425,7 @@ async fn gather_direct_discovery_facts(
     port: Option<u16>,
     tier_manager: &mut TierManager,
     facts: &mut DiscoveredFacts,
+    debug_info: &mut Vec<String>,
 ) {
     tier_manager.start_tier(
         TIER_DIRECT_DISCOVERY,
@@ -412,11 +436,29 @@ async fn gather_direct_discovery_facts(
     let discovery_response = execute_discovery_request(type_name, port).await;
 
     if let Some(data) = discovery_response {
-        // Gather facts and populate the facts structure
-        populate_facts_from_discovery(&data, type_name, original_value, facts);
+        // Add debug logging here
+        debug_info.push(format!(
+            "Direct discovery response received for {type_name}: {data:?}"
+        ));
+        populate_facts_from_discovery(&data, type_name, original_value, facts, debug_info);
+        debug_info.push(format!(
+            "Facts after direct discovery - enum_variants: {:?}",
+            facts.enum_variants
+        ));
         tier_manager.complete_tier(true, "Direct discovery facts gathered".to_string());
     } else {
-        tier_manager.complete_tier(false, "Direct discovery unavailable or failed".to_string());
+        debug_info.push("Direct discovery failed, trying schema fallback".to_string());
+        // Try schema fallback when bevy_brp_extras is unavailable
+        let schema_response = execute_schema_fallback_request(type_name, port).await;
+        if let Some(schema_data) = schema_response {
+            populate_facts_from_schema(&schema_data, type_name, facts, debug_info);
+            tier_manager.complete_tier(true, "Schema fallback facts gathered".to_string());
+        } else {
+            tier_manager.complete_tier(
+                false,
+                "Direct discovery and schema fallback unavailable".to_string(),
+            );
+        }
     }
 }
 
@@ -440,17 +482,58 @@ async fn execute_discovery_request(type_name: &str, port: Option<u16>) -> Option
     }
 }
 
+/// Execute schema fallback request to `bevy/registry/schema`
+async fn execute_schema_fallback_request(type_name: &str, port: Option<u16>) -> Option<Value> {
+    let schema_params = serde_json::json!({
+        "with_types": ["Component", "Resource"],
+        "with_crates": [extract_crate_name(type_name)]
+    });
+
+    let result = execute_brp_method(BRP_METHOD_REGISTRY_SCHEMA, Some(schema_params), port)
+        .await
+        .ok();
+
+    match result {
+        Some(BrpResult::Success(Some(data))) => Some(data),
+        _ => None,
+    }
+}
+
+/// Extract crate name from fully qualified type name
+fn extract_crate_name(type_name: &str) -> String {
+    // Extract the first part of the type name as crate name
+    // e.g., "bevy_transform::components::transform::Transform" -> "bevy_transform"
+    type_name
+        .split("::")
+        .next()
+        .unwrap_or(type_name)
+        .to_string()
+}
+
 /// Populate facts structure from discovery response data
 fn populate_facts_from_discovery(
     data: &Value,
     type_name: &str,
     _original_value: &Value,
     facts: &mut DiscoveredFacts,
+    debug_info: &mut Vec<String>,
 ) {
+    debug_info.push(format!(
+        "populate_facts_from_discovery - raw data keys: {:?}",
+        data.as_object().map(|o| o.keys().collect::<Vec<_>>())
+    ));
+
     // Try new TypeDiscoveryResponse format first
     if let Some(type_info) = data.get("type_info").and_then(|ti| ti.as_object()) {
+        debug_info.push(format!(
+            "Found type_info with keys: {:?}",
+            type_info.keys().collect::<Vec<_>>()
+        ));
         if let Some(type_response) = type_info.get(type_name) {
-            extract_facts_from_type_response(type_response, facts);
+            debug_info.push(format!(
+                "Found type_response for {type_name}: {type_response:?}"
+            ));
+            extract_facts_from_type_response(type_response, facts, debug_info);
         }
     }
 
@@ -459,12 +542,17 @@ fn populate_facts_from_discovery(
 }
 
 /// Extract facts from the new `TypeDiscoveryResponse` format
-fn extract_facts_from_type_response(type_response: &Value, facts: &mut DiscoveredFacts) {
+fn extract_facts_from_type_response(
+    type_response: &Value,
+    facts: &mut DiscoveredFacts,
+    debug_info: &mut Vec<String>,
+) {
     extract_spawn_example(type_response, facts);
     extract_supported_operations(type_response, facts);
     extract_mutation_paths(type_response, facts);
     extract_registry_and_serialization_info(type_response, facts);
     extract_type_category(type_response, facts);
+    extract_enum_variants(type_response, facts, debug_info);
 }
 
 /// Extract spawn example from type response
@@ -549,6 +637,51 @@ fn extract_type_category(type_response: &Value, facts: &mut DiscoveredFacts) {
     }
 }
 
+/// Extract enum variants from type response
+fn extract_enum_variants(
+    type_response: &Value,
+    facts: &mut DiscoveredFacts,
+    debug_info: &mut Vec<String>,
+) {
+    debug_info.push(format!(
+        "extract_enum_variants - type_response keys: {:?}",
+        type_response
+            .as_object()
+            .map(|o| o.keys().collect::<Vec<_>>())
+    ));
+
+    if let Some(enum_info) = type_response.get("enum_info") {
+        debug_info.push(format!("Found enum_info: {enum_info:?}"));
+        if let Some(variants) = enum_info.get("variants").and_then(|v| v.as_array()) {
+            debug_info.push(format!(
+                "Found variants array with {} items",
+                variants.len()
+            ));
+            debug_info.push(format!("First variant structure: {:?}", variants.first()));
+
+            let variant_names: Vec<String> = variants
+                .iter()
+                .filter_map(|variant| {
+                    let name = variant
+                        .get("name")
+                        .and_then(|name| name.as_str().map(String::from));
+                    debug_info.push(format!(
+                        "Variant extraction - variant: {variant:?}, extracted name: {name:?}"
+                    ));
+                    name
+                })
+                .collect();
+
+            debug_info.push(format!("Extracted variant names: {variant_names:?}"));
+            if !variant_names.is_empty() {
+                facts.enum_variants = Some(variant_names);
+            }
+        }
+    } else {
+        debug_info.push("No enum_info found in type_response".to_string());
+    }
+}
+
 /// Extract legacy format if available and not already populated
 fn extract_legacy_format(data: &Value, type_name: &str, facts: &mut DiscoveredFacts) {
     if let Some(formats) = data.get("formats").and_then(|f| f.as_object()) {
@@ -566,6 +699,86 @@ fn extract_legacy_format(data: &Value, type_name: &str, facts: &mut DiscoveredFa
     }
 }
 
+/// Populate facts structure from schema response data
+fn populate_facts_from_schema(
+    schema_data: &Value,
+    type_name: &str,
+    facts: &mut DiscoveredFacts,
+    debug_info: &mut Vec<String>,
+) {
+    debug_info.push("populate_facts_from_schema - Using schema fallback path".to_string());
+    debug_info.push(format!(
+        "Schema data keys: {:?}",
+        schema_data
+            .as_object()
+            .map(|o| o.keys().collect::<Vec<_>>())
+    ));
+
+    // Schema data contains type information at "types" key
+    if let Some(types) = schema_data.get("types").and_then(|t| t.as_object()) {
+        debug_info.push(format!("Found {} types in schema", types.len()));
+        if let Some(type_info) = types.get(type_name) {
+            debug_info.push(format!(
+                "Found type_info for {type_name} in schema: {type_info:?}"
+            ));
+            extract_schema_facts(type_info, facts, debug_info);
+        } else {
+            debug_info.push(format!("Type {type_name} not found in schema"));
+        }
+    }
+}
+
+/// Extract facts from schema type information
+fn extract_schema_facts(
+    type_info: &Value,
+    facts: &mut DiscoveredFacts,
+    debug_info: &mut Vec<String>,
+) {
+    debug_info.push("extract_schema_facts - Extracting from schema".to_string());
+    debug_info.push(format!(
+        "Schema type_info keys: {:?}",
+        type_info.as_object().map(|o| o.keys().collect::<Vec<_>>())
+    ));
+
+    // Mark as in registry since we found it in the schema
+    facts.in_registry = Some(true);
+
+    // Extract enum variants from schema enum_info
+    if let Some(enum_info) = type_info.get("enum_info") {
+        debug_info.push(format!("Found enum_info in schema: {enum_info:?}"));
+        if let Some(variants) = enum_info.get("variants").and_then(|v| v.as_array()) {
+            debug_info.push(format!(
+                "Found variants array in schema with {} items",
+                variants.len()
+            ));
+            let variant_names: Vec<String> = variants
+                .iter()
+                .filter_map(|variant| variant.as_str().map(String::from))
+                .collect();
+            debug_info.push(format!(
+                "Extracted variant names from schema: {variant_names:?}"
+            ));
+            if !variant_names.is_empty() {
+                facts.enum_variants = Some(variant_names);
+            }
+        }
+    } else {
+        debug_info.push("No enum_info found in schema type_info".to_string());
+    }
+
+    // Extract type category from reflect types
+    if let Some(reflect_types) = type_info.get("reflectTypes").and_then(|rt| rt.as_array()) {
+        let categories: Vec<String> = reflect_types
+            .iter()
+            .filter_map(|v| v.as_str())
+            .map(String::from)
+            .collect();
+        if !categories.is_empty() {
+            facts.type_category = Some(categories.join(", "));
+        }
+    }
+}
+
 /// New transformer-based format discovery that replaces the old transformations.rs logic
 /// Uses the clean trait-based transformer system for maintainable format fixes
 ///
@@ -577,7 +790,11 @@ fn apply_transformer_based_discovery(
     facts: Option<&DiscoveredFacts>,
 ) -> Option<(Value, String)> {
     // First try deterministic pattern matching (Tier 3)
-    if let Some(result) = try_pattern_based_transformation(original_value, error, error_pattern) {
+    let default_facts = DiscoveredFacts::new();
+    let facts_ref = facts.unwrap_or(&default_facts);
+    if let Some(result) =
+        try_pattern_based_transformation(original_value, error, error_pattern, facts_ref)
+    {
         return Some(result);
     }
 
@@ -595,10 +812,11 @@ fn try_pattern_based_transformation(
     original_value: &Value,
     error: &BrpError,
     error_pattern: Option<&super::super::detection::ErrorPattern>,
+    facts: &DiscoveredFacts,
 ) -> Option<(Value, String)> {
     error_pattern.and_then(|pattern| {
         let registry = TransformerRegistry::with_defaults();
-        registry.transform(original_value, pattern, error)
+        registry.transform(original_value, pattern, error, facts)
     })
 }
 

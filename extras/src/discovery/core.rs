@@ -170,6 +170,47 @@ pub fn discover_type_as_response(
             }
         });
 
+    // Extract enum variant information
+    let enum_info = type_info_opt.as_ref().and_then(|type_info| {
+        use bevy::reflect::TypeInfo;
+
+        if let TypeInfo::Enum(_) = type_info {
+            use super::types::{cast_type_info, extract_enum_variants};
+            
+            cast_type_info(type_info, TypeInfo::as_enum, "EnumInfo")
+                .ok()
+                .map(|enum_info| {
+                    let variants = extract_enum_variants(enum_info);
+                    
+                    // Build the enum_info structure expected by MCP
+                    let mut enum_map = serde_json::Map::new();
+                    let variant_array: Vec<Value> = variants
+                        .into_iter()
+                        .map(|(name, variant_info)| {
+                            let mut variant_map = serde_json::Map::new();
+                            variant_map.insert("name".to_string(), Value::String(name));
+                            
+                            // Add variant type information
+                            use bevy::reflect::VariantType;
+                            let variant_type = match variant_info.variant_type() {
+                                VariantType::Unit => "Unit",
+                                VariantType::Tuple => "Tuple",
+                                VariantType::Struct => "Struct",
+                            };
+                            variant_map.insert("type".to_string(), Value::String(variant_type.to_string()));
+                            
+                            Value::Object(variant_map)
+                        })
+                        .collect();
+                    
+                    enum_map.insert("variants".to_string(), Value::Array(variant_array));
+                    enum_map
+                })
+        } else {
+            None
+        }
+    });
+
     TypeDiscoveryResponse {
         type_name: type_name.to_string(),
         in_registry,
@@ -180,6 +221,7 @@ pub fn discover_type_as_response(
         example_values,
         type_category,
         child_types,
+        enum_info,
     }
 }
 

@@ -196,6 +196,8 @@ pub struct TypeDiscoveryResponse {
     pub type_category:        String,
     /// Child type information for complex types
     pub child_types:          HashMap<String, String>,
+    /// Enum variant information (only populated for enum types)
+    pub enum_info:            Option<serde_json::Map<String, Value>>,
 }
 
 /// Check if a type registration has Serialize and Deserialize traits

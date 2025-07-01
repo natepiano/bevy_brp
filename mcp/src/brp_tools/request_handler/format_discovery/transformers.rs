@@ -6,6 +6,7 @@
 use serde_json::Value;
 
 use super::detection::ErrorPattern;
+use super::phases::tier_execution::DiscoveredFacts;
 use crate::brp_tools::support::brp_client::BrpError;
 
 // Import transformer implementations
@@ -34,6 +35,17 @@ pub trait FormatTransformer {
     /// Default implementation ignores the error and calls `transform()`
     fn transform_with_error(&self, value: &Value, _error: &BrpError) -> Option<(Value, String)> {
         self.transform(value)
+    }
+
+    /// Transform with discovered facts from format discovery
+    /// Default implementation ignores the facts and calls `transform_with_error()`
+    fn transform_with_facts(
+        &self,
+        value: &Value,
+        error: &BrpError,
+        _facts: &DiscoveredFacts,
+    ) -> Option<(Value, String)> {
+        self.transform_with_error(value, error)
     }
 
     /// Get the name of this transformer for debugging
@@ -88,9 +100,10 @@ impl TransformerRegistry {
         value: &Value,
         error_pattern: &ErrorPattern,
         error: &BrpError,
+        facts: &DiscoveredFacts,
     ) -> Option<(Value, String)> {
         self.find_transformer(error_pattern)
-            .and_then(|transformer| transformer.transform_with_error(value, error))
+            .and_then(|transformer| transformer.transform_with_facts(value, error, facts))
     }
 
     /// Get the number of registered transformers
