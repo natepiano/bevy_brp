@@ -13,15 +13,15 @@ Validate entity watch functionality including component monitoring, list watchin
 - Check watch starts successfully with default 30-second timeout
 
 ### 2. Test Configurable Timeout
-- Execute `mcp__brp__bevy_get_watch` with `timeout_seconds: 5`
-- Wait 6 seconds without triggering changes
+- Execute `mcp__brp__bevy_get_watch` with `timeout_seconds: 2`
+- Wait 3 seconds without triggering changes
 - Read log file and verify WATCH_TIMEOUT entry appears
-- Verify timeout shows `elapsed_seconds: 5` and `configured_timeout_seconds: 5`
+- Verify timeout shows `elapsed_seconds: 2` and `configured_timeout_seconds: 2`
 - Check watch is removed from active watches list
 
 ### 3. Test Never Timeout (timeout=0)
 - Execute `mcp__brp__bevy_list_watch` with `timeout_seconds: 0`
-- Wait 35+ seconds (longer than default)
+- Wait 5 seconds (longer than configurable timeout test)
 - Verify watch remains active (no timeout occurs)
 
 ### 4. Test Debug Mode Integration
@@ -70,7 +70,7 @@ Validate entity watch functionality including component monitoring, list watchin
 ## Expected Results
 - ✅ Component watches start and return proper identifiers
 - ✅ Default timeout is 30 seconds when not specified
-- ✅ Configurable timeouts work as specified (including 0 = never timeout)
+- ✅ Configurable timeouts work as specified (2-second timeout actually times out, 0 = never timeout)
 - ✅ WATCH_TIMEOUT logs show clear timeout information (not generic errors)
 - ✅ Debug logging only appears when debug mode is enabled
 - ✅ List watches work independently from component watches

@@ -3,6 +3,11 @@
 ## Objective
 Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin is available, including rich response metadata.
 
+## Prerequisites
+- Launch extras_plugin example once at the beginning on the specified port
+- Keep the app running throughout all test steps
+- Shutdown only at the end
+
 ## Test Steps
 
 ### 1. Direct Format Discovery
@@ -69,12 +74,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
   - `type_category` classification
 - Verify response structure is organized by type
 
-### 7. Test Without bevy_brp_extras (Fallback Behavior)
-- When bevy_brp_extras is not available:
-  - Verify pattern-based corrections still work
-  - Check that responses don't include rich metadata
-  - Confirm basic hints are provided without `supported_operations`, `mutation_paths`, etc.
-
 ## Expected Results
 - ✅ Direct format discovery returns detailed spawn formats with rich metadata
 - ✅ Unambiguous wrong formats are auto-corrected with metadata-enriched responses
@@ -88,7 +87,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
   - `supported_operations` field
   - `mutation_paths` field
   - `type_category` field
-- ✅ Graceful fallback when bevy_brp_extras unavailable
 
 ## Failure Criteria
 STOP if:
