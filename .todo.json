@@ -3,103 +3,152 @@
     "id": "meta",
     "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "1.1a",
-    "content": "Create flow_types.rs with BrpRequestResult, FormatRecoveryResult, CorrectionResult enums",
-    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "1.1b",
-    "content": "Build and fix any compile errors and warnings after creating flow_types.rs",
-    "status": "completed",
+    "id": "1.1",
+    "content": "Implement actual registry checking logic in registry_integration.rs with real BRP calls to bevy/registry_schema",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "1.2a",
-    "content": "Create unified_types.rs with UnifiedTypeInfo, FormatInfo, RegistryStatus, SerializationSupport",
-    "status": "completed",
+    "id": "1.2",
+    "content": "Build and fix any compile errors and warnings after registry_integration.rs implementation",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "1.2b",
-    "content": "Build and fix any compile errors and warnings after creating unified_types.rs",
-    "status": "completed",
+    "id": "1.3",
+    "content": "Replace Level 1 stubs in recovery_engine.rs execute_level_1_registry_checks() with actual calls to registry_integration.rs",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "1.3a",
-    "content": "Update engine.rs to use BrpRequestResult and implement Phase 0 vs exception path separation",
-    "status": "completed",
+    "id": "1.4",
+    "content": "Build and fix any compile errors and warnings after Level 1 recovery engine implementation",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "1.3b",
-    "content": "Build and fix any compile errors and warnings after updating engine.rs",
-    "status": "completed",
+    "id": "2.1",
+    "content": "Implement actual bevy_brp_extras integration in extras_integration.rs with real calls to bevy_brp_extras/discover_format",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.2",
+    "content": "Build and fix any compile errors and warnings after extras_integration.rs implementation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.3",
+    "content": "Replace Level 2 stubs in recovery_engine.rs execute_level_2_direct_discovery() with actual calls to extras_integration.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.4",
+    "content": "Build and fix any compile errors and warnings after Level 2 recovery engine implementation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.1",
+    "content": "Update transformers/mod.rs to accept UnifiedTypeInfo input and work with new recovery system",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.2",
+    "content": "Build and fix any compile errors and warnings after transformers update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.3",
+    "content": "Replace Level 3 stubs in recovery_engine.rs execute_level_3_pattern_transformations() with actual transformer calls",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.4",
+    "content": "Build and fix any compile errors and warnings after Level 3 recovery engine implementation",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "clippy1",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Warnings about unused code are expected during refactoring"
+    "notes": ""
   },
   {
     "id": "clippy1b",
-    "content": "Fix any clippy issues from Phase 1 (foundation types)",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Fixed main clippy issues; remaining unused code warnings are expected"
-  },
-  {
-    "id": "2.1a",
-    "content": "Create recovery_engine.rs with attempt_format_recovery() and Level 1, 2, 3 logic",
+    "content": "Fix any clippy issues from Phases 1-3 (3-level recovery system implementation)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "2.1b",
-    "content": "Build and fix any compile errors and warnings after creating recovery_engine.rs",
+    "id": "4.1",
+    "content": "Replace stub call in engine.rs execute_exception_path() with actual recovery engine integration",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "2.2a",
-    "content": "Update detection.rs to remove TierManager and simplify to registry/serialization checks",
+    "id": "4.2",
+    "content": "Implement error classification logic to route format errors through recovery engine",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "2.2b",
-    "content": "Build and fix any compile errors and warnings after updating detection.rs",
+    "id": "4.3",
+    "content": "Build and fix any compile errors and warnings after engine integration",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "2.3a",
-    "content": "Create adapters.rs with TypeDiscoveryResponse → UnifiedTypeInfo and registry schema → UnifiedTypeInfo converters",
+    "id": "5.1",
+    "content": "Update phases/tier_execution.rs to delegate to recovery engine instead of legacy tier logic",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "2.3b",
-    "content": "Build and fix any compile errors and warnings after creating adapters.rs",
+    "id": "5.2",
+    "content": "Remove TierManager and DebugContext complexity from detection.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5.3",
+    "content": "Update phases/result_building.rs to work directly with UnifiedTypeInfo",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5.4",
+    "content": "Build and fix any compile errors and warnings after legacy system replacement",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -113,49 +162,63 @@
   },
   {
     "id": "clippy2b",
-    "content": "Fix any clippy issues from Phase 2 (core exception path logic)",
+    "content": "Fix any clippy issues from Phases 4-5 (engine integration and legacy cleanup)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3.1a",
-    "content": "Create extras_integration.rs with TypeDiscoveryResponse → UnifiedTypeInfo adapter",
+    "id": "6.1",
+    "content": "Update existing tests in tests.rs to work with new recovery system functionality",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3.1b",
-    "content": "Build and fix any compile errors and warnings after creating extras_integration.rs",
+    "id": "6.2",
+    "content": "Add integration tests for complete recovery flow from format error to corrected format",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3.2a",
-    "content": "Update transformers/mod.rs to work with UnifiedTypeInfo while preserving pattern matching logic",
+    "id": "6.3",
+    "content": "Test mutation_paths preservation through all 3 recovery levels",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3.2b",
-    "content": "Build and fix any compile errors and warnings after updating transformers",
+    "id": "6.4",
+    "content": "Build and fix any compile errors and warnings after testing updates",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3.3a",
-    "content": "Create registry_integration.rs with registry schema → UnifiedTypeInfo adapter",
+    "id": "7.1",
+    "content": "Remove unused legacy code, stubs, and TODO comments",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3.3b",
-    "content": "Build and fix any compile errors and warnings after creating registry_integration.rs",
+    "id": "7.2",
+    "content": "Remove DiscoveredFacts intermediate type where no longer needed",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7.3",
+    "content": "Consolidate debug information collection systems",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7.4",
+    "content": "Build and fix any compile errors and warnings after cleanup",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -169,105 +232,7 @@
   },
   {
     "id": "clippy3b",
-    "content": "Fix any clippy issues from Phase 3 (integration updates)",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "4.1a",
-    "content": "Remove tier-based logic from phases/tier_execution.rs and replace with Level 1, 2, 3 calls",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "4.1b",
-    "content": "Build and fix any compile errors and warnings after updating tier_execution.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "4.2a",
-    "content": "Remove TierManager and DebugContext complexity, consolidate debug information",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "4.2b",
-    "content": "Build and fix any compile errors and warnings after consolidating debug info",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "4.3a",
-    "content": "Update phases/result_building.rs to work directly with UnifiedTypeInfo",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "4.3b",
-    "content": "Build and fix any compile errors and warnings after updating result_building.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy4",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy4b",
-    "content": "Fix any clippy issues from Phase 4 (cleanup)",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "5.1a",
-    "content": "Update existing tests in tests.rs to work with new type system",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "5.1b",
-    "content": "Build and fix any compile errors and warnings after updating tests",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "5.2a",
-    "content": "Add integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion and mutation_paths preservation",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "5.2b",
-    "content": "Build and fix any compile errors and warnings after adding integration tests",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy5",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy5b",
-    "content": "Fix any clippy issues from Phase 5 (testing)",
+    "content": "Fix any clippy issues from Phases 6-7 (testing and cleanup)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
