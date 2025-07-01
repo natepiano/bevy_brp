@@ -10,11 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `brp_extras_send_keys` tool for simulating keyboard input
 - Optional `workspace` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for disambiguation when multiple apps/examples have the same name
-- Enhanced debug mode with comprehensive BRP diagnostics and dual debug info support
-- New `brp_extras_set_debug_mode` tool for bevy_brp_extras integration
+- File-based tracing system with dynamic level control (error, warn, info, debug, trace)
+- `brp_set_tracing_level` tool for runtime diagnostic level management
+- `brp_get_trace_log_path` tool to locate trace log files
+- Implements "do no harm" principle - no log files created until explicitly enabled
+- `brp_extras_set_debug_mode` tool for bevy_brp_extras plugin debug info - added as a field on the response
 - Optional `port` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for custom BRP port support (requires bevy_brp_extras)
 - Configurable timeouts for watch operations (`bevy_get_watch` and `bevy_list_watch`) with `timeout_seconds` parameter
-- Debug logging integration for watch operations controlled by global debug mode
+- Trace logging integration for watch operations controlled by tracing level
 - Timeout status tracking in `brp_list_active_watches` output
 - Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output
 

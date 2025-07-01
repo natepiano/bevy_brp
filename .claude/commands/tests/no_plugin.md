@@ -19,11 +19,11 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - Check response indicates method: "process_kill" with warning about clean shutdown
 
 ### 3. Tier 3/4 Format Discovery Fallback
-- Enable debug mode: `mcp__brp__brp_set_debug_mode` with `enabled: true`
+- Enable debug tracing: `mcp__brp__brp_set_tracing_level` with `level: "debug"`
 - Execute `mcp__brp__bevy_spawn` with wrong Transform format
-- Verify debug info shows "FAILED Tier 2: Direct Discovery"
+- Check trace log file shows "FAILED Tier 2: Direct Discovery"
 - Verify fallback to pattern matching succeeds
-- Check debug info shows "SUCCESS Tier 3/4" messages
+- Check trace log shows "SUCCESS Tier 3/4" messages
 
 ### 4. Basic BRP Functionality (Should Work)
 - Execute `mcp__brp__bevy_list` to verify basic BRP works
@@ -47,7 +47,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - ✅ Error messages are consistent across extras methods
 - ✅ Shutdown falls back to process termination with warning
 - ✅ Format discovery falls back to Tier 3/4 pattern matching
-- ✅ Debug info clearly shows tier progression (failed Tier 2 → success Tier 3/4)
+- ✅ Trace log clearly shows tier progression (failed Tier 2 → success Tier 3/4)
 - ✅ Basic BRP functionality works without extras
 - ✅ Spawn with non-serializable enums fails with "Unknown component type: `bevy_reflect::DynamicEnum`"
 - ✅ Tier 1 diagnostics correctly identify missing Serialize/Deserialize traits

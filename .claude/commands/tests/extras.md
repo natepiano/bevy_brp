@@ -1,7 +1,7 @@
 # BRP Extras Methods Tests
 
 ## Objective
-Validate brp_extras specific methods: discover_format, screenshot, send_keys, and shutdown.
+Validate brp_extras specific methods: discover_format, screenshot, send_keys, set_debug_mode, and shutdown.
 
 ## Test Steps
 
@@ -30,13 +30,21 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, an
 - Execute send_keys with invalid key code
 - Verify appropriate error response
 
-### 5. Screenshot After Key Input
+### 5. Debug Mode Control Tests
+- **Enable debug mode**: Execute `mcp__brp__brp_extras_set_debug_mode` with `{"enabled": true}`
+- **Verify enabled**: Execute `mcp__brp__brp_extras_discover_format` with Transform type
+- **Check debug field**: Verify response contains `brp_extras_debug_info` field with debug details
+- **Disable debug mode**: Execute `mcp__brp__brp_extras_set_debug_mode` with `{"enabled": false}`
+- **Verify disabled**: Execute same discover_format operation
+- **Check no debug field**: Verify response does NOT contain `brp_extras_debug_info` field
+
+### 6. Screenshot After Key Input
 - Send some keys to the app
 - Take screenshot to verify UI reflects key input (use absolute path)
 - Read screenshot to confirm key display updated
 - Clean up this screenshot file as well
 
-### 6. Clean Shutdown Test
+### 7. Clean Shutdown Test
 - Execute `mcp__brp__brp_extras_shutdown` with app_name
 - Verify clean shutdown response (method: "clean_shutdown")
 - Confirm app process terminates gracefully
@@ -48,8 +56,10 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, an
 - ✅ Modifier key combinations function correctly
 - ✅ Duration boundaries are enforced properly
 - ✅ Invalid inputs return appropriate errors
+- ✅ Debug mode can be enabled/disabled independently
+- ✅ Debug mode controls brp_extras_debug_info field in responses
 - ✅ UI updates reflect sent keyboard input
 - ✅ Clean shutdown works via brp_extras method
 
 ## Failure Criteria
-STOP if: Any brp_extras method fails unexpectedly, screenshot capture fails, keyboard input doesn't work, or shutdown fails.
+STOP if: Any brp_extras method fails unexpectedly, screenshot capture fails, keyboard input doesn't work, debug mode control fails, or shutdown fails.

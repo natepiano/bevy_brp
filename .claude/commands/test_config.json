@@ -20,16 +20,6 @@
     "expected_shutdown_method": "clean_shutdown"
   },
   {
-    "test_name": "debug_mode",
-    "test_file": ".claude/commands/tests/debug_mode.md",
-    "port": 20104,
-    "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20104",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test brp_set_debug_mode and brp_extras_set_debug_mode",
-    "expected_shutdown_method": "clean_shutdown"
-  },
-  {
     "test_name": "discovery",
     "test_file": ".claude/commands/tests/discovery.md",
     "port": "N/A",

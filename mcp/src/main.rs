@@ -137,7 +137,8 @@ impl BrpMcpService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize file-based tracing with dynamic level management
-    let _tracing_guard = support::tracing::init_file_tracing();
+    // Uses lazy file creation - file only created on first log write
+    support::tracing::init_file_tracing();
 
     // Don't log anything here - it would create the file and violate "do no harm"
     // The file should only be created when the user explicitly sets a tracing level

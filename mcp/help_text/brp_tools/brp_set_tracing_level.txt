@@ -13,6 +13,5 @@ Tracing levels (from least to most verbose):
 
 All tracing output is written to 'bevy_brp_mcp_trace.log' in the system temp directory. The file-based logging allows detailed diagnostic information without cluttering the MCP response stream.
 
-For backwards compatibility with bevy_brp_extras, debug and trace levels will also enable debug mode in extras (if available).
 
 This is particularly useful for troubleshooting BRP operations, understanding request processing pipelines, and diagnosing parameter parsing or method resolution issues.

@@ -2,10 +2,11 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicU8, Ordering};
 
 use tracing::{Level, Subscriber};
-use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{Layer, Registry};
+
+use super::lazy_file_writer::LazyFileWriter;
 
 static CURRENT_LEVEL: AtomicU8 = AtomicU8::new(1); // Default to WARN level (1) for "do no harm"
 
@@ -84,17 +85,16 @@ impl TracingLevel {
 }
 
 /// Initialize file-based tracing with a fixed filename in temp directory
-/// Returns a `WorkerGuard` that must be kept alive for logging to work
-pub fn init_file_tracing() -> WorkerGuard {
-    let temp_dir = std::env::temp_dir();
+/// Uses lazy file creation - file only created on first log write
+pub fn init_file_tracing() {
+    let log_path = get_trace_log_path();
 
-    // Create file appender
-    let file_appender = tracing_appender::rolling::never(&temp_dir, "bevy_brp_mcp_trace.log");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    // Create lazy file writer that only creates file on first write
+    let lazy_writer = LazyFileWriter::new(log_path);
 
     // Create the subscriber with dynamic filtering
     let file_layer = tracing_subscriber::fmt::layer()
-        .with_writer(non_blocking)
+        .with_writer(lazy_writer)
         .with_ansi(false)
         .with_target(true)
         .with_thread_ids(true)
@@ -108,14 +108,20 @@ pub fn init_file_tracing() -> WorkerGuard {
 
     // Don't log anything here - it would create the file and violate "do no harm"
     // The file should only be created when the user explicitly sets a tracing level
-
-    guard
 }
 
 /// Set the current tracing level dynamically
 pub fn set_tracing_level(level: TracingLevel) {
     CURRENT_LEVEL.store(level.as_u8(), Ordering::Relaxed);
-    tracing::info!("Tracing level set to: {}", level.as_str());
+
+    // Log at the level that was just set
+    match level {
+        TracingLevel::Error => tracing::error!("Tracing level set to: error"),
+        TracingLevel::Warn => tracing::warn!("Tracing level set to: warn"),
+        TracingLevel::Info => tracing::info!("Tracing level set to: info"),
+        TracingLevel::Debug => tracing::debug!("Tracing level set to: debug"),
+        TracingLevel::Trace => tracing::trace!("Tracing level set to: trace"),
+    }
 }
 
 /// Get the current tracing level
