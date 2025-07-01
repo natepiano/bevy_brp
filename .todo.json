@@ -1,156 +1,114 @@
 [
   {
-    "id": "1",
-    "content": "Add enum_variants field to DiscoveredFacts struct in phases/tier_execution.rs",
+    "id": "meta-1",
+    "content": "META: Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "2",
-    "content": "Build and fix any compile errors and warnings after adding enum_variants field",
+    "id": "impl-1",
+    "content": "Add debug info to gather_direct_discovery_facts in tier_execution.rs (around line 410)",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3",
-    "content": "Update FormatTransformer trait to add transform_with_facts method in transformers.rs",
+    "id": "build-1",
+    "content": "Build and fix any compile errors and warnings after gather_direct_discovery_facts changes",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "4",
-    "content": "Build and fix any compile errors and warnings after updating FormatTransformer trait",
+    "id": "impl-2",
+    "content": "Add debug info to populate_facts_from_discovery in tier_execution.rs (around line 487)",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "5",
-    "content": "Update TransformerRegistry::transform method to accept and pass facts parameter",
+    "id": "build-2",
+    "content": "Build and fix any compile errors and warnings after populate_facts_from_discovery changes",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "6",
-    "content": "Build and fix any compile errors and warnings after updating TransformerRegistry",
+    "id": "impl-3",
+    "content": "Add debug info to extract_enum_variants in tier_execution.rs (around line 597)",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "7",
-    "content": "Update try_pattern_based_transformation to pass facts to TransformerRegistry::transform",
+    "id": "build-3",
+    "content": "Build and fix any compile errors and warnings after extract_enum_variants changes",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "8",
-    "content": "Build and fix any compile errors and warnings after updating try_pattern_based_transformation",
+    "id": "impl-4",
+    "content": "Add debug info to schema fallback path (populate_facts_from_schema and extract_schema_facts)",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "9",
+    "id": "build-4",
+    "content": "Build and fix any compile errors and warnings after schema fallback changes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy-1",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "10",
-    "content": "Fix any clippy issues following rules: remove dead code, remove unused variables",
+    "id": "clippy-2",
+    "content": "Fix any clippy issues",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "11",
-    "content": "Extract enum variants from bevy_brp_extras response in populate_facts_from_discovery function",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "12",
-    "content": "Build and fix any compile errors and warnings after enum variant extraction",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "13",
-    "content": "Implement transform_with_facts in EnumVariantTransformer to use facts.enum_variants first",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "14",
-    "content": "Build and fix any compile errors and warnings after EnumVariantTransformer changes",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "15",
-    "content": "Add bevy/registry/schema fallback to gather_direct_discovery_facts when extras unavailable",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "16",
-    "content": "Build and fix any compile errors and warnings after adding schema fallback",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "17",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "18",
-    "content": "Fix any clippy issues following rules: remove dead code, remove unused variables",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "19",
+    "id": "format-1",
     "content": "Run cargo +nightly fmt",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "20",
+    "id": "test-1",
     "content": "Run cargo nextest run",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "21",
+    "id": "test-2",
     "content": "If there are test issues, STOP and review them with the user",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "22",
-    "content": "STOP work here and return control to main agent for code review",
+    "id": "review-1",
+    "content": "CODE REVIEW: STOP work and task a new subagent to review changes focusing on duplication, complexity, and plan validation",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review-2",
+    "content": "When subagent returns, STOP and review suggested changes with the user",
+    "status": "pending",
+    "priority": "medium",
     "notes": ""
   }
 ]
