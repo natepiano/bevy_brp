@@ -1,0 +1,317 @@
+[
+  {
+    "id": "meta",
+    "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "1.1a",
+    "content": "Create flow_types.rs with BrpRequestResult, FormatRecoveryResult, CorrectionResult enums",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "1.1b",
+    "content": "Build and fix any compile errors and warnings after creating flow_types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "1.2a",
+    "content": "Create unified_types.rs with UnifiedTypeInfo, FormatInfo, RegistryStatus, SerializationSupport",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "1.2b",
+    "content": "Build and fix any compile errors and warnings after creating unified_types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "1.3a",
+    "content": "Update engine.rs to use BrpRequestResult and implement Phase 0 vs exception path separation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "1.3b",
+    "content": "Build and fix any compile errors and warnings after updating engine.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy1b",
+    "content": "Fix any clippy issues from Phase 1 (foundation types)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.1a",
+    "content": "Create recovery_engine.rs with attempt_format_recovery() and Level 1, 2, 3 logic",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.1b",
+    "content": "Build and fix any compile errors and warnings after creating recovery_engine.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.2a",
+    "content": "Update detection.rs to remove TierManager and simplify to registry/serialization checks",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.2b",
+    "content": "Build and fix any compile errors and warnings after updating detection.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.3a",
+    "content": "Create adapters.rs with TypeDiscoveryResponse → UnifiedTypeInfo and registry schema → UnifiedTypeInfo converters",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2.3b",
+    "content": "Build and fix any compile errors and warnings after creating adapters.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy2b",
+    "content": "Fix any clippy issues from Phase 2 (core exception path logic)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.1a",
+    "content": "Create extras_integration.rs with TypeDiscoveryResponse → UnifiedTypeInfo adapter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.1b",
+    "content": "Build and fix any compile errors and warnings after creating extras_integration.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.2a",
+    "content": "Update transformers/mod.rs to work with UnifiedTypeInfo while preserving pattern matching logic",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.2b",
+    "content": "Build and fix any compile errors and warnings after updating transformers",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.3a",
+    "content": "Create registry_integration.rs with registry schema → UnifiedTypeInfo adapter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3.3b",
+    "content": "Build and fix any compile errors and warnings after creating registry_integration.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy3",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy3b",
+    "content": "Fix any clippy issues from Phase 3 (integration updates)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4.1a",
+    "content": "Remove tier-based logic from phases/tier_execution.rs and replace with Level 1, 2, 3 calls",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4.1b",
+    "content": "Build and fix any compile errors and warnings after updating tier_execution.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4.2a",
+    "content": "Remove TierManager and DebugContext complexity, consolidate debug information",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4.2b",
+    "content": "Build and fix any compile errors and warnings after consolidating debug info",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4.3a",
+    "content": "Update phases/result_building.rs to work directly with UnifiedTypeInfo",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4.3b",
+    "content": "Build and fix any compile errors and warnings after updating result_building.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy4",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy4b",
+    "content": "Fix any clippy issues from Phase 4 (cleanup)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5.1a",
+    "content": "Update existing tests in tests.rs to work with new type system",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5.1b",
+    "content": "Build and fix any compile errors and warnings after updating tests",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5.2a",
+    "content": "Add integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion and mutation_paths preservation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5.2b",
+    "content": "Build and fix any compile errors and warnings after adding integration tests",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy5",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy5b",
+    "content": "Fix any clippy issues from Phase 5 (testing)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "format",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "test",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "test_review",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code_review_prep",
+    "content": "STOP work here and return control to main agent for code review",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code_review",
+    "content": "Task new subagent to do code review focusing on duplication, complexity, and plan implementation validation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code_review_discuss",
+    "content": "When subagent returns, STOP and review suggested changes with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
