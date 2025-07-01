@@ -1,0 +1,184 @@
+[
+  {
+    "id": "meta_todo",
+    "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "create_collection_strategy_trait",
+    "content": "Create collection strategy trait in mcp/src/app_tools/support/collection_strategy.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_trait",
+    "content": "Build and fix any compile errors and warnings after creating collection strategy trait",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "create_generic_handler",
+    "content": "Create generic listing handler in mcp/src/app_tools/support/generic_listing_handler.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_generic_handler",
+    "content": "Build and fix any compile errors and warnings after creating generic handler",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "implement_bevy_apps_strategy",
+    "content": "Implement BevyAppsStrategy in collection_strategy.rs for standard Bevy apps with build info",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_bevy_apps_strategy",
+    "content": "Build and fix any compile errors and warnings after implementing BevyAppsStrategy",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "implement_brp_apps_strategy",
+    "content": "Implement BrpAppsStrategy in collection_strategy.rs for BRP-enabled apps with brp_enabled flag",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_brp_apps_strategy",
+    "content": "Build and fix any compile errors and warnings after implementing BrpAppsStrategy",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "implement_bevy_examples_strategy",
+    "content": "Implement BevyExamplesStrategy in collection_strategy.rs for examples without build info",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_bevy_examples_strategy",
+    "content": "Build and fix any compile errors and warnings after implementing BevyExamplesStrategy",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_after_strategies",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings and fix any issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "replace_bevy_apps_handler",
+    "content": "Replace brp_list_bevy_apps.rs handler with 3-line function calling generic handler with BevyAppsStrategy",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_bevy_apps_replacement",
+    "content": "Build and fix any compile errors and warnings after replacing Bevy apps handler",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "replace_brp_apps_handler",
+    "content": "Replace brp_list_brp_apps.rs handler with 3-line function calling generic handler with BrpAppsStrategy",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_brp_apps_replacement",
+    "content": "Build and fix any compile errors and warnings after replacing BRP apps handler",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "replace_bevy_examples_handler",
+    "content": "Replace brp_list_bevy_examples.rs handler with 3-line function calling generic handler with BevyExamplesStrategy",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_bevy_examples_replacement",
+    "content": "Build and fix any compile errors and warnings after replacing Bevy examples handler",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_mod_exports",
+    "content": "Update mcp/src/app_tools/support/mod.rs to export new generic handler and collection strategies",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_mod_updates",
+    "content": "Build and fix any compile errors and warnings after updating module exports",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "final_clippy",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings and fix any issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "format_code",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "run_tests",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_test_results",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "task_code_review_subagent",
+    "content": "Task a new subagent to do a code review of the changes - focus on identifying duplication, complexity, and validation that the implementation plan was actually implemented",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_subagent_feedback",
+    "content": "When the code review subagent returns, STOP and review the suggested changes with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
