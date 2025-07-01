@@ -1,0 +1,261 @@
+[
+  {
+    "id": "terminal_title",
+    "content": "run `echo -e \"\\e]2;Implementation: Replace debug_info with tracing in BRP MCP\\007\"` to set terminal title",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "create_tracing_module",
+    "content": "Create src/support/tracing.rs module for dynamic tracing level management",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_tracing_module",
+    "content": "build and fix any compile errors and any compile warnings after creating tracing module",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_main_tracing",
+    "content": "Update main.rs to use new tracing module with file-based output to temp directory",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_main_update",
+    "content": "build and fix any compile errors and any compile warnings after updating main.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "convert_debug_mode_tool",
+    "content": "Convert brp_set_debug_mode.rs to brp_set_tracing_level.rs with actual tracing levels",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_tool_conversion",
+    "content": "build and fix any compile errors and any compile warnings after converting debug mode tool",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_tool_registration",
+    "content": "Update tool registration in registry.rs, tools.rs, and tool_definitions.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_tool_registration",
+    "content": "build and fix any compile errors and any compile warnings after updating tool registration",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy_phase1",
+    "content": "run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "fix_clippy_phase1",
+    "content": "fix any clippy issues from phase 1",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "remove_mcp_debug_response",
+    "content": "Remove brp_mcp_debug_info field from JsonResponse in src/support/response.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_response_builder",
+    "content": "Update ResponseBuilder auto_inject_debug_info to only handle extras debug_info",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_response_changes",
+    "content": "build and fix any compile errors and any compile warnings after response structure changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "remove_formatter_context_debug",
+    "content": "Remove brp_mcp_debug_info from FormatterContext in src/brp_tools/request_handler/config.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_formatter_context",
+    "content": "build and fix any compile errors and any compile warnings after FormatterContext changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_response_formatter",
+    "content": "Update ResponseFormatter to remove MCP debug info handling in src/brp_tools/support/response_formatter.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_response_formatter",
+    "content": "build and fix any compile errors and any compile warnings after ResponseFormatter changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy_phase2",
+    "content": "run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "fix_clippy_phase2",
+    "content": "fix any clippy issues from phase 2",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "replace_handler_debug",
+    "content": "Replace debug_info collection with tracing calls in src/brp_tools/request_handler/handler.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_handler_update",
+    "content": "build and fix any compile errors and any compile warnings after handler changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_discovery_context",
+    "content": "Replace Vec<String> debug_info with tracing in src/brp_tools/request_handler/format_discovery/phases/context.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_discovery_context",
+    "content": "build and fix any compile errors and any compile warnings after discovery context changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_discovery_engine",
+    "content": "Convert debug_info collection to tracing in src/brp_tools/request_handler/format_discovery/engine.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_discovery_engine",
+    "content": "build and fix any compile errors and any compile warnings after discovery engine changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "update_discovery_phases",
+    "content": "Convert debug_info to tracing in format discovery phase files (tier_execution.rs, result_building.rs, initial_attempt.rs, error_analysis.rs)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_discovery_phases",
+    "content": "build and fix any compile errors and any compile warnings after discovery phases changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy_phase3",
+    "content": "run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "fix_clippy_phase3",
+    "content": "fix any clippy issues from phase 3",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "cleanup_remaining_calls",
+    "content": "Update remaining auto_inject_debug_info calls to pass None for MCP debug in watch and app tools",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_cleanup",
+    "content": "build and fix any compile errors and any compile warnings after cleanup",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "final_clippy",
+    "content": "run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "fix_final_clippy",
+    "content": "fix any final clippy issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "format_code",
+    "content": "run `cargo +nightly fmt`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "run_tests",
+    "content": "run 'cargo nextest run'",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "handle_test_issues",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
