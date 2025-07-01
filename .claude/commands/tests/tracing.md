@@ -2,11 +2,6 @@
 
 ## Objective
 Validate the complete tracing and debug mode functionality including:
-1. "Do no harm" behavior (no log files created by default)
-2. MCP tracing level system works correctly
-3. Extras debug mode works independently
-4. Integration between MCP tracing and extras debug
-5. Verify clippy fixes didn't break functionality
 
 ## Test Steps
 
@@ -15,7 +10,6 @@ Validate the complete tracing and debug mode functionality including:
    - Use `mcp__brp__brp_get_trace_log_path` to get log file location
    - If `exists: true`, delete the file using the returned `log_path`
    - Verify `exists: false` after deletion to ensure clean test start
-2. **Launch App**: Start fresh MCP server and launch extras_plugin on assigned port
 
 ### Part A: "Do No Harm" Validation (Critical Test)
 
