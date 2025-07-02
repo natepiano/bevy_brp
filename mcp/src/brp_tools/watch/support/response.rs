@@ -19,10 +19,7 @@ pub fn format_watch_start_response(
                     |_| {
                         let fallback_response = ResponseBuilder::error()
                             .message("Failed to build watch start response")
-                            .auto_inject_debug_info(
-                                None::<&serde_json::Value>,
-                                None::<&serde_json::Value>,
-                            )
+                            .auto_inject_debug_info(None::<&serde_json::Value>)
                             .build();
                         json_response_to_result(&fallback_response)
                     },
@@ -32,7 +29,7 @@ pub fn format_watch_start_response(
         Err(e) => {
             let response = ResponseBuilder::error()
                 .message(e.to_string())
-                .auto_inject_debug_info(None::<&serde_json::Value>, None::<&serde_json::Value>)
+                .auto_inject_debug_info(None::<&serde_json::Value>)
                 .build();
             json_response_to_result(&response)
         }
@@ -51,7 +48,7 @@ fn build_watch_start_success_response(
         ))
         .add_field(JSON_FIELD_WATCH_ID, watch_id)?
         .add_field(JSON_FIELD_LOG_PATH, log_path.to_string_lossy())?
-        .auto_inject_debug_info(None::<&serde_json::Value>, None::<&serde_json::Value>)
+        .auto_inject_debug_info(None::<&serde_json::Value>)
         .build();
     Ok(response)
 }
@@ -64,14 +61,14 @@ pub fn format_watch_stop_response(
         Ok(()) => {
             let response = ResponseBuilder::success()
                 .message(format!("Stopped watch {watch_id}"))
-                .auto_inject_debug_info(None::<&serde_json::Value>, None::<&serde_json::Value>)
+                .auto_inject_debug_info(None::<&serde_json::Value>)
                 .build();
             json_response_to_result(&response)
         }
         Err(e) => {
             let response = ResponseBuilder::error()
                 .message(e.to_string())
-                .auto_inject_debug_info(None::<&serde_json::Value>, None::<&serde_json::Value>)
+                .auto_inject_debug_info(None::<&serde_json::Value>)
                 .build();
             json_response_to_result(&response)
         }

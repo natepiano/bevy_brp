@@ -5,27 +5,27 @@ Validate BRP behavior with components that lack Serialize/Deserialize traits but
 
 ## Test Steps
 
-### 1. Component Without Serialize/Deserialize - Spawn Test
-- Execute `mcp__brp__bevy_spawn` with Visibility component
-- Verify spawn fails with registry diagnostic
-- Check error mentions "lacks Serialize and Deserialize traits"
-- Confirm error includes BRP registration requirements guidance
-
-### 2. Component Without Serialize/Deserialize - Insert Test  
-- Spawn entity with basic Transform
-- Execute `mcp__brp__bevy_insert` with Aabb component
-- Verify insert fails with appropriate registry error
-- Check error message is helpful and actionable
-
-### 3. Mutation Should Work (Even Without Serialize/Deserialize)
-- Execute `mcp__brp__bevy_mutate_component` on Visibility component with explicit port
+### 1. Mutation Should Work (Even Without Serialize/Deserialize)
+- Execute `mcp__brp__bevy_mutate_component` on Visibility component
   - Entity: Use an entity with Visibility component
   - Component: "bevy_render::view::visibility::Visibility"
   - Path: "" (empty string)
   - Value: "Visible"
   - Port: 20108 (EXPLICIT PORT FOR TESTING)
 - Verify mutation succeeds
-- Test other variants with empty path: "Hidden", "Inherited" (also with port 20108)
+- Test other variants with empty path: "Hidden", "Inherited"
+
+### 2. Component Without Serialize/Deserialize - Spawn Test
+- Execute `mcp__brp__bevy_spawn` with Visibility component
+- Verify spawn fails with registry diagnostic
+- Check error mentions "lacks Serialize and Deserialize traits"
+- Confirm error includes BRP registration requirements guidance
+
+### 3. Component Without Serialize/Deserialize - Insert Test
+- Spawn entity with basic Transform
+- Execute `mcp__brp__bevy_insert` with Aabb component
+- Verify insert fails with appropriate registry error
+- Check error message is helpful and actionable
 
 ### 4. Registry Requirements Validation
 - Execute `mcp__brp__bevy_list` to see registered components
@@ -55,7 +55,7 @@ Validate BRP behavior with components that lack Serialize/Deserialize traits but
 
 ## Expected Results
 - ✅ Spawn fails appropriately for components lacking Serialize/Deserialize
-- ✅ Insert fails appropriately for components lacking Serialize/Deserialize  
+- ✅ Insert fails appropriately for components lacking Serialize/Deserialize
 - ✅ Mutation works for reflection-registered components (even without Serialize/Deserialize)
 - ✅ Component listing shows all reflection-registered types (regardless of Serialize/Deserialize)
 - ✅ Error messages are clear and actionable

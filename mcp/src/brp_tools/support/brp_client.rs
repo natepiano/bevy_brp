@@ -12,11 +12,12 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use super::BrpJsonRpcBuilder;
-use crate::brp_tools::brp_set_debug_mode::is_debug_enabled;
+use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::brp_tools::constants::{
     BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, DEFAULT_BRP_PORT,
 };
 use crate::error::{Error, Result};
+use crate::support::tracing::TracingLevel;
 use crate::tools::BRP_EXTRAS_PREFIX;
 
 /// Result of a BRP operation
@@ -72,7 +73,10 @@ pub async fn execute_brp_method(
     let port = port.unwrap_or(DEFAULT_BRP_PORT);
     let url = build_brp_url(port);
 
-    if is_debug_enabled() {
+    if matches!(
+        get_current_level(),
+        TracingLevel::Debug | TracingLevel::Trace
+    ) {
         debug!(
             "BRP execute_brp_method: Starting - method={}, port={}, url={}",
             method, port, url
@@ -99,7 +103,10 @@ pub async fn execute_brp_method(
 fn build_request_body(method: &str, params: Option<Value>) -> String {
     let mut builder = BrpJsonRpcBuilder::new(method);
     if let Some(params) = params {
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             debug!(
                 "BRP execute_brp_method: Added params - {}",
                 serde_json::to_string(&params)
@@ -110,7 +117,10 @@ fn build_request_body(method: &str, params: Option<Value>) -> String {
     }
     let request_body = builder.build().to_string();
 
-    if is_debug_enabled() {
+    if matches!(
+        get_current_level(),
+        TracingLevel::Debug | TracingLevel::Trace
+    ) {
         debug!("BRP execute_brp_method: Request body - {}", request_body);
     }
 
@@ -153,7 +163,10 @@ fn handle_http_error(
             std::process::id()
         );
         let _ = std::fs::write(&error_file, &error_details);
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             debug!("HTTP error details written to: {}", error_file);
         }
     }
@@ -223,7 +236,10 @@ async fn send_http_request(
 ) -> Result<reqwest::Response> {
     let client = super::http_client::get_client();
 
-    if is_debug_enabled() {
+    if matches!(
+        get_current_level(),
+        TracingLevel::Debug | TracingLevel::Trace
+    ) {
         debug!("BRP execute_brp_method: Sending HTTP request...");
     }
 
@@ -237,7 +253,10 @@ async fn send_http_request(
 
     match response {
         Ok(resp) => {
-            if is_debug_enabled() {
+            if matches!(
+                get_current_level(),
+                TracingLevel::Debug | TracingLevel::Trace
+            ) {
                 debug!(
                     "BRP execute_brp_method: HTTP request successful - status={}",
                     resp.status()
@@ -252,7 +271,10 @@ async fn send_http_request(
 /// Check if the HTTP response status is successful
 fn check_http_status(response: &reqwest::Response, method: &str, port: u16) -> Result<()> {
     if !response.status().is_success() {
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             warn!(
                 "BRP execute_brp_method: HTTP status error - status={}",
                 response.status()
@@ -272,7 +294,10 @@ fn check_http_status(response: &reqwest::Response, method: &str, port: u16) -> R
         );
     }
 
-    if is_debug_enabled() {
+    if matches!(
+        get_current_level(),
+        TracingLevel::Debug | TracingLevel::Trace
+    ) {
         debug!("BRP execute_brp_method: HTTP status OK, parsing JSON response...");
     }
 
@@ -287,13 +312,19 @@ async fn parse_json_response(
 ) -> Result<BrpResponse> {
     match response.json().await {
         Ok(json_resp) => {
-            if is_debug_enabled() {
+            if matches!(
+                get_current_level(),
+                TracingLevel::Debug | TracingLevel::Trace
+            ) {
                 debug!("BRP execute_brp_method: JSON parsing successful");
             }
             Ok(json_resp)
         }
         Err(e) => {
-            if is_debug_enabled() {
+            if matches!(
+                get_current_level(),
+                TracingLevel::Debug | TracingLevel::Trace
+            ) {
                 warn!("BRP execute_brp_method: JSON parsing failed - error={}", e);
             }
             Err(
@@ -309,7 +340,10 @@ async fn parse_json_response(
 /// Convert `BrpResponse` to `BrpResult`
 fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
     if let Some(error) = brp_response.error {
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             warn!(
                 "BRP execute_brp_method: BRP returned error - code={}, message={}",
                 error.code, error.message
@@ -332,13 +366,19 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
             data:    error.data,
         });
 
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             debug!("BRP execute_brp_method: Returning BrpResult::Error");
         }
 
         result
     } else {
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             debug!(
                 "BRP execute_brp_method: BRP returned success - result={:?}",
                 brp_response.result
@@ -347,7 +387,10 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
 
         let result = BrpResult::Success(brp_response.result);
 
-        if is_debug_enabled() {
+        if matches!(
+            get_current_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ) {
             debug!("BRP execute_brp_method: Returning BrpResult::Success");
         }
 

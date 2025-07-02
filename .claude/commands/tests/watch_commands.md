@@ -24,11 +24,11 @@ Validate entity watch functionality including component monitoring, list watchin
 - Wait 5 seconds (longer than configurable timeout test)
 - Verify watch remains active (no timeout occurs)
 
-### 4. Test Debug Mode Integration
-- Execute `mcp__brp__brp_set_debug_mode` with `enabled: false`
-- Start a watch and verify NO DEBUG_* entries in log
-- Execute `mcp__brp__brp_set_debug_mode` with `enabled: true`
-- Start another watch and verify DEBUG_* entries appear (DEBUG_HTTP_RESPONSE, DEBUG_STREAM_STARTED, etc.)
+### 4. Test Tracing Level Integration
+- Execute `mcp__brp__brp_set_tracing_level` with `level: "error"`
+- Start a watch and verify minimal entries in trace log file
+- Execute `mcp__brp__brp_set_tracing_level` with `level: "debug"`
+- Start another watch and verify DEBUG entries appear in trace log file
 
 ### 5. Verify Component Watch Logging
 - Execute `mcp__brp__brp_read_log` with returned log filename
@@ -72,7 +72,7 @@ Validate entity watch functionality including component monitoring, list watchin
 - ✅ Default timeout is 30 seconds when not specified
 - ✅ Configurable timeouts work as specified (2-second timeout actually times out, 0 = never timeout)
 - ✅ WATCH_TIMEOUT logs show clear timeout information (not generic errors)
-- ✅ Debug logging only appears when debug mode is enabled
+- ✅ DEBUG level tracing only appears when tracing level is set to debug or trace
 - ✅ List watches work independently from component watches
 - ✅ Active watch listing shows all running watches with timeout_reason field
 - ✅ Watch logs capture appropriate events
@@ -82,4 +82,4 @@ Validate entity watch functionality including component monitoring, list watchin
 - ✅ Log files persist and remain readable
 
 ## Failure Criteria
-STOP if: Watch creation fails, timeout configuration doesn't work as specified, debug logs appear when disabled, WATCH_TIMEOUT shows generic errors, watches with timeout=0 still timeout, logs aren't generated, watch management doesn't work, or log files are inaccessible.
+STOP if: Watch creation fails, timeout configuration doesn't work as specified, DEBUG entries appear in trace log when level is set to error, WATCH_TIMEOUT shows generic errors, watches with timeout=0 still timeout, logs aren't generated, watch management doesn't work, or log files are inaccessible.

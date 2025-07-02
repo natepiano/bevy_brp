@@ -2,6 +2,7 @@ use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::{Value, json};
+use tracing::{debug, trace};
 
 use super::config::{BrpHandlerConfig, FormatterContext};
 use super::format_discovery::{
@@ -9,10 +10,8 @@ use super::format_discovery::{
 };
 use super::traits::ExtractedParams;
 use crate::BrpMcpService;
-use crate::brp_tools::brp_set_debug_mode;
 use crate::brp_tools::constants::{
-    JSON_FIELD_DATA, JSON_FIELD_DEBUG_INFO, JSON_FIELD_FORMAT_CORRECTIONS,
-    JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
+    JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{BrpMetadata, ResponseFormatter};
@@ -29,30 +28,41 @@ pub struct RequestParams {
 fn extract_request_params(
     request: &rmcp::model::CallToolRequestParam,
     config: &BrpHandlerConfig,
-    debug_info: &mut Vec<String>,
 ) -> Result<RequestParams, McpError> {
-    // Log raw request arguments before extraction
+    log_raw_request_arguments(request);
+
+    debug!("Starting parameter extraction");
+
+    // Extract parameters using the configured extractor
+    let extracted = config.param_extractor.extract(request)?;
+
+    // Log extracted method
+    if let Some(ref method) = extracted.method {
+        debug!("Extracted method: {}", method);
+    }
+
+    log_port_information(request, &extracted);
+    log_extracted_parameters(&extracted);
+
+    Ok(RequestParams { extracted })
+}
+
+/// Log raw request arguments with sanitization
+fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
     if let Some(ref args) = request.arguments {
         let sanitized_args = serde_json::to_string(args)
             .unwrap_or_else(|_| "<serialization error>".to_string())
             .replace("\"value\":{", "\"value\":\"Hidden\",\"_original\":{")
             .replace("\"value\":[", "\"value\":\"Hidden\",\"_original\":[");
 
-        debug_info.push(format!("Raw request arguments: {sanitized_args}"));
+        trace!("Raw request arguments: {}", sanitized_args);
     } else {
-        debug_info.push("Raw request arguments: None".to_string());
+        trace!("Raw request arguments: None");
     }
+}
 
-    debug_info.push("Starting parameter extraction".to_string());
-
-    // Extract parameters using the configured extractor
-    let extracted = config.param_extractor.extract(request)?;
-
-    // Log extracted parameters with sanitization
-    if let Some(ref method) = extracted.method {
-        debug_info.push(format!("Extracted method: {method}"));
-    }
-
+/// Log port information and validation
+fn log_port_information(request: &rmcp::model::CallToolRequestParam, extracted: &ExtractedParams) {
     // Check if port was explicitly provided in the request
     let port_provided = request
         .arguments
@@ -61,85 +71,86 @@ fn extract_request_params(
         .is_some();
 
     if port_provided {
-        debug_info.push(format!(
-            "Extracted port: {} (explicitly provided)",
-            extracted.port
-        ));
+        debug!("Extracted port: {} (explicitly provided)", extracted.port);
     } else {
-        debug_info.push(format!(
+        debug!(
             "Extracted port: {} (using default - NOT provided in request)",
             extracted.port
-        ));
+        );
     }
 
     // Add more detailed port debugging for mutate_component operations
     if request.name.contains("mutate_component") {
-        debug_info.push(format!(
+        debug!(
             "CRITICAL PORT DEBUG: mutate_component operation - port source: {}",
             if port_provided {
                 "explicit"
             } else {
                 "DEFAULT (missing port parameter!)"
             }
-        ));
+        );
+    }
+}
+
+/// Log extracted parameters with security considerations
+fn log_extracted_parameters(extracted: &ExtractedParams) {
+    if let Some(ref params) = extracted.params {
+        log_common_brp_parameters(params);
+    } else {
+        debug!("Extracted params: None");
+    }
+}
+
+/// Log specific extracted parameters based on common BRP patterns
+fn log_common_brp_parameters(params: &Value) {
+    if let Some(entity) = params.get("entity").and_then(serde_json::Value::as_u64) {
+        debug!("Extracted entity: {}", entity);
     }
 
-    if let Some(ref params) = extracted.params {
-        // Log specific extracted parameters based on common BRP patterns
-        if let Some(entity) = params.get("entity").and_then(serde_json::Value::as_u64) {
-            debug_info.push(format!("Extracted entity: {entity}"));
-        }
+    if let Some(component) = params.get("component").and_then(serde_json::Value::as_str) {
+        debug!("Extracted component: {}", component);
+    }
 
-        if let Some(component) = params.get("component").and_then(serde_json::Value::as_str) {
-            debug_info.push(format!("Extracted component: {component}"));
-        }
+    if let Some(resource) = params.get("resource").and_then(serde_json::Value::as_str) {
+        debug!("Extracted resource: {}", resource);
+    }
 
-        if let Some(resource) = params.get("resource").and_then(serde_json::Value::as_str) {
-            debug_info.push(format!("Extracted resource: {resource}"));
-        }
+    if let Some(path) = params.get("path").and_then(serde_json::Value::as_str) {
+        debug!("Extracted path: {}", path);
+    }
 
-        if let Some(path) = params.get("path").and_then(serde_json::Value::as_str) {
-            debug_info.push(format!("Extracted path: {path}"));
-        }
+    if params.get("value").is_some() {
+        debug!("Extracted value: [Hidden for security]");
+    }
 
-        if params.get("value").is_some() {
-            debug_info.push("Extracted value: [Hidden for security]".to_string());
-        }
-
-        if let Some(components) = params.get("components") {
-            if let Some(obj) = components.as_object() {
-                debug_info.push(format!("Extracted components: {} types", obj.len()));
-                for key in obj.keys() {
-                    debug_info.push(format!("  - Component type: {key}"));
-                }
+    if let Some(components) = params.get("components") {
+        if let Some(obj) = components.as_object() {
+            debug!("Extracted components: {} types", obj.len());
+            for key in obj.keys() {
+                trace!("  - Component type: {}", key);
             }
         }
-    } else {
-        debug_info.push("Extracted params: None".to_string());
     }
-
-    Ok(RequestParams { extracted })
 }
 
 /// Resolve the actual BRP method name to call
 fn resolve_brp_method(
     extracted: &ExtractedParams,
     config: &BrpHandlerConfig,
-    debug_info: &mut Vec<String>,
 ) -> Result<String, McpError> {
-    debug_info.push("Starting method resolution".to_string());
+    debug!("Starting method resolution");
 
     // Log the method resolution sources
     if let Some(ref method) = extracted.method {
-        debug_info.push(format!("Method from request: {method}"));
+        debug!("Method from request: {}", method);
     } else {
-        debug_info.push("Method from request: None".to_string());
+        debug!("Method from request: None");
     }
 
     if let Some(config_method) = config.method {
-        debug_info.push(format!("Method from config: {config_method}"));
+        debug!("Method from config: {}", config_method);
     } else {
-        debug_info.push("Method from config: None".to_string());
+        debug!("Method from config: None");
     }
 
     // Perform the actual resolution
@@ -157,7 +168,7 @@ fn resolve_brp_method(
             )
         })?;
 
-    debug_info.push(format!("Method resolution: {resolved_method}"));
+    debug!("Method resolution: {}", resolved_method);
 
     Ok(resolved_method)
 }
@@ -229,21 +240,14 @@ fn process_success_response(
 ) -> Result<CallToolResult, McpError> {
     let mut response_data = data.unwrap_or(Value::Null);
 
-    // Extract debug info for BRP MCP debug info
-    let brp_mcp_debug_info =
-        if !enhanced_result.debug_info.is_empty() && brp_set_debug_mode::is_debug_enabled() {
-            Some(json!(enhanced_result.debug_info))
-        } else {
-            None
-        };
+    // Debug info is now logged via tracing during execution
 
     // Add format corrections only (not debug info, as it will be handled separately)
     add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
 
-    // Create new FormatterContext with BRP MCP debug info
+    // Create new FormatterContext
     let new_formatter_context = FormatterContext {
         params: context.formatter_context.params.clone(),
-        brp_mcp_debug_info,
     };
 
     // Create new formatter with updated context
@@ -279,11 +283,8 @@ fn process_error_response(
         error_info.message = enhanced_msg;
     }
 
-    // Add debug info and format corrections to error data if present
-    if !enhanced_result.debug_info.is_empty()
-        || !enhanced_result.format_corrections.is_empty()
-        || has_enhanced
-    {
+    // Add format corrections to error data if present
+    if !enhanced_result.format_corrections.is_empty() || has_enhanced {
         let mut data_obj = error_info.data.unwrap_or_else(|| json!({}));
 
         if let Value::Object(map) = &mut data_obj {
@@ -295,13 +296,7 @@ fn process_error_response(
                 );
             }
 
-            // Add debug info only if debug mode is enabled
-            if !enhanced_result.debug_info.is_empty() && brp_set_debug_mode::is_debug_enabled() {
-                map.insert(
-                    JSON_FIELD_DEBUG_INFO.to_string(),
-                    json!(enhanced_result.debug_info),
-                );
-            }
+            // Debug info is now handled via tracing system
 
             // Add format corrections
             if !enhanced_result.format_corrections.is_empty() {
@@ -330,33 +325,29 @@ pub async fn handle_brp_request(
     _context: RequestContext<RoleServer>,
     config: &BrpHandlerConfig,
 ) -> Result<CallToolResult, McpError> {
-    // Create debug info and log the earliest entry point
-    let mut debug_info = Vec::new();
-
     // Log raw MCP request at the earliest possible point
-    debug_info.push(format!("MCP ENTRY - Tool: {}", request.name));
-    debug_info.push(format!(
+    debug!("MCP ENTRY - Tool: {}", request.name);
+    trace!(
         "MCP ENTRY - Raw arguments: {}",
         serde_json::to_string(&request.arguments)
             .unwrap_or_else(|_| "SERIALIZATION_ERROR".to_string())
-    ));
+    );
 
     // Extract all parameters from the request
-    let params = extract_request_params(&request, config, &mut debug_info)?;
+    let params = extract_request_params(&request, config)?;
     let extracted = params.extracted;
 
     // Determine the actual method to call
-    let method_name = resolve_brp_method(&extracted, config, &mut debug_info)?;
+    let method_name = resolve_brp_method(&extracted, config)?;
 
     // Add debug info about calling BRP
-    debug_info.push("Calling BRP with validated parameters".to_string());
+    debug!("Calling BRP with validated parameters");
 
     // Call BRP using format discovery
     let enhanced_result = execute_brp_method_with_format_discovery(
         &method_name,
         extracted.params.clone(),
         Some(extracted.port),
-        debug_info,
     )
     .await
     .map_err(|err| crate::error::report_to_mcp_error(&err))?;
@@ -372,8 +363,7 @@ pub async fn handle_brp_request(
     }
 
     let formatter_context = FormatterContext {
-        params:             Some(context_params),
-        brp_mcp_debug_info: None, // Will be populated later when processing responses
+        params: Some(context_params),
     };
     let formatter = config.formatter_factory.create(formatter_context.clone());
 

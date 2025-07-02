@@ -7,15 +7,14 @@ use sysinfo::System;
 use super::constants::{DEFAULT_BRP_PORT, JSON_FIELD_PORT, JSON_FIELD_STATUS};
 use super::support::brp_client::{BrpResult, execute_brp_method};
 use crate::BrpMcpService;
-use crate::brp_tools::brp_set_debug_mode::is_debug_enabled;
+use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::constants::{PARAM_APP_NAME, PARAM_PORT};
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
+use crate::support::tracing::TracingLevel;
 use crate::support::{params, schema};
-use crate::tools::{
-    BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_LIST, DESC_BRP_STATUS, TOOL_BRP_STATUS,
-};
+use crate::tools::{BRP_METHOD_LIST, DESC_BRP_STATUS, TOOL_BRP_STATUS};
 
 pub fn register_tool() -> Tool {
     Tool {
@@ -124,9 +123,6 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<CallToolResult, 
     // Check BRP connectivity
     let brp_responsive = check_brp_on_port(port).await?;
 
-    // Check extras debug responsiveness
-    let extras_debug_responsive = check_extras_debug_responsive(port).await;
-
     // Build response based on findings
     let (status, message, app_running, app_pid) = match (running_process, brp_responsive) {
         (Some(process), true) => {
@@ -179,8 +175,7 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<CallToolResult, 
             "app_running": app_running,
             "brp_responsive": brp_responsive,
             "app_pid": app_pid,
-            "mcp_debug_enabled": is_debug_enabled(),
-            "extras_debug_responsive": extras_debug_responsive
+            "mcp_debug_enabled": matches!(get_current_level(), TracingLevel::Debug | TracingLevel::Trace)
         }))
         .map_or_else(
             |_| {
@@ -206,18 +201,5 @@ async fn check_brp_on_port(port: u16) -> Result<bool, McpError> {
             // BRP not responding or returned an error
             Ok(false)
         }
-    }
-}
-
-/// Check if extras debug commands are responsive on the given port
-async fn check_extras_debug_responsive(port: u16) -> bool {
-    // Try a simple extras debug command to check if extras plugin is available
-    let params = serde_json::json!({
-        "enabled": false  // Just check if the command works, don't change state
-    });
-
-    match execute_brp_method(BRP_METHOD_EXTRAS_SET_DEBUG_MODE, Some(params), Some(port)).await {
-        Ok(BrpResult::Success(_)) => true,
-        Ok(BrpResult::Error(_)) | Err(_) => false,
     }
 }

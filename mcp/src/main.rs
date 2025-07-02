@@ -136,45 +136,18 @@ impl BrpMcpService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Initialize logging to both stderr and a file
-    use tracing_subscriber::layer::SubscriberExt;
-    use tracing_subscriber::util::SubscriberInitExt;
+    // Initialize file-based tracing with dynamic level management
+    // Uses lazy file creation - file only created on first log write
+    support::tracing::init_file_tracing();
 
-    let log_file_name = "mcp_server_debug.log";
-
-    // Create file appender
-    let file_appender = tracing_appender::rolling::never("/tmp", log_file_name);
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-
-    // Create layers
-    let file_layer = tracing_subscriber::fmt::layer()
-        .with_writer(non_blocking)
-        .with_ansi(false);
-
-    let stderr_layer = tracing_subscriber::fmt::layer().with_writer(std::io::stderr);
-
-    // Use RUST_LOG if set, otherwise default to debug level for bevy_brp_mcp
-    let env_filter = if std::env::var("RUST_LOG").is_ok() {
-        tracing_subscriber::EnvFilter::from_default_env()
-    } else {
-        tracing_subscriber::EnvFilter::new("bevy_brp_mcp=debug,info")
-    };
-
-    // Combine layers
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(file_layer)
-        .with(stderr_layer)
-        .init();
-
-    tracing::debug!("MCP Server starting with logging enabled");
+    // Don't log anything here - it would create the file and violate "do no harm"
+    // The file should only be created when the user explicitly sets a tracing level
 
     // Initialize the watch manager
     brp_tools::watch::support::manager::initialize_watch_manager().await;
 
     let service = BrpMcpService::new();
 
-    tracing::info!("Starting stdio server");
     let server = service.serve(stdio()).await?;
     server.waiting().await?;
 

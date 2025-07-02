@@ -761,6 +761,7 @@ pub fn get_standard_tools() -> Vec<BrpToolDef> {
                 ],
             },
         },
+        // brp_extras/set_debug_mode
         BrpToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
@@ -770,7 +771,7 @@ pub fn get_standard_tools() -> Vec<BrpToolDef> {
             params:          vec![
                 ParamDef::boolean(
                     "enabled",
-                    "Set to true to enable debug output, false to disable",
+                    "Enable or disable debug mode for bevy_brp_extras plugin",
                     true,
                 ),
                 ParamDef::port(),
@@ -778,17 +779,11 @@ pub fn get_standard_tools() -> Vec<BrpToolDef> {
             param_extractor: ParamExtractorType::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
-                template:        "{message}",
-                response_fields: vec![
-                    ResponseField {
-                        name:      "message",
-                        extractor: ExtractorType::PassThroughData,
-                    },
-                    ResponseField {
-                        name:      "debug_enabled",
-                        extractor: ExtractorType::PassThroughData,
-                    },
-                ],
+                template:        "Debug mode updated successfully",
+                response_fields: vec![ResponseField {
+                    name:      "debug_enabled",
+                    extractor: ExtractorType::PassThroughData,
+                }],
             },
         },
     ]

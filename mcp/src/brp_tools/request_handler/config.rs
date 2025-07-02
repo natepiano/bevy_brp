@@ -15,6 +15,5 @@ pub struct BrpHandlerConfig {
 /// Context passed to formatter factory
 #[derive(Debug, Clone)]
 pub struct FormatterContext {
-    pub params:             Option<serde_json::Value>,
-    pub brp_mcp_debug_info: Option<serde_json::Value>,
+    pub params: Option<serde_json::Value>,
 }

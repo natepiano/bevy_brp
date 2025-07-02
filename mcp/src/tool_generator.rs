@@ -370,10 +370,7 @@ mod tests {
     fn test_convert_extractor_type_pass_through_result() {
         let extractor = convert_extractor_type(&ExtractorType::PassThroughResult);
         let test_data = json!({"key": "value"});
-        let context = FormatterContext {
-            params:             None,
-            brp_mcp_debug_info: None,
-        };
+        let context = FormatterContext { params: None };
 
         let result = extractor(&test_data, &context);
         assert_eq!(result, test_data);
@@ -384,8 +381,7 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("components"));
         let test_data = json!({});
         let context = FormatterContext {
-            params:             Some(json!({"components": ["Component1", "Component2"]})),
-            brp_mcp_debug_info: None,
+            params: Some(json!({"components": ["Component1", "Component2"]})),
         };
 
         let result = extractor(&test_data, &context);
@@ -397,8 +393,7 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("unknown"));
         let test_data = json!({});
         let context = FormatterContext {
-            params:             Some(json!({"components": ["Component1"]})),
-            brp_mcp_debug_info: None,
+            params: Some(json!({"components": ["Component1"]})),
         };
 
         let result = extractor(&test_data, &context);
@@ -410,8 +405,7 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("path"));
         let test_data = json!({});
         let context = FormatterContext {
-            params:             Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
-            brp_mcp_debug_info: None,
+            params: Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
         };
 
         let result = extractor(&test_data, &context);
@@ -423,8 +417,7 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("port"));
         let test_data = json!({});
         let context = FormatterContext {
-            params:             Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
-            brp_mcp_debug_info: None,
+            params: Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
         };
 
         let result = extractor(&test_data, &context);
@@ -434,10 +427,7 @@ mod tests {
     #[test]
     fn test_extract_entity_from_response() {
         let data = json!({"entity": 123});
-        let context = FormatterContext {
-            params:             None,
-            brp_mcp_debug_info: None,
-        };
+        let context = FormatterContext { params: None };
 
         let result = extract_entity_from_response(&data, &context);
         assert_eq!(result, json!(123));
@@ -446,10 +436,7 @@ mod tests {
     #[test]
     fn test_extract_entity_from_response_missing() {
         let data = json!({});
-        let context = FormatterContext {
-            params:             None,
-            brp_mcp_debug_info: None,
-        };
+        let context = FormatterContext { params: None };
 
         let result = extract_entity_from_response(&data, &context);
         assert_eq!(result, json!(0));
@@ -461,10 +448,7 @@ mod tests {
             {"Component1": {}, "Component2": {}},
             {"Component1": {}}
         ]);
-        let context = FormatterContext {
-            params:             None,
-            brp_mcp_debug_info: None,
-        };
+        let context = FormatterContext { params: None };
 
         let result = extract_query_component_count(&data, &context);
         assert_eq!(result, json!(3)); // 2 + 1 components
@@ -475,8 +459,7 @@ mod tests {
         let data = json!({});
         let test_params = json!({"filter": {"with": ["Transform"]}});
         let context = FormatterContext {
-            params:             Some(test_params.clone()),
-            brp_mcp_debug_info: None,
+            params: Some(test_params.clone()),
         };
 
         let result = extract_query_params_from_context(&data, &context);
@@ -487,8 +470,7 @@ mod tests {
     fn test_extract_field_from_context() {
         let data = json!({});
         let context = FormatterContext {
-            params:             Some(json!({"components": ["Transform"], "entity": 42})),
-            brp_mcp_debug_info: None,
+            params: Some(json!({"components": ["Transform"], "entity": 42})),
         };
 
         let result = extract_field_from_context("components", &data, &context);

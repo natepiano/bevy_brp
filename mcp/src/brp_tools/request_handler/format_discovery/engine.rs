@@ -36,6 +36,7 @@
 //! ```
 
 use serde_json::Value;
+use tracing::debug;
 
 use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
@@ -62,8 +63,6 @@ impl FormatCorrection {}
 pub struct EnhancedBrpResult {
     pub result:             BrpResult,
     pub format_corrections: Vec<FormatCorrection>,
-    #[allow(dead_code)] // Used by external API consumers
-    pub debug_info: Vec<String>,
 }
 
 /// Execute Phase 0: Direct BRP request without format discovery overhead
@@ -121,21 +120,15 @@ async fn execute_exception_path(
     original_params: Option<Value>,
     error: BrpResult,
     port: Option<u16>,
-    debug_info: &mut Vec<String>,
 ) -> FormatRecoveryResult {
-    debug_info.push(format!(
+    use super::phases::context::DiscoveryContext;
+
+    DiscoveryContext::add_debug(format!(
         "Exception Path: Entering format recovery for method '{method}'"
     ));
 
     // Use the new recovery engine with 3-level decision tree
-    super::recovery_engine::attempt_format_recovery(
-        &method,
-        original_params,
-        error,
-        port,
-        debug_info,
-    )
-    .await
+    super::recovery_engine::attempt_format_recovery(&method, original_params, error, port).await
 }
 
 /// Execute a BRP method with automatic format discovery using the new flow architecture
@@ -143,25 +136,25 @@ pub async fn execute_brp_method_with_format_discovery(
     method: &str,
     params: Option<Value>,
     port: Option<u16>,
-    initial_debug_info: Vec<String>,
 ) -> Result<EnhancedBrpResult> {
-    let mut debug_info = initial_debug_info;
+    use super::phases::context::DiscoveryContext;
 
-    debug_info.push(format!(
+    DiscoveryContext::add_debug(format!(
         "Format Discovery: Starting request for method '{method}'"
     ));
 
     // Phase 0: Direct BRP execution (normal path)
-    debug_info.push("Phase 0: Attempting direct BRP execution".to_string());
+    DiscoveryContext::add_debug("Phase 0: Attempting direct BRP execution".to_string());
     let phase_0_result = execute_phase_0(method, params, port).await?;
 
     match phase_0_result {
         BrpRequestResult::Success(result) => {
-            debug_info.push("Phase 0: Direct execution succeeded, no discovery needed".to_string());
+            DiscoveryContext::add_debug(
+                "Phase 0: Direct execution succeeded, no discovery needed".to_string(),
+            );
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
-                debug_info,
             })
         }
         BrpRequestResult::FormatError {
@@ -169,35 +162,31 @@ pub async fn execute_brp_method_with_format_discovery(
             method,
             original_params,
         } => {
-            debug_info.push("Phase 0: Format error detected, entering exception path".to_string());
+            DiscoveryContext::add_debug(
+                "Phase 0: Format error detected, entering exception path".to_string(),
+            );
 
             // Exception Path: Format error recovery
             let recovery_result =
-                execute_exception_path(method, original_params, error, port, &mut debug_info).await;
+                execute_exception_path(method, original_params, error, port).await;
 
             // Convert recovery result to EnhancedBrpResult
-            Ok(convert_recovery_to_enhanced_result(
-                recovery_result,
-                debug_info,
-            ))
+            Ok(convert_recovery_to_enhanced_result(recovery_result))
         }
         BrpRequestResult::OtherError(result) => {
-            debug_info
-                .push("Phase 0: Non-recoverable error, returning original result".to_string());
+            DiscoveryContext::add_debug(
+                "Phase 0: Non-recoverable error, returning original result".to_string(),
+            );
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
-                debug_info,
             })
         }
     }
 }
 
 /// Convert `FormatRecoveryResult` to `EnhancedBrpResult` for API compatibility
-fn convert_recovery_to_enhanced_result(
-    recovery_result: FormatRecoveryResult,
-    debug_info: Vec<String>,
-) -> EnhancedBrpResult {
+fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) -> EnhancedBrpResult {
     match recovery_result {
         FormatRecoveryResult::Recovered {
             corrected_result,
@@ -207,18 +196,15 @@ fn convert_recovery_to_enhanced_result(
             EnhancedBrpResult {
                 result: corrected_result,
                 format_corrections,
-                debug_info,
             }
         }
         FormatRecoveryResult::Educational { original_error, .. } => EnhancedBrpResult {
-            result: original_error,
+            result:             original_error,
             format_corrections: Vec::new(),
-            debug_info,
         },
         FormatRecoveryResult::NotRecoverable(result) => EnhancedBrpResult {
             result,
             format_corrections: Vec::new(),
-            debug_info,
         },
     }
 }

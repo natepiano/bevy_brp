@@ -4,6 +4,7 @@
 //! and the new recovery engine instead of the legacy tier-based approach.
 
 use serde_json::Value;
+use tracing::trace;
 
 use super::context::DiscoveryContext;
 use super::tier_execution::DiscoveryResultData;
@@ -16,40 +17,31 @@ use crate::error::Result;
 ///
 /// This function has been simplified in Phase 4 to work with the new recovery engine.
 /// Most of the complex result building logic has been moved to the recovery engine itself.
-#[allow(clippy::needless_pass_by_ref_mut)] // context.add_debug() requires &mut
-pub fn build_final_result(
-    context: &mut DiscoveryContext,
+pub async fn build_final_result(
+    context: &DiscoveryContext,
     discovery_data: DiscoveryResultData,
 ) -> Result<EnhancedBrpResult> {
-    // Add discovery debug information to context
-    context.debug_info.extend(discovery_data.debug_info);
-
     // In Phase 4, the recovery engine handles most of the result building
     // This function now mainly packages the results for backward compatibility
 
     if discovery_data.format_corrections.is_empty() {
         // No corrections found - return enhanced error
+        DiscoveryContext::add_debug("Format Discovery: No corrections were possible".to_string());
+        DiscoveryContext::add_debug("Recovery engine completed without successful corrections".to_string());
+
         let original_error = context.initial_error.clone().unwrap_or_else(|| BrpError {
             code:    -1,
             message: "Unknown error".to_string(),
             data:    None,
         });
 
-        context
-            .debug_info
-            .push("Format Discovery: No corrections were possible".to_string());
-        context
-            .debug_info
-            .push("Recovery engine completed without successful corrections".to_string());
-
         Ok(EnhancedBrpResult {
             result:             BrpResult::Error(original_error),
             format_corrections: Vec::new(),
-            debug_info:         context.debug_info.clone(),
         })
     } else {
         // Corrections found - package successful result
-        context.debug_info.push(format!(
+        DiscoveryContext::add_debug(format!(
             "Format Discovery: {} corrections applied",
             discovery_data.format_corrections.len()
         ));
@@ -61,7 +53,6 @@ pub fn build_final_result(
                 serde_json::json!({"corrections_applied": discovery_data.format_corrections.len()}),
             )),
             format_corrections: discovery_data.format_corrections,
-            debug_info:         context.debug_info.clone(),
         })
     }
 }
