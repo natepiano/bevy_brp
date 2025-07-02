@@ -46,20 +46,33 @@
 //! 4. **Comprehensive Debugging**: Full visibility into discovery process
 //! 5. **Maintainable Architecture**: Clean separation of concerns
 
+mod adapters;
 mod constants;
 mod detection;
 mod engine;
+mod extras_integration;
 mod field_mapper;
+mod flow_types;
 mod path_parser;
-mod path_suggestions;
+// mod path_suggestions; // Removed: unused module
 pub mod phases;
-mod support;
+mod recovery_engine;
+mod registry_integration;
 mod transformers;
 pub mod types;
+mod unified_types;
 
 #[cfg(test)]
 mod tests;
 
 pub use self::engine::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
+};
+// Types will be publicly exposed once the refactoring is complete
+#[allow(unused_imports)]
+pub use self::flow_types::{BrpRequestResult, CorrectionResult, FormatRecoveryResult};
+#[allow(unused_imports)]
+pub use self::unified_types::{
+    CorrectionInfo, CorrectionMethod, DiscoverySource, FormatInfo, RegistryStatus,
+    SerializationSupport, UnifiedTypeInfo,
 };

@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
+use bevy::reflect::VariantType;
 use serde_json::Value;
 
 use super::error::{DebugContext, DiscoveryResult};
@@ -62,6 +63,7 @@ pub fn discover_component_format(
 }
 
 /// Discover type information as a factual response
+#[allow(clippy::too_many_lines)]
 pub fn discover_type_as_response(
     world: &World,
     type_name: &str,
@@ -176,12 +178,12 @@ pub fn discover_type_as_response(
 
         if let TypeInfo::Enum(_) = type_info {
             use super::types::{cast_type_info, extract_enum_variants};
-            
+
             cast_type_info(type_info, TypeInfo::as_enum, "EnumInfo")
                 .ok()
                 .map(|enum_info| {
                     let variants = extract_enum_variants(enum_info);
-                    
+
                     // Build the enum_info structure expected by MCP
                     let mut enum_map = serde_json::Map::new();
                     let variant_array: Vec<Value> = variants
@@ -189,20 +191,22 @@ pub fn discover_type_as_response(
                         .map(|(name, variant_info)| {
                             let mut variant_map = serde_json::Map::new();
                             variant_map.insert("name".to_string(), Value::String(name));
-                            
+
                             // Add variant type information
-                            use bevy::reflect::VariantType;
                             let variant_type = match variant_info.variant_type() {
                                 VariantType::Unit => "Unit",
                                 VariantType::Tuple => "Tuple",
                                 VariantType::Struct => "Struct",
                             };
-                            variant_map.insert("type".to_string(), Value::String(variant_type.to_string()));
-                            
+                            variant_map.insert(
+                                "type".to_string(),
+                                Value::String(variant_type.to_string()),
+                            );
+
                             Value::Object(variant_map)
                         })
                         .collect();
-                    
+
                     enum_map.insert("variants".to_string(), Value::Array(variant_array));
                     enum_map
                 })

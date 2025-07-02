@@ -17,23 +17,10 @@ macro_rules! define_regex {
     };
 }
 
-use crate::brp_tools::constants::BRP_ERROR_CODE_INVALID_REQUEST;
 use crate::tools::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
     BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_SPAWN,
 };
-
-/// Error code for component type format errors from BRP
-pub const COMPONENT_FORMAT_ERROR_CODE: i32 = BRP_ERROR_CODE_INVALID_REQUEST;
-
-/// Error code for resource type format errors from BRP
-pub const RESOURCE_FORMAT_ERROR_CODE: i32 = -23501;
-
-/// Tier constants for format discovery
-pub const TIER_SERIALIZATION: u8 = 1;
-pub const TIER_DIRECT_DISCOVERY: u8 = 2;
-pub const TIER_DETERMINISTIC: u8 = 3;
-pub const TIER_GENERIC_FALLBACK: u8 = 4;
 
 /// Methods that support format discovery (components and resources)
 pub const FORMAT_DISCOVERY_METHODS: &[&str] = &[

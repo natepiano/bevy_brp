@@ -2,11 +2,14 @@
 //!
 //! This module consolidates the transformation logic into a clean trait-based system
 //! that replaces the previous 1000+ line transformations.rs file.
+//!
+//! Updated for Phase 3 to work with the unified type system using `UnifiedTypeInfo`
+//! instead of the legacy `DiscoveredFacts` structure.
 
 use serde_json::Value;
 
 use super::detection::ErrorPattern;
-use super::phases::tier_execution::DiscoveredFacts;
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::support::brp_client::BrpError;
 
 // Import transformer implementations
@@ -23,6 +26,9 @@ pub use self::string_type::StringTypeTransformer;
 pub use self::tuple_struct::TupleStructTransformer;
 
 /// Trait for format transformers that can handle specific error patterns
+///
+/// Updated for Phase 3 to work with `UnifiedTypeInfo` which provides comprehensive
+/// type information including registry status, serialization support, and format examples.
 pub trait FormatTransformer {
     /// Check if this transformer can handle the given error pattern
     fn can_handle(&self, error_pattern: &ErrorPattern) -> bool;
@@ -37,13 +43,21 @@ pub trait FormatTransformer {
         self.transform(value)
     }
 
-    /// Transform with discovered facts from format discovery
-    /// Default implementation ignores the facts and calls `transform_with_error()`
-    fn transform_with_facts(
+    /// Transform with comprehensive type information from the unified type system
+    ///
+    /// This method provides access to complete type information including:
+    /// - Registry status and reflection information
+    /// - Serialization capability (Serialize/Deserialize traits)
+    /// - Format examples from direct discovery
+    /// - Mutation paths for complex types
+    /// - Type category and child type information
+    ///
+    /// Default implementation falls back to error-only transformation for backward compatibility.
+    fn transform_with_type_info(
         &self,
         value: &Value,
         error: &BrpError,
-        _facts: &DiscoveredFacts,
+        _type_info: &UnifiedTypeInfo,
     ) -> Option<(Value, String)> {
         self.transform_with_error(value, error)
     }
@@ -87,6 +101,7 @@ impl TransformerRegistry {
     }
 
     /// Find a transformer that can handle the given error pattern
+    #[allow(dead_code)]
     pub fn find_transformer(&self, error_pattern: &ErrorPattern) -> Option<&dyn FormatTransformer> {
         self.transformers
             .iter()
@@ -94,16 +109,36 @@ impl TransformerRegistry {
             .map(std::convert::AsRef::as_ref)
     }
 
-    /// Try to transform the value using any applicable transformer
-    pub fn transform(
+    /// Try to transform the value using any applicable transformer with comprehensive type
+    /// information
+    ///
+    /// This method uses the unified type system to provide transformers with complete type
+    /// information including format examples, mutation paths, and serialization capabilities.
+    #[allow(dead_code)]
+    pub fn transform_with_type_info(
         &self,
         value: &Value,
         error_pattern: &ErrorPattern,
         error: &BrpError,
-        facts: &DiscoveredFacts,
+        type_info: &UnifiedTypeInfo,
     ) -> Option<(Value, String)> {
         self.find_transformer(error_pattern)
-            .and_then(|transformer| transformer.transform_with_facts(value, error, facts))
+            .and_then(|transformer| transformer.transform_with_type_info(value, error, type_info))
+    }
+
+    /// Try to transform the value using any applicable transformer (legacy method)
+    ///
+    /// This method is maintained for backward compatibility during the transition.
+    /// New code should use `transform_with_type_info()` instead.
+    #[allow(dead_code)]
+    pub fn transform_legacy(
+        &self,
+        value: &Value,
+        error_pattern: &ErrorPattern,
+        error: &BrpError,
+    ) -> Option<(Value, String)> {
+        self.find_transformer(error_pattern)
+            .and_then(|transformer| transformer.transform_with_error(value, error))
     }
 
     /// Get the number of registered transformers

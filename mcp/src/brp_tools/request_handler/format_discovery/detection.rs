@@ -1,6 +1,8 @@
 //! Error detection and pattern matching logic for format discovery
-
-use serde_json::Value;
+//!
+//! This module provides simplified error detection focused on the core functionality
+//! needed by the new 3-level recovery architecture. Complex tier management has been
+//! removed in favor of straightforward pattern matching and registry checks.
 
 use super::constants::{
     ACCESS_ERROR_REGEX, ENUM_UNIT_VARIANT_ACCESS_ERROR_REGEX, ENUM_UNIT_VARIANT_REGEX,
@@ -8,9 +10,7 @@ use super::constants::{
     TUPLE_STRUCT_PATH_REGEX, TYPE_MISMATCH_REGEX, UNKNOWN_COMPONENT_REGEX,
     UNKNOWN_COMPONENT_TYPE_REGEX, VARIANT_TYPE_MISMATCH_REGEX,
 };
-use crate::brp_tools::support::brp_client::{BrpError, BrpResult, execute_brp_method};
-use crate::error::{Error, Result};
-use crate::tools::BRP_METHOD_REGISTRY_SCHEMA;
+use crate::brp_tools::support::brp_client::BrpError;
 
 /// Known error patterns that can be deterministically handled
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -61,74 +61,6 @@ pub enum ErrorPattern {
 #[derive(Debug, Clone)]
 pub struct ErrorAnalysis {
     pub pattern: Option<ErrorPattern>,
-}
-
-/// Result of registry checking for serialization support
-#[derive(Debug, Clone)]
-pub struct SerializationCheck {
-    pub diagnostic_message: String,
-}
-
-/// Tier information for debugging
-#[derive(Debug, Clone)]
-pub struct TierInfo {
-    pub tier:      u8,
-    pub tier_name: String,
-    pub action:    String,
-    pub success:   bool,
-}
-
-impl TierInfo {
-    /// Create a new `TierInfo` instance
-    pub fn new(tier: u8, name: &str, action: String) -> Self {
-        Self {
-            tier,
-            tier_name: name.to_string(),
-            action,
-            success: false,
-        }
-    }
-
-    /// Mark this tier as successful and update the action message
-    pub fn mark_success(&mut self, action: String) {
-        self.success = true;
-        self.action = action;
-    }
-}
-
-/// Manager for tracking tier execution during format discovery
-pub struct TierManager {
-    tier_info: Vec<TierInfo>,
-}
-
-impl TierManager {
-    /// Create a new `TierManager`
-    pub const fn new() -> Self {
-        Self {
-            tier_info: Vec::new(),
-        }
-    }
-
-    /// Start a new tier
-    pub fn start_tier(&mut self, tier: u8, name: &str, action: String) {
-        self.tier_info.push(TierInfo::new(tier, name, action));
-    }
-
-    /// Complete the current tier
-    pub fn complete_tier(&mut self, success: bool, action: String) {
-        if let Some(last) = self.tier_info.last_mut() {
-            if success {
-                last.mark_success(action);
-            } else {
-                last.action = action;
-            }
-        }
-    }
-
-    /// Convert into the underlying vector of tier info
-    pub fn into_vec(self) -> Vec<TierInfo> {
-        self.tier_info
-    }
 }
 
 /// Consolidated pattern matcher that checks all patterns in a single pass
@@ -248,114 +180,6 @@ pub fn analyze_error_pattern(error: &BrpError) -> ErrorAnalysis {
     }
 }
 
-/// Check if a type supports serialization by querying the registry schema
-pub async fn check_type_serialization(
-    type_name: &str,
-    port: Option<u16>,
-) -> Result<SerializationCheck> {
-    // Query the registry schema for this specific type
-    let schema_params = serde_json::json!({
-        "with_types": ["Component", "Resource"],
-        "with_crates": [extract_crate_name(type_name)]
-    });
-
-    let schema_result =
-        execute_brp_method(BRP_METHOD_REGISTRY_SCHEMA, Some(schema_params), port).await?;
-
-    match schema_result {
-        BrpResult::Success(Some(schema_data)) => analyze_schema_for_type(type_name, &schema_data),
-        BrpResult::Success(None) => Ok(SerializationCheck {
-            diagnostic_message: format!("No schema data returned for type `{type_name}`"),
-        }),
-        BrpResult::Error(err) => Ok(SerializationCheck {
-            diagnostic_message: format!(
-                "Failed to query schema for type `{type_name}`: {}",
-                err.message
-            ),
-        }),
-    }
-}
-
-/// Extract crate name from a fully-qualified type name
-fn extract_crate_name(type_name: &str) -> &str {
-    // Extract the first part before :: for crate name
-    // e.g., "bevy_transform::components::transform::Transform" -> "bevy_transform"
-    type_name.split("::").next().unwrap_or(type_name)
-}
-
-/// Analyze schema data to determine serialization support for a type
-fn analyze_schema_for_type(type_name: &str, schema_data: &Value) -> Result<SerializationCheck> {
-    // Schema response can be either an array (old format) or an object (new format)
-    // Try object format first (new format where keys are type names)
-    if let Some(schema_obj) = schema_data.as_object() {
-        // Direct lookup by type name
-        if let Some(schema) = schema_obj.get(type_name) {
-            return Ok(analyze_single_type_schema(type_name, schema));
-        }
-    } else if let Some(schemas) = schema_data.as_array() {
-        // Fall back to array format (old format)
-        for schema in schemas {
-            if let Some(type_path) = schema.get("typePath").and_then(Value::as_str) {
-                if type_path == type_name {
-                    return Ok(analyze_single_type_schema(type_name, schema));
-                }
-            }
-        }
-    } else {
-        return Err(error_stack::Report::new(Error::FormatDiscovery(
-            "Unexpected schema response format: neither an array nor an object".to_string(),
-        )));
-    }
-
-    // Type not found in schema
-    Ok(SerializationCheck {
-        diagnostic_message: format!(
-            "Type `{type_name}` not found in registry schema. \
-            This type may not be registered with BRP or may not exist."
-        ),
-    })
-}
-
-/// Analyze a single type's schema to check serialization support
-fn analyze_single_type_schema(type_name: &str, schema: &Value) -> SerializationCheck {
-    // Check its reflect types
-    let reflect_types = schema
-        .get("reflectTypes")
-        .and_then(Value::as_array)
-        .map(|arr| {
-            arr.iter()
-                .filter_map(Value::as_str)
-                .map(String::from)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-
-    let has_serialize = reflect_types.contains(&"Serialize".to_string());
-    let has_deserialize = reflect_types.contains(&"Deserialize".to_string());
-
-    let diagnostic_message = if !has_serialize || !has_deserialize {
-        let missing = if !has_serialize && !has_deserialize {
-            "Serialize and Deserialize"
-        } else if !has_serialize {
-            "Serialize"
-        } else {
-            "Deserialize"
-        };
-
-        format!(
-            "Type `{type_name}` cannot be used with BRP because it lacks {missing} trait(s). \
-            Available traits: {}. \
-            To fix this, the type definition needs both #[derive(Serialize, Deserialize)] \
-            AND #[reflect(Serialize, Deserialize)] attributes.",
-            reflect_types.join(", ")
-        )
-    } else {
-        format!("Type `{type_name}` has proper serialization support")
-    };
-
-    SerializationCheck { diagnostic_message }
-}
-
 /// Helper function to extract context from errors
 pub fn extract_path_from_error_context(error_message: &str) -> Option<String> {
     // Look for patterns like "at path .foo.bar" or "path '.foo.bar'"
@@ -390,21 +214,6 @@ fn extract_path_from_position(error_message: &str, start_pos: usize) -> Option<S
     }
 }
 
-/// Convert tier information to debug strings
-pub fn tier_info_to_debug_strings(tier_info: &[TierInfo]) -> Vec<String> {
-    let mut debug_strings = Vec::new();
-
-    if !tier_info.is_empty() {
-        debug_strings.push("Tiered Format Discovery Results:".to_string());
-
-        for info in tier_info {
-            let status_icon = if info.success { "SUCCESS" } else { "FAILED" };
-            debug_strings.push(format!(
-                "  {} Tier {}: {} - {}",
-                status_icon, info.tier, info.tier_name, info.action
-            ));
-        }
-    }
-
-    debug_strings
-}
+// Phase 4: Legacy tier system completely removed
+// Debug information is now handled by the unified recovery engine
+// All tier management logic has been replaced by the 3-level recovery system
