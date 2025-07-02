@@ -1,0 +1,100 @@
+[
+  {
+    "id": "1",
+    "content": "Remove unused debug functions from launch_common.rs: collect_launch_debug_info, collect_enhanced_launch_debug_info, collect_complete_launch_debug_info and their structs EnhancedDebugParams, LaunchDebugParams",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build to verify compilation after removing debug functions",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Remove unused fields from DiscoveryContext struct: method, original_params, port, initial_error",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Remove unused methods from DiscoveryContext impl: new, set_error",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Run cargo build to verify compilation after DiscoveryContext changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Remove unused functions from result_building.rs: build_final_result, enhance_type_mismatch_error_with_context, extract_component_type_from_context, build_corrected_params_with_unified_info",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Remove unused struct DiscoveryResultData and function run_discovery_tiers from tier_execution.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build to verify compilation after removing phase functions and structs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Fix Option::map_or_else suggestion in extras_integration.rs line 67-80",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Fix unnecessary_wraps warnings: remove Option wrapper from enhance_with_type_context function",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Fix unnecessary_wraps warnings: remove Result wrapper from build_corrected_params_with_unified_info function (if not already removed)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Add backticks to documentation for UnifiedTypeInfo and result_building.rs",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Remove async from build_final_result and run_discovery_tiers functions (if not already removed)",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run final cargo build to verify all clippy issues are resolved",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
