@@ -527,7 +527,6 @@ fn create_math_type_info(
     }
 }
 
-
 /// Extract original values from BRP method parameters for transformer use
 fn extract_type_values_from_params<'a>(
     method: &str,
@@ -704,7 +703,7 @@ fn can_retry_with_corrections(
         if correction.corrected_value.is_null()
             || (correction.corrected_value.is_object()
                 && correction.corrected_value.as_object().is_some_and(|o| {
-                    o.contains_key("usage")
+                    o.contains_key("hint")
                         || o.contains_key("examples")
                         || o.contains_key("valid_values")
                 }))
@@ -740,7 +739,7 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &st
     // For mutations, provide mutation path guidance
     if method == BRP_METHOD_MUTATE_COMPONENT || method == BRP_METHOD_MUTATE_RESOURCE {
         let mut guidance = serde_json::json!({
-            "usage": "Use appropriate path and value for mutation"
+            "hint": "Use appropriate path and value for mutation"
         });
 
         if !type_info.format_info.mutation_paths.is_empty() {
@@ -757,7 +756,7 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &st
         if let Some(enum_info) = &type_info.enum_info {
             let variants: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
             guidance["valid_values"] = serde_json::json!(variants);
-            guidance["usage"] = serde_json::json!("Use empty path with variant name as value");
+            guidance["hint"] = serde_json::json!("Use empty path with variant name as value");
             guidance["examples"] = serde_json::json!([
                 {"path": "", "value": variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
                 {"path": "", "value": variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}

@@ -64,6 +64,14 @@ Configuration: Port [PORT], App [APP_NAME]
 3. [SHUTDOWN_INSTRUCTION]
 4. Report results using the exact format below
 
+**FAILURE HANDLING PROTOCOL:**
+- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing. Failures include:
+  - Tool returns an error or exception
+  - Tool succeeds but response doesn't match test expectations
+  - Behavior doesn't match expected test outcomes
+- **CAPTURE EVERYTHING**: For every failed test step, include the complete tool response in your results
+- **NO CONTINUATION**: Do not attempt any further test steps after the first failure
+
 **CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
 - Error message quality issues are FAILURES, not minor issues
 - Half of our codebase exists to construct proper error messages
@@ -79,12 +87,19 @@ Configuration: Port [PORT], App [APP_NAME]
 
 **CRITICAL ERROR HANDLING:**
 - **ALWAYS use the specified port [PORT] for ALL BRP operations**
-- If you encounter HTTP request failures, connection errors, or unexpected tool failures:
-  1. STOP immediately
-  2. Record the exact error message
-  3. Note what operation was being attempted
-  4. Report the failure in your test results
-- Do NOT continue testing after unexpected errors
+- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop testing and report results
+- **CAPTURE FULL RESPONSES**: For every failed test step, include the complete tool response in your results
+- **TEST FAILURES INCLUDE**: 
+  - HTTP request failures, connection errors, or tool exceptions
+  - Tool succeeds but response data doesn't match test expectations
+  - Unexpected behavior or state changes
+- **FAILURE RESPONSE PROTOCOL**:
+  1. STOP immediately - do not continue with remaining test steps
+  2. Record the exact error message or expectation mismatch
+  3. Note what operation was being attempted and what was expected
+  4. **Include the full JSON response** from the tool call (successful or failed)
+  5. Report the failure in your test results with complete context
+- Do NOT continue testing after ANY failure (error OR expectation mismatch)
 - Do NOT retry failed operations - report them as failures
 
 **Required Response Format:**
@@ -108,6 +123,7 @@ Configuration: Port [PORT], App [APP_NAME]
   - **Actual**: [what happened]
   - **Impact**: critical (ALL ISSUES ARE CRITICAL - NO MINOR ISSUES ALLOWED)
   - **Component/Resource**: [fully qualified type name or N/A if not applicable]
+  - **Full Tool Response**: [Complete JSON response from the failed tool call]
 
 ### ⚠️ SKIPPED
 - [Test description]: [reason for skipping]
@@ -127,16 +143,19 @@ Configuration: Port [PORT], App [APP_NAME]
 
 **CRITICAL ERROR HANDLING:**
   - **ALWAYS use the specified port [PORT] for ALL BRP operations**
+  - **STOP ON FIRST ERROR**: When ANY test step fails, IMMEDIATELY stop and return results
+  - **CAPTURE FULL RESPONSES**: Include complete tool responses for ALL failed operations
   - If you encounter HTTP request failures, connection errors, or
   unexpected tool failures:
-    1. **IMMEDIATELY return your test results with the failure
-  documented**
-    2. **Do not attempt any further BRP operations**
-    3. **Do not relaunch the app**
-    4. **Mark the test as CRITICAL FAILURE in your response**
+    1. **IMMEDIATELY return your test results with the failure documented**
+    2. **Include the full JSON response from the failed tool**
+    3. **Do not attempt any further BRP operations or test steps**
+    4. **Do not relaunch the app**
+    5. **Mark the test as CRITICAL FAILURE in your response**
 
   **When you see "MCP error -32602" or "HTTP request failed":**
   - This is a CRITICAL FAILURE
+  - **Capture the complete tool response**
   - Stop immediately and return results
   - Do not continue testing
 

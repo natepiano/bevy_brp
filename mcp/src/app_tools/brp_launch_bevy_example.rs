@@ -9,11 +9,9 @@ use tracing::debug;
 
 use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::BrpMcpService;
-use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
-use crate::support::tracing::TracingLevel;
 use crate::support::{params, service};
 
 pub async fn handle(
@@ -109,20 +107,15 @@ fn collect_debug_info_if_enabled(
     profile: &str,
     manifest_dir: &Path,
 ) {
-    if matches!(
-        get_current_level(),
-        TracingLevel::Debug | TracingLevel::Trace
-    ) {
-        debug!(
-            "Launching example {} from {}",
-            example_name,
-            manifest_dir.display()
-        );
-        debug!("Working directory: {}", manifest_dir.display());
-        debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
-        debug!("Profile: {}", profile);
-        debug!("Command: {}", cargo_command);
-    }
+    debug!(
+        "Launching example {} from {}",
+        example_name,
+        manifest_dir.display()
+    );
+    debug!("Working directory: {}", manifest_dir.display());
+    debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
+    debug!("Profile: {}", profile);
+    debug!("Command: {}", cargo_command);
 }
 
 /// Parameters for executing the launch process
@@ -172,29 +165,24 @@ fn execute_launch_process(params: LaunchProcessParams<'_>) -> Result<LaunchResul
     let spawn_duration = spawn_start.elapsed();
     let launch_end = Instant::now();
 
-    // Collect complete debug info if enabled
-    if matches!(
-        get_current_level(),
-        TracingLevel::Debug | TracingLevel::Trace
-    ) {
-        let launch_duration_ms = launch_end.duration_since(params.launch_start).as_millis();
+    // Collect complete debug info
+    let launch_duration_ms = launch_end.duration_since(params.launch_start).as_millis();
 
-        debug!("Launch duration: {}ms", launch_duration_ms);
-        debug!("Package: {}", params.package_name);
-        debug!(
-            "TIMING - Find example: {}ms",
-            params.find_duration.as_millis()
-        );
-        debug!("TIMING - Log setup: {}ms", log_setup_duration.as_millis());
-        debug!(
-            "TIMING - Command setup: {}ms",
-            cmd_setup_duration.as_millis()
-        );
-        debug!("TIMING - Spawn process: {}ms", spawn_duration.as_millis());
+    debug!("Launch duration: {}ms", launch_duration_ms);
+    debug!("Package: {}", params.package_name);
+    debug!(
+        "TIMING - Find example: {}ms",
+        params.find_duration.as_millis()
+    );
+    debug!("TIMING - Log setup: {}ms", log_setup_duration.as_millis());
+    debug!(
+        "TIMING - Command setup: {}ms",
+        cmd_setup_duration.as_millis()
+    );
+    debug!("TIMING - Spawn process: {}ms", spawn_duration.as_millis());
 
-        if let Some(port) = params.port {
-            debug!("Environment variable: BRP_PORT={}", port);
-        }
+    if let Some(port) = params.port {
+        debug!("Environment variable: BRP_PORT={}", port);
     }
 
     Ok(LaunchResult {

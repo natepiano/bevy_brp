@@ -31,9 +31,9 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Confirm Transform component remains
 
 ### 6. Resource Operations
-- Execute `mcp__brp__bevy_get_resource` to retrieve ClearColor resource
+- Execute `mcp__brp__bevy_get_resource` to retrieve ClearColor resource using `bevy_render::camera::clear_color::ClearColor`
 - Execute `mcp__brp__bevy_mutate_resource` to change ClearColor value
-- Use path `.0` to mutate the color components (ClearColor wraps a Color)
+- Use path `.value` to mutate the color components (ClearColor contains a Color value)
 - Verify resource mutation succeeds and new value is retrievable
 
 ### 7. Entity Cleanup

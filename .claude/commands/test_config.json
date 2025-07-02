@@ -70,13 +70,13 @@
     "expected_shutdown_method": "process_kill"
   },
   {
-    "test_name": "registry",
-    "test_file": ".claude/commands/tests/registry.md",
+    "test_name": "corrections",
+    "test_file": ".claude/commands/tests/corrections.md",
     "port": 20108,
     "app_name": "extras_plugin",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20108",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test components without Serialize/Deserialize traits",
+    "test_objective": "Test spawn, insert, mutate for serialization on components and corrections of format",
     "expected_shutdown_method": "clean_shutdown"
   },
   {

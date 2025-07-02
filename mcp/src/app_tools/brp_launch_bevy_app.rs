@@ -9,12 +9,10 @@ use tracing::debug;
 
 use super::support::{launch_common, process, scanning};
 use crate::BrpMcpService;
-use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::tracing::TracingLevel;
 use crate::support::{params, service};
 
 pub async fn handle(
@@ -74,16 +72,11 @@ pub fn launch_bevy_app(
     // Get the manifest directory (parent of Cargo.toml)
     let manifest_dir = launch_common::validate_manifest_directory(&app.manifest_path)?;
 
-    if matches!(
-        get_current_level(),
-        TracingLevel::Debug | TracingLevel::Trace
-    ) {
-        debug!("Launching app {} from {}", app_name, manifest_dir.display());
-        debug!("Working directory: {}", manifest_dir.display());
-        debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
-        debug!("Profile: {}", profile);
-        debug!("Binary path: {}", binary_path.display());
-    }
+    debug!("Launching app {} from {}", app_name, manifest_dir.display());
+    debug!("Working directory: {}", manifest_dir.display());
+    debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
+    debug!("Profile: {}", profile);
+    debug!("Binary path: {}", binary_path.display());
 
     // Setup logging
     let (log_file_path, log_file_for_redirect) = launch_common::setup_launch_logging(
@@ -108,18 +101,13 @@ pub fn launch_bevy_app(
     )?;
     let launch_end = Instant::now();
 
-    // Collect enhanced debug info if enabled
-    if matches!(
-        get_current_level(),
-        TracingLevel::Debug | TracingLevel::Trace
-    ) {
-        let launch_duration_ms = launch_end.duration_since(launch_start).as_millis();
+    // Collect enhanced debug info
+    let launch_duration_ms = launch_end.duration_since(launch_start).as_millis();
 
-        debug!("Launch duration: {}ms", launch_duration_ms);
+    debug!("Launch duration: {}ms", launch_duration_ms);
 
-        if let Some(port) = port {
-            debug!("Environment variable: BRP_PORT={}", port);
-        }
+    if let Some(port) = port {
+        debug!("Environment variable: BRP_PORT={}", port);
     }
 
     // Create additional app-specific data

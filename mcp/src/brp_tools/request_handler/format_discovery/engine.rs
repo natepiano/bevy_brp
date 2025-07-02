@@ -78,7 +78,10 @@ async fn execute_phase_0(
     let type_infos = if is_format_discovery_supported(method) {
         debug!("Phase 0: Method {method} supports format discovery, extracting component types");
         let type_names = extract_type_names(method, params.as_ref());
-        debug!("Phase 0: Extracted {} type names: {type_names:?}", type_names.len());
+        debug!(
+            "Phase 0: Extracted {} type names: {type_names:?}",
+            type_names.len()
+        );
         if type_names.is_empty() {
             debug!("Phase 0: No type names found, skipping pre-fetching");
             std::collections::HashMap::new()
@@ -87,9 +90,14 @@ async fn execute_phase_0(
                 "Phase 0: Pre-fetching type information for {} types: {type_names:?}",
                 type_names.len()
             );
-            let registry_results =
-                check_multiple_types_registry_status(&type_names, port).await;
-            debug!("Phase 0: Registry results: {} successful lookups", registry_results.iter().filter(|(_, info)| info.is_some()).count());
+            let registry_results = check_multiple_types_registry_status(&type_names, port).await;
+            debug!(
+                "Phase 0: Registry results: {} successful lookups",
+                registry_results
+                    .iter()
+                    .filter(|(_, info)| info.is_some())
+                    .count()
+            );
             registry_results
                 .into_iter()
                 .filter_map(|(name, info)| info.map(|i| (name, i)))
@@ -186,7 +194,13 @@ fn extract_type_names(method: &str, params: Option<&Value>) -> Vec<String> {
         return Vec::new();
     };
 
-    debug!("extract_type_names: Processing method {method} with params keys: {params_keys:?}", params_keys = params.as_object().map(|obj| obj.keys().collect::<Vec<_>>()).unwrap_or_default());
+    debug!(
+        "extract_type_names: Processing method {method} with params keys: {params_keys:?}",
+        params_keys = params
+            .as_object()
+            .map(|obj| obj.keys().collect::<Vec<_>>())
+            .unwrap_or_default()
+    );
 
     // For spawn/insert operations, look for "components" (plural)
     if let Some(components) = params.get("components").and_then(Value::as_object) {

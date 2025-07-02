@@ -8,7 +8,6 @@
 // ============================================================================
 
 /// JSON field name constants for BRP responses
-pub const JSON_FIELD_CODE: &str = "code";
 pub const JSON_FIELD_COMPONENT: &str = "component";
 pub const JSON_FIELD_COMPONENTS: &str = "components";
 pub const JSON_FIELD_COUNT: &str = "count";

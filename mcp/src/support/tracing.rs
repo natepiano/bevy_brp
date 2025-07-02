@@ -23,6 +23,17 @@ where
         metadata: &tracing::Metadata<'_>,
         _ctx: tracing_subscriber::layer::Context<'_, S>,
     ) -> bool {
+        // Suppress third-party HTTP connection logs that are noise for BRP debugging
+        let target = metadata.target();
+        if target.starts_with("reqwest::")
+            || target.starts_with("hyper")
+            || target.starts_with("h2::")
+            || target.starts_with("rustls::")
+            || target.starts_with("want::")
+        {
+            return false;
+        }
+
         let current_level = CURRENT_LEVEL.load(Ordering::Relaxed);
         let level_value = match *metadata.level() {
             Level::ERROR => 0,
@@ -97,8 +108,6 @@ pub fn init_file_tracing() {
         .with_writer(lazy_writer)
         .with_ansi(false)
         .with_target(true)
-        .with_thread_ids(true)
-        .with_thread_names(true)
         .with_file(true)
         .with_line_number(true);
 

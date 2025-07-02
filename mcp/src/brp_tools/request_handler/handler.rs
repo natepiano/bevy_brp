@@ -1,4 +1,4 @@
-use rmcp::model::{CallToolResult, Content};
+use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::{Value, json};
@@ -37,13 +37,6 @@ fn extract_request_params(
     let extracted = config.param_extractor.extract(request)?;
 
     // Log extracted method
-    if let Some(ref method) = extracted.method {
-        debug!("Extracted method: {}", method);
-    }
-
-    log_port_information(request, &extracted);
-    log_extracted_parameters(&extracted);
-
     Ok(RequestParams { extracted })
 }
 
@@ -58,78 +51,6 @@ fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
         trace!("Raw request arguments: {}", sanitized_args);
     } else {
         trace!("Raw request arguments: None");
-    }
-}
-
-/// Log port information and validation
-fn log_port_information(request: &rmcp::model::CallToolRequestParam, extracted: &ExtractedParams) {
-    // Check if port was explicitly provided in the request
-    let port_provided = request
-        .arguments
-        .as_ref()
-        .and_then(|args| args.get(JSON_FIELD_PORT))
-        .is_some();
-
-    if port_provided {
-        debug!("Extracted port: {} (explicitly provided)", extracted.port);
-    } else {
-        debug!(
-            "Extracted port: {} (using default - NOT provided in request)",
-            extracted.port
-        );
-    }
-
-    // Add more detailed port debugging for mutate_component operations
-    if request.name.contains("mutate_component") {
-        debug!(
-            "CRITICAL PORT DEBUG: mutate_component operation - port source: {}",
-            if port_provided {
-                "explicit"
-            } else {
-                "DEFAULT (missing port parameter!)"
-            }
-        );
-    }
-}
-
-/// Log extracted parameters with security considerations
-fn log_extracted_parameters(extracted: &ExtractedParams) {
-    if let Some(ref params) = extracted.params {
-        log_common_brp_parameters(params);
-    } else {
-        debug!("Extracted params: None");
-    }
-}
-
-/// Log specific extracted parameters based on common BRP patterns
-fn log_common_brp_parameters(params: &Value) {
-    if let Some(entity) = params.get("entity").and_then(serde_json::Value::as_u64) {
-        debug!("Extracted entity: {}", entity);
-    }
-
-    if let Some(component) = params.get("component").and_then(serde_json::Value::as_str) {
-        debug!("Extracted component: {}", component);
-    }
-
-    if let Some(resource) = params.get("resource").and_then(serde_json::Value::as_str) {
-        debug!("Extracted resource: {}", resource);
-    }
-
-    if let Some(path) = params.get("path").and_then(serde_json::Value::as_str) {
-        debug!("Extracted path: {}", path);
-    }
-
-    if params.get("value").is_some() {
-        debug!("Extracted value: [Hidden for security]");
-    }
-
-    if let Some(components) = params.get("components") {
-        if let Some(obj) = components.as_object() {
-            debug!("Extracted components: {} types", obj.len());
-            for key in obj.keys() {
-                trace!("  - Component type: {}", key);
-            }
-        }
     }
 }
 
@@ -261,98 +182,13 @@ fn process_success_response(
     Ok(updated_formatter.format_success(&final_data, context.metadata))
 }
 
-/// Check if this is an enum mutation error that needs a clean response format
-fn is_enum_mutation_error(error: &BrpError, corrections: &[FormatCorrection]) -> bool {
-    // Check if it's a mutation error with enum-specific guidance
-    error.message.contains("variant")
-        && error.message.contains("access")
-        && !corrections.is_empty()
-        && corrections.iter().any(|c| {
-            c.corrected_format.get("usage").is_some()
-                && c.corrected_format.get("valid_values").is_some()
-        })
-}
-
-/// Create a clean enum mutation error response
-fn create_clean_enum_error_response(
-    error_info: &BrpError,
-    corrections: &[FormatCorrection],
-    metadata: &BrpMetadata,
-) -> CallToolResult {
-    let correction = &corrections[0]; // Use first correction
-
-    // Extract clean fields from corrected_format
-    let usage = correction
-        .corrected_format
-        .get("usage")
-        .and_then(|v| v.as_str())
-        .unwrap_or("Use empty path with variant name as value");
-
-    let valid_values = correction
-        .corrected_format
-        .get("valid_values")
-        .and_then(|v| v.as_array())
-        .map_or_else(
-            || vec!["Variant1", "Variant2", "Variant3"],
-            |arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
-        );
-
-    let examples = correction
-        .corrected_format
-        .get("examples")
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_else(|| {
-            vec![
-                json!({"path": "", "value": valid_values.first().unwrap_or(&"Variant1")}),
-                json!({"path": "", "value": valid_values.get(1).unwrap_or(&"Variant2")}),
-            ]
-        });
-
-    let clean_data = json!({
-        "usage": usage,
-        "valid_values": valid_values,
-        "examples": examples,
-        "recoverable": false,
-        "reason": "Invalid enum variant syntax - cannot auto-fix without knowing intended variant",
-        "component": correction.component,
-        "hint": correction.hint
-    });
-
-    CallToolResult {
-        is_error: Some(true),
-        content:  vec![Content::text(
-            json!({
-                "status": "error",
-                "message": error_info.message,
-                "data": clean_data,
-                "error_code": error_info.code,
-                "metadata": {
-                    "method": metadata.method,
-                    "port": metadata.port
-                }
-            })
-            .to_string(),
-        )],
-    }
-}
-
-/// Process an error BRP response
+/// Process an error BRP response - routes ALL errors through enhanced `format_error_default`
 fn process_error_response(
     mut error_info: BrpError,
     enhanced_result: &EnhancedBrpResult,
-    formatter: &ResponseFormatter,
+    _formatter: &ResponseFormatter,
     metadata: &BrpMetadata,
 ) -> CallToolResult {
-    // Check for special enum mutation errors that need clean format
-    if is_enum_mutation_error(&error_info, &enhanced_result.format_corrections) {
-        return create_clean_enum_error_response(
-            &error_info,
-            &enhanced_result.format_corrections,
-            metadata,
-        );
-    }
-
     let original_error_message = error_info.message.clone();
 
     // First, check if the enhanced result has a different error message (from educational guidance)
@@ -413,7 +249,8 @@ fn process_error_response(
         error_info.data = Some(data_obj);
     }
 
-    formatter.format_error(error_info, metadata)
+    // Route ALL errors through the enhanced format_error_default
+    crate::brp_tools::support::response_formatter::format_error_default(error_info, metadata)
 }
 
 /// Unified handler for all BRP methods (both static and dynamic)

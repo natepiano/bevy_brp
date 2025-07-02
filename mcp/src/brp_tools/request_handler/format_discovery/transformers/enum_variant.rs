@@ -254,7 +254,7 @@ impl EnumVariantTransformer {
 
         // Return format correction that explains empty path usage
         let format_info = json!({
-            "usage": "Use empty path with variant name as value",
+            "hint": "Use empty path with variant name as value",
             "path": "",
             "valid_values": valid_values,
             "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
@@ -280,7 +280,7 @@ impl EnumVariantTransformer {
 
         // Return format correction that explains empty path usage
         let format_info = json!({
-            "usage": "Use empty path with variant name as value",
+            "hint": "Use empty path with variant name as value",
             "path": "",
             "valid_values": valid_values,
             "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
@@ -823,7 +823,7 @@ mod tests {
         // Check that the transformed value has the expected structure
         assert!(transformed_value.is_object());
         let obj = transformed_value.as_object().unwrap();
-        assert!(obj.contains_key("usage"));
+        assert!(obj.contains_key("hint"));
         assert!(obj.contains_key("path"));
         assert!(obj.contains_key("valid_values"));
         assert!(obj.contains_key("examples"));

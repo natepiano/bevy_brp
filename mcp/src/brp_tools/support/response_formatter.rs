@@ -3,12 +3,12 @@ use serde_json::{Value, json};
 
 use super::brp_client::BrpError;
 use crate::brp_tools::constants::{
-    BRP_ERROR_CODE_INVALID_REQUEST, JSON_FIELD_CODE, JSON_FIELD_DATA, JSON_FIELD_DEBUG_INFO,
-    JSON_FIELD_ERROR_CODE, JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
+    BRP_ERROR_CODE_INVALID_REQUEST, JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE,
+    JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
 use crate::brp_tools::request_handler::FormatterContext;
 use crate::error::Result;
-use crate::support::response::{JsonResponse, ResponseBuilder};
+use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
 
 /// Metadata about a BRP request for response formatting
@@ -27,7 +27,7 @@ impl BrpMetadata {
     }
 }
 
-/// Default error formatter implementation
+/// Default error formatter implementation with rich guidance extraction
 pub fn format_error_default(mut error: BrpError, metadata: &BrpMetadata) -> CallToolResult {
     // Enhance error messages for common format issues
     if error.code == BRP_ERROR_CODE_INVALID_REQUEST
@@ -38,7 +38,10 @@ pub fn format_error_default(mut error: BrpError, metadata: &BrpMetadata) -> Call
         );
     }
 
-    build_default_error_response(&error, metadata).map_or_else(
+    // Extract rich guidance from format_corrections if present
+    let rich_guidance = extract_rich_guidance_from_error(&error);
+
+    build_enhanced_error_response(&error, metadata, rich_guidance).map_or_else(
         |_| {
             let fallback = ResponseBuilder::error()
                 .message("Failed to build error response")
@@ -49,24 +52,124 @@ pub fn format_error_default(mut error: BrpError, metadata: &BrpMetadata) -> Call
     )
 }
 
-fn build_default_error_response(
+/// Extract rich guidance fields from `format_corrections` in error data
+fn extract_rich_guidance_from_error(error: &BrpError) -> Option<RichGuidance> {
+    let error_data = error.data.as_ref()?;
+    let format_corrections = error_data.get("format_corrections")?.as_array()?;
+
+    if format_corrections.is_empty() {
+        return None;
+    }
+
+    // Use the first correction as primary guidance
+    let correction = &format_corrections[0];
+
+    // Extract examples from corrected_format
+    let examples = correction
+        .get("corrected_format")
+        .and_then(|cf| cf.get("examples"))
+        .and_then(|e| e.as_array())
+        .cloned()
+        .or_else(|| {
+            // Try to extract examples from the correction itself
+            correction
+                .get("examples")
+                .and_then(|e| e.as_array())
+                .cloned()
+        });
+
+    // Extract hint from format corrections
+    let hint = correction
+        .get("corrected_format")
+        .and_then(|cf| cf.get("hint"))
+        .and_then(|h| h.as_str())
+        .map(std::string::ToString::to_string)
+        .or_else(|| {
+            // Try to extract hint from the correction itself
+            correction
+                .get("hint")
+                .and_then(|h| h.as_str())
+                .map(std::string::ToString::to_string)
+        });
+
+    // Extract valid_values
+    let valid_values = correction
+        .get("corrected_format")
+        .and_then(|cf| cf.get("valid_values"))
+        .and_then(|vv| vv.as_array())
+        .cloned()
+        .or_else(|| {
+            // Try to extract valid_values from the correction itself
+            correction
+                .get("valid_values")
+                .and_then(|vv| vv.as_array())
+                .cloned()
+        });
+
+    // Only return guidance if we have at least one rich field
+    if examples.is_some() || hint.is_some() || valid_values.is_some() {
+        Some(RichGuidance {
+            examples,
+            hint,
+            valid_values,
+        })
+    } else {
+        None
+    }
+}
+
+/// Rich guidance extracted from format corrections
+#[derive(Debug, Clone)]
+struct RichGuidance {
+    examples:     Option<Vec<Value>>,
+    hint:         Option<String>,
+    valid_values: Option<Vec<Value>>,
+}
+
+fn build_enhanced_error_response(
     error: &BrpError,
     metadata: &BrpMetadata,
+    rich_guidance: Option<RichGuidance>,
 ) -> Result<crate::support::response::JsonResponse> {
-    let response = ResponseBuilder::error()
+    let mut builder = ResponseBuilder::error()
         .message(&error.message)
         .add_field(JSON_FIELD_ERROR_CODE, error.code)?
-        .add_field(JSON_FIELD_DATA, &error.data)?
         .add_field(
             JSON_FIELD_METADATA,
             json!({
                 JSON_FIELD_METHOD: metadata.method,
                 JSON_FIELD_PORT: metadata.port
             }),
-        )?
-        .build();
+        )?;
 
-    Ok(response)
+    // Add rich guidance fields if available (flat structure, not nested)
+    if let Some(guidance) = rich_guidance {
+        if let Some(examples) = guidance.examples {
+            builder = builder.add_field("examples", &examples)?;
+        }
+        if let Some(hint) = guidance.hint {
+            builder = builder.add_field("hint", &hint)?;
+        }
+        if let Some(valid_values) = guidance.valid_values {
+            builder = builder.add_field("valid_values", &valid_values)?;
+        }
+    }
+
+    // Include remaining error data (excluding format_corrections to avoid duplication)
+    if let Some(data) = &error.data {
+        if let Some(data_obj) = data.as_object() {
+            for (key, value) in data_obj {
+                // Skip format_corrections since we've extracted guidance from it
+                // Also skip metadata to avoid duplication
+                // Also skip status to avoid redundancy with top-level status
+                if key != "format_corrections" && key != "metadata" && key != "status" {
+                    builder = builder.add_field(key, value)?;
+                }
+            }
+        }
+    }
+
+    Ok(builder.build())
 }
 
 /// A configurable formatter that can handle various BRP response formatting needs
@@ -79,13 +182,9 @@ pub struct ResponseFormatter {
 #[derive(Clone)]
 pub struct FormatterConfig {
     /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
-    pub success_template:      Option<String>,
+    pub success_template: Option<String>,
     /// Additional fields to add to success responses
-    pub success_fields:        Vec<(String, FieldExtractor)>,
-    /// Additional fields to add to error metadata
-    pub error_metadata_fields: Vec<(String, FieldExtractor)>,
-    /// Whether to use default error formatting
-    pub use_default_error:     bool,
+    pub success_fields:   Vec<(String, FieldExtractor)>,
 }
 
 /// Function type for extracting field values from context
@@ -169,102 +268,6 @@ impl ResponseFormatter {
 
         Ok(builder.build())
     }
-
-    pub fn format_error(&self, mut error: BrpError, metadata: &BrpMetadata) -> CallToolResult {
-        // Enhance error messages for common format issues
-        if error.code == BRP_ERROR_CODE_INVALID_REQUEST
-            && error.message.contains("expected a sequence of")
-        {
-            error.message.push_str(
-                "\nHint: Math types like Vec3 use array format [x,y,z], not objects {x:1,y:2,z:3}",
-            );
-        }
-
-        if self.config.use_default_error {
-            format_error_default(error, metadata)
-        } else {
-            let mut metadata_obj = json!({
-                JSON_FIELD_METHOD: metadata.method,
-                JSON_FIELD_PORT: metadata.port,
-            });
-
-            // Add configured error metadata fields
-            if let Some(metadata_map) = metadata_obj.as_object_mut() {
-                for (field_name, extractor) in &self.config.error_metadata_fields {
-                    let value = extractor(&Value::Null, &self.context);
-                    metadata_map.insert(field_name.clone(), value);
-                }
-            }
-
-            // Build the error response, handling Results from ResponseBuilder methods
-            let response = Self::build_error_response(&error, metadata_obj, metadata)
-                .unwrap_or_else(|_| {
-                    ResponseBuilder::error()
-                        .message("Failed to format error response")
-                        .build()
-                });
-
-            json_response_to_result(&response)
-        }
-    }
-
-    fn build_error_response(
-        error: &BrpError,
-        metadata_obj: Value,
-        metadata: &BrpMetadata,
-    ) -> Result<JsonResponse> {
-        let mut builder = ResponseBuilder::error().message(&error.message);
-
-        // Extract debug info from error data if present
-        let mut clean_error_data = error.data.clone();
-        let mut brp_extras_debug_info = None;
-
-        if let Some(ref data) = error.data {
-            if let Some(data_obj) = data.as_object() {
-                // Extract brp_extras_debug_info from error data (if exists)
-                if let Some(debug_info) = data_obj.get(JSON_FIELD_DEBUG_INFO) {
-                    if !debug_info.is_null() && (debug_info.is_array() || debug_info.is_string()) {
-                        brp_extras_debug_info = Some(debug_info.clone());
-                    }
-                }
-
-                // Clean debug_info from error data to prevent duplication
-                if let Some(Value::Object(clean_map)) = &mut clean_error_data {
-                    clean_map.remove(JSON_FIELD_DEBUG_INFO);
-                }
-            }
-        }
-
-        // Handle special BRP execution error format
-        if metadata.method == "brp_execute" {
-            builder = builder
-                .add_field(JSON_FIELD_CODE, error.code)?
-                .add_field(JSON_FIELD_DATA, clean_error_data.unwrap_or(Value::Null))?;
-        } else {
-            builder = builder
-                .add_field(JSON_FIELD_ERROR_CODE, error.code)?
-                .add_field(JSON_FIELD_METADATA, metadata_obj)?;
-
-            // Include clean error.data if present (contains original_error, etc. but not
-            // debug_info)
-            if let Some(data) = clean_error_data {
-                // Merge the error data into the response
-                if let Some(data_obj) = data.as_object() {
-                    for (key, value) in data_obj {
-                        if key != "metadata" {
-                            // Don't duplicate metadata
-                            builder = builder.add_field(key, value.clone())?;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Auto-inject debug info at response level if debug mode is enabled
-        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
-
-        Ok(builder.build())
-    }
 }
 
 /// Factory for creating configurable formatters
@@ -275,34 +278,20 @@ pub struct ResponseFormatterFactory {
 impl ResponseFormatterFactory {
     /// Create a formatter for simple entity operations (destroy, etc.)
     pub fn entity_operation(_entity_field: &str) -> ResponseFormatterBuilder {
-        use crate::brp_tools::constants::JSON_FIELD_ENTITY;
-
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template:      None,
-                success_fields:        vec![],
-                error_metadata_fields: vec![(
-                    JSON_FIELD_ENTITY.to_string(),
-                    extractors::entity_from_params,
-                )],
-                use_default_error:     false,
+                success_template: None,
+                success_fields:   vec![],
             },
         }
     }
 
     /// Create a formatter for resource operations
     pub fn resource_operation(_resource_field: &str) -> ResponseFormatterBuilder {
-        use crate::brp_tools::constants::JSON_FIELD_RESOURCE;
-
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template:      None,
-                success_fields:        vec![],
-                error_metadata_fields: vec![(
-                    JSON_FIELD_RESOURCE.to_string(),
-                    extractors::resource_from_params,
-                )],
-                use_default_error:     false,
+                success_template: None,
+                success_fields:   vec![],
             },
         }
     }
@@ -314,13 +303,11 @@ impl ResponseFormatterFactory {
 
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template:      Some("Operation completed successfully".to_string()),
-                success_fields:        vec![(
+                success_template: Some("Operation completed successfully".to_string()),
+                success_fields:   vec![(
                     JSON_FIELD_DATA.to_string(),
                     extractors::pass_through_data,
                 )],
-                error_metadata_fields: vec![],
-                use_default_error:     true,
             },
         }
     }
@@ -329,10 +316,8 @@ impl ResponseFormatterFactory {
     pub fn list_operation() -> ResponseFormatterBuilder {
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template:      None,
-                success_fields:        vec![],
-                error_metadata_fields: vec![],
-                use_default_error:     true,
+                success_template: None,
+                success_fields:   vec![],
             },
         }
     }
@@ -363,12 +348,6 @@ impl ResponseFormatterBuilder {
         extractor: FieldExtractor,
     ) -> Self {
         self.config.success_fields.push((name.into(), extractor));
-        self
-    }
-
-    /// Use default error formatting
-    pub const fn with_default_error(mut self) -> Self {
-        self.config.use_default_error = true;
         self
     }
 
@@ -486,13 +465,11 @@ mod tests {
         use crate::brp_tools::constants::JSON_FIELD_DESTROYED_ENTITY;
 
         let config = FormatterConfig {
-            success_template:      Some("Successfully destroyed entity {entity}".to_string()),
-            success_fields:        vec![(
+            success_template: Some("Successfully destroyed entity {entity}".to_string()),
+            success_fields:   vec![(
                 JSON_FIELD_DESTROYED_ENTITY.to_string(),
                 extractors::entity_from_params,
             )],
-            error_metadata_fields: vec![],
-            use_default_error:     false,
         };
 
         let context = FormatterContext {
@@ -510,24 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn test_configurable_formatter_error_with_metadata() {
-        use crate::brp_tools::constants::JSON_FIELD_ENTITY;
-
-        let config = FormatterConfig {
-            success_template:      None,
-            success_fields:        vec![],
-            error_metadata_fields: vec![(
-                JSON_FIELD_ENTITY.to_string(),
-                extractors::entity_from_params,
-            )],
-            use_default_error:     false,
-        };
-
-        let context = FormatterContext {
-            params: Some(json!({ "entity": 456 })),
-        };
-
-        let formatter = ResponseFormatter::new(config, context);
+    fn test_enhanced_error_formatting_direct() {
         let metadata = BrpMetadata::new("bevy/destroy", DEFAULT_BRP_PORT);
         let error = BrpError {
             code:    -32603,
@@ -535,37 +495,11 @@ mod tests {
             data:    None,
         };
 
-        let result = formatter.format_error(error, &metadata);
+        let result = format_error_default(error, &metadata);
 
         // Verify result has content
         assert_eq!(result.content.len(), 1);
-        // TODO: Add proper content validation once Content type is understood
-    }
-
-    #[test]
-    fn test_configurable_formatter_default_error() {
-        let config = FormatterConfig {
-            success_template:      None,
-            success_fields:        vec![],
-            error_metadata_fields: vec![],
-            use_default_error:     true,
-        };
-
-        let context = FormatterContext { params: None };
-
-        let formatter = ResponseFormatter::new(config, context);
-        let metadata = BrpMetadata::new("bevy/test", DEFAULT_BRP_PORT);
-        let error = BrpError {
-            code:    -32603,
-            message: "Test error".to_string(),
-            data:    Some(json!({"detail": "extra info"})),
-        };
-
-        let result = formatter.format_error(error, &metadata);
-
-        // Verify result has content
-        assert_eq!(result.content.len(), 1);
-        // TODO: Add proper content validation once Content type is understood
+        // All errors now use the enhanced format_error_default function
     }
 
     #[test]

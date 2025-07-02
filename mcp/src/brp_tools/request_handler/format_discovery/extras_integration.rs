@@ -45,7 +45,9 @@ pub async fn discover_type_format(
             Ok(None) // Return None instead of Err - this just means brp_extras is not available
         }
         Err(e) => {
-            debug!("Extras Integration: Connection error calling {BRP_METHOD_EXTRAS_DISCOVER_FORMAT}: {e}");
+            debug!(
+                "Extras Integration: Connection error calling {BRP_METHOD_EXTRAS_DISCOVER_FORMAT}: {e}"
+            );
             Ok(None) // Return None instead of Err - this just means brp_extras is not available
         }
     }
@@ -57,7 +59,11 @@ fn process_discovery_response(
     response_data: &Value,
 ) -> Result<Option<UnifiedTypeInfo>, String> {
     debug!("Extras Integration: Processing discovery response for '{type_name}'");
-    debug!("Extras Integration: Full response data: {}", serde_json::to_string_pretty(response_data).unwrap_or_else(|_| "Failed to serialize".to_string()));
+    debug!(
+        "Extras Integration: Full response data: {}",
+        serde_json::to_string_pretty(response_data)
+            .unwrap_or_else(|_| "Failed to serialize".to_string())
+    );
 
     // The response should contain type information, possibly as an array or object
     // We need to find the entry for our specific type
@@ -86,20 +92,26 @@ fn process_discovery_response(
 /// Find type in response (handles various response formats)
 fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Option<&'a Value> {
     debug!("Extras Integration: find_type_in_response looking for '{type_name}'");
-    
+
     // Try different possible response formats:
 
     // Format 1: Direct object with type name as key
     if let Some(obj) = response_data.as_object() {
-        debug!("Extras Integration: Trying Format 1 - direct object keys: {:?}", obj.keys().collect::<Vec<_>>());
+        debug!(
+            "Extras Integration: Trying Format 1 - direct object keys: {:?}",
+            obj.keys().collect::<Vec<_>>()
+        );
         if let Some(type_data) = obj.get(type_name) {
             debug!("Extras Integration: Found type data in Format 1");
             return Some(type_data);
         }
-        
+
         // Format 1b: Check if there's a type_info field
         if let Some(type_info) = obj.get("type_info").and_then(Value::as_object) {
-            debug!("Extras Integration: Found type_info field, checking keys: {:?}", type_info.keys().collect::<Vec<_>>());
+            debug!(
+                "Extras Integration: Found type_info field, checking keys: {:?}",
+                type_info.keys().collect::<Vec<_>>()
+            );
             if let Some(type_data) = type_info.get(type_name) {
                 debug!("Extras Integration: Found type data in type_info field");
                 return Some(type_data);
@@ -144,7 +156,7 @@ pub fn create_correction_from_discovery(
             enum_info.variants.iter().map(|v| v.name.clone()).collect();
 
         let corrected_format = json!({
-            "usage": "Use empty path with variant name as value",
+            "hint": "Use empty path with variant name as value",
             "valid_values": variant_names,
             "examples": variant_names.iter().take(2).map(|variant| json!({
                 "path": "",

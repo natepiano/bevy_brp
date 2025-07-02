@@ -184,8 +184,7 @@ async fn generate_brp_handler(
             .with_response_field(field.name, convert_extractor_type(&field.extractor));
     }
 
-    // Always add default error handling
-    formatter_builder = formatter_builder.with_default_error();
+    // All errors now route through format_error_default automatically
 
     let config = BrpHandlerConfig {
         method: Some(method),
