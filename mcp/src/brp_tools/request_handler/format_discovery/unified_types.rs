@@ -1,23 +1,9 @@
 //! Unified type system for format discovery
 //!
-//! This module provides a single, coherent type schema that replaces the fragmented
-//! type system (`TypeDiscoveryResponse` → `DiscoveredFacts` → `FormatCorrection`) with
-//! a unified approach that prevents data loss and ensures type safety.
+//! Single coherent schema replacing fragmented type conversions. Contains all
+//! discoverable type information in one place to prevent data loss.
 //!
-//! # Schema Architecture
-//!
-//! The unified schema consists of:
-//! - `UnifiedTypeInfo`: Central type containing all discoverable information
-//! - `FormatInfo`: Specific format examples and correction data
-//! - `RegistryStatus`: Registry and reflection information
-//! - `SerializationSupport`: Serialization capability information
-//!
-//! # Key Benefits
-//!
-//! - **No Data Loss**: Single schema prevents information being lost during conversions
-//! - **Type Safety**: Compile-time guarantees about data flow and availability
-//! - **Extensibility**: Easy to add new fields without breaking existing code
-//! - **Consistency**: All components use the same type representation
+//! Core types: `UnifiedTypeInfo`, `FormatInfo`, `RegistryStatus`, `SerializationSupport`
 
 use std::collections::HashMap;
 

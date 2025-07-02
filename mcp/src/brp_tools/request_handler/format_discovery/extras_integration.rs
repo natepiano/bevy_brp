@@ -1,21 +1,7 @@
 //! Integration with `bevy_brp_extras` for direct format discovery
 //!
-//! This module implements Level 2 of the recovery engine: direct discovery
-//! via the `bevy_brp_extras/discover_format` method. This provides the most
-//! authoritative type information available by querying the running Bevy app directly.
-//!
-//! # Key Functions
-//!
-//! - **`discover_type_format()`**: Main entry point for direct type discovery
-//! - **`check_brp_extras_availability()`**: Verify `bevy_brp_extras` is available
-//! - **Response Processing**: Convert `TypeDiscoveryResponse` → `UnifiedTypeInfo`
-//!
-//! # Recovery Integration
-//!
-//! This module is called by `recovery_engine.rs` Level 2 and provides:
-//! - Complete type schemas with examples and mutation paths
-//! - Real-world format data from the running Bevy application
-//! - Authoritative answers to "how should I format this type?"
+//! Level 2 recovery: queries running Bevy app via `bevy_brp_extras/discover_format`
+//! for authoritative type schemas, examples, and mutation paths.
 
 use serde_json::{Value, json};
 
@@ -24,19 +10,7 @@ use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 
-/// Discover format information for a type using `bevy_brp_extras`
-///
-/// This is the main entry point for Level 2 direct discovery. It calls
-/// the running Bevy app's `bevy_brp_extras/discover_format` method to get
-/// authoritative type information.
-///
-/// # Arguments
-/// * `type_name` - Fully-qualified type name to discover
-/// * `port` - BRP port for the discovery call
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Result<Option<UnifiedTypeInfo>, String>` with discovered type info or error
+/// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(
     type_name: &str,
     port: Option<u16>,
@@ -88,17 +62,7 @@ pub async fn discover_type_format(
     }
 }
 
-/// Check if `bevy_brp_extras` is available on the target Bevy app
-///
-/// This function verifies that the connected Bevy app has `bevy_brp_extras`
-/// installed and can respond to format discovery requests.
-///
-/// # Arguments
-/// * `port` - BRP port to check
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `bool` indicating if `bevy_brp_extras` is available
+/// Check if `bevy_brp_extras` is available via rpc.discover
 pub async fn check_brp_extras_availability(
     port: Option<u16>,
     debug_info: &mut Vec<String>,
@@ -148,18 +112,7 @@ pub async fn check_brp_extras_availability(
     }
 }
 
-/// Process the discovery response from `bevy_brp_extras`
-///
-/// This function takes the raw JSON response from `bevy_brp_extras/discover_format`
-/// and converts it to a `UnifiedTypeInfo` using the schema adapters.
-///
-/// # Arguments
-/// * `type_name` - The type that was discovered
-/// * `response_data` - Raw JSON response from `bevy_brp_extras`
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Result<Option<UnifiedTypeInfo>, String>` with processed type info
+/// Convert discovery response to `UnifiedTypeInfo`
 fn process_discovery_response(
     type_name: &str,
     response_data: &Value,
@@ -199,17 +152,7 @@ fn process_discovery_response(
     }
 }
 
-/// Find type data in the discovery response
-///
-/// The `bevy_brp_extras` response format may vary, so this function handles
-/// different possible response structures to locate the type data.
-///
-/// # Arguments
-/// * `type_name` - Type name to find
-/// * `response_data` - Raw response from `bevy_brp_extras`
-///
-/// # Returns
-/// * `Option<&Value>` pointing to the type data if found
+/// Find type in response (handles various response formats)
 fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Option<&'a Value> {
     // Try different possible response formats:
 
@@ -246,17 +189,7 @@ fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Optio
     None
 }
 
-/// Create a correction result from discovered type information
-///
-/// This function converts a `UnifiedTypeInfo` into a `CorrectionResult` that
-/// can be used by the recovery engine to fix format errors.
-///
-/// # Arguments
-/// * `type_info` - Discovered type information
-/// * `original_value` - The original incorrect value (if available)
-///
-/// # Returns
-/// * `CorrectionResult` with correction information
+/// Create correction from discovered type info
 pub fn create_correction_from_discovery(
     type_info: UnifiedTypeInfo,
     original_value: Option<Value>,

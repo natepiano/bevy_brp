@@ -1,21 +1,8 @@
 //! Integration with Bevy's type registry for Level 1 format discovery
 //!
-//! This module implements Level 1 of the recovery engine: fast registry and
-//! serialization checks that can quickly identify if types are suitable for
-//! BRP operations without expensive discovery calls.
-//!
-//! # Key Functions
-//!
-//! - **`check_type_registry_status()`**: Main entry point for registry checks
-//! - **`fetch_registry_schema()`**: Get type schema from `bevy/registry_schema`
-//! - **Schema Processing**: Convert registry data → `UnifiedTypeInfo`
-//!
-//! # Recovery Integration
-//!
-//! This module is called by `recovery_engine.rs` Level 1 and provides:
-//! - Fast bailout for types not in registry
-//! - Early educational responses for missing Serialize/Deserialize traits
-//! - Basic type information for downstream levels
+//! Provides fast registry and serialization trait checks to quickly identify
+//! if types are BRP-compatible. Called by recovery engine Level 1 for early
+//! bailout on unsupported types and educational responses.
 
 use serde_json::{Value, json};
 
@@ -26,21 +13,7 @@ use super::unified_types::{
 };
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 
-/// Check the registry status of a type for Level 1 recovery
-///
-/// This is the main entry point for Level 1 registry checks. It determines
-/// if a type is registered in Bevy's type registry and has the required
-/// serialization traits for BRP operations.
-///
-/// # Arguments
-/// * `type_name` - Fully-qualified type name to check
-/// * `port` - BRP port for registry queries
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Ok(Some(UnifiedTypeInfo))` - Type found with registry information
-/// * `Ok(None)` - Type not found or missing required traits
-/// * `Err(String)` - Registry query failed
+/// Check if type is in registry and has required serialization traits
 #[allow(dead_code)]
 pub async fn check_type_registry_status(
     type_name: &str,
@@ -86,20 +59,7 @@ pub async fn check_type_registry_status(
     }
 }
 
-/// Fetch registry schema data for a specific type
-///
-/// This function calls the `bevy/registry_schema` method to get type information
-/// directly from Bevy's type registry.
-///
-/// # Arguments
-/// * `type_name` - Type name to look up
-/// * `port` - BRP port for the query
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Ok(Some(Value))` - Schema data found
-/// * `Ok(None)` - Type not found in registry
-/// * `Err(String)` - Query failed
+/// Get type schema from `bevy/registry_schema`
 #[allow(dead_code)]
 pub async fn fetch_registry_schema(
     type_name: &str,
@@ -157,19 +117,7 @@ pub async fn fetch_registry_schema(
     }
 }
 
-/// Find a specific type in the registry schema response
-///
-/// The registry schema response format may vary, so this function handles
-/// different possible response structures to locate the type data.
-///
-/// # Arguments
-/// * `type_name` - Type name to find
-/// * `response_data` - Raw response from `bevy/registry_schema`
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Some(Value)` - Schema data for the type if found
-/// * `None` - Type not found in response
+/// Find type in registry response (handles various response formats)
 fn find_type_in_registry_response(
     type_name: &str,
     response_data: &Value,
@@ -239,17 +187,7 @@ fn find_type_in_registry_response(
     None
 }
 
-/// Create an educational correction result for registry issues
-///
-/// This function creates educational responses when types are found in the registry
-/// but have issues (like missing serialization traits) that prevent BRP operations.
-///
-/// # Arguments
-/// * `type_info` - Type information with identified issues
-/// * `issue_message` - Description of the specific issue
-///
-/// # Returns
-/// * `CorrectionResult::MetadataOnly` with educational information
+/// Create educational response for types with registry issues
 #[allow(dead_code)]
 pub const fn create_educational_correction(
     type_info: UnifiedTypeInfo,
@@ -261,18 +199,7 @@ pub const fn create_educational_correction(
     }
 }
 
-/// Batch check registry status for multiple types
-///
-/// This function efficiently checks multiple types in a single registry call,
-/// which is more efficient than individual checks.
-///
-/// # Arguments
-/// * `type_names` - List of type names to check
-/// * `port` - BRP port for registry queries
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Vec<(String, Option<UnifiedTypeInfo>)>` with results for each type
+/// Batch check multiple types in a single registry call
 pub async fn check_multiple_types_registry_status(
     type_names: &[String],
     port: Option<u16>,
@@ -320,16 +247,7 @@ pub async fn check_multiple_types_registry_status(
     }
 }
 
-/// Create a minimal `UnifiedTypeInfo` for types not in registry
-///
-/// This helper creates a basic type info structure for types that aren't
-/// found in the registry, useful for educational responses.
-///
-/// # Arguments
-/// * `type_name` - The type name
-///
-/// # Returns
-/// * `UnifiedTypeInfo` with minimal information
+/// Create minimal type info for unregistered types
 #[allow(dead_code)]
 pub fn create_unregistered_type_info(type_name: &str) -> UnifiedTypeInfo {
     UnifiedTypeInfo {
@@ -345,16 +263,7 @@ pub fn create_unregistered_type_info(type_name: &str) -> UnifiedTypeInfo {
     }
 }
 
-/// Extract type name from common type formats
-///
-/// This helper function normalizes different type name formats that might
-/// be encountered in registry queries.
-///
-/// # Arguments
-/// * `type_name` - Raw type name input
-///
-/// # Returns
-/// * Normalized type name for registry lookup
+/// Normalize type name format for registry lookup
 #[allow(dead_code)]
 pub fn normalize_type_name(type_name: &str) -> String {
     // Handle common type name variations

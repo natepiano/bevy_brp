@@ -1,30 +1,11 @@
-//! Format error recovery engine
+//! Format error recovery engine with 3-level architecture
 //!
-//! This module implements the core 3-level format error recovery system that replaces
-//! the complex tier-based architecture. The recovery levels are designed as early-exit
-//! decision points that progressively try more expensive operations.
+//! Recovery levels (early-exit design):
+//! 1. Registry checks - Fast type registration and serialization trait verification
+//! 2. Direct discovery - Query running Bevy app via `bevy_brp_extras` for type schemas
+//! 3. Pattern transformations - Apply known fixes for common format errors
 //!
-//! # Recovery Architecture
-//!
-//! ## Level 1: Registry/Serialization Quick Checks
-//! Fast registry lookup to determine if a type is even supported:
-//! - Check if type is in Bevy's type registry
-//! - Verify Serialize/Deserialize trait support
-//! - **Result**: Immediate educational response if unsupported
-//!
-//! ## Level 2: Direct Discovery (requires `bevy_brp_extras`)
-//! Query the running Bevy app for authoritative type information:
-//! - Call `bevy_brp_extras/discover_format` for direct type schema
-//! - Get real examples, mutation paths, and format data
-//! - **Result**: Complete type information with format corrections
-//!
-//! ## Level 3: Pattern-Based Transformations
-//! Apply deterministic transformations based on known error patterns:
-//! - Vec3/Quat object↔array conversions
-//! - Enum variant access patterns
-//! - **Result**: Format corrections with transformation hints
-//!
-//! Each level operates independently and can return early if successful.
+//! Each level returns immediately on success to minimize processing.
 
 use serde_json::Value;
 
@@ -32,19 +13,6 @@ use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use crate::brp_tools::support::brp_client::BrpResult;
 
 /// Execute format error recovery using the 3-level decision tree
-///
-/// This is the main entry point for format error recovery. It attempts each level
-/// in sequence, returning early if any level succeeds.
-///
-/// # Arguments
-/// * `method` - The BRP method that failed (e.g., "bevy/spawn")
-/// * `original_params` - The parameters that caused the format error
-/// * `error` - The original BRP error result
-/// * `port` - BRP port for direct discovery calls
-/// * `debug_info` - Mutable debug information collector
-///
-/// # Returns
-/// * `FormatRecoveryResult` indicating success, educational info, or failure
 pub async fn attempt_format_recovery(
     method: &str,
     original_params: Option<Value>,
@@ -146,22 +114,7 @@ enum LevelResult {
     Continue,
 }
 
-/// Execute Level 1: Registry and serialization trait checks
-///
-/// This level performs fast checks against Bevy's type registry to determine
-/// if types are registered and have the required serialization traits.
-///
-/// # Early Exit Conditions
-/// - Type not in registry → Educational response about registration
-/// - Type missing Serialize/Deserialize → Educational response about traits
-///
-/// # Arguments
-/// * `type_names` - List of type names to check
-/// * `port` - BRP port for registry queries
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `LevelResult` indicating success, educational info, or continue to next level
+/// Level 1: Fast registry and serialization checks
 async fn execute_level_1_registry_checks(
     type_names: &[String],
     port: Option<u16>,
@@ -239,22 +192,7 @@ async fn execute_level_1_registry_checks(
     }
 }
 
-/// Execute Level 2: Direct discovery via `bevy_brp_extras`
-///
-/// This level calls the running Bevy app to get authoritative type information
-/// directly from the source using the `bevy_brp_extras/discover_format` method.
-///
-/// # Early Exit Conditions
-/// - `bevy_brp_extras` not available → Continue to Level 3
-/// - Type discovered successfully → Return corrections
-///
-/// # Arguments
-/// * `type_names` - List of type names to discover
-/// * `port` - BRP port for direct discovery calls
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `LevelResult` indicating success, educational info, or continue to next level
+/// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
 async fn execute_level_2_direct_discovery(
     type_names: &[String],
     port: Option<u16>,
@@ -321,24 +259,7 @@ async fn execute_level_2_direct_discovery(
     }
 }
 
-/// Execute Level 3: Pattern-based transformations
-///
-/// This level applies deterministic transformations based on known error patterns
-/// and common type formatting issues.
-///
-/// # Transformation Patterns
-/// - Vec3/Quat: Object ↔ Array conversions
-/// - Enums: String variant access patterns
-/// - Structs: Field name mapping and aliasing
-///
-/// # Arguments
-/// * `type_names` - List of type names to transform
-/// * `method` - BRP method for context-specific transformations
-/// * `original_params` - Original parameters for pattern analysis
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `LevelResult` indicating success, educational info, or exhausted
+/// Level 3: Apply pattern-based transformations for known errors
 fn execute_level_3_pattern_transformations(
     type_names: &[String],
     _method: &str,
@@ -387,19 +308,7 @@ fn execute_level_3_pattern_transformations(
     }
 }
 
-/// Attempt pattern-based correction for a specific type
-///
-/// This helper function tries to generate format corrections based on common patterns
-/// for well-known Bevy types, even without specific error context.
-///
-/// # Arguments
-/// * `type_name` - The type name to generate corrections for
-/// * `transformer_registry` - Registry of available transformers
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `Some(CorrectionResult)` if a pattern-based correction was generated
-/// * `None` if no pattern was applicable
+/// Try to generate pattern-based corrections for well-known types
 fn attempt_pattern_based_correction(
     type_name: &str,
     _transformer_registry: &super::transformers::TransformerRegistry,
@@ -515,17 +424,7 @@ fn create_math_type_info(
     }
 }
 
-/// Check if `bevy_brp_extras` is available for direct discovery
-///
-/// This helper function determines if the connected Bevy app has `bevy_brp_extras`
-/// installed and can respond to discovery format requests.
-///
-/// # Arguments
-/// * `port` - BRP port to check
-/// * `debug_info` - Debug information collector
-///
-/// # Returns
-/// * `bool` indicating if `bevy_brp_extras` is available
+/// Check if `bevy_brp_extras` is available
 async fn is_brp_extras_available(port: Option<u16>, debug_info: &mut Vec<String>) -> bool {
     debug_info.push("Level 2: Checking bevy_brp_extras availability".to_string());
 
@@ -538,17 +437,7 @@ async fn is_brp_extras_available(port: Option<u16>, debug_info: &mut Vec<String>
     is_available
 }
 
-/// Extract type names from method parameters
-///
-/// This helper function analyzes BRP method parameters to identify the types
-/// that need format recovery. Different methods store types in different locations.
-///
-/// # Arguments
-/// * `method` - BRP method name for context
-/// * `params` - Method parameters to analyze
-///
-/// # Returns
-/// * `Vec<String>` of type names found in the parameters
+/// Extract type names from BRP method parameters based on method type
 fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<String> {
     let Some(params) = params else {
         return Vec::new();
@@ -585,17 +474,7 @@ fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<S
     type_names
 }
 
-/// Build a successful recovery result from correction results
-///
-/// This helper function converts successful correction results into the final
-/// `FormatRecoveryResult::Recovered` variant.
-///
-/// # Arguments
-/// * `correction_results` - List of successful corrections
-/// * `debug_info` - Debug information for context
-///
-/// # Returns
-/// * `FormatRecoveryResult::Recovered` with corrections applied
+/// Convert correction results into final recovery result
 fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     debug_info: &mut Vec<String>,

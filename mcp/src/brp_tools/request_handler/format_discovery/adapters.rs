@@ -1,18 +1,8 @@
 //! Schema adapters for the unified type system
 //!
-//! This module provides conversion functions between different type schemas:
-//! - `TypeDiscoveryResponse` (from `bevy_brp_extras`) → `UnifiedTypeInfo`
-//! - Registry schema data → `UnifiedTypeInfo`
-//!
-//! These adapters solve the "`mutation_paths` bug" by ensuring no information is lost
-//! during schema conversions, preserving all discovered metadata in the unified format.
-//!
-//! # Key Benefits
-//!
-//! - **No Data Loss**: All fields from source schemas are preserved
-//! - **Consistent Interface**: All discovery sources produce `UnifiedTypeInfo`
-//! - **Extensible**: Easy to add new source schema adapters
-//! - **Type Safe**: Compile-time guarantees about conversion correctness
+//! Converts different schemas to `UnifiedTypeInfo` without data loss:
+//! - `TypeDiscoveryResponse` → `UnifiedTypeInfo`
+//! - Registry schema → `UnifiedTypeInfo`
 
 use std::collections::HashMap;
 
@@ -22,20 +12,10 @@ use super::unified_types::{
     DiscoverySource, FormatInfo, RegistryStatus, SerializationSupport, UnifiedTypeInfo,
 };
 
-/// Convert a JSON representation of `TypeDiscoveryResponse` to `UnifiedTypeInfo`
+/// Convert `TypeDiscoveryResponse` JSON to `UnifiedTypeInfo`
 ///
-/// This adapter preserves all information from the direct discovery response,
-/// ensuring no data loss occurs during conversion. This is critical for
-/// preserving `mutation_paths` and other rich metadata.
-///
-/// Note: For now, we work with JSON values since the extras crate types
-/// are not directly accessible. This will be improved in task 3.1a.
-///
-/// # Arguments
-/// * `response_json` - JSON representation of `TypeDiscoveryResponse`
-///
-/// # Returns
-/// * `UnifiedTypeInfo` containing all the original information
+/// Preserves all fields including `mutation_paths` and metadata.
+/// Note: Uses JSON until extras crate types are directly accessible.
 pub fn from_type_discovery_response_json(response_json: &Value) -> Option<UnifiedTypeInfo> {
     let obj = response_json.as_object()?;
 
@@ -129,17 +109,9 @@ pub fn from_type_discovery_response_json(response_json: &Value) -> Option<Unifie
     })
 }
 
-/// Convert registry schema data to `UnifiedTypeInfo`
+/// Convert Bevy registry schema to `UnifiedTypeInfo`
 ///
-/// This adapter handles conversion from Bevy's type registry schema format
-/// to the unified type system. It focuses on registry and reflection information.
-///
-/// # Arguments
-/// * `type_name` - The fully-qualified type name
-/// * `schema_data` - Schema data from `bevy/registry_schema`
-///
-/// # Returns
-/// * `UnifiedTypeInfo` containing registry and reflection information
+/// Extracts registry status, reflection traits, and serialization support.
 pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> UnifiedTypeInfo {
     // Extract reflect types
     let reflect_types = schema_data
