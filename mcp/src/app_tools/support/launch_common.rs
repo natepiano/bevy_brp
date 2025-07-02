@@ -6,6 +6,7 @@ use chrono;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
+use tracing::debug;
 
 use crate::brp_tools::constants::BRP_PORT_ENV_VAR;
 use crate::error::{Error, report_to_mcp_error};
@@ -47,6 +48,22 @@ pub fn collect_launch_debug_info(
     profile: &str,
     debug_info: &mut Vec<String>,
 ) {
+    debug!(
+        "Launching {name_type} {name} from {}",
+        manifest_dir.display()
+    );
+    debug!("Working directory: {}", manifest_dir.display());
+    debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
+    debug!("Profile: {profile}");
+    debug!(
+        "{}: {binary_or_command}",
+        if name_type == "app" {
+            "Binary path"
+        } else {
+            "Command"
+        }
+    );
+
     debug_info.push(format!(
         "Launching {name_type} {name} from {}",
         manifest_dir.display()
@@ -164,6 +181,33 @@ pub fn collect_enhanced_launch_debug_info(
         .duration_since(params.launch_start)
         .as_millis();
 
+    debug!(
+        "Launching {} {} from {}",
+        params.name_type,
+        params.name,
+        params.manifest_dir.display()
+    );
+    debug!("Working directory: {}", params.manifest_dir.display());
+    debug!("CARGO_MANIFEST_DIR: {}", params.manifest_dir.display());
+    debug!("Profile: {}", params.profile);
+    debug!(
+        "{}: {}",
+        if params.name_type == "app" {
+            "Binary path"
+        } else {
+            "Command"
+        },
+        params.binary_or_command
+    );
+    debug!("Launch duration: {launch_duration_ms}ms");
+
+    if !params.env_vars.is_empty() {
+        debug!("Environment variables:");
+        for (key, value) in params.env_vars {
+            debug!("  {key}={value}");
+        }
+    }
+
     debug_info.push(format!(
         "Launching {} {} from {}",
         params.name_type,
@@ -225,11 +269,17 @@ pub fn collect_complete_launch_debug_info(params: LaunchDebugParams, debug_info:
 
     // Add package name if provided (for examples)
     if let Some(package_name) = params.package_name {
+        debug!("Package: {package_name}");
         debug_info.push(format!("Package: {package_name}"));
     }
 
     // Add timing information if provided
     if let Some(find_duration) = params.find_duration {
+        debug!(
+            "TIMING - Find {}: {}ms",
+            params.name_type,
+            find_duration.as_millis()
+        );
         debug_info.push(format!(
             "TIMING - Find {}: {}ms",
             params.name_type,
@@ -237,18 +287,24 @@ pub fn collect_complete_launch_debug_info(params: LaunchDebugParams, debug_info:
         ));
     }
     if let Some(log_setup_duration) = params.log_setup_duration {
+        debug!("TIMING - Log setup: {}ms", log_setup_duration.as_millis());
         debug_info.push(format!(
             "TIMING - Log setup: {}ms",
             log_setup_duration.as_millis()
         ));
     }
     if let Some(cmd_setup_duration) = params.cmd_setup_duration {
+        debug!(
+            "TIMING - Command setup: {}ms",
+            cmd_setup_duration.as_millis()
+        );
         debug_info.push(format!(
             "TIMING - Command setup: {}ms",
             cmd_setup_duration.as_millis()
         ));
     }
     if let Some(spawn_duration) = params.spawn_duration {
+        debug!("TIMING - Spawn process: {}ms", spawn_duration.as_millis());
         debug_info.push(format!(
             "TIMING - Spawn process: {}ms",
             spawn_duration.as_millis()

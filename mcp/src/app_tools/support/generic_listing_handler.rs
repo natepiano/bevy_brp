@@ -54,9 +54,9 @@ fn collect_all_items<S: CollectionStrategy>(
 ) -> Vec<serde_json::Value> {
     let mut all_items = Vec::new();
     let mut seen_items = HashSet::new();
-    let mut debug_info = Vec::new();
 
     // Use the iterator to find all cargo projects
+    let mut debug_info = Vec::new();
     for path in scanning::iter_cargo_project_paths(search_paths, &mut debug_info) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
             let items = strategy.collect_items(&detector);

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use rmcp::Error as McpError;
+use tracing::debug;
 
 use super::cargo_detector::{BinaryInfo, CargoDetector, ExampleInfo};
 use crate::error::{Error, report_to_mcp_error};
@@ -12,6 +13,7 @@ fn safe_canonicalize(path: &Path, debug_info: Option<&mut Vec<String>>) -> PathB
     match path.canonicalize() {
         Ok(canonical) => canonical,
         Err(e) => {
+            debug!("Failed to canonicalize path '{}': {}", path.display(), e);
             if let Some(debug_info) = debug_info {
                 debug_info.push(format!(
                     "Failed to canonicalize path '{}': {}",
@@ -129,6 +131,11 @@ fn discover_workspace_members(
                         },
                     );
                 } else {
+                    debug!(
+                        "Skipping workspace member '{}': directory does not exist at '{}'",
+                        package.name,
+                        member_dir.display()
+                    );
                     debug_info.push(format!(
                         "Skipping workspace member '{}': directory does not exist at '{}'",
                         package.name,
@@ -420,12 +427,15 @@ pub fn find_required_app_with_path(
     search_paths: &[PathBuf],
     debug_info: &mut Vec<String>,
 ) -> Result<BinaryInfo, McpError> {
+    debug!("Searching for app '{app_name}'");
     debug_info.push(format!("Searching for app '{app_name}'"));
     if let Some(p) = path {
+        debug!("With path filter: {p}");
         debug_info.push(format!("With path filter: {p}"));
     }
 
     let all_apps = find_all_apps_by_name(app_name, search_paths);
+    debug!("Found {} matching app(s)", all_apps.len());
     debug_info.push(format!("Found {} matching app(s)", all_apps.len()));
 
     let filtered_apps = find_and_filter_by_path(all_apps, path, |app| &app.relative_path);
@@ -443,12 +453,15 @@ pub fn find_required_example_with_path(
     search_paths: &[PathBuf],
     debug_info: &mut Vec<String>,
 ) -> Result<ExampleInfo, McpError> {
+    debug!("Searching for example '{example_name}'");
     debug_info.push(format!("Searching for example '{example_name}'"));
     if let Some(p) = path {
+        debug!("With path filter: {p}");
         debug_info.push(format!("With path filter: {p}"));
     }
 
     let all_examples = find_all_examples_by_name(example_name, search_paths);
+    debug!("Found {} matching example(s)", all_examples.len());
     debug_info.push(format!("Found {} matching example(s)", all_examples.len()));
 
     let filtered_examples =

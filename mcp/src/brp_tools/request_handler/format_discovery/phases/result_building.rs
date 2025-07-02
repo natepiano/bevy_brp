@@ -26,7 +26,9 @@ pub async fn build_final_result(
     if discovery_data.format_corrections.is_empty() {
         // No corrections found - return enhanced error
         DiscoveryContext::add_debug("Format Discovery: No corrections were possible".to_string());
-        DiscoveryContext::add_debug("Recovery engine completed without successful corrections".to_string());
+        DiscoveryContext::add_debug(
+            "Recovery engine completed without successful corrections".to_string(),
+        );
 
         let original_error = context.initial_error.clone().unwrap_or_else(|| BrpError {
             code:    -1,

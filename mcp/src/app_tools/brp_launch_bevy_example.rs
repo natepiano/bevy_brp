@@ -5,6 +5,7 @@ use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
+use tracing::debug;
 
 use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::BrpMcpService;
@@ -41,22 +42,15 @@ pub fn launch_bevy_example(
     search_paths: &[PathBuf],
 ) -> Result<CallToolResult, McpError> {
     let launch_start = Instant::now();
-    let mut debug_info = Vec::new();
 
     // Find and validate the example
     let (example, manifest_dir_buf, find_duration) =
-        find_and_validate_example(example_name, path, search_paths, &mut debug_info)?;
+        find_and_validate_example(example_name, path, search_paths)?;
     let manifest_dir = manifest_dir_buf.as_path();
 
     // Setup launch environment
     let cargo_command = build_cargo_command_string(example_name, profile);
-    collect_debug_info_if_enabled(
-        example_name,
-        &cargo_command,
-        profile,
-        manifest_dir,
-        &mut debug_info,
-    );
+    collect_debug_info_if_enabled(example_name, &cargo_command, profile, manifest_dir);
 
     // Execute the launch process
     let launch_params = LaunchProcessParams {
@@ -69,17 +63,10 @@ pub fn launch_bevy_example(
         launch_start,
         find_duration,
     };
-    let launch_result = execute_launch_process(launch_params, &mut debug_info)?;
+    let launch_result = execute_launch_process(launch_params)?;
 
     // Build and return response
-    build_launch_response(
-        example_name,
-        &example,
-        launch_result,
-        launch_start,
-        profile,
-        debug_info,
-    )
+    build_launch_response(example_name, &example, launch_result, launch_start, profile)
 }
 
 struct LaunchResult {
@@ -92,11 +79,15 @@ fn find_and_validate_example(
     example_name: &str,
     path: Option<&str>,
     search_paths: &[PathBuf],
-    debug_info: &mut Vec<String>,
 ) -> Result<(cargo_detector::ExampleInfo, PathBuf, Duration), McpError> {
     let find_start = Instant::now();
-    let example =
-        scanning::find_required_example_with_path(example_name, path, search_paths, debug_info)?;
+    let mut debug_info = Vec::new();
+    let example = scanning::find_required_example_with_path(
+        example_name,
+        path,
+        search_paths,
+        &mut debug_info,
+    )?;
     let find_duration = find_start.elapsed();
 
     let manifest_path = example.manifest_path.clone();
@@ -123,20 +114,20 @@ fn collect_debug_info_if_enabled(
     cargo_command: &str,
     profile: &str,
     manifest_dir: &Path,
-    debug_info: &mut Vec<String>,
 ) {
     if matches!(
         get_current_level(),
         TracingLevel::Debug | TracingLevel::Trace
     ) {
-        launch_common::collect_launch_debug_info(
+        debug!(
+            "Launching example {} from {}",
             example_name,
-            "example",
-            manifest_dir,
-            cargo_command,
-            profile,
-            debug_info,
+            manifest_dir.display()
         );
+        debug!("Working directory: {}", manifest_dir.display());
+        debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
+        debug!("Profile: {}", profile);
+        debug!("Command: {}", cargo_command);
     }
 }
 
@@ -152,10 +143,7 @@ struct LaunchProcessParams<'a> {
     find_duration: Duration,
 }
 
-fn execute_launch_process(
-    params: LaunchProcessParams<'_>,
-    debug_info: &mut Vec<String>,
-) -> Result<LaunchResult, McpError> {
+fn execute_launch_process(params: LaunchProcessParams<'_>) -> Result<LaunchResult, McpError> {
     // Setup logging
     let log_setup_start = Instant::now();
     let (log_file_path, log_file_for_redirect) = launch_common::setup_launch_logging(
@@ -195,24 +183,24 @@ fn execute_launch_process(
         get_current_level(),
         TracingLevel::Debug | TracingLevel::Trace
     ) {
-        launch_common::collect_complete_launch_debug_info(
-            launch_common::LaunchDebugParams {
-                name: params.example_name,
-                name_type: "example",
-                manifest_dir: params.manifest_dir,
-                binary_or_command: params.cargo_command,
-                profile: params.profile,
-                launch_start: params.launch_start,
-                launch_end,
-                port: params.port,
-                package_name: Some(params.package_name),
-                find_duration: Some(params.find_duration),
-                log_setup_duration: Some(log_setup_duration),
-                cmd_setup_duration: Some(cmd_setup_duration),
-                spawn_duration: Some(spawn_duration),
-            },
-            debug_info,
+        let launch_duration_ms = launch_end.duration_since(params.launch_start).as_millis();
+
+        debug!("Launch duration: {}ms", launch_duration_ms);
+        debug!("Package: {}", params.package_name);
+        debug!(
+            "TIMING - Find example: {}ms",
+            params.find_duration.as_millis()
         );
+        debug!("TIMING - Log setup: {}ms", log_setup_duration.as_millis());
+        debug!(
+            "TIMING - Command setup: {}ms",
+            cmd_setup_duration.as_millis()
+        );
+        debug!("TIMING - Spawn process: {}ms", spawn_duration.as_millis());
+
+        if let Some(port) = params.port {
+            debug!("Environment variable: BRP_PORT={}", port);
+        }
     }
 
     Ok(LaunchResult {
@@ -228,7 +216,6 @@ fn build_launch_response(
     launch_result: LaunchResult,
     launch_start: Instant,
     profile: &str,
-    debug_info: Vec<String>,
 ) -> Result<CallToolResult, McpError> {
     let additional_data = json!({
         "package_name": example.package_name,
@@ -256,7 +243,7 @@ fn build_launch_response(
 
     Ok(launch_common::build_final_launch_response(
         base_response,
-        debug_info,
+        Vec::new(),
         format!(
             "Successfully launched '{example_name}' (PID: {})",
             launch_result.pid

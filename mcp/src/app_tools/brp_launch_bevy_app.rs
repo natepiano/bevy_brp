@@ -5,6 +5,7 @@ use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
+use tracing::debug;
 
 use super::support::{launch_common, process, scanning};
 use crate::BrpMcpService;
@@ -47,9 +48,9 @@ pub fn launch_bevy_app(
     search_paths: &[PathBuf],
 ) -> Result<CallToolResult, McpError> {
     let launch_start = Instant::now();
-    let mut debug_info = Vec::new();
 
     // Find the app
+    let mut debug_info = Vec::new();
     let app = scanning::find_required_app_with_path(app_name, path, search_paths, &mut debug_info)?;
 
     // Build the binary path
@@ -78,14 +79,11 @@ pub fn launch_bevy_app(
         get_current_level(),
         TracingLevel::Debug | TracingLevel::Trace
     ) {
-        launch_common::collect_launch_debug_info(
-            app_name,
-            "app",
-            manifest_dir,
-            &binary_path.display().to_string(),
-            profile,
-            &mut debug_info,
-        );
+        debug!("Launching app {} from {}", app_name, manifest_dir.display());
+        debug!("Working directory: {}", manifest_dir.display());
+        debug!("CARGO_MANIFEST_DIR: {}", manifest_dir.display());
+        debug!("Profile: {}", profile);
+        debug!("Binary path: {}", binary_path.display());
     }
 
     // Setup logging
@@ -116,24 +114,13 @@ pub fn launch_bevy_app(
         get_current_level(),
         TracingLevel::Debug | TracingLevel::Trace
     ) {
-        launch_common::collect_complete_launch_debug_info(
-            launch_common::LaunchDebugParams {
-                name: app_name,
-                name_type: "app",
-                manifest_dir,
-                binary_or_command: &binary_path.display().to_string(),
-                profile,
-                launch_start,
-                launch_end,
-                port,
-                package_name: None, // Apps don't have package names like examples do
-                find_duration: None,
-                log_setup_duration: None,
-                cmd_setup_duration: None,
-                spawn_duration: None,
-            },
-            &mut debug_info,
-        );
+        let launch_duration_ms = launch_end.duration_since(launch_start).as_millis();
+
+        debug!("Launch duration: {}ms", launch_duration_ms);
+
+        if let Some(port) = port {
+            debug!("Environment variable: BRP_PORT={}", port);
+        }
     }
 
     // Create additional app-specific data
@@ -158,7 +145,7 @@ pub fn launch_bevy_app(
 
     Ok(launch_common::build_final_launch_response(
         base_response,
-        debug_info,
+        Vec::new(),
         format!("Successfully launched '{app_name}' (PID: {pid})"),
     ))
 }

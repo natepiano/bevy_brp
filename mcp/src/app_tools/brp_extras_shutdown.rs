@@ -3,6 +3,7 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use sysinfo::{Signal, System};
+use tracing::debug;
 
 use crate::BrpMcpService;
 use crate::brp_tools::constants::DEFAULT_BRP_PORT;
@@ -51,34 +52,30 @@ enum ShutdownResult {
 
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
 async fn shutdown_app(app_name: &str, port: u16) -> (ShutdownResult, Vec<String>) {
-    let mut debug_info = Vec::new();
-
-    tracing::debug!("Starting shutdown process for app '{app_name}' on port {port}");
+    debug!("Starting shutdown process for app '{app_name}' on port {port}");
     // First, check if the process is actually running
     if !is_process_running(app_name) {
-        tracing::debug!("Process '{app_name}' not found in system process list");
-        return (ShutdownResult::AlreadyShutdown, debug_info);
+        debug!("Process '{app_name}' not found in system process list");
+        return (ShutdownResult::AlreadyShutdown, Vec::new());
     }
 
-    tracing::debug!("Process '{app_name}' found, attempting graceful shutdown");
+    debug!("Process '{app_name}' found, attempting graceful shutdown");
 
     // Process is running, try graceful shutdown via bevy_brp_extras
     match try_graceful_shutdown(port).await {
-        Ok((true, mut graceful_debug)) => {
-            debug_info.append(&mut graceful_debug);
-            tracing::debug!("Graceful shutdown succeeded");
-            (ShutdownResult::CleanShutdown, debug_info)
+        Ok((true, _)) => {
+            debug!("Graceful shutdown succeeded");
+            (ShutdownResult::CleanShutdown, Vec::new())
         }
-        Ok((false, mut graceful_debug)) => {
-            debug_info.append(&mut graceful_debug);
-            tracing::debug!("Graceful shutdown failed, falling back to process kill");
+        Ok((false, _)) => {
+            debug!("Graceful shutdown failed, falling back to process kill");
             // BRP responded but bevy_brp_extras not available - fall back to kill
-            handle_kill_process_fallback(app_name, &debug_info, None)
+            handle_kill_process_fallback(app_name, None)
         }
         Err(e) => {
-            tracing::debug!("BRP communication error, falling back to process kill: {e}");
+            debug!("BRP communication error, falling back to process kill: {e}");
             // BRP not responsive - fall back to kill
-            handle_kill_process_fallback(app_name, &debug_info, Some(e.to_string()))
+            handle_kill_process_fallback(app_name, Some(e.to_string()))
         }
     }
 }
@@ -86,31 +83,26 @@ async fn shutdown_app(app_name: &str, port: u16) -> (ShutdownResult, Vec<String>
 /// Handle the fallback to kill process when graceful shutdown fails
 fn handle_kill_process_fallback(
     app_name: &str,
-    debug_info: &[String],
     brp_error: Option<String>,
 ) -> (ShutdownResult, Vec<String>) {
     match kill_process(app_name) {
         Ok(Some(pid)) => {
-            tracing::debug!("Successfully killed process {app_name} with PID {pid}");
-            (ShutdownResult::ProcessKilled { pid }, debug_info.to_owned())
+            debug!("Successfully killed process {app_name} with PID {pid}");
+            (ShutdownResult::ProcessKilled { pid }, Vec::new())
         }
         Ok(None) => {
             if brp_error.is_some() {
-                tracing::debug!(
-                    "Process '{app_name}' not found when attempting to kill after BRP failure"
-                );
+                debug!("Process '{app_name}' not found when attempting to kill after BRP failure");
             } else {
-                tracing::debug!("Process '{app_name}' not found when attempting to kill");
+                debug!("Process '{app_name}' not found when attempting to kill");
             }
-            (ShutdownResult::NotRunning, debug_info.to_owned())
+            (ShutdownResult::NotRunning, Vec::new())
         }
         Err(kill_err) => {
             if brp_error.is_some() {
-                tracing::debug!(
-                    "Failed to kill process '{app_name}' after BRP failure: {kill_err:?}"
-                );
+                debug!("Failed to kill process '{app_name}' after BRP failure: {kill_err:?}");
             } else {
-                tracing::debug!("Failed to kill process '{app_name}': {kill_err:?}");
+                debug!("Failed to kill process '{app_name}': {kill_err:?}");
             }
             let error_message = brp_error.map_or_else(
                 || format!("{kill_err:?}"),
@@ -120,7 +112,7 @@ fn handle_kill_process_fallback(
                 ShutdownResult::Error {
                     message: error_message,
                 },
-                debug_info.to_owned(),
+                Vec::new(),
             )
         }
     }
@@ -241,42 +233,37 @@ pub async fn handle(
 
 /// Try to gracefully shutdown via `bevy_brp_extras`
 async fn try_graceful_shutdown(port: u16) -> Result<(bool, Vec<String>)> {
-    let debug_info = Vec::new();
-
-    tracing::debug!("Starting graceful shutdown attempt on port {port}");
+    debug!("Starting graceful shutdown attempt on port {port}");
     match execute_brp_method(BRP_METHOD_EXTRAS_SHUTDOWN, None, Some(port)).await {
         Ok(BrpResult::Success(result)) => {
             // Graceful shutdown succeeded
-            tracing::debug!("BRP extras shutdown successful: {result:?}");
-            Ok((true, debug_info))
+            debug!("BRP extras shutdown successful: {result:?}");
+            Ok((true, Vec::new()))
         }
         Ok(BrpResult::Error(brp_error)) => {
             // Check if this is a method not found error (bevy_brp_extras not available)
             if brp_error.code == -32601 {
-                tracing::debug!(
+                debug!(
                     "BRP extras method not found (code {}): {}",
-                    brp_error.code,
-                    brp_error.message
+                    brp_error.code, brp_error.message
                 );
             } else {
                 // Other BRP errors also indicate graceful shutdown failed
-                tracing::debug!(
+                debug!(
                     "BRP extras returned error (code {}): {}",
-                    brp_error.code,
-                    brp_error.message
+                    brp_error.code, brp_error.message
                 );
             }
-            Ok((false, debug_info))
+            Ok((false, Vec::new()))
         }
         Err(e) => {
             // BRP communication failed entirely
-            tracing::debug!("BRP communication failed: {e}");
+            debug!("BRP communication failed: {e}");
             Err(error_stack::Report::new(Error::BrpCommunication(
                 "BRP communication failed".to_string(),
             ))
             .attach_printable("BRP not responsive")
-            .attach_printable(format!("Port: {port}"))
-            .attach_printable(format!("Debug info: {debug_info:?}")))
+            .attach_printable(format!("Port: {port}")))
         }
     }
 }
