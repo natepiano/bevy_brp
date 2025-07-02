@@ -1,7 +1,7 @@
 # BRP Test Suite Runner
 
 ## Configuration
-**PARALLEL_TESTS**: 12  # Number of tests to run concurrently
+**PARALLEL_TESTS**: 6 # Number of tests to run concurrently
 
 ## Overview
 
@@ -89,7 +89,7 @@ Configuration: Port [PORT], App [APP_NAME]
 - **ALWAYS use the specified port [PORT] for ALL BRP operations**
 - **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop testing and report results
 - **CAPTURE FULL RESPONSES**: For every failed test step, include the complete tool response in your results
-- **TEST FAILURES INCLUDE**: 
+- **TEST FAILURES INCLUDE**:
   - HTTP request failures, connection errors, or tool exceptions
   - Tool succeeds but response data doesn't match test expectations
   - Unexpected behavior or state changes
