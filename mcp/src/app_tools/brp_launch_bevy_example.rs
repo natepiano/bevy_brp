@@ -81,13 +81,7 @@ fn find_and_validate_example(
     search_paths: &[PathBuf],
 ) -> Result<(cargo_detector::ExampleInfo, PathBuf, Duration), McpError> {
     let find_start = Instant::now();
-    let mut debug_info = Vec::new();
-    let example = scanning::find_required_example_with_path(
-        example_name,
-        path,
-        search_paths,
-        &mut debug_info,
-    )?;
+    let example = scanning::find_required_example_with_path(example_name, path, search_paths)?;
     let find_duration = find_start.elapsed();
 
     let manifest_path = example.manifest_path.clone();
@@ -243,7 +237,6 @@ fn build_launch_response(
 
     Ok(launch_common::build_final_launch_response(
         base_response,
-        Vec::new(),
         format!(
             "Successfully launched '{example_name}' (PID: {})",
             launch_result.pid

@@ -46,7 +46,6 @@ pub fn collect_launch_debug_info(
     manifest_dir: &Path,
     binary_or_command: &str,
     profile: &str,
-    debug_info: &mut Vec<String>,
 ) {
     debug!(
         "Launching {name_type} {name} from {}",
@@ -63,22 +62,6 @@ pub fn collect_launch_debug_info(
             "Command"
         }
     );
-
-    debug_info.push(format!(
-        "Launching {name_type} {name} from {}",
-        manifest_dir.display()
-    ));
-    debug_info.push(format!("Working directory: {}", manifest_dir.display()));
-    debug_info.push(format!("CARGO_MANIFEST_DIR: {}", manifest_dir.display()));
-    debug_info.push(format!("Profile: {profile}"));
-    debug_info.push(format!(
-        "{}: {binary_or_command}",
-        if name_type == "app" {
-            "Binary path"
-        } else {
-            "Command"
-        }
-    ));
 }
 
 /// Creates a success response with common fields and workspace info
@@ -172,10 +155,7 @@ pub struct LaunchDebugParams<'a> {
 }
 
 /// Collects enhanced debug information for launch operations including timing details
-pub fn collect_enhanced_launch_debug_info(
-    params: EnhancedDebugParams,
-    debug_info: &mut Vec<String>,
-) {
+pub fn collect_enhanced_launch_debug_info(params: EnhancedDebugParams) {
     let launch_duration_ms = params
         .launch_end
         .duration_since(params.launch_start)
@@ -207,70 +187,33 @@ pub fn collect_enhanced_launch_debug_info(
             debug!("  {key}={value}");
         }
     }
-
-    debug_info.push(format!(
-        "Launching {} {} from {}",
-        params.name_type,
-        params.name,
-        params.manifest_dir.display()
-    ));
-    debug_info.push(format!(
-        "Working directory: {}",
-        params.manifest_dir.display()
-    ));
-    debug_info.push(format!(
-        "CARGO_MANIFEST_DIR: {}",
-        params.manifest_dir.display()
-    ));
-    debug_info.push(format!("Profile: {}", params.profile));
-    debug_info.push(format!(
-        "{}: {}",
-        if params.name_type == "app" {
-            "Binary path"
-        } else {
-            "Command"
-        },
-        params.binary_or_command
-    ));
-    debug_info.push(format!("Launch duration: {launch_duration_ms}ms"));
-
-    if !params.env_vars.is_empty() {
-        debug_info.push("Environment variables:".to_string());
-        for (key, value) in params.env_vars {
-            debug_info.push(format!("  {key}={value}"));
-        }
-    }
 }
 
 /// Collects complete launch debug information including timing breakdowns
-pub fn collect_complete_launch_debug_info(params: LaunchDebugParams, debug_info: &mut Vec<String>) {
+pub fn collect_complete_launch_debug_info(params: LaunchDebugParams) {
     let mut env_vars = Vec::new();
     if let Some(port) = params.port {
         env_vars.push((BRP_PORT_ENV_VAR, port.to_string()));
     }
 
     // Collect base enhanced debug info
-    collect_enhanced_launch_debug_info(
-        EnhancedDebugParams {
-            name:              params.name,
-            name_type:         params.name_type,
-            manifest_dir:      params.manifest_dir,
-            binary_or_command: params.binary_or_command,
-            profile:           params.profile,
-            launch_start:      params.launch_start,
-            launch_end:        params.launch_end,
-            env_vars:          &env_vars
-                .iter()
-                .map(|(k, v)| (*k, v.as_str()))
-                .collect::<Vec<_>>(),
-        },
-        debug_info,
-    );
+    collect_enhanced_launch_debug_info(EnhancedDebugParams {
+        name:              params.name,
+        name_type:         params.name_type,
+        manifest_dir:      params.manifest_dir,
+        binary_or_command: params.binary_or_command,
+        profile:           params.profile,
+        launch_start:      params.launch_start,
+        launch_end:        params.launch_end,
+        env_vars:          &env_vars
+            .iter()
+            .map(|(k, v)| (*k, v.as_str()))
+            .collect::<Vec<_>>(),
+    });
 
     // Add package name if provided (for examples)
     if let Some(package_name) = params.package_name {
         debug!("Package: {package_name}");
-        debug_info.push(format!("Package: {package_name}"));
     }
 
     // Add timing information if provided
@@ -280,35 +223,18 @@ pub fn collect_complete_launch_debug_info(params: LaunchDebugParams, debug_info:
             params.name_type,
             find_duration.as_millis()
         );
-        debug_info.push(format!(
-            "TIMING - Find {}: {}ms",
-            params.name_type,
-            find_duration.as_millis()
-        ));
     }
     if let Some(log_setup_duration) = params.log_setup_duration {
         debug!("TIMING - Log setup: {}ms", log_setup_duration.as_millis());
-        debug_info.push(format!(
-            "TIMING - Log setup: {}ms",
-            log_setup_duration.as_millis()
-        ));
     }
     if let Some(cmd_setup_duration) = params.cmd_setup_duration {
         debug!(
             "TIMING - Command setup: {}ms",
             cmd_setup_duration.as_millis()
         );
-        debug_info.push(format!(
-            "TIMING - Command setup: {}ms",
-            cmd_setup_duration.as_millis()
-        ));
     }
     if let Some(spawn_duration) = params.spawn_duration {
         debug!("TIMING - Spawn process: {}ms", spawn_duration.as_millis());
-        debug_info.push(format!(
-            "TIMING - Spawn process: {}ms",
-            spawn_duration.as_millis()
-        ));
     }
 }
 
@@ -372,16 +298,15 @@ pub fn build_app_command(binary_path: &Path, port: Option<u16>) -> Command {
     cmd
 }
 
-/// Build final response with debug info injection
+/// Build final response for launch operations
 pub fn build_final_launch_response(
     base_response: CallToolResult,
-    debug_info: Vec<String>,
     success_message: String,
 ) -> CallToolResult {
     use crate::support::response::ResponseBuilder;
     use crate::support::serialization::json_response_to_result;
 
-    // Extract the inner JSON response and inject debug info using standard approach
+    // Extract the inner JSON response and rebuild with the success message
     if let Ok(json_str) = serde_json::to_string(&base_response.content) {
         if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
             let response = ResponseBuilder::success()
@@ -393,15 +318,7 @@ pub fn build_final_launch_response(
                             .message("Failed to serialize response data")
                             .build()
                     },
-                    |builder| {
-                        builder
-                            .auto_inject_debug_info(if debug_info.is_empty() {
-                                None
-                            } else {
-                                Some(debug_info)
-                            })
-                            .build()
-                    },
+                    ResponseBuilder::build,
                 );
 
             return json_response_to_result(&response);

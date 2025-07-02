@@ -56,8 +56,7 @@ fn collect_all_items<S: CollectionStrategy>(
     let mut seen_items = HashSet::new();
 
     // Use the iterator to find all cargo projects
-    let mut debug_info = Vec::new();
-    for path in scanning::iter_cargo_project_paths(search_paths, &mut debug_info) {
+    for path in scanning::iter_cargo_project_paths(search_paths) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
             let items = strategy.collect_items(&detector);
             for item in items {
@@ -65,8 +64,7 @@ fn collect_all_items<S: CollectionStrategy>(
                 let key = strategy.create_unique_key(&item);
                 if seen_items.insert(key) {
                     // Compute relative path for the project
-                    let relative_path =
-                        scanning::compute_relative_path(&path, search_paths, &mut debug_info);
+                    let relative_path = scanning::compute_relative_path(&path, search_paths);
 
                     let serialized_item =
                         strategy.serialize_item(&item, relative_path.display().to_string());

@@ -9,18 +9,11 @@ use crate::error::{Error, report_to_mcp_error};
 
 /// Helper function to safely canonicalize a path
 /// Returns the canonicalized path if successful, otherwise returns the original path
-fn safe_canonicalize(path: &Path, debug_info: Option<&mut Vec<String>>) -> PathBuf {
+fn safe_canonicalize(path: &Path) -> PathBuf {
     match path.canonicalize() {
         Ok(canonical) => canonical,
         Err(e) => {
             debug!("Failed to canonicalize path '{}': {}", path.display(), e);
-            if let Some(debug_info) = debug_info {
-                debug_info.push(format!(
-                    "Failed to canonicalize path '{}': {}",
-                    path.display(),
-                    e
-                ));
-            }
             path.to_path_buf()
         }
     }
@@ -47,20 +40,16 @@ struct DiscoveredProject {
 /// Iterator over all valid Cargo project paths found in the given search paths
 /// Recursively scans all directories at any depth
 /// Smart deduplication: workspace-discovered apps take precedence over filesystem-discovered
-pub fn iter_cargo_project_paths(
-    search_paths: &[PathBuf],
-    debug_info: &mut Vec<String>,
-) -> Vec<PathBuf> {
+pub fn iter_cargo_project_paths(search_paths: &[PathBuf]) -> Vec<PathBuf> {
     let mut visited_canonical = HashSet::new();
     let mut discovered_projects: HashMap<PathBuf, DiscoveredProject> = HashMap::new();
 
     for root in search_paths {
-        let canonical_root = safe_canonicalize(root, Some(debug_info));
+        let canonical_root = safe_canonicalize(root);
         shallow_scan(
             &canonical_root,
             &mut visited_canonical,
             &mut discovered_projects,
-            debug_info,
         );
     }
 
@@ -108,18 +97,15 @@ fn discover_workspace_members(
     metadata: &cargo_metadata::Metadata,
     workspace_root: &Path,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
 ) {
     for package in &metadata.packages {
         // Only include packages that are workspace members
         if metadata.workspace_members.contains(&package.id) {
-            let manifest_path = safe_canonicalize(
-                &PathBuf::from(&package.manifest_path.as_std_path()),
-                Some(debug_info),
-            );
+            let manifest_path =
+                safe_canonicalize(&PathBuf::from(&package.manifest_path.as_std_path()));
             if let Some(member_dir) = manifest_path.parent() {
                 if member_dir.exists() {
-                    let member_canonical = safe_canonicalize(member_dir, Some(debug_info));
+                    let member_canonical = safe_canonicalize(member_dir);
 
                     discovered_projects.insert(
                         member_canonical.clone(),
@@ -136,11 +122,6 @@ fn discover_workspace_members(
                         package.name,
                         member_dir.display()
                     );
-                    debug_info.push(format!(
-                        "Skipping workspace member '{}': directory does not exist at '{}'",
-                        package.name,
-                        member_dir.display()
-                    ));
                 }
             }
         }
@@ -154,11 +135,10 @@ fn handle_workspace_root(
     workspace_root: &Path,
     canonical_dir: PathBuf,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
 ) {
     if metadata.workspace_members.len() > 1 {
         // This is a true workspace root - discover all its members
-        discover_workspace_members(metadata, workspace_root, discovered_projects, debug_info);
+        discover_workspace_members(metadata, workspace_root, discovered_projects);
     } else {
         // This is a standalone project (single-member workspace)
         discovered_projects.insert(
@@ -176,9 +156,8 @@ fn add_workspace_member(
     dir: &Path,
     workspace_root: PathBuf,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
 ) {
-    let canonical_dir = safe_canonicalize(dir, Some(debug_info));
+    let canonical_dir = safe_canonicalize(dir);
     discovered_projects.insert(
         canonical_dir.clone(),
         DiscoveredProject {
@@ -192,9 +171,8 @@ fn add_workspace_member(
 fn add_fallback_standalone(
     dir: &Path,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
 ) {
-    let canonical_dir = safe_canonicalize(dir, Some(debug_info));
+    let canonical_dir = safe_canonicalize(dir);
     // Only add as filesystem discovery if not already discovered as workspace member
     discovered_projects
         .entry(canonical_dir.clone())
@@ -204,11 +182,7 @@ fn add_fallback_standalone(
         });
 }
 
-fn process_cargo_toml(
-    dir: &Path,
-    discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
-) {
+fn process_cargo_toml(dir: &Path, discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>) {
     // Try to get metadata to determine if it's a workspace
     if let Ok(metadata) = cargo_metadata::MetadataCommand::new()
         .current_dir(dir)
@@ -217,8 +191,8 @@ fn process_cargo_toml(
         let workspace_root: PathBuf = metadata.workspace_root.clone().into();
 
         // Check if this is a workspace root (not just a member)
-        let canonical_dir = safe_canonicalize(dir, Some(debug_info));
-        let canonical_workspace = safe_canonicalize(&workspace_root, Some(debug_info));
+        let canonical_dir = safe_canonicalize(dir);
+        let canonical_workspace = safe_canonicalize(&workspace_root);
         let is_workspace_root = canonical_dir == canonical_workspace;
 
         if is_workspace_root {
@@ -227,13 +201,12 @@ fn process_cargo_toml(
                 &workspace_root,
                 canonical_dir,
                 discovered_projects,
-                debug_info,
             );
         } else {
-            add_workspace_member(dir, workspace_root, discovered_projects, debug_info);
+            add_workspace_member(dir, workspace_root, discovered_projects);
         }
     } else {
-        add_fallback_standalone(dir, discovered_projects, debug_info);
+        add_fallback_standalone(dir, discovered_projects);
     }
 }
 
@@ -242,15 +215,8 @@ fn shallow_scan(
     dir: &Path,
     visited_canonical: &mut HashSet<PathBuf>,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
 ) {
-    shallow_scan_internal(
-        dir,
-        visited_canonical,
-        discovered_projects,
-        debug_info,
-        false,
-    );
+    shallow_scan_internal(dir, visited_canonical, discovered_projects, false);
 }
 
 /// Internal shallow scan that can skip the `should_skip` check for root paths
@@ -259,11 +225,10 @@ fn shallow_scan_internal(
     dir: &Path,
     visited_canonical: &mut HashSet<PathBuf>,
     discovered_projects: &mut HashMap<PathBuf, DiscoveredProject>,
-    debug_info: &mut Vec<String>,
     check_skip: bool,
 ) {
     // Skip if we've already visited this canonical path
-    let canonical = safe_canonicalize(dir, Some(debug_info));
+    let canonical = safe_canonicalize(dir);
     if !visited_canonical.insert(canonical) {
         return;
     }
@@ -276,7 +241,7 @@ fn shallow_scan_internal(
     // Level 0: Check if this directory contains a Cargo.toml
     let cargo_toml = dir.join("Cargo.toml");
     if cargo_toml.exists() {
-        process_cargo_toml(dir, discovered_projects, debug_info);
+        process_cargo_toml(dir, discovered_projects);
     }
 
     // Level 1: Check immediate subdirectories only (no recursion)
@@ -288,9 +253,9 @@ fn shallow_scan_internal(
                 let sub_cargo_toml = path.join("Cargo.toml");
                 if sub_cargo_toml.exists() {
                     // Skip if we've already visited this canonical path
-                    let sub_canonical = safe_canonicalize(&path, Some(debug_info));
+                    let sub_canonical = safe_canonicalize(&path);
                     if visited_canonical.insert(sub_canonical) {
-                        process_cargo_toml(&path, discovered_projects, debug_info);
+                        process_cargo_toml(&path, discovered_projects);
                     }
                 }
             }
@@ -316,15 +281,11 @@ pub fn extract_workspace_name(workspace_root: &Path) -> Option<String> {
 /// we use the directory name itself as the identifier to ensure round-trip compatibility
 /// with path parameters. For example, if searching in "/workspace/test-app" and finding
 /// a project at that exact path, we return "test-app" rather than an empty path.
-pub fn compute_relative_path(
-    path: &Path,
-    search_paths: &[PathBuf],
-    debug_info: &mut Vec<String>,
-) -> PathBuf {
+pub fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> PathBuf {
     // Try to find which search path this path is under
     for search_path in search_paths {
-        let search_canonical = safe_canonicalize(search_path, Some(debug_info));
-        let path_canonical = safe_canonicalize(path, Some(debug_info));
+        let search_canonical = safe_canonicalize(search_path);
+        let path_canonical = safe_canonicalize(path);
         if let Ok(relative) = path_canonical.strip_prefix(&search_canonical) {
             // Special case: If the relative path is empty (meaning path == search_path),
             // we need a meaningful identifier for round-trip compatibility
@@ -378,15 +339,14 @@ pub fn get_workspace_root_from_manifest(manifest_path: &Path) -> Option<PathBuf>
 /// This allows detection of duplicates across workspaces
 pub fn find_all_apps_by_name(app_name: &str, search_paths: &[PathBuf]) -> Vec<BinaryInfo> {
     let mut apps = Vec::new();
-    let mut debug_info = Vec::new();
 
-    for path in iter_cargo_project_paths(search_paths, &mut debug_info) {
+    for path in iter_cargo_project_paths(search_paths) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
             let found_apps = detector.find_bevy_apps();
             for mut app in found_apps {
                 if app.name == app_name {
                     // Set the relative path based on the discovered project path
-                    app.relative_path = compute_relative_path(&path, search_paths, &mut debug_info);
+                    app.relative_path = compute_relative_path(&path, search_paths);
                     apps.push(app);
                 }
             }
@@ -400,16 +360,14 @@ pub fn find_all_apps_by_name(app_name: &str, search_paths: &[PathBuf]) -> Vec<Bi
 /// This allows detection of duplicates across workspaces
 pub fn find_all_examples_by_name(example_name: &str, search_paths: &[PathBuf]) -> Vec<ExampleInfo> {
     let mut examples = Vec::new();
-    let mut debug_info = Vec::new();
 
-    for path in iter_cargo_project_paths(search_paths, &mut debug_info) {
+    for path in iter_cargo_project_paths(search_paths) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
             let found_examples = detector.find_bevy_examples();
             for mut example in found_examples {
                 if example.name == example_name {
                     // Set the relative path based on the discovered project path
-                    example.relative_path =
-                        compute_relative_path(&path, search_paths, &mut debug_info);
+                    example.relative_path = compute_relative_path(&path, search_paths);
                     examples.push(example);
                 }
             }
@@ -425,18 +383,14 @@ pub fn find_required_app_with_path(
     app_name: &str,
     path: Option<&str>,
     search_paths: &[PathBuf],
-    debug_info: &mut Vec<String>,
 ) -> Result<BinaryInfo, McpError> {
     debug!("Searching for app '{app_name}'");
-    debug_info.push(format!("Searching for app '{app_name}'"));
     if let Some(p) = path {
         debug!("With path filter: {p}");
-        debug_info.push(format!("With path filter: {p}"));
     }
 
     let all_apps = find_all_apps_by_name(app_name, search_paths);
     debug!("Found {} matching app(s)", all_apps.len());
-    debug_info.push(format!("Found {} matching app(s)", all_apps.len()));
 
     let filtered_apps = find_and_filter_by_path(all_apps, path, |app| &app.relative_path);
 
@@ -451,18 +405,14 @@ pub fn find_required_example_with_path(
     example_name: &str,
     path: Option<&str>,
     search_paths: &[PathBuf],
-    debug_info: &mut Vec<String>,
 ) -> Result<ExampleInfo, McpError> {
     debug!("Searching for example '{example_name}'");
-    debug_info.push(format!("Searching for example '{example_name}'"));
     if let Some(p) = path {
         debug!("With path filter: {p}");
-        debug_info.push(format!("With path filter: {p}"));
     }
 
     let all_examples = find_all_examples_by_name(example_name, search_paths);
     debug!("Found {} matching example(s)", all_examples.len());
-    debug_info.push(format!("Found {} matching example(s)", all_examples.len()));
 
     let filtered_examples =
         find_and_filter_by_path(all_examples, path, |example| &example.relative_path);
@@ -615,24 +565,19 @@ mod tests {
     #[test]
     fn test_safe_canonicalize_with_valid_path() {
         let path = Path::new(".");
-        let mut debug_info = Vec::new();
-        let result = safe_canonicalize(path, Some(&mut debug_info));
+        let result = safe_canonicalize(path);
 
         // Should return a valid path without errors
         assert!(result.is_absolute());
-        assert!(debug_info.is_empty());
     }
 
     #[test]
     fn test_safe_canonicalize_with_invalid_path() {
         let path = Path::new("/non/existent/path/that/does/not/exist");
-        let mut debug_info = Vec::new();
-        let result = safe_canonicalize(path, Some(&mut debug_info));
+        let result = safe_canonicalize(path);
 
         // Should return the original path and log an error
         assert_eq!(result, path.to_path_buf());
-        assert!(!debug_info.is_empty());
-        assert!(debug_info[0].contains("Failed to canonicalize"));
     }
 
     #[test]
@@ -732,7 +677,6 @@ mod tests {
 
     #[test]
     fn test_compute_relative_path() {
-        let mut debug_info = Vec::new();
         let search_paths = vec![
             PathBuf::from("/home/user/projects"),
             PathBuf::from("/home/user/work"),
@@ -740,12 +684,12 @@ mod tests {
 
         // Path under first search path
         let path = PathBuf::from("/home/user/projects/my-app");
-        let relative = compute_relative_path(&path, &search_paths, &mut debug_info);
+        let relative = compute_relative_path(&path, &search_paths);
         assert_eq!(relative, PathBuf::from("my-app"));
 
         // Path not under any search path - should return full path for proper disambiguation
         let path = PathBuf::from("/home/user/other/my-app");
-        let relative = compute_relative_path(&path, &search_paths, &mut debug_info);
+        let relative = compute_relative_path(&path, &search_paths);
         assert_eq!(relative, PathBuf::from("/home/user/other/my-app"));
     }
 
@@ -812,8 +756,7 @@ path = "src/main.rs"
         )
         .expect("Failed to write hidden main.rs");
 
-        let mut debug_info = Vec::new();
-        let paths = iter_cargo_project_paths(&[temp_path.to_path_buf()], &mut debug_info);
+        let paths = iter_cargo_project_paths(&[temp_path.to_path_buf()]);
 
         // Should find only the main project, not the hidden one
         assert_eq!(paths.len(), 1, "Should find exactly one project");
@@ -899,8 +842,7 @@ path = "src/main.rs"
         )
         .expect("Failed to create symlink b->a");
 
-        let mut debug_info = Vec::new();
-        let paths = iter_cargo_project_paths(&[temp_path.to_path_buf()], &mut debug_info);
+        let paths = iter_cargo_project_paths(&[temp_path.to_path_buf()]);
 
         // Should find both projects without infinite loop
         assert_eq!(paths.len(), 2, "Should find exactly two projects");
@@ -987,8 +929,7 @@ path = "src/main.rs"
         )
         .expect("Failed to write member-b main.rs");
 
-        let mut debug_info = Vec::new();
-        let paths = iter_cargo_project_paths(&[temp_path.to_path_buf()], &mut debug_info);
+        let paths = iter_cargo_project_paths(&[temp_path.to_path_buf()]);
 
         // Should find the workspace root, not individual members
         assert_eq!(paths.len(), 1, "Should find exactly one workspace root");
@@ -1112,20 +1053,14 @@ path = "src/main.rs"
         .expect("Failed to write standalone main.rs");
 
         let mut discovered_projects = HashMap::new();
-        let mut debug_info = Vec::new();
 
         // Test workspace root detection
-        process_cargo_toml(
-            &workspace_path.join("workspace"),
-            &mut discovered_projects,
-            &mut debug_info,
-        );
+        process_cargo_toml(&workspace_path.join("workspace"), &mut discovered_projects);
 
         // Test standalone project detection
         process_cargo_toml(
             &standalone_path.join("standalone"),
             &mut discovered_projects,
-            &mut debug_info,
         );
 
         // Should have workspace members and standalone project

@@ -50,8 +50,7 @@ pub fn launch_bevy_app(
     let launch_start = Instant::now();
 
     // Find the app
-    let mut debug_info = Vec::new();
-    let app = scanning::find_required_app_with_path(app_name, path, search_paths, &mut debug_info)?;
+    let app = scanning::find_required_app_with_path(app_name, path, search_paths)?;
 
     // Build the binary path
     let binary_path = app.get_binary_path(profile);
@@ -145,7 +144,6 @@ pub fn launch_bevy_app(
 
     Ok(launch_common::build_final_launch_response(
         base_response,
-        Vec::new(),
         format!("Successfully launched '{app_name}' (PID: {pid})"),
     ))
 }
