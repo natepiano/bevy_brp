@@ -199,11 +199,11 @@ async fn execute_level_2_direct_discovery(type_names: &[String], port: Option<u1
             }
             Ok(None) => {
                 debug!("Level 2: No type information found for '{type_name}' via direct discovery");
-                // Type discovery failure tracked in debug_info
+                // Type discovery failure logged via tracing
             }
             Err(e) => {
                 debug!("Level 2: Direct discovery failed for '{type_name}': {e}");
-                // Type discovery failure tracked in debug_info
+                // Type discovery failure logged via tracing
             }
         }
     }
