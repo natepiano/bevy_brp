@@ -73,7 +73,7 @@ impl Write for LazyWriter {
             .file
             .lock()
             .map_err(|_| io::Error::other("Mutex poisoned"))?;
-        
+
         // If file doesn't exist or flush fails, recreate the file handle
         match file_guard.as_mut().map(std::io::Write::flush) {
             Some(Err(_)) | None if self.path.exists() => {
