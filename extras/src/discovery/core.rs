@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use bevy::reflect::VariantType;
 use serde_json::Value;
 
 use super::error::{DebugContext, DiscoveryResult};

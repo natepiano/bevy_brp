@@ -4,6 +4,7 @@
 //! for authoritative type schemas, examples, and mutation paths.
 
 use serde_json::{Value, json};
+use tracing::debug;
 
 use super::adapters::from_type_discovery_response_json;
 use super::flow_types::CorrectionResult;
@@ -14,15 +15,12 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 pub async fn discover_type_format(
     type_name: &str,
     port: Option<u16>,
-    debug_info: &mut Vec<String>,
 ) -> Result<Option<UnifiedTypeInfo>, String> {
-    debug_info.push(format!(
-        "Extras Integration: Starting discovery for type '{type_name}'"
-    ));
+    debug!("Extras Integration: Starting discovery for type '{type_name}'");
 
     // Check if bevy_brp_extras is available
-    if !check_brp_extras_availability(port, debug_info).await {
-        debug_info.push("Extras Integration: bevy_brp_extras not available".to_string());
+    if !check_brp_extras_availability(port).await {
+        debug!("Extras Integration: bevy_brp_extras not available");
         return Ok(None);
     }
 
@@ -31,45 +29,36 @@ pub async fn discover_type_format(
         "types": [type_name]
     });
 
-    debug_info.push(format!(
-        "Extras Integration: Calling bevy_brp_extras/discover_format with params: {params}"
-    ));
+    debug!("Extras Integration: Calling bevy_brp_extras/discover_format with params: {params}");
 
     match execute_brp_method("bevy_brp_extras/discover_format", Some(params), port).await {
         Ok(BrpResult::Success(Some(response_data))) => {
-            debug_info.push(
-                "Extras Integration: Received successful response from bevy_brp_extras".to_string(),
-            );
+            debug!("Extras Integration: Received successful response from bevy_brp_extras");
 
             // Process the response to extract type information
-            process_discovery_response(type_name, &response_data, debug_info)
+            process_discovery_response(type_name, &response_data)
         }
         Ok(BrpResult::Success(None)) => {
-            debug_info.push("Extras Integration: Received empty success response".to_string());
+            debug!("Extras Integration: Received empty success response");
             Ok(None)
         }
         Ok(BrpResult::Error(error)) => {
-            debug_info.push(format!(
+            debug!(
                 "Extras Integration: BRP error: {} - {}",
                 error.code, error.message
-            ));
+            );
             Err(format!("BRP error {}: {}", error.code, error.message))
         }
         Err(e) => {
-            debug_info.push(format!("Extras Integration: Network/connection error: {e}"));
+            debug!("Extras Integration: Network/connection error: {e}");
             Err(format!("Connection error: {e}"))
         }
     }
 }
 
 /// Check if `bevy_brp_extras` is available via rpc.discover
-pub async fn check_brp_extras_availability(
-    port: Option<u16>,
-    debug_info: &mut Vec<String>,
-) -> bool {
-    debug_info.push(
-        "Extras Integration: Checking bevy_brp_extras availability via rpc.discover".to_string(),
-    );
+pub async fn check_brp_extras_availability(port: Option<u16>) -> bool {
+    debug!("Extras Integration: Checking bevy_brp_extras availability via rpc.discover");
 
     // Use rpc.discover to list available methods
     match execute_brp_method("rpc.discover", None, port).await {
@@ -78,35 +67,31 @@ pub async fn check_brp_extras_availability(
             if let Some(methods) = response.get("methods").and_then(|m| m.as_object()) {
                 let has_discover_format = methods.contains_key("bevy_brp_extras/discover_format");
 
-                debug_info.push(format!(
+                debug!(
                     "Extras Integration: rpc.discover returned {} methods, bevy_brp_extras/discover_format present: {}",
                     methods.len(),
                     has_discover_format
-                ));
+                );
 
                 has_discover_format
             } else {
-                debug_info.push(
-                    "Extras Integration: rpc.discover response missing methods field".to_string(),
-                );
+                debug!("Extras Integration: rpc.discover response missing methods field");
                 false
             }
         }
         Ok(BrpResult::Success(None)) => {
-            debug_info.push("Extras Integration: rpc.discover returned empty response".to_string());
+            debug!("Extras Integration: rpc.discover returned empty response");
             false
         }
         Ok(BrpResult::Error(error)) => {
-            debug_info.push(format!(
+            debug!(
                 "Extras Integration: rpc.discover error: {} - {}",
                 error.code, error.message
-            ));
+            );
             false
         }
         Err(e) => {
-            debug_info.push(format!(
-                "Extras Integration: Failed to call rpc.discover: {e}"
-            ));
+            debug!("Extras Integration: Failed to call rpc.discover: {e}");
             false
         }
     }
@@ -116,38 +101,29 @@ pub async fn check_brp_extras_availability(
 fn process_discovery_response(
     type_name: &str,
     response_data: &Value,
-    debug_info: &mut Vec<String>,
 ) -> Result<Option<UnifiedTypeInfo>, String> {
-    debug_info.push(format!(
-        "Extras Integration: Processing discovery response for '{type_name}'"
-    ));
+    debug!("Extras Integration: Processing discovery response for '{type_name}'");
 
     // The response should contain type information, possibly as an array or object
     // We need to find the entry for our specific type
 
     if let Some(type_data) = find_type_in_response(type_name, response_data) {
-        debug_info.push(format!(
-            "Extras Integration: Found type data for '{type_name}'"
-        ));
+        debug!("Extras Integration: Found type data for '{type_name}'");
 
         // Use the schema adapter to convert TypeDiscoveryResponse → UnifiedTypeInfo
         if let Some(unified_info) = from_type_discovery_response_json(type_data) {
-            debug_info.push(format!(
+            debug!(
                 "Extras Integration: Successfully converted to UnifiedTypeInfo with {} mutation paths, {} examples",
                 unified_info.format_info.mutation_paths.len(),
                 unified_info.format_info.examples.len()
-            ));
+            );
             Ok(Some(unified_info))
         } else {
-            debug_info.push(
-                "Extras Integration: Failed to convert response to UnifiedTypeInfo".to_string(),
-            );
+            debug!("Extras Integration: Failed to convert response to UnifiedTypeInfo");
             Err("Failed to parse type discovery response".to_string())
         }
     } else {
-        debug_info.push(format!(
-            "Extras Integration: Type '{type_name}' not found in discovery response"
-        ));
+        debug!("Extras Integration: Type '{type_name}' not found in discovery response");
         Ok(None)
     }
 }

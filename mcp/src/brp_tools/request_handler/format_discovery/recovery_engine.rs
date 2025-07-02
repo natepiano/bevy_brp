@@ -8,6 +8,7 @@
 //! Each level returns immediately on success to minimize processing.
 
 use serde_json::Value;
+use tracing::debug;
 
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use crate::brp_tools::support::brp_client::BrpResult;
@@ -18,86 +19,72 @@ pub async fn attempt_format_recovery(
     original_params: Option<Value>,
     error: BrpResult,
     port: Option<u16>,
-    debug_info: &mut Vec<String>,
 ) -> FormatRecoveryResult {
-    debug_info.push(format!(
-        "Recovery Engine: Starting 3-level recovery for method '{method}'"
-    ));
+    debug!("Recovery Engine: Starting 3-level recovery for method '{method}'");
 
     // Extract type names from the parameters for recovery attempts
     let type_names = extract_type_names_from_params(method, original_params.as_ref());
     if type_names.is_empty() {
-        debug_info
-            .push("Recovery Engine: No type names found in parameters, cannot recover".to_string());
+        debug!("Recovery Engine: No type names found in parameters, cannot recover");
         return FormatRecoveryResult::NotRecoverable(error);
     }
 
-    debug_info.push(format!(
+    debug!(
         "Recovery Engine: Found {} type names to process",
         type_names.len()
-    ));
+    );
 
     // Level 1: Registry/Serialization Checks
-    debug_info.push("Recovery Engine: Level 1 - Registry/serialization checks".to_string());
-    match execute_level_1_registry_checks(&type_names, port, debug_info).await {
+    debug!("Recovery Engine: Level 1 - Registry/serialization checks");
+    match execute_level_1_registry_checks(&type_names, port).await {
         LevelResult::Success(corrections) => {
-            debug_info.push(
-                "Recovery Engine: Level 1 succeeded with registry-based corrections".to_string(),
-            );
-            return build_recovery_success(corrections, debug_info);
+            debug!("Recovery Engine: Level 1 succeeded with registry-based corrections");
+            return build_recovery_success(corrections);
         }
         LevelResult::Educational(_educational_info) => {
-            debug_info.push("Recovery Engine: Level 1 provided educational guidance".to_string());
+            debug!("Recovery Engine: Level 1 provided educational guidance");
             return FormatRecoveryResult::Educational {
                 original_error: error,
             };
         }
         LevelResult::Continue => {
-            debug_info.push("Recovery Engine: Level 1 complete, proceeding to Level 2".to_string());
+            debug!("Recovery Engine: Level 1 complete, proceeding to Level 2");
         }
     }
 
     // Level 2: Direct Discovery via bevy_brp_extras
-    debug_info.push("Recovery Engine: Level 2 - Direct discovery via bevy_brp_extras".to_string());
-    match execute_level_2_direct_discovery(&type_names, port, debug_info).await {
+    debug!("Recovery Engine: Level 2 - Direct discovery via bevy_brp_extras");
+    match execute_level_2_direct_discovery(&type_names, port).await {
         LevelResult::Success(corrections) => {
-            debug_info.push("Recovery Engine: Level 2 succeeded with direct discovery".to_string());
-            return build_recovery_success(corrections, debug_info);
+            debug!("Recovery Engine: Level 2 succeeded with direct discovery");
+            return build_recovery_success(corrections);
         }
         LevelResult::Educational(_educational_info) => {
-            debug_info.push("Recovery Engine: Level 2 provided educational guidance".to_string());
+            debug!("Recovery Engine: Level 2 provided educational guidance");
             return FormatRecoveryResult::Educational {
                 original_error: error,
             };
         }
         LevelResult::Continue => {
-            debug_info.push("Recovery Engine: Level 2 complete, proceeding to Level 3".to_string());
+            debug!("Recovery Engine: Level 2 complete, proceeding to Level 3");
         }
     }
 
     // Level 3: Pattern-Based Transformations
-    debug_info.push("Recovery Engine: Level 3 - Pattern-based transformations".to_string());
-    match execute_level_3_pattern_transformations(
-        &type_names,
-        method,
-        original_params.as_ref(),
-        debug_info,
-    ) {
+    debug!("Recovery Engine: Level 3 - Pattern-based transformations");
+    match execute_level_3_pattern_transformations(&type_names, method, original_params.as_ref()) {
         LevelResult::Success(corrections) => {
-            debug_info.push(
-                "Recovery Engine: Level 3 succeeded with pattern-based corrections".to_string(),
-            );
-            build_recovery_success(corrections, debug_info)
+            debug!("Recovery Engine: Level 3 succeeded with pattern-based corrections");
+            build_recovery_success(corrections)
         }
         LevelResult::Educational(_educational_info) => {
-            debug_info.push("Recovery Engine: Level 3 provided educational guidance".to_string());
+            debug!("Recovery Engine: Level 3 provided educational guidance");
             FormatRecoveryResult::Educational {
                 original_error: error,
             }
         }
         LevelResult::Continue => {
-            debug_info
-                .push("Recovery Engine: All levels exhausted, no recovery possible".to_string());
+            debug!("Recovery Engine: All levels exhausted, no recovery possible");
             FormatRecoveryResult::NotRecoverable(error)
         }
     }
@@ -115,36 +102,26 @@ enum LevelResult {
 }
 
 /// Level 1: Fast registry and serialization checks
-async fn execute_level_1_registry_checks(
-    type_names: &[String],
-    port: Option<u16>,
-    debug_info: &mut Vec<String>,
-) -> LevelResult {
-    debug_info.push(format!(
+async fn execute_level_1_registry_checks(type_names: &[String], port: Option<u16>) -> LevelResult {
+    debug!(
         "Level 1: Checking {} types against registry",
         type_names.len()
-    ));
+    );
 
     // Use batch checking for efficiency when checking multiple types
-    let registry_results = super::registry_integration::check_multiple_types_registry_status(
-        type_names, port, debug_info,
-    )
-    .await;
+    let registry_results =
+        super::registry_integration::check_multiple_types_registry_status(type_names, port).await;
 
     let mut corrections = Vec::new();
     let mut educational_messages = Vec::new();
 
     for (type_name, registry_result) in registry_results {
-        debug_info.push(format!(
-            "Level 1: Processing registry result for '{type_name}'"
-        ));
+        debug!("Level 1: Processing registry result for '{type_name}'");
 
         if let Some(type_info) = registry_result {
             // Type found in registry, check serialization support
             if type_info.serialization.brp_compatible {
-                debug_info.push(format!(
-                    "Level 1: Type '{type_name}' is fully BRP compatible"
-                ));
+                debug!("Level 1: Type '{type_name}' is fully BRP compatible");
                 // Create a metadata-only correction since we have good type info
                 let correction = CorrectionResult::MetadataOnly {
                     type_info,
@@ -157,9 +134,9 @@ async fn execute_level_1_registry_checks(
                     "Type '{type_name}' is registered in Bevy's type registry but lacks required serialization traits. \
                     To use this type with BRP operations, ensure it derives or implements Serialize and Deserialize traits."
                 );
-                debug_info.push(format!(
+                debug!(
                     "Level 1: Educational guidance for '{type_name}': missing serialization traits"
-                ));
+                );
                 educational_messages.push(educational_message);
             }
         } else {
@@ -168,45 +145,38 @@ async fn execute_level_1_registry_checks(
                 "Type '{type_name}' is not registered in Bevy's type registry. \
                 To use this type with BRP operations, ensure it's registered with the App using .register_type::<{type_name}>()"
             );
-            debug_info.push(format!(
-                "Level 1: Educational guidance for '{type_name}': not in registry"
-            ));
+            debug!("Level 1: Educational guidance for '{type_name}': not in registry");
             educational_messages.push(educational_message);
         }
     }
 
     // Determine the level result based on what we found
     if !corrections.is_empty() {
-        debug_info.push(format!(
+        debug!(
             "Level 1: Found {} corrections from registry information",
             corrections.len()
-        ));
+        );
         LevelResult::Success(corrections)
     } else if !educational_messages.is_empty() {
         let combined_message = educational_messages.join("\n\n");
-        debug_info.push("Level 1: Providing educational guidance for registry issues".to_string());
+        debug!("Level 1: Providing educational guidance for registry issues");
         LevelResult::Educational(combined_message)
     } else {
-        debug_info.push("Level 1: Registry checks complete, proceeding to Level 2".to_string());
+        debug!("Level 1: Registry checks complete, proceeding to Level 2");
         LevelResult::Continue
     }
 }
 
 /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
-async fn execute_level_2_direct_discovery(
-    type_names: &[String],
-    port: Option<u16>,
-    debug_info: &mut Vec<String>,
-) -> LevelResult {
-    debug_info.push(format!(
+async fn execute_level_2_direct_discovery(type_names: &[String], port: Option<u16>) -> LevelResult {
+    debug!(
         "Level 2: Attempting direct discovery for {} types",
         type_names.len()
-    ));
+    );
 
     // Check if bevy_brp_extras is available
-    if !is_brp_extras_available(port, debug_info).await {
-        debug_info
-            .push("Level 2: bevy_brp_extras not available, proceeding to Level 3".to_string());
+    if !is_brp_extras_available(port).await {
+        debug!("Level 2: bevy_brp_extras not available, proceeding to Level 3");
         return LevelResult::Continue;
     }
 
@@ -214,16 +184,12 @@ async fn execute_level_2_direct_discovery(
     let mut corrections = Vec::new();
 
     for type_name in type_names {
-        debug_info.push(format!(
-            "Level 2: Attempting direct discovery for '{type_name}'"
-        ));
+        debug!("Level 2: Attempting direct discovery for '{type_name}'");
 
         // Call extras_integration to discover the type format
-        match super::extras_integration::discover_type_format(type_name, port, debug_info).await {
+        match super::extras_integration::discover_type_format(type_name, port).await {
             Ok(Some(type_info)) => {
-                debug_info.push(format!(
-                    "Level 2: Successfully discovered type information for '{type_name}'"
-                ));
+                debug!("Level 2: Successfully discovered type information for '{type_name}'");
 
                 // Create a correction from the discovered type information
                 let correction = super::extras_integration::create_correction_from_discovery(
@@ -232,15 +198,11 @@ async fn execute_level_2_direct_discovery(
                 corrections.push(correction);
             }
             Ok(None) => {
-                debug_info.push(format!(
-                    "Level 2: No type information found for '{type_name}' via direct discovery"
-                ));
+                debug!("Level 2: No type information found for '{type_name}' via direct discovery");
                 // Type discovery failure tracked in debug_info
             }
             Err(e) => {
-                debug_info.push(format!(
-                    "Level 2: Direct discovery failed for '{type_name}': {e}"
-                ));
+                debug!("Level 2: Direct discovery failed for '{type_name}': {e}");
                 // Type discovery failure tracked in debug_info
             }
         }
@@ -248,13 +210,13 @@ async fn execute_level_2_direct_discovery(
 
     // Determine the level result based on what we discovered
     if corrections.is_empty() {
-        debug_info.push("Level 2: Direct discovery complete, proceeding to Level 3".to_string());
+        debug!("Level 2: Direct discovery complete, proceeding to Level 3");
         LevelResult::Continue
     } else {
-        debug_info.push(format!(
+        debug!(
             "Level 2: Found {} corrections from direct discovery",
             corrections.len()
-        ));
+        );
         LevelResult::Success(corrections)
     }
 }
@@ -264,46 +226,37 @@ fn execute_level_3_pattern_transformations(
     type_names: &[String],
     _method: &str,
     _original_params: Option<&Value>,
-    debug_info: &mut Vec<String>,
 ) -> LevelResult {
-    debug_info.push(format!(
+    debug!(
         "Level 3: Applying pattern transformations for {} types",
         type_names.len()
-    ));
+    );
 
     // Initialize transformer registry with default transformers
     let transformer_registry = super::transformers::TransformerRegistry::with_defaults();
     let mut corrections = Vec::new();
 
     for type_name in type_names {
-        debug_info.push(format!(
-            "Level 3: Checking transformation patterns for '{type_name}'"
-        ));
+        debug!("Level 3: Checking transformation patterns for '{type_name}'");
 
         // Try to generate format corrections based on common patterns for each type
-        if let Some(correction) =
-            attempt_pattern_based_correction(type_name, &transformer_registry, debug_info)
+        if let Some(correction) = attempt_pattern_based_correction(type_name, &transformer_registry)
         {
-            debug_info.push(format!(
-                "Level 3: Found pattern-based correction for '{type_name}'"
-            ));
+            debug!("Level 3: Found pattern-based correction for '{type_name}'");
             corrections.push(correction);
         } else {
-            debug_info.push(format!(
-                "Level 3: No pattern-based correction found for '{type_name}'"
-            ));
+            debug!("Level 3: No pattern-based correction found for '{type_name}'");
         }
     }
 
     if corrections.is_empty() {
-        debug_info
-            .push("Level 3: Pattern transformations complete, no corrections found".to_string());
+        debug!("Level 3: Pattern transformations complete, no corrections found");
         LevelResult::Continue
     } else {
-        debug_info.push(format!(
+        debug!(
             "Level 3: Found {} pattern-based corrections",
             corrections.len()
-        ));
+        );
         LevelResult::Success(corrections)
     }
 }
@@ -312,40 +265,30 @@ fn execute_level_3_pattern_transformations(
 fn attempt_pattern_based_correction(
     type_name: &str,
     _transformer_registry: &super::transformers::TransformerRegistry,
-    debug_info: &mut Vec<String>,
 ) -> Option<CorrectionResult> {
-    debug_info.push(format!(
-        "Level 3: Attempting pattern correction for type '{type_name}'"
-    ));
+    debug!("Level 3: Attempting pattern correction for type '{type_name}'");
 
     // Create common educational corrections for well-known types
     match type_name {
         // Math types - common object vs array issues
         t if t.contains("Vec2") || t.contains("Vec3") || t.contains("Vec4") => {
-            Some(create_math_vector_correction(t, debug_info))
+            Some(create_math_vector_correction(t))
         }
 
         // Quaternion types
-        t if t.contains("Quat") => Some(create_quaternion_correction(t, debug_info)),
+        t if t.contains("Quat") => Some(create_quaternion_correction(t)),
 
         // Other types - no specific patterns yet
         _ => {
-            debug_info.push(format!(
-                "Level 3: No specific pattern available for type '{type_name}'"
-            ));
+            debug!("Level 3: No specific pattern available for type '{type_name}'");
             None
         }
     }
 }
 
 /// Create a correction for math vector types (Vec2, Vec3, Vec4)
-fn create_math_vector_correction(
-    type_name: &str,
-    debug_info: &mut Vec<String>,
-) -> CorrectionResult {
-    debug_info.push(format!(
-        "Level 3: Detected math type '{type_name}', providing array format guidance"
-    ));
+fn create_math_vector_correction(type_name: &str) -> CorrectionResult {
+    debug!("Level 3: Detected math type '{type_name}', providing array format guidance");
 
     let examples = create_vector_examples(type_name);
     let type_info = create_math_type_info(type_name, examples, "Math");
@@ -359,10 +302,8 @@ fn create_math_vector_correction(
 }
 
 /// Create a correction for quaternion types
-fn create_quaternion_correction(type_name: &str, debug_info: &mut Vec<String>) -> CorrectionResult {
-    debug_info.push(format!(
-        "Level 3: Detected quaternion type '{type_name}', providing array format guidance"
-    ));
+fn create_quaternion_correction(type_name: &str) -> CorrectionResult {
+    debug!("Level 3: Detected quaternion type '{type_name}', providing array format guidance");
 
     let mut examples = std::collections::HashMap::new();
     examples.insert("spawn".to_string(), serde_json::json!([0.0, 0.0, 0.0, 1.0]));
@@ -425,15 +366,12 @@ fn create_math_type_info(
 }
 
 /// Check if `bevy_brp_extras` is available
-async fn is_brp_extras_available(port: Option<u16>, debug_info: &mut Vec<String>) -> bool {
-    debug_info.push("Level 2: Checking bevy_brp_extras availability".to_string());
+async fn is_brp_extras_available(port: Option<u16>) -> bool {
+    debug!("Level 2: Checking bevy_brp_extras availability");
 
     // Check if bevy_brp_extras is available by calling extras_integration
-    let is_available =
-        super::extras_integration::check_brp_extras_availability(port, debug_info).await;
-    debug_info.push(format!(
-        "Level 2: bevy_brp_extras availability check result: {is_available}"
-    ));
+    let is_available = super::extras_integration::check_brp_extras_availability(port).await;
+    debug!("Level 2: bevy_brp_extras availability check result: {is_available}");
     is_available
 }
 
@@ -475,10 +413,7 @@ fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<S
 }
 
 /// Convert correction results into final recovery result
-fn build_recovery_success(
-    correction_results: Vec<CorrectionResult>,
-    debug_info: &mut Vec<String>,
-) -> FormatRecoveryResult {
+fn build_recovery_success(correction_results: Vec<CorrectionResult>) -> FormatRecoveryResult {
     let mut corrections = Vec::new();
 
     for correction_result in correction_results {
@@ -486,21 +421,19 @@ fn build_recovery_success(
             CorrectionResult::Applied { correction_info } => {
                 let type_name = correction_info.type_name.clone();
                 corrections.push(correction_info);
-                debug_info.push(format!(
-                    "Recovery Engine: Applied correction for type '{type_name}'"
-                ));
+                debug!("Recovery Engine: Applied correction for type '{type_name}'");
             }
             CorrectionResult::MetadataOnly { type_info, reason } => {
-                debug_info.push(format!(
+                debug!(
                     "Recovery Engine: Found metadata for type '{}' but no correction: {}",
                     type_info.type_name, reason
-                ));
+                );
             }
         }
     }
 
     if corrections.is_empty() {
-        debug_info.push("Recovery Engine: No applicable corrections found".to_string());
+        debug!("Recovery Engine: No applicable corrections found");
         // TODO: For now, return a placeholder success result
         // In a real implementation, this would use the actual corrected BRP result
         FormatRecoveryResult::Educational {
@@ -513,10 +446,10 @@ fn build_recovery_success(
             ),
         }
     } else {
-        debug_info.push(format!(
+        debug!(
             "Recovery Engine: Built recovery result with {} corrections",
             corrections.len()
-        ));
+        );
         // TODO: For now, return a placeholder success result
         // In a real implementation, this would re-execute the BRP method with corrected parameters
         FormatRecoveryResult::Recovered {

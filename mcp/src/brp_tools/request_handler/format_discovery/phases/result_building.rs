@@ -4,7 +4,6 @@
 //! and the new recovery engine instead of the legacy tier-based approach.
 
 use serde_json::Value;
-use tracing::trace;
 
 use super::context::DiscoveryContext;
 use super::tier_execution::DiscoveryResultData;
