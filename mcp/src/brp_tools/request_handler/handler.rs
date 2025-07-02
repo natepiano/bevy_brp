@@ -1,4 +1,4 @@
-use rmcp::model::CallToolResult;
+use rmcp::model::{CallToolResult, Content};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::{Value, json};
@@ -261,6 +261,82 @@ fn process_success_response(
     Ok(updated_formatter.format_success(&final_data, context.metadata))
 }
 
+/// Check if this is an enum mutation error that needs a clean response format
+fn is_enum_mutation_error(error: &BrpError, corrections: &[FormatCorrection]) -> bool {
+    // Check if it's a mutation error with enum-specific guidance
+    error.message.contains("variant")
+        && error.message.contains("access")
+        && !corrections.is_empty()
+        && corrections.iter().any(|c| {
+            c.corrected_format.get("usage").is_some()
+                && c.corrected_format.get("valid_values").is_some()
+        })
+}
+
+/// Create a clean enum mutation error response
+fn create_clean_enum_error_response(
+    error_info: &BrpError,
+    corrections: &[FormatCorrection],
+    metadata: &BrpMetadata,
+) -> CallToolResult {
+    let correction = &corrections[0]; // Use first correction
+
+    // Extract clean fields from corrected_format
+    let usage = correction
+        .corrected_format
+        .get("usage")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Use empty path with variant name as value");
+
+    let valid_values = correction
+        .corrected_format
+        .get("valid_values")
+        .and_then(|v| v.as_array())
+        .map_or_else(
+            || vec!["Variant1", "Variant2", "Variant3"],
+            |arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        );
+
+    let examples = correction
+        .corrected_format
+        .get("examples")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_else(|| {
+            vec![
+                json!({"path": "", "value": valid_values.first().unwrap_or(&"Variant1")}),
+                json!({"path": "", "value": valid_values.get(1).unwrap_or(&"Variant2")}),
+            ]
+        });
+
+    let clean_data = json!({
+        "usage": usage,
+        "valid_values": valid_values,
+        "examples": examples,
+        "recoverable": false,
+        "reason": "Invalid enum variant syntax - cannot auto-fix without knowing intended variant",
+        "component": correction.component,
+        "hint": correction.hint
+    });
+
+    CallToolResult {
+        is_error: Some(true),
+        content:  vec![Content::text(
+            json!({
+                "status": "error",
+                "message": error_info.message,
+                "data": clean_data,
+                "error_code": error_info.code,
+                "metadata": {
+                    "method": metadata.method,
+                    "port": metadata.port
+                }
+            })
+            .to_string(),
+        )],
+    }
+}
+
 /// Process an error BRP response
 fn process_error_response(
     mut error_info: BrpError,
@@ -268,14 +344,36 @@ fn process_error_response(
     formatter: &ResponseFormatter,
     metadata: &BrpMetadata,
 ) -> CallToolResult {
+    // Check for special enum mutation errors that need clean format
+    if is_enum_mutation_error(&error_info, &enhanced_result.format_corrections) {
+        return create_clean_enum_error_response(
+            &error_info,
+            &enhanced_result.format_corrections,
+            metadata,
+        );
+    }
+
     let original_error_message = error_info.message.clone();
 
-    // Check if we have an enhanced diagnostic message from format discovery
-    let enhanced_message = enhanced_result
-        .format_corrections
-        .iter()
-        .find(|correction| correction.hint.contains("cannot be used with BRP"))
-        .map(|correction| correction.hint.clone());
+    // First, check if the enhanced result has a different error message (from educational guidance)
+    let enhanced_message = if let BrpResult::Error(enhanced_error) = &enhanced_result.result {
+        if enhanced_error.message == error_info.message {
+            None
+        } else {
+            Some(enhanced_error.message.clone())
+        }
+    } else {
+        None
+    };
+
+    // If no enhanced message from result, check format corrections as fallback
+    let enhanced_message = enhanced_message.or_else(|| {
+        enhanced_result
+            .format_corrections
+            .iter()
+            .find(|correction| correction.hint.contains("cannot be used with BRP"))
+            .map(|correction| correction.hint.clone())
+    });
 
     // Use enhanced message if available, otherwise keep original
     let has_enhanced = enhanced_message.is_some();

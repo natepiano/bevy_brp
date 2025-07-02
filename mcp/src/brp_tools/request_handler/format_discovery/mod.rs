@@ -13,7 +13,7 @@
 //! - Provides early feedback on incompatible types (e.g., `ClearColor` without traits)
 //! - Uses `bevy_brp_extras/discover_format` when available
 //!
-//! ### Tier 2: Direct Discovery  
+//! ### Tier 2: Direct Discovery
 //! - Queries `bevy_brp_extras` plugin for authoritative type format information
 //! - Returns factual `TypeDiscoveryResponse` with real examples and mutation paths
 //! - Validates format quality to avoid placeholder values like `["example_Color"]`
@@ -54,10 +54,8 @@ mod extras_integration;
 mod field_mapper;
 mod flow_types;
 mod path_parser;
-// mod path_suggestions; // Removed: unused module
-pub mod phases;
 mod recovery_engine;
-mod registry_integration;
+pub mod registry_integration;
 mod transformers;
 pub mod types;
 mod unified_types;

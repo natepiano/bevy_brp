@@ -242,14 +242,41 @@ impl EnumVariantTransformer {
         // Extract enum variants dynamically
         let variants = Self::extract_enum_variants(error_message);
         let valid_values = if variants.is_empty() {
+            // Use generic but cleaner placeholder names
             vec![
-                "<variant1>".to_string(),
-                "<variant2>".to_string(),
-                "<variant3>".to_string(),
+                "Variant1".to_string(),
+                "Variant2".to_string(),
+                "Variant3".to_string(),
             ]
         } else {
             variants
         };
+
+        // Return format correction that explains empty path usage
+        let format_info = json!({
+            "usage": "Use empty path with variant name as value",
+            "path": "",
+            "valid_values": valid_values,
+            "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+        });
+
+        let hint = format!(
+            "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
+            valid_values.join(", ")
+        );
+
+        (format_info, hint)
+    }
+
+    /// Enhanced handler for enum unit variant errors with type information
+    fn handle_enum_unit_variant_error_with_type_info(
+        type_name: &str,
+        expected_variant_type: &str,
+        actual_variant_type: &str,
+        enum_info: &super::super::unified_types::EnumInfo,
+    ) -> (Value, String) {
+        // Use actual enum variants from type information
+        let valid_values: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
 
         // Return format correction that explains empty path usage
         let format_info = json!({
@@ -335,7 +362,7 @@ impl EnumVariantTransformer {
         value: &Value,
         error: &BrpError,
         type_name: &str,
-        enum_info: &serde_json::Map<String, Value>,
+        enum_info: &super::super::unified_types::EnumInfo,
     ) -> Option<(Value, String)> {
         // For now, fall back to basic pattern matching
         // This can be enhanced in the future to use the rich enum_info data
@@ -347,22 +374,17 @@ impl EnumVariantTransformer {
         // - Use variant structure information for conversions
 
         // Check if we have variant names in enum_info
-        if let Some(variants) = enum_info.get("variants").and_then(|v| v.as_array()) {
-            // Look for variant name in error message and suggest corrections
-            let error_message = &error.message;
-
-            for variant in variants {
-                if let Some(variant_name) = variant.get("name").and_then(|n| n.as_str()) {
-                    if error_message.contains(variant_name) {
-                        // Found a variant reference, could provide targeted transformation
-                        let hint = format!(
-                            "Enum '{type_name}' variant '{variant_name}' transformation based on discovered schema"
-                        );
-                        // For now, return the original value with an informative hint
-                        // Real transformations would analyze the variant structure
-                        return Some((value.clone(), hint));
-                    }
-                }
+        let error_message = &error.message;
+        for variant in &enum_info.variants {
+            if error_message.contains(&variant.name) {
+                // Found a variant reference, could provide targeted transformation
+                let hint = format!(
+                    "Enum '{type_name}' variant '{}' transformation based on discovered schema",
+                    variant.name
+                );
+                // For now, return the original value with an informative hint
+                // Real transformations would analyze the variant structure
+                return Some((value.clone(), hint));
             }
         }
 
@@ -475,7 +497,31 @@ impl FormatTransformer for EnumVariantTransformer {
 
         // If type_info has enum information, use it for more accurate transformations
         if let Some(enum_info) = &type_info.enum_info {
-            // Use enum information from type discovery for better variant handling
+            // Analyze the error pattern to check for enum unit variant errors
+            let pattern = super::super::detection::analyze_error_pattern(error).pattern;
+
+            // Handle enum unit variant errors with actual enum variants
+            if let Some(
+                ErrorPattern::EnumUnitVariantMutation {
+                    expected_variant_type,
+                    actual_variant_type,
+                }
+                | ErrorPattern::EnumUnitVariantAccessError {
+                    access: _,
+                    expected_variant_type,
+                    actual_variant_type,
+                },
+            ) = pattern
+            {
+                return Some(Self::handle_enum_unit_variant_error_with_type_info(
+                    type_name,
+                    &expected_variant_type,
+                    &actual_variant_type,
+                    enum_info,
+                ));
+            }
+
+            // Use enum information from type discovery for other variant transformations
             if let Some((corrected_value, hint)) =
                 Self::transform_enum_with_discovered_info(value, error, type_name, enum_info)
             {

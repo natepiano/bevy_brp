@@ -8,96 +8,9 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use super::adapters::from_registry_schema;
-use super::flow_types::CorrectionResult;
-use super::unified_types::{
-    DiscoverySource, RegistryStatus, SerializationSupport, UnifiedTypeInfo,
-};
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-
-/// Check if type is in registry and has required serialization traits
-#[allow(dead_code)]
-pub async fn check_type_registry_status(
-    type_name: &str,
-    port: Option<u16>,
-) -> Result<Option<UnifiedTypeInfo>, String> {
-    debug!("Registry Integration: Checking registry status for type '{type_name}'");
-
-    // First, try to fetch the registry schema for this type
-    match fetch_registry_schema(type_name, port).await {
-        Ok(Some(schema_data)) => {
-            debug!("Registry Integration: Found registry schema for '{type_name}'");
-
-            // Convert the registry schema to UnifiedTypeInfo
-            let type_info = from_registry_schema(type_name, &schema_data);
-
-            // Check if the type has the required serialization traits
-            if type_info.serialization.brp_compatible {
-                debug!("Registry Integration: Type '{type_name}' is BRP compatible");
-            } else {
-                debug!(
-                    "Registry Integration: Type '{type_name}' lacks required serialization traits"
-                );
-            }
-            Ok(Some(type_info))
-        }
-        Ok(None) => {
-            debug!("Registry Integration: Type '{type_name}' not found in registry");
-            Ok(None)
-        }
-        Err(e) => {
-            debug!("Registry Integration: Registry query failed: {e}");
-            Err(e)
-        }
-    }
-}
-
-/// Get type schema from `bevy/registry_schema`
-#[allow(dead_code)]
-pub async fn fetch_registry_schema(
-    type_name: &str,
-    port: Option<u16>,
-) -> Result<Option<Value>, String> {
-    debug!("Registry Integration: Fetching schema for '{type_name}' via bevy/registry_schema");
-
-    // Build parameters for registry schema query
-    let params = json!({
-        "with_types": [type_name]
-    });
-
-    debug!("Registry Integration: Calling bevy/registry_schema with params: {params}");
-
-    match execute_brp_method("bevy/registry_schema", Some(params), port).await {
-        Ok(BrpResult::Success(Some(response_data))) => {
-            debug!("Registry Integration: Received successful response from bevy/registry_schema");
-
-            // Process the response to find our specific type
-            find_type_in_registry_response(type_name, &response_data).map_or_else(
-                || {
-                    debug!(
-                        "Registry Integration: Type '{type_name}' not found in registry response"
-                    );
-                    Ok(None)
-                },
-                |schema_data| Ok(Some(schema_data)),
-            )
-        }
-        Ok(BrpResult::Success(None)) => {
-            debug!("Registry Integration: Received empty success response");
-            Ok(None)
-        }
-        Ok(BrpResult::Error(error)) => {
-            debug!(
-                "Registry Integration: BRP error: {} - {}",
-                error.code, error.message
-            );
-            Err(format!("BRP error {}: {}", error.code, error.message))
-        }
-        Err(e) => {
-            debug!("Registry Integration: Network/connection error: {e}");
-            Err(format!("Connection error: {e}"))
-        }
-    }
-}
+use crate::tools::BRP_METHOD_REGISTRY_SCHEMA;
 
 /// Find type in registry response (handles various response formats)
 fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
@@ -153,18 +66,6 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
     None
 }
 
-/// Create educational response for types with registry issues
-#[allow(dead_code)]
-pub const fn create_educational_correction(
-    type_info: UnifiedTypeInfo,
-    issue_message: String,
-) -> CorrectionResult {
-    CorrectionResult::MetadataOnly {
-        type_info,
-        reason: issue_message,
-    }
-}
-
 /// Batch check multiple types in a single registry call
 pub async fn check_multiple_types_registry_status(
     type_names: &[String],
@@ -175,14 +76,27 @@ pub async fn check_multiple_types_registry_status(
         type_names.len()
     );
 
-    // Call registry_schema with all types at once
+    // Extract unique crate names from type paths for filtering
+    let mut crate_names: Vec<String> = type_names
+        .iter()
+        .filter_map(|type_name| {
+            type_name
+                .split("::")
+                .next()
+                .map(std::string::ToString::to_string)
+        })
+        .collect();
+    crate_names.sort_unstable();
+    crate_names.dedup();
+
+    // Call registry_schema with crate names
     let params = json!({
-        "with_types": type_names
+        "with_crates": crate_names
     });
 
     debug!("Registry Integration: Batch call with params: {params}");
 
-    match execute_brp_method("bevy/registry_schema", Some(params), port).await {
+    match execute_brp_method(BRP_METHOD_REGISTRY_SCHEMA, Some(params), port).await {
         Ok(BrpResult::Success(Some(response_data))) => {
             debug!("Registry Integration: Received successful batch response");
 
@@ -205,29 +119,6 @@ pub async fn check_multiple_types_registry_status(
             type_names.iter().map(|name| (name.clone(), None)).collect()
         }
     }
-}
-
-/// Create minimal type info for unregistered types
-#[allow(dead_code)]
-pub fn create_unregistered_type_info(type_name: &str) -> UnifiedTypeInfo {
-    UnifiedTypeInfo {
-        type_name:            type_name.to_string(),
-        registry_status:      RegistryStatus::not_in_registry(),
-        serialization:        SerializationSupport::no_support(),
-        format_info:          super::unified_types::FormatInfo::empty(),
-        supported_operations: Vec::new(),
-        type_category:        "Unknown".to_string(),
-        child_types:          std::collections::HashMap::new(),
-        enum_info:            None,
-        discovery_source:     DiscoverySource::TypeRegistry,
-    }
-}
-
-/// Normalize type name format for registry lookup
-#[allow(dead_code)]
-pub fn normalize_type_name(type_name: &str) -> String {
-    // Handle common type name variations
-    type_name.trim().replace(' ', "") // Remove spaces
 }
 
 #[cfg(test)]
@@ -303,39 +194,5 @@ mod tests {
         );
 
         assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_create_unregistered_type_info() {
-        let type_info = create_unregistered_type_info("some::Type");
-
-        assert_eq!(type_info.type_name, "some::Type");
-        assert!(!type_info.registry_status.in_registry);
-        assert!(!type_info.serialization.brp_compatible);
-        assert_eq!(type_info.discovery_source, DiscoverySource::TypeRegistry);
-    }
-
-    #[test]
-    fn test_normalize_type_name() {
-        assert_eq!(normalize_type_name("  my::Type  "), "my::Type");
-        assert_eq!(normalize_type_name("my :: Type"), "my::Type");
-        assert_eq!(normalize_type_name("NormalType"), "NormalType");
-    }
-
-    #[test]
-    fn test_create_educational_correction() {
-        let type_info = create_unregistered_type_info("test::Type");
-        let correction =
-            create_educational_correction(type_info, "Type lacks Serialize trait".to_string());
-
-        match correction {
-            CorrectionResult::MetadataOnly { type_info, reason } => {
-                assert_eq!(type_info.type_name, "test::Type");
-                assert_eq!(reason, "Type lacks Serialize trait");
-            }
-            CorrectionResult::Applied { .. } => {
-                unreachable!("Expected MetadataOnly correction result")
-            }
-        }
     }
 }

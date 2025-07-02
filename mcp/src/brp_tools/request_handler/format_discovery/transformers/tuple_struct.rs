@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use super::super::detection::{ErrorPattern, extract_path_from_error_context};
+use super::super::detection::ErrorPattern;
 use super::super::field_mapper::map_field_to_tuple_index;
 use super::super::path_parser::{parse_generic_enum_field_access, parse_path_to_field_access};
 use super::FormatTransformer;
@@ -92,91 +92,6 @@ impl TupleStructTransformer {
                             )
                         };
                         return Some((element.clone(), hint));
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        None
-    }
-
-    /// Fix Bevy `AccessError` patterns for tuple structs
-    #[allow(dead_code)]
-    pub fn fix_access_error(
-        type_name: &str,
-        original_value: &Value,
-        access: &str,
-        error_type: &str,
-    ) -> Option<(Value, String)> {
-        // STEP 1: Try path suggestions first (before value format fixes)
-        let field_path = extract_path_from_error_context(error_type);
-
-        if let Some(path) = &field_path {
-            // Try to convert the path using generic enum field access parsing
-            if let Some(suggested_path) = parse_generic_enum_field_access(path) {
-                let hint = format!(
-                    "`{type_name}` AccessError: try using path `{suggested_path}` instead of `{path}`"
-                );
-                // Return the original value unchanged, but with a path suggestion
-                return Some((original_value.clone(), hint));
-            }
-
-            // Try the type-safe path conversion system
-            if let Some(field_access) = parse_path_to_field_access(path) {
-                let suggested_path = map_field_to_tuple_index(&field_access);
-                if suggested_path != *path {
-                    let hint = format!(
-                        "`{type_name}` AccessError: try using path `{suggested_path}` instead of `{path}`"
-                    );
-                    // Return the original value unchanged, but with a path suggestion
-                    return Some((original_value.clone(), hint));
-                }
-            }
-
-            // Try the simple path fix function
-            let fixed_path = Self::fix_tuple_struct_path(path);
-            if fixed_path != *path {
-                let hint = format!(
-                    "`{type_name}` AccessError: try using path `{fixed_path}` instead of `{path}`"
-                );
-                // Return the original value unchanged, but with a path suggestion
-                return Some((original_value.clone(), hint));
-            }
-        }
-
-        // STEP 2: If path suggestions didn't work, try value format fixes (existing logic)
-        if let Some(path) = field_path {
-            if let Some(result) = Self::fix_tuple_struct_format(type_name, original_value, &path) {
-                return Some(result);
-            }
-        }
-
-        // STEP 3: Fallback to generic access pattern fixes based on the access type
-        match access {
-            "Field" | "FieldMut" => {
-                // Field access errors often mean we're trying to access a field on a tuple struct
-                // Try converting to tuple access
-                match original_value {
-                    Value::Object(obj) if obj.len() == 1 => {
-                        if let Some((field_name, value)) = obj.iter().next() {
-                            let hint = format!(
-                                "`{type_name}` AccessError with {access} access: converted field '{field_name}' to tuple access"
-                            );
-                            return Some((value.clone(), hint));
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            "TupleIndex" => {
-                // Tuple index access errors might mean incorrect array format
-                if let Value::Array(arr) = original_value {
-                    if !arr.is_empty() {
-                        let hint = format!(
-                            "`{type_name}` AccessError with {access} access: using first array element"
-                        );
-                        return Some((arr[0].clone(), hint));
                     }
                 }
             }

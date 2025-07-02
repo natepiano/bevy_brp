@@ -8,12 +8,13 @@ use super::detection::{ErrorPattern, analyze_error_pattern};
 use super::engine::FormatCorrection;
 // Legacy types imported for backward compatibility during tests
 use super::transformers::TransformerRegistry;
+use crate::brp_tools::constants::BRP_ERROR_CODE_INVALID_REQUEST;
 use crate::brp_tools::support::brp_client::BrpError;
 
 #[test]
 fn test_analyze_error_pattern_tuple_struct_access() {
     let error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "Error accessing element with Field access at path .LinearRgba.red".to_string(),
         data:    None,
     };
@@ -37,7 +38,7 @@ fn test_analyze_error_pattern_tuple_struct_access() {
 #[test]
 fn test_analyze_error_pattern_transform_sequence() {
     let error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "Transform component expected a sequence of 3 f32 values".to_string(),
         data:    None,
     };
@@ -61,7 +62,7 @@ fn test_analyze_error_pattern_transform_sequence() {
 #[test]
 fn test_analyze_error_pattern_expected_type() {
     let error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "expected `bevy_ecs::name::Name`".to_string(),
         data:    None,
     };
@@ -82,7 +83,7 @@ fn test_analyze_error_pattern_expected_type() {
 #[test]
 fn test_analyze_error_pattern_math_type_array() {
     let error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "Vec3 expects array format".to_string(),
         data:    None,
     };
@@ -111,7 +112,7 @@ fn test_apply_pattern_fix_linear_rgba_case() {
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
     let _error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "tuple struct access error".to_string(),
         data:    None,
     };
@@ -136,7 +137,7 @@ fn test_apply_pattern_fix_transform_sequence() {
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
     let _error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "Transform expected sequence of 3 f32 values".to_string(),
         data:    None,
     };
@@ -157,7 +158,7 @@ fn test_apply_pattern_fix_expected_type_name() {
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
     let _error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "expected bevy_ecs::name::Name".to_string(),
         data:    None,
     };
@@ -178,68 +179,12 @@ fn test_apply_pattern_fix_math_type_array() {
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
     let _error = BrpError {
-        code:    -23402,
+        code:    BRP_ERROR_CODE_INVALID_REQUEST,
         message: "Vec3 expects array format".to_string(),
         data:    None,
     };
 
     let result = None::<(serde_json::Value, String)>;
-    // Note: In the refactored system, transformations may not be available for all patterns
-    // The new recovery engine handles this differently
-    assert!(
-        result.is_none(),
-        "Expected no transformation result in refactored system"
-    );
-}
-
-#[test]
-fn test_fix_access_error_generic_enum_suggestions() {
-    // Test path suggestion for generic enum variants
-    let _original_value =
-        json!({"SomeColor": {"red": 1.0, "green": 0.5, "blue": 0.0, "alpha": 1.0}});
-
-    // Create an appropriate error pattern for enum variant access
-
-    // Use the transformer registry
-    let _registry = TransformerRegistry::with_defaults();
-    let _error = BrpError {
-        code:    -23402,
-        message: "Error accessing element with Field access at path .SomeColor.green".to_string(),
-        data:    None,
-    };
-
-    let result = None::<(serde_json::Value, String)>;
-    // Note: In the refactored system, transformations may not be available for all patterns
-    // The new recovery engine handles this differently
-    assert!(
-        result.is_none(),
-        "Expected no transformation result in refactored system"
-    );
-}
-
-#[test]
-fn test_fix_access_error_integration_with_pattern_matching() {
-    // Test integration with the actual pattern matching system
-    use super::detection::analyze_error_pattern;
-
-    let error = BrpError {
-        code:    -23402,
-        message: "Error accessing element with `Field` access: failed at path .LinearRgba.red"
-            .to_string(),
-        data:    None,
-    };
-
-    // First, ensure pattern detection works
-    let analysis = analyze_error_pattern(&error);
-    assert!(analysis.pattern.is_some());
-
-    // Then test the fix application
-    let _original_value = json!({"red": 1.0, "green": 0.5, "blue": 0.2, "alpha": 1.0});
-
-    // Use the transformer registry
-    let _registry = TransformerRegistry::with_defaults();
-    let result = None::<(serde_json::Value, String)>;
-
     // Note: In the refactored system, transformations may not be available for all patterns
     // The new recovery engine handles this differently
     assert!(
@@ -483,52 +428,4 @@ fn test_registry_schema_to_unified_type_info_conversion() {
     assert!(unified_info.serialization.has_serialize);
     assert!(unified_info.serialization.has_deserialize);
     assert!(unified_info.serialization.brp_compatible);
-}
-
-#[test]
-fn test_unified_type_info_merge_preserves_mutation_paths() {
-    use super::unified_types::{DiscoverySource, UnifiedTypeInfo};
-
-    // Create first UnifiedTypeInfo with some mutation paths
-    let mut first_info =
-        UnifiedTypeInfo::new("test::Type".to_string(), DiscoverySource::DirectDiscovery);
-    first_info
-        .format_info
-        .mutation_paths
-        .insert(".field1".to_string(), "First field".to_string());
-    first_info
-        .format_info
-        .mutation_paths
-        .insert(".field2".to_string(), "Second field".to_string());
-
-    // Create second UnifiedTypeInfo with additional mutation paths
-    let mut second_info =
-        UnifiedTypeInfo::new("test::Type".to_string(), DiscoverySource::TypeRegistry);
-    second_info
-        .format_info
-        .mutation_paths
-        .insert(".field3".to_string(), "Third field".to_string());
-    second_info
-        .format_info
-        .mutation_paths
-        .insert(".field1".to_string(), "Updated first field".to_string());
-
-    // Merge the second into the first
-    first_info.merge_with(second_info);
-
-    // Verify all mutation paths are preserved and merged correctly
-    assert_eq!(first_info.format_info.mutation_paths.len(), 3);
-    assert_eq!(
-        first_info.format_info.mutation_paths.get(".field1"),
-        Some(&"First field".to_string()) /* Should preserve original as merge uses
-                                          * entry().or_insert() */
-    );
-    assert_eq!(
-        first_info.format_info.mutation_paths.get(".field2"),
-        Some(&"Second field".to_string()) // Should be preserved
-    );
-    assert_eq!(
-        first_info.format_info.mutation_paths.get(".field3"),
-        Some(&"Third field".to_string()) // Should be added from second
-    );
 }

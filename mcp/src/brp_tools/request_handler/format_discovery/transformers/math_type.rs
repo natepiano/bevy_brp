@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 use super::super::detection::ErrorPattern;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
-use super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
+use crate::brp_tools::request_handler::format_discovery::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use crate::brp_tools::support::brp_client::BrpError;
 
 /// Transformer for math types (Vec2, Vec3, Vec4, Quat)

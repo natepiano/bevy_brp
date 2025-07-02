@@ -13,6 +13,7 @@ use std::time::Instant;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
+use serde::{Deserialize, Serialize};
 
 /// Resource to track keyboard input history
 #[derive(Resource, Default)]
@@ -35,6 +36,66 @@ struct KeyboardInputHistory {
 #[derive(Component)]
 struct KeyboardDisplayText;
 
+/// Test resource WITH Serialize/Deserialize support for BRP operations
+#[derive(Resource, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Resource)]
+struct TestConfigResource {
+    pub setting_a: f32,
+    pub setting_b: String,
+    pub enabled:   bool,
+}
+
+/// Test resource WITHOUT Serialize/Deserialize support (only Reflect)
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+struct RuntimeStatsResource {
+    pub frame_count: u32,
+    pub total_time:  f32,
+    pub debug_mode:  bool,
+}
+
+/// Test component struct WITH Serialize/Deserialize
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+struct TestStructWithSerDe {
+    pub value:   f32,
+    pub name:    String,
+    pub enabled: bool,
+}
+
+/// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestStructNoSerDe {
+    pub value:   f32,
+    pub name:    String,
+    pub enabled: bool,
+}
+
+/// Test component enum WITH Serialize/Deserialize
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+enum TestEnumWithSerDe {
+    Active {
+        power: f32,
+    },
+    #[default]
+    Inactive,
+    Special(String, u32),
+}
+
+/// Test component enum WITHOUT Serialize/Deserialize (only Reflect)
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+enum TestEnumNoSerDe {
+    Active {
+        power: f32,
+    },
+    #[default]
+    Inactive,
+    Special(String, u32),
+}
+
 fn main() {
     let brp_plugin = BrpExtrasPlugin::new();
     let (port, _) = brp_plugin.get_effective_port();
@@ -53,6 +114,14 @@ fn main() {
         .add_plugins(brp_plugin)
         .init_resource::<KeyboardInputHistory>()
         .insert_resource(CurrentPort(port))
+        // Register test resources
+        .register_type::<TestConfigResource>()
+        .register_type::<RuntimeStatsResource>()
+        // Register test components
+        .register_type::<TestStructWithSerDe>()
+        .register_type::<TestStructNoSerDe>()
+        .register_type::<TestEnumWithSerDe>()
+        .register_type::<TestEnumNoSerDe>()
         .add_systems(Startup, (setup_test_entities, setup_ui))
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
         .run();

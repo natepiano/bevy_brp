@@ -14,7 +14,6 @@ use crate::brp_tools::support::brp_client::BrpError;
 
 // Import transformer implementations
 pub mod common;
-pub mod constants;
 mod enum_variant;
 mod math_type;
 mod string_type;
@@ -101,7 +100,6 @@ impl TransformerRegistry {
     }
 
     /// Find a transformer that can handle the given error pattern
-    #[allow(dead_code)]
     pub fn find_transformer(&self, error_pattern: &ErrorPattern) -> Option<&dyn FormatTransformer> {
         self.transformers
             .iter()
@@ -114,7 +112,6 @@ impl TransformerRegistry {
     ///
     /// This method uses the unified type system to provide transformers with complete type
     /// information including format examples, mutation paths, and serialization capabilities.
-    #[allow(dead_code)]
     pub fn transform_with_type_info(
         &self,
         value: &Value,
@@ -130,7 +127,6 @@ impl TransformerRegistry {
     ///
     /// This method is maintained for backward compatibility during the transition.
     /// New code should use `transform_with_type_info()` instead.
-    #[allow(dead_code)]
     pub fn transform_legacy(
         &self,
         value: &Value,

@@ -8,6 +8,10 @@ use std::time::Duration;
 
 use reqwest::Client;
 
+use super::constants::{
+    CONNECTION_TIMEOUT, DEFAULT_WATCH_TIMEOUT, POOL_MAX_IDLE_PER_HOST, POOLE_IDLE_TIMEOUT,
+};
+
 /// Shared HTTP client instance with optimized connection pooling
 ///
 /// This client is configured for BRP usage patterns:
@@ -17,10 +21,10 @@ use reqwest::Client;
 /// - Connection reuse for multiple localhost ports
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::builder()
-        .pool_idle_timeout(Duration::from_secs(300))
-        .pool_max_idle_per_host(50)
-        .timeout(Duration::from_secs(30))
-        .connect_timeout(Duration::from_secs(5))
+        .pool_idle_timeout(Duration::from_secs(POOLE_IDLE_TIMEOUT))
+        .pool_max_idle_per_host(POOL_MAX_IDLE_PER_HOST)
+        .timeout(Duration::from_secs(DEFAULT_WATCH_TIMEOUT))
+        .connect_timeout(Duration::from_secs(CONNECTION_TIMEOUT))
         .build()
         .unwrap_or_else(|_| Client::new())
 });

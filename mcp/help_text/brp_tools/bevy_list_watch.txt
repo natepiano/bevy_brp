@@ -9,6 +9,6 @@ Returns:
 - watch_id: Use with bevy_stop_watch
 - log_path: Log file location
 
-Behavior: Creates log at /tmp/bevy_brp_mcp_watch_*, logs LIST_UPDATE entries, runs until stopped.
+Behavior: Creates log at /tmp/bevy_brp_mcp_watch_*, logs COMPONENT_UPDATE entries, runs until stopped.
 
 Note: Tracks structural changes, not value changes.

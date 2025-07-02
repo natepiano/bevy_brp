@@ -10,6 +10,7 @@ use super::adapters::from_type_discovery_response_json;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::tools::BRP_METHOD_EXTRAS_DISCOVER_FORMAT;
 
 /// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(
@@ -18,22 +19,16 @@ pub async fn discover_type_format(
 ) -> Result<Option<UnifiedTypeInfo>, String> {
     debug!("Extras Integration: Starting discovery for type '{type_name}'");
 
-    // Check if bevy_brp_extras is available
-    if !check_brp_extras_availability(port).await {
-        debug!("Extras Integration: bevy_brp_extras not available");
-        return Ok(None);
-    }
-
-    // Call bevy_brp_extras/discover_format
+    // Call brp_extras/discover_format directly
     let params = json!({
         "types": [type_name]
     });
 
-    debug!("Extras Integration: Calling bevy_brp_extras/discover_format with params: {params}");
+    debug!("Extras Integration: Calling {BRP_METHOD_EXTRAS_DISCOVER_FORMAT} with params: {params}");
 
-    match execute_brp_method("bevy_brp_extras/discover_format", Some(params), port).await {
+    match execute_brp_method(BRP_METHOD_EXTRAS_DISCOVER_FORMAT, Some(params), port).await {
         Ok(BrpResult::Success(Some(response_data))) => {
-            debug!("Extras Integration: Received successful response from bevy_brp_extras");
+            debug!("Extras Integration: Received successful response from brp_extras");
 
             // Process the response to extract type information
             process_discovery_response(type_name, &response_data)
@@ -44,55 +39,14 @@ pub async fn discover_type_format(
         }
         Ok(BrpResult::Error(error)) => {
             debug!(
-                "Extras Integration: BRP error: {} - {}",
+                "Extras Integration: {BRP_METHOD_EXTRAS_DISCOVER_FORMAT} failed: {} - {}",
                 error.code, error.message
             );
-            Err(format!("BRP error {}: {}", error.code, error.message))
+            Ok(None) // Return None instead of Err - this just means brp_extras is not available
         }
         Err(e) => {
-            debug!("Extras Integration: Network/connection error: {e}");
-            Err(format!("Connection error: {e}"))
-        }
-    }
-}
-
-/// Check if `bevy_brp_extras` is available via rpc.discover
-pub async fn check_brp_extras_availability(port: Option<u16>) -> bool {
-    debug!("Extras Integration: Checking bevy_brp_extras availability via rpc.discover");
-
-    // Use rpc.discover to list available methods
-    match execute_brp_method("rpc.discover", None, port).await {
-        Ok(BrpResult::Success(Some(response))) => {
-            // Check if the response contains bevy_brp_extras methods
-            if let Some(methods) = response.get("methods").and_then(|m| m.as_object()) {
-                let has_discover_format = methods.contains_key("bevy_brp_extras/discover_format");
-
-                debug!(
-                    "Extras Integration: rpc.discover returned {} methods, bevy_brp_extras/discover_format present: {}",
-                    methods.len(),
-                    has_discover_format
-                );
-
-                has_discover_format
-            } else {
-                debug!("Extras Integration: rpc.discover response missing methods field");
-                false
-            }
-        }
-        Ok(BrpResult::Success(None)) => {
-            debug!("Extras Integration: rpc.discover returned empty response");
-            false
-        }
-        Ok(BrpResult::Error(error)) => {
-            debug!(
-                "Extras Integration: rpc.discover error: {} - {}",
-                error.code, error.message
-            );
-            false
-        }
-        Err(e) => {
-            debug!("Extras Integration: Failed to call rpc.discover: {e}");
-            false
+            debug!("Extras Integration: Connection error calling {BRP_METHOD_EXTRAS_DISCOVER_FORMAT}: {e}");
+            Ok(None) // Return None instead of Err - this just means brp_extras is not available
         }
     }
 }
@@ -103,11 +57,15 @@ fn process_discovery_response(
     response_data: &Value,
 ) -> Result<Option<UnifiedTypeInfo>, String> {
     debug!("Extras Integration: Processing discovery response for '{type_name}'");
+    debug!("Extras Integration: Full response data: {}", serde_json::to_string_pretty(response_data).unwrap_or_else(|_| "Failed to serialize".to_string()));
 
     // The response should contain type information, possibly as an array or object
     // We need to find the entry for our specific type
 
-    if let Some(type_data) = find_type_in_response(type_name, response_data) {
+    find_type_in_response(type_name, response_data).map_or_else(|| {
+        debug!("Extras Integration: Type '{type_name}' not found in discovery response");
+        Ok(None)
+    }, |type_data| {
         debug!("Extras Integration: Found type data for '{type_name}'");
 
         // Use the schema adapter to convert TypeDiscoveryResponse → UnifiedTypeInfo
@@ -122,20 +80,30 @@ fn process_discovery_response(
             debug!("Extras Integration: Failed to convert response to UnifiedTypeInfo");
             Err("Failed to parse type discovery response".to_string())
         }
-    } else {
-        debug!("Extras Integration: Type '{type_name}' not found in discovery response");
-        Ok(None)
-    }
+    })
 }
 
 /// Find type in response (handles various response formats)
 fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Option<&'a Value> {
+    debug!("Extras Integration: find_type_in_response looking for '{type_name}'");
+    
     // Try different possible response formats:
 
     // Format 1: Direct object with type name as key
     if let Some(obj) = response_data.as_object() {
+        debug!("Extras Integration: Trying Format 1 - direct object keys: {:?}", obj.keys().collect::<Vec<_>>());
         if let Some(type_data) = obj.get(type_name) {
+            debug!("Extras Integration: Found type data in Format 1");
             return Some(type_data);
+        }
+        
+        // Format 1b: Check if there's a type_info field
+        if let Some(type_info) = obj.get("type_info").and_then(Value::as_object) {
+            debug!("Extras Integration: Found type_info field, checking keys: {:?}", type_info.keys().collect::<Vec<_>>());
+            if let Some(type_data) = type_info.get(type_name) {
+                debug!("Extras Integration: Found type data in type_info field");
+                return Some(type_data);
+            }
         }
     }
 
@@ -170,6 +138,42 @@ pub fn create_correction_from_discovery(
     type_info: UnifiedTypeInfo,
     original_value: Option<Value>,
 ) -> CorrectionResult {
+    // Check if this is an enum with variants - create enum-specific correction
+    if let Some(enum_info) = &type_info.enum_info {
+        let variant_names: Vec<String> =
+            enum_info.variants.iter().map(|v| v.name.clone()).collect();
+
+        let corrected_format = json!({
+            "usage": "Use empty path with variant name as value",
+            "valid_values": variant_names,
+            "examples": variant_names.iter().take(2).map(|variant| json!({
+                "path": "",
+                "value": variant
+            })).collect::<Vec<_>>()
+        });
+
+        let correction_info = CorrectionInfo {
+            type_name:         type_info.type_name.clone(),
+            original_value:    original_value.unwrap_or(json!(null)),
+            corrected_value:   corrected_format.clone(),
+            corrected_format:  Some(corrected_format),
+            hint:              format!(
+                "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}",
+                type_info
+                    .type_name
+                    .split("::")
+                    .last()
+                    .unwrap_or(&type_info.type_name),
+                variant_names.join(", ")
+            ),
+            target_type:       type_info.type_name.clone(),
+            type_info:         Some(type_info),
+            correction_method: CorrectionMethod::DirectReplacement,
+        };
+
+        return CorrectionResult::Applied { correction_info };
+    }
+
     // If we have an example for the spawn operation, use it as the corrected format
     if let Some(spawn_example) = type_info.get_example("spawn") {
         let correction_info = CorrectionInfo {
@@ -180,6 +184,8 @@ pub fn create_correction_from_discovery(
                 "Use this format for type '{}' (discovered via bevy_brp_extras)",
                 type_info.type_name
             ),
+            target_type:       type_info.type_name.clone(),
+            corrected_format:  None,
             type_info:         Some(type_info),
             correction_method: CorrectionMethod::DirectReplacement,
         };

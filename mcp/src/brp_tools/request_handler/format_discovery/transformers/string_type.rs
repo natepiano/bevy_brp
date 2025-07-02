@@ -106,26 +106,6 @@ impl StringTypeTransformer {
         }
     }
 
-    /// Apply expected type fix for string-related types
-    #[allow(dead_code)]
-    fn apply_expected_type_fix(
-        type_name: &str,
-        original_value: &Value,
-        expected_type: &str,
-    ) -> Option<(Value, String)> {
-        // Handle Name component specifically
-        if expected_type.contains("::Name") || expected_type.contains("::name::Name") {
-            return Self::apply_name_component_fix(type_name, original_value);
-        }
-
-        // Handle other known type patterns
-        if expected_type.contains("String") {
-            return Self::convert_to_string_format(type_name, original_value);
-        }
-
-        None
-    }
-
     /// Check if the error mentions string-related expectations
     fn is_string_expectation_error(error: &BrpError) -> bool {
         let message = &error.message;

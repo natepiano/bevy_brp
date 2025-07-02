@@ -64,6 +64,12 @@ Configuration: Port [PORT], App [APP_NAME]
 3. [SHUTDOWN_INSTRUCTION]
 4. Report results using the exact format below
 
+**CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
+- Error message quality issues are FAILURES, not minor issues
+- Half of our codebase exists to construct proper error messages
+- Any deviation from expected behavior is a FAILURE
+- Do NOT categorize any issue as "minor" - mark it as FAILED
+
 **Test Context:**
 - Test File: [TEST_FILE]
 - Port: [PORT]
@@ -100,7 +106,7 @@ Configuration: Port [PORT], App [APP_NAME]
   - **Error**: [exact error message]
   - **Expected**: [what should happen]
   - **Actual**: [what happened]
-  - **Impact**: [critical/minor]
+  - **Impact**: critical (ALL ISSUES ARE CRITICAL - NO MINOR ISSUES ALLOWED)
   - **Component/Resource**: [fully qualified type name or N/A if not applicable]
 
 ### ⚠️ SKIPPED

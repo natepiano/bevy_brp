@@ -14,7 +14,7 @@ const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
 use super::logger::{self as watch_logger, BufferedWatchLogger};
 use super::manager::{WATCH_MANAGER, WatchInfo};
-use crate::brp_tools::support::BrpJsonRpcBuilder;
+use crate::brp_tools::support::{BrpJsonRpcBuilder, http_client};
 use crate::error::{Error, Result};
 use crate::tools::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
 
@@ -256,11 +256,20 @@ async fn handle_stream_error(
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();
 
-    // Check if this is a timeout error
-    let is_timeout = error_string.contains("operation timed out")
-        || error_string.contains("timeout")
-        || (timeout_seconds.is_some()
-            && elapsed.as_secs() >= u64::from(timeout_seconds.unwrap_or(30)));
+    // Debug logging for Scenario 2 - Stream timeout
+    debug!(
+        "TIMEOUT_SCENARIO_2_STREAM: elapsed={:?}, is_timeout={}, error='{}', configured_timeout={:?}, chunks_received={}",
+        elapsed,
+        error.is_timeout(),
+        error_string,
+        timeout_seconds,
+        total_chunks
+    );
+
+    // Check if this is a timeout error based on elapsed time
+    // Note: reqwest's is_timeout() is unreliable in parallel execution
+    let is_timeout =
+        timeout_seconds.is_some() && elapsed.as_secs() >= u64::from(timeout_seconds.unwrap_or(30));
 
     if is_timeout {
         warn!("Watch stream timed out after {:?}: {}", elapsed, error);
@@ -334,6 +343,7 @@ async fn log_first_chunk(
 }
 
 /// Process the watch stream from the BRP server
+#[allow(clippy::too_many_lines)]
 async fn process_watch_stream(
     response: reqwest::Response,
     entity_id: u64,
@@ -419,6 +429,8 @@ async fn process_watch_stream(
         parse_sse_line(line_buffer.trim(), entity_id, watch_type, logger).await?;
     }
 
+    // Scenario 3 removed - redundant with Scenario 2 stream error timeout detection
+
     // Log stream end with details
     let _ = logger
         .write_debug_update(
@@ -451,9 +463,19 @@ async fn handle_connection_error(
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();
 
-    // Check if this is a timeout error
-    let is_timeout =
-        error_string.contains("operation timed out") || error_string.contains("timeout");
+    // Debug logging for Scenario 1 - Connection timeout
+    debug!(
+        "TIMEOUT_SCENARIO_1_CONNECTION: elapsed={:?}, is_timeout={}, error='{}', configured_timeout={:?}",
+        elapsed,
+        error.is_timeout(),
+        error_string,
+        conn_params.timeout_seconds
+    );
+
+    // Check if this is a timeout error based on elapsed time
+    // Note: reqwest's is_timeout() is unreliable in parallel execution
+    let is_timeout = conn_params.timeout_seconds.is_some()
+        && elapsed.as_secs() >= u64::from(conn_params.timeout_seconds.unwrap_or(30));
 
     if is_timeout {
         warn!("Watch connection timed out after {:?}: {}", elapsed, error);
@@ -498,8 +520,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
 
     // Create HTTP client for streaming with configurable timeout
     let url = crate::brp_tools::support::brp_client::build_brp_url(conn_params.port);
-    let client =
-        crate::brp_tools::support::http_client::create_watch_client(conn_params.timeout_seconds);
+    let client = http_client::create_watch_client(conn_params.timeout_seconds);
 
     // Build JSON-RPC request for watching
     let request_body = BrpJsonRpcBuilder::new(&conn_params.brp_method)

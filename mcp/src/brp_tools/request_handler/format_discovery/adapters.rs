@@ -9,7 +9,8 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use super::unified_types::{
-    DiscoverySource, FormatInfo, RegistryStatus, SerializationSupport, UnifiedTypeInfo,
+    DiscoverySource, EnumInfo, EnumVariant, FormatInfo, RegistryStatus, SerializationSupport,
+    UnifiedTypeInfo,
 };
 
 /// Convert `TypeDiscoveryResponse` JSON to `UnifiedTypeInfo`
@@ -93,8 +94,10 @@ pub fn from_type_discovery_response_json(response_json: &Value) -> Option<Unifie
         }
     }
 
-    // Extract enum info
-    let enum_info = obj.get("enum_info").and_then(Value::as_object).cloned();
+    // Extract enum info and convert to proper structure
+    let enum_info = obj
+        .get("enum_info")
+        .and_then(convert_enum_info_from_discovery);
 
     Some(UnifiedTypeInfo {
         type_name,
@@ -107,6 +110,73 @@ pub fn from_type_discovery_response_json(response_json: &Value) -> Option<Unifie
         enum_info,
         discovery_source: DiscoverySource::DirectDiscovery,
     })
+}
+
+/// Convert `enum_info` from type discovery response to `EnumInfo` structure
+fn convert_enum_info_from_discovery(enum_obj: &Value) -> Option<EnumInfo> {
+    enum_obj
+        .get("variants")
+        .and_then(Value::as_array)
+        .map(|variants_array| {
+            let variants = variants_array
+                .iter()
+                .filter_map(|variant| {
+                    if let Some(variant_obj) = variant.as_object() {
+                        let name = variant_obj.get("name")?.as_str()?.to_string();
+                        let variant_type = variant_obj
+                            .get("type")
+                            .and_then(Value::as_str)
+                            .unwrap_or("Unit")
+                            .to_string();
+                        Some(EnumVariant { name, variant_type })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            EnumInfo { variants }
+        })
+}
+
+/// Extract enum variant information from registry schema
+fn extract_enum_info_from_schema(schema_data: &Value) -> Option<EnumInfo> {
+    // Look for the "oneOf" field which contains enum variants
+    schema_data
+        .get("oneOf")
+        .and_then(Value::as_array)
+        .and_then(|one_of| {
+            let variants: Vec<EnumVariant> = one_of
+                .iter()
+                .filter_map(|variant| {
+                    match variant {
+                        // Simple string variant (unit variants)
+                        Value::String(variant_name) => Some(EnumVariant {
+                            name:         variant_name.clone(),
+                            variant_type: "Unit".to_string(),
+                        }),
+                        // Object variant (struct or tuple variants)
+                        Value::Object(variant_obj) => {
+                            variant_obj
+                                .get("shortPath")
+                                .and_then(Value::as_str)
+                                .map(|short_path| EnumVariant {
+                                    name:         short_path.to_string(),
+                                    variant_type: "Unit".to_string(), /* Most registry enums are
+                                                                       * unit variants */
+                                })
+                        }
+                        _ => None,
+                    }
+                })
+                .collect();
+
+            if variants.is_empty() {
+                None
+            } else {
+                Some(EnumInfo { variants })
+            }
+        })
 }
 
 /// Convert Bevy registry schema to `UnifiedTypeInfo`
@@ -171,6 +241,13 @@ pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> UnifiedType
         vec!["query".to_string(), "get".to_string()]
     };
 
+    // Extract enum information if this is an enum
+    let enum_info = if type_category == "Enum" {
+        extract_enum_info_from_schema(schema_data)
+    } else {
+        None
+    };
+
     UnifiedTypeInfo {
         type_name: type_name.to_string(),
         registry_status,
@@ -179,7 +256,7 @@ pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> UnifiedType
         supported_operations,
         type_category,
         child_types: HashMap::new(),
-        enum_info: None,
+        enum_info,
         discovery_source: DiscoverySource::TypeRegistry,
     }
 }

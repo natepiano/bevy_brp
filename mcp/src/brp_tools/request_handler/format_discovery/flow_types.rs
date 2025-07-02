@@ -16,6 +16,9 @@
 //! - Level 2: Direct discovery via `bevy_brp_extras`
 //! - Level 3: Pattern-based transformations
 
+use std::collections::HashMap;
+
+use super::{CorrectionInfo, UnifiedTypeInfo};
 use crate::brp_tools::support::brp_client::BrpResult;
 
 /// Result of a BRP request attempt, determining whether to enter format recovery
@@ -28,6 +31,12 @@ pub enum BrpRequestResult {
         error:           BrpResult,
         method:          String,
         original_params: Option<serde_json::Value>,
+        type_infos:      HashMap<String, UnifiedTypeInfo>,
+    },
+    /// Request failed with missing Serialize/Deserialize traits - return educational message
+    SerDeError {
+        error:               BrpResult,
+        educational_message: String,
     },
     /// Request failed with non-recoverable error - return immediately
     OtherError(BrpResult),
@@ -39,24 +48,23 @@ pub enum FormatRecoveryResult {
     /// Recovery successful with corrections applied
     Recovered {
         corrected_result: BrpResult,
-        corrections:      Vec<super::unified_types::CorrectionInfo>,
+        corrections:      Vec<CorrectionInfo>,
     },
-    /// Recovery failed but provided educational information
-    Educational { original_error: BrpResult },
-    /// Recovery not possible (e.g., unsupported method, no format errors)
-    NotRecoverable(BrpResult),
+    /// Recovery not possible but guidance available
+    NotRecoverable {
+        original_error: BrpResult,
+        corrections:    Vec<CorrectionInfo>,
+    },
 }
 
 /// Result of individual correction attempts during recovery
 #[derive(Debug, Clone)]
 pub enum CorrectionResult {
     /// Correction was successfully applied
-    Applied {
-        correction_info: super::unified_types::CorrectionInfo,
-    },
+    Applied { correction_info: CorrectionInfo },
     /// Correction could not be applied but metadata was discovered
     MetadataOnly {
-        type_info: super::unified_types::UnifiedTypeInfo,
+        type_info: UnifiedTypeInfo,
         reason:    String,
     },
 }

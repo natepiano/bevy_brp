@@ -3,17 +3,34 @@
 ## Objective
 Validate BRP behavior with components that lack Serialize/Deserialize traits but are still reflection-registered.
 
+**CRITICAL** You must include the specified {{PORT}} in the call to the tool or it will default to 15702 and FAIL!
+
 ## Test Steps
 
 ### 1. Mutation Should Work (Even Without Serialize/Deserialize)
-- Execute `mcp__brp__bevy_mutate_component` on Visibility component
-  - Entity: Use an entity with Visibility component
-  - Component: "bevy_render::view::visibility::Visibility"
-  - Path: "" (empty string)
-  - Value: "Visible"
-  - Port: 20108 (EXPLICIT PORT FOR TESTING)
-- Verify mutation succeeds
-- Test other variants with empty path: "Hidden", "Inherited"
+**STEP 1**: Query for entities with Visibility:
+- Tool: mcp__brp__bevy_query
+- Use data: {"components": ["bevy_render::view::visibility::Visibility"]}
+- Use filter: {"with": ["bevy_render::view::visibility::Visibility"]}
+
+**STEP 2**: Execute mutation WITH THESE EXACT PARAMETERS:
+```
+mcp__brp__bevy_mutate_component with parameters:
+{
+  "entity": [USE_ENTITY_ID_FROM_QUERY],
+  "component": "bevy_render::view::visibility::Visibility",
+  "path": "",
+  "value": "Visible",
+  "port": {{PORT}}
+}
+```
+
+**CRITICAL**: You MUST include ALL parameters shown above. The port parameter MUST be {{PORT}}.
+**WARNING**: If you do not include the port parameter, the tool will use 15702 and fail.
+
+**STEP 3**: After success, test other variants using the SAME parameter structure:
+- Call again with "value": "Hidden" (keep all other parameters the same)
+- Call again with "value": "Inherited" (keep all other parameters the same)
 
 ### 2. Component Without Serialize/Deserialize - Spawn Test
 - Execute `mcp__brp__bevy_spawn` with Visibility component

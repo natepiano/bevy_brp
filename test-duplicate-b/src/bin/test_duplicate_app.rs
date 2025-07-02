@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::input::InputPlugin;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 fn main() {
@@ -9,6 +10,7 @@ fn main() {
 
     App::new()
         .add_plugins(MinimalPlugins)
+        .add_plugins(InputPlugin)
         .add_plugins(BrpExtrasPlugin)
         .add_systems(Startup, move || {
             println!("Test app from workspace-b running on port {}", port);

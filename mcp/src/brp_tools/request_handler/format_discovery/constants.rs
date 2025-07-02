@@ -31,6 +31,12 @@ pub const FORMAT_DISCOVERY_METHODS: &[&str] = &[
     BRP_METHOD_MUTATE_RESOURCE,
 ];
 
+/// Expected count of f32 values in a Transform sequence
+/// Transform contains: translation (Vec3), rotation (Quat), scale (Vec3) = 3 + 4 + 3 = 10 f32
+/// values However, the Transform component includes additional fields that bring the total to 12
+/// f32 values
+pub const TRANSFORM_SEQUENCE_F32_COUNT: usize = 12;
+
 // Static regex patterns for error analysis - Based on exact Bevy error strings
 define_regex!(
     TRANSFORM_SEQUENCE_REGEX,

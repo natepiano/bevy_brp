@@ -45,6 +45,14 @@ pub async fn handle(
         .as_u64()
         .and_then(|v| u32::try_from(v).ok());
 
+    // Debug logging for timeout parameter
+    tracing::debug!(
+        "bevy_get_watch timeout parameter debug: field_value={:?}, extracted_timeout={:?}, arguments_keys={:?}",
+        arguments.get(JSON_FIELD_TIMEOUT_SECONDS),
+        timeout_seconds,
+        arguments.as_object().map(|o| o.keys().collect::<Vec<_>>())
+    );
+
     // Start the watch task
     let result =
         super::support::start_entity_watch_task(entity_id, components, port, timeout_seconds)

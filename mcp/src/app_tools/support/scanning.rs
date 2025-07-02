@@ -392,6 +392,61 @@ pub fn find_required_app_with_path(
     let all_apps = find_all_apps_by_name(app_name, search_paths);
     debug!("Found {} matching app(s)", all_apps.len());
 
+    // If a path is provided and we found multiple apps, check for ambiguity
+    if let Some(path_str) = path {
+        if all_apps.len() > 1 {
+            let filtered_apps =
+                find_and_filter_by_path(all_apps.clone(), path, |app| &app.relative_path);
+
+            // If filtering resulted in 0 matches but there were multiple apps,
+            // check if the path could have been ambiguous
+            if filtered_apps.is_empty() {
+                // Check if the path partially matches multiple apps
+                let partial_matches: Vec<_> = all_apps
+                    .iter()
+                    .filter(|app| {
+                        let relative_path = &app.relative_path;
+                        partial_path_match(relative_path, path_str)
+                    })
+                    .collect();
+
+                if partial_matches.len() > 1 {
+                    // This is an ambiguous partial path
+                    let paths: Vec<String> = partial_matches
+                        .iter()
+                        .map(|app| app.relative_path.to_string_lossy().to_string())
+                        .collect();
+
+                    let error_msg = format!(
+                        "Ambiguous path '{path_str}' matches multiple apps:\n{}\n\nPlease use a more specific path.",
+                        paths
+                            .iter()
+                            .map(|p| format!("- {p}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    );
+
+                    return Err(report_to_mcp_error(&error_stack::Report::new(
+                        Error::PathDisambiguation {
+                            message:         error_msg,
+                            item_type:       "app".to_string(),
+                            item_name:       app_name.to_string(),
+                            available_paths: paths,
+                        },
+                    )));
+                }
+            }
+
+            return validate_single_result_or_error(
+                filtered_apps,
+                app_name,
+                "app",
+                "app_name",
+                |app| &app.relative_path,
+            );
+        }
+    }
+
     let filtered_apps = find_and_filter_by_path(all_apps, path, |app| &app.relative_path);
 
     validate_single_result_or_error(filtered_apps, app_name, "app", "app_name", |app| {
@@ -413,6 +468,63 @@ pub fn find_required_example_with_path(
 
     let all_examples = find_all_examples_by_name(example_name, search_paths);
     debug!("Found {} matching example(s)", all_examples.len());
+
+    // If a path is provided and we found multiple examples, check for ambiguity
+    if let Some(path_str) = path {
+        if all_examples.len() > 1 {
+            let filtered_examples =
+                find_and_filter_by_path(all_examples.clone(), path, |example| {
+                    &example.relative_path
+                });
+
+            // If filtering resulted in 0 matches but there were multiple examples,
+            // check if the path could have been ambiguous
+            if filtered_examples.is_empty() {
+                // Check if the path partially matches multiple examples
+                let partial_matches: Vec<_> = all_examples
+                    .iter()
+                    .filter(|example| {
+                        let relative_path = &example.relative_path;
+                        partial_path_match(relative_path, path_str)
+                    })
+                    .collect();
+
+                if partial_matches.len() > 1 {
+                    // This is an ambiguous partial path
+                    let paths: Vec<String> = partial_matches
+                        .iter()
+                        .map(|example| example.relative_path.to_string_lossy().to_string())
+                        .collect();
+
+                    let error_msg = format!(
+                        "Ambiguous path '{path_str}' matches multiple examples:\n{}\n\nPlease use a more specific path.",
+                        paths
+                            .iter()
+                            .map(|p| format!("- {p}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    );
+
+                    return Err(report_to_mcp_error(&error_stack::Report::new(
+                        Error::PathDisambiguation {
+                            message:         error_msg,
+                            item_type:       "example".to_string(),
+                            item_name:       example_name.to_string(),
+                            available_paths: paths,
+                        },
+                    )));
+                }
+            }
+
+            return validate_single_result_or_error(
+                filtered_examples,
+                example_name,
+                "example",
+                "example_name",
+                |example| &example.relative_path,
+            );
+        }
+    }
 
     let filtered_examples =
         find_and_filter_by_path(all_examples, path, |example| &example.relative_path);
@@ -453,7 +565,19 @@ fn exact_path_match(relative_path: &Path, path_str: &str) -> bool {
 fn partial_path_match(relative_path: &Path, path_str: &str) -> bool {
     if let Some(path_str_path) = Path::new(path_str).to_str() {
         if let Some(relative_str) = relative_path.to_str() {
-            return relative_str.ends_with(path_str_path);
+            // Check if it ends with the path (suffix match)
+            if relative_str.ends_with(path_str_path) {
+                return true;
+            }
+            // Also check if the path string is contained within any path component
+            // This handles cases like "duplicate" matching "test-duplicate-a"
+            for component in relative_path.components() {
+                if let Some(component_str) = component.as_os_str().to_str() {
+                    if component_str.contains(path_str) {
+                        return true;
+                    }
+                }
+            }
         }
     }
     false

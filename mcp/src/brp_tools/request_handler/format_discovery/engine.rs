@@ -36,12 +36,16 @@
 //! ```
 
 use serde_json::Value;
+use tracing::{debug, trace};
 
 use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
+use super::registry_integration::check_multiple_types_registry_status;
 use super::unified_types::CorrectionInfo;
-use crate::brp_tools::support::brp_client::BrpResult;
+use crate::brp_tools::constants::BRP_ERROR_CODE_INVALID_REQUEST;
+use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::Result;
+use crate::tools::{BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_SPAWN};
 
 /// Format correction information for a type (component or resource)
 #[derive(Debug, Clone)]
@@ -70,7 +74,31 @@ async fn execute_phase_0(
     params: Option<Value>,
     port: Option<u16>,
 ) -> Result<BrpRequestResult> {
-    use crate::brp_tools::support::brp_client::execute_brp_method;
+    // Pre-fetch type information if this is a method that might need it
+    let type_infos = if is_format_discovery_supported(method) {
+        debug!("Phase 0: Method {method} supports format discovery, extracting component types");
+        let type_names = extract_type_names(method, params.as_ref());
+        debug!("Phase 0: Extracted {} type names: {type_names:?}", type_names.len());
+        if type_names.is_empty() {
+            debug!("Phase 0: No type names found, skipping pre-fetching");
+            std::collections::HashMap::new()
+        } else {
+            debug!(
+                "Phase 0: Pre-fetching type information for {} types: {type_names:?}",
+                type_names.len()
+            );
+            let registry_results =
+                check_multiple_types_registry_status(&type_names, port).await;
+            debug!("Phase 0: Registry results: {} successful lookups", registry_results.iter().filter(|(_, info)| info.is_some()).count());
+            registry_results
+                .into_iter()
+                .filter_map(|(name, info)| info.map(|i| (name, i)))
+                .collect()
+        }
+    } else {
+        debug!("Phase 0: Method {method} does not support format discovery");
+        std::collections::HashMap::new()
+    };
 
     // Direct BRP execution - no format discovery overhead
     let result = execute_brp_method(method, params.clone(), port).await?;
@@ -81,12 +109,31 @@ async fn execute_phase_0(
             Ok(BrpRequestResult::Success(result))
         }
         BrpResult::Error(ref error) => {
+            // Check for serialization errors first (missing Serialize/Deserialize traits)
+            // Only spawn/insert methods require full serialization
+            if matches!(
+                method,
+                BRP_METHOD_SPAWN | BRP_METHOD_INSERT | BRP_METHOD_INSERT_RESOURCE
+            ) && error.code == BRP_ERROR_CODE_INVALID_REQUEST
+            {
+                // Check if this is a serialization error that should be short-circuited
+                if let Some(educational_message) =
+                    check_serialization_errors_with_type_infos(method, &type_infos)
+                {
+                    return Ok(BrpRequestResult::SerDeError {
+                        error: result,
+                        educational_message,
+                    });
+                }
+            }
+
             // Check if this is a recoverable format error
             if is_format_error(error) && is_format_discovery_supported(method) {
                 Ok(BrpRequestResult::FormatError {
-                    error:           result,
-                    method:          method.to_string(),
+                    error: result,
+                    method: method.to_string(),
                     original_params: params,
+                    type_infos,
                 })
             } else {
                 // Non-recoverable error - return immediately
@@ -98,14 +145,33 @@ async fn execute_phase_0(
 
 /// Check if an error indicates a format issue that can be recovered
 fn is_format_error(error: &crate::brp_tools::support::brp_client::BrpError) -> bool {
+    // Dynamic type errors indicate missing Serialize/Deserialize traits (any error code)
+    if error
+        .message
+        .contains("Unknown component type: `bevy_reflect::DynamicEnum`")
+        || error
+            .message
+            .contains("Unknown component type: `bevy_reflect::DynamicStruct`")
+        || error
+            .message
+            .contains("Unknown resource type: `bevy_reflect::DynamicEnum`")
+        || error
+            .message
+            .contains("Unknown resource type: `bevy_reflect::DynamicStruct`")
+    {
+        return true;
+    }
+
     // Common format error codes that indicate type serialization issues
-    matches!(error.code, -32602 | -32603)
+    // Include BRP_ERROR_CODE_INVALID_REQUEST (-23402) for mutation errors
+    matches!(error.code, -32602 | -32603 | BRP_ERROR_CODE_INVALID_REQUEST)
         && (error.message.contains("failed to deserialize")
             || error.message.contains("invalid type")
             || error.message.contains("expected")
             || error.message.contains("AccessError")
             || error.message.contains("missing field")
-            || error.message.contains("unknown variant"))
+            || error.message.contains("unknown variant")
+            || error.message.contains("Error accessing element"))
 }
 
 /// Check if a method supports format discovery
@@ -113,21 +179,90 @@ fn is_format_discovery_supported(method: &str) -> bool {
     FORMAT_DISCOVERY_METHODS.contains(&method)
 }
 
+/// Extract type names (components/resources) from BRP request parameters
+fn extract_type_names(method: &str, params: Option<&Value>) -> Vec<String> {
+    let Some(params) = params else {
+        debug!("extract_type_names: No params provided");
+        return Vec::new();
+    };
+
+    debug!("extract_type_names: Processing method {method} with params keys: {params_keys:?}", params_keys = params.as_object().map(|obj| obj.keys().collect::<Vec<_>>()).unwrap_or_default());
+
+    // For spawn/insert operations, look for "components" (plural)
+    if let Some(components) = params.get("components").and_then(Value::as_object) {
+        let types: Vec<String> = components.keys().cloned().collect();
+        debug!("extract_type_names: Found components (plural): {types:?}");
+        return types;
+    }
+
+    // For mutate operations, look for "component" (singular)
+    if let Some(component) = params.get("component").and_then(Value::as_str) {
+        let types = vec![component.to_string()];
+        debug!("extract_type_names: Found component (singular): {types:?}");
+        return types;
+    }
+
+    // For resource operations, look for "resource"
+    if let Some(resource) = params.get("resource").and_then(Value::as_str) {
+        let types = vec![resource.to_string()];
+        debug!("extract_type_names: Found resource: {types:?}");
+        return types;
+    }
+
+    debug!("extract_type_names: No component/resource types found in params");
+    Vec::new()
+}
+
+/// Check if any types lack serialization support using pre-fetched type infos
+fn check_serialization_errors_with_type_infos(
+    method: &str,
+    type_infos: &std::collections::HashMap<String, super::unified_types::UnifiedTypeInfo>,
+) -> Option<String> {
+    debug!("Checking for serialization errors using pre-fetched type infos");
+
+    for (component_type, type_info) in type_infos {
+        debug!(
+            "Component '{}' found in registry, brp_compatible={}",
+            component_type, type_info.serialization.brp_compatible
+        );
+        // Component is registered but lacks serialization - short circuit
+        if !type_info.serialization.brp_compatible {
+            debug!(
+                "Component '{}' lacks serialization, returning educational message",
+                component_type
+            );
+            return Some(format!(
+                "Component '{}' is registered but lacks Serialize and Deserialize traits required for {} operations. \
+                Add #[derive(Serialize, Deserialize)] to the component definition.",
+                component_type,
+                method.split('/').next_back().unwrap_or(method)
+            ));
+        }
+    }
+
+    debug!("All components have serialization support");
+    None
+}
+
 /// Execute exception path: Format error recovery using the 3-level decision tree
 async fn execute_exception_path(
     method: String,
     original_params: Option<Value>,
     error: BrpResult,
+    type_infos: std::collections::HashMap<String, super::unified_types::UnifiedTypeInfo>,
     port: Option<u16>,
 ) -> FormatRecoveryResult {
-    use super::phases::context::DiscoveryContext;
+    tracing::trace!("Discovery: Exception Path: Entering format recovery for method '{method}'");
 
-    DiscoveryContext::add_debug(format!(
-        "Exception Path: Entering format recovery for method '{method}'"
-    ));
-
-    // Use the new recovery engine with 3-level decision tree
-    super::recovery_engine::attempt_format_recovery(&method, original_params, error, port).await
+    // Use the new recovery engine with 3-level decision tree, passing pre-fetched type infos
+    super::recovery_engine::attempt_format_recovery_with_type_infos(
+        &method,
+        original_params,
+        error,
+        type_infos,
+        port,
+    )
+    .await
 }
 
 /// Execute a BRP method with automatic format discovery using the new flow architecture
@@ -136,21 +271,15 @@ pub async fn execute_brp_method_with_format_discovery(
     params: Option<Value>,
     port: Option<u16>,
 ) -> Result<EnhancedBrpResult> {
-    use super::phases::context::DiscoveryContext;
-
-    DiscoveryContext::add_debug(format!(
-        "Format Discovery: Starting request for method '{method}'"
-    ));
+    trace!("Discovery: Format Discovery: Starting request for method '{method}'");
 
     // Phase 0: Direct BRP execution (normal path)
-    DiscoveryContext::add_debug("Phase 0: Attempting direct BRP execution".to_string());
+    trace!("Discovery: Phase 0: Attempting direct BRP execution");
     let phase_0_result = execute_phase_0(method, params, port).await?;
 
     match phase_0_result {
         BrpRequestResult::Success(result) => {
-            DiscoveryContext::add_debug(
-                "Phase 0: Direct execution succeeded, no discovery needed".to_string(),
-            );
+            trace!("Discovery: Phase 0: Direct execution succeeded, no discovery needed");
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
@@ -160,22 +289,43 @@ pub async fn execute_brp_method_with_format_discovery(
             error,
             method,
             original_params,
+            type_infos,
         } => {
-            DiscoveryContext::add_debug(
-                "Phase 0: Format error detected, entering exception path".to_string(),
-            );
+            trace!("Discovery: Phase 0: Format error detected, entering exception path");
 
-            // Exception Path: Format error recovery
+            // Exception Path: Format error recovery with pre-fetched type infos
             let recovery_result =
-                execute_exception_path(method, original_params, error, port).await;
+                execute_exception_path(method, original_params, error, type_infos, port).await;
 
             // Convert recovery result to EnhancedBrpResult
             Ok(convert_recovery_to_enhanced_result(recovery_result))
         }
-        BrpRequestResult::OtherError(result) => {
-            DiscoveryContext::add_debug(
-                "Phase 0: Non-recoverable error, returning original result".to_string(),
+        BrpRequestResult::SerDeError {
+            error,
+            educational_message,
+            ..
+        } => {
+            trace!(
+                "Discovery: Phase 0: Serialization error detected, returning educational message"
             );
+
+            // Replace the error message with the educational guidance
+            let enhanced_error = match error {
+                BrpResult::Error(mut error_info) => {
+                    error_info.message = educational_message;
+                    BrpResult::Error(error_info)
+                }
+                success @ BrpResult::Success(_) => success, /* Shouldn't happen but preserve if
+                                                             * it does */
+            };
+
+            Ok(EnhancedBrpResult {
+                result:             enhanced_error,
+                format_corrections: Vec::new(),
+            })
+        }
+        BrpRequestResult::OtherError(result) => {
+            trace!("Discovery: Phase 0: Non-recoverable error, returning original result");
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
@@ -197,14 +347,16 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
                 format_corrections,
             }
         }
-        FormatRecoveryResult::Educational { original_error, .. } => EnhancedBrpResult {
-            result:             original_error,
-            format_corrections: Vec::new(),
-        },
-        FormatRecoveryResult::NotRecoverable(result) => EnhancedBrpResult {
-            result,
-            format_corrections: Vec::new(),
-        },
+        FormatRecoveryResult::NotRecoverable {
+            original_error,
+            corrections,
+        } => {
+            let format_corrections = convert_corrections_to_legacy_format(corrections);
+            EnhancedBrpResult {
+                result: original_error,
+                format_corrections,
+            }
+        }
     }
 }
 
