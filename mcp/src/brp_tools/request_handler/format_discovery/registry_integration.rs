@@ -66,6 +66,97 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
     None
 }
 
+/// Get registry type information for format discovery methods
+pub async fn get_registry_type_info(
+    method: &str,
+    params: Option<&serde_json::Value>,
+    port: Option<u16>,
+) -> std::collections::HashMap<String, UnifiedTypeInfo> {
+    use super::constants::FORMAT_DISCOVERY_METHODS;
+
+    if !FORMAT_DISCOVERY_METHODS.contains(&method) {
+        debug!("get_registry_type_info: Method {method} does not support format discovery");
+        return std::collections::HashMap::new();
+    }
+
+    debug!(
+        "get_registry_type_info: Method {method} supports format discovery, extracting component types"
+    );
+
+    let type_names = extract_type_names_from_params(method, params);
+    debug!(
+        "get_registry_type_info: Extracted {} type names: {type_names:?}",
+        type_names.len()
+    );
+
+    if type_names.is_empty() {
+        debug!("get_registry_type_info: No type names found, skipping pre-fetching");
+        return std::collections::HashMap::new();
+    }
+
+    debug!(
+        "get_registry_type_info: Pre-fetching type information for {} types: {type_names:?}",
+        type_names.len()
+    );
+
+    let registry_results = check_multiple_types_registry_status(&type_names, port).await;
+    debug!(
+        "get_registry_type_info: Registry results: {} successful lookups",
+        registry_results
+            .iter()
+            .filter(|(_, info)| info.is_some())
+            .count()
+    );
+
+    registry_results
+        .into_iter()
+        .filter_map(|(name, info)| info.map(|i| (name, i)))
+        .collect()
+}
+
+/// Extract type names (components/resources) from BRP request parameters
+fn extract_type_names_from_params(method: &str, params: Option<&serde_json::Value>) -> Vec<String> {
+    let Some(params) = params else {
+        debug!("extract_type_names_from_params: No params provided");
+        return Vec::new();
+    };
+
+    debug!(
+        "extract_type_names_from_params: Processing method {method} with params keys: {params_keys:?}",
+        params_keys = params
+            .as_object()
+            .map(|obj| obj.keys().collect::<Vec<_>>())
+            .unwrap_or_default()
+    );
+
+    // For spawn/insert operations, look for "components" (plural)
+    if let Some(components) = params
+        .get("components")
+        .and_then(serde_json::Value::as_object)
+    {
+        let types: Vec<String> = components.keys().cloned().collect();
+        debug!("extract_type_names_from_params: Found components (plural): {types:?}");
+        return types;
+    }
+
+    // For mutate operations, look for "component" (singular)
+    if let Some(component) = params.get("component").and_then(serde_json::Value::as_str) {
+        let types = vec![component.to_string()];
+        debug!("extract_type_names_from_params: Found component (singular): {types:?}");
+        return types;
+    }
+
+    // For resource operations, look for "resource"
+    if let Some(resource) = params.get("resource").and_then(serde_json::Value::as_str) {
+        let types = vec![resource.to_string()];
+        debug!("extract_type_names_from_params: Found resource: {types:?}");
+        return types;
+    }
+
+    debug!("extract_type_names_from_params: No component/resource types found in params");
+    Vec::new()
+}
+
 /// Batch check multiple types in a single registry call
 pub async fn check_multiple_types_registry_status(
     type_names: &[String],

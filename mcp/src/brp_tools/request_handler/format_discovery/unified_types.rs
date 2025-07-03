@@ -180,6 +180,182 @@ impl UnifiedTypeInfo {
     pub fn get_example(&self, operation: &str) -> Option<&Value> {
         self.format_info.examples.get(operation)
     }
+
+    /// Ensure examples are generated for all operations
+    pub fn ensure_examples(&mut self) {
+        // Generate examples for spawn operation if not present
+        if !self.format_info.examples.contains_key("spawn") {
+            if let Some(example) = self.generate_spawn_example() {
+                self.format_info
+                    .examples
+                    .insert("spawn".to_string(), example);
+            }
+        }
+
+        // Generate examples for insert operation if not present
+        if !self.format_info.examples.contains_key("insert") {
+            if let Some(example) = self.generate_insert_example() {
+                self.format_info
+                    .examples
+                    .insert("insert".to_string(), example);
+            }
+        }
+
+        // Generate examples for mutation if paths exist
+        if self.supports_mutation() && !self.format_info.examples.contains_key("mutate") {
+            if let Some(example) = self.generate_mutation_example() {
+                self.format_info
+                    .examples
+                    .insert("mutate".to_string(), example);
+            }
+        }
+    }
+
+    /// Generate spawn example based on type structure
+    fn generate_spawn_example(&self) -> Option<Value> {
+        match self.type_category.as_str() {
+            "Struct" => self.generate_struct_example(),
+            "Enum" => self.generate_enum_example(),
+            "MathType" => self.generate_math_type_example(),
+            _ => None,
+        }
+    }
+
+    /// Generate insert example (similar to spawn)
+    fn generate_insert_example(&self) -> Option<Value> {
+        self.generate_spawn_example()
+    }
+
+    /// Generate mutation example with paths
+    fn generate_mutation_example(&self) -> Option<Value> {
+        if let Some((path, description)) = self.format_info.mutation_paths.iter().next() {
+            Some(serde_json::json!({
+                "path": path,
+                "value": Self::generate_value_for_type(description),
+                "description": description
+            }))
+        } else {
+            None
+        }
+    }
+
+    /// Generate example for struct types
+    fn generate_struct_example(&self) -> Option<Value> {
+        // For now, return corrected format if available
+        self.format_info.corrected_format.clone()
+    }
+
+    /// Generate example for enum types
+    fn generate_enum_example(&self) -> Option<Value> {
+        self.enum_info.as_ref().and_then(|enum_info| {
+            enum_info
+                .variants
+                .first()
+                .map(|variant| match variant.variant_type.as_str() {
+                    "Unit" => Value::String(variant.name.clone()),
+                    _ => serde_json::json!({
+                        variant.name.clone(): {}
+                    }),
+                })
+        })
+    }
+
+    /// Generate example for math types (Vec2, Vec3, etc.)
+    fn generate_math_type_example(&self) -> Option<Value> {
+        match self.type_name.as_str() {
+            name if name.contains("Vec2") => Some(serde_json::json!([0.0, 0.0])),
+            name if name.contains("Vec3") => Some(serde_json::json!([0.0, 0.0, 0.0])),
+            name if name.contains("Vec4") => Some(serde_json::json!([0.0, 0.0, 0.0, 0.0])),
+            name if name.contains("Quat") => Some(serde_json::json!([0.0, 0.0, 0.0, 1.0])),
+            _ => None,
+        }
+    }
+
+    /// Generate appropriate value for a type description
+    fn generate_value_for_type(type_desc: &str) -> Value {
+        match type_desc {
+            desc if desc.contains("f32") || desc.contains("float") => Value::from(0.0),
+            desc if desc.contains("i32") || desc.contains("int") => Value::from(0),
+            desc if desc.contains("bool") => Value::from(false),
+            desc if desc.contains("String") => Value::from(""),
+            _ => Value::Null,
+        }
+    }
+
+    /// Transform an incorrect value to the correct format
+    pub fn transform_value(&self, value: &Value) -> Option<Value> {
+        match self.type_category.as_str() {
+            "MathType" => self.transform_math_value(value),
+            "Struct" => self.transform_struct_value(value),
+            "Enum" => self.transform_enum_value(value),
+            _ => None,
+        }
+    }
+
+    /// Transform math type values (Vec2, Vec3, Quat, etc.)
+    fn transform_math_value(&self, value: &Value) -> Option<Value> {
+        // Handle object to array conversion for math types
+        value
+            .as_object()
+            .and_then(|obj| match self.type_name.as_str() {
+                name if name.contains("Vec2") => Self::extract_vec2_from_object(obj),
+                name if name.contains("Vec3") => Self::extract_vec3_from_object(obj),
+                name if name.contains("Vec4") => Self::extract_vec4_from_object(obj),
+                name if name.contains("Quat") => Self::extract_quat_from_object(obj),
+                _ => None,
+            })
+    }
+
+    /// Extract Vec2 array from object
+    fn extract_vec2_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
+        let x = obj.get("x").and_then(Value::as_f64)?;
+        let y = obj.get("y").and_then(Value::as_f64)?;
+        Some(serde_json::json!([x, y]))
+    }
+
+    /// Extract Vec3 array from object
+    fn extract_vec3_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
+        let x = obj.get("x").and_then(Value::as_f64)?;
+        let y = obj.get("y").and_then(Value::as_f64)?;
+        let z = obj.get("z").and_then(Value::as_f64)?;
+        Some(serde_json::json!([x, y, z]))
+    }
+
+    /// Extract Vec4 array from object
+    fn extract_vec4_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
+        let x = obj.get("x").and_then(Value::as_f64)?;
+        let y = obj.get("y").and_then(Value::as_f64)?;
+        let z = obj.get("z").and_then(Value::as_f64)?;
+        let w = obj.get("w").and_then(Value::as_f64)?;
+        Some(serde_json::json!([x, y, z, w]))
+    }
+
+    /// Extract Quaternion array from object
+    fn extract_quat_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
+        // Same as Vec4 for quaternions
+        Self::extract_vec4_from_object(obj)
+    }
+
+    /// Transform struct values
+    fn transform_struct_value(&self, _value: &Value) -> Option<Value> {
+        // For now, use corrected format if available
+        self.format_info.corrected_format.clone()
+    }
+
+    /// Transform enum values
+    fn transform_enum_value(&self, value: &Value) -> Option<Value> {
+        if let Some(enum_info) = &self.enum_info {
+            // Handle string to enum variant conversion
+            if let Some(str_val) = value.as_str() {
+                // Check if string matches a variant name
+                if enum_info.variants.iter().any(|v| v.name == str_val) {
+                    // For unit variants, just return the string
+                    return Some(Value::String(str_val.to_string()));
+                }
+            }
+        }
+        None
+    }
 }
 
 impl FormatInfo {

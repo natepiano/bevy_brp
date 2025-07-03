@@ -241,24 +241,71 @@ impl EnumVariantTransformer {
     ) -> (Value, String) {
         // Extract enum variants dynamically
         let variants = Self::extract_enum_variants(error_message);
-        let valid_values = if variants.is_empty() {
-            // Use generic but cleaner placeholder names
-            vec![
-                "Variant1".to_string(),
-                "Variant2".to_string(),
-                "Variant3".to_string(),
-            ]
+
+        // Create a UnifiedTypeInfo with the extracted variants
+        let mut type_info = UnifiedTypeInfo::new(
+            type_name.to_string(),
+            super::super::unified_types::DiscoverySource::PatternMatching,
+        );
+
+        // Set it as an enum type
+        type_info.type_category = "Enum".to_string();
+
+        // Add enum info if we have variants
+        if !variants.is_empty() {
+            type_info.enum_info = Some(super::super::unified_types::EnumInfo {
+                variants: variants
+                    .into_iter()
+                    .map(|name| super::super::unified_types::EnumVariant {
+                        name,
+                        variant_type: "Unit".to_string(),
+                    })
+                    .collect(),
+            });
+        }
+
+        // Ensure examples are generated
+        type_info.ensure_examples();
+
+        // Get the enum example or use fallback
+        let format_info = if let Some(example) = type_info.get_example("mutate") {
+            example.clone()
         } else {
-            variants
+            // Fallback format if no example was generated
+            let valid_values = type_info.enum_info.as_ref().map_or_else(
+                || {
+                    vec![
+                        "Variant1".to_string(),
+                        "Variant2".to_string(),
+                        "Variant3".to_string(),
+                    ]
+                },
+                |info| info.variants.iter().map(|v| v.name.clone()).collect(),
+            );
+
+            json!({
+                "hint": "Use empty path with variant name as value",
+                "path": "",
+                "valid_values": valid_values,
+                "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+            })
         };
 
-        // Return format correction that explains empty path usage
-        let format_info = json!({
-            "hint": "Use empty path with variant name as value",
-            "path": "",
-            "valid_values": valid_values,
-            "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
-        });
+        let valid_values = type_info.enum_info.as_ref().map_or_else(
+            || {
+                vec![
+                    "Variant1".to_string(),
+                    "Variant2".to_string(),
+                    "Variant3".to_string(),
+                ]
+            },
+            |info| {
+                info.variants
+                    .iter()
+                    .map(|v| v.name.clone())
+                    .collect::<Vec<_>>()
+            },
+        );
 
         let hint = format!(
             "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",

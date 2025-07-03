@@ -35,17 +35,21 @@
 //! Result: Corrected format with transformation hints
 //! ```
 
+use std::collections::HashMap;
+
 use serde_json::Value;
 use tracing::{debug, trace};
 
+use super::UnifiedTypeInfo;
 use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
-use super::registry_integration::check_multiple_types_registry_status;
+use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
 use crate::brp_tools::constants::BRP_ERROR_CODE_INVALID_REQUEST;
+use crate::brp_tools::request_handler::format_discovery::recovery_engine;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::Result;
-use crate::tools::{BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_SPAWN};
+use crate::tools::{BRP_METHOD_INSERT, BRP_METHOD_SPAWN};
 
 /// Format correction information for a type (component or resource)
 #[derive(Debug, Clone)]
@@ -74,40 +78,6 @@ async fn execute_phase_0(
     params: Option<Value>,
     port: Option<u16>,
 ) -> Result<BrpRequestResult> {
-    // Pre-fetch type information if this is a method that might need it
-    let type_infos = if is_format_discovery_supported(method) {
-        debug!("Phase 0: Method {method} supports format discovery, extracting component types");
-        let type_names = extract_type_names(method, params.as_ref());
-        debug!(
-            "Phase 0: Extracted {} type names: {type_names:?}",
-            type_names.len()
-        );
-        if type_names.is_empty() {
-            debug!("Phase 0: No type names found, skipping pre-fetching");
-            std::collections::HashMap::new()
-        } else {
-            debug!(
-                "Phase 0: Pre-fetching type information for {} types: {type_names:?}",
-                type_names.len()
-            );
-            let registry_results = check_multiple_types_registry_status(&type_names, port).await;
-            debug!(
-                "Phase 0: Registry results: {} successful lookups",
-                registry_results
-                    .iter()
-                    .filter(|(_, info)| info.is_some())
-                    .count()
-            );
-            registry_results
-                .into_iter()
-                .filter_map(|(name, info)| info.map(|i| (name, i)))
-                .collect()
-        }
-    } else {
-        debug!("Phase 0: Method {method} does not support format discovery");
-        std::collections::HashMap::new()
-    };
-
     // Direct BRP execution - no format discovery overhead
     let result = execute_brp_method(method, params.clone(), port).await?;
 
@@ -117,16 +87,15 @@ async fn execute_phase_0(
             Ok(BrpRequestResult::Success(result))
         }
         BrpResult::Error(ref error) => {
+            // Get type information only when needed for error handling
+            let type_infos = get_registry_type_info(method, params.as_ref(), port).await;
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
-            if matches!(
-                method,
-                BRP_METHOD_SPAWN | BRP_METHOD_INSERT | BRP_METHOD_INSERT_RESOURCE
-            ) && error.code == BRP_ERROR_CODE_INVALID_REQUEST
+            if matches!(method, BRP_METHOD_SPAWN | BRP_METHOD_INSERT)
+                && error.code == BRP_ERROR_CODE_INVALID_REQUEST
             {
                 // Check if this is a serialization error that should be short-circuited
-                if let Some(educational_message) =
-                    check_serialization_errors_with_type_infos(method, &type_infos)
+                if let Some(educational_message) = check_serialization_support(method, &type_infos)
                 {
                     return Ok(BrpRequestResult::SerDeError {
                         error: result,
@@ -187,50 +156,10 @@ fn is_format_discovery_supported(method: &str) -> bool {
     FORMAT_DISCOVERY_METHODS.contains(&method)
 }
 
-/// Extract type names (components/resources) from BRP request parameters
-fn extract_type_names(method: &str, params: Option<&Value>) -> Vec<String> {
-    let Some(params) = params else {
-        debug!("extract_type_names: No params provided");
-        return Vec::new();
-    };
-
-    debug!(
-        "extract_type_names: Processing method {method} with params keys: {params_keys:?}",
-        params_keys = params
-            .as_object()
-            .map(|obj| obj.keys().collect::<Vec<_>>())
-            .unwrap_or_default()
-    );
-
-    // For spawn/insert operations, look for "components" (plural)
-    if let Some(components) = params.get("components").and_then(Value::as_object) {
-        let types: Vec<String> = components.keys().cloned().collect();
-        debug!("extract_type_names: Found components (plural): {types:?}");
-        return types;
-    }
-
-    // For mutate operations, look for "component" (singular)
-    if let Some(component) = params.get("component").and_then(Value::as_str) {
-        let types = vec![component.to_string()];
-        debug!("extract_type_names: Found component (singular): {types:?}");
-        return types;
-    }
-
-    // For resource operations, look for "resource"
-    if let Some(resource) = params.get("resource").and_then(Value::as_str) {
-        let types = vec![resource.to_string()];
-        debug!("extract_type_names: Found resource: {types:?}");
-        return types;
-    }
-
-    debug!("extract_type_names: No component/resource types found in params");
-    Vec::new()
-}
-
 /// Check if any types lack serialization support using pre-fetched type infos
-fn check_serialization_errors_with_type_infos(
+fn check_serialization_support(
     method: &str,
-    type_infos: &std::collections::HashMap<String, super::unified_types::UnifiedTypeInfo>,
+    type_infos: &HashMap<String, UnifiedTypeInfo>,
 ) -> Option<String> {
     debug!("Checking for serialization errors using pre-fetched type infos");
 
@@ -263,13 +192,13 @@ async fn execute_exception_path(
     method: String,
     original_params: Option<Value>,
     error: BrpResult,
-    type_infos: std::collections::HashMap<String, super::unified_types::UnifiedTypeInfo>,
+    type_infos: HashMap<String, super::unified_types::UnifiedTypeInfo>,
     port: Option<u16>,
 ) -> FormatRecoveryResult {
     tracing::trace!("Discovery: Exception Path: Entering format recovery for method '{method}'");
 
     // Use the new recovery engine with 3-level decision tree, passing pre-fetched type infos
-    super::recovery_engine::attempt_format_recovery_with_type_infos(
+    recovery_engine::attempt_format_recovery_with_type_infos(
         &method,
         original_params,
         error,

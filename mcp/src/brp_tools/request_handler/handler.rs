@@ -1,6 +1,5 @@
+use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::{Value, json};
 use tracing::{debug, trace};
 
@@ -9,14 +8,14 @@ use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
 use super::traits::ExtractedParams;
-use crate::BrpMcpService;
 use crate::brp_tools::constants::{
     JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
-use crate::brp_tools::support::response_formatter::{BrpMetadata, ResponseFormatter};
+use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::large_response::handle_brp_large_response;
+use crate::tools::TOOL_BRP_EXECUTE;
 
 /// Result of parameter extraction from a request
 pub struct RequestParams {
@@ -186,7 +185,6 @@ fn process_success_response(
 fn process_error_response(
     mut error_info: BrpError,
     enhanced_result: &EnhancedBrpResult,
-    _formatter: &ResponseFormatter,
     metadata: &BrpMetadata,
 ) -> CallToolResult {
     let original_error_message = error_info.message.clone();
@@ -230,8 +228,6 @@ fn process_error_response(
                 );
             }
 
-            // Debug info is now handled via tracing system
-
             // Add format corrections
             if !enhanced_result.format_corrections.is_empty() {
                 let corrections = enhanced_result
@@ -250,14 +246,12 @@ fn process_error_response(
     }
 
     // Route ALL errors through the enhanced format_error_default
-    crate::brp_tools::support::response_formatter::format_error_default(error_info, metadata)
+    response_formatter::format_error_default(error_info, metadata)
 }
 
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_request(
-    _service: &BrpMcpService,
     request: rmcp::model::CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
     config: &BrpHandlerConfig,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
@@ -300,11 +294,10 @@ pub async fn handle_brp_request(
     let formatter_context = FormatterContext {
         params: Some(context_params),
     };
-    let formatter = config.formatter_factory.create(formatter_context.clone());
 
     // Use "brp_execute" for dynamic methods for special error formatting
     let metadata_method = if extracted.method.is_some() {
-        "brp_execute"
+        TOOL_BRP_EXECUTE
     } else {
         &method_name
     };
@@ -323,7 +316,6 @@ pub async fn handle_brp_request(
         BrpResult::Error(error_info) => Ok(process_error_response(
             error_info.clone(),
             &enhanced_result,
-            &formatter,
             &metadata,
         )),
     }

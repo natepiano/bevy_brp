@@ -18,12 +18,12 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - Verify fallback to process termination
 - Check response indicates method: "process_kill" with warning about clean shutdown
 
-### 3. Tier 3/4 Format Discovery Fallback
+### 3. Tier 3 Format Discovery Fallback
 - Enable debug tracing: `mcp__brp__brp_set_tracing_level` with `level: "debug"`
 - Execute `mcp__brp__bevy_spawn` with wrong Transform format
 - Check trace log file shows "FAILED Tier 2: Direct Discovery"
 - Verify fallback to pattern matching succeeds
-- Check trace log shows "SUCCESS Tier 3/4" messages
+- Check trace log shows "SUCCESS Tier 3" messages
 
 ### 4. Basic BRP Functionality (Should Work)
 - Execute `mcp__brp__bevy_list` to verify basic BRP works

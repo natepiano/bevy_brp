@@ -15,6 +15,7 @@ use tracing::debug;
 
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
+use crate::brp_tools::request_handler::format_discovery::extras_integration;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::tools::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
@@ -30,7 +31,7 @@ pub async fn attempt_format_recovery_with_type_infos(
     port: Option<u16>,
 ) -> FormatRecoveryResult {
     debug!(
-        "Recovery Engine: Starting 3-level recovery for method '{method}' with {} pre-fetched type infos",
+        "Recovery Engine: Starting multi-level recovery for method '{method}' with {} pre-fetched type info(s)",
         pre_fetched_type_infos.len()
     );
 
@@ -175,7 +176,7 @@ async fn execute_level_2_direct_discovery(
         debug!("Level 2: Attempting direct discovery for '{type_name}'");
 
         // Call extras_integration to discover the type format
-        match super::extras_integration::discover_type_format(type_name, port).await {
+        match extras_integration::discover_type_format(type_name, port).await {
             Ok(Some(mut discovered_info)) => {
                 debug!("Level 2: Successfully discovered type information for '{type_name}'");
 
@@ -324,6 +325,51 @@ fn execute_level_3_pattern_transformations(
     }
 }
 
+/// Handle mutation-specific errors
+fn handle_mutation_specific_errors(
+    method: &str,
+    mutation_path: Option<&str>,
+    error_pattern: &super::detection::ErrorPattern,
+    type_name: &str,
+) -> Option<CorrectionResult> {
+    if !matches!(
+        method,
+        BRP_METHOD_MUTATE_COMPONENT | BRP_METHOD_MUTATE_RESOURCE
+    ) {
+        return None;
+    }
+
+    let attempted_path = mutation_path?;
+
+    match error_pattern {
+        super::detection::ErrorPattern::MissingField { field_name, .. }
+        | super::detection::ErrorPattern::AccessError {
+            access: field_name, ..
+        } => {
+            debug!(
+                "Level 3: Mutation path error - invalid path '{attempted_path}' (field: '{field_name}')"
+            );
+
+            // Create a helpful error message for invalid mutation paths
+            let hint = format!(
+                "Invalid mutation path '{attempted_path}' for type '{type_name}'. The field '{field_name}' does not exist. \
+                Use bevy_brp_extras/discover_format to find valid mutation paths."
+            );
+
+            let type_info = super::unified_types::UnifiedTypeInfo::new(
+                type_name.to_string(),
+                super::unified_types::DiscoverySource::PatternMatching,
+            );
+
+            Some(CorrectionResult::MetadataOnly {
+                type_info,
+                reason: hint,
+            })
+        }
+        _ => None,
+    }
+}
+
 /// Try to generate pattern-based corrections for well-known types
 fn attempt_pattern_based_correction(
     type_name: &str,
@@ -346,39 +392,10 @@ fn attempt_pattern_based_correction(
     debug!("Level 3: Identified error pattern: {error_pattern:?}");
 
     // Step 1.5: Handle mutation-specific errors
-    if matches!(
-        method,
-        BRP_METHOD_MUTATE_COMPONENT | BRP_METHOD_MUTATE_RESOURCE
-    ) {
-        if let Some(attempted_path) = mutation_path {
-            match &error_pattern {
-                super::detection::ErrorPattern::MissingField { field_name, .. }
-                | super::detection::ErrorPattern::AccessError {
-                    access: field_name, ..
-                } => {
-                    debug!(
-                        "Level 3: Mutation path error - invalid path '{attempted_path}' (field: '{field_name}')"
-                    );
-
-                    // Create a helpful error message for invalid mutation paths
-                    let hint = format!(
-                        "Invalid mutation path '{attempted_path}' for type '{type_name}'. The field '{field_name}' does not exist. \
-                        Use bevy_brp_extras/discover_format to find valid mutation paths."
-                    );
-
-                    let type_info = super::unified_types::UnifiedTypeInfo::new(
-                        type_name.to_string(),
-                        super::unified_types::DiscoverySource::PatternMatching,
-                    );
-
-                    return Some(CorrectionResult::MetadataOnly {
-                        type_info,
-                        reason: hint,
-                    });
-                }
-                _ => {}
-            }
-        }
+    if let Some(result) =
+        handle_mutation_specific_errors(method, mutation_path, &error_pattern, type_name)
+    {
+        return Some(result);
     }
 
     // Step 2: Apply transformation if we have an original value
@@ -398,6 +415,36 @@ fn attempt_pattern_based_correction(
     // Step 3: Use type info from registry or create basic one as fallback
     let type_info_owned = create_basic_type_info(type_name);
     let type_info_ref = type_info.unwrap_or(&type_info_owned);
+
+    // Step 3.5: Try UnifiedTypeInfo's transform_value() first if available
+    if let Some(type_info) = type_info {
+        if let Some(corrected_value) = type_info.transform_value(original_value) {
+            debug!(
+                "Level 3: Successfully transformed value using UnifiedTypeInfo.transform_value()"
+            );
+
+            let correction_info = CorrectionInfo {
+                type_name:         type_name.to_string(),
+                original_value:    original_value.clone(),
+                corrected_value:   corrected_value.clone(),
+                hint:              format!(
+                    "Transformed {} format for type '{}'",
+                    if original_value.is_object() {
+                        "object"
+                    } else {
+                        "value"
+                    },
+                    type_name
+                ),
+                target_type:       type_name.to_string(),
+                corrected_format:  Some(corrected_value),
+                type_info:         Some(type_info.clone()),
+                correction_method: CorrectionMethod::ObjectToArray,
+            };
+
+            return Some(CorrectionResult::Applied { correction_info });
+        }
+    }
 
     // Step 4: Try transformation with type information
     if let Some((corrected_value, description)) = transformer_registry.transform_with_type_info(
@@ -446,85 +493,6 @@ fn attempt_pattern_based_correction(
         "Level 3: No transformer could handle the error pattern, falling back to pattern matching"
     );
     fallback_pattern_based_correction(type_name)
-}
-
-/// Create a correction for math vector types (Vec2, Vec3, Vec4)
-fn create_math_vector_correction(type_name: &str) -> CorrectionResult {
-    debug!("Level 3: Detected math type '{type_name}', providing array format guidance");
-
-    let examples = create_vector_examples(type_name);
-    let type_info = create_math_type_info(type_name, examples, "Math");
-
-    CorrectionResult::MetadataOnly {
-        type_info,
-        reason: format!(
-            "Math type '{type_name}' typically uses array format [x, y, ...] instead of object format"
-        ),
-    }
-}
-
-/// Create a correction for quaternion types
-fn create_quaternion_correction(type_name: &str) -> CorrectionResult {
-    debug!("Level 3: Detected quaternion type '{type_name}', providing array format guidance");
-
-    let mut examples = std::collections::HashMap::new();
-    examples.insert("spawn".to_string(), serde_json::json!([0.0, 0.0, 0.0, 1.0]));
-
-    let type_info = create_math_type_info(type_name, examples, "Math");
-
-    CorrectionResult::MetadataOnly {
-        type_info,
-        reason: format!(
-            "Quaternion type '{type_name}' uses array format [x, y, z, w] where w is typically 1.0 for identity"
-        ),
-    }
-}
-
-/// Create examples for vector types based on their dimensions
-fn create_vector_examples(type_name: &str) -> std::collections::HashMap<String, serde_json::Value> {
-    let mut examples = std::collections::HashMap::new();
-
-    if type_name.contains("Vec2") {
-        examples.insert("spawn".to_string(), serde_json::json!([1.0, 2.0]));
-    } else if type_name.contains("Vec3") {
-        examples.insert("spawn".to_string(), serde_json::json!([1.0, 2.0, 3.0]));
-    } else if type_name.contains("Vec4") {
-        examples.insert("spawn".to_string(), serde_json::json!([1.0, 2.0, 3.0, 4.0]));
-    }
-
-    examples
-}
-
-/// Create a `UnifiedTypeInfo` for math types
-fn create_math_type_info(
-    type_name: &str,
-    examples: std::collections::HashMap<String, serde_json::Value>,
-    category: &str,
-) -> super::unified_types::UnifiedTypeInfo {
-    super::unified_types::UnifiedTypeInfo {
-        type_name:            type_name.to_string(),
-        registry_status:      super::unified_types::RegistryStatus {
-            in_registry: true,
-            has_reflect: true,
-            type_path:   Some(type_name.to_string()),
-        },
-        serialization:        super::unified_types::SerializationSupport {
-            has_serialize:   true,
-            has_deserialize: true,
-            brp_compatible:  true,
-        },
-        format_info:          super::unified_types::FormatInfo {
-            examples,
-            mutation_paths: std::collections::HashMap::new(),
-            original_format: None,
-            corrected_format: None,
-        },
-        supported_operations: vec!["spawn".to_string(), "insert".to_string()],
-        type_category:        category.to_string(),
-        child_types:          std::collections::HashMap::new(),
-        enum_info:            None,
-        discovery_source:     super::unified_types::DiscoverySource::PatternMatching,
-    }
 }
 
 /// Extract original values from BRP method parameters for transformer use
@@ -581,12 +549,36 @@ fn create_basic_type_info(type_name: &str) -> super::unified_types::UnifiedTypeI
 fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult> {
     match type_name {
         // Math types - common object vs array issues
-        t if t.contains("Vec2") || t.contains("Vec3") || t.contains("Vec4") => {
-            Some(create_math_vector_correction(t))
-        }
+        t if t.contains("Vec2")
+            || t.contains("Vec3")
+            || t.contains("Vec4")
+            || t.contains("Quat") =>
+        {
+            debug!("Level 3: Detected math type '{t}', providing array format guidance");
 
-        // Quaternion types
-        t if t.contains("Quat") => Some(create_quaternion_correction(t)),
+            let mut type_info = UnifiedTypeInfo::new(
+                t.to_string(),
+                super::unified_types::DiscoverySource::PatternMatching,
+            );
+
+            // Set type category
+            type_info.type_category = "MathType".to_string();
+
+            // Ensure examples are generated
+            type_info.ensure_examples();
+
+            let reason = if t.contains("Quat") {
+                format!(
+                    "Quaternion type '{t}' uses array format [x, y, z, w] where w is typically 1.0 for identity"
+                )
+            } else {
+                format!(
+                    "Math type '{t}' typically uses array format [x, y, ...] instead of object format"
+                )
+            };
+
+            Some(CorrectionResult::MetadataOnly { type_info, reason })
+        }
 
         // Other types - no specific patterns yet
         _ => {
@@ -731,13 +723,22 @@ fn extract_component_value(method: &str, params: &Value, type_name: &str) -> Opt
 
 /// Build a corrected value from type info for guidance
 fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &str) -> Value {
+    // Clone the type info so we can call ensure_examples on it
+    let mut type_info_copy = type_info.clone();
+    type_info_copy.ensure_examples();
+
     // Check if we have examples for this method
-    if let Some(example) = type_info.format_info.examples.get(method) {
+    if let Some(example) = type_info_copy.format_info.examples.get(method) {
         return example.clone();
     }
 
     // For mutations, provide mutation path guidance
     if method == BRP_METHOD_MUTATE_COMPONENT || method == BRP_METHOD_MUTATE_RESOURCE {
+        // Check if we have a mutate example after ensure_examples
+        if let Some(mutate_example) = type_info_copy.format_info.examples.get("mutate") {
+            return mutate_example.clone();
+        }
+
         let mut guidance = serde_json::json!({
             "hint": "Use appropriate path and value for mutation"
         });

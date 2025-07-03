@@ -3,6 +3,7 @@
 use serde_json::{Map, Value};
 
 use super::super::detection::ErrorPattern;
+use super::super::unified_types::{DiscoverySource, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
 use crate::brp_tools::request_handler::format_discovery::constants::TRANSFORM_SEQUENCE_F32_COUNT;
@@ -49,6 +50,20 @@ impl MathTypeTransformer {
         Self
     }
 
+    /// Use `UnifiedTypeInfo` to transform math types
+    fn try_unified_transform(type_name: &str, value: &Value) -> Option<(Value, String)> {
+        // Create a UnifiedTypeInfo for the math type
+        let mut type_info =
+            UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching);
+        type_info.type_category = "Math".to_string();
+
+        // Try transformation using UnifiedTypeInfo
+        type_info.transform_value(value).map(|transformed| {
+            let hint = format!("Transformed {type_name} using UnifiedTypeInfo");
+            (transformed, hint)
+        })
+    }
+
     /// Convert object values to array format for math types
     /// Handles Vec2 [x, y], Vec3 [x, y, z], Vec4/Quat [x, y, z, w]
     fn convert_to_math_type_array(value: &Value, math_type: &str) -> Option<Value> {
@@ -67,6 +82,14 @@ impl MathTypeTransformer {
         original_value: &Value,
         math_type: &str,
     ) -> Option<(Value, String)> {
+        // First try UnifiedTypeInfo transformation
+        if let Some(result) =
+            Self::try_unified_transform(&format!("glam::{math_type}"), original_value)
+        {
+            return Some(result);
+        }
+
+        // Fallback to legacy implementation for compatibility
         match math_type {
             "Vec3" => Self::convert_to_math_type_array(original_value, "Vec3")
                 .map(|arr| (arr, type_expects_array(type_name, "Vec3") + " [x, y, z]")),
@@ -86,7 +109,30 @@ impl MathTypeTransformer {
         original_value: &Value,
         expected_count: usize,
     ) -> Option<(Value, String)> {
-        // Early return for non-object values
+        // First try using UnifiedTypeInfo for Transform
+        let mut type_info = UnifiedTypeInfo::new(
+            "bevy_transform::components::transform::Transform".to_string(),
+            DiscoverySource::PatternMatching,
+        );
+        type_info.type_category = "Struct".to_string();
+
+        // Add child types for Transform
+        type_info
+            .child_types
+            .insert("translation".to_string(), "glam::Vec3".to_string());
+        type_info
+            .child_types
+            .insert("rotation".to_string(), "glam::Quat".to_string());
+        type_info
+            .child_types
+            .insert("scale".to_string(), "glam::Vec3".to_string());
+
+        if let Some(transformed) = type_info.transform_value(original_value) {
+            let hint = format!("`{type_name}` Transform converted to proper array format");
+            return Some((transformed, hint));
+        }
+
+        // Fallback to legacy implementation if UnifiedTypeInfo doesn't work
         let Value::Object(obj) = original_value else {
             return None;
         };
@@ -146,7 +192,15 @@ impl FormatTransformer for MathTypeTransformer {
     }
 
     fn transform(&self, value: &Value) -> Option<(Value, String)> {
-        // Try different math type conversions
+        // Try different math type conversions using UnifiedTypeInfo first
+        for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
+            if let Some(result) = Self::try_unified_transform(&format!("glam::{math_type}"), value)
+            {
+                return Some(result);
+            }
+        }
+
+        // Fallback to legacy conversion
         for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
             if let Some(converted) = Self::convert_to_math_type_array(value, math_type) {
                 let hint = messages::converted_to_format(&format!("{math_type} array"));

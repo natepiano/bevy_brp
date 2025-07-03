@@ -295,9 +295,7 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
 
         result
     } else {
-        let result = BrpResult::Success(brp_response.result);
-
-        result
+        BrpResult::Success(brp_response.result)
     }
 }
 

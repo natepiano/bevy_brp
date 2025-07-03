@@ -137,7 +137,7 @@ pub async fn generate_tool_handler(
     match &def.handler {
         HandlerType::Brp { method } => {
             // Handle BRP method calls
-            generate_brp_handler(def, service, request, context, method).await
+            generate_brp_handler(def, request, method).await
         }
         HandlerType::Local { handler } => {
             // Handle local method calls
@@ -149,9 +149,7 @@ pub async fn generate_tool_handler(
 /// Generate a BRP handler
 async fn generate_brp_handler(
     def: &BrpToolDef,
-    service: &BrpMcpService,
     request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
     method: &'static str,
 ) -> Result<CallToolResult, McpError> {
     // Create the parameter extractor based on the definition
@@ -192,7 +190,7 @@ async fn generate_brp_handler(
         formatter_factory: formatter_builder.build(),
     };
 
-    handle_brp_request(service, request, context, &config).await
+    handle_brp_request(request, &config).await
 }
 
 /// Generate a local handler

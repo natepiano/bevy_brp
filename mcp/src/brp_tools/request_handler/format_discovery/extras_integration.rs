@@ -147,9 +147,12 @@ fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Optio
 
 /// Create correction from discovered type info
 pub fn create_correction_from_discovery(
-    type_info: UnifiedTypeInfo,
+    mut type_info: UnifiedTypeInfo,
     original_value: Option<Value>,
 ) -> CorrectionResult {
+    // Ensure examples are generated
+    type_info.ensure_examples();
+
     // Check if this is an enum with variants - create enum-specific correction
     if let Some(enum_info) = &type_info.enum_info {
         let variant_names: Vec<String> =
