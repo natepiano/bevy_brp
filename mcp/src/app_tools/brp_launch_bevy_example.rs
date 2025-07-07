@@ -12,7 +12,8 @@ use crate::BrpMcpService;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
-use crate::support::{params, service};
+use crate::support::params;
+use crate::service;
 
 pub async fn handle(
     service: &BrpMcpService,

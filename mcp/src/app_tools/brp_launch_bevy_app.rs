@@ -13,7 +13,8 @@ use crate::constants::{
     DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::{params, service};
+use crate::support::params;
+use crate::service;
 
 pub async fn handle(
     service: &BrpMcpService,

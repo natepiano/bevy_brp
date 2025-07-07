@@ -12,8 +12,8 @@ const MAX_CHUNK_SIZE: usize = 1024 * 1024;
 /// Maximum size for the total buffer when processing incomplete lines (10MB)
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
-use super::logger::{self as watch_logger, BufferedWatchLogger};
-use super::manager::{WATCH_MANAGER, WatchInfo};
+use crate::brp_tools::watch::logger::{self as watch_logger, BufferedWatchLogger};
+use crate::brp_tools::watch::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools::support::{BrpJsonRpcBuilder, http_client};
 use crate::error::{Error, Result};
 use crate::tools::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};

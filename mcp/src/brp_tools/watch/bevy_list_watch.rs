@@ -43,14 +43,14 @@ pub async fn handle(
     let port = params::extract_optional_u16(&arguments, JSON_FIELD_PORT, DEFAULT_BRP_PORT);
 
     // Start the watch task
-    let result = super::support::start_list_watch_task(entity_id, port, Some(0))
+    let result = super::start_list_watch_task(entity_id, port, Some(0))
         .await
         .map_err(|e| {
             crate::error::Error::WatchOperation(format!(
                 "Failed to start list watch for entity {entity_id}: {e}"
             ))
         });
-    Ok(super::support::format_watch_start_response(
+    Ok(super::format_watch_start_response(
         result,
         "list watch",
         entity_id,

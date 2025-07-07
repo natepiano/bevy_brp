@@ -5,7 +5,7 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
 
-use super::support::manager::WATCH_MANAGER;
+use super::manager::WATCH_MANAGER;
 use crate::BrpMcpService;
 use crate::brp_tools::constants::JSON_FIELD_WATCH_ID;
 use crate::support::{params, schema};
@@ -42,5 +42,5 @@ pub async fn handle(
             crate::error::Error::WatchOperation(format!("Failed to stop watch {watch_id}: {e}"))
         })
     };
-    Ok(super::support::format_watch_stop_response(result, watch_id))
+    Ok(super::format_watch_stop_response(result, watch_id))
 }

@@ -13,7 +13,7 @@ use super::scanning;
 use crate::BrpMcpService;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
-use crate::support::service;
+use crate::service;
 
 /// Generic handler for listing items using a collection strategy
 pub async fn handle_listing<S: CollectionStrategy>(

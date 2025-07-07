@@ -35,7 +35,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - Test spawn with components lacking Serialize/Deserialize traits
 - Try spawning with Visibility component
 - Verify error includes component name and mentions missing Serialize/Deserialize traits
-- Confirm error provides actionable guidance (e.g., "Add #[derive(Serialize, Deserialize)]")
+- Confirm error provides standard guidance for adding Serialize/Deserialize traits (this is the correct generic message regardless of whether the component is user-defined or from Bevy core)
 
 ### 6. Path Error Discovery
 - Execute component mutation with wrong path (e.g., `.0.red` for ClearColor)
@@ -50,7 +50,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - ✅ Trace log clearly shows tier progression (failed Tier 2 → success Tier 3/4)
 - ✅ Basic BRP functionality works without extras
 - ✅ Spawn with non-serializable components fails with helpful error mentioning missing traits
-- ✅ Error messages provide actionable guidance for fixing serialization issues
+- ✅ Error messages provide standard guidance for adding Serialize/Deserialize traits (generic message applies to all components)
 - ✅ Path error suggestions are accurate
 
 ## Failure Criteria
