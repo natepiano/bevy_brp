@@ -1,0 +1,142 @@
+[
+  {
+    "id": "terminal_title",
+    "content": "Set terminal title: run `echo -e \"\\e]2;Implementation: Fix Format Correction Error Responses\\007\"` to set terminal title",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "meta_guidance",
+    "content": "META: Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase1_add_variant",
+    "content": "Phase 1: Add CorrectionFailed variant to FormatRecoveryResult enum in flow_types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase1_build",
+    "content": "Build and fix any compile errors and any compile warnings after adding CorrectionFailed variant",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2_update_retry",
+    "content": "Phase 2: Update recovery_engine.rs retry failure logic (line ~940) to return CorrectionFailed instead of NotRecoverable when retry fails",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2_build",
+    "content": "Build and fix any compile errors and any compile warnings after updating recovery engine retry logic",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3_add_handling",
+    "content": "Phase 3: Add CorrectionFailed handling to convert_recovery_to_enhanced_result() function in engine.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3_build",
+    "content": "Build and fix any compile errors and any compile warnings after adding CorrectionFailed conversion handling",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4_add_enhance_helper",
+    "content": "Phase 4: Add enhance_error_with_correction_info() helper function in engine.rs to enrich retry errors with correction metadata",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4_build",
+    "content": "Build and fix any compile errors and any compile warnings after adding error enhancement helper function",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5_add_extract_helper",
+    "content": "Phase 5: Add extract_error_message() helper function in engine.rs to extract error messages from BrpResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5_build",
+    "content": "Build and fix any compile errors and any compile warnings after adding error message extraction helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_check",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_fix",
+    "content": "Fix any clippy issues (do not use dead code attributes or underscores - remove unused code)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "format_code",
+    "content": "Run `cargo +nightly fmt`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "run_tests",
+    "content": "Run `cargo nextest run`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_tests",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code_review_prep",
+    "content": "STOP work here and return control to main agent for code review coordination",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code_review_task",
+    "content": "Task a new subagent to do a code review of the changes - focus on duplication, complexity, and validating implementation plan was followed. Emphasize read-only analysis.",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "code_review_stop",
+    "content": "When code review subagent returns, STOP and review the suggested changes with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
