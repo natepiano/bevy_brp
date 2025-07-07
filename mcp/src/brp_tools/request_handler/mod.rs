@@ -12,5 +12,6 @@ pub use extractors::{
     BrpExecuteExtractor, EntityParamExtractor, PassthroughExtractor, RegistrySchemaParamExtractor,
     ResourceParamExtractor, SimplePortExtractor,
 };
+pub use format_discovery::FormatCorrectionStatus;
 pub use handler::handle_brp_request;
 pub use traits::ParamExtractor;

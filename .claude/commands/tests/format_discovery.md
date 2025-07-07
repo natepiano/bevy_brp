@@ -66,7 +66,7 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
       - Error message about missing required fields
       - `format_corrected: false` in error data
       - `hint` field with correct format example
-  - **Test 3 - Name with wrong type**: Use `{"bevy_core::name::Name": 123}`
+  - **Test 3 - Name with wrong type**: Use `{"bevy_ecs::name::Name": 123}`
     - Verify error provides guidance about Name expecting a string value
 - Verify all responses demonstrate that ambiguous formats cannot be auto-corrected
 - Confirm each response includes educational guidance via error messages and hints

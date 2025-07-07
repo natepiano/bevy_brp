@@ -36,7 +36,6 @@ macro_rules! define_tool_constants {
             pub const [<BRP_METHOD_EXTRAS_ $method:upper>]: &str = concat!("brp_extras/", stringify!($method));
             pub const [<TOOL_BRP_EXTRAS_ $method:upper>]: &str = concat!("brp_extras_", stringify!($method));
             pub const [<DESC_BRP_EXTRAS_ $method:upper>]: &str = include_help_text!(concat!("brp_tools/brp_extras_", stringify!($method), ".txt"));
-            pub const [<HANDLER_ $method:upper>]: &str = concat!("handler_", stringify!($method));
         }
     };
 
@@ -110,7 +109,15 @@ define_tool_constants!(brp, execute);
 // -----------------------------------------------------------------------------
 
 // Generate tool constants for BRP extras methods
-define_tool_constants!(brp_extras, shutdown);
+define_tool_constants!(brp_extras, discover_format);
+define_tool_constants!(brp_extras, screenshot);
+define_tool_constants!(brp_extras, send_keys);
+define_tool_constants!(brp_extras, set_debug_mode);
+
+// Manual constant for BRP extras shutdown method (used by app shutdown tool)
+// We don't want to expose it twice as an mcp tool so here we just define the method name only
+// it will be called in app_tools::brp_shutdown
+pub const BRP_METHOD_EXTRAS_SHUTDOWN: &str = "brp_extras/shutdown";
 
 // -----------------------------------------------------------------------------
 // BRP Watch Assist Tools (not direct protocol methods)
@@ -130,6 +137,7 @@ define_tool_constants!(app, list_bevy_examples);
 define_tool_constants!(app, list_brp_apps);
 define_tool_constants!(app, launch_bevy_app);
 define_tool_constants!(app, launch_bevy_example);
+define_tool_constants!(app, shutdown);
 define_tool_constants!(app, status);
 
 // -----------------------------------------------------------------------------

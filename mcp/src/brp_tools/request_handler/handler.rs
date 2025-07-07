@@ -120,11 +120,7 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 }
 
 /// Add only format corrections to response data (not debug info)
-fn add_format_corrections_only(
-    response_data: &mut Value,
-    format_corrections: &[FormatCorrection],
-    format_corrected: bool,
-) {
+fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[FormatCorrection]) {
     let corrections_value = if format_corrections.is_empty() {
         json!([])
     } else {
@@ -139,16 +135,12 @@ fn add_format_corrections_only(
     // If response_data is an object, add fields
     if let Value::Object(map) = response_data {
         map.insert(JSON_FIELD_FORMAT_CORRECTIONS.to_string(), corrections_value);
-        map.insert(
-            JSON_FIELD_FORMAT_CORRECTED.to_string(),
-            json!(format_corrected),
-        );
+        // Note: format_corrected is now passed via FormatterContext, not serialized here
     } else {
         // If not an object, wrap it
         let wrapped = json!({
             JSON_FIELD_DATA: response_data.clone(),
             JSON_FIELD_FORMAT_CORRECTIONS: corrections_value,
-            JSON_FIELD_FORMAT_CORRECTED: format_corrected
         });
         *response_data = wrapped;
     }
@@ -173,15 +165,12 @@ fn process_success_response(
     // Debug info is now logged via tracing during execution
 
     // Add format corrections only (not debug info, as it will be handled separately)
-    add_format_corrections_only(
-        &mut response_data,
-        &enhanced_result.format_corrections,
-        enhanced_result.format_corrected,
-    );
+    add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
 
-    // Create new FormatterContext
+    // Create new FormatterContext with format_corrected status
     let new_formatter_context = FormatterContext {
-        params: context.formatter_context.params.clone(),
+        params:           context.formatter_context.params.clone(),
+        format_corrected: Some(enhanced_result.format_corrected.clone()),
     };
 
     // Create new formatter with updated context
@@ -312,7 +301,8 @@ pub async fn handle_brp_request(
     }
 
     let formatter_context = FormatterContext {
-        params: Some(context_params),
+        params:           Some(context_params),
+        format_corrected: None, // Initial context doesn't have format correction status yet
     };
 
     // Use "brp_execute" for dynamic methods for special error formatting

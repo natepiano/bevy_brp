@@ -223,7 +223,7 @@ async fn generate_local_handler(
         HANDLER_LAUNCH_BEVY_EXAMPLE => {
             app_tools::brp_launch_bevy_example::handle(service, request, context).await
         }
-        HANDLER_SHUTDOWN => app_tools::brp_extras_shutdown::handle(request).await,
+        HANDLER_SHUTDOWN => app_tools::brp_shutdown::handle(request).await,
         HANDLER_STATUS => app_tools::brp_status::handle(request).await,
         HANDLER_GET_TRACE_LOG_PATH => log_tools::get_trace_log_path::handle(),
         HANDLER_SET_TRACING_LEVEL => log_tools::set_tracing_level::handle(&request),
@@ -372,7 +372,10 @@ mod tests {
     fn test_convert_extractor_type_pass_through_result() {
         let extractor = convert_extractor_type(&ExtractorType::PassThroughResult);
         let test_data = json!({"key": "value"});
-        let context = FormatterContext { params: None };
+        let context = FormatterContext {
+            params:           None,
+            format_corrected: None,
+        };
 
         let result = extractor(&test_data, &context);
         assert_eq!(result, test_data);
@@ -383,7 +386,8 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("components"));
         let test_data = json!({});
         let context = FormatterContext {
-            params: Some(json!({"components": ["Component1", "Component2"]})),
+            params:           Some(json!({"components": ["Component1", "Component2"]})),
+            format_corrected: None,
         };
 
         let result = extractor(&test_data, &context);
@@ -395,7 +399,8 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("unknown"));
         let test_data = json!({});
         let context = FormatterContext {
-            params: Some(json!({"components": ["Component1"]})),
+            params:           Some(json!({"components": ["Component1"]})),
+            format_corrected: None,
         };
 
         let result = extractor(&test_data, &context);
@@ -407,7 +412,8 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("path"));
         let test_data = json!({});
         let context = FormatterContext {
-            params: Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
+            params:           Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
+            format_corrected: None,
         };
 
         let result = extractor(&test_data, &context);
@@ -419,7 +425,8 @@ mod tests {
         let extractor = convert_extractor_type(&ExtractorType::ParamFromContext("port"));
         let test_data = json!({});
         let context = FormatterContext {
-            params: Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
+            params:           Some(json!({"path": "/tmp/screenshot.png", "port": 15702})),
+            format_corrected: None,
         };
 
         let result = extractor(&test_data, &context);
@@ -429,7 +436,10 @@ mod tests {
     #[test]
     fn test_extract_entity_from_response() {
         let data = json!({"entity": 123});
-        let context = FormatterContext { params: None };
+        let context = FormatterContext {
+            params:           None,
+            format_corrected: None,
+        };
 
         let result = extract_entity_from_response(&data, &context);
         assert_eq!(result, json!(123));
@@ -438,7 +448,10 @@ mod tests {
     #[test]
     fn test_extract_entity_from_response_missing() {
         let data = json!({});
-        let context = FormatterContext { params: None };
+        let context = FormatterContext {
+            params:           None,
+            format_corrected: None,
+        };
 
         let result = extract_entity_from_response(&data, &context);
         assert_eq!(result, json!(0));
@@ -450,7 +463,10 @@ mod tests {
             {"Component1": {}, "Component2": {}},
             {"Component1": {}}
         ]);
-        let context = FormatterContext { params: None };
+        let context = FormatterContext {
+            params:           None,
+            format_corrected: None,
+        };
 
         let result = extract_query_component_count(&data, &context);
         assert_eq!(result, json!(3)); // 2 + 1 components
@@ -461,7 +477,8 @@ mod tests {
         let data = json!({});
         let test_params = json!({"filter": {"with": ["Transform"]}});
         let context = FormatterContext {
-            params: Some(test_params.clone()),
+            params:           Some(test_params.clone()),
+            format_corrected: None,
         };
 
         let result = extract_query_params_from_context(&data, &context);
@@ -472,7 +489,8 @@ mod tests {
     fn test_extract_field_from_context() {
         let data = json!({});
         let context = FormatterContext {
-            params: Some(json!({"components": ["Transform"], "entity": 42})),
+            params:           Some(json!({"components": ["Transform"], "entity": 42})),
+            format_corrected: None,
         };
 
         let result = extract_field_from_context("components", &data, &context);

@@ -29,24 +29,27 @@ use crate::brp_tools::constants::{
     JSON_FIELD_DESTROYED_ENTITY, JSON_FIELD_ENTITY, JSON_FIELD_METADATA, JSON_FIELD_PATH,
     JSON_FIELD_PORT, JSON_FIELD_RESOURCE, JSON_FIELD_RESOURCES, JSON_FIELD_VALUE,
     PARAM_COMPONENT_COUNT, PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY_COUNT, PARAM_FILTER,
-    PARAM_METHOD, PARAM_PARAMS, PARAM_PARENT, PARAM_QUERY_PARAMS, PARAM_RESULT,
-    PARAM_SPAWNED_ENTITY, PARAM_STRICT, PARAM_WITH_CRATES, PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES,
-    PARAM_WITHOUT_TYPES,
+    PARAM_FORMATS, PARAM_METHOD, PARAM_PARAMS, PARAM_PARENT, PARAM_QUERY_PARAMS, PARAM_RESULT,
+    PARAM_SPAWNED_ENTITY, PARAM_STRICT, PARAM_TYPES, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
+    PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::constants::PARAM_BINARY_PATH;
 use crate::tools::{
-    BRP_METHOD_DESTROY, BRP_METHOD_GET, BRP_METHOD_GET_RESOURCE, BRP_METHOD_INSERT,
-    BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_LIST, BRP_METHOD_LIST_RESOURCES,
-    BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_QUERY,
-    BRP_METHOD_REGISTRY_SCHEMA, BRP_METHOD_REMOVE, BRP_METHOD_REMOVE_RESOURCE, BRP_METHOD_REPARENT,
-    BRP_METHOD_RPC_DISCOVER, BRP_METHOD_SPAWN, DESC_BEVY_DESTROY, DESC_BEVY_GET,
-    DESC_BEVY_GET_RESOURCE, DESC_BEVY_INSERT, DESC_BEVY_INSERT_RESOURCE, DESC_BEVY_LIST,
-    DESC_BEVY_LIST_RESOURCES, DESC_BEVY_MUTATE_COMPONENT, DESC_BEVY_MUTATE_RESOURCE,
-    DESC_BEVY_QUERY, DESC_BEVY_REGISTRY_SCHEMA, DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE,
-    DESC_BEVY_REPARENT, DESC_BEVY_RPC_DISCOVER, DESC_BEVY_SPAWN, DESC_BRP_EXECUTE,
-    DESC_BRP_EXTRAS_SHUTDOWN, DESC_CLEANUP_LOGS, DESC_GET_TRACE_LOG_PATH, DESC_LAUNCH_BEVY_APP,
-    DESC_LAUNCH_BEVY_EXAMPLE, DESC_LIST_BEVY_APPS, DESC_LIST_BEVY_EXAMPLES, DESC_LIST_BRP_APPS,
-    DESC_LIST_LOGS, DESC_READ_LOG, DESC_SET_TRACING_LEVEL, DESC_STATUS, HANDLER_CLEANUP_LOGS,
+    BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
+    BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
+    BRP_METHOD_GET_RESOURCE, BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_LIST,
+    BRP_METHOD_LIST_RESOURCES, BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE,
+    BRP_METHOD_QUERY, BRP_METHOD_REGISTRY_SCHEMA, BRP_METHOD_REMOVE, BRP_METHOD_REMOVE_RESOURCE,
+    BRP_METHOD_REPARENT, BRP_METHOD_RPC_DISCOVER, BRP_METHOD_SPAWN, DESC_BEVY_DESTROY,
+    DESC_BEVY_GET, DESC_BEVY_GET_RESOURCE, DESC_BEVY_INSERT, DESC_BEVY_INSERT_RESOURCE,
+    DESC_BEVY_LIST, DESC_BEVY_LIST_RESOURCES, DESC_BEVY_MUTATE_COMPONENT,
+    DESC_BEVY_MUTATE_RESOURCE, DESC_BEVY_QUERY, DESC_BEVY_REGISTRY_SCHEMA, DESC_BEVY_REMOVE,
+    DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_REPARENT, DESC_BEVY_RPC_DISCOVER, DESC_BEVY_SPAWN,
+    DESC_BRP_EXECUTE, DESC_BRP_EXTRAS_DISCOVER_FORMAT, DESC_BRP_EXTRAS_SCREENSHOT,
+    DESC_BRP_EXTRAS_SEND_KEYS, DESC_BRP_EXTRAS_SET_DEBUG_MODE, DESC_CLEANUP_LOGS,
+    DESC_GET_TRACE_LOG_PATH, DESC_LAUNCH_BEVY_APP, DESC_LAUNCH_BEVY_EXAMPLE, DESC_LIST_BEVY_APPS,
+    DESC_LIST_BEVY_EXAMPLES, DESC_LIST_BRP_APPS, DESC_LIST_LOGS, DESC_READ_LOG,
+    DESC_SET_TRACING_LEVEL, DESC_SHUTDOWN, DESC_STATUS, HANDLER_CLEANUP_LOGS,
     HANDLER_GET_TRACE_LOG_PATH, HANDLER_LAUNCH_BEVY_APP, HANDLER_LAUNCH_BEVY_EXAMPLE,
     HANDLER_LIST_BEVY_APPS, HANDLER_LIST_BEVY_EXAMPLES, HANDLER_LIST_BRP_APPS, HANDLER_LIST_LOGS,
     HANDLER_READ_LOG, HANDLER_SET_TRACING_LEVEL, HANDLER_SHUTDOWN, HANDLER_STATUS,
@@ -54,10 +57,11 @@ use crate::tools::{
     TOOL_BEVY_INSERT_RESOURCE, TOOL_BEVY_LIST, TOOL_BEVY_LIST_RESOURCES,
     TOOL_BEVY_MUTATE_COMPONENT, TOOL_BEVY_MUTATE_RESOURCE, TOOL_BEVY_QUERY,
     TOOL_BEVY_REGISTRY_SCHEMA, TOOL_BEVY_REMOVE, TOOL_BEVY_REMOVE_RESOURCE, TOOL_BEVY_REPARENT,
-    TOOL_BEVY_RPC_DISCOVER, TOOL_BEVY_SPAWN, TOOL_BRP_EXECUTE, TOOL_BRP_EXTRAS_SHUTDOWN,
+    TOOL_BEVY_RPC_DISCOVER, TOOL_BEVY_SPAWN, TOOL_BRP_EXECUTE, TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
+    TOOL_BRP_EXTRAS_SCREENSHOT, TOOL_BRP_EXTRAS_SEND_KEYS, TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
     TOOL_CLEANUP_LOGS, TOOL_GET_TRACE_LOG_PATH, TOOL_LAUNCH_BEVY_APP, TOOL_LAUNCH_BEVY_EXAMPLE,
     TOOL_LIST_BEVY_APPS, TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS, TOOL_LIST_LOGS,
-    TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_STATUS,
+    TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
 
 /// Represents a parameter definition for a BRP tool
@@ -686,6 +690,115 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 }],
             },
         },
+        // bevy_brp_extras/discover_format
+        BrpToolDef {
+            name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
+            description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
+            handler:         HandlerType::Brp {
+                method: BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
+            },
+            params:          vec![
+                ParamDef::string_array(
+                    PARAM_TYPES,
+                    "Array of fully-qualified component type names to discover formats for",
+                    true,
+                ),
+                ParamDef::port(),
+            ],
+            param_extractor: ParamExtractorType::Passthrough,
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::Simple,
+                template:        "Format discovery completed",
+                response_fields: vec![ResponseField {
+                    name:      PARAM_FORMATS,
+                    extractor: ExtractorType::PassThroughResult,
+                }],
+            },
+        },
+        // bevy_screenshot
+        BrpToolDef {
+            name:            TOOL_BRP_EXTRAS_SCREENSHOT,
+            description:     DESC_BRP_EXTRAS_SCREENSHOT,
+            handler:         HandlerType::Brp {
+                method: BRP_METHOD_EXTRAS_SCREENSHOT,
+            },
+            params:          vec![
+                ParamDef::path("File path where the screenshot should be saved"),
+                ParamDef::port(),
+            ],
+            param_extractor: ParamExtractorType::Passthrough,
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::Simple,
+                template:        "Successfully captured screenshot and saved to {path}",
+                response_fields: vec![
+                    ResponseField {
+                        name:      JSON_FIELD_PATH,
+                        extractor: ExtractorType::ParamFromContext(JSON_FIELD_PATH),
+                    },
+                    ResponseField {
+                        name:      JSON_FIELD_PORT,
+                        extractor: ExtractorType::ParamFromContext(JSON_FIELD_PORT),
+                    },
+                ],
+            },
+        },
+        // brp_extras/send_keys
+        BrpToolDef {
+            name:            TOOL_BRP_EXTRAS_SEND_KEYS,
+            description:     DESC_BRP_EXTRAS_SEND_KEYS,
+            handler:         HandlerType::Brp {
+                method: BRP_METHOD_EXTRAS_SEND_KEYS,
+            },
+            params:          vec![
+                ParamDef::string_array("keys", "Array of key code names to send", true),
+                ParamDef::number(
+                    "duration_ms",
+                    "Duration in milliseconds to hold the keys before releasing (default: 100ms, max: 60000ms/1 minute)",
+                    false,
+                ),
+                ParamDef::port(),
+            ],
+            param_extractor: ParamExtractorType::Passthrough,
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::Simple,
+                template:        "Successfully sent keyboard input",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "keys_sent",
+                        extractor: ExtractorType::PassThroughData,
+                    },
+                    ResponseField {
+                        name:      "duration_ms",
+                        extractor: ExtractorType::PassThroughData,
+                    },
+                ],
+            },
+        },
+        // brp_extras/set_debug_mode
+        BrpToolDef {
+            name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
+            description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
+            handler:         HandlerType::Brp {
+                method: BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
+            },
+            params:          vec![
+                ParamDef::boolean(
+                    "enabled",
+                    "Enable or disable debug mode for bevy_brp_extras plugin",
+                    true,
+                ),
+                ParamDef::port(),
+            ],
+            param_extractor: ParamExtractorType::Passthrough,
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::Simple,
+                template:        "Debug mode updated successfully",
+                response_fields: vec![ResponseField {
+                    name:      "debug_enabled",
+                    extractor: ExtractorType::PassThroughData,
+                }],
+            },
+        },
     ]
 }
 
@@ -1016,8 +1129,8 @@ fn get_app_tools() -> Vec<BrpToolDef> {
         },
         // brp_extras_shutdown
         BrpToolDef {
-            name:            TOOL_BRP_EXTRAS_SHUTDOWN,
-            description:     DESC_BRP_EXTRAS_SHUTDOWN,
+            name:            TOOL_SHUTDOWN,
+            description:     DESC_SHUTDOWN,
             handler:         HandlerType::Local {
                 handler: HANDLER_SHUTDOWN,
             },

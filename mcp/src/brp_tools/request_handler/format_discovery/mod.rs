@@ -64,7 +64,8 @@ mod unified_types;
 mod tests;
 
 pub use self::engine::{
-    EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
+    EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus,
+    execute_brp_method_with_format_discovery,
 };
 // Types will be publicly exposed once the refactoring is complete
 #[allow(unused_imports)]

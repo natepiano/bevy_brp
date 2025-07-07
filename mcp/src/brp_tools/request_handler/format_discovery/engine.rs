@@ -65,12 +65,24 @@ pub struct FormatCorrection {
 
 impl FormatCorrection {}
 
+/// Status of format correction attempts
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FormatCorrectionStatus {
+    /// No format correction was attempted
+    NotAttempted,
+    /// Format correction was applied and the operation succeeded
+    Succeeded,
+    /// Format correction was attempted but the operation still failed
+    AttemptedButFailed,
+}
+
 /// Enhanced response with format corrections
 #[derive(Debug, Clone)]
 pub struct EnhancedBrpResult {
     pub result:             BrpResult,
     pub format_corrections: Vec<FormatCorrection>,
-    pub format_corrected:   bool,
+    pub format_corrected:   FormatCorrectionStatus,
 }
 
 /// Execute Level 1: Direct BRP request without format discovery overhead
@@ -232,7 +244,7 @@ pub async fn execute_brp_method_with_format_discovery(
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
-                format_corrected: false,
+                format_corrected: FormatCorrectionStatus::NotAttempted,
             })
         }
         BrpRequestResult::FormatError {
@@ -273,7 +285,7 @@ pub async fn execute_brp_method_with_format_discovery(
             Ok(EnhancedBrpResult {
                 result:             enhanced_error,
                 format_corrections: Vec::new(),
-                format_corrected:   false,
+                format_corrected:   FormatCorrectionStatus::NotAttempted,
             })
         }
         BrpRequestResult::OtherError(result) => {
@@ -281,7 +293,7 @@ pub async fn execute_brp_method_with_format_discovery(
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
-                format_corrected: false,
+                format_corrected: FormatCorrectionStatus::NotAttempted,
             })
         }
     }
@@ -318,7 +330,7 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
             EnhancedBrpResult {
                 result: enhanced_result,
                 format_corrections,
-                format_corrected: true,
+                format_corrected: FormatCorrectionStatus::Succeeded,
             }
         }
         FormatRecoveryResult::NotRecoverable {
@@ -329,7 +341,22 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
             EnhancedBrpResult {
                 result: original_error,
                 format_corrections,
-                format_corrected: false,
+                format_corrected: FormatCorrectionStatus::NotAttempted,
+            }
+        }
+        FormatRecoveryResult::CorrectionFailed {
+            original_error,
+            retry_error,
+            corrections,
+        } => {
+            let format_corrections = convert_corrections_to_legacy_format(corrections.clone());
+            let enhanced_error = enhance_error_with_correction_info(retry_error, &corrections);
+            // Note: original_error is available for future enhancement if needed
+            let _ = original_error; // Suppress unused warning
+            EnhancedBrpResult {
+                result: enhanced_error,
+                format_corrections,
+                format_corrected: FormatCorrectionStatus::AttemptedButFailed,
             }
         }
     }
@@ -365,4 +392,41 @@ fn convert_corrections_to_legacy_format(corrections: Vec<CorrectionInfo>) -> Vec
                 }),
         })
         .collect()
+}
+
+/// Enhance retry error with correction information for better error messages
+fn enhance_error_with_correction_info(
+    retry_error: BrpResult,
+    corrections: &[CorrectionInfo],
+) -> BrpResult {
+    match retry_error {
+        BrpResult::Error(mut error) => {
+            // Enhance error message with correction information
+            let correction_summary = if corrections.is_empty() {
+                "No corrections were applied".to_string()
+            } else {
+                let correction_count = corrections.len();
+                let correction_details: Vec<String> = corrections
+                    .iter()
+                    .map(|c| {
+                        format!(
+                            "  - {}: {} -> {}",
+                            c.type_name, c.original_value, c.corrected_value
+                        )
+                    })
+                    .collect();
+
+                format!(
+                    "Format correction was attempted ({} correction{}) but retry still failed:\n{}",
+                    correction_count,
+                    if correction_count == 1 { "" } else { "s" },
+                    correction_details.join("\n")
+                )
+            };
+
+            error.message = format!("{}\n\n{}", correction_summary, error.message);
+            BrpResult::Error(error)
+        }
+        success @ BrpResult::Success(_) => success, // Pass through success results unchanged
+    }
 }

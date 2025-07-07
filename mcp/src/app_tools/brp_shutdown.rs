@@ -10,6 +10,7 @@ use crate::error::{Error, Result, report_to_mcp_error};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
+use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
 
 /// Helper function to build shutdown response with debug info
 fn build_shutdown_response(
@@ -32,7 +33,6 @@ fn build_shutdown_response(
 
     json_response_to_result(&response)
 }
-use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
 
 /// Result of a shutdown operation
 enum ShutdownResult {

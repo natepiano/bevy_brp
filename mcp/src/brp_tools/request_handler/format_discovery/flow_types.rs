@@ -55,6 +55,12 @@ pub enum FormatRecoveryResult {
         original_error: BrpResult,
         corrections:    Vec<CorrectionInfo>,
     },
+    /// Recovery attempted but correction was insufficient
+    CorrectionFailed {
+        original_error: BrpResult,
+        retry_error:    BrpResult,
+        corrections:    Vec<CorrectionInfo>,
+    },
 }
 
 /// Result of individual correction attempts during recovery

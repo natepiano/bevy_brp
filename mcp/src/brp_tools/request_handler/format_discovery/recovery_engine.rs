@@ -936,9 +936,16 @@ async fn build_recovery_success(
                     }
                     Err(retry_error) => {
                         debug!("Recovery Engine: Retry failed: {}", retry_error);
-                        // Return original error with corrections as guidance
-                        FormatRecoveryResult::NotRecoverable {
+                        // Convert error to BrpResult::Error
+                        let retry_brp_error = BrpResult::Error(BrpError {
+                            code:    -1, // Generic error code
+                            message: retry_error.to_string(),
+                            data:    None,
+                        });
+                        // Return correction failed with both original and retry errors
+                        FormatRecoveryResult::CorrectionFailed {
                             original_error: original_error.clone(),
+                            retry_error: retry_brp_error,
                             corrections,
                         }
                     }

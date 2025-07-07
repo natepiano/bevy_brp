@@ -54,6 +54,8 @@ pub const PARAM_ENTITY_COUNT: &str = "entity_count";
 pub const PARAM_COMPONENT_COUNT: &str = "component_count";
 pub const PARAM_QUERY_PARAMS: &str = "query_params";
 pub const PARAM_SPAWNED_ENTITY: &str = "spawned_entity";
+pub const PARAM_TYPES: &str = "types";
+pub const PARAM_FORMATS: &str = "formats";
 
 // ============================================================================
 // NETWORK CONSTANTS

@@ -231,9 +231,16 @@ impl ResponseFormatter {
                 }
             }
 
-            // Always preserve format_corrected from the input data
-            if let Some(format_corrected) = data_map.get(JSON_FIELD_FORMAT_CORRECTED) {
-                builder = builder.add_field(JSON_FIELD_FORMAT_CORRECTED, format_corrected)?;
+            // Add format_corrected from context if present
+            if let Some(ref format_corrected) = self.context.format_corrected {
+                let format_corrected_value =
+                    serde_json::to_value(format_corrected).map_err(|e| {
+                        error_stack::Report::new(crate::error::Error::General(format!(
+                            "Failed to serialize format_corrected: {e}"
+                        )))
+                    })?;
+                builder =
+                    builder.add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
             }
 
             // Clean debug_info from data to prevent duplication
@@ -260,12 +267,10 @@ impl ResponseFormatter {
         }
 
         // Override message if format correction occurred
-        if let Value::Object(data_map) = data {
-            if let Some(format_corrected) = data_map.get(JSON_FIELD_FORMAT_CORRECTED) {
-                if format_corrected.as_bool() == Some(true) {
-                    builder = builder.message("Request succeeded with format correction applied");
-                }
-            }
+        if self.context.format_corrected
+            == Some(crate::brp_tools::request_handler::FormatCorrectionStatus::Succeeded)
+        {
+            builder = builder.message("Request succeeded with format correction applied");
         }
 
         // Auto-inject debug info at response level if debug mode is enabled
@@ -478,7 +483,8 @@ mod tests {
         };
 
         let context = FormatterContext {
-            params: Some(json!({ "entity": 123 })),
+            params:           Some(json!({ "entity": 123 })),
+            format_corrected: None,
         };
 
         let formatter = ResponseFormatter::new(config, context);
@@ -517,7 +523,8 @@ mod tests {
             .build();
 
         let context = FormatterContext {
-            params: Some(json!({ "entity": 789 })),
+            params:           Some(json!({ "entity": 789 })),
+            format_corrected: None,
         };
 
         let formatter = factory.create(context);
@@ -533,7 +540,10 @@ mod tests {
     fn test_pass_through_builder() {
         let factory = ResponseFormatterFactory::pass_through().build();
 
-        let context = FormatterContext { params: None };
+        let context = FormatterContext {
+            params:           None,
+            format_corrected: None,
+        };
 
         let formatter = factory.create(context);
         let metadata = BrpMetadata::new("bevy/query", DEFAULT_BRP_PORT);
@@ -548,10 +558,11 @@ mod tests {
     #[test]
     fn test_extractors() {
         let context = FormatterContext {
-            params: Some(json!({
+            params:           Some(json!({
                 "entity": 100,
                 "resource": "TestResource"
             })),
+            format_corrected: None,
         };
 
         let data = json!({"result": "success"});
@@ -575,9 +586,10 @@ mod tests {
 
         // Test components_from_params extractor
         let components_context = FormatterContext {
-            params: Some(json!({
+            params:           Some(json!({
                 "components": ["Transform", "Sprite"]
             })),
+            format_corrected: None,
         };
         assert_eq!(
             extractors::components_from_params(&data, &components_context),
