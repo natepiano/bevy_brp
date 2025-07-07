@@ -8,12 +8,11 @@ use serde_json::json;
 use tracing::debug;
 
 use super::support::{cargo_detector, launch_common, process, scanning};
-use crate::BrpMcpService;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
 use crate::support::params;
-use crate::service;
+use crate::{BrpMcpService, service};
 
 pub async fn handle(
     service: &BrpMcpService,
@@ -222,13 +221,7 @@ fn build_launch_response(
         launch_end: launch_result.launch_end,
     };
 
-    let base_response = launch_common::build_launch_success_response(response_params);
-
-    Ok(launch_common::build_final_launch_response(
-        base_response,
-        format!(
-            "Successfully launched '{example_name}' (PID: {})",
-            launch_result.pid
-        ),
+    Ok(launch_common::build_launch_success_response(
+        response_params,
     ))
 }

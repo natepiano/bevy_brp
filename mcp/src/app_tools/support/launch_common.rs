@@ -39,6 +39,13 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path, McpErr
 }
 
 /// Creates a success response with common fields and workspace info
+///
+/// This function never fails - it always returns a `CallToolResult`. However, the returned
+/// result may represent either a successful or error response depending on internal serialization.
+/// If response data serialization fails, it returns an error response instead of panicking.
+///
+/// Callers should wrap the result in `Ok()` when returning from functions that return
+/// `Result<CallToolResult, McpError>`.
 pub fn build_launch_success_response(params: LaunchResponseParams) -> CallToolResult {
     let launch_duration_ms = u64::try_from(
         params
@@ -157,34 +164,4 @@ pub fn build_app_command(binary_path: &Path, port: Option<u16>) -> Command {
     let mut cmd = Command::new(binary_path);
     set_brp_env_vars(&mut cmd, port);
     cmd
-}
-
-/// Build final response for launch operations
-pub fn build_final_launch_response(
-    base_response: CallToolResult,
-    success_message: String,
-) -> CallToolResult {
-    use crate::support::response::ResponseBuilder;
-    use crate::support::serialization::json_response_to_result;
-
-    // Extract the inner JSON response and rebuild with the success message
-    if let Ok(json_str) = serde_json::to_string(&base_response.content) {
-        if let Ok(json_response) = serde_json::from_str::<serde_json::Value>(&json_str) {
-            let response = ResponseBuilder::success()
-                .message(success_message)
-                .data(json_response)
-                .map_or_else(
-                    |_| {
-                        ResponseBuilder::error()
-                            .message("Failed to serialize response data")
-                            .build()
-                    },
-                    ResponseBuilder::build,
-                );
-
-            return json_response_to_result(&response);
-        }
-    }
-
-    base_response
 }

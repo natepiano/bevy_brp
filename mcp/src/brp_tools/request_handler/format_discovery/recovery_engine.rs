@@ -290,6 +290,22 @@ fn execute_level_3_pattern_transformations(
             corrections.push(correction);
         } else {
             debug!("Level 3: No pattern-based correction found for '{type_name}'");
+
+            // Create a failure correction to provide structured feedback
+            let type_info_for_failure = type_info.cloned().unwrap_or_else(|| {
+                super::unified_types::UnifiedTypeInfo::new(
+                    type_name.to_string(),
+                    super::unified_types::DiscoverySource::PatternMatching,
+                )
+            });
+
+            let failure_correction = CorrectionResult::CannotCorrect {
+                type_info: type_info_for_failure,
+                reason:    format!(
+                    "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern. This may indicate a limitation in the current transformation logic or an unsupported format combination."
+                ),
+            };
+            corrections.push(failure_correction);
         }
     }
 

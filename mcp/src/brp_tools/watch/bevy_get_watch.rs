@@ -41,14 +41,13 @@ pub async fn handle(
     let port = params::extract_optional_u16(&arguments, JSON_FIELD_PORT, DEFAULT_BRP_PORT);
 
     // Start the watch task
-    let result =
-        super::start_entity_watch_task(entity_id, components, port, Some(0))
-            .await
-            .map_err(|e| {
-                crate::error::Error::WatchOperation(format!(
-                    "Failed to start entity watch for entity {entity_id}: {e}"
-                ))
-            });
+    let result = super::start_entity_watch_task(entity_id, components, port, Some(0))
+        .await
+        .map_err(|e| {
+            crate::error::Error::WatchOperation(format!(
+                "Failed to start entity watch for entity {entity_id}: {e}"
+            ))
+        });
     Ok(super::format_watch_start_response(
         result,
         "entity watch",

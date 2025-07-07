@@ -1,35 +1,20 @@
-use rmcp::model::{CallToolResult, Tool};
+use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use sysinfo::System;
 
-use super::constants::{DEFAULT_BRP_PORT, JSON_FIELD_PORT, JSON_FIELD_STATUS};
-use super::support::brp_client::{BrpResult, execute_brp_method};
 use crate::BrpMcpService;
 use crate::brp_tools::brp_set_tracing_level::get_current_level;
+use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_FIELD_PORT, JSON_FIELD_STATUS};
+use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::{PARAM_APP_NAME, PARAM_PORT};
 use crate::error::{Error, report_to_mcp_error};
+use crate::support::params;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
 use crate::support::tracing::TracingLevel;
-use crate::support::{params, schema};
-use crate::tools::{BRP_METHOD_LIST, DESC_BRP_STATUS, TOOL_BRP_STATUS};
-
-pub fn register_tool() -> Tool {
-    Tool {
-        name:         TOOL_BRP_STATUS.into(),
-        description:  DESC_BRP_STATUS.into(),
-        input_schema: schema::SchemaBuilder::new()
-            .add_string_property(PARAM_APP_NAME, "Name of the process to check for", true)
-            .add_number_property(
-                PARAM_PORT,
-                &format!("Port to check for BRP (default: {DEFAULT_BRP_PORT})"),
-                false,
-            )
-            .build(),
-    }
-}
+use crate::tools::BRP_METHOD_LIST;
 
 pub async fn handle(
     _service: &BrpMcpService,

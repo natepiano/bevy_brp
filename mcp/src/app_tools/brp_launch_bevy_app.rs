@@ -8,13 +8,12 @@ use serde_json::json;
 use tracing::debug;
 
 use super::support::{launch_common, process, scanning};
-use crate::BrpMcpService;
 use crate::constants::{
     DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
-use crate::service;
+use crate::{BrpMcpService, service};
 
 pub async fn handle(
     service: &BrpMcpService,
@@ -129,10 +128,7 @@ pub fn launch_bevy_app(
         launch_end,
     };
 
-    let base_response = launch_common::build_launch_success_response(response_params);
-
-    Ok(launch_common::build_final_launch_response(
-        base_response,
-        format!("Successfully launched '{app_name}' (PID: {pid})"),
+    Ok(launch_common::build_launch_success_response(
+        response_params,
     ))
 }

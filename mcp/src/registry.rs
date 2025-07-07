@@ -2,7 +2,7 @@ use rmcp::model::{CallToolRequestParam, CallToolResult, ListToolsResult};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use crate::brp_tools::{brp_get_trace_log_path, brp_set_tracing_level, brp_status, watch};
+use crate::brp_tools::{brp_get_trace_log_path, brp_set_tracing_level, watch};
 // Imports removed - using fully qualified paths in match statement to avoid naming conflicts
 use crate::error::{Error, report_to_mcp_error};
 use crate::{BrpMcpService, tool_definitions, tool_generator};
@@ -17,8 +17,6 @@ pub fn register_tools() -> ListToolsResult {
 
     // Add remaining tools that don't follow simple request/response
     tools.extend(vec![
-        // Core BRP tools (with custom logic)
-        brp_status::register_tool(),
         // Streaming/watch tools (custom logic)
         watch::bevy_get_watch::register_tool(),
         watch::bevy_list_watch::register_tool(),
@@ -51,11 +49,6 @@ pub async fn handle_tool_call(
 
     // Handle remaining tools
     match request.name.as_ref() {
-        // Core BRP tools (with custom logic)
-        name if name == crate::tools::TOOL_BRP_STATUS => {
-            brp_status::handle(service, request, context).await
-        }
-
         // Streaming/watch tools (custom logic)
         name if name == crate::tools::TOOL_BEVY_GET_WATCH => {
             watch::bevy_get_watch::handle(service, request, context).await

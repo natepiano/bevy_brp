@@ -10,10 +10,9 @@ use serde_json::json;
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
-use crate::BrpMcpService;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
-use crate::service;
+use crate::{BrpMcpService, service};
 
 /// Generic handler for listing items using a collection strategy
 pub async fn handle_listing<S: CollectionStrategy>(

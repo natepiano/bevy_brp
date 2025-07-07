@@ -6,9 +6,7 @@ use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
 
 use crate::BrpMcpService;
-use crate::brp_tools::constants::{
-    DEFAULT_BRP_PORT, JSON_FIELD_ENTITY, JSON_FIELD_PORT,
-};
+use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_FIELD_ENTITY, JSON_FIELD_PORT};
 use crate::support::{params, schema};
 use crate::tools::{DESC_BEVY_LIST_WATCH, TOOL_BEVY_LIST_WATCH};
 

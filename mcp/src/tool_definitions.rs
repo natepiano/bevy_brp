@@ -399,7 +399,7 @@ pub struct BrpToolDef {
 
 /// Get all standard tool definitions
 #[allow(clippy::too_many_lines)]
-pub fn get_standard_tools() -> Vec<BrpToolDef> {
+fn get_standard_tools() -> Vec<BrpToolDef> {
     vec![
         // bevy_destroy
         BrpToolDef {
@@ -791,7 +791,7 @@ pub fn get_standard_tools() -> Vec<BrpToolDef> {
 
 /// Get tool definitions for tools with special variations
 #[allow(clippy::too_many_lines)]
-pub fn get_special_tools() -> Vec<BrpToolDef> {
+fn get_special_tools() -> Vec<BrpToolDef> {
     vec![
         // bevy_query - has custom extractors for component counts
         BrpToolDef {
@@ -951,7 +951,7 @@ pub fn get_special_tools() -> Vec<BrpToolDef> {
 }
 
 /// Get log tool definitions
-pub fn get_log_tools() -> Vec<BrpToolDef> {
+fn get_log_tools() -> Vec<BrpToolDef> {
     vec![
         // list_logs
         BrpToolDef {
@@ -1028,7 +1028,7 @@ pub fn get_log_tools() -> Vec<BrpToolDef> {
 }
 
 /// Get app tool definitions
-pub fn get_app_tools() -> Vec<BrpToolDef> {
+fn get_app_tools() -> Vec<BrpToolDef> {
     vec![
         // list_bevy_apps
         BrpToolDef {
@@ -1100,6 +1100,22 @@ pub fn get_app_tools() -> Vec<BrpToolDef> {
                 ParamDef::number(
                     JSON_FIELD_PORT,
                     "BRP port to connect to (default: 15702)",
+                    false,
+                ),
+            ],
+            param_extractor: ParamExtractorType::Passthrough,
+            formatter:       FormatterDef::default(),
+        },
+        // brp_status
+        BrpToolDef {
+            name:            crate::tools::TOOL_BRP_STATUS,
+            description:     crate::tools::DESC_BRP_STATUS,
+            handler:         HandlerType::Local { handler: "status" },
+            params:          vec![
+                ParamDef::string("app_name", "Name of the process to check for", true),
+                ParamDef::number(
+                    JSON_FIELD_PORT,
+                    "Port to check for BRP (default: 15702)",
                     false,
                 ),
             ],

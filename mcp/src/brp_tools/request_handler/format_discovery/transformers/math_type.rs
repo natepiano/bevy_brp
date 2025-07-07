@@ -1,11 +1,12 @@
 //! Math type transformer for Vec2, Vec3, Vec4, and Quat conversions
 
 use serde_json::{Map, Value};
+use tracing::debug;
 
 use super::super::detection::ErrorPattern;
 use super::super::unified_types::{DiscoverySource, UnifiedTypeInfo};
 use super::FormatTransformer;
-use super::common::{extract_type_name_from_error, messages};
+use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::request_handler::format_discovery::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use crate::brp_tools::support::brp_client::BrpError;
 
@@ -18,6 +19,14 @@ fn type_expects_array(type_name: &str, array_type: &str) -> String {
     messages::expects_array_format(type_name, array_type)
 }
 
+/// Helper function to extract numeric value from JSON, handling both integers and floats
+fn extract_numeric_value(value: &Value) -> Option<f64> {
+    #[allow(clippy::cast_precision_loss)]
+    {
+        value.as_f64().or_else(|| value.as_i64().map(|i| i as f64))
+    }
+}
+
 /// Generic function to convert object values to array format
 /// Handles Vec2 [x, y], Vec3 [x, y, z], Vec4/Quat [x, y, z, w]
 fn convert_to_array_format(value: &Value, field_names: &[&str]) -> Option<Value> {
@@ -27,7 +36,7 @@ fn convert_to_array_format(value: &Value, field_names: &[&str]) -> Option<Value>
             let mut values = Vec::new();
             for field_name in field_names {
                 #[allow(clippy::cast_possible_truncation)]
-                let field_value = obj.get(*field_name)?.as_f64()? as f32;
+                let field_value = extract_numeric_value(obj.get(*field_name)?)? as f32;
                 values.push(serde_json::json!(field_value));
             }
             Some(Value::Array(values))
@@ -109,9 +118,38 @@ impl MathTypeTransformer {
         original_value: &Value,
         expected_count: usize,
     ) -> Option<(Value, String)> {
+        debug!(
+            "apply_transform_sequence_fix: Processing input value: {}",
+            original_value
+        );
+
+        // Extract the actual Transform data from the component map if needed
+        let (actual_type_name, transform_data) = if let Value::Object(obj) = original_value {
+            // Check if this is a component map with a single component
+            if let Some((component_type, component_data)) = extract_single_field_value(obj) {
+                debug!(
+                    "apply_transform_sequence_fix: Found component '{}' in component map",
+                    component_type
+                );
+                (component_type, component_data)
+            } else {
+                // This is already the Transform data object
+                debug!("apply_transform_sequence_fix: Input is direct Transform data");
+                (type_name, original_value)
+            }
+        } else {
+            debug!("apply_transform_sequence_fix: Input is not an object, using as-is");
+            (type_name, original_value)
+        };
+
+        debug!(
+            "apply_transform_sequence_fix: Working with Transform data: {}",
+            transform_data
+        );
+
         // First try using UnifiedTypeInfo for Transform
         let mut type_info = UnifiedTypeInfo::new(
-            "bevy_transform::components::transform::Transform".to_string(),
+            actual_type_name.to_string(),
             DiscoverySource::PatternMatching,
         );
         type_info.type_category = "Struct".to_string();
@@ -127,13 +165,15 @@ impl MathTypeTransformer {
             .child_types
             .insert("scale".to_string(), "glam::Vec3".to_string());
 
-        if let Some(transformed) = type_info.transform_value(original_value) {
-            let hint = format!("`{type_name}` Transform converted to proper array format");
+        if let Some(transformed) = type_info.transform_value(transform_data) {
+            let hint = format!("`{actual_type_name}` Transform converted to proper array format");
+            debug!("apply_transform_sequence_fix: UnifiedTypeInfo transformation succeeded");
             return Some((transformed, hint));
         }
 
         // Fallback to legacy implementation if UnifiedTypeInfo doesn't work
-        let Value::Object(obj) = original_value else {
+        let Value::Object(obj) = transform_data else {
+            debug!("apply_transform_sequence_fix: Transform data is not an object, cannot process");
             return None;
         };
 
@@ -175,7 +215,7 @@ impl MathTypeTransformer {
             None
         } else {
             let hint = format!(
-                "`{type_name}` Transform expected {expected_count} f32 values in sequence - {}",
+                "`{actual_type_name}` Transform expected {expected_count} f32 values in sequence - {}",
                 hint_parts.join(", ")
             );
             Some((Value::Object(corrected), hint))
@@ -211,36 +251,76 @@ impl FormatTransformer for MathTypeTransformer {
     }
 
     fn transform_with_error(&self, value: &Value, error: &BrpError) -> Option<(Value, String)> {
+        debug!("MathTypeTransformer: transform_with_error called");
+        debug!("MathTypeTransformer: Input value: {}", value);
+        debug!("MathTypeTransformer: Error message: {}", error.message);
+
         // Extract type name from error for better messaging
         let type_name =
             extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
+        debug!("MathTypeTransformer: Extracted type name: '{}'", type_name);
 
         // Try specific math type conversions based on error content
         let message = &error.message;
 
         if message.contains("Vec2") {
-            return Self::apply_math_type_array_fix(&type_name, value, "Vec2");
+            debug!("MathTypeTransformer: Attempting Vec2 transformation");
+            let result = Self::apply_math_type_array_fix(&type_name, value, "Vec2");
+            debug!(
+                "MathTypeTransformer: Vec2 transformation result: {:?}",
+                result.is_some()
+            );
+            return result;
         }
         if message.contains("Vec3") {
-            return Self::apply_math_type_array_fix(&type_name, value, "Vec3");
+            debug!("MathTypeTransformer: Attempting Vec3 transformation");
+            let result = Self::apply_math_type_array_fix(&type_name, value, "Vec3");
+            debug!(
+                "MathTypeTransformer: Vec3 transformation result: {:?}",
+                result.is_some()
+            );
+            return result;
         }
         if message.contains("Vec4") {
-            return Self::apply_math_type_array_fix(&type_name, value, "Vec4");
+            debug!("MathTypeTransformer: Attempting Vec4 transformation");
+            let result = Self::apply_math_type_array_fix(&type_name, value, "Vec4");
+            debug!(
+                "MathTypeTransformer: Vec4 transformation result: {:?}",
+                result.is_some()
+            );
+            return result;
         }
         if message.contains("Quat") {
-            return Self::apply_math_type_array_fix(&type_name, value, "Quat");
+            debug!("MathTypeTransformer: Attempting Quat transformation");
+            let result = Self::apply_math_type_array_fix(&type_name, value, "Quat");
+            debug!(
+                "MathTypeTransformer: Quat transformation result: {:?}",
+                result.is_some()
+            );
+            return result;
         }
         if message.contains("Transform") {
+            debug!("MathTypeTransformer: Attempting Transform sequence transformation");
             // Try transform sequence fix with the defined constant
-            return Self::apply_transform_sequence_fix(
-                &type_name,
-                value,
-                TRANSFORM_SEQUENCE_F32_COUNT,
+            let result =
+                Self::apply_transform_sequence_fix(&type_name, value, TRANSFORM_SEQUENCE_F32_COUNT);
+            debug!(
+                "MathTypeTransformer: Transform transformation result: {:?}",
+                result.is_some()
             );
+            return result;
         }
 
+        debug!(
+            "MathTypeTransformer: No specific pattern matched, falling back to generic transformation"
+        );
         // Fallback to generic transformation
-        self.transform(value)
+        let result = self.transform(value);
+        debug!(
+            "MathTypeTransformer: Generic transformation result: {:?}",
+            result.is_some()
+        );
+        result
     }
 
     #[cfg(test)]

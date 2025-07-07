@@ -12,9 +12,9 @@ const MAX_CHUNK_SIZE: usize = 1024 * 1024;
 /// Maximum size for the total buffer when processing incomplete lines (10MB)
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
+use crate::brp_tools::support::{BrpJsonRpcBuilder, http_client};
 use crate::brp_tools::watch::logger::{self as watch_logger, BufferedWatchLogger};
 use crate::brp_tools::watch::manager::{WATCH_MANAGER, WatchInfo};
-use crate::brp_tools::support::{BrpJsonRpcBuilder, http_client};
 use crate::error::{Error, Result};
 use crate::tools::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
 
@@ -274,9 +274,12 @@ async fn handle_stream_error(
     if is_timeout {
         // Check if this is an unexpected timeout (configured for no timeout)
         let is_no_timeout_config = timeout_seconds == Some(0);
-        
+
         if is_no_timeout_config {
-            error!("Watch stream timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.", elapsed, error);
+            error!(
+                "Watch stream timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.",
+                elapsed, error
+            );
         } else {
             warn!("Watch stream timed out after {:?}: {}", elapsed, error);
         }
@@ -284,7 +287,11 @@ async fn handle_stream_error(
         // Log timeout with error context
         let _ = logger
             .write_update(
-                if is_no_timeout_config { "WATCH_UNEXPECTED_TIMEOUT" } else { "WATCH_TIMEOUT" },
+                if is_no_timeout_config {
+                    "WATCH_UNEXPECTED_TIMEOUT"
+                } else {
+                    "WATCH_TIMEOUT"
+                },
                 serde_json::json!({
                     "watch_type": watch_type,
                     "entity": entity_id,
@@ -488,16 +495,23 @@ async fn handle_connection_error(
     if is_timeout {
         // Check if this is an unexpected timeout (configured for no timeout)
         let is_no_timeout_config = conn_params.timeout_seconds == Some(0);
-        
+
         if is_no_timeout_config {
-            error!("Watch connection timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.", elapsed, error);
+            error!(
+                "Watch connection timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.",
+                elapsed, error
+            );
         } else {
             warn!("Watch connection timed out after {:?}: {}", elapsed, error);
         }
-        
+
         let _ = logger
             .write_update(
-                if is_no_timeout_config { "WATCH_UNEXPECTED_TIMEOUT" } else { "WATCH_TIMEOUT" },
+                if is_no_timeout_config {
+                    "WATCH_UNEXPECTED_TIMEOUT"
+                } else {
+                    "WATCH_TIMEOUT"
+                },
                 serde_json::json!({
                     "watch_type": &conn_params.watch_type,
                     "entity": conn_params.entity_id,

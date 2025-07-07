@@ -3,8 +3,8 @@ use serde_json::{Value, json};
 
 use super::brp_client::BrpError;
 use crate::brp_tools::constants::{
-    BRP_ERROR_CODE_INVALID_REQUEST, JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE,
-    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
+    JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA,
+    JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
 use crate::brp_tools::request_handler::FormatterContext;
 use crate::error::Result;
@@ -28,16 +28,7 @@ impl BrpMetadata {
 }
 
 /// Default error formatter implementation with rich guidance extraction
-pub fn format_error_default(mut error: BrpError, metadata: &BrpMetadata) -> CallToolResult {
-    // Enhance error messages for common format issues
-    if error.code == BRP_ERROR_CODE_INVALID_REQUEST
-        && error.message.contains("expected a sequence of")
-    {
-        error.message.push_str(
-            "\nHint: Math types like Vec3 use array format [x,y,z], not objects {x:1,y:2,z:3}",
-        );
-    }
-
+pub fn format_error_default(error: BrpError, metadata: &BrpMetadata) -> CallToolResult {
     // Extract rich guidance from format_corrections if present
     let rich_guidance = extract_rich_guidance_from_error(&error);
 
