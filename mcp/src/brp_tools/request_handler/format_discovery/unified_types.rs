@@ -412,14 +412,4 @@ impl UnifiedTypeInfo {
     }
 }
 
-impl FormatInfo {
-    /// Create empty format info
-    pub fn empty() -> Self {
-        Self {
-            examples:         HashMap::new(),
-            mutation_paths:   HashMap::new(),
-            original_format:  None,
-            corrected_format: None,
-        }
-    }
-}
+impl FormatInfo {}

@@ -2,7 +2,7 @@
 pub const POOLE_IDLE_TIMEOUT: u64 = 300;
 
 /// Maximum idle connections per host
-pub const POOL_MAX_IDLE_PER_HOST: usize = 50;
+pub const POOL_MAX_IDLE_PER_HOST: usize = 10;
 
 /// default watch timeout
 pub const DEFAULT_WATCH_TIMEOUT: u64 = 30;

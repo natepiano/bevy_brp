@@ -222,9 +222,8 @@ pub fn create_correction_from_discovery(
             };
 
             return CorrectionResult::Corrected { correction_info };
-        } else {
-            debug!("Extras Integration: transform_value() returned None - cannot transform input");
         }
+        debug!("Extras Integration: transform_value() returned None - cannot transform input");
     } else {
         debug!("Extras Integration: No original value provided for transformation");
     }

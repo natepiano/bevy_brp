@@ -50,32 +50,23 @@ pub fn get_client() -> &'static Client {
 /// # Arguments
 /// * `timeout_seconds` - Optional timeout in seconds (None = default 30s, Some(0) = never timeout)
 pub fn create_watch_client(timeout_seconds: Option<u32>) -> Client {
-    match timeout_seconds {
-        Some(0) => {
-            // 0 = never timeout (no timeout set on client)
-            Client::builder()
-                .pool_idle_timeout(Duration::from_secs(300))
-                .pool_max_idle_per_host(20)
-                .connect_timeout(Duration::from_secs(5))
-                // No timeout() call means no request timeout
-                .build()
-                .unwrap_or_else(|_| Client::new())
-        }
-        Some(seconds) => {
-            // Specific timeout in seconds
-            Client::builder()
-                .pool_idle_timeout(Duration::from_secs(300))
-                .pool_max_idle_per_host(20)
-                .connect_timeout(Duration::from_secs(5))
-                .timeout(Duration::from_secs(u64::from(seconds)))
-                .build()
-                .unwrap_or_else(|_| Client::new())
-        }
-        None => {
-            // Default to 30 seconds if not specified
-            get_client().clone()
-        }
-    }
+    timeout_seconds.map_or_else(
+        || get_client().clone(),
+        |seconds| {
+            // Create a new client with custom timeout
+            let mut builder = Client::builder()
+                .pool_idle_timeout(Duration::from_secs(POOLE_IDLE_TIMEOUT))
+                .pool_max_idle_per_host(POOL_MAX_IDLE_PER_HOST)
+                .connect_timeout(Duration::from_secs(CONNECTION_TIMEOUT));
+
+            // Only set timeout if not 0 (0 = never timeout)
+            if seconds > 0 {
+                builder = builder.timeout(Duration::from_secs(u64::from(seconds)));
+            }
+
+            builder.build().unwrap_or_else(|_| Client::new())
+        },
+    )
 }
 
 #[cfg(test)]

@@ -332,36 +332,39 @@ fn handle_mutation_specific_errors(
             );
 
             // Use the registry type_info if available to provide better guidance
-            let hint = if let Some(registry_info) = type_info {
-                let mutation_paths = registry_info.get_mutation_paths();
-
-                if !mutation_paths.is_empty() {
-                    // We have valid paths from registry or discovery
-                    let paths_list: Vec<String> = mutation_paths
-                        .iter()
-                        .map(|(path, desc)| format!("{} - {}", path, desc))
-                        .collect();
-
+            let hint = type_info.map_or_else(
+                || {
+                    // No registry info available at all
                     format!(
                         "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
-                        Valid paths:\n{}",
-                        paths_list.join("\n")
+                        The field '{field_name}' does not exist. \
+                        Use bevy_brp_extras/discover_format to find valid mutation paths."
                     )
-                } else {
-                    // No mutation paths available from registry
-                    format!(
-                        "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
-                        The field '{field_name}' does not exist."
-                    )
-                }
-            } else {
-                // No registry info available at all
-                format!(
-                    "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
-                    The field '{field_name}' does not exist. \
-                    Use bevy_brp_extras/discover_format to find valid mutation paths."
-                )
-            };
+                },
+                |registry_info| {
+                    let mutation_paths = registry_info.get_mutation_paths();
+
+                    if mutation_paths.is_empty() {
+                        // No mutation paths available from registry
+                        format!(
+                            "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
+                            The field '{field_name}' does not exist."
+                        )
+                    } else {
+                        // We have valid paths from registry or discovery
+                        let paths_list: Vec<String> = mutation_paths
+                            .iter()
+                            .map(|(path, desc)| format!("{path} - {desc}"))
+                            .collect();
+
+                        format!(
+                            "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
+                            Valid paths:\n{}",
+                            paths_list.join("\n")
+                        )
+                    }
+                },
+            );
 
             // Use the existing type_info if available, or create a new one
             let final_type_info = type_info.cloned().unwrap_or_else(|| {

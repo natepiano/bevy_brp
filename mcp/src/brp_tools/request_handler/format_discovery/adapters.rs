@@ -156,8 +156,8 @@ fn generate_mutation_paths_from_schema(schema_data: &Value) -> HashMap<String, S
                 for (index, item) in prefix_items.iter().enumerate() {
                     // Basic tuple access path
                     paths.insert(
-                        format!(".{}", index),
-                        format!("Access field {} of the tuple struct", index),
+                        format!(".{index}"),
+                        format!("Access field {index} of the tuple struct"),
                     );
 
                     // Check if this field is a Color type
@@ -169,27 +169,27 @@ fn generate_mutation_paths_from_schema(schema_data: &Value) -> HashMap<String, S
                         if type_ref.contains("Color") {
                             // Add common color field paths
                             paths.insert(
-                                format!(".{}.red", index),
+                                format!(".{index}.red"),
                                 "Access the red component (if Color is an enum with named fields)"
                                     .to_string(),
                             );
                             paths.insert(
-                                format!(".{}.green", index),
+                                format!(".{index}.green"),
                                 "Access the green component (if Color is an enum with named fields)".to_string()
                             );
                             paths.insert(
-                                format!(".{}.blue", index),
+                                format!(".{index}.blue"),
                                 "Access the blue component (if Color is an enum with named fields)"
                                     .to_string(),
                             );
                             paths.insert(
-                                format!(".{}.alpha", index),
+                                format!(".{index}.alpha"),
                                 "Access the alpha component (if Color is an enum with named fields)".to_string()
                             );
 
                             // Also add potential enum variant access
                             paths.insert(
-                                format!(".{}.0", index),
+                                format!(".{index}.0"),
                                 "Access the first field if Color is an enum variant".to_string(),
                             );
                         }
@@ -202,8 +202,8 @@ fn generate_mutation_paths_from_schema(schema_data: &Value) -> HashMap<String, S
             if let Some(properties) = schema_data.get("properties").and_then(Value::as_object) {
                 for (field_name, _field_type) in properties {
                     paths.insert(
-                        format!(".{}", field_name),
-                        format!("Access the '{}' field", field_name),
+                        format!(".{field_name}"),
+                        format!("Access the '{field_name}' field"),
                     );
                 }
             }
@@ -212,7 +212,7 @@ fn generate_mutation_paths_from_schema(schema_data: &Value) -> HashMap<String, S
             // For other types (enums, values), mutation typically replaces the whole value
             if kind == "Enum" {
                 paths.insert(
-                    "".to_string(),
+                    String::new(),
                     "Replace the entire enum value (use empty path)".to_string(),
                 );
             }

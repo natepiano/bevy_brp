@@ -76,9 +76,7 @@ struct TestStructNoSerDe {
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 enum TestEnumWithSerDe {
-    Active {
-        power: f32,
-    },
+    Active,
     #[default]
     Inactive,
     Special(String, u32),
@@ -88,9 +86,7 @@ enum TestEnumWithSerDe {
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 enum TestEnumNoSerDe {
-    Active {
-        power: f32,
-    },
+    Active,
     #[default]
     Inactive,
     Special(String, u32),
