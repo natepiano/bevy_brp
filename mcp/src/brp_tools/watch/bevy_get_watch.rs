@@ -8,7 +8,6 @@ use serde_json::Value;
 use crate::BrpMcpService;
 use crate::brp_tools::constants::{
     DEFAULT_BRP_PORT, JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITY, JSON_FIELD_PORT,
-    JSON_FIELD_TIMEOUT_SECONDS,
 };
 use crate::support::{params, schema};
 use crate::tools::{DESC_BEVY_GET_WATCH, TOOL_BEVY_GET_WATCH};
@@ -25,7 +24,6 @@ pub fn register_tool() -> Tool {
                 true
             )
             .add_number_property(JSON_FIELD_PORT, &format!("The BRP port (default: {DEFAULT_BRP_PORT})"), false)
-            .add_number_property(JSON_FIELD_TIMEOUT_SECONDS, "Optional timeout in seconds for the watch connection (default: 30 seconds, 0 = never timeout)", false)
             .build()
     }
 }
@@ -41,21 +39,10 @@ pub async fn handle(
     let entity_id = params::extract_required_u64(&arguments, JSON_FIELD_ENTITY, "entity")?;
     let components = params::extract_optional_string_array(&arguments, JSON_FIELD_COMPONENTS);
     let port = params::extract_optional_u16(&arguments, JSON_FIELD_PORT, DEFAULT_BRP_PORT);
-    let timeout_seconds = arguments[JSON_FIELD_TIMEOUT_SECONDS]
-        .as_u64()
-        .and_then(|v| u32::try_from(v).ok());
-
-    // Debug logging for timeout parameter
-    tracing::debug!(
-        "bevy_get_watch timeout parameter debug: field_value={:?}, extracted_timeout={:?}, arguments_keys={:?}",
-        arguments.get(JSON_FIELD_TIMEOUT_SECONDS),
-        timeout_seconds,
-        arguments.as_object().map(|o| o.keys().collect::<Vec<_>>())
-    );
 
     // Start the watch task
     let result =
-        super::support::start_entity_watch_task(entity_id, components, port, timeout_seconds)
+        super::support::start_entity_watch_task(entity_id, components, port, Some(0))
             .await
             .map_err(|e| {
                 crate::error::Error::WatchOperation(format!(

@@ -34,8 +34,8 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 ### 5. Registry Discovery Without Plugin
 - Test spawn with components lacking Serialize/Deserialize traits
 - Try spawning with Visibility component
-- Verify error is "Unknown component type: `bevy_reflect::DynamicEnum`"
-- Confirm Tier 1 diagnostics identify missing Serialize/Deserialize traits
+- Verify error includes component name and mentions missing Serialize/Deserialize traits
+- Confirm error provides actionable guidance (e.g., "Add #[derive(Serialize, Deserialize)]")
 
 ### 6. Path Error Discovery
 - Execute component mutation with wrong path (e.g., `.0.red` for ClearColor)
@@ -49,8 +49,8 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - ✅ Format discovery falls back to Tier 3/4 pattern matching
 - ✅ Trace log clearly shows tier progression (failed Tier 2 → success Tier 3/4)
 - ✅ Basic BRP functionality works without extras
-- ✅ Spawn with non-serializable enums fails with "Unknown component type: `bevy_reflect::DynamicEnum`"
-- ✅ Tier 1 diagnostics correctly identify missing Serialize/Deserialize traits
+- ✅ Spawn with non-serializable components fails with helpful error mentioning missing traits
+- ✅ Error messages provide actionable guidance for fixing serialization issues
 - ✅ Path error suggestions are accurate
 
 ## Failure Criteria

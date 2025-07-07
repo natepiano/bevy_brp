@@ -55,14 +55,21 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Confirm mutation succeeds
 
 ### 5. Test Educational Responses for Ambiguous Formats
-- Execute `mcp__brp__bevy_spawn` with ambiguous inputs:
-  - Use bare array: `[1.0, 2.0, 3.0]` 
-  - Use string: `"hello world"`
-- Verify spawn provides educational response with:
-  - Clear explanation of why format cannot be auto-corrected
-  - Rich metadata if available (supported_operations, type_category)
-  - Suggestion to use format discovery tools
-- **Check Trace Log**: Use `mcp__brp__brp_read_log` with `tail_lines: 50` to confirm trace log shows attempted discovery and educational response generation
+- Execute `mcp__brp__bevy_spawn` with known components but ambiguous/incomplete data:
+  - **Test 1 - Transform with bare array**: Use `{"bevy_transform::components::transform::Transform": [1.0, 2.0, 3.0]}`
+    - Verify error includes:
+      - Error message explaining the type mismatch
+      - `format_corrected: false` in error data
+      - `hint` field with correct format example
+  - **Test 2 - Transform with partial object**: Use `{"bevy_transform::components::transform::Transform": {"x": 1.0, "y": 2.0, "z": 3.0}}`
+    - Verify error includes:
+      - Error message about missing required fields
+      - `format_corrected: false` in error data
+      - `hint` field with correct format example
+  - **Test 3 - Name with wrong type**: Use `{"bevy_core::name::Name": 123}`
+    - Verify error provides guidance about Name expecting a string value
+- Verify all responses demonstrate that ambiguous formats cannot be auto-corrected
+- Confirm each response includes educational guidance via error messages and hints
 
 ### 6. Multiple Type Discovery
 - Execute format discovery with multiple types array

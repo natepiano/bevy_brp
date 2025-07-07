@@ -272,12 +272,19 @@ async fn handle_stream_error(
         timeout_seconds.is_some() && elapsed.as_secs() >= u64::from(timeout_seconds.unwrap_or(30));
 
     if is_timeout {
-        warn!("Watch stream timed out after {:?}: {}", elapsed, error);
+        // Check if this is an unexpected timeout (configured for no timeout)
+        let is_no_timeout_config = timeout_seconds == Some(0);
+        
+        if is_no_timeout_config {
+            error!("Watch stream timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.", elapsed, error);
+        } else {
+            warn!("Watch stream timed out after {:?}: {}", elapsed, error);
+        }
 
-        // Log timeout specifically
+        // Log timeout with error context
         let _ = logger
             .write_update(
-                "WATCH_TIMEOUT",
+                if is_no_timeout_config { "WATCH_UNEXPECTED_TIMEOUT" } else { "WATCH_TIMEOUT" },
                 serde_json::json!({
                     "watch_type": watch_type,
                     "entity": entity_id,
@@ -285,6 +292,7 @@ async fn handle_stream_error(
                     "configured_timeout_seconds": timeout_seconds,
                     "error": error_string,
                     "chunks_received_before_timeout": total_chunks,
+                    "is_unexpected": is_no_timeout_config,
                     "timestamp": chrono::Local::now().to_rfc3339()
                 }),
             )
@@ -478,10 +486,18 @@ async fn handle_connection_error(
         && elapsed.as_secs() >= u64::from(conn_params.timeout_seconds.unwrap_or(30));
 
     if is_timeout {
-        warn!("Watch connection timed out after {:?}: {}", elapsed, error);
+        // Check if this is an unexpected timeout (configured for no timeout)
+        let is_no_timeout_config = conn_params.timeout_seconds == Some(0);
+        
+        if is_no_timeout_config {
+            error!("Watch connection timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.", elapsed, error);
+        } else {
+            warn!("Watch connection timed out after {:?}: {}", elapsed, error);
+        }
+        
         let _ = logger
             .write_update(
-                "WATCH_TIMEOUT",
+                if is_no_timeout_config { "WATCH_UNEXPECTED_TIMEOUT" } else { "WATCH_TIMEOUT" },
                 serde_json::json!({
                     "watch_type": &conn_params.watch_type,
                     "entity": conn_params.entity_id,
@@ -489,6 +505,7 @@ async fn handle_connection_error(
                     "configured_timeout_seconds": conn_params.timeout_seconds,
                     "error": error_string,
                     "phase": "connection",
+                    "is_unexpected": is_no_timeout_config,
                     "timestamp": chrono::Local::now().to_rfc3339()
                 }),
             )

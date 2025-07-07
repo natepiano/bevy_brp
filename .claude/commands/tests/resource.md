@@ -44,6 +44,28 @@ mcp__brp__bevy_insert_resource with parameters:
 - Port: {{PORT}}
 - Verify the resource data matches what was inserted
 
+**STEP 4**: Insert/update RuntimeStatsResource (no Serialize/Deserialize traits):
+```
+mcp__brp__bevy_insert_resource with parameters:
+{
+  "resource": "extras_plugin::RuntimeStatsResource",
+  "value": {
+    "frame_count": 100,
+    "total_time": 5.5,
+    "debug_mode": false
+  },
+  "port": {{PORT}}
+}
+```
+- Verify operation succeeds despite lacking Serialize/Deserialize traits
+- Confirm no error messages about missing traits
+
+**STEP 5**: Get the inserted RuntimeStatsResource to verify:
+- Tool: mcp__brp__bevy_get_resource
+- Resource: `extras_plugin::RuntimeStatsResource`
+- Port: {{PORT}}
+- Verify the resource data matches what was inserted
+
 ### 2. Resource Mutation Test (Should Work Without Serialize/Deserialize)
 **STEP 1**: Mutate the RuntimeStatsResource (which lacks Serialize/Deserialize):
 ```
