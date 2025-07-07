@@ -9,6 +9,7 @@ Validate discovery functionality for BRP-enabled applications and examples in th
 - Execute `mcp__brp__brp_list_bevy_apps`
 - Verify response contains apps with name, path, build status
 - Check for presence of `test_extras_plugin_app` app
+- Check for presence of `test_duplicate_app` (may appear in multiple directories)
 - Verify `bevy_brp_mcp` is NOT included (should be filtered out)
 
 ### 2. List Bevy Examples  
@@ -23,7 +24,7 @@ Validate discovery functionality for BRP-enabled applications and examples in th
 
 ## Expected Results
 - ✅ All discovery methods return valid responses
-- ✅ Only `test_extras_plugin_app` found in apps list (bevy_brp_mcp excluded)
+- ✅ Expected apps found: `test_extras_plugin_app` and `test_duplicate_app` (bevy_brp_mcp excluded)
 - ✅ Both `extras_plugin` and `no_extras_plugin` found in examples list
 - ✅ Response formats are consistent and complete
 - ✅ Apps vs examples are properly distinguished

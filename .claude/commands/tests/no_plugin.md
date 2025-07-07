@@ -20,7 +20,19 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 
 ### 3. Tier 3 Format Discovery Fallback
 - Enable debug tracing: `mcp__brp__brp_set_tracing_level` with `level: "debug"`
-- Execute `mcp__brp__bevy_spawn` with wrong Transform format
+- Execute `mcp__brp__bevy_spawn` with intentionally incorrect Transform format:
+  ```json
+  {
+    "components": {
+      "bevy_transform::components::transform::Transform": {
+        "translation": {"x": 1.0, "y": 2.0},
+        "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+        "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
+      }
+    }
+  }
+  ```
+  (Note: translation is missing required "z" field)
 - Check trace log file shows "FAILED Tier 2: Direct Discovery"
 - Verify fallback to pattern matching succeeds
 - Check trace log shows "SUCCESS Tier 3" messages

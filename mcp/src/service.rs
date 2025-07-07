@@ -117,7 +117,7 @@ impl ServerHandler for BrpMcpService {
 }
 
 /// Fetch roots from the client and return the search paths
-pub async fn fetch_roots_and_get_paths(
+async fn fetch_roots_and_get_paths(
     service: &BrpMcpService,
     context: RequestContext<RoleServer>,
 ) -> Result<Vec<PathBuf>, McpError> {
