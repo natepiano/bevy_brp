@@ -139,9 +139,9 @@ pub async fn fetch_roots_and_get_paths(
         .clone())
 }
 
-/// Generic handler wrapper that fetches search paths and calls the provided handler
-/// This eliminates the repetitive pattern of fetching roots in every tool handler
-pub async fn handle_with_paths<F, Fut>(
+/// Handler wrapper for binary listing operations that fetches search paths
+/// This eliminates the repetitive pattern of fetching roots in listing tools
+pub async fn handle_list_binaries<F, Fut>(
     service: &BrpMcpService,
     context: RequestContext<RoleServer>,
     handler: F,
@@ -154,9 +154,9 @@ where
     handler(search_paths).await
 }
 
-/// Generic handler wrapper that fetches search paths and extracts request data
-/// This eliminates even more boilerplate for handlers that need request data
-pub async fn handle_with_request_and_paths<F, Fut>(
+/// Handler wrapper for binary launch operations that fetches search paths and extracts request data
+/// This eliminates boilerplate for handlers that launch binaries with parameters
+pub async fn handle_launch_binary<F, Fut>(
     service: &BrpMcpService,
     request: CallToolRequestParam,
     context: RequestContext<RoleServer>,

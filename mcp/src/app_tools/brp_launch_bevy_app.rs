@@ -19,21 +19,16 @@ pub async fn handle(
     request: rmcp::model::CallToolRequestParam,
     context: RequestContext<RoleServer>,
 ) -> Result<CallToolResult, McpError> {
-    service::handle_with_request_and_paths(
-        service,
-        request,
-        context,
-        |req, search_paths| async move {
-            // Get parameters
-            let app_name = params::extract_required_string(&req, PARAM_APP_NAME)?;
-            let profile = params::extract_optional_string(&req, PARAM_PROFILE, DEFAULT_PROFILE);
-            let path = params::extract_optional_path(&req);
-            let port = params::extract_optional_u16_from_request(&req, PARAM_PORT)?;
+    service::handle_launch_binary(service, request, context, |req, search_paths| async move {
+        // Get parameters
+        let app_name = params::extract_required_string(&req, PARAM_APP_NAME)?;
+        let profile = params::extract_optional_string(&req, PARAM_PROFILE, DEFAULT_PROFILE);
+        let path = params::extract_optional_path(&req);
+        let port = params::extract_optional_u16_from_request(&req, PARAM_PORT)?;
 
-            // Launch the app
-            launch_bevy_app(app_name, profile, path.as_deref(), port, &search_paths)
-        },
-    )
+        // Launch the app
+        launch_bevy_app(app_name, profile, path.as_deref(), port, &search_paths)
+    })
     .await
 }
 

@@ -20,7 +20,7 @@ pub async fn handle_listing<S: CollectionStrategy>(
     context: RequestContext<RoleServer>,
     strategy: S,
 ) -> Result<CallToolResult, McpError> {
-    service::handle_with_paths(service, context, |search_paths| async move {
+    service::handle_list_binaries(service, context, |search_paths| async move {
         let items = collect_all_items(&search_paths, &strategy);
 
         let response = ResponseBuilder::success()

@@ -19,17 +19,17 @@ pub async fn handle(
     request: rmcp::model::CallToolRequestParam,
     context: RequestContext<RoleServer>,
 ) -> Result<CallToolResult, McpError> {
-    // Get parameters
-    let example_name = params::extract_required_string(&request, PARAM_EXAMPLE_NAME)?;
-    let profile = params::extract_optional_string(&request, PARAM_PROFILE, DEFAULT_PROFILE);
-    let path = params::extract_optional_path(&request);
-    let port = params::extract_optional_u16_from_request(&request, PARAM_PORT)?;
+    service::handle_launch_binary(service, request, context, |req, search_paths| async move {
+        // Get parameters
+        let example_name = params::extract_required_string(&req, PARAM_EXAMPLE_NAME)?;
+        let profile = params::extract_optional_string(&req, PARAM_PROFILE, DEFAULT_PROFILE);
+        let path = params::extract_optional_path(&req);
+        let port = params::extract_optional_u16_from_request(&req, PARAM_PORT)?;
 
-    // Fetch current roots
-    let search_paths = service::fetch_roots_and_get_paths(service, context).await?;
-
-    // Launch the example
-    launch_bevy_example(example_name, profile, path.as_deref(), port, &search_paths)
+        // Launch the example
+        launch_bevy_example(example_name, profile, path.as_deref(), port, &search_paths)
+    })
+    .await
 }
 
 pub fn launch_bevy_example(
