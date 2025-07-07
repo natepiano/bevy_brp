@@ -186,33 +186,64 @@ pub fn create_correction_from_discovery(
             correction_method: CorrectionMethod::DirectReplacement,
         };
 
-        return CorrectionResult::Applied { correction_info };
+        return CorrectionResult::Corrected { correction_info };
     }
 
-    // If we have an example for the spawn operation, use it as the corrected format
-    if let Some(spawn_example) = type_info.get_example("spawn") {
-        let correction_info = CorrectionInfo {
-            type_name:         type_info.type_name.clone(),
-            original_value:    original_value.unwrap_or(json!(null)),
-            corrected_value:   spawn_example.clone(),
-            hint:              format!(
-                "Use this format for type '{}' (discovered via bevy_brp_extras)",
-                type_info.type_name
-            ),
-            target_type:       type_info.type_name.clone(),
-            corrected_format:  None,
-            type_info:         Some(type_info),
-            correction_method: CorrectionMethod::DirectReplacement,
-        };
+    // Check if we can actually transform the original input
+    if let Some(original_value) = original_value {
+        debug!(
+            "Extras Integration: Attempting to transform original value: {}",
+            serde_json::to_string(&original_value).unwrap_or_else(|_| "invalid json".to_string())
+        );
+        if let Some(transformed_value) = type_info.transform_value(&original_value) {
+            debug!(
+                "Extras Integration: Successfully transformed value to: {}",
+                serde_json::to_string(&transformed_value)
+                    .unwrap_or_else(|_| "invalid json".to_string())
+            );
+            // We can transform the input - return Corrected with actual transformation
+            let correction_info = CorrectionInfo {
+                type_name:         type_info.type_name.clone(),
+                original_value:    original_value.clone(),
+                corrected_value:   transformed_value,
+                hint:              format!(
+                    "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
+                    if original_value.is_object() {
+                        "object"
+                    } else {
+                        "value"
+                    },
+                    type_info.type_name
+                ),
+                target_type:       type_info.type_name.clone(),
+                corrected_format:  None,
+                type_info:         Some(type_info),
+                correction_method: CorrectionMethod::ObjectToArray,
+            };
 
-        CorrectionResult::Applied { correction_info }
-    } else {
-        // No direct correction available, but we have useful metadata
-        CorrectionResult::MetadataOnly {
-            type_info,
-            reason: "Type discovered but no format example available for correction".to_string(),
+            return CorrectionResult::Corrected { correction_info };
+        } else {
+            debug!("Extras Integration: transform_value() returned None - cannot transform input");
         }
+    } else {
+        debug!("Extras Integration: No original value provided for transformation");
     }
+
+    // Cannot transform input - provide guidance with examples
+    let reason = if let Some(spawn_example) = type_info.get_example("spawn") {
+        format!(
+            "Cannot transform input for type '{}'. Use this format: {}",
+            type_info.type_name,
+            serde_json::to_string(&spawn_example).unwrap_or_else(|_| "correct format".to_string())
+        )
+    } else {
+        format!(
+            "Cannot transform input for type '{}'. Type discovered but no format example available.",
+            type_info.type_name
+        )
+    };
+
+    CorrectionResult::CannotCorrect { type_info, reason }
 }
 
 #[cfg(test)]
@@ -329,7 +360,7 @@ mod tests {
         let result = create_correction_from_discovery(type_info, Some(original.clone()));
 
         match result {
-            CorrectionResult::Applied { correction_info } => {
+            CorrectionResult::Corrected { correction_info } => {
                 assert_eq!(correction_info.original_value, original);
                 assert!(correction_info.corrected_value.get("translation").is_some());
                 assert_eq!(
@@ -337,7 +368,7 @@ mod tests {
                     CorrectionMethod::DirectReplacement
                 );
             }
-            CorrectionResult::MetadataOnly { .. } => {
+            CorrectionResult::CannotCorrect { .. } => {
                 unreachable!("Expected Applied correction result")
             }
         }
@@ -353,14 +384,14 @@ mod tests {
         let result = create_correction_from_discovery(type_info, None);
 
         match result {
-            CorrectionResult::MetadataOnly { type_info, reason } => {
+            CorrectionResult::CannotCorrect { type_info, reason } => {
                 assert_eq!(
                     type_info.type_name,
                     "bevy_transform::components::transform::Transform"
                 );
                 assert!(reason.contains("no format example"));
             }
-            CorrectionResult::Applied { .. } => {
+            CorrectionResult::Corrected { .. } => {
                 unreachable!("Expected MetadataOnly correction result")
             }
         }

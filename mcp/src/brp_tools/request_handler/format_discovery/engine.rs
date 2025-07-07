@@ -4,7 +4,7 @@
 //!
 //! The format discovery engine implements a clean two-phase architecture:
 //!
-//! ## Phase 0: Normal Path (Direct BRP Execution)
+//! ## Level 1: Normal Path (Direct BRP Execution)
 //! Most requests succeed without any format discovery overhead.
 //! ```text
 //! Request: bevy/spawn with correct format
@@ -70,10 +70,11 @@ impl FormatCorrection {}
 pub struct EnhancedBrpResult {
     pub result:             BrpResult,
     pub format_corrections: Vec<FormatCorrection>,
+    pub format_corrected:   bool,
 }
 
-/// Execute Phase 0: Direct BRP request without format discovery overhead
-async fn execute_phase_0(
+/// Execute Level 1: Direct BRP request without format discovery overhead
+async fn execute_level_1(
     method: &str,
     params: Option<Value>,
     port: Option<u16>,
@@ -88,14 +89,15 @@ async fn execute_phase_0(
         }
         BrpResult::Error(ref error) => {
             // Get type information only when needed for error handling
-            let type_infos = get_registry_type_info(method, params.as_ref(), port).await;
+            let registry_type_info = get_registry_type_info(method, params.as_ref(), port).await;
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
             if matches!(method, BRP_METHOD_SPAWN | BRP_METHOD_INSERT)
                 && error.code == BRP_ERROR_CODE_INVALID_REQUEST
             {
                 // Check if this is a serialization error that should be short-circuited
-                if let Some(educational_message) = check_serialization_support(method, &type_infos)
+                if let Some(educational_message) =
+                    check_serialization_support(method, &registry_type_info)
                 {
                     return Ok(BrpRequestResult::SerDeError {
                         error: result,
@@ -107,10 +109,10 @@ async fn execute_phase_0(
             // Check if this is a recoverable format error
             if is_format_error(error) && is_format_discovery_supported(method) {
                 Ok(BrpRequestResult::FormatError {
-                    error: result,
-                    method: method.to_string(),
+                    error:           result,
+                    method:          method.to_string(),
                     original_params: params,
-                    type_infos,
+                    type_infos:      registry_type_info,
                 })
             } else {
                 // Non-recoverable error - return immediately
@@ -141,14 +143,18 @@ fn is_format_error(error: &crate::brp_tools::support::brp_client::BrpError) -> b
 
     // Common format error codes that indicate type serialization issues
     // Include BRP_ERROR_CODE_INVALID_REQUEST (-23402) for mutation errors
-    matches!(error.code, -32602 | -32603 | BRP_ERROR_CODE_INVALID_REQUEST)
-        && (error.message.contains("failed to deserialize")
-            || error.message.contains("invalid type")
-            || error.message.contains("expected")
-            || error.message.contains("AccessError")
-            || error.message.contains("missing field")
-            || error.message.contains("unknown variant")
-            || error.message.contains("Error accessing element"))
+    // Include -23501 for access errors (path errors in mutations)
+    matches!(
+        error.code,
+        -32602 | -32603 | BRP_ERROR_CODE_INVALID_REQUEST | -23501
+    ) && (error.message.contains("failed to deserialize")
+        || error.message.contains("invalid type")
+        || error.message.contains("expected")
+        || error.message.contains("Error accessing element")
+        || error.message.contains("AccessError")
+        || error.message.contains("missing field")
+        || error.message.contains("unknown variant")
+        || error.message.contains("Error accessing element"))
 }
 
 /// Check if a method supports format discovery
@@ -192,7 +198,7 @@ async fn execute_exception_path(
     method: String,
     original_params: Option<Value>,
     error: BrpResult,
-    type_infos: HashMap<String, super::unified_types::UnifiedTypeInfo>,
+    registry_type_info: HashMap<String, super::unified_types::UnifiedTypeInfo>,
     port: Option<u16>,
 ) -> FormatRecoveryResult {
     tracing::trace!("Discovery: Exception Path: Entering format recovery for method '{method}'");
@@ -202,7 +208,7 @@ async fn execute_exception_path(
         &method,
         original_params,
         error,
-        type_infos,
+        registry_type_info,
         port,
     )
     .await
@@ -216,29 +222,31 @@ pub async fn execute_brp_method_with_format_discovery(
 ) -> Result<EnhancedBrpResult> {
     trace!("Discovery: Format Discovery: Starting request for method '{method}'");
 
-    // Phase 0: Direct BRP execution (normal path)
-    trace!("Discovery: Phase 0: Attempting direct BRP execution");
-    let phase_0_result = execute_phase_0(method, params, port).await?;
+    // Level 1: Direct BRP execution (normal path)
+    trace!("Discovery: Level 1: Attempting direct BRP execution");
+    let level_1_result = execute_level_1(method, params, port).await?;
 
-    match phase_0_result {
+    match level_1_result {
         BrpRequestResult::Success(result) => {
-            trace!("Discovery: Phase 0: Direct execution succeeded, no discovery needed");
+            trace!("Discovery: Level 1: Direct execution succeeded, no discovery needed");
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
+                format_corrected: false,
             })
         }
         BrpRequestResult::FormatError {
             error,
             method,
             original_params,
-            type_infos,
+            type_infos: registry_type_info,
         } => {
-            trace!("Discovery: Phase 0: Format error detected, entering exception path");
+            trace!("Discovery: Level 1: Format error detected, entering exception path");
 
             // Exception Path: Format error recovery with pre-fetched type infos
             let recovery_result =
-                execute_exception_path(method, original_params, error, type_infos, port).await;
+                execute_exception_path(method, original_params, error, registry_type_info, port)
+                    .await;
 
             // Convert recovery result to EnhancedBrpResult
             Ok(convert_recovery_to_enhanced_result(recovery_result))
@@ -249,7 +257,7 @@ pub async fn execute_brp_method_with_format_discovery(
             ..
         } => {
             trace!(
-                "Discovery: Phase 0: Serialization error detected, returning educational message"
+                "Discovery: Level 1: Serialization error detected, returning educational message"
             );
 
             // Replace the error message with the educational guidance
@@ -265,13 +273,15 @@ pub async fn execute_brp_method_with_format_discovery(
             Ok(EnhancedBrpResult {
                 result:             enhanced_error,
                 format_corrections: Vec::new(),
+                format_corrected:   false,
             })
         }
         BrpRequestResult::OtherError(result) => {
-            trace!("Discovery: Phase 0: Non-recoverable error, returning original result");
+            trace!("Discovery: Level 1: Non-recoverable error, returning original result");
             Ok(EnhancedBrpResult {
                 result,
                 format_corrections: Vec::new(),
+                format_corrected: false,
             })
         }
     }
@@ -285,9 +295,30 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
             corrections,
         } => {
             let format_corrections = convert_corrections_to_legacy_format(corrections);
+
+            // When recovery succeeded, we need to update the success message to indicate format
+            // correction
+            let enhanced_result = match corrected_result {
+                BrpResult::Success(mut success_data) => {
+                    if let Some(ref mut result_value) = success_data {
+                        if let Some(result_obj) = result_value.as_object_mut() {
+                            result_obj.insert(
+                                "message".to_string(),
+                                serde_json::Value::String(
+                                    "Request succeeded with format correction applied".to_string(),
+                                ),
+                            );
+                        }
+                    }
+                    BrpResult::Success(success_data)
+                }
+                error @ BrpResult::Error(_) => error,
+            };
+
             EnhancedBrpResult {
-                result: corrected_result,
+                result: enhanced_result,
                 format_corrections,
+                format_corrected: true,
             }
         }
         FormatRecoveryResult::NotRecoverable {
@@ -298,6 +329,7 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
             EnhancedBrpResult {
                 result: original_error,
                 format_corrections,
+                format_corrected: false,
             }
         }
     }

@@ -9,7 +9,8 @@ use super::format_discovery::{
 };
 use super::traits::ExtractedParams;
 use crate::brp_tools::constants::{
-    JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
+    JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
+    JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
@@ -119,26 +120,35 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 }
 
 /// Add only format corrections to response data (not debug info)
-fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[FormatCorrection]) {
-    if format_corrections.is_empty() {
-        return;
-    }
-
-    let corrections_value = json!(
-        format_corrections
-            .iter()
-            .map(format_correction_to_json)
-            .collect::<Vec<_>>()
-    );
+fn add_format_corrections_only(
+    response_data: &mut Value,
+    format_corrections: &[FormatCorrection],
+    format_corrected: bool,
+) {
+    let corrections_value = if format_corrections.is_empty() {
+        json!([])
+    } else {
+        json!(
+            format_corrections
+                .iter()
+                .map(format_correction_to_json)
+                .collect::<Vec<_>>()
+        )
+    };
 
     // If response_data is an object, add fields
     if let Value::Object(map) = response_data {
         map.insert(JSON_FIELD_FORMAT_CORRECTIONS.to_string(), corrections_value);
+        map.insert(
+            JSON_FIELD_FORMAT_CORRECTED.to_string(),
+            json!(format_corrected),
+        );
     } else {
         // If not an object, wrap it
         let wrapped = json!({
             JSON_FIELD_DATA: response_data.clone(),
-            JSON_FIELD_FORMAT_CORRECTIONS: corrections_value
+            JSON_FIELD_FORMAT_CORRECTIONS: corrections_value,
+            JSON_FIELD_FORMAT_CORRECTED: format_corrected
         });
         *response_data = wrapped;
     }
@@ -163,7 +173,11 @@ fn process_success_response(
     // Debug info is now logged via tracing during execution
 
     // Add format corrections only (not debug info, as it will be handled separately)
-    add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
+    add_format_corrections_only(
+        &mut response_data,
+        &enhanced_result.format_corrections,
+        enhanced_result.format_corrected,
+    );
 
     // Create new FormatterContext
     let new_formatter_context = FormatterContext {
@@ -240,6 +254,12 @@ fn process_error_response(
                     json!(corrections),
                 );
             }
+
+            // Always add format_corrected field to indicate whether format correction occurred
+            map.insert(
+                JSON_FIELD_FORMAT_CORRECTED.to_string(),
+                json!(enhanced_result.format_corrected),
+            );
         }
 
         error_info.data = Some(data_obj);

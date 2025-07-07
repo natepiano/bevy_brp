@@ -139,6 +139,89 @@ fn convert_enum_info_from_discovery(enum_obj: &Value) -> Option<EnumInfo> {
         })
 }
 
+/// Generate mutation paths from registry schema structure
+fn generate_mutation_paths_from_schema(schema_data: &Value) -> HashMap<String, String> {
+    let mut paths = HashMap::new();
+
+    // Get the type kind
+    let kind = schema_data
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+
+    match kind {
+        "TupleStruct" => {
+            // For tuple structs, generate paths based on prefixItems
+            if let Some(prefix_items) = schema_data.get("prefixItems").and_then(Value::as_array) {
+                for (index, item) in prefix_items.iter().enumerate() {
+                    // Basic tuple access path
+                    paths.insert(
+                        format!(".{}", index),
+                        format!("Access field {} of the tuple struct", index),
+                    );
+
+                    // Check if this field is a Color type
+                    if let Some(type_ref) = item
+                        .get("type")
+                        .and_then(|t| t.get("$ref"))
+                        .and_then(Value::as_str)
+                    {
+                        if type_ref.contains("Color") {
+                            // Add common color field paths
+                            paths.insert(
+                                format!(".{}.red", index),
+                                "Access the red component (if Color is an enum with named fields)"
+                                    .to_string(),
+                            );
+                            paths.insert(
+                                format!(".{}.green", index),
+                                "Access the green component (if Color is an enum with named fields)".to_string()
+                            );
+                            paths.insert(
+                                format!(".{}.blue", index),
+                                "Access the blue component (if Color is an enum with named fields)"
+                                    .to_string(),
+                            );
+                            paths.insert(
+                                format!(".{}.alpha", index),
+                                "Access the alpha component (if Color is an enum with named fields)".to_string()
+                            );
+
+                            // Also add potential enum variant access
+                            paths.insert(
+                                format!(".{}.0", index),
+                                "Access the first field if Color is an enum variant".to_string(),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        "Struct" => {
+            // For regular structs, use property names
+            if let Some(properties) = schema_data.get("properties").and_then(Value::as_object) {
+                for (field_name, _field_type) in properties {
+                    paths.insert(
+                        format!(".{}", field_name),
+                        format!("Access the '{}' field", field_name),
+                    );
+                }
+            }
+        }
+        _ => {
+            // For other types (enums, values), mutation typically replaces the whole value
+            if kind == "Enum" {
+                paths.insert(
+                    "".to_string(),
+                    "Replace the entire enum value (use empty path)".to_string(),
+                );
+            }
+        }
+    }
+
+    paths
+}
+
 /// Extract enum variant information from registry schema
 fn extract_enum_info_from_schema(schema_data: &Value) -> Option<EnumInfo> {
     // Look for the "oneOf" field which contains enum variants
@@ -248,11 +331,19 @@ pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> UnifiedType
         None
     };
 
+    // Generate mutation paths based on schema structure
+    let mutation_paths = generate_mutation_paths_from_schema(schema_data);
+
     UnifiedTypeInfo {
         type_name: type_name.to_string(),
         registry_status,
         serialization,
-        format_info: FormatInfo::empty(),
+        format_info: FormatInfo {
+            examples: HashMap::new(),
+            mutation_paths,
+            original_format: None,
+            corrected_format: None,
+        },
         supported_operations,
         type_category,
         child_types: HashMap::new(),

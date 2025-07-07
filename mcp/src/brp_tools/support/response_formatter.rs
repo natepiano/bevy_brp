@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use super::brp_client::BrpError;
 use crate::brp_tools::constants::{
     BRP_ERROR_CODE_INVALID_REQUEST, JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE,
-    JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
+    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
 use crate::brp_tools::request_handler::FormatterContext;
 use crate::error::Result;
@@ -240,6 +240,11 @@ impl ResponseFormatter {
                 }
             }
 
+            // Always preserve format_corrected from the input data
+            if let Some(format_corrected) = data_map.get(JSON_FIELD_FORMAT_CORRECTED) {
+                builder = builder.add_field(JSON_FIELD_FORMAT_CORRECTED, format_corrected)?;
+            }
+
             // Clean debug_info from data to prevent duplication
             if let Value::Object(clean_map) = &mut clean_data {
                 clean_map.remove(JSON_FIELD_DEBUG_INFO);
@@ -261,6 +266,15 @@ impl ResponseFormatter {
             let template_params = Value::Object(template_values);
             let message = substitute_template(template, Some(&template_params));
             builder = builder.message(message);
+        }
+
+        // Override message if format correction occurred
+        if let Value::Object(data_map) = data {
+            if let Some(format_corrected) = data_map.get(JSON_FIELD_FORMAT_CORRECTED) {
+                if format_corrected.as_bool() == Some(true) {
+                    builder = builder.message("Request succeeded with format correction applied");
+                }
+            }
         }
 
         // Auto-inject debug info at response level if debug mode is enabled

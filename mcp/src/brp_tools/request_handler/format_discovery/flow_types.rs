@@ -61,9 +61,9 @@ pub enum FormatRecoveryResult {
 #[derive(Debug, Clone)]
 pub enum CorrectionResult {
     /// Correction was successfully applied
-    Applied { correction_info: CorrectionInfo },
+    Corrected { correction_info: CorrectionInfo },
     /// Correction could not be applied but metadata was discovered
-    MetadataOnly {
+    CannotCorrect {
         type_info: UnifiedTypeInfo,
         reason:    String,
     },

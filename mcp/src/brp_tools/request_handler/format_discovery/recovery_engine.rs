@@ -27,12 +27,13 @@ pub async fn attempt_format_recovery_with_type_infos(
     method: &str,
     original_params: Option<Value>,
     error: BrpResult,
-    pre_fetched_type_infos: HashMap<String, UnifiedTypeInfo>,
+    registry_type_info: HashMap<String, UnifiedTypeInfo>,
     port: Option<u16>,
 ) -> FormatRecoveryResult {
+    debug!("Recovery Engine: FUNCTION ENTRY - attempt_format_recovery_with_type_infos called");
     debug!(
         "Recovery Engine: Starting multi-level recovery for method '{method}' with {} pre-fetched type info(s)",
-        pre_fetched_type_infos.len()
+        registry_type_info.len()
     );
 
     // Extract type names from the parameters for recovery attempts
@@ -50,41 +51,13 @@ pub async fn attempt_format_recovery_with_type_infos(
         type_names.len()
     );
 
-    // Use pre-fetched type infos instead of querying registry again
-    let level_1_type_infos = pre_fetched_type_infos;
-
-    // Level 1: Check serialization support (using pre-fetched data)
-    debug!("Recovery Engine: Level 1 - Checking serialization support using pre-fetched data");
-    let mut corrections = Vec::new();
-
-    for type_name in &type_names {
-        if let Some(type_info) = level_1_type_infos.get(type_name) {
-            if type_info.serialization.brp_compatible {
-                debug!("Level 1: Type '{type_name}' is fully BRP compatible");
-                // Create a metadata-only correction since we have good type info
-                let correction = CorrectionResult::MetadataOnly {
-                    type_info: type_info.clone(),
-                    reason:    "Type found in registry with full BRP support".to_string(),
-                };
-                corrections.push(correction);
-            }
-        }
-    }
-
-    if !corrections.is_empty() {
-        debug!(
-            "Recovery Engine: Level 1 found {} corrections from pre-fetched data",
-            corrections.len()
-        );
-        return build_recovery_success(corrections, method, original_params.as_ref(), &error, port);
-    }
-
     // Level 2: Direct Discovery via bevy_brp_extras
-    debug!("Recovery Engine: Level 2 - Direct discovery via bevy_brp_extras");
+    debug!("Recovery Engine: beginning level 2 direct discovery");
     let level_2_type_infos = match execute_level_2_direct_discovery(
         &type_names,
         method,
-        &level_1_type_infos,
+        &registry_type_info,
+        original_params.as_ref(),
         port,
     )
     .await
@@ -97,7 +70,8 @@ pub async fn attempt_format_recovery_with_type_infos(
                 original_params.as_ref(),
                 &error,
                 port,
-            );
+            )
+            .await;
         }
         LevelResult::Continue(type_infos) => {
             debug!(
@@ -134,6 +108,7 @@ pub async fn attempt_format_recovery_with_type_infos(
         LevelResult::Success(corrections) => {
             debug!("Recovery Engine: Level 3 succeeded with pattern-based corrections");
             build_recovery_success(corrections, method, original_params.as_ref(), &error, port)
+                .await
         }
         LevelResult::Continue(_) => {
             debug!("Recovery Engine: All levels exhausted, no recovery possible");
@@ -159,6 +134,7 @@ async fn execute_level_2_direct_discovery(
     type_names: &[String],
     method: &str,
     type_infos: &HashMap<String, UnifiedTypeInfo>,
+    original_params: Option<&Value>,
     port: Option<u16>,
 ) -> LevelResult {
     debug!(
@@ -215,16 +191,20 @@ async fn execute_level_2_direct_discovery(
                         let _ = writeln!(hint, "  {path} - {description}");
                     }
 
-                    let correction = CorrectionResult::MetadataOnly {
+                    let correction = CorrectionResult::CannotCorrect {
                         type_info: discovered_info,
                         reason:    hint,
                     };
                     corrections.push(correction);
                 } else {
-                    // Create a standard correction from the discovered type information
+                    // Extract the original value for this component
+                    let original_component_value = original_params
+                        .and_then(|params| extract_component_value(method, params, type_name));
+
+                    // Create a correction from the discovered type information with original value
                     let correction = super::extras_integration::create_correction_from_discovery(
                         discovered_info,
-                        None, // We don't have the original value in this context
+                        original_component_value,
                     );
                     corrections.push(correction);
                 }
@@ -331,6 +311,7 @@ fn handle_mutation_specific_errors(
     mutation_path: Option<&str>,
     error_pattern: &super::detection::ErrorPattern,
     type_name: &str,
+    type_info: Option<&UnifiedTypeInfo>,
 ) -> Option<CorrectionResult> {
     if !matches!(
         method,
@@ -350,20 +331,49 @@ fn handle_mutation_specific_errors(
                 "Level 3: Mutation path error - invalid path '{attempted_path}' (field: '{field_name}')"
             );
 
-            // Create a helpful error message for invalid mutation paths
-            let hint = format!(
-                "Invalid mutation path '{attempted_path}' for type '{type_name}'. The field '{field_name}' does not exist. \
-                Use bevy_brp_extras/discover_format to find valid mutation paths."
-            );
+            // Use the registry type_info if available to provide better guidance
+            let hint = if let Some(registry_info) = type_info {
+                let mutation_paths = registry_info.get_mutation_paths();
 
-            let type_info = super::unified_types::UnifiedTypeInfo::new(
-                type_name.to_string(),
-                super::unified_types::DiscoverySource::PatternMatching,
-            );
+                if !mutation_paths.is_empty() {
+                    // We have valid paths from registry or discovery
+                    let paths_list: Vec<String> = mutation_paths
+                        .iter()
+                        .map(|(path, desc)| format!("{} - {}", path, desc))
+                        .collect();
 
-            Some(CorrectionResult::MetadataOnly {
-                type_info,
-                reason: hint,
+                    format!(
+                        "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
+                        Valid paths:\n{}",
+                        paths_list.join("\n")
+                    )
+                } else {
+                    // No mutation paths available from registry
+                    format!(
+                        "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
+                        The field '{field_name}' does not exist."
+                    )
+                }
+            } else {
+                // No registry info available at all
+                format!(
+                    "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
+                    The field '{field_name}' does not exist. \
+                    Use bevy_brp_extras/discover_format to find valid mutation paths."
+                )
+            };
+
+            // Use the existing type_info if available, or create a new one
+            let final_type_info = type_info.cloned().unwrap_or_else(|| {
+                super::unified_types::UnifiedTypeInfo::new(
+                    type_name.to_string(),
+                    super::unified_types::DiscoverySource::PatternMatching,
+                )
+            });
+
+            Some(CorrectionResult::CannotCorrect {
+                type_info: final_type_info,
+                reason:    hint,
             })
         }
         _ => None,
@@ -393,7 +403,7 @@ fn attempt_pattern_based_correction(
 
     // Step 1.5: Handle mutation-specific errors
     if let Some(result) =
-        handle_mutation_specific_errors(method, mutation_path, &error_pattern, type_name)
+        handle_mutation_specific_errors(method, mutation_path, &error_pattern, type_name, type_info)
     {
         return Some(result);
     }
@@ -442,7 +452,7 @@ fn attempt_pattern_based_correction(
                 correction_method: CorrectionMethod::ObjectToArray,
             };
 
-            return Some(CorrectionResult::Applied { correction_info });
+            return Some(CorrectionResult::Corrected { correction_info });
         }
     }
 
@@ -458,7 +468,7 @@ fn attempt_pattern_based_correction(
             transform_result_to_correction((corrected_value, description), type_name);
 
         // Add the original value to the correction info
-        if let CorrectionResult::Applied {
+        if let CorrectionResult::Corrected {
             ref mut correction_info,
         } = correction_result
         {
@@ -478,7 +488,7 @@ fn attempt_pattern_based_correction(
             transform_result_to_correction((corrected_value, description), type_name);
 
         // Add the original value to the correction info
-        if let CorrectionResult::Applied {
+        if let CorrectionResult::Corrected {
             ref mut correction_info,
         } = correction_result
         {
@@ -534,7 +544,7 @@ fn transform_result_to_correction(result: (Value, String), type_name: &str) -> C
         correction_method: super::unified_types::CorrectionMethod::DirectReplacement,
     };
 
-    CorrectionResult::Applied { correction_info }
+    CorrectionResult::Corrected { correction_info }
 }
 
 /// Create basic type info for transformer use
@@ -577,7 +587,7 @@ fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult
                 )
             };
 
-            Some(CorrectionResult::MetadataOnly { type_info, reason })
+            Some(CorrectionResult::CannotCorrect { type_info, reason })
         }
 
         // Other types - no specific patterns yet
@@ -635,7 +645,7 @@ fn create_enhanced_enum_guidance(
         "mutate".to_string(),
     ];
 
-    CorrectionResult::MetadataOnly {
+    CorrectionResult::CannotCorrect {
         type_info,
         reason: "Enhanced enum guidance with variant information and usage examples".to_string(),
     }
@@ -822,7 +832,7 @@ fn build_corrected_params(
 }
 
 /// Convert correction results into final recovery result
-fn build_recovery_success(
+async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: &str,
     original_params: Option<&Value>,
@@ -834,13 +844,13 @@ fn build_recovery_success(
 
     for correction_result in correction_results {
         match correction_result {
-            CorrectionResult::Applied { correction_info } => {
+            CorrectionResult::Corrected { correction_info } => {
                 let type_name = correction_info.type_name.clone();
                 corrections.push(correction_info);
                 has_applied_corrections = true;
                 debug!("Recovery Engine: Applied correction for type '{type_name}'");
             }
-            CorrectionResult::MetadataOnly { type_info, reason } => {
+            CorrectionResult::CannotCorrect { type_info, reason } => {
                 debug!(
                     "Recovery Engine: Found metadata for type '{}' but no correction: {}",
                     type_info.type_name, reason
@@ -881,16 +891,13 @@ fn build_recovery_success(
             Ok(corrected_params) => {
                 debug!("Recovery Engine: Built corrected parameters, executing retry");
 
-                // Execute the retry synchronously using block_on
-                let runtime = tokio::runtime::Handle::current();
-                let retry_result = runtime.block_on(async {
-                    crate::brp_tools::support::brp_client::execute_brp_method(
-                        method,
-                        corrected_params,
-                        port,
-                    )
-                    .await
-                });
+                // Execute the retry asynchronously
+                let retry_result = crate::brp_tools::support::brp_client::execute_brp_method(
+                    method,
+                    corrected_params,
+                    port,
+                )
+                .await;
 
                 match retry_result {
                     Ok(success_result) => {

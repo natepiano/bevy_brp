@@ -336,10 +336,64 @@ impl UnifiedTypeInfo {
         Self::extract_vec4_from_object(obj)
     }
 
-    /// Transform struct values
-    fn transform_struct_value(&self, _value: &Value) -> Option<Value> {
-        // For now, use corrected format if available
-        self.format_info.corrected_format.clone()
+    /// Transform struct values - only transform if input is valid and transformable
+    fn transform_struct_value(&self, value: &Value) -> Option<Value> {
+        // Check if this is a Transform type with child math types that can be transformed
+        if self.type_name.contains("Transform") {
+            // Try to transform object format to array format for math fields
+            if let Some(obj) = value.as_object() {
+                let mut result = serde_json::Map::new();
+                let mut transformed_any = false;
+
+                for (field_name, field_value) in obj {
+                    match field_name.as_str() {
+                        "translation" | "scale" => {
+                            // Try to transform Vec3 object to array
+                            if let Some(field_obj) = field_value.as_object() {
+                                if let Some(vec3_array) = Self::extract_vec3_from_object(field_obj)
+                                {
+                                    result.insert(field_name.clone(), vec3_array);
+                                    transformed_any = true;
+                                } else {
+                                    // Cannot transform this field - copy as-is
+                                    result.insert(field_name.clone(), field_value.clone());
+                                }
+                            } else {
+                                // Field is not an object, copy as-is
+                                result.insert(field_name.clone(), field_value.clone());
+                            }
+                        }
+                        "rotation" => {
+                            // Try to transform Quat object to array
+                            if let Some(field_obj) = field_value.as_object() {
+                                if let Some(quat_array) = Self::extract_quat_from_object(field_obj)
+                                {
+                                    result.insert(field_name.clone(), quat_array);
+                                    transformed_any = true;
+                                } else {
+                                    // Cannot transform this field - copy as-is
+                                    result.insert(field_name.clone(), field_value.clone());
+                                }
+                            } else {
+                                // Field is not an object, copy as-is
+                                result.insert(field_name.clone(), field_value.clone());
+                            }
+                        }
+                        _ => {
+                            // Copy other fields as-is
+                            result.insert(field_name.clone(), field_value.clone());
+                        }
+                    }
+                }
+
+                if transformed_any {
+                    return Some(Value::Object(result));
+                }
+            }
+        }
+
+        // For other struct types, return None - no transformation possible
+        None
     }
 
     /// Transform enum values
