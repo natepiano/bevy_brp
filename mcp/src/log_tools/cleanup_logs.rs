@@ -1,22 +1,16 @@
 use std::fs;
 use std::time::{Duration, SystemTime};
 
+use rmcp::Error as McpError;
 use rmcp::model::{CallToolRequestParam, CallToolResult};
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 
 use super::support::{self, LogFileEntry};
-use crate::BrpMcpService;
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
 
-pub fn handle(
-    _service: &BrpMcpService,
-    request: &CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
+pub fn handle(request: &CallToolRequestParam) -> Result<CallToolResult, McpError> {
     // Extract parameters
     let app_name_filter = params::extract_optional_string(request, "app_name", "");
     let older_than_seconds = params::extract_optional_u32(request, "older_than_seconds", 0)?;

@@ -11,7 +11,7 @@ macro_rules! include_help_text {
 }
 
 // Macro to define BRP methods with consistent naming
-macro_rules! define_method {
+macro_rules! define_tool_constants {
     // For Bevy protocol methods (bevy/*)
     (bevy, $method:ident) => {
         paste::paste! {
@@ -36,6 +36,7 @@ macro_rules! define_method {
             pub const [<BRP_METHOD_EXTRAS_ $method:upper>]: &str = concat!("brp_extras/", stringify!($method));
             pub const [<TOOL_BRP_EXTRAS_ $method:upper>]: &str = concat!("brp_extras_", stringify!($method));
             pub const [<DESC_BRP_EXTRAS_ $method:upper>]: &str = include_help_text!(concat!("brp_tools/brp_extras_", stringify!($method), ".txt"));
+            pub const [<HANDLER_ $method:upper>]: &str = concat!("handler_", stringify!($method));
         }
     };
 
@@ -52,6 +53,7 @@ macro_rules! define_method {
         paste::paste! {
             pub const [<TOOL_ $method:upper>]: &str = concat!("brp_", stringify!($method));
             pub const [<DESC_ $method:upper>]: &str = include_help_text!(concat!("app_tools/brp_", stringify!($method), ".txt"));
+            pub const [<HANDLER_ $method:upper>]: &str = concat!("handler_", stringify!($method));
         }
     };
 
@@ -60,6 +62,7 @@ macro_rules! define_method {
         paste::paste! {
             pub const [<TOOL_ $method:upper>]: &str = concat!("brp_", stringify!($method));
             pub const [<DESC_ $method:upper>]: &str = include_help_text!(concat!("log_tools/brp_", stringify!($method), ".txt"));
+            pub const [<HANDLER_ $method:upper>]: &str = concat!("handler_", stringify!($method));
         }
     };
 }
@@ -80,66 +83,62 @@ pub const BRP_EXTRAS_PREFIX: &str = "brp_extras/";
 // -----------------------------------------------------------------------------
 
 // Generate tool constants for Bevy protocol methods
-define_method!(bevy, list);
-define_method!(bevy, get);
-define_method!(bevy, destroy);
-define_method!(bevy, insert);
-define_method!(bevy, remove);
-define_method!(bevy, list_resources);
-define_method!(bevy, get_resource);
-define_method!(bevy, insert_resource);
-define_method!(bevy, remove_resource);
-define_method!(bevy, mutate_resource);
-define_method!(bevy, mutate_component);
-define_method!(bevy, rpc_discover => "rpc.discover");
-define_method!(bevy, query);
-define_method!(bevy, spawn);
-define_method!(bevy, registry_schema => "bevy/registry/schema");
-define_method!(bevy, reparent);
-define_method!(bevy, get_watch => "bevy/get+watch");
-define_method!(bevy, list_watch => "bevy/list+watch");
+define_tool_constants!(bevy, list);
+define_tool_constants!(bevy, get);
+define_tool_constants!(bevy, destroy);
+define_tool_constants!(bevy, insert);
+define_tool_constants!(bevy, remove);
+define_tool_constants!(bevy, list_resources);
+define_tool_constants!(bevy, get_resource);
+define_tool_constants!(bevy, insert_resource);
+define_tool_constants!(bevy, remove_resource);
+define_tool_constants!(bevy, mutate_resource);
+define_tool_constants!(bevy, mutate_component);
+define_tool_constants!(bevy, rpc_discover => "rpc.discover");
+define_tool_constants!(bevy, query);
+define_tool_constants!(bevy, spawn);
+define_tool_constants!(bevy, registry_schema => "bevy/registry/schema");
+define_tool_constants!(bevy, reparent);
+define_tool_constants!(bevy, get_watch => "bevy/get+watch");
+define_tool_constants!(bevy, list_watch => "bevy/list+watch");
 
 // BRP execute tool (not a direct Bevy method, server-only)
-define_method!(brp, execute);
+define_tool_constants!(brp, execute);
 
 // -----------------------------------------------------------------------------
 // BRP Extras Tools (bevy_brp_extras plugin methods)
 // -----------------------------------------------------------------------------
 
 // Generate tool constants for BRP extras methods
-define_method!(brp_extras, shutdown);
-define_method!(brp_extras, screenshot);
-define_method!(brp_extras, discover_format);
-define_method!(brp_extras, send_keys);
-define_method!(brp_extras, set_debug_mode);
+define_tool_constants!(brp_extras, shutdown);
 
 // -----------------------------------------------------------------------------
-// Server-Only BRP Tools (not direct protocol methods)
+// BRP Watch Assist Tools (not direct protocol methods)
 // -----------------------------------------------------------------------------
 
 // Generate tool constants for BRP internal tools
-define_method!(brp, status);
-define_method!(brp, stop_watch);
-define_method!(brp, list_active_watches);
-define_method!(brp, set_tracing_level);
-define_method!(brp, get_trace_log_path);
+define_tool_constants!(brp, stop_watch);
+define_tool_constants!(brp, list_active_watches);
 
 // -----------------------------------------------------------------------------
 // Application Management Tools
 // -----------------------------------------------------------------------------
 
 // Generate tool constants for app management tools
-define_method!(app, list_bevy_apps);
-define_method!(app, list_bevy_examples);
-define_method!(app, list_brp_apps);
-define_method!(app, launch_bevy_app);
-define_method!(app, launch_bevy_example);
+define_tool_constants!(app, list_bevy_apps);
+define_tool_constants!(app, list_bevy_examples);
+define_tool_constants!(app, list_brp_apps);
+define_tool_constants!(app, launch_bevy_app);
+define_tool_constants!(app, launch_bevy_example);
+define_tool_constants!(app, status);
 
 // -----------------------------------------------------------------------------
 // Log Management Tools
 // -----------------------------------------------------------------------------
 
 // Generate tool constants for log management tools
-define_method!(log, list_logs);
-define_method!(log, read_log);
-define_method!(log, cleanup_logs);
+define_tool_constants!(log, list_logs);
+define_tool_constants!(log, read_log);
+define_tool_constants!(log, cleanup_logs);
+define_tool_constants!(log, get_trace_log_path);
+define_tool_constants!(log, set_tracing_level);

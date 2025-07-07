@@ -1,25 +1,20 @@
+use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use sysinfo::System;
 
 use super::constants::{PARAM_APP_NAME, PARAM_PORT};
-use crate::BrpMcpService;
-use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_FIELD_PORT, JSON_FIELD_STATUS};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
-use crate::support::tracing::TracingLevel;
+use crate::support::tracing::{TracingLevel, get_current_tracing_level};
 use crate::tools::BRP_METHOD_LIST;
 
 pub async fn handle(
-    _service: &BrpMcpService,
     request: rmcp::model::CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
 ) -> Result<CallToolResult, McpError> {
     // Get parameters
     let app_name = params::extract_required_string(&request, PARAM_APP_NAME)?;
@@ -160,7 +155,7 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<CallToolResult, 
             "app_running": app_running,
             "brp_responsive": brp_responsive,
             "app_pid": app_pid,
-            "mcp_debug_enabled": matches!(get_current_level(), TracingLevel::Debug | TracingLevel::Trace)
+            "mcp_debug_enabled": matches!(get_current_tracing_level(), TracingLevel::Debug | TracingLevel::Trace)
         }))
         .map_or_else(
             |_| {

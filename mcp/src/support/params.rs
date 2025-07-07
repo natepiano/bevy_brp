@@ -2,7 +2,7 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::Value;
 
-use crate::constants::PARAM_PATH;
+use crate::constants::PARAM_BINARY_PATH;
 use crate::error::{Error, report_to_mcp_error};
 
 // Value-based extraction functions (lower-level)
@@ -300,7 +300,7 @@ pub fn extract_optional_string_array_from_request(
 /// Extract an optional path parameter from the request
 /// Returns None if not provided or empty string
 pub fn extract_optional_path(request: &CallToolRequestParam) -> Option<String> {
-    let path = extract_optional_string(request, PARAM_PATH, "");
+    let path = extract_optional_string(request, PARAM_BINARY_PATH, "");
     if path.is_empty() {
         None
     } else {

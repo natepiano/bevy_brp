@@ -2,7 +2,7 @@ use rmcp::model::{CallToolRequestParam, CallToolResult, ListToolsResult};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use crate::brp_tools::{brp_get_trace_log_path, brp_set_tracing_level, watch};
+use crate::brp_tools::watch;
 // Imports removed - using fully qualified paths in match statement to avoid naming conflicts
 use crate::error::{Error, report_to_mcp_error};
 use crate::{BrpMcpService, tool_definitions, tool_generator};
@@ -22,9 +22,6 @@ pub fn register_tools() -> ListToolsResult {
         watch::bevy_list_watch::register_tool(),
         watch::brp_stop_watch::register_tool(),
         watch::brp_list_active::register_tool(),
-        // Debug tools
-        brp_get_trace_log_path::register_tool(),
-        brp_set_tracing_level::register_tool(),
     ]);
 
     // Sort all tools alphabetically by name for consistent ordering
@@ -61,14 +58,6 @@ pub async fn handle_tool_call(
         }
         name if name == crate::tools::TOOL_BRP_LIST_ACTIVE_WATCHES => {
             watch::brp_list_active::handle(service, request, context).await
-        }
-
-        // Debug tools
-        name if name == crate::tools::TOOL_BRP_GET_TRACE_LOG_PATH => {
-            brp_get_trace_log_path::handle_get_trace_log_path(service, request, context)
-        }
-        name if name == crate::tools::TOOL_BRP_SET_TRACING_LEVEL => {
-            brp_set_tracing_level::handle_set_tracing_level(service, request, context)
         }
 
         _ => {

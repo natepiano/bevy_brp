@@ -1,11 +1,9 @@
+use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use sysinfo::{Signal, System};
 use tracing::debug;
 
-use crate::BrpMcpService;
 use crate::brp_tools::constants::DEFAULT_BRP_PORT;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
@@ -119,9 +117,7 @@ fn handle_kill_process_fallback(
 }
 
 pub async fn handle(
-    _service: &BrpMcpService,
     request: rmcp::model::CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
 ) -> std::result::Result<CallToolResult, McpError> {
     // Get parameters
     let app_name = params::extract_required_string(&request, "app_name")?;

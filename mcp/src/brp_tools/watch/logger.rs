@@ -66,7 +66,7 @@ impl BufferedWatchLogger {
         data: serde_json::Value,
     ) -> Result<(), String> {
         if matches!(
-            crate::brp_tools::brp_set_tracing_level::get_current_level(),
+            crate::support::tracing::get_current_tracing_level(),
             crate::support::tracing::TracingLevel::Debug
                 | crate::support::tracing::TracingLevel::Trace
         ) {

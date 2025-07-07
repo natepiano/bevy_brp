@@ -38,13 +38,11 @@ pub const JSON_FIELD_WATCHES: &str = "watches";
 // ============================================================================
 
 /// Parameter name constants for BRP tool inputs
-pub const PARAM_TYPES: &str = "types";
 pub const PARAM_METHOD: &str = "method";
 pub const PARAM_PARAMS: &str = "params";
 pub const PARAM_DATA: &str = "data";
 pub const PARAM_FILTER: &str = "filter";
 pub const PARAM_STRICT: &str = "strict";
-pub const PARAM_FORMATS: &str = "formats";
 pub const PARAM_WITH_CRATES: &str = "with_crates";
 pub const PARAM_WITHOUT_CRATES: &str = "without_crates";
 pub const PARAM_WITH_TYPES: &str = "with_types";

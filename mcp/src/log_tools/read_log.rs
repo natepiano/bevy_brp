@@ -2,24 +2,18 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 
 use super::constants::PARAM_FILE_PATH;
 use super::support;
-use crate::BrpMcpService;
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
 
-pub fn handle(
-    _service: &BrpMcpService,
-    request: &rmcp::model::CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
+pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolResult, McpError> {
     // Extract parameters
     let filename = params::extract_required_string(request, "filename")?;
     let keyword = params::extract_optional_string(request, "keyword", "");

@@ -10,7 +10,6 @@ use super::adapters::from_type_discovery_response_json;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::tools::BRP_METHOD_EXTRAS_DISCOVER_FORMAT;
 
 /// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(
@@ -24,9 +23,9 @@ pub async fn discover_type_format(
         "types": [type_name]
     });
 
-    debug!("Extras Integration: Calling {BRP_METHOD_EXTRAS_DISCOVER_FORMAT} with params: {params}");
+    debug!("Extras Integration: Calling brp_extras/discover_format with params: {params}");
 
-    match execute_brp_method(BRP_METHOD_EXTRAS_DISCOVER_FORMAT, Some(params), port).await {
+    match execute_brp_method("brp_extras/discover_format", Some(params), port).await {
         Ok(BrpResult::Success(Some(response_data))) => {
             debug!("Extras Integration: Received successful response from brp_extras");
 
@@ -39,15 +38,13 @@ pub async fn discover_type_format(
         }
         Ok(BrpResult::Error(error)) => {
             debug!(
-                "Extras Integration: {BRP_METHOD_EXTRAS_DISCOVER_FORMAT} failed: {} - {}",
+                "Extras Integration: brp_extras/discover_format failed: {} - {}",
                 error.code, error.message
             );
             Ok(None) // Return None instead of Err - this just means brp_extras is not available
         }
         Err(e) => {
-            debug!(
-                "Extras Integration: Connection error calling {BRP_METHOD_EXTRAS_DISCOVER_FORMAT}: {e}"
-            );
+            debug!("Extras Integration: Connection error calling brp_extras/discover_format: {e}");
             Ok(None) // Return None instead of Err - this just means brp_extras is not available
         }
     }

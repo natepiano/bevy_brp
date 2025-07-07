@@ -1,21 +1,15 @@
+use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 
 use super::support::LogFileEntry;
-use crate::BrpMcpService;
 use crate::log_tools::support;
 use crate::support::large_response::{LargeResponseConfig, handle_large_response};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
 
-pub fn handle(
-    _service: &BrpMcpService,
-    request: &rmcp::model::CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
+pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolResult, McpError> {
     // Extract optional app name filter
     let app_name_filter = params::extract_optional_string(request, "app_name", "");
 
