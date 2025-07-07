@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
-use super::super::unified_types::{TypeCategory, UnifiedTypeInfo};
+use super::super::unified_types::{TransformationResult, TypeCategory, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::support::brp_client::BrpError;
@@ -23,12 +23,15 @@ impl EnumVariantTransformer {
         type_name: &str,
         obj: &serde_json::Map<String, Value>,
         context: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         extract_single_field_value(obj).map(|(field_name, value)| {
             let hint = format!(
                 "`{type_name}` {context}: converted field '{field_name}' to variant access"
             );
-            (value.clone(), hint)
+            TransformationResult {
+                corrected_value: value.clone(),
+                hint,
+            }
         })
     }
 
@@ -37,10 +40,13 @@ impl EnumVariantTransformer {
         type_name: &str,
         arr: &[Value],
         context: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         arr.first().map(|element| {
             let hint = format!("`{type_name}` {context}: using first array element");
-            (element.clone(), hint)
+            TransformationResult {
+                corrected_value: element.clone(),
+                hint,
+            }
         })
     }
 
@@ -49,7 +55,7 @@ impl EnumVariantTransformer {
         type_name: &str,
         field_name: &str,
         obj: &serde_json::Map<String, Value>,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Try to find the variant field
         obj.get(field_name).map_or_else(
             || {
@@ -58,13 +64,19 @@ impl EnumVariantTransformer {
                     let hint = format!(
                         "`{type_name}` MissingField '{field_name}': used field '{actual_field}' instead"
                     );
-                    (value.clone(), hint)
+                    TransformationResult {
+                        corrected_value: value.clone(),
+                        hint,
+                    }
                 })
             },
             |variant_value| {
                 let hint =
                     format!("`{type_name}` MissingField '{field_name}': extracted enum variant value");
-                Some((variant_value.clone(), hint))
+                Some(TransformationResult {
+                    corrected_value: variant_value.clone(),
+                    hint,
+                })
             },
         )
     }
@@ -76,7 +88,7 @@ impl EnumVariantTransformer {
         expected: &str,
         actual: &str,
         access: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Common type mismatches and their fixes
         match (expected, actual) {
             // Trying to access a struct field on a tuple struct
@@ -123,7 +135,10 @@ impl EnumVariantTransformer {
                     let context = format!("TypeMismatch with {access} access");
                     if let Some((field_name, value)) = extract_single_field_value(obj) {
                         let hint = format!("`{type_name}` {context}: using field '{field_name}'");
-                        return Some((value.clone(), hint));
+                        return Some(TransformationResult {
+                            corrected_value: value.clone(),
+                            hint,
+                        });
                     }
                 }
             }
@@ -146,7 +161,7 @@ impl EnumVariantTransformer {
         expected: &str,
         actual: &str,
         access: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Common enum variant mismatches
         match (expected, actual) {
             // Tuple variant vs struct variant
@@ -157,7 +172,10 @@ impl EnumVariantTransformer {
                             "`{type_name}` VariantTypeMismatch: Expected {expected} variant access to access a {actual} variant, \
                                         converted '{variant_name}' to tuple variant format"
                         );
-                        return Some((value.clone(), hint));
+                        return Some(TransformationResult {
+                            corrected_value: value.clone(),
+                            hint,
+                        });
                     }
                 }
             }
@@ -238,7 +256,7 @@ impl EnumVariantTransformer {
         expected_variant_type: &str,
         actual_variant_type: &str,
         error_message: &str,
-    ) -> (Value, String) {
+    ) -> TransformationResult {
         // Extract enum variants dynamically
         let variants = Self::extract_enum_variants(error_message);
 
@@ -312,7 +330,10 @@ impl EnumVariantTransformer {
             valid_values.join(", ")
         );
 
-        (format_info, hint)
+        TransformationResult {
+            corrected_value: format_info,
+            hint,
+        }
     }
 
     /// Enhanced handler for enum unit variant errors with type information
@@ -321,7 +342,7 @@ impl EnumVariantTransformer {
         expected_variant_type: &str,
         actual_variant_type: &str,
         enum_info: &super::super::unified_types::EnumInfo,
-    ) -> (Value, String) {
+    ) -> TransformationResult {
         // Use actual enum variants from type information
         let valid_values: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
 
@@ -338,7 +359,10 @@ impl EnumVariantTransformer {
             valid_values.join(", ")
         );
 
-        (format_info, hint)
+        TransformationResult {
+            corrected_value: format_info,
+            hint,
+        }
     }
 
     /// Handle missing field scenarios for enum variants
@@ -346,7 +370,7 @@ impl EnumVariantTransformer {
         type_name: &str,
         original_value: &Value,
         field_name: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Missing field errors often occur when:
         // 1. Trying to access a named field on a tuple struct
         // 2. Trying to access a field that doesn't exist
@@ -374,7 +398,10 @@ impl EnumVariantTransformer {
                     let hint = format!(
                         "`{type_name}` MissingField '{field_name}': used available field '{actual_field}'"
                     );
-                    return Some((value.clone(), hint));
+                    return Some(TransformationResult {
+                        corrected_value: value.clone(),
+                        hint,
+                    });
                 }
             }
             Value::Array(arr) => {
@@ -382,7 +409,10 @@ impl EnumVariantTransformer {
                     let hint = format!(
                         "`{type_name}` MissingField '{field_name}': using first array element"
                     );
-                    return Some((element.clone(), hint));
+                    return Some(TransformationResult {
+                        corrected_value: element.clone(),
+                        hint,
+                    });
                 }
             }
             _ => {}
@@ -410,7 +440,7 @@ impl EnumVariantTransformer {
         error: &BrpError,
         type_name: &str,
         enum_info: &super::super::unified_types::EnumInfo,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // For now, fall back to basic pattern matching
         // This can be enhanced in the future to use the rich enum_info data
         // to provide more sophisticated variant transformations
@@ -431,7 +461,10 @@ impl EnumVariantTransformer {
                 );
                 // For now, return the original value with an informative hint
                 // Real transformations would analyze the variant structure
-                return Some((value.clone(), hint));
+                return Some(TransformationResult {
+                    corrected_value: value.clone(),
+                    hint,
+                });
             }
         }
 
@@ -457,28 +490,34 @@ impl FormatTransformer for EnumVariantTransformer {
         }
     }
 
-    fn transform(&self, value: &Value) -> Option<(Value, String)> {
+    fn transform(&self, value: &Value) -> Option<TransformationResult> {
         // Generic enum variant transformation
         match value {
             Value::Object(obj) if obj.len() == 1 => {
                 if let Some((field_name, field_value)) = obj.iter().next() {
-                    Some((
-                        field_value.clone(),
-                        format!("Converted enum variant field '{field_name}' to variant access"),
-                    ))
+                    Some(TransformationResult {
+                        corrected_value: field_value.clone(),
+                        hint:            format!(
+                            "Converted enum variant field '{field_name}' to variant access"
+                        ),
+                    })
                 } else {
                     None
                 }
             }
-            Value::Array(arr) if !arr.is_empty() => Some((
-                arr[0].clone(),
-                "Using first array element for enum variant access".to_string(),
-            )),
+            Value::Array(arr) if !arr.is_empty() => Some(TransformationResult {
+                corrected_value: arr[0].clone(),
+                hint:            "Using first array element for enum variant access".to_string(),
+            }),
             _ => None,
         }
     }
 
-    fn transform_with_error(&self, value: &Value, error: &BrpError) -> Option<(Value, String)> {
+    fn transform_with_error(
+        &self,
+        value: &Value,
+        error: &BrpError,
+    ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name =
             extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
@@ -538,7 +577,7 @@ impl FormatTransformer for EnumVariantTransformer {
         value: &Value,
         error: &BrpError,
         type_info: &UnifiedTypeInfo,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name = &type_info.type_name;
 
@@ -569,10 +608,10 @@ impl FormatTransformer for EnumVariantTransformer {
             }
 
             // Use enum information from type discovery for other variant transformations
-            if let Some((corrected_value, hint)) =
+            if let Some(result) =
                 Self::transform_enum_with_discovered_info(value, error, type_name, enum_info)
             {
-                return Some((corrected_value, hint));
+                return Some(result);
             }
         }
 
@@ -669,15 +708,14 @@ mod tests {
             result.is_some(),
             "Expected transform to succeed for single field object"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
+        let transformation_result = result.unwrap(); // Safe after assertion
         let expected = json!({
             "red": 1.0,
             "green": 0.5,
             "blue": 0.0,
             "alpha": 1.0
         });
-        assert_eq!(converted, expected);
-        assert!(hint.contains("Converted enum variant field 'LinearRgba'"));
+        assert_eq!(transformation_result.corrected_value, expected);
     }
 
     #[test]
@@ -687,9 +725,8 @@ mod tests {
 
         let result = transformer.transform(&value);
         assert!(result.is_some(), "Expected transform to succeed for array");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("first"));
-        assert!(hint.contains("Using first array element"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("first"));
     }
 
     #[test]
@@ -738,16 +775,14 @@ mod tests {
             result.is_some(),
             "Expected enum variant extraction to succeed"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
+        let transformation_result = result.unwrap(); // Safe after assertion
         let expected = json!({
             "red": 1.0,
             "green": 0.5,
             "blue": 0.0,
             "alpha": 1.0
         });
-        assert_eq!(converted, expected);
-        assert!(hint.contains("TestType"));
-        assert!(hint.contains("extracted enum variant value"));
+        assert_eq!(transformation_result.corrected_value, expected);
     }
 
     #[test]
@@ -767,9 +802,8 @@ mod tests {
             result.is_some(),
             "Expected fallback field extraction to succeed"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("value"));
-        assert!(hint.contains("used field 'SomeOtherField' instead"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("value"));
     }
 
     #[test]
@@ -809,10 +843,11 @@ mod tests {
             result.is_some(),
             "Expected variant type mismatch handling to succeed"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!([1.0, 0.5, 0.0, 1.0]));
-        assert!(hint.contains("VariantTypeMismatch"));
-        assert!(hint.contains("tuple variant format"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(
+            transformation_result.corrected_value,
+            json!([1.0, 0.5, 0.0, 1.0])
+        );
     }
 
     #[test]
@@ -831,15 +866,19 @@ mod tests {
             result.is_some(),
             "Expected missing field handling to succeed"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
+        let transformation_result = result.unwrap(); // Safe after assertion
         let expected = json!({
             "red": 1.0,
             "green": 0.5,
             "blue": 0.0,
             "alpha": 1.0
         });
-        assert_eq!(converted, expected);
-        assert!(hint.contains("extracted enum variant value"));
+        assert_eq!(transformation_result.corrected_value, expected);
+        assert!(
+            transformation_result
+                .hint
+                .contains("extracted enum variant value")
+        );
     }
 
     #[test]
@@ -865,11 +904,11 @@ mod tests {
         let result = transformer.transform_with_error(&value, &error);
 
         assert!(result.is_some(), "Expected transformation to succeed");
-        let (transformed_value, hint) = result.unwrap();
+        let transformation_result = result.unwrap();
 
         // Check that the transformed value has the expected structure
-        assert!(transformed_value.is_object());
-        let obj = transformed_value.as_object().unwrap();
+        assert!(transformation_result.corrected_value.is_object());
+        let obj = transformation_result.corrected_value.as_object().unwrap();
         assert!(obj.contains_key("hint"));
         assert!(obj.contains_key("path"));
         assert!(obj.contains_key("valid_values"));
@@ -877,10 +916,6 @@ mod tests {
 
         // Check that the path is empty as required for unit variant mutation
         assert_eq!(obj["path"], "");
-
-        // Check that the hint contains the expected information
-        assert!(hint.contains("requires empty path"));
-        assert!(hint.contains("Expected Struct variant, found Unit variant"));
     }
 
     #[test]

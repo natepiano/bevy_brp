@@ -4,7 +4,9 @@ use serde_json::{Map, Value};
 use tracing::debug;
 
 use super::super::detection::ErrorPattern;
-use super::super::unified_types::{DiscoverySource, TypeCategory, UnifiedTypeInfo};
+use super::super::unified_types::{
+    DiscoverySource, TransformationResult, TypeCategory, UnifiedTypeInfo,
+};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::request_handler::format_discovery::constants::TRANSFORM_SEQUENCE_F32_COUNT;
@@ -60,7 +62,7 @@ impl MathTypeTransformer {
     }
 
     /// Use `UnifiedTypeInfo` to transform math types
-    fn try_unified_transform(type_name: &str, value: &Value) -> Option<(Value, String)> {
+    fn try_unified_transform(type_name: &str, value: &Value) -> Option<TransformationResult> {
         // Create a UnifiedTypeInfo for the math type
         let mut type_info =
             UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching);
@@ -69,7 +71,10 @@ impl MathTypeTransformer {
         // Try transformation using UnifiedTypeInfo
         type_info.transform_value(value).map(|transformed| {
             let hint = format!("Transformed {type_name} using UnifiedTypeInfo");
-            (transformed, hint)
+            TransformationResult {
+                corrected_value: transformed,
+                hint,
+            }
         })
     }
 
@@ -90,7 +95,7 @@ impl MathTypeTransformer {
         type_name: &str,
         original_value: &Value,
         math_type: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // First try UnifiedTypeInfo transformation
         if let Some(result) =
             Self::try_unified_transform(&format!("glam::{math_type}"), original_value)
@@ -100,14 +105,30 @@ impl MathTypeTransformer {
 
         // Fallback to legacy implementation for compatibility
         match math_type {
-            "Vec3" => Self::convert_to_math_type_array(original_value, "Vec3")
-                .map(|arr| (arr, type_expects_array(type_name, "Vec3") + " [x, y, z]")),
-            "Vec2" => Self::convert_to_math_type_array(original_value, "Vec2")
-                .map(|arr| (arr, type_expects_array(type_name, "Vec2") + " [x, y]")),
-            "Vec4" => Self::convert_to_math_type_array(original_value, "Vec4")
-                .map(|arr| (arr, type_expects_array(type_name, "Vec4") + " [x, y, z, w]")),
-            "Quat" => Self::convert_to_math_type_array(original_value, "Quat")
-                .map(|arr| (arr, type_expects_array(type_name, "Quat") + " [x, y, z, w]")),
+            "Vec3" => Self::convert_to_math_type_array(original_value, "Vec3").map(|arr| {
+                TransformationResult {
+                    corrected_value: arr,
+                    hint:            type_expects_array(type_name, "Vec3") + " [x, y, z]",
+                }
+            }),
+            "Vec2" => Self::convert_to_math_type_array(original_value, "Vec2").map(|arr| {
+                TransformationResult {
+                    corrected_value: arr,
+                    hint:            type_expects_array(type_name, "Vec2") + " [x, y]",
+                }
+            }),
+            "Vec4" => Self::convert_to_math_type_array(original_value, "Vec4").map(|arr| {
+                TransformationResult {
+                    corrected_value: arr,
+                    hint:            type_expects_array(type_name, "Vec4") + " [x, y, z, w]",
+                }
+            }),
+            "Quat" => Self::convert_to_math_type_array(original_value, "Quat").map(|arr| {
+                TransformationResult {
+                    corrected_value: arr,
+                    hint:            type_expects_array(type_name, "Quat") + " [x, y, z, w]",
+                }
+            }),
             _ => None,
         }
     }
@@ -117,7 +138,7 @@ impl MathTypeTransformer {
         type_name: &str,
         original_value: &Value,
         expected_count: usize,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         debug!(
             "apply_transform_sequence_fix: Processing input value: {}",
             original_value
@@ -168,7 +189,10 @@ impl MathTypeTransformer {
         if let Some(transformed) = type_info.transform_value(transform_data) {
             let hint = format!("`{actual_type_name}` Transform converted to proper array format");
             debug!("apply_transform_sequence_fix: UnifiedTypeInfo transformation succeeded");
-            return Some((transformed, hint));
+            return Some(TransformationResult {
+                corrected_value: transformed,
+                hint,
+            });
         }
 
         // Fallback to legacy implementation if UnifiedTypeInfo doesn't work
@@ -218,7 +242,10 @@ impl MathTypeTransformer {
                 "`{actual_type_name}` Transform expected {expected_count} f32 values in sequence - {}",
                 hint_parts.join(", ")
             );
-            Some((Value::Object(corrected), hint))
+            Some(TransformationResult {
+                corrected_value: Value::Object(corrected),
+                hint,
+            })
         }
     }
 }
@@ -231,7 +258,7 @@ impl FormatTransformer for MathTypeTransformer {
         )
     }
 
-    fn transform(&self, value: &Value) -> Option<(Value, String)> {
+    fn transform(&self, value: &Value) -> Option<TransformationResult> {
         // Try different math type conversions using UnifiedTypeInfo first
         for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
             if let Some(result) = Self::try_unified_transform(&format!("glam::{math_type}"), value)
@@ -244,13 +271,20 @@ impl FormatTransformer for MathTypeTransformer {
         for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
             if let Some(converted) = Self::convert_to_math_type_array(value, math_type) {
                 let hint = messages::converted_to_format(&format!("{math_type} array"));
-                return Some((converted, hint));
+                return Some(TransformationResult {
+                    corrected_value: converted,
+                    hint,
+                });
             }
         }
         None
     }
 
-    fn transform_with_error(&self, value: &Value, error: &BrpError) -> Option<(Value, String)> {
+    fn transform_with_error(
+        &self,
+        value: &Value,
+        error: &BrpError,
+    ) -> Option<TransformationResult> {
         debug!("MathTypeTransformer: transform_with_error called");
         debug!("MathTypeTransformer: Input value: {}", value);
         debug!("MathTypeTransformer: Error message: {}", error.message);
@@ -428,9 +462,9 @@ mod tests {
 
         let result = transformer.transform(&value);
         assert!(result.is_some(), "Failed to transform Vec3 object");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!([1.0, 2.0])); // Vec2 is checked first, so only x,y are extracted
-        assert!(hint.contains("Vec2")); // Should find Vec2 first in the loop
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!([1.0, 2.0])); // Vec2 is checked first, so only x,y are extracted
+        assert!(transformation_result.hint.contains("Vec2")); // Should find Vec2 first in the loop
     }
 
     #[test]
@@ -461,9 +495,12 @@ mod tests {
         let result =
             MathTypeTransformer::apply_transform_sequence_fix("Transform", &transform_obj, 12);
         assert!(result.is_some(), "Failed to apply transform sequence fix");
-        let (converted, _) = result.unwrap(); // Safe after assertion
-        assert!(converted.is_object(), "Expected object result");
-        let obj = converted.as_object().unwrap(); // Safe after assertion
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert!(
+            transformation_result.corrected_value.is_object(),
+            "Expected object result"
+        );
+        let obj = transformation_result.corrected_value.as_object().unwrap(); // Safe after assertion
 
         assert_eq!(obj.get("translation"), Some(&json!([1.0, 2.0, 3.0])));
         assert_eq!(obj.get("rotation"), Some(&json!([0.0, 0.0, 0.0, 1.0])));

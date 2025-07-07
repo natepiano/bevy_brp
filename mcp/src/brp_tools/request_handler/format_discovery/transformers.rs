@@ -9,7 +9,7 @@
 use serde_json::Value;
 
 use super::detection::ErrorPattern;
-use super::unified_types::UnifiedTypeInfo;
+use super::unified_types::{TransformationResult, UnifiedTypeInfo};
 use crate::brp_tools::support::brp_client::BrpError;
 
 // Import transformer implementations
@@ -33,12 +33,16 @@ pub trait FormatTransformer {
     fn can_handle(&self, error_pattern: &ErrorPattern) -> bool;
 
     /// Transform the value to fix the format error
-    /// Returns `Some((transformed_value, description))` if successful, `None` otherwise
-    fn transform(&self, value: &Value) -> Option<(Value, String)>;
+    /// Returns `Some(TransformationResult)` if successful, `None` otherwise
+    fn transform(&self, value: &Value) -> Option<TransformationResult>;
 
     /// Transform with additional context from the error
     /// Default implementation ignores the error and calls `transform()`
-    fn transform_with_error(&self, value: &Value, _error: &BrpError) -> Option<(Value, String)> {
+    fn transform_with_error(
+        &self,
+        value: &Value,
+        _error: &BrpError,
+    ) -> Option<TransformationResult> {
         self.transform(value)
     }
 
@@ -57,7 +61,7 @@ pub trait FormatTransformer {
         value: &Value,
         error: &BrpError,
         _type_info: &UnifiedTypeInfo,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         self.transform_with_error(value, error)
     }
 
@@ -118,7 +122,7 @@ impl TransformerRegistry {
         error_pattern: &ErrorPattern,
         error: &BrpError,
         type_info: &UnifiedTypeInfo,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         self.find_transformer(error_pattern)
             .and_then(|transformer| transformer.transform_with_type_info(value, error, type_info))
     }
@@ -132,7 +136,7 @@ impl TransformerRegistry {
         value: &Value,
         error_pattern: &ErrorPattern,
         error: &BrpError,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         self.find_transformer(error_pattern)
             .and_then(|transformer| transformer.transform_with_error(value, error))
     }

@@ -3,6 +3,7 @@
 use serde_json::Value;
 
 use super::super::detection::ErrorPattern;
+use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
 use crate::brp_tools::request_handler::constants::{
@@ -62,7 +63,7 @@ impl StringTypeTransformer {
     fn apply_name_component_fix(
         type_name: &str,
         original_value: &Value,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         if let Some((extracted_string, source_description)) =
             Self::extract_string_value(original_value)
         {
@@ -72,14 +73,14 @@ impl StringTypeTransformer {
                 _ => "other",
             };
 
-            Some((
-                Value::String(extracted_string),
-                format!(
+            Some(TransformationResult {
+                corrected_value: Value::String(extracted_string),
+                hint:            format!(
                     "{}, {} (was {format_type})",
                     messages::expects_string_format(&format!("{type_name} Name component")),
                     source_description
                 ),
-            ))
+            })
         } else {
             None
         }
@@ -89,18 +90,18 @@ impl StringTypeTransformer {
     fn convert_to_string_format(
         type_name: &str,
         original_value: &Value,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         if let Some((extracted_string, source_description)) =
             Self::extract_string_value(original_value)
         {
-            Some((
-                Value::String(extracted_string),
-                format!(
+            Some(TransformationResult {
+                corrected_value: Value::String(extracted_string),
+                hint:            format!(
                     "{}, {}",
                     messages::expects_string_format(type_name),
                     source_description
                 ),
-            ))
+            })
         } else {
             None
         }
@@ -129,19 +130,23 @@ impl FormatTransformer for StringTypeTransformer {
         }
     }
 
-    fn transform(&self, value: &Value) -> Option<(Value, String)> {
+    fn transform(&self, value: &Value) -> Option<TransformationResult> {
         // Try to extract a string from the value
         if let Some((extracted_string, source_description)) = Self::extract_string_value(value) {
-            Some((
-                Value::String(extracted_string),
-                format!("String extracted {source_description}"),
-            ))
+            Some(TransformationResult {
+                corrected_value: Value::String(extracted_string),
+                hint:            format!("String extracted {source_description}"),
+            })
         } else {
             None
         }
     }
 
-    fn transform_with_error(&self, value: &Value, error: &BrpError) -> Option<(Value, String)> {
+    fn transform_with_error(
+        &self,
+        value: &Value,
+        error: &BrpError,
+    ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name =
             extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
@@ -305,9 +310,9 @@ mod tests {
 
         let result = transformer.transform(&value);
         assert!(result.is_some(), "Failed to transform object to string");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("test_entity"));
-        assert!(hint.contains("String extracted"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("test_entity"));
+        assert!(transformation_result.hint.contains("String extracted"));
     }
 
     #[test]
@@ -324,11 +329,15 @@ mod tests {
 
         let result = StringTypeTransformer::apply_name_component_fix("TestType", &value);
         assert!(result.is_some(), "Failed to apply name component fix");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("entity_name"));
-        assert!(hint.contains("TestType Name component"));
-        assert!(hint.contains("expects string format"));
-        assert!(hint.contains("was object"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("entity_name"));
+        assert!(
+            transformation_result
+                .hint
+                .contains("TestType Name component")
+        );
+        assert!(transformation_result.hint.contains("expects string format"));
+        assert!(transformation_result.hint.contains("was object"));
     }
 
     #[test]
@@ -339,10 +348,10 @@ mod tests {
 
         let result = StringTypeTransformer::convert_to_string_format("TestType", &value);
         assert!(result.is_some(), "Failed to convert to string format");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("test_string"));
-        assert!(hint.contains("TestType"));
-        assert!(hint.contains("expects string format"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("test_string"));
+        assert!(transformation_result.hint.contains("TestType"));
+        assert!(transformation_result.hint.contains("expects string format"));
     }
 
     #[test]

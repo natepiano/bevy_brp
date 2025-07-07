@@ -65,7 +65,8 @@ pub const PARAM_SPAWNED_ENTITY: &str = "spawned_entity";
 pub const BRP_JSONRPC_PATH: &str = "/jsonrpc";
 
 /// Default host for BRP connections
-pub const BRP_DEFAULT_HOST: &str = "localhost";
+/// Using IPv4 address directly to avoid IPv6 connection issues
+pub const BRP_DEFAULT_HOST: &str = "127.0.0.1";
 
 /// HTTP protocol for BRP connections
 pub const BRP_HTTP_PROTOCOL: &str = "http";

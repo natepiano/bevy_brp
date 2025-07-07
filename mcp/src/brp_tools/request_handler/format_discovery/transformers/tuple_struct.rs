@@ -5,6 +5,7 @@ use serde_json::Value;
 use super::super::detection::ErrorPattern;
 use super::super::field_mapper::map_field_to_tuple_index;
 use super::super::path_parser::{parse_generic_enum_field_access, parse_path_to_field_access};
+use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::support::brp_client::BrpError;
@@ -52,7 +53,7 @@ impl TupleStructTransformer {
         type_name: &str,
         original_value: &Value,
         field_path: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Tuple structs use numeric indices like .0, .1, etc.
         // If the error mentions a field path, it might be trying to access
         // a field using the wrong syntax
@@ -70,12 +71,12 @@ impl TupleStructTransformer {
                 // If we have an object with a single field, try converting to tuple access
                 if obj.len() == 1 {
                     if let Some((_, value)) = obj.iter().next() {
-                        return Some((
-                            value.clone(),
-                            format!(
+                        return Some(TransformationResult {
+                            corrected_value: value.clone(),
+                            hint:            format!(
                                 "`{type_name}` is a tuple struct, use numeric indices like .0 instead of named fields"
                             ),
-                        ));
+                        });
                     }
                 }
             }
@@ -91,7 +92,10 @@ impl TupleStructTransformer {
                                 "`{type_name}` tuple struct: converted '{field_path}' to '{fixed_path}' for element access"
                             )
                         };
-                        return Some((element.clone(), hint));
+                        return Some(TransformationResult {
+                            corrected_value: element.clone(),
+                            hint,
+                        });
                     }
                 }
             }
@@ -106,11 +110,14 @@ impl TupleStructTransformer {
         type_name: &str,
         obj: &serde_json::Map<String, Value>,
         context: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         extract_single_field_value(obj).map(|(field_name, value)| {
             let hint =
                 format!("`{type_name}` {context}: converted field '{field_name}' to tuple access");
-            (value.clone(), hint)
+            TransformationResult {
+                corrected_value: value.clone(),
+                hint,
+            }
         })
     }
 
@@ -119,7 +126,7 @@ impl TupleStructTransformer {
         type_name: &str,
         field_name: &str,
         original_value: &Value,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         let fixed_path = Self::fix_tuple_struct_path(&format!(".{field_name}"));
         if fixed_path != format!(".{field_name}") {
             // The path was transformed, so it's likely a tuple struct
@@ -132,7 +139,10 @@ impl TupleStructTransformer {
                                 let hint = format!(
                                     "`{type_name}` MissingField '{field_name}': converted to tuple struct index {index}"
                                 );
-                                return Some((element.clone(), hint));
+                                return Some(TransformationResult {
+                                    corrected_value: element.clone(),
+                                    hint,
+                                });
                             }
                         }
                     }
@@ -154,7 +164,7 @@ impl TupleStructTransformer {
         type_name: &str,
         original_value: &Value,
         field_name: &str,
-    ) -> Option<(Value, String)> {
+    ) -> Option<TransformationResult> {
         // Missing field errors often occur when:
         // 1. Trying to access a named field on a tuple struct
         // 2. Trying to access a field that doesn't exist
@@ -181,7 +191,10 @@ impl TupleStructTransformer {
                     let hint = format!(
                         "`{type_name}` MissingField '{field_name}': used available field '{actual_field}'"
                     );
-                    return Some((value.clone(), hint));
+                    return Some(TransformationResult {
+                        corrected_value: value.clone(),
+                        hint,
+                    });
                 }
             }
             Value::Array(arr) => {
@@ -189,7 +202,10 @@ impl TupleStructTransformer {
                     let hint = format!(
                         "`{type_name}` MissingField '{field_name}': using first array element"
                     );
-                    return Some((element.clone(), hint));
+                    return Some(TransformationResult {
+                        corrected_value: element.clone(),
+                        hint,
+                    });
                 }
             }
             _ => {}
@@ -219,28 +235,34 @@ impl FormatTransformer for TupleStructTransformer {
         )
     }
 
-    fn transform(&self, value: &Value) -> Option<(Value, String)> {
+    fn transform(&self, value: &Value) -> Option<TransformationResult> {
         // Generic tuple struct transformation
         match value {
             Value::Object(obj) if obj.len() == 1 => {
                 if let Some((field_name, field_value)) = obj.iter().next() {
-                    Some((
-                        field_value.clone(),
-                        format!("Converted field '{field_name}' to tuple struct access"),
-                    ))
+                    Some(TransformationResult {
+                        corrected_value: field_value.clone(),
+                        hint:            format!(
+                            "Converted field '{field_name}' to tuple struct access"
+                        ),
+                    })
                 } else {
                     None
                 }
             }
-            Value::Array(arr) if !arr.is_empty() => Some((
-                arr[0].clone(),
-                "Using first array element for tuple struct access".to_string(),
-            )),
+            Value::Array(arr) if !arr.is_empty() => Some(TransformationResult {
+                corrected_value: arr[0].clone(),
+                hint:            "Using first array element for tuple struct access".to_string(),
+            }),
             _ => None,
         }
     }
 
-    fn transform_with_error(&self, value: &Value, error: &BrpError) -> Option<(Value, String)> {
+    fn transform_with_error(
+        &self,
+        value: &Value,
+        error: &BrpError,
+    ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name =
             extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
@@ -360,9 +382,13 @@ mod tests {
 
         let result = transformer.transform(&value);
         assert!(result.is_some(), "Failed to transform single field object");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("value"));
-        assert!(hint.contains("Converted field 'field' to tuple struct access"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("value"));
+        assert!(
+            transformation_result
+                .hint
+                .contains("Converted field 'field' to tuple struct access")
+        );
     }
 
     #[test]
@@ -372,9 +398,13 @@ mod tests {
 
         let result = transformer.transform(&value);
         assert!(result.is_some(), "Failed to transform array");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!("first"));
-        assert!(hint.contains("Using first array element"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!("first"));
+        assert!(
+            transformation_result
+                .hint
+                .contains("Using first array element")
+        );
     }
 
     #[test]
@@ -415,10 +445,10 @@ mod tests {
             result.is_some(),
             "Failed to fix tuple struct format for object"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!(1.0));
-        assert!(hint.contains("TestType"));
-        assert!(hint.contains("tuple struct"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!(1.0));
+        assert!(transformation_result.hint.contains("TestType"));
+        assert!(transformation_result.hint.contains("tuple struct"));
     }
 
     #[test]
@@ -430,10 +460,10 @@ mod tests {
             result.is_some(),
             "Failed to fix tuple struct format for array"
         );
-        let (converted, hint) = result.unwrap(); // Safe after assertion
-        assert_eq!(converted, json!(1.0)); // .x should map to .0, which is index 0
-        assert!(hint.contains("TestType"));
-        assert!(hint.contains("tuple struct"));
+        let transformation_result = result.unwrap(); // Safe after assertion
+        assert_eq!(transformation_result.corrected_value, json!(1.0)); // .x should map to .0, which is index 0
+        assert!(transformation_result.hint.contains("TestType"));
+        assert!(transformation_result.hint.contains("tuple struct"));
     }
 
     #[test]

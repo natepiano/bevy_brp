@@ -14,7 +14,9 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
-use super::unified_types::{CorrectionInfo, CorrectionMethod, TypeCategory, UnifiedTypeInfo};
+use super::unified_types::{
+    CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
+};
 use crate::brp_tools::request_handler::format_discovery::extras_integration;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::tools::{
@@ -476,7 +478,7 @@ fn attempt_pattern_based_correction(
     }
 
     // Step 4: Try transformation with type information
-    if let Some((corrected_value, description)) = transformer_registry.transform_with_type_info(
+    if let Some(transformation_result) = transformer_registry.transform_with_type_info(
         original_value,
         &error_pattern,
         error,
@@ -484,7 +486,7 @@ fn attempt_pattern_based_correction(
     ) {
         debug!("Level 3: Successfully transformed value for type '{type_name}'");
         let mut correction_result =
-            transform_result_to_correction((corrected_value, description), type_name);
+            transform_result_to_correction(transformation_result, type_name);
 
         // Add the original value to the correction info
         if let CorrectionResult::Corrected {
@@ -499,12 +501,12 @@ fn attempt_pattern_based_correction(
     }
 
     // Step 5: Fall back to error-only transformation
-    if let Some((corrected_value, description)) =
+    if let Some(transformation_result) =
         transformer_registry.transform_legacy(original_value, &error_pattern, error)
     {
         debug!("Level 3: Successfully applied fallback transformation for type '{type_name}'");
         let mut correction_result =
-            transform_result_to_correction((corrected_value, description), type_name);
+            transform_result_to_correction(transformation_result, type_name);
 
         // Add the original value to the correction info
         if let CorrectionResult::Corrected {
@@ -548,8 +550,14 @@ fn extract_type_values_from_params<'a>(
 }
 
 /// Convert transformer output to `CorrectionResult`
-fn transform_result_to_correction(result: (Value, String), type_name: &str) -> CorrectionResult {
-    let (corrected_value, description) = result;
+fn transform_result_to_correction(
+    result: TransformationResult,
+    type_name: &str,
+) -> CorrectionResult {
+    let TransformationResult {
+        corrected_value,
+        hint: description,
+    } = result;
 
     // Create correction info
     let correction_info = super::unified_types::CorrectionInfo {

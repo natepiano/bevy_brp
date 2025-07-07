@@ -10,6 +10,15 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Result of a transformation operation containing the corrected value and a hint
+#[derive(Debug, Clone)]
+pub struct TransformationResult {
+    /// The corrected value after transformation
+    pub corrected_value: Value,
+    /// Human-readable hint about the transformation
+    pub hint:            String,
+}
+
 /// Information about an enum variant
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnumVariant {
