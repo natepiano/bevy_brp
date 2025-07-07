@@ -28,7 +28,7 @@ paste = "1.0"
 regex = "1.11.1"
 rmcp = { version = "0.1.5", features = ["server", "transport-io"] }
 sysinfo = "0.35.2"
-tokio = { version = "1.46.0", features = ["full", "signal"] }
+tokio = { version = "1.46.1", features = ["full", "signal"] }
 tokio-stream = "0.1.17"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1.41", features = [
