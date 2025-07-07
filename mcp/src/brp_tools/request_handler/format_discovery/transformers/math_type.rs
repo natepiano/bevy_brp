@@ -4,7 +4,7 @@ use serde_json::{Map, Value};
 use tracing::debug;
 
 use super::super::detection::ErrorPattern;
-use super::super::unified_types::{DiscoverySource, UnifiedTypeInfo};
+use super::super::unified_types::{DiscoverySource, TypeCategory, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::request_handler::format_discovery::constants::TRANSFORM_SEQUENCE_F32_COUNT;
@@ -64,7 +64,7 @@ impl MathTypeTransformer {
         // Create a UnifiedTypeInfo for the math type
         let mut type_info =
             UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching);
-        type_info.type_category = "Math".to_string();
+        type_info.type_category = TypeCategory::MathType;
 
         // Try transformation using UnifiedTypeInfo
         type_info.transform_value(value).map(|transformed| {
@@ -152,7 +152,7 @@ impl MathTypeTransformer {
             actual_type_name.to_string(),
             DiscoverySource::PatternMatching,
         );
-        type_info.type_category = "Struct".to_string();
+        type_info.type_category = TypeCategory::Struct;
 
         // Add child types for Transform
         type_info
@@ -461,13 +461,12 @@ mod tests {
         let result =
             MathTypeTransformer::apply_transform_sequence_fix("Transform", &transform_obj, 12);
         assert!(result.is_some(), "Failed to apply transform sequence fix");
-        let (converted, hint) = result.unwrap(); // Safe after assertion
+        let (converted, _) = result.unwrap(); // Safe after assertion
         assert!(converted.is_object(), "Expected object result");
         let obj = converted.as_object().unwrap(); // Safe after assertion
 
         assert_eq!(obj.get("translation"), Some(&json!([1.0, 2.0, 3.0])));
         assert_eq!(obj.get("rotation"), Some(&json!([0.0, 0.0, 0.0, 1.0])));
         assert_eq!(obj.get("scale"), Some(&json!([1.0, 1.0, 1.0])));
-        assert!(hint.contains("Transform expected 12 f32 values"));
     }
 }

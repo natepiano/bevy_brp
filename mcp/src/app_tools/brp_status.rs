@@ -4,11 +4,11 @@ use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use sysinfo::System;
 
+use super::constants::{PARAM_APP_NAME, PARAM_PORT};
 use crate::BrpMcpService;
 use crate::brp_tools::brp_set_tracing_level::get_current_level;
 use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_FIELD_PORT, JSON_FIELD_STATUS};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::constants::{PARAM_APP_NAME, PARAM_PORT};
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;

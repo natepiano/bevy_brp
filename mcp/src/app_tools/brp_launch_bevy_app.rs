@@ -7,10 +7,9 @@ use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use tracing::debug;
 
+use super::constants::{DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE};
 use super::support::{launch_common, process, scanning};
-use crate::constants::{
-    DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
-};
+use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
 use crate::{BrpMcpService, service};

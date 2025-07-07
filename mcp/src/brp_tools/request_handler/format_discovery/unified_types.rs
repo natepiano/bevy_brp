@@ -75,7 +75,7 @@ pub struct UnifiedTypeInfo {
     /// List of supported BRP operations for this type
     pub supported_operations: Vec<String>,
     /// Type category for quick identification
-    pub type_category:        String,
+    pub type_category:        TypeCategory,
     /// Child type information for complex types (enums, generics)
     pub child_types:          HashMap<String, String>,
     /// Enum variant information (only populated for enum types)
@@ -137,6 +137,24 @@ pub enum CorrectionMethod {
     FieldMapping,
 }
 
+/// Category of type for quick identification and processing
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum TypeCategory {
+    /// Unknown or unclassified type
+    Unknown,
+    /// Regular struct type
+    Struct,
+    /// Tuple struct type
+    TupleStruct,
+    /// Enum type
+    Enum,
+    /// Math type (Vec2, Vec3, Quat, etc.)
+    MathType,
+    /// Component type
+    Component,
+}
+
 impl UnifiedTypeInfo {
     /// Create a new `UnifiedTypeInfo` with minimal required information
     pub fn new(type_name: String, discovery_source: DiscoverySource) -> Self {
@@ -159,7 +177,7 @@ impl UnifiedTypeInfo {
                 corrected_format: None,
             },
             supported_operations: Vec::new(),
-            type_category: "Unknown".to_string(),
+            type_category: TypeCategory::Unknown,
             child_types: HashMap::new(),
             enum_info: None,
             discovery_source,
@@ -213,10 +231,10 @@ impl UnifiedTypeInfo {
 
     /// Generate spawn example based on type structure
     fn generate_spawn_example(&self) -> Option<Value> {
-        match self.type_category.as_str() {
-            "Struct" => self.generate_struct_example(),
-            "Enum" => self.generate_enum_example(),
-            "MathType" => self.generate_math_type_example(),
+        match self.type_category {
+            TypeCategory::Struct => self.generate_struct_example(),
+            TypeCategory::Enum => self.generate_enum_example(),
+            TypeCategory::MathType => self.generate_math_type_example(),
             _ => None,
         }
     }
@@ -284,10 +302,10 @@ impl UnifiedTypeInfo {
 
     /// Transform an incorrect value to the correct format
     pub fn transform_value(&self, value: &Value) -> Option<Value> {
-        match self.type_category.as_str() {
-            "MathType" => self.transform_math_value(value),
-            "Struct" => self.transform_struct_value(value),
-            "Enum" => self.transform_enum_value(value),
+        match self.type_category {
+            TypeCategory::MathType => self.transform_math_value(value),
+            TypeCategory::Struct => self.transform_struct_value(value),
+            TypeCategory::Enum => self.transform_enum_value(value),
             _ => None,
         }
     }

@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
-use super::super::unified_types::UnifiedTypeInfo;
+use super::super::unified_types::{TypeCategory, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::support::brp_client::BrpError;
@@ -249,7 +249,7 @@ impl EnumVariantTransformer {
         );
 
         // Set it as an enum type
-        type_info.type_category = "Enum".to_string();
+        type_info.type_category = TypeCategory::Enum;
 
         // Add enum info if we have variants
         if !variants.is_empty() {

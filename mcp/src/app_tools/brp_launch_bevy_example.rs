@@ -7,10 +7,10 @@ use rmcp::{Error as McpError, RoleServer};
 use serde_json::json;
 use tracing::debug;
 
-use super::support::{cargo_detector, launch_common, process, scanning};
-use crate::constants::{
+use super::constants::{
     DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
+use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::support::params;
 use crate::{BrpMcpService, service};
 

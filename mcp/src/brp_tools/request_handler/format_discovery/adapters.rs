@@ -10,8 +10,20 @@ use serde_json::Value;
 
 use super::unified_types::{
     DiscoverySource, EnumInfo, EnumVariant, FormatInfo, RegistryStatus, SerializationSupport,
-    UnifiedTypeInfo,
+    TypeCategory, UnifiedTypeInfo,
 };
+
+/// Parse a type category string to the corresponding enum variant
+fn parse_type_category(category_str: &str) -> TypeCategory {
+    match category_str {
+        "Struct" => TypeCategory::Struct,
+        "TupleStruct" => TypeCategory::TupleStruct,
+        "Enum" => TypeCategory::Enum,
+        "MathType" => TypeCategory::MathType,
+        "Component" => TypeCategory::Component,
+        _ => TypeCategory::Unknown,
+    }
+}
 
 /// Convert `TypeDiscoveryResponse` JSON to `UnifiedTypeInfo`
 ///
@@ -81,8 +93,7 @@ pub fn from_type_discovery_response_json(response_json: &Value) -> Option<Unifie
     let type_category = obj
         .get("type_category")
         .and_then(Value::as_str)
-        .unwrap_or("Unknown")
-        .to_string();
+        .map_or(TypeCategory::Unknown, parse_type_category);
 
     // Extract child types
     let mut child_types = HashMap::new();
@@ -298,20 +309,19 @@ pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> UnifiedType
     let type_category = schema_data
         .get("type")
         .and_then(Value::as_str)
-        .unwrap_or("Unknown")
-        .to_string();
+        .map_or(TypeCategory::Unknown, parse_type_category);
 
     // Extract basic structure information for supported operations
     let supported_operations = if serialization.brp_compatible {
-        match type_category.as_str() {
-            "Struct" | "TupleStruct" => vec![
+        match type_category {
+            TypeCategory::Struct | TypeCategory::TupleStruct => vec![
                 "query".to_string(),
                 "get".to_string(),
                 "spawn".to_string(),
                 "insert".to_string(),
                 "mutate".to_string(),
             ],
-            "Enum" => vec![
+            TypeCategory::Enum => vec![
                 "query".to_string(),
                 "get".to_string(),
                 "spawn".to_string(),
@@ -325,7 +335,7 @@ pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> UnifiedType
     };
 
     // Extract enum information if this is an enum
-    let enum_info = if type_category == "Enum" {
+    let enum_info = if type_category == TypeCategory::Enum {
         extract_enum_info_from_schema(schema_data)
     } else {
         None

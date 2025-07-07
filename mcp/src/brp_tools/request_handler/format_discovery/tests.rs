@@ -8,6 +8,7 @@ use super::detection::{ErrorPattern, analyze_error_pattern};
 use super::engine::FormatCorrection;
 // Legacy types imported for backward compatibility during tests
 use super::transformers::TransformerRegistry;
+use super::unified_types::TypeCategory;
 use crate::brp_tools::constants::BRP_ERROR_CODE_INVALID_REQUEST;
 use crate::brp_tools::support::brp_client::BrpError;
 
@@ -274,7 +275,7 @@ fn test_type_discovery_response_to_unified_type_info_conversion() {
         "bevy_transform::components::transform::Transform"
     );
     assert_eq!(info.supported_operations, vec!["spawn", "insert", "mutate"]);
-    assert_eq!(info.type_category, "Component");
+    assert_eq!(info.type_category, TypeCategory::Component);
 
     // Verify registry status is preserved
     assert!(info.registry_status.in_registry);

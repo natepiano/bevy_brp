@@ -1,5 +1,7 @@
 // App tools module
 
+mod constants;
+
 pub mod brp_extras_shutdown;
 pub mod brp_launch_bevy_app;
 pub mod brp_launch_bevy_example;

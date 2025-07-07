@@ -3,7 +3,7 @@
 use serde_json::json;
 
 use super::cargo_detector::{BinaryInfo, CargoDetector, ExampleInfo};
-use crate::constants::{PROFILE_DEBUG, PROFILE_RELEASE};
+use crate::app_tools::constants::{PROFILE_DEBUG, PROFILE_RELEASE};
 
 /// Helper function to create builds JSON for binary items
 fn create_builds_json(item: &BinaryInfo) -> serde_json::Value {

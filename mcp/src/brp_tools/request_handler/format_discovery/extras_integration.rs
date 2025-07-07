@@ -252,6 +252,7 @@ mod tests {
 
     use super::*;
     use crate::brp_tools::request_handler::format_discovery::DiscoverySource;
+    use crate::brp_tools::request_handler::format_discovery::unified_types::TypeCategory;
 
     #[test]
     fn test_find_type_in_response_direct_object() {
@@ -346,6 +347,7 @@ mod tests {
             "bevy_transform::components::transform::Transform".to_string(),
             DiscoverySource::DirectDiscovery,
         );
+        type_info.type_category = TypeCategory::Struct;
         type_info.format_info.examples.insert(
             "spawn".to_string(),
             json!({
@@ -364,7 +366,7 @@ mod tests {
                 assert!(correction_info.corrected_value.get("translation").is_some());
                 assert_eq!(
                     correction_info.correction_method,
-                    CorrectionMethod::DirectReplacement
+                    CorrectionMethod::ObjectToArray
                 );
             }
             CorrectionResult::CannotCorrect { .. } => {

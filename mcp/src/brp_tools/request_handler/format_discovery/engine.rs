@@ -355,7 +355,14 @@ fn convert_corrections_to_legacy_format(corrections: Vec<CorrectionInfo>) -> Vec
             type_category:        correction
                 .type_info
                 .as_ref()
-                .map(|ti| ti.type_category.clone()),
+                .map(|ti| match ti.type_category {
+                    super::unified_types::TypeCategory::Unknown => "Unknown".to_string(),
+                    super::unified_types::TypeCategory::Struct => "Struct".to_string(),
+                    super::unified_types::TypeCategory::TupleStruct => "TupleStruct".to_string(),
+                    super::unified_types::TypeCategory::Enum => "Enum".to_string(),
+                    super::unified_types::TypeCategory::MathType => "MathType".to_string(),
+                    super::unified_types::TypeCategory::Component => "Component".to_string(),
+                }),
         })
         .collect()
 }

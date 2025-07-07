@@ -14,7 +14,7 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
-use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
+use super::unified_types::{CorrectionInfo, CorrectionMethod, TypeCategory, UnifiedTypeInfo};
 use crate::brp_tools::request_handler::format_discovery::extras_integration;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::tools::{
@@ -160,8 +160,8 @@ async fn execute_level_2_direct_discovery(
                 if let Some(existing_info) = type_infos.get(type_name) {
                     // Preserve registry information but enhance with discovery data
                     discovered_info.registry_status = existing_info.registry_status.clone();
-                    if discovered_info.type_category == "Unknown"
-                        && existing_info.type_category != "Unknown"
+                    if discovered_info.type_category == TypeCategory::Unknown
+                        && existing_info.type_category != TypeCategory::Unknown
                     {
                         discovered_info
                             .type_category
@@ -591,7 +591,7 @@ fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult
             );
 
             // Set type category
-            type_info.type_category = "MathType".to_string();
+            type_info.type_category = TypeCategory::MathType;
 
             // Ensure examples are generated
             type_info.ensure_examples();
@@ -625,7 +625,7 @@ fn create_enhanced_enum_guidance(
     debug!("Level 3: Creating enhanced enum guidance for type '{type_name}'");
 
     let mut type_info = create_basic_type_info(type_name);
-    type_info.type_category = "Enum".to_string();
+    type_info.type_category = TypeCategory::Enum;
 
     // Extract variant information from the error pattern
     let valid_values = match error_pattern {
