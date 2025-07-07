@@ -136,11 +136,11 @@ mcp__brp__bevy_spawn with parameters:
   - Value: {}
 - Verify error response includes:
   - Error message mentioning variant access issue
-  - Format correction with:
-    - "usage" field explaining empty path requirement
+  - Error data with:
+    - "hint" field explaining empty path requirement
     - "valid_values" array listing all variants
     - "examples" showing correct usage
-  - Hint text clearly stating: "Enum 'Visibility' requires empty path..."
+  - Hint should indicate proper usage like "Use empty path with variant name as value"
 - This ensures users get helpful guidance when making this common mistake
 
 ## Expected Results
