@@ -20,11 +20,7 @@ pub async fn handle(request: CallToolRequestParam) -> Result<CallToolResult, Mcp
     // Start the watch task
     let result = super::start_entity_watch_task(entity_id, components, port)
         .await
-        .map_err(|e| {
-            crate::error::Error::WatchOperation(format!(
-                "Failed to start entity watch for entity {entity_id}: {e}"
-            ))
-        });
+        .map_err(|e| super::wrap_watch_error("Failed to start entity watch", Some(entity_id), e));
     Ok(super::format_watch_start_response(
         result,
         "entity watch",
