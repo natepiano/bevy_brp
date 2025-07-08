@@ -105,6 +105,14 @@ define_tool_constants!(bevy, list_watch => "bevy/list+watch");
 define_tool_constants!(brp, execute);
 
 // -----------------------------------------------------------------------------
+// Manually defined local handlers for bevy/get+watch and bevy/list+watch
+// -----------------------------------------------------------------------------
+// manual constant for handler so we can handle bevy/get+watch locally but still
+// align the exposed tool name with the brp protocol name
+pub const HANDLER_BEVY_GET_WATCH: &str = "handler_bevy_get_watch";
+pub const HANDLER_BEVY_LIST_WATCH: &str = "handler_bevy_list_watch";
+
+// -----------------------------------------------------------------------------
 // BRP Extras Tools (bevy_brp_extras plugin methods)
 // -----------------------------------------------------------------------------
 

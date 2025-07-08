@@ -94,10 +94,10 @@ use crate::tool_definitions::{
     BrpToolDef, ExtractorType, FormatterType, HandlerType, ParamExtractorType, ParamType,
 };
 use crate::tools::{
-    HANDLER_CLEANUP_LOGS, HANDLER_GET_TRACE_LOG_PATH, HANDLER_LAUNCH_BEVY_APP,
-    HANDLER_LAUNCH_BEVY_EXAMPLE, HANDLER_LIST_BEVY_APPS, HANDLER_LIST_BEVY_EXAMPLES,
-    HANDLER_LIST_BRP_APPS, HANDLER_LIST_LOGS, HANDLER_READ_LOG, HANDLER_SET_TRACING_LEVEL,
-    HANDLER_SHUTDOWN, HANDLER_STATUS,
+    HANDLER_BEVY_GET_WATCH, HANDLER_BEVY_LIST_WATCH, HANDLER_CLEANUP_LOGS,
+    HANDLER_GET_TRACE_LOG_PATH, HANDLER_LAUNCH_BEVY_APP, HANDLER_LAUNCH_BEVY_EXAMPLE,
+    HANDLER_LIST_BEVY_APPS, HANDLER_LIST_BEVY_EXAMPLES, HANDLER_LIST_BRP_APPS, HANDLER_LIST_LOGS,
+    HANDLER_READ_LOG, HANDLER_SET_TRACING_LEVEL, HANDLER_SHUTDOWN, HANDLER_STATUS,
 };
 use crate::{BrpMcpService, app_tools, brp_tools, error, log_tools};
 
@@ -227,6 +227,10 @@ async fn generate_local_handler(
         HANDLER_STATUS => app_tools::brp_status::handle(request).await,
         HANDLER_GET_TRACE_LOG_PATH => log_tools::get_trace_log_path::handle(),
         HANDLER_SET_TRACING_LEVEL => log_tools::set_tracing_level::handle(&request),
+        HANDLER_BEVY_GET_WATCH => brp_tools::watch::bevy_get_watch::handle(request).await,
+        HANDLER_BEVY_LIST_WATCH => {
+            brp_tools::watch::bevy_list_watch::handle(service, request, context).await
+        }
         _ => Err(error::report_to_mcp_error(
             &error_stack::Report::new(error::Error::ParameterExtraction(format!(
                 "unknown local handler: {handler}"

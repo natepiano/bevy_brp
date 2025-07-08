@@ -18,8 +18,6 @@ pub fn register_tools() -> ListToolsResult {
     // Add remaining tools that don't follow simple request/response
     tools.extend(vec![
         // Streaming/watch tools (custom logic)
-        watch::bevy_get_watch::register_tool(),
-        watch::bevy_list_watch::register_tool(),
         watch::brp_stop_watch::register_tool(),
         watch::brp_list_active::register_tool(),
     ]);
@@ -47,12 +45,6 @@ pub async fn handle_tool_call(
     // Handle remaining tools
     match request.name.as_ref() {
         // Streaming/watch tools (custom logic)
-        name if name == crate::tools::TOOL_BEVY_GET_WATCH => {
-            watch::bevy_get_watch::handle(service, request, context).await
-        }
-        name if name == crate::tools::TOOL_BEVY_LIST_WATCH => {
-            watch::bevy_list_watch::handle(service, request, context).await
-        }
         name if name == crate::tools::TOOL_BRP_STOP_WATCH => {
             watch::brp_stop_watch::handle(service, request, context).await
         }

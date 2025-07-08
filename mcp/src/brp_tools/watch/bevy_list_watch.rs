@@ -1,33 +1,13 @@
 //! Start watching an entity for component list changes
 
-use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
+use rmcp::model::{CallToolRequestParam, CallToolResult};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
 
 use crate::BrpMcpService;
 use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_FIELD_ENTITY, JSON_FIELD_PORT};
-use crate::support::{params, schema};
-use crate::tools::{DESC_BEVY_LIST_WATCH, TOOL_BEVY_LIST_WATCH};
-
-pub fn register_tool() -> Tool {
-    Tool {
-        name:         TOOL_BEVY_LIST_WATCH.into(),
-        description:  DESC_BEVY_LIST_WATCH.into(),
-        input_schema: schema::SchemaBuilder::new()
-            .add_number_property(
-                JSON_FIELD_ENTITY,
-                "The entity ID to watch for component list changes",
-                true,
-            )
-            .add_number_property(
-                JSON_FIELD_PORT,
-                &format!("The BRP port (default: {DEFAULT_BRP_PORT})"),
-                false,
-            )
-            .build(),
-    }
-}
+use crate::support::params;
 
 pub async fn handle(
     _service: &BrpMcpService,
@@ -41,7 +21,7 @@ pub async fn handle(
     let port = params::extract_optional_u16(&arguments, JSON_FIELD_PORT, DEFAULT_BRP_PORT);
 
     // Start the watch task
-    let result = super::start_list_watch_task(entity_id, port, Some(0))
+    let result = super::start_list_watch_task(entity_id, port)
         .await
         .map_err(|e| {
             crate::error::Error::WatchOperation(format!(

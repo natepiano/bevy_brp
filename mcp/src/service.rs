@@ -8,7 +8,7 @@ use rmcp::model::{
     ServerCapabilities,
 };
 use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer, ServerHandler};
+use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::registry;
@@ -44,7 +44,7 @@ impl BrpMcpService {
     /// Panics if the mutex lock on roots is poisoned.
     pub async fn fetch_roots_from_client(
         &self,
-        peer: rmcp::service::Peer<RoleServer>,
+        peer: Peer<RoleServer>,
     ) -> Result<(), Box<dyn Error>> {
         // Use the peer extension method to list roots
         match peer.list_roots().await {
@@ -140,7 +140,8 @@ async fn fetch_roots_and_get_paths(
 }
 
 /// Handler wrapper for binary listing operations that fetches search paths
-/// This eliminates the repetitive pattern of fetching roots in listing tools
+/// This eliminates the repetitive pattern of fetching roots in `list_bevy_apps` and
+/// `list_bevy_examples`
 pub async fn handle_list_binaries<F, Fut>(
     service: &BrpMcpService,
     context: RequestContext<RoleServer>,
@@ -155,7 +156,8 @@ where
 }
 
 /// Handler wrapper for binary launch operations that fetches search paths and extracts request data
-/// This eliminates boilerplate for handlers that launch binaries with parameters
+/// This eliminates boilerplate for handlers that launch binaries with parameters used by
+/// `launch_bevy_app` and `launch_bevy_example`
 pub async fn handle_launch_binary<F, Fut>(
     service: &BrpMcpService,
     request: CallToolRequestParam,

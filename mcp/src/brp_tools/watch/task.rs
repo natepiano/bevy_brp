@@ -20,13 +20,12 @@ use crate::tools::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {
-    watch_id:        u32,
-    entity_id:       u64,
-    watch_type:      String,
-    brp_method:      String,
-    params:          Value,
-    port:            u16,
-    timeout_seconds: Option<u32>,
+    watch_id:   u32,
+    entity_id:  u64,
+    watch_type: String,
+    brp_method: String,
+    params:     Value,
+    port:       u16,
 }
 
 /// Process a single SSE line and log the update if valid
@@ -243,85 +242,34 @@ async fn process_chunk(
     Ok(())
 }
 
-/// Handle stream error and determine if it's a timeout
+/// Handle stream error
 async fn handle_stream_error(
     error: reqwest::Error,
     entity_id: u64,
     watch_type: &str,
     logger: &BufferedWatchLogger,
     start_time: std::time::Instant,
-    timeout_seconds: Option<u32>,
     total_chunks: usize,
 ) {
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();
 
-    // Debug logging for Scenario 2 - Stream timeout
-    debug!(
-        "TIMEOUT_SCENARIO_2_STREAM: elapsed={:?}, is_timeout={}, error='{}', configured_timeout={:?}, chunks_received={}",
-        elapsed,
-        error.is_timeout(),
-        error_string,
-        timeout_seconds,
-        total_chunks
-    );
+    error!("Error reading stream chunk: {}", error);
 
-    // Check if this is a timeout error based on elapsed time
-    // Note: reqwest's is_timeout() is unreliable in parallel execution
-    let is_timeout =
-        timeout_seconds.is_some() && elapsed.as_secs() >= u64::from(timeout_seconds.unwrap_or(30));
-
-    if is_timeout {
-        // Check if this is an unexpected timeout (configured for no timeout)
-        let is_no_timeout_config = timeout_seconds == Some(0);
-
-        if is_no_timeout_config {
-            error!(
-                "Watch stream timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.",
-                elapsed, error
-            );
-        } else {
-            warn!("Watch stream timed out after {:?}: {}", elapsed, error);
-        }
-
-        // Log timeout with error context
-        let _ = logger
-            .write_update(
-                if is_no_timeout_config {
-                    "WATCH_UNEXPECTED_TIMEOUT"
-                } else {
-                    "WATCH_TIMEOUT"
-                },
-                serde_json::json!({
-                    "watch_type": watch_type,
-                    "entity": entity_id,
-                    "elapsed_seconds": elapsed.as_secs(),
-                    "configured_timeout_seconds": timeout_seconds,
-                    "error": error_string,
-                    "chunks_received_before_timeout": total_chunks,
-                    "is_unexpected": is_no_timeout_config,
-                    "timestamp": chrono::Local::now().to_rfc3339()
-                }),
-            )
-            .await;
-    } else {
-        error!("Error reading stream chunk: {}", error);
-
-        // Log non-timeout stream error
-        let _ = logger
-            .write_debug_update(
-                "DEBUG_STREAM_ERROR",
-                serde_json::json!({
-                    "watch_type": watch_type,
-                    "entity": entity_id,
-                    "error": error_string,
-                    "chunks_received_before_error": total_chunks,
-                    "elapsed_seconds": elapsed.as_secs(),
-                    "timestamp": chrono::Local::now().to_rfc3339()
-                }),
-            )
-            .await;
-    }
+    // Log stream error
+    let _ = logger
+        .write_debug_update(
+            "DEBUG_STREAM_ERROR",
+            serde_json::json!({
+                "watch_type": watch_type,
+                "entity": entity_id,
+                "error": error_string,
+                "chunks_received_before_error": total_chunks,
+                "elapsed_seconds": elapsed.as_secs(),
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
 }
 
 /// Log the first chunk of data for debugging
@@ -365,7 +313,6 @@ async fn process_watch_stream(
     watch_type: &str,
     logger: &BufferedWatchLogger,
     start_time: std::time::Instant,
-    timeout_seconds: Option<u32>,
 ) -> Result<()> {
     if !response.status().is_success() {
         let error_msg = format!(
@@ -419,16 +366,8 @@ async fn process_watch_stream(
                 .await?;
             }
             Err(e) => {
-                handle_stream_error(
-                    e,
-                    entity_id,
-                    watch_type,
-                    logger,
-                    start_time,
-                    timeout_seconds,
-                    total_chunks,
-                )
-                .await;
+                handle_stream_error(e, entity_id, watch_type, logger, start_time, total_chunks)
+                    .await;
                 break;
             }
         }
@@ -478,65 +417,20 @@ async fn handle_connection_error(
     let elapsed = start_time.elapsed();
     let error_string = error.to_string();
 
-    // Debug logging for Scenario 1 - Connection timeout
-    debug!(
-        "TIMEOUT_SCENARIO_1_CONNECTION: elapsed={:?}, is_timeout={}, error='{}', configured_timeout={:?}",
-        elapsed,
-        error.is_timeout(),
-        error_string,
-        conn_params.timeout_seconds
-    );
+    error!("Failed to connect to BRP server: {}", error);
 
-    // Check if this is a timeout error based on elapsed time
-    // Note: reqwest's is_timeout() is unreliable in parallel execution
-    let is_timeout = conn_params.timeout_seconds.is_some()
-        && elapsed.as_secs() >= u64::from(conn_params.timeout_seconds.unwrap_or(30));
-
-    if is_timeout {
-        // Check if this is an unexpected timeout (configured for no timeout)
-        let is_no_timeout_config = conn_params.timeout_seconds == Some(0);
-
-        if is_no_timeout_config {
-            error!(
-                "Watch connection timed out unexpectedly - configured for no timeout but connection terminated after {:?}: {}. This may indicate network issues or BRP server problems.",
-                elapsed, error
-            );
-        } else {
-            warn!("Watch connection timed out after {:?}: {}", elapsed, error);
-        }
-
-        let _ = logger
-            .write_update(
-                if is_no_timeout_config {
-                    "WATCH_UNEXPECTED_TIMEOUT"
-                } else {
-                    "WATCH_TIMEOUT"
-                },
-                serde_json::json!({
-                    "watch_type": &conn_params.watch_type,
-                    "entity": conn_params.entity_id,
-                    "elapsed_seconds": elapsed.as_secs(),
-                    "configured_timeout_seconds": conn_params.timeout_seconds,
-                    "error": error_string,
-                    "phase": "connection",
-                    "is_unexpected": is_no_timeout_config,
-                    "timestamp": chrono::Local::now().to_rfc3339()
-                }),
-            )
-            .await;
-    } else {
-        error!("Failed to connect to BRP server: {}", error);
-        let _ = logger
-            .write_update(
-                "CONNECTION_ERROR",
-                serde_json::json!({
-                    "error": error_string,
-                    "elapsed_seconds": elapsed.as_secs(),
-                    "timestamp": chrono::Local::now().to_rfc3339()
-                }),
-            )
-            .await;
-    }
+    let _ = logger
+        .write_update(
+            "CONNECTION_ERROR",
+            serde_json::json!({
+                "watch_type": &conn_params.watch_type,
+                "entity": conn_params.entity_id,
+                "error": error_string,
+                "elapsed_seconds": elapsed.as_secs(),
+                "timestamp": chrono::Local::now().to_rfc3339()
+            }),
+        )
+        .await;
 }
 
 /// Run the watch connection in a spawned task
@@ -549,9 +443,9 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
     // Track start time for timeout detection
     let start_time = std::time::Instant::now();
 
-    // Create HTTP client for streaming with configurable timeout
+    // Create HTTP client for streaming with no timeout
     let url = crate::brp_tools::support::brp_client::build_brp_url(conn_params.port);
-    let client = http_client::create_watch_client(conn_params.timeout_seconds);
+    let client = http_client::create_watch_client(Some(0)); // 0 = no timeout for watches
 
     // Build JSON-RPC request for watching
     let request_body = BrpJsonRpcBuilder::new(&conn_params.brp_method)
@@ -588,7 +482,6 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
                 &conn_params.watch_type,
                 &logger,
                 start_time,
-                conn_params.timeout_seconds,
             )
             .await
             {
@@ -639,7 +532,6 @@ async fn start_watch_task(
     brp_method: &str,
     params: Value,
     port: u16,
-    timeout_seconds: Option<u32>,
 ) -> Result<(u32, PathBuf)> {
     // Prepare all data that doesn't require the watch_id
     let watch_type_owned = watch_type.to_string();
@@ -690,7 +582,6 @@ async fn start_watch_task(
             brp_method: brp_method_owned,
             params,
             port,
-            timeout_seconds,
         },
         logger,
     ));
@@ -705,7 +596,6 @@ async fn start_watch_task(
                 watch_type: watch_type.to_string(),
                 log_path: log_path.clone(),
                 port,
-                timeout_reason: None,
             },
             handle,
         ),
@@ -722,7 +612,6 @@ pub async fn start_entity_watch_task(
     entity_id: u64,
     components: Option<Vec<String>>,
     port: u16,
-    timeout_seconds: Option<u32>,
 ) -> Result<(u32, PathBuf)> {
     // Validate components parameter
     let components = components.ok_or_else(|| {
@@ -742,34 +631,14 @@ pub async fn start_entity_watch_task(
         "components": components
     });
 
-    start_watch_task(
-        entity_id,
-        "get",
-        BRP_METHOD_GET_WATCH,
-        params,
-        port,
-        timeout_seconds,
-    )
-    .await
+    start_watch_task(entity_id, "get", BRP_METHOD_GET_WATCH, params, port).await
 }
 
 /// Start a background task for entity list watching
-pub async fn start_list_watch_task(
-    entity_id: u64,
-    port: u16,
-    timeout_seconds: Option<u32>,
-) -> Result<(u32, PathBuf)> {
+pub async fn start_list_watch_task(entity_id: u64, port: u16) -> Result<(u32, PathBuf)> {
     let params = serde_json::json!({
         "entity": entity_id
     });
 
-    start_watch_task(
-        entity_id,
-        "list",
-        BRP_METHOD_LIST_WATCH,
-        params,
-        port,
-        timeout_seconds,
-    )
-    .await
+    start_watch_task(entity_id, "list", BRP_METHOD_LIST_WATCH, params, port).await
 }

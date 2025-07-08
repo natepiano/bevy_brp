@@ -43,7 +43,6 @@ pub async fn handle(
                 "watch_type": watch.watch_type,
                 "log_path": watch.log_path.to_string_lossy(),
                 "port": watch.port,
-                "timeout_reason": watch.timeout_reason,
             })
         })
         .collect();
