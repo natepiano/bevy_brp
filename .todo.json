@@ -3,103 +3,89 @@
     "id": "meta",
     "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
     "status": "pending",
-    "priority": "medium",
+    "priority": "high",
     "notes": ""
   },
   {
     "id": "phase1-1",
-    "content": "Create src/response/ module directory structure",
+    "content": "Create mcp/src/response/formatter.rs and move ResponseFormatter struct and impl from brp_tools/support/response_formatter.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-2",
-    "content": "Build and fix any compile errors and warnings after creating directory structure",
+    "content": "Build and fix any compile errors and warnings after moving ResponseFormatter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-3",
-    "content": "Create src/response/mod.rs with clean public API exports (empty stub initially)",
+    "content": "Create mcp/src/response/types.rs and move FormatterDef, FormatterConfig, FormatterContext from their current locations",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-4",
-    "content": "Build and fix any compile errors and warnings after creating mod.rs",
+    "content": "Build and fix any compile errors and warnings after moving formatter types",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-5",
-    "content": "Create src/response/size_check.rs - move large response logic from src/support/large_response.rs",
+    "content": "Create mcp/src/response/extractors.rs and move all field extractor functions and FieldExtractor type",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-6",
-    "content": "Build and fix any compile errors and warnings after creating size_check.rs",
+    "content": "Build and fix any compile errors and warnings after moving extractors",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-7",
-    "content": "Create src/response/response.rs with Response::success/error/new methods",
+    "content": "Create mcp/src/response/error.rs and move format_error_default and related error formatting functions",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-8",
-    "content": "Build and fix any compile errors and warnings after creating response.rs",
+    "content": "Build and fix any compile errors and warnings after moving error formatting",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-9",
-    "content": "Create src/response/builder.rs with ResponseBuilder implementation",
+    "content": "Move large_response.rs content to mcp/src/response/large_response.rs and remove duplicate from response/size_check.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-10",
-    "content": "Build and fix any compile errors and warnings after creating builder.rs",
+    "content": "Build and fix any compile errors and warnings after consolidating large response handling",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-11",
-    "content": "Integrate automatic large response checking into ResponseBuilder.build()",
+    "content": "Update mcp/src/response/mod.rs to export all moved types and functions",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-12",
-    "content": "Build and fix any compile errors and warnings after integrating large response checking",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase1-13",
-    "content": "Update src/response/mod.rs to export all public APIs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase1-14",
-    "content": "Build and fix any compile errors and warnings after updating mod.rs exports",
+    "content": "Build and fix any compile errors and warnings after updating module exports",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -120,14 +106,42 @@
   },
   {
     "id": "phase2-1",
-    "content": "Add helper methods to ExtractedParams in src/brp_tools/request_handler/traits.rs (get_entity_id, get_port, get_components, get_resource)",
+    "content": "Modify mcp/src/response/response.rs Response::success to use ResponseFormatter internally",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase2-2",
-    "content": "Build and fix any compile errors and warnings after adding ExtractedParams helpers",
+    "content": "Build and fix any compile errors and warnings after modifying Response::success",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-3",
+    "content": "Modify mcp/src/response/response.rs Response::error to use format_error_default internally",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-4",
+    "content": "Build and fix any compile errors and warnings after modifying Response::error",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-5",
+    "content": "Modify mcp/src/response/response.rs Response::new to return builder that uses ResponseFormatter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-6",
+    "content": "Build and fix any compile errors and warnings after modifying Response::new",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -148,42 +162,28 @@
   },
   {
     "id": "phase3-1",
-    "content": "Replace complex ResponseFormatter logic in src/tool_generator.rs with simple Response API",
+    "content": "Update mcp/src/response/builder.rs ResponseBuilder to use ResponseFormatter internally",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase3-2",
-    "content": "Build and fix any compile errors and warnings after updating tool_generator.rs",
+    "content": "Build and fix any compile errors and warnings after updating ResponseBuilder",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase3-3",
-    "content": "Use ExtractedParams helper methods for field extraction in tool_generator.rs",
+    "content": "Remove direct CallToolResult building from ResponseBuilder, delegate to ResponseFormatter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase3-4",
-    "content": "Build and fix any compile errors and warnings after using ExtractedParams helpers",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase3-5",
-    "content": "Update BRP handlers to use unified Response API in src/brp_tools/request_handler/handler.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase3-6",
-    "content": "Build and fix any compile errors and warnings after updating BRP handlers",
+    "content": "Build and fix any compile errors and warnings after removing direct CallToolResult building",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -204,56 +204,70 @@
   },
   {
     "id": "phase4-1",
-    "content": "Migrate simple local handlers batch 1 (get_trace_log_path, set_tracing_level) to use Response::success()/error()",
+    "content": "Update all BRP handler imports to use new mcp/src/response module locations",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-2",
-    "content": "Build and fix any compile errors and warnings after migrating batch 1",
+    "content": "Build and fix any compile errors and warnings after updating BRP imports",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-3",
-    "content": "Migrate simple local handlers batch 2 (remaining simple handlers) to use Response::success()/error()",
+    "content": "Update all local handler imports to use new unified response API",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-4",
-    "content": "Build and fix any compile errors and warnings after migrating batch 2",
+    "content": "Build and fix any compile errors and warnings after updating local handler imports",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-5",
-    "content": "Migrate complex handlers batch 1 (cleanup_logs, list_logs) to use Response::new().add_field().build()",
+    "content": "Remove old mcp/src/support/response.rs module and update any remaining references",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-6",
-    "content": "Build and fix any compile errors and warnings after migrating complex batch 1",
+    "content": "Build and fix any compile errors and warnings after removing old response module",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-7",
-    "content": "Migrate remaining complex handlers to use Response::new().add_field().build()",
+    "content": "Update tool_definitions.rs to use new type locations from response module",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-8",
-    "content": "Build and fix any compile errors and warnings after migrating remaining complex handlers",
+    "content": "Build and fix any compile errors and warnings after updating tool_definitions",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4-9",
+    "content": "Remove old mcp/src/brp_tools/support/response_formatter.rs file",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4-10",
+    "content": "Build and fix any compile errors and warnings after removing old formatter file",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -268,104 +282,6 @@
   {
     "id": "clippy4-fix",
     "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-1",
-    "content": "Remove ResponseBuilder from src/support/response.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-2",
-    "content": "Build and fix any compile errors and warnings after removing ResponseBuilder",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-3",
-    "content": "Remove LocalResponseFormatter from src/support/response.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-4",
-    "content": "Build and fix any compile errors and warnings after removing LocalResponseFormatter",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-5",
-    "content": "Remove Response wrapper from src/brp_tools/support/response_formatter.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-6",
-    "content": "Build and fix any compile errors and warnings after removing Response wrapper",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-7",
-    "content": "Remove ResponseFormatter and factory pattern entirely from src/brp_tools/support/response_formatter.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-8",
-    "content": "Build and fix any compile errors and warnings after removing ResponseFormatter",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-9",
-    "content": "Remove now-unused src/support/large_response.rs file",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase5-10",
-    "content": "Build and fix any compile errors and warnings after removing large_response.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy5",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy5-fix",
-    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase6-1",
-    "content": "Add module-level documentation explaining unified Response API to src/response/mod.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase6-2",
-    "content": "Build and fix any compile errors and warnings after adding documentation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -392,15 +308,15 @@
     "notes": ""
   },
   {
-    "id": "code-review-subagent",
-    "content": "Task a new subagent to do a code review of the changes in the worktree - tell it to focus on identifying duplication and complexity. Additionally, ask that it focus on validating that the implementation plan was actually implemented. Emphasize that it should only read and analyze, not modify anything.",
+    "id": "code-review",
+    "content": "Task a new subagent to do code review focusing on duplication, complexity, and plan validation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "code-review-stop",
-    "content": "The subagent should STOP work here and return control to you and you should then continue with reviewing the suggested changes with the user",
+    "content": "STOP and review the suggested changes with the user",
     "status": "pending",
     "priority": "medium",
     "notes": ""
