@@ -15,7 +15,7 @@ use crate::brp_tools::constants::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::large_response::handle_brp_large_response;
+use crate::support::handle_brp_large_response;
 use crate::tools::TOOL_BRP_EXECUTE;
 
 /// Result of parameter extraction from a request

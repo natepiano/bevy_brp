@@ -9,14 +9,14 @@ use serde_json::json;
 use super::constants::PARAM_FILE_PATH;
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::params;
+use crate::support;
 use crate::support::response::ResponseBuilder;
 use crate::support::serialization::json_response_to_result;
 
 pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolResult, McpError> {
     // Extract parameters
-    let filename = params::extract_required_string(request, "filename")?;
-    let keyword = params::extract_optional_string(request, "keyword", "");
+    let filename = support::extract_required_string(request, "filename")?;
+    let keyword = support::extract_optional_string(request, "keyword", "");
     let tail_lines = usize::try_from(params::extract_optional_number(request, "tail_lines", 0)?)
         .map_err(|_| -> McpError {
             report_to_mcp_error(&error_stack::Report::new(Error::invalid(

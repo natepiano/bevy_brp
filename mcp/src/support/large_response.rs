@@ -7,16 +7,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use error_stack::ResultExt;
 use serde_json::{Value, json};
 
+use crate::constants::{CHARS_PER_TOKEN, DEFAULT_MAX_RESPONSE_TOKENS};
 use crate::error::{Error, Result};
-
-/// Estimated characters per token for response size calculation
-const CHARS_PER_TOKEN: usize = 4;
-
-/// Default maximum tokens before saving to file (Claude Code MCP limitation)
-/// Using 20,000 as a buffer below the 25,000 hard limit
-const DEFAULT_MAX_RESPONSE_TOKENS: usize = 20_000;
 
 /// Configuration for large response handling
 pub struct LargeResponseConfig<'a> {
@@ -47,8 +42,6 @@ pub fn handle_large_response(
     identifier: &str,
     config: LargeResponseConfig,
 ) -> Result<Option<Value>> {
-    use error_stack::ResultExt;
-
     let response_json = serde_json::to_string(response_data)
         .change_context(Error::General("Failed to serialize response".to_string()))?;
 
