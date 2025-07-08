@@ -43,22 +43,22 @@ pub fn launch_bevy_example(
     let launch_start = Instant::now();
 
     // Find and validate the example
-    let (example, manifest_dir_buf, find_duration) = match find_and_validate_example(example_name, path, search_paths) {
-        Ok(result) => result,
-        Err(mcp_error) => {
-            // Check if this is a path disambiguation error
-            let error_msg = &mcp_error.message;
-            if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
-                // Convert to proper tool response
-                return Ok(crate::support::serialization::json_response_to_result(
-                    &crate::support::response::ResponseBuilder::error()
+    let (example, manifest_dir_buf, find_duration) =
+        match find_and_validate_example(example_name, path, search_paths) {
+            Ok(result) => result,
+            Err(mcp_error) => {
+                // Check if this is a path disambiguation error
+                let error_msg = &mcp_error.message;
+                if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
+                    // Convert to proper tool response
+                    return Ok(crate::support::response::ResponseBuilder::error()
                         .message(error_msg.as_ref())
                         .build()
-                ));
+                        .to_call_tool_result());
+                }
+                return Err(mcp_error);
             }
-            return Err(mcp_error);
-        }
-    };
+        };
     let manifest_dir = manifest_dir_buf.as_path();
 
     // Setup launch environment
@@ -105,7 +105,7 @@ fn find_and_validate_example(
             // Check if this is a path disambiguation error
             let error_msg = &mcp_error.message;
             if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
-                // Convert to proper tool response  
+                // Convert to proper tool response
                 return Err(mcp_error); // Let the caller handle conversion
             }
             return Err(mcp_error);

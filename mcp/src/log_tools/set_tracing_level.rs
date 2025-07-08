@@ -5,7 +5,6 @@ use rmcp::model::CallToolResult;
 
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::support::tracing::{TracingLevel, set_tracing_level};
 
 /// Handle the `brp_set_tracing_level` tool request
@@ -42,5 +41,5 @@ pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolRes
         .auto_inject_debug_info(None::<&serde_json::Value>)
         .build();
 
-    Ok(json_response_to_result(&response))
+    Ok(response.to_call_tool_result())
 }

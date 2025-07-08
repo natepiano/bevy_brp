@@ -10,7 +10,6 @@ use crate::BrpMcpService;
 use crate::brp_tools::constants::{JSON_FIELD_COUNT, JSON_FIELD_WATCHES};
 use crate::error::Result;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 
 pub async fn handle(
     _service: &BrpMcpService,
@@ -42,7 +41,7 @@ pub async fn handle(
         Err(err) => return Err(crate::error::report_to_mcp_error(&err)),
     };
 
-    Ok(json_response_to_result(&response))
+    Ok(response.to_call_tool_result())
 }
 
 fn build_response(watches_json: &[Value]) -> Result<crate::support::response::JsonResponse> {

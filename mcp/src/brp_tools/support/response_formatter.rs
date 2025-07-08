@@ -9,7 +9,6 @@ use crate::brp_tools::constants::{
 use crate::brp_tools::request_handler::FormatterContext;
 use crate::error::Result;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 
 /// Metadata about a BRP request for response formatting
 #[derive(Debug, Clone)]
@@ -37,9 +36,9 @@ pub fn format_error_default(error: BrpError, metadata: &BrpMetadata) -> CallTool
             let fallback = ResponseBuilder::error()
                 .message("Failed to build error response")
                 .build();
-            json_response_to_result(&fallback)
+            fallback.to_call_tool_result()
         },
-        |response| json_response_to_result(&response),
+        |response| response.to_call_tool_result(),
     )
 }
 
@@ -192,9 +191,9 @@ impl ResponseFormatter {
                 let fallback = ResponseBuilder::error()
                     .message("Failed to build success response")
                     .build();
-                json_response_to_result(&fallback)
+                fallback.to_call_tool_result()
             },
-            |response| json_response_to_result(&response),
+            |response| response.to_call_tool_result(),
         )
     }
 

@@ -2,7 +2,6 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::support::tracing::get_trace_log_path;
 
 /// Handle the `brp_get_trace_log_path` tool request
@@ -40,5 +39,5 @@ pub fn handle() -> Result<CallToolResult, McpError> {
         .auto_inject_debug_info(None::<&serde_json::Value>)
         .build();
 
-    Ok(json_response_to_result(&response))
+    Ok(response.to_call_tool_result())
 }

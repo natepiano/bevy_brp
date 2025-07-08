@@ -8,7 +8,6 @@ use serde_json::json;
 use super::support::{self, LogFileEntry};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 
 pub fn handle(request: &CallToolRequestParam) -> Result<CallToolResult, McpError> {
     // Extract parameters
@@ -32,7 +31,7 @@ pub fn handle(request: &CallToolRequestParam) -> Result<CallToolResult, McpError
             ResponseBuilder::build,
         );
 
-    Ok(json_response_to_result(&response))
+    Ok(response.to_call_tool_result())
 }
 
 fn cleanup_log_files(

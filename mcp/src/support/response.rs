@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use rmcp::model::{CallToolResult, Content};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -40,6 +41,11 @@ impl JsonResponse {
         self.to_json().unwrap_or_else(|_| {
             r#"{"status":"error","message":"Failed to serialize response"}"#.to_string()
         })
+    }
+
+    /// Creates a `CallToolResult` from this `JsonResponse`
+    pub fn to_call_tool_result(&self) -> CallToolResult {
+        CallToolResult::success(vec![Content::text(self.to_json_fallback())])
     }
 }
 

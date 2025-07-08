@@ -9,7 +9,6 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::support::tracing::{TracingLevel, get_current_tracing_level};
 use crate::tools::BRP_METHOD_LIST;
 
@@ -166,7 +165,7 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<CallToolResult, 
             ResponseBuilder::build,
         );
 
-    Ok(json_response_to_result(&response))
+    Ok(response.to_call_tool_result())
 }
 
 /// Check if BRP is responding on the given port

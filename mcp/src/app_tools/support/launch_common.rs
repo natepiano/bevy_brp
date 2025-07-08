@@ -11,7 +11,6 @@ use crate::brp_tools::constants::BRP_PORT_ENV_VAR;
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::response;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 
 /// Parameters for building a launch success response
 pub struct LaunchResponseParams<'a> {
@@ -92,7 +91,7 @@ pub fn build_launch_success_response(params: LaunchResponseParams) -> CallToolRe
             ResponseBuilder::build,
         );
 
-    json_response_to_result(&response)
+    response.to_call_tool_result()
 }
 
 /// Sets BRP-related environment variables on a command

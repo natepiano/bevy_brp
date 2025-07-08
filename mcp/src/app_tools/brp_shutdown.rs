@@ -9,7 +9,6 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::support::params;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
 
 /// Helper function to build shutdown response with debug info
@@ -31,7 +30,7 @@ fn build_shutdown_response(
             |builder| builder.auto_inject_debug_info(Some(debug_info)).build(),
         );
 
-    json_response_to_result(&response)
+    response.to_call_tool_result()
 }
 
 /// Result of a shutdown operation

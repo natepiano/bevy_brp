@@ -5,7 +5,6 @@ use rmcp::model::CallToolResult;
 use crate::brp_tools::constants::{JSON_FIELD_LOG_PATH, JSON_FIELD_WATCH_ID};
 use crate::error::{Error, Result};
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 
 pub fn format_watch_start_response(
     result: std::result::Result<(u32, PathBuf), Error>,
@@ -21,9 +20,9 @@ pub fn format_watch_start_response(
                             .message("Failed to build watch start response")
                             .auto_inject_debug_info(None::<&serde_json::Value>)
                             .build();
-                        json_response_to_result(&fallback_response)
+                        fallback_response.to_call_tool_result()
                     },
-                    |response| json_response_to_result(&response),
+                    |response| response.to_call_tool_result(),
                 )
         }
         Err(e) => {
@@ -31,7 +30,7 @@ pub fn format_watch_start_response(
                 .message(e.to_string())
                 .auto_inject_debug_info(None::<&serde_json::Value>)
                 .build();
-            json_response_to_result(&response)
+            response.to_call_tool_result()
         }
     }
 }
@@ -63,14 +62,14 @@ pub fn format_watch_stop_response(
                 .message(format!("Stopped watch {watch_id}"))
                 .auto_inject_debug_info(None::<&serde_json::Value>)
                 .build();
-            json_response_to_result(&response)
+            response.to_call_tool_result()
         }
         Err(e) => {
             let response = ResponseBuilder::error()
                 .message(e.to_string())
                 .auto_inject_debug_info(None::<&serde_json::Value>)
                 .build();
-            json_response_to_result(&response)
+            response.to_call_tool_result()
         }
     }
 }

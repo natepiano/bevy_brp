@@ -13,6 +13,7 @@ use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
+use crate::support::response::ResponseBuilder;
 use crate::{BrpMcpService, service};
 
 pub async fn handle(
@@ -43,18 +44,22 @@ pub fn launch_bevy_app(
     let launch_start = Instant::now();
 
     // Find the app
-    let app = match scanning::find_required_target_with_path(app_name, TargetType::App, path, search_paths) {
+    let app = match scanning::find_required_target_with_path(
+        app_name,
+        TargetType::App,
+        path,
+        search_paths,
+    ) {
         Ok(app) => app,
         Err(mcp_error) => {
             // Check if this is a path disambiguation error
             let error_msg = &mcp_error.message;
             if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
                 // Convert to proper tool response
-                return Ok(crate::support::serialization::json_response_to_result(
-                    &crate::support::response::ResponseBuilder::error()
-                        .message(error_msg.as_ref())
-                        .build()
-                ));
+                return Ok(ResponseBuilder::error()
+                    .message(error_msg.as_ref())
+                    .build()
+                    .to_call_tool_result());
             }
             return Err(mcp_error);
         }

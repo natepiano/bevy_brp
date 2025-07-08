@@ -11,7 +11,6 @@ use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::{BrpMcpService, service};
 
 /// Generic handler for listing items using a collection strategy
@@ -41,7 +40,7 @@ pub async fn handle_listing<S: CollectionStrategy>(
                 ResponseBuilder::build,
             );
 
-        Ok(json_response_to_result(&response))
+        Ok(response.to_call_tool_result())
     })
     .await
 }

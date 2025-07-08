@@ -5,7 +5,6 @@ use serde_json::json;
 use super::support::LogFileEntry;
 use crate::log_tools::support;
 use crate::support::response::ResponseBuilder;
-use crate::support::serialization::json_response_to_result;
 use crate::support::{LargeResponseConfig, handle_large_response, params};
 
 pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolResult, McpError> {
@@ -72,7 +71,7 @@ pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolRes
         },
     );
 
-    Ok(json_response_to_result(&response))
+    Ok(response.to_call_tool_result())
 }
 
 fn list_log_files(
