@@ -105,6 +105,7 @@ async fn execute_level_1(
         BrpResult::Error(ref error) => {
             // Get type information only when needed for error handling
             let registry_type_info = get_registry_type_info(method, params.as_ref(), port).await;
+
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
             if matches!(method, BRP_METHOD_SPAWN | BRP_METHOD_INSERT)
@@ -121,7 +122,7 @@ async fn execute_level_1(
                 }
             }
 
-            // Check if this is a recoverable format error
+            // Check if this is a (potentially) recoverable format error
             if is_format_error(error) && is_format_discovery_supported(method) {
                 Ok(BrpRequestResult::FormatError {
                     error:           result,
@@ -187,11 +188,11 @@ fn is_format_discovery_supported(method: &str) -> bool {
 /// Check if any types lack serialization support using pre-fetched type infos
 fn check_serialization_support(
     method: &str,
-    type_infos: &HashMap<String, UnifiedTypeInfo>,
+    registry_type_info: &HashMap<String, UnifiedTypeInfo>,
 ) -> Option<String> {
     debug!("Checking for serialization errors using pre-fetched type infos");
 
-    for (component_type, type_info) in type_infos {
+    for (component_type, type_info) in registry_type_info {
         debug!(
             "Component '{}' found in registry, brp_compatible={}",
             component_type, type_info.serialization.brp_compatible

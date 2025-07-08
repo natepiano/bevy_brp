@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use rmcp::Error as McpError;
 use tracing::debug;
 
-use super::cargo_detector::{BinaryInfo, CargoDetector, ExampleInfo};
+use super::cargo_detector::{BevyTarget, CargoDetector, TargetType};
 use crate::error::{Error, report_to_mcp_error};
 
 /// Helper function to safely canonicalize a path
@@ -307,105 +307,73 @@ pub fn compute_relative_path(path: &Path, search_paths: &[PathBuf]) -> PathBuf {
     path.to_path_buf()
 }
 
-/// Get workspace root from manifest path for examples
-/// Walks up the directory structure to find the workspace root
-pub fn get_workspace_root_from_manifest(manifest_path: &Path) -> Option<PathBuf> {
-    let mut path = manifest_path.parent()?;
-
-    // Walk up the directory tree looking for a Cargo.toml with [workspace]
-    loop {
-        let cargo_toml = path.join("Cargo.toml");
-        if cargo_toml.exists() {
-            // Check if this Cargo.toml defines a workspace
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                if content.contains("[workspace]") {
-                    return Some(path.to_path_buf());
-                }
-            }
-        }
-
-        // Move up one directory
-        match path.parent() {
-            Some(parent) => path = parent,
-            None => break,
-        }
-    }
-
-    // If no workspace found, use the manifest's parent directory
-    manifest_path.parent().map(std::path::Path::to_path_buf)
-}
-
-/// Find all apps by name across search paths, returning Vec instead of Option
-/// This allows detection of duplicates across workspaces
-pub fn find_all_apps_by_name(app_name: &str, search_paths: &[PathBuf]) -> Vec<BinaryInfo> {
-    let mut apps = Vec::new();
+/// Find all targets (apps and examples) by name across search paths, filtered by target type if
+/// specified This allows detection of duplicates across workspaces
+pub fn find_all_targets_by_name(
+    target_name: &str,
+    target_type: Option<TargetType>,
+    search_paths: &[PathBuf],
+) -> Vec<BevyTarget> {
+    let mut targets = Vec::new();
 
     for path in iter_cargo_project_paths(search_paths) {
         if let Ok(detector) = CargoDetector::from_path(&path) {
-            let found_apps = detector.find_bevy_apps();
-            for mut app in found_apps {
-                if app.name == app_name {
+            let found_targets = detector.find_bevy_targets();
+            for mut target in found_targets {
+                if target.name == target_name {
+                    // Filter by target type if specified
+                    if let Some(required_type) = target_type {
+                        if target.target_type != required_type {
+                            continue;
+                        }
+                    }
+
                     // Set the relative path based on the discovered project path
-                    app.relative_path = compute_relative_path(&path, search_paths);
-                    apps.push(app);
+                    target.relative_path = compute_relative_path(&path, search_paths);
+                    targets.push(target);
                 }
             }
         }
     }
 
-    apps
+    targets
 }
 
-/// Find all examples by name across search paths, returning Vec instead of Option
-/// This allows detection of duplicates across workspaces
-pub fn find_all_examples_by_name(example_name: &str, search_paths: &[PathBuf]) -> Vec<ExampleInfo> {
-    let mut examples = Vec::new();
-
-    for path in iter_cargo_project_paths(search_paths) {
-        if let Ok(detector) = CargoDetector::from_path(&path) {
-            let found_examples = detector.find_bevy_examples();
-            for mut example in found_examples {
-                if example.name == example_name {
-                    // Set the relative path based on the discovered project path
-                    example.relative_path = compute_relative_path(&path, search_paths);
-                    examples.push(example);
-                }
-            }
-        }
-    }
-
-    examples
-}
-
-/// Find a required app by name with path parameter handling
-/// Returns an error with path options if duplicates found and no path specified
-pub fn find_required_app_with_path(
-    app_name: &str,
+/// Find a required target by name with path parameter handling
+/// Returns an error with enhanced path error messages if duplicates found and no path specified
+pub fn find_required_target_with_path(
+    target_name: &str,
+    target_type: TargetType,
     path: Option<&str>,
     search_paths: &[PathBuf],
-) -> Result<BinaryInfo, McpError> {
-    debug!("Searching for app '{app_name}'");
+) -> Result<BevyTarget, McpError> {
+    let target_type_str = match target_type {
+        TargetType::App => "app",
+        TargetType::Example => "example",
+    };
+
+    debug!("Searching for {target_type_str} '{target_name}'");
     if let Some(p) = path {
         debug!("With path filter: {p}");
     }
 
-    let all_apps = find_all_apps_by_name(app_name, search_paths);
-    debug!("Found {} matching app(s)", all_apps.len());
+    let all_targets = find_all_targets_by_name(target_name, Some(target_type), search_paths);
+    debug!("Found {} matching {target_type_str}(s)", all_targets.len());
 
-    // If a path is provided and we found multiple apps, check for ambiguity
+    // If a path is provided and we found multiple targets, check for ambiguity
     if let Some(path_str) = path {
-        if all_apps.len() > 1 {
-            let filtered_apps =
-                find_and_filter_by_path(all_apps.clone(), path, |app| &app.relative_path);
+        if all_targets.len() > 1 {
+            let filtered_targets =
+                find_and_filter_by_path(all_targets.clone(), path, |target| &target.relative_path);
 
-            // If filtering resulted in 0 matches but there were multiple apps,
+            // If filtering resulted in 0 matches but there were multiple targets,
             // check if the path could have been ambiguous
-            if filtered_apps.is_empty() {
-                // Check if the path partially matches multiple apps
-                let partial_matches: Vec<_> = all_apps
+            if filtered_targets.is_empty() {
+                // Check if the path partially matches multiple targets
+                let partial_matches: Vec<_> = all_targets
                     .iter()
-                    .filter(|app| {
-                        let relative_path = &app.relative_path;
+                    .filter(|target| {
+                        let relative_path = &target.relative_path;
                         partial_path_match(relative_path, path_str)
                     })
                     .collect();
@@ -414,11 +382,11 @@ pub fn find_required_app_with_path(
                     // This is an ambiguous partial path
                     let paths: Vec<String> = partial_matches
                         .iter()
-                        .map(|app| app.relative_path.to_string_lossy().to_string())
+                        .map(|target| target.relative_path.to_string_lossy().to_string())
                         .collect();
 
                     let error_msg = format!(
-                        "Ambiguous path '{path_str}' matches multiple apps:\n{}\n\nPlease use a more specific path.",
+                        "Ambiguous path '{path_str}' matches multiple {target_type_str}s:\n{}\n\nPlease use a more specific path.",
                         paths
                             .iter()
                             .map(|p| format!("- {p}"))
@@ -429,112 +397,57 @@ pub fn find_required_app_with_path(
                     return Err(report_to_mcp_error(&error_stack::Report::new(
                         Error::PathDisambiguation {
                             message:         error_msg,
-                            item_type:       "app".to_string(),
-                            item_name:       app_name.to_string(),
+                            item_type:       target_type_str.to_string(),
+                            item_name:       target_name.to_string(),
                             available_paths: paths,
                         },
                     )));
                 }
-            }
 
-            return validate_single_result_or_error(
-                filtered_apps,
-                app_name,
-                "app",
-                "app_name",
-                |app| &app.relative_path,
-            );
-        }
-    }
-
-    let filtered_apps = find_and_filter_by_path(all_apps, path, |app| &app.relative_path);
-
-    validate_single_result_or_error(filtered_apps, app_name, "app", "app_name", |app| {
-        &app.relative_path
-    })
-}
-
-/// Find a required example by name with path parameter handling
-/// Returns an error with path options if duplicates found and no path specified
-pub fn find_required_example_with_path(
-    example_name: &str,
-    path: Option<&str>,
-    search_paths: &[PathBuf],
-) -> Result<ExampleInfo, McpError> {
-    debug!("Searching for example '{example_name}'");
-    if let Some(p) = path {
-        debug!("With path filter: {p}");
-    }
-
-    let all_examples = find_all_examples_by_name(example_name, search_paths);
-    debug!("Found {} matching example(s)", all_examples.len());
-
-    // If a path is provided and we found multiple examples, check for ambiguity
-    if let Some(path_str) = path {
-        if all_examples.len() > 1 {
-            let filtered_examples =
-                find_and_filter_by_path(all_examples.clone(), path, |example| {
-                    &example.relative_path
-                });
-
-            // If filtering resulted in 0 matches but there were multiple examples,
-            // check if the path could have been ambiguous
-            if filtered_examples.is_empty() {
-                // Check if the path partially matches multiple examples
-                let partial_matches: Vec<_> = all_examples
+                // Enhanced error message for path not found
+                let available_paths: Vec<String> = all_targets
                     .iter()
-                    .filter(|example| {
-                        let relative_path = &example.relative_path;
-                        partial_path_match(relative_path, path_str)
-                    })
+                    .map(|target| target.relative_path.to_string_lossy().to_string())
                     .collect();
 
-                if partial_matches.len() > 1 {
-                    // This is an ambiguous partial path
-                    let paths: Vec<String> = partial_matches
+                let error_msg = format!(
+                    "Bevy {target_type_str} '{target_name}' not found at path '{path_str}'. Available paths:\n{}",
+                    available_paths
                         .iter()
-                        .map(|example| example.relative_path.to_string_lossy().to_string())
-                        .collect();
+                        .map(|p| format!("- {p}"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                );
 
-                    let error_msg = format!(
-                        "Ambiguous path '{path_str}' matches multiple examples:\n{}\n\nPlease use a more specific path.",
-                        paths
-                            .iter()
-                            .map(|p| format!("- {p}"))
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    );
-
-                    return Err(report_to_mcp_error(&error_stack::Report::new(
-                        Error::PathDisambiguation {
-                            message:         error_msg,
-                            item_type:       "example".to_string(),
-                            item_name:       example_name.to_string(),
-                            available_paths: paths,
-                        },
-                    )));
-                }
+                return Err(report_to_mcp_error(&error_stack::Report::new(
+                    Error::PathDisambiguation {
+                        message: error_msg,
+                        item_type: target_type_str.to_string(),
+                        item_name: target_name.to_string(),
+                        available_paths,
+                    },
+                )));
             }
 
             return validate_single_result_or_error(
-                filtered_examples,
-                example_name,
-                "example",
-                "example_name",
-                |example| &example.relative_path,
+                filtered_targets,
+                target_name,
+                target_type_str,
+                &format!("{target_type_str}_name"),
+                |target| &target.relative_path,
             );
         }
     }
 
-    let filtered_examples =
-        find_and_filter_by_path(all_examples, path, |example| &example.relative_path);
+    let filtered_targets =
+        find_and_filter_by_path(all_targets, path, |target| &target.relative_path);
 
     validate_single_result_or_error(
-        filtered_examples,
-        example_name,
-        "example",
-        "example_name",
-        |example| &example.relative_path,
+        filtered_targets,
+        target_name,
+        target_type_str,
+        &format!("{target_type_str}_name"),
+        |target| &target.relative_path,
     )
 }
 

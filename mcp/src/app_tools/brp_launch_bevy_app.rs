@@ -8,6 +8,7 @@ use serde_json::json;
 use tracing::debug;
 
 use super::constants::{DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE};
+use super::support::cargo_detector::TargetType;
 use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::error::{Error, report_to_mcp_error};
@@ -42,7 +43,22 @@ pub fn launch_bevy_app(
     let launch_start = Instant::now();
 
     // Find the app
-    let app = scanning::find_required_app_with_path(app_name, path, search_paths)?;
+    let app = match scanning::find_required_target_with_path(app_name, TargetType::App, path, search_paths) {
+        Ok(app) => app,
+        Err(mcp_error) => {
+            // Check if this is a path disambiguation error
+            let error_msg = &mcp_error.message;
+            if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
+                // Convert to proper tool response
+                return Ok(crate::support::serialization::json_response_to_result(
+                    &crate::support::response::ResponseBuilder::error()
+                        .message(error_msg.as_ref())
+                        .build()
+                ));
+            }
+            return Err(mcp_error);
+        }
+    };
 
     // Build the binary path
     let binary_path = app.get_binary_path(profile);

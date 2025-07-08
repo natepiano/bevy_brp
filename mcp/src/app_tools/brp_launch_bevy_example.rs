@@ -10,6 +10,7 @@ use tracing::debug;
 use super::constants::{
     DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
 };
+use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::support::params;
 use crate::{BrpMcpService, service};
@@ -42,8 +43,22 @@ pub fn launch_bevy_example(
     let launch_start = Instant::now();
 
     // Find and validate the example
-    let (example, manifest_dir_buf, find_duration) =
-        find_and_validate_example(example_name, path, search_paths)?;
+    let (example, manifest_dir_buf, find_duration) = match find_and_validate_example(example_name, path, search_paths) {
+        Ok(result) => result,
+        Err(mcp_error) => {
+            // Check if this is a path disambiguation error
+            let error_msg = &mcp_error.message;
+            if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
+                // Convert to proper tool response
+                return Ok(crate::support::serialization::json_response_to_result(
+                    &crate::support::response::ResponseBuilder::error()
+                        .message(error_msg.as_ref())
+                        .build()
+                ));
+            }
+            return Err(mcp_error);
+        }
+    };
     let manifest_dir = manifest_dir_buf.as_path();
 
     // Setup launch environment
@@ -77,9 +92,25 @@ fn find_and_validate_example(
     example_name: &str,
     path: Option<&str>,
     search_paths: &[PathBuf],
-) -> Result<(cargo_detector::ExampleInfo, PathBuf, Duration), McpError> {
+) -> Result<(cargo_detector::BevyTarget, PathBuf, Duration), McpError> {
     let find_start = Instant::now();
-    let example = scanning::find_required_example_with_path(example_name, path, search_paths)?;
+    let example = match scanning::find_required_target_with_path(
+        example_name,
+        TargetType::Example,
+        path,
+        search_paths,
+    ) {
+        Ok(example) => example,
+        Err(mcp_error) => {
+            // Check if this is a path disambiguation error
+            let error_msg = &mcp_error.message;
+            if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
+                // Convert to proper tool response  
+                return Err(mcp_error); // Let the caller handle conversion
+            }
+            return Err(mcp_error);
+        }
+    };
     let find_duration = find_start.elapsed();
 
     let manifest_path = example.manifest_path.clone();
@@ -194,7 +225,7 @@ fn execute_launch_process(params: LaunchProcessParams<'_>) -> Result<LaunchResul
 
 fn build_launch_response(
     example_name: &str,
-    example: &cargo_detector::ExampleInfo,
+    example: &cargo_detector::BevyTarget,
     launch_result: LaunchResult,
     launch_start: Instant,
     profile: &str,
@@ -204,8 +235,6 @@ fn build_launch_response(
         "note": "Cargo will build the example if needed before running"
     });
 
-    let workspace_root =
-        super::support::scanning::get_workspace_root_from_manifest(&example.manifest_path);
     let manifest_dir = launch_common::validate_manifest_directory(&example.manifest_path)?;
 
     let response_params = launch_common::LaunchResponseParams {
@@ -216,7 +245,7 @@ fn build_launch_response(
         profile,
         log_file_path: &launch_result.log_file_path,
         additional_data: Some(additional_data),
-        workspace_root: workspace_root.as_ref(),
+        workspace_root: Some(&example.workspace_root),
         launch_start,
         launch_end: launch_result.launch_end,
     };

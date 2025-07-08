@@ -5,12 +5,25 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use cargo_metadata::{Metadata, MetadataCommand, Package};
 
-/// Information about a binary target
+/// Type of Bevy target
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetType {
+    /// A binary application target
+    App,
+    /// An example target
+    Example,
+}
+
+/// Unified information about a Bevy target (app or example)
 #[derive(Debug, Clone)]
-pub struct BinaryInfo {
-    /// Name of the binary
+pub struct BevyTarget {
+    /// Name of the target
     pub name:           String,
-    /// Workspace root
+    /// Type of target (App or Example)
+    pub target_type:    TargetType,
+    /// Package name (for examples, this is the package containing the example)
+    pub package_name:   String,
+    /// Workspace root (for apps)
     pub workspace_root: PathBuf,
     /// Path to the package's Cargo.toml
     pub manifest_path:  PathBuf,
@@ -18,27 +31,33 @@ pub struct BinaryInfo {
     pub relative_path:  PathBuf,
 }
 
-impl BinaryInfo {
+impl BevyTarget {
     /// Get the path to the binary for a given profile
     pub fn get_binary_path(&self, profile: &str) -> PathBuf {
-        self.workspace_root
-            .join("target")
-            .join(profile)
-            .join(&self.name)
+        match self.target_type {
+            TargetType::App => self
+                .workspace_root
+                .join("target")
+                .join(profile)
+                .join(&self.name),
+            TargetType::Example => self
+                .workspace_root
+                .join("target")
+                .join(profile)
+                .join("examples")
+                .join(&self.name),
+        }
     }
-}
 
-/// Information about an example
-#[derive(Debug, Clone)]
-pub struct ExampleInfo {
-    /// Name of the example
-    pub name:          String,
-    /// Package name
-    pub package_name:  String,
-    /// Path to the package's Cargo.toml
-    pub manifest_path: PathBuf,
-    /// Relative path from scan root to this item
-    pub relative_path: PathBuf,
+    /// Check if this target is an app
+    pub fn is_app(&self) -> bool {
+        self.target_type == TargetType::App
+    }
+
+    /// Check if this target is an example
+    pub fn is_example(&self) -> bool {
+        self.target_type == TargetType::Example
+    }
 }
 
 /// Detects binary targets in a project or workspace
@@ -74,35 +93,39 @@ impl CargoDetector {
             .filter(move |p| filter(p))
     }
 
-    /// Extract binary targets from a package
-    fn extract_binary_targets<'a>(
-        &'a self,
-        package: &'a Package,
-    ) -> impl Iterator<Item = BinaryInfo> + 'a {
-        package
-            .targets
-            .iter()
-            .filter(|t| t.is_bin())
-            .map(move |t| BinaryInfo {
-                name:           t.name.clone(),
-                workspace_root: self.metadata.workspace_root.clone().into(),
-                manifest_path:  package.manifest_path.clone().into(),
-                relative_path:  PathBuf::new(), // Will be set by scanning logic
-            })
-    }
+    /// Extract all targets (apps and examples) from a package as `BevyTarget`s
+    fn extract_all_targets(&self, package: &Package) -> Vec<BevyTarget> {
+        let workspace_root: PathBuf = self.metadata.workspace_root.clone().into();
+        let package_name = package.name.to_string();
+        let manifest_path: PathBuf = package.manifest_path.clone().into();
 
-    /// Extract example targets from a package
-    fn extract_example_targets(package: &Package) -> impl Iterator<Item = ExampleInfo> + '_ {
-        package
-            .targets
-            .iter()
-            .filter(|t| t.is_example())
-            .map(move |t| ExampleInfo {
-                name:          t.name.clone(),
-                package_name:  package.name.to_string(),
-                manifest_path: package.manifest_path.clone().into(),
-                relative_path: PathBuf::new(), // Will be set by scanning logic
-            })
+        let mut targets = Vec::new();
+
+        // Extract apps
+        for target in package.targets.iter().filter(|t| t.is_bin()) {
+            targets.push(BevyTarget {
+                name:           target.name.clone(),
+                target_type:    TargetType::App,
+                package_name:   package_name.clone(),
+                workspace_root: workspace_root.clone(),
+                manifest_path:  manifest_path.clone(),
+                relative_path:  PathBuf::new(), // Will be set by scanning logic
+            });
+        }
+
+        // Extract examples
+        for target in package.targets.iter().filter(|t| t.is_example()) {
+            targets.push(BevyTarget {
+                name:           target.name.clone(),
+                target_type:    TargetType::Example,
+                package_name:   package_name.clone(),
+                workspace_root: workspace_root.clone(),
+                manifest_path:  manifest_path.clone(),
+                relative_path:  PathBuf::new(), // Will be set by scanning logic
+            });
+        }
+
+        targets
     }
 
     /// Filter for packages that depend on Bevy (excluding `bevy_brp_mcp` itself)
@@ -117,24 +140,17 @@ impl CargoDetector {
         package.name.as_str() != "bevy_brp_mcp" && Self::package_has_brp_support(package)
     }
 
-    /// Find all Bevy applications (binaries) in the workspace/project
-    pub fn find_bevy_apps(&self) -> Vec<BinaryInfo> {
+    /// Find all Bevy targets (apps and examples) in the workspace/project
+    pub fn find_bevy_targets(&self) -> Vec<BevyTarget> {
         self.find_packages_with_filter(Self::bevy_app_filter)
-            .flat_map(|p| self.extract_binary_targets(p))
+            .flat_map(|p| self.extract_all_targets(p))
             .collect()
     }
 
-    /// Find all Bevy examples in the workspace/project
-    pub fn find_bevy_examples(&self) -> Vec<ExampleInfo> {
-        self.find_packages_with_filter(Self::bevy_app_filter)
-            .flat_map(Self::extract_example_targets)
-            .collect()
-    }
-
-    /// Find all BRP-enabled Bevy applications (binaries) in the workspace/project
-    pub fn find_brp_enabled_apps(&self) -> Vec<BinaryInfo> {
+    /// Find all BRP-enabled Bevy targets (apps and examples) in the workspace/project
+    pub fn find_brp_targets(&self) -> Vec<BevyTarget> {
         self.find_packages_with_filter(Self::brp_app_filter)
-            .flat_map(|p| self.extract_binary_targets(p))
+            .flat_map(|p| self.extract_all_targets(p))
             .collect()
     }
 

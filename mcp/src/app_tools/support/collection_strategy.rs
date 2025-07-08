@@ -2,11 +2,11 @@
 
 use serde_json::json;
 
-use super::cargo_detector::{BinaryInfo, CargoDetector, ExampleInfo};
+use super::cargo_detector::{BevyTarget, CargoDetector};
 use crate::app_tools::constants::{PROFILE_DEBUG, PROFILE_RELEASE};
 
-/// Helper function to create builds JSON for binary items
-fn create_builds_json(item: &BinaryInfo) -> serde_json::Value {
+/// Helper function to create builds JSON for binary items (apps only)
+fn create_builds_json(item: &BevyTarget) -> serde_json::Value {
     let profiles = vec![PROFILE_DEBUG, PROFILE_RELEASE];
     let mut builds = json!({});
     for profile in &profiles {
@@ -43,10 +43,14 @@ pub trait CollectionStrategy {
 pub struct BevyAppsStrategy;
 
 impl CollectionStrategy for BevyAppsStrategy {
-    type Item = BinaryInfo;
+    type Item = BevyTarget;
 
     fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
-        detector.find_bevy_apps()
+        detector
+            .find_bevy_targets()
+            .into_iter()
+            .filter(BevyTarget::is_app)
+            .collect()
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -79,10 +83,14 @@ impl CollectionStrategy for BevyAppsStrategy {
 pub struct BrpAppsStrategy;
 
 impl CollectionStrategy for BrpAppsStrategy {
-    type Item = BinaryInfo;
+    type Item = BevyTarget;
 
     fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
-        detector.find_brp_enabled_apps()
+        detector
+            .find_brp_targets()
+            .into_iter()
+            .filter(BevyTarget::is_app)
+            .collect()
     }
 
     fn get_type_name(&self) -> &'static str {
@@ -112,10 +120,14 @@ impl CollectionStrategy for BrpAppsStrategy {
 pub struct BevyExamplesStrategy;
 
 impl CollectionStrategy for BevyExamplesStrategy {
-    type Item = ExampleInfo;
+    type Item = BevyTarget;
 
     fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item> {
-        detector.find_bevy_examples()
+        detector
+            .find_bevy_targets()
+            .into_iter()
+            .filter(BevyTarget::is_example)
+            .collect()
     }
 
     fn get_type_name(&self) -> &'static str {
