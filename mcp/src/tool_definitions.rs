@@ -47,10 +47,11 @@ use crate::tools::{
     DESC_BEVY_REGISTRY_SCHEMA, DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_REPARENT,
     DESC_BEVY_RPC_DISCOVER, DESC_BEVY_SPAWN, DESC_BRP_EXECUTE, DESC_BRP_EXTRAS_DISCOVER_FORMAT,
     DESC_BRP_EXTRAS_SCREENSHOT, DESC_BRP_EXTRAS_SEND_KEYS, DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-    DESC_CLEANUP_LOGS, DESC_GET_TRACE_LOG_PATH, DESC_LAUNCH_BEVY_APP, DESC_LAUNCH_BEVY_EXAMPLE,
-    DESC_LIST_BEVY_APPS, DESC_LIST_BEVY_EXAMPLES, DESC_LIST_BRP_APPS, DESC_LIST_LOGS,
-    DESC_READ_LOG, DESC_SET_TRACING_LEVEL, DESC_SHUTDOWN, DESC_STATUS, HANDLER_BEVY_GET_WATCH,
-    HANDLER_BEVY_LIST_WATCH, HANDLER_CLEANUP_LOGS, HANDLER_GET_TRACE_LOG_PATH,
+    DESC_BRP_LIST_ACTIVE_WATCHES, DESC_BRP_STOP_WATCH, DESC_CLEANUP_LOGS, DESC_GET_TRACE_LOG_PATH,
+    DESC_LAUNCH_BEVY_APP, DESC_LAUNCH_BEVY_EXAMPLE, DESC_LIST_BEVY_APPS, DESC_LIST_BEVY_EXAMPLES,
+    DESC_LIST_BRP_APPS, DESC_LIST_LOGS, DESC_READ_LOG, DESC_SET_TRACING_LEVEL, DESC_SHUTDOWN,
+    DESC_STATUS, HANDLER_BEVY_GET_WATCH, HANDLER_BEVY_LIST_WATCH, HANDLER_BRP_LIST_ACTIVE_WATCHES,
+    HANDLER_BRP_STOP_WATCH, HANDLER_CLEANUP_LOGS, HANDLER_GET_TRACE_LOG_PATH,
     HANDLER_LAUNCH_BEVY_APP, HANDLER_LAUNCH_BEVY_EXAMPLE, HANDLER_LIST_BEVY_APPS,
     HANDLER_LIST_BEVY_EXAMPLES, HANDLER_LIST_BRP_APPS, HANDLER_LIST_LOGS, HANDLER_READ_LOG,
     HANDLER_SET_TRACING_LEVEL, HANDLER_SHUTDOWN, HANDLER_STATUS, TOOL_BEVY_DESTROY, TOOL_BEVY_GET,
@@ -59,10 +60,10 @@ use crate::tools::{
     TOOL_BEVY_MUTATE_RESOURCE, TOOL_BEVY_QUERY, TOOL_BEVY_REGISTRY_SCHEMA, TOOL_BEVY_REMOVE,
     TOOL_BEVY_REMOVE_RESOURCE, TOOL_BEVY_REPARENT, TOOL_BEVY_RPC_DISCOVER, TOOL_BEVY_SPAWN,
     TOOL_BRP_EXECUTE, TOOL_BRP_EXTRAS_DISCOVER_FORMAT, TOOL_BRP_EXTRAS_SCREENSHOT,
-    TOOL_BRP_EXTRAS_SEND_KEYS, TOOL_BRP_EXTRAS_SET_DEBUG_MODE, TOOL_CLEANUP_LOGS,
-    TOOL_GET_TRACE_LOG_PATH, TOOL_LAUNCH_BEVY_APP, TOOL_LAUNCH_BEVY_EXAMPLE, TOOL_LIST_BEVY_APPS,
-    TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS, TOOL_LIST_LOGS, TOOL_READ_LOG,
-    TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
+    TOOL_BRP_EXTRAS_SEND_KEYS, TOOL_BRP_EXTRAS_SET_DEBUG_MODE, TOOL_BRP_LIST_ACTIVE_WATCHES,
+    TOOL_BRP_STOP_WATCH, TOOL_CLEANUP_LOGS, TOOL_GET_TRACE_LOG_PATH, TOOL_LAUNCH_BEVY_APP,
+    TOOL_LAUNCH_BEVY_EXAMPLE, TOOL_LIST_BEVY_APPS, TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS,
+    TOOL_LIST_LOGS, TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
 
 /// Represents a parameter definition for a BRP tool
@@ -1205,6 +1206,38 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
     ]
 }
 
+/// Get BRP watch management tool definitions
+fn get_brp_tools() -> Vec<BrpToolDef> {
+    vec![
+        // brp_stop_watch
+        BrpToolDef {
+            name:            TOOL_BRP_STOP_WATCH,
+            description:     DESC_BRP_STOP_WATCH,
+            handler:         HandlerType::Local {
+                handler: HANDLER_BRP_STOP_WATCH,
+            },
+            params:          vec![ParamDef::number(
+                "watch_id",
+                "The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch",
+                true,
+            )],
+            param_extractor: ParamExtractorType::Passthrough,
+            formatter:       FormatterDef::default(),
+        },
+        // brp_list_active_watches
+        BrpToolDef {
+            name:            TOOL_BRP_LIST_ACTIVE_WATCHES,
+            description:     DESC_BRP_LIST_ACTIVE_WATCHES,
+            handler:         HandlerType::Local {
+                handler: HANDLER_BRP_LIST_ACTIVE_WATCHES,
+            },
+            params:          vec![], // No parameters
+            param_extractor: ParamExtractorType::EmptyParams,
+            formatter:       FormatterDef::default(),
+        },
+    ]
+}
+
 /// Create standard launch tool parameters (profile, path, port)
 fn create_launch_params(name_param: &'static str, name_desc: &'static str) -> Vec<ParamDef> {
     vec![
@@ -1237,6 +1270,9 @@ pub fn get_all_tools() -> Vec<BrpToolDef> {
 
     // Add watch tools
     tools.extend(get_watch_tools());
+
+    // Add BRP watch management tools
+    tools.extend(get_brp_tools());
 
     tools
 }

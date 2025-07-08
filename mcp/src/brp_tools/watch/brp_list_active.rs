@@ -1,6 +1,6 @@
 //! List all active watches
 
-use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
+use rmcp::model::{CallToolRequestParam, CallToolResult};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::{Value, json};
@@ -10,17 +10,7 @@ use crate::BrpMcpService;
 use crate::brp_tools::constants::{JSON_FIELD_COUNT, JSON_FIELD_WATCHES};
 use crate::error::Result;
 use crate::support::response::ResponseBuilder;
-use crate::support::schema;
 use crate::support::serialization::json_response_to_result;
-use crate::tools::{DESC_BRP_LIST_ACTIVE_WATCHES, TOOL_BRP_LIST_ACTIVE_WATCHES};
-
-pub fn register_tool() -> Tool {
-    Tool {
-        name:         TOOL_BRP_LIST_ACTIVE_WATCHES.into(),
-        description:  DESC_BRP_LIST_ACTIVE_WATCHES.into(),
-        input_schema: schema::SchemaBuilder::new().build(),
-    }
-}
 
 pub async fn handle(
     _service: &BrpMcpService,

@@ -1,6 +1,6 @@
 //! Stop an active watch
 
-use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
+use rmcp::model::{CallToolRequestParam, CallToolResult};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
@@ -8,22 +8,7 @@ use serde_json::Value;
 use super::manager::WATCH_MANAGER;
 use crate::BrpMcpService;
 use crate::brp_tools::constants::JSON_FIELD_WATCH_ID;
-use crate::support::{params, schema};
-use crate::tools::{DESC_BRP_STOP_WATCH, TOOL_BRP_STOP_WATCH};
-
-pub fn register_tool() -> Tool {
-    Tool {
-        name:         TOOL_BRP_STOP_WATCH.into(),
-        description:  DESC_BRP_STOP_WATCH.into(),
-        input_schema: schema::SchemaBuilder::new()
-            .add_number_property(
-                JSON_FIELD_WATCH_ID,
-                "The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch",
-                true,
-            )
-            .build(),
-    }
-}
+use crate::support::params;
 
 pub async fn handle(
     _service: &BrpMcpService,

@@ -33,9 +33,11 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
   }
   ```
   (Note: translation is missing required "z" field)
-- Check trace log file shows "FAILED Tier 2: Direct Discovery"
-- Verify fallback to pattern matching succeeds
-- Check trace log shows "SUCCESS Tier 3" messages
+- **EXPECTED BEHAVIOR**: The format discovery engine SHOULD attempt Level 2 (calling brp_extras/discover_format) first, even though the plugin is not available. This is correct behavior.
+- Verify trace log shows the engine attempting `brp_extras/discover_format` and receiving -32601 error
+- Verify trace log shows "Level 2: No type information found" or similar message indicating Level 2 failed
+- Verify fallback to Level 3 pattern matching succeeds
+- Check trace log shows successful Level 3 completion
 
 ### 4. Basic BRP Functionality (Should Work)
 - Execute `mcp__brp__bevy_list` to verify basic BRP works
@@ -58,8 +60,8 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - ✅ BRP extras methods return helpful installation guidance
 - ✅ Error messages are consistent across extras methods
 - ✅ Shutdown falls back to process termination with warning
-- ✅ Format discovery falls back to Tier 3/4 pattern matching
-- ✅ Trace log clearly shows tier progression (failed Tier 2 → success Tier 3/4)
+- ✅ Format discovery correctly attempts Level 2 first (tries brp_extras/discover_format) then falls back to Level 3 pattern matching
+- ✅ Trace log clearly shows tier progression: Level 2 attempt → -32601 error → Level 2 fails → Level 3 succeeds
 - ✅ Basic BRP functionality works without extras
 - ✅ Spawn with non-serializable components fails with helpful error mentioning missing traits
 - ✅ Error messages provide standard guidance for adding Serialize/Deserialize traits (generic message applies to all components)

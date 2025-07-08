@@ -24,7 +24,7 @@ Validate entity watch functionality including component monitoring, list watchin
 - Read list watch log file again and verify COMPONENT_UPDATE shows Transform in added array
 - Stop this watch using `mcp__brp__brp_stop_watch`
 
-### 3. Stop All Watches and Verify Persistence (Combined Tests 9, 10, 11)
+### 3. Stop All Watches and Verify Persistence
 - Execute `mcp__brp__brp_stop_watch` for all active watch_ids
 - Verify all watches stop successfully
 - Execute list_active_watches and confirm empty list

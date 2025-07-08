@@ -2,7 +2,6 @@ use rmcp::model::{CallToolRequestParam, CallToolResult, ListToolsResult};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use crate::brp_tools::watch;
 // Imports removed - using fully qualified paths in match statement to avoid naming conflicts
 use crate::error::{Error, report_to_mcp_error};
 use crate::{BrpMcpService, tool_definitions, tool_generator};
@@ -16,11 +15,7 @@ pub fn register_tools() -> ListToolsResult {
     }
 
     // Add remaining tools that don't follow simple request/response
-    tools.extend(vec![
-        // Streaming/watch tools (custom logic)
-        watch::brp_stop_watch::register_tool(),
-        watch::brp_list_active::register_tool(),
-    ]);
+    // (All tools have been migrated to declarative definitions)
 
     // Sort all tools alphabetically by name for consistent ordering
     tools.sort_by(|a, b| a.name.cmp(&b.name));
@@ -42,26 +37,14 @@ pub async fn handle_tool_call(
         return tool_generator::generate_tool_handler(def, service, request, context).await;
     }
 
-    // Handle remaining tools
-    match request.name.as_ref() {
-        // Streaming/watch tools (custom logic)
-        name if name == crate::tools::TOOL_BRP_STOP_WATCH => {
-            watch::brp_stop_watch::handle(service, request, context).await
-        }
-        name if name == crate::tools::TOOL_BRP_LIST_ACTIVE_WATCHES => {
-            watch::brp_list_active::handle(service, request, context).await
-        }
-
-        _ => {
-            let tool_name = &request.name;
-            Err(report_to_mcp_error(
-                &error_stack::Report::new(Error::ParameterExtraction(format!(
-                    "unknown tool: {tool_name}"
-                )))
-                .attach_printable("Tool not found in registry"),
-            ))
-        }
-    }
+    // All tools have been migrated to declarative definitions
+    let tool_name = &request.name;
+    Err(report_to_mcp_error(
+        &error_stack::Report::new(Error::ParameterExtraction(format!(
+            "unknown tool: {tool_name}"
+        )))
+        .attach_printable("Tool not found in registry"),
+    ))
 }
 
 #[cfg(test)]

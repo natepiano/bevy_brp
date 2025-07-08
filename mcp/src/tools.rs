@@ -101,7 +101,8 @@ define_tool_constants!(bevy, reparent);
 define_tool_constants!(bevy, get_watch => "bevy/get+watch");
 define_tool_constants!(bevy, list_watch => "bevy/list+watch");
 
-// BRP execute tool (not a direct Bevy method, server-only)
+// BRP execute tool (not a direct Bevy method, server-only) but still uses
+// the HandlerType::Brp even though we don't define it the same
 define_tool_constants!(brp, execute);
 
 // -----------------------------------------------------------------------------
@@ -111,6 +112,14 @@ define_tool_constants!(brp, execute);
 // align the exposed tool name with the brp protocol name
 pub const HANDLER_BEVY_GET_WATCH: &str = "handler_bevy_get_watch";
 pub const HANDLER_BEVY_LIST_WATCH: &str = "handler_bevy_list_watch";
+
+// -----------------------------------------------------------------------------
+// Manually defined local handlers for BRP watch management tools
+// -----------------------------------------------------------------------------
+// These are manual constants for BRP watch management tools that are handled locally
+// rather than being passed through to the BRP protocol
+pub const HANDLER_BRP_STOP_WATCH: &str = "handler_brp_stop_watch";
+pub const HANDLER_BRP_LIST_ACTIVE_WATCHES: &str = "handler_brp_list_active_watches";
 
 // -----------------------------------------------------------------------------
 // BRP Extras Tools (bevy_brp_extras plugin methods)
