@@ -1,0 +1,226 @@
+[
+  {
+    "id": "1",
+    "content": "Set terminal title for brp watch management tools migration",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Add manual handler constants HANDLER_BRP_STOP_WATCH and HANDLER_BRP_LIST_ACTIVE_WATCHES to tools.rs after line 114",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Build and fix any compile errors/warnings after adding handler constants",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Import constants in tool_definitions.rs: HANDLER_BRP_STOP_WATCH, HANDLER_BRP_LIST_ACTIVE_WATCHES, TOOL_BRP_STOP_WATCH, DESC_BRP_STOP_WATCH, TOOL_BRP_LIST_ACTIVE_WATCHES, DESC_BRP_LIST_ACTIVE_WATCHES",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Create get_brp_tools() function in tool_definitions.rs with brp_stop_watch and brp_list_active_watches definitions",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Add tools.extend(get_brp_tools()) to get_all_tools() in tool_definitions.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Build and fix any compile errors/warnings after adding tool definitions",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Import HANDLER_BRP_STOP_WATCH and HANDLER_BRP_LIST_ACTIVE_WATCHES in tool_generator.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Add HANDLER_BRP_STOP_WATCH case to generate_local_handler() in tool_generator.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Add HANDLER_BRP_LIST_ACTIVE_WATCHES case to generate_local_handler() in tool_generator.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Build and fix any compile errors/warnings after updating tool generator",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Remove register_tool() function from brp_stop_watch.rs (lines 14-26)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Remove Tool import from brp_stop_watch.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Remove schema import from brp_stop_watch.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Build and fix any compile errors/warnings after cleaning up brp_stop_watch.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Remove register_tool() function from brp_list_active.rs (lines 17-23)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Remove Tool import from brp_list_active.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Remove schema import from brp_list_active.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Build and fix any compile errors/warnings after cleaning up brp_list_active.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Remove watch::brp_stop_watch::register_tool() from registry.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Remove watch::brp_list_active::register_tool() from registry.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Remove brp_stop_watch handler case from registry.rs match statement",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Remove brp_list_active_watches handler case from registry.rs match statement",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Build and fix any compile errors/warnings after updating registry",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Fix any clippy issues (no dead code markers, no underscore prefixes)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Code review: Task subagent to review changes focusing on duplication, complexity, and plan validation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Review suggested changes from code review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
