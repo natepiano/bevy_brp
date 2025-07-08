@@ -11,7 +11,7 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
-use crate::registry;
+use crate::{tool_definitions, tool_generator};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -36,11 +36,9 @@ impl BrpMcpService {
     /// Fetches search roots from the connected MCP client.
     ///
     /// # Errors
-    ///
     /// Returns an error if the MCP client cannot be contacted or if the `list_roots` call fails.
     ///
     /// # Panics
-    ///
     /// Panics if the mutex lock on roots is poisoned.
     pub async fn fetch_roots_from_client(
         &self,
@@ -104,7 +102,7 @@ impl ServerHandler for BrpMcpService {
         _request: PaginatedRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        Ok(registry::register_tools())
+        Ok(register_tools())
     }
 
     async fn call_tool(
@@ -112,7 +110,7 @@ impl ServerHandler for BrpMcpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        registry::handle_tool_call(self, request, context).await
+        handle_tool_call(self, request, context).await
     }
 }
 
@@ -170,4 +168,42 @@ where
 {
     let search_paths = fetch_roots_and_get_paths(service, context).await?;
     handler(request, search_paths).await
+}
+
+fn register_tools() -> ListToolsResult {
+    let mut tools = vec![];
+
+    // Generate tools from declarative definitions
+    for def in tool_definitions::get_all_tools() {
+        tools.push(tool_generator::generate_tool_registration(&def));
+    }
+
+    // Sort all tools alphabetically by name for consistent ordering
+    tools.sort_by(|a, b| a.name.cmp(&b.name));
+
+    ListToolsResult {
+        next_cursor: None,
+        tools,
+    }
+}
+
+async fn handle_tool_call(
+    service: &BrpMcpService,
+    request: CallToolRequestParam,
+    context: RequestContext<RoleServer>,
+) -> Result<CallToolResult, McpError> {
+    // Check if this is one of the declaratively defined tools
+    let all_tools = tool_definitions::get_all_tools();
+    if let Some(def) = all_tools.iter().find(|d| d.name == request.name) {
+        return tool_generator::generate_tool_handler(def, service, request, context).await;
+    }
+
+    // All tools have been migrated to declarative definitions
+    let tool_name = &request.name;
+    Err(report_to_mcp_error(
+        &error_stack::Report::new(ServiceError::ParameterExtraction(format!(
+            "unknown tool: {tool_name}"
+        )))
+        .attach_printable("Tool not found in registry"),
+    ))
 }

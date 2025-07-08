@@ -10,20 +10,18 @@ use std::error::Error;
 
 use rmcp::ServiceExt;
 use rmcp::transport::stdio;
+use service::BrpMcpService;
 
 mod app_tools;
 mod brp_tools;
 mod constants;
 mod error;
 mod log_tools;
-mod registry;
 mod service;
 mod support;
 mod tool_definitions;
 mod tool_generator;
 mod tools;
-
-use service::BrpMcpService;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

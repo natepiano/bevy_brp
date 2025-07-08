@@ -36,6 +36,31 @@ pub struct BrpError {
     pub data:    Option<Value>,
 }
 
+impl BrpError {
+    /// Check if this error indicates a format issue that can be recovered
+    /// This function was constructed through trial and error via vibe coding with claude
+    /// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type" when
+    /// a Component doesn't have Serialize/Deserialize traits - this doesn't affect Resources
+    /// so the first section is probably correct.
+    /// the second section I think is less correct but it will take some time to validate that
+    /// moving to an "error codes only" approach doesn't have other issues
+    pub const fn is_format_error(&self) -> bool {
+        use crate::brp_tools::constants::{
+            BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, JSON_RPC_ERROR_INTERNAL_ERROR,
+            JSON_RPC_ERROR_INVALID_PARAMS,
+        };
+        
+        // Common format error codes that indicate type issues
+        matches!(
+            self.code,
+            JSON_RPC_ERROR_INVALID_PARAMS
+                | JSON_RPC_ERROR_INTERNAL_ERROR
+                | BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
+                | BRP_ERROR_ACCESS_ERROR
+        )
+    }
+}
+
 /// Raw BRP JSON-RPC response structure
 #[derive(Debug, Serialize, Deserialize)]
 struct BrpResponse {

@@ -12,7 +12,8 @@
 //! ```
 //!
 //! ## Exception Path: Format Error Recovery
-//! When Phase 0 fails with format errors, enter the exception path with a 3-level decision tree:
+//! When Level 1 Normal Path fails with format errors, enter the exception path with a 3-level
+//! decision tree:
 //!
 //! ### Level 1: Registry/Serialization Checks
 //! Verify type registration and serialization support.
@@ -45,10 +46,7 @@ use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
-use crate::brp_tools::constants::{
-    BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, JSON_RPC_ERROR_INTERNAL_ERROR,
-    JSON_RPC_ERROR_INVALID_PARAMS,
-};
+use crate::brp_tools::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
 use crate::brp_tools::request_handler::format_discovery::recovery_engine;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::Result;
@@ -123,7 +121,7 @@ async fn execute_level_1(
             }
 
             // Check if this is a (potentially) recoverable format error
-            if is_format_error(error) && is_format_discovery_supported(method) {
+            if error.is_format_error() && is_format_discovery_supported(method) {
                 Ok(BrpRequestResult::FormatError {
                     error:           result,
                     method:          method.to_string(),
@@ -136,48 +134,6 @@ async fn execute_level_1(
             }
         }
     }
-}
-
-/// Check if an error indicates a format issue that can be recovered
-/// This fn smells - it was constructed through trial and error via vibe coding with claude
-/// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type" when
-/// a Component doesn't have Serialize/Deserialize traits - this doesn't affect Resources
-/// so the first section is probably correct.
-/// the second section I think is less correct but it will take some time to validate that
-/// moving to an "error codes only" approach doesn't have other issues
-fn is_format_error(error: &crate::brp_tools::support::brp_client::BrpError) -> bool {
-    // Dynamic type errors indicate missing Serialize/Deserialize traits (any error code)
-    if error
-        .message
-        .contains("Unknown component type: `bevy_reflect::DynamicEnum`")
-        || error
-            .message
-            .contains("Unknown component type: `bevy_reflect::DynamicStruct`")
-        || error
-            .message
-            .contains("Unknown resource type: `bevy_reflect::DynamicEnum`")
-        || error
-            .message
-            .contains("Unknown resource type: `bevy_reflect::DynamicStruct`")
-    {
-        return true;
-    }
-
-    // Common format error codes that indicate type issues
-    matches!(
-        error.code,
-        JSON_RPC_ERROR_INVALID_PARAMS
-            | JSON_RPC_ERROR_INTERNAL_ERROR
-            | BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
-            | BRP_ERROR_ACCESS_ERROR
-    ) && (error.message.contains("failed to deserialize")
-        || error.message.contains("invalid type")
-        || error.message.contains("expected")
-        || error.message.contains("Error accessing element")
-        || error.message.contains("AccessError")
-        || error.message.contains("missing field")
-        || error.message.contains("unknown variant")
-        || error.message.contains("Error accessing element"))
 }
 
 /// Check if a method supports format discovery
