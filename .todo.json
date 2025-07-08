@@ -3,369 +3,404 @@
     "id": "meta",
     "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
     "status": "pending",
-    "priority": "high",
+    "priority": "medium",
     "notes": ""
   },
   {
-    "id": "1",
-    "content": "Update LargeResponseConfig to use String instead of &'a str for file_prefix",
+    "id": "phase1-1",
+    "content": "Create src/response/ module directory structure",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "2",
-    "content": "Build and fix any compile errors and warnings after updating LargeResponseConfig",
+    "id": "phase1-2",
+    "content": "Build and fix any compile errors and warnings after creating directory structure",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "3",
-    "content": "Remove lifetime parameter 'a from FormatterConfig struct",
+    "id": "phase1-3",
+    "content": "Create src/response/mod.rs with clean public API exports (empty stub initially)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "4",
-    "content": "Build and fix any compile errors and warnings after removing FormatterConfig lifetime",
+    "id": "phase1-4",
+    "content": "Build and fix any compile errors and warnings after creating mod.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "5",
-    "content": "Remove lifetime parameter 'a from ResponseFormatter struct",
+    "id": "phase1-5",
+    "content": "Create src/response/size_check.rs - move large response logic from src/support/large_response.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "6",
-    "content": "Build and fix any compile errors and warnings after removing ResponseFormatter lifetime",
+    "id": "phase1-6",
+    "content": "Build and fix any compile errors and warnings after creating size_check.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "7",
-    "content": "Remove lifetime parameter 'a from ResponseFormatterFactory struct",
+    "id": "phase1-7",
+    "content": "Create src/response/response.rs with Response::success/error/new methods",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "8",
-    "content": "Build and fix any compile errors and warnings after removing ResponseFormatterFactory lifetime",
+    "id": "phase1-8",
+    "content": "Build and fix any compile errors and warnings after creating response.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "9",
-    "content": "Remove lifetime parameter 'a from ResponseFormatterBuilder struct",
+    "id": "phase1-9",
+    "content": "Create src/response/builder.rs with ResponseBuilder implementation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "10",
-    "content": "Build and fix any compile errors and warnings after removing ResponseFormatterBuilder lifetime",
+    "id": "phase1-10",
+    "content": "Build and fix any compile errors and warnings after creating builder.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "11",
-    "content": "Update all factory methods to use String::from() or .to_string() for file_prefix",
+    "id": "phase1-11",
+    "content": "Integrate automatic large response checking into ResponseBuilder.build()",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "12",
-    "content": "Build and fix any compile errors and warnings after updating factory methods",
+    "id": "phase1-12",
+    "content": "Build and fix any compile errors and warnings after integrating large response checking",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "13",
-    "content": "Run cargo clippy after completing lifetime simplification",
+    "id": "phase1-13",
+    "content": "Update src/response/mod.rs to export all public APIs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "14",
-    "content": "Fix any clippy issues following our rules",
+    "id": "phase1-14",
+    "content": "Build and fix any compile errors and warnings after updating mod.rs exports",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "15",
-    "content": "Create ResponseFormatterFactory::standard() method with common configuration",
+    "id": "clippy1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "16",
-    "content": "Build and fix any compile errors and warnings after adding standard() method",
+    "id": "clippy1-fix",
+    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "17",
-    "content": "Update entity_operation to delegate to standard() method",
+    "id": "phase2-1",
+    "content": "Add helper methods to ExtractedParams in src/brp_tools/request_handler/traits.rs (get_entity_id, get_port, get_components, get_resource)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "18",
-    "content": "Build and fix any compile errors and warnings after updating entity_operation",
+    "id": "phase2-2",
+    "content": "Build and fix any compile errors and warnings after adding ExtractedParams helpers",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "19",
-    "content": "Update resource_operation to delegate to standard() method",
+    "id": "clippy2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "20",
-    "content": "Build and fix any compile errors and warnings after updating resource_operation",
+    "id": "clippy2-fix",
+    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "21",
-    "content": "Update list_operation to delegate to standard() method",
+    "id": "phase3-1",
+    "content": "Replace complex ResponseFormatter logic in src/tool_generator.rs with simple Response API",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "22",
-    "content": "Build and fix any compile errors and warnings after updating list_operation",
+    "id": "phase3-2",
+    "content": "Build and fix any compile errors and warnings after updating tool_generator.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "23",
-    "content": "Run cargo clippy after completing factory consolidation",
+    "id": "phase3-3",
+    "content": "Use ExtractedParams helper methods for field extraction in tool_generator.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "24",
-    "content": "Fix any clippy issues following our rules",
+    "id": "phase3-4",
+    "content": "Build and fix any compile errors and warnings after using ExtractedParams helpers",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "25",
-    "content": "Create LocalResponseFormatter struct in support/response.rs or new module",
+    "id": "phase3-5",
+    "content": "Update BRP handlers to use unified Response API in src/brp_tools/request_handler/handler.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "26",
-    "content": "Build and fix any compile errors and warnings after creating LocalResponseFormatter",
+    "id": "phase3-6",
+    "content": "Build and fix any compile errors and warnings after updating BRP handlers",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "27",
-    "content": "Implement LocalResponseFormatter methods with automatic large response handling",
+    "id": "clippy3",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "28",
-    "content": "Build and fix any compile errors and warnings after implementing LocalResponseFormatter",
+    "id": "clippy3-fix",
+    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "29",
-    "content": "Migrate list_logs handler to use LocalResponseFormatter",
+    "id": "phase4-1",
+    "content": "Migrate simple local handlers batch 1 (get_trace_log_path, set_tracing_level) to use Response::success()/error()",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "30",
-    "content": "Build and fix any compile errors and warnings after migrating list_logs",
+    "id": "phase4-2",
+    "content": "Build and fix any compile errors and warnings after migrating batch 1",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "31",
-    "content": "Run cargo clippy after completing local handler unification",
+    "id": "phase4-3",
+    "content": "Migrate simple local handlers batch 2 (remaining simple handlers) to use Response::success()/error()",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "32",
-    "content": "Fix any clippy issues following our rules",
+    "id": "phase4-4",
+    "content": "Build and fix any compile errors and warnings after migrating batch 2",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "33",
-    "content": "Identify simple response cases suitable for Response API migration",
+    "id": "phase4-5",
+    "content": "Migrate complex handlers batch 1 (cleanup_logs, list_logs) to use Response::new().add_field().build()",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "34",
-    "content": "Migrate get_trace_log_path to use Response::success()",
+    "id": "phase4-6",
+    "content": "Build and fix any compile errors and warnings after migrating complex batch 1",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "35",
-    "content": "Build and fix any compile errors and warnings after migrating get_trace_log_path",
+    "id": "phase4-7",
+    "content": "Migrate remaining complex handlers to use Response::new().add_field().build()",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "36",
-    "content": "Migrate cleanup_logs success responses to use Response API",
+    "id": "phase4-8",
+    "content": "Build and fix any compile errors and warnings after migrating remaining complex handlers",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "37",
-    "content": "Build and fix any compile errors and warnings after migrating cleanup_logs",
+    "id": "clippy4",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "38",
-    "content": "Run cargo clippy after completing Response API adoption",
+    "id": "clippy4-fix",
+    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "39",
-    "content": "Fix any clippy issues following our rules",
+    "id": "phase5-1",
+    "content": "Remove ResponseBuilder from src/support/response.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "40",
-    "content": "Extract large response handling logic from format_success into separate method",
+    "id": "phase5-2",
+    "content": "Build and fix any compile errors and warnings after removing ResponseBuilder",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "41",
-    "content": "Build and fix any compile errors and warnings after extracting method",
+    "id": "phase5-3",
+    "content": "Remove LocalResponseFormatter from src/support/response.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "42",
-    "content": "Refactor format_success to use the extracted method with reduced nesting",
+    "id": "phase5-4",
+    "content": "Build and fix any compile errors and warnings after removing LocalResponseFormatter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "43",
-    "content": "Build and fix any compile errors and warnings after refactoring format_success",
+    "id": "phase5-5",
+    "content": "Remove Response wrapper from src/brp_tools/support/response_formatter.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "44",
-    "content": "Run cargo clippy after completing logic simplification",
+    "id": "phase5-6",
+    "content": "Build and fix any compile errors and warnings after removing Response wrapper",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "45",
-    "content": "Fix any clippy issues following our rules",
+    "id": "phase5-7",
+    "content": "Remove ResponseFormatter and factory pattern entirely from src/brp_tools/support/response_formatter.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "46",
-    "content": "Add module-level documentation explaining Response vs ResponseBuilder vs ResponseFormatter",
+    "id": "phase5-8",
+    "content": "Build and fix any compile errors and warnings after removing ResponseFormatter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "47",
+    "id": "phase5-9",
+    "content": "Remove now-unused src/support/large_response.rs file",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-10",
+    "content": "Build and fix any compile errors and warnings after removing large_response.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy5",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy5-fix",
+    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase6-1",
+    "content": "Add module-level documentation explaining unified Response API to src/response/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase6-2",
     "content": "Build and fix any compile errors and warnings after adding documentation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "48",
+    "id": "format",
     "content": "Run cargo +nightly fmt",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "49",
+    "id": "test",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "50",
+    "id": "test-review",
     "content": "If there are test issues, STOP and review them with the user",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "51",
-    "content": "Task a subagent to do code review focusing on duplication, complexity, and plan validation",
+    "id": "code-review-subagent",
+    "content": "Task a new subagent to do a code review of the changes in the worktree - tell it to focus on identifying duplication and complexity. Additionally, ask that it focus on validating that the implementation plan was actually implemented. Emphasize that it should only read and analyze, not modify anything.",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "52",
-    "content": "Review subagent's suggested changes with the user",
+    "id": "code-review-stop",
+    "content": "The subagent should STOP work here and return control to you and you should then continue with reviewing the suggested changes with the user",
     "status": "pending",
     "priority": "medium",
     "notes": ""
