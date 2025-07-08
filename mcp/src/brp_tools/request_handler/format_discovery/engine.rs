@@ -45,7 +45,10 @@ use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
-use crate::brp_tools::constants::BRP_ERROR_CODE_INVALID_REQUEST;
+use crate::brp_tools::constants::{
+    BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, JSON_RPC_ERROR_INTERNAL_ERROR,
+    JSON_RPC_ERROR_INVALID_PARAMS,
+};
 use crate::brp_tools::request_handler::format_discovery::recovery_engine;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::Result;
@@ -105,7 +108,7 @@ async fn execute_level_1(
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
             if matches!(method, BRP_METHOD_SPAWN | BRP_METHOD_INSERT)
-                && error.code == BRP_ERROR_CODE_INVALID_REQUEST
+                && error.code == BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
             {
                 // Check if this is a serialization error that should be short-circuited
                 if let Some(educational_message) =
@@ -135,6 +138,12 @@ async fn execute_level_1(
 }
 
 /// Check if an error indicates a format issue that can be recovered
+/// This fn smells - it was constructed through trial and error via vibe coding with claude
+/// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type" when
+/// a Component doesn't have Serialize/Deserialize traits - this doesn't affect Resources
+/// so the first section is probably correct.
+/// the second section I think is less correct but it will take some time to validate that
+/// moving to an "error codes only" approach doesn't have other issues
 fn is_format_error(error: &crate::brp_tools::support::brp_client::BrpError) -> bool {
     // Dynamic type errors indicate missing Serialize/Deserialize traits (any error code)
     if error
@@ -153,12 +162,13 @@ fn is_format_error(error: &crate::brp_tools::support::brp_client::BrpError) -> b
         return true;
     }
 
-    // Common format error codes that indicate type serialization issues
-    // Include BRP_ERROR_CODE_INVALID_REQUEST (-23402) for mutation errors
-    // Include -23501 for access errors (path errors in mutations)
+    // Common format error codes that indicate type issues
     matches!(
         error.code,
-        -32602 | -32603 | BRP_ERROR_CODE_INVALID_REQUEST | -23501
+        JSON_RPC_ERROR_INVALID_PARAMS
+            | JSON_RPC_ERROR_INTERNAL_ERROR
+            | BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
+            | BRP_ERROR_ACCESS_ERROR
     ) && (error.message.contains("failed to deserialize")
         || error.message.contains("invalid type")
         || error.message.contains("expected")

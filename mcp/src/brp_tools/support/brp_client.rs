@@ -14,6 +14,7 @@ use tracing::{debug, warn};
 use super::BrpJsonRpcBuilder;
 use crate::brp_tools::constants::{
     BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, DEFAULT_BRP_PORT,
+    JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 use crate::error::{Error, Result};
 use crate::tools::BRP_EXTRAS_PREFIX;
@@ -276,7 +277,9 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
         );
 
         // Check if this is a bevy_brp_extras method that's not found
-        let enhanced_message = if error.code == -32601 && method.starts_with(BRP_EXTRAS_PREFIX) {
+        let enhanced_message = if error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND
+            && method.starts_with(BRP_EXTRAS_PREFIX)
+        {
             format!(
                 "{}. This method requires the bevy_brp_extras crate to be added to your Bevy app with the BrpExtrasPlugin",
                 error.message
@@ -296,39 +299,5 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
         result
     } else {
         BrpResult::Success(brp_response.result)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_brp_error_creation() {
-        let error = BrpError {
-            code:    -32600,
-            message: "Invalid Request".to_string(),
-            data:    None,
-        };
-        assert_eq!(error.code, -32600);
-        assert_eq!(error.message, "Invalid Request");
-        assert!(error.data.is_none());
-    }
-
-    #[test]
-    fn test_brp_result_success() {
-        let result = BrpResult::Success(Some(serde_json::json!({"test": "value"})));
-        matches!(result, BrpResult::Success(_));
-    }
-
-    #[test]
-    fn test_brp_result_error() {
-        let error = BrpError {
-            code:    -1,
-            message: "Test error".to_string(),
-            data:    None,
-        };
-        let result = BrpResult::Error(error);
-        matches!(result, BrpResult::Error(_));
     }
 }

@@ -4,7 +4,7 @@ use serde_json::json;
 use sysinfo::{Signal, System};
 use tracing::debug;
 
-use crate::brp_tools::constants::DEFAULT_BRP_PORT;
+use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::support::params;
@@ -238,7 +238,7 @@ async fn try_graceful_shutdown(port: u16) -> Result<(bool, Vec<String>)> {
         }
         Ok(BrpResult::Error(brp_error)) => {
             // Check if this is a method not found error (bevy_brp_extras not available)
-            if brp_error.code == -32601 {
+            if brp_error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND {
                 debug!(
                     "BRP extras method not found (code {}): {}",
                     brp_error.code, brp_error.message
