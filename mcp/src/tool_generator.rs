@@ -29,7 +29,7 @@ use crate::extractors::{
 };
 use crate::support::schema;
 use crate::tool_definitions::{
-    BrpMethodParamCategory, BrpToolDef, FormatterType, HandlerType, ParamType,
+    BrpMethodParamCategory, FormatterType, HandlerType, McpToolDef, ParamType,
 };
 use crate::tools::{
     HANDLER_BEVY_GET_WATCH, HANDLER_BEVY_LIST_WATCH, HANDLER_BRP_LIST_ACTIVE_WATCHES,
@@ -41,7 +41,7 @@ use crate::tools::{
 use crate::{BrpMcpService, app_tools, brp_tools, error, log_tools};
 
 /// Generate tool registration from a declarative definition
-pub fn generate_tool_registration(def: &BrpToolDef) -> Tool {
+pub fn generate_tool_registration(def: &McpToolDef) -> Tool {
     let mut builder = schema::SchemaBuilder::new();
 
     // Add all parameters to the schema
@@ -74,7 +74,7 @@ pub fn generate_tool_registration(def: &BrpToolDef) -> Tool {
 
 /// Generate a handler function for a declarative tool definition
 pub async fn generate_tool_handler(
-    def: &BrpToolDef,
+    def: &McpToolDef,
     service: &BrpMcpService,
     request: CallToolRequestParam,
     context: RequestContext<RoleServer>,
@@ -195,7 +195,7 @@ fn extract_params_for_type(
 
 /// Generate a BRP handler
 async fn generate_brp_handler(
-    def: &BrpToolDef,
+    def: &McpToolDef,
     request: CallToolRequestParam,
     method: &'static str,
 ) -> Result<CallToolResult, McpError> {
@@ -237,7 +237,7 @@ async fn generate_brp_handler(
 /// Generate a local handler
 #[allow(clippy::too_many_lines)]
 async fn generate_local_handler(
-    def: &BrpToolDef,
+    def: &McpToolDef,
     service: &BrpMcpService,
     request: CallToolRequestParam,
     context: RequestContext<RoleServer>,
@@ -390,7 +390,7 @@ async fn generate_local_handler(
 
 /// Create formatter factory and context from tool definition
 fn create_formatter_from_def(
-    def: &BrpToolDef,
+    def: &McpToolDef,
     request: &CallToolRequestParam,
 ) -> (ResponseFormatterFactory, FormatterContext) {
     // Create the formatter factory based on the definition

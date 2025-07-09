@@ -349,7 +349,7 @@ pub enum HandlerType {
 
 /// Complete definition of a BRP tool
 #[derive(Clone)]
-pub struct BrpToolDef {
+pub struct McpToolDef {
     /// Tool name (e.g., "`bevy_destroy`")
     pub name:            &'static str,
     /// Tool description
@@ -366,10 +366,10 @@ pub struct BrpToolDef {
 
 /// Get all standard tool definitions
 #[allow(clippy::too_many_lines)]
-fn get_standard_tools() -> Vec<BrpToolDef> {
+fn get_standard_tools() -> Vec<McpToolDef> {
     vec![
         // bevy_destroy
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_DESTROY,
             description:     DESC_BEVY_DESTROY,
             handler:         HandlerType::Brp {
@@ -387,7 +387,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_get
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_GET,
             description:     DESC_BEVY_GET,
             handler:         HandlerType::Brp {
@@ -418,7 +418,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_list
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_LIST,
             description:     DESC_BEVY_LIST,
             handler:         HandlerType::Brp {
@@ -445,7 +445,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_remove
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_REMOVE,
             description:     DESC_BEVY_REMOVE,
             handler:         HandlerType::Brp {
@@ -467,7 +467,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_insert
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_INSERT,
             description:     DESC_BEVY_INSERT,
             handler:         HandlerType::Brp {
@@ -492,7 +492,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_get_resource
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_GET_RESOURCE,
             description:     DESC_BEVY_GET_RESOURCE,
             handler:         HandlerType::Brp {
@@ -519,7 +519,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_insert_resource
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_INSERT_RESOURCE,
             description:     DESC_BEVY_INSERT_RESOURCE,
             handler:         HandlerType::Brp {
@@ -546,7 +546,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_remove_resource
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_REMOVE_RESOURCE,
             description:     DESC_BEVY_REMOVE_RESOURCE,
             handler:         HandlerType::Brp {
@@ -567,7 +567,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_mutate_component
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_MUTATE_COMPONENT,
             description:     DESC_BEVY_MUTATE_COMPONENT,
             handler:         HandlerType::Brp {
@@ -585,7 +585,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_mutate_resource
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_MUTATE_RESOURCE,
             description:     DESC_BEVY_MUTATE_RESOURCE,
             handler:         HandlerType::Brp {
@@ -603,7 +603,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_list_resources
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_LIST_RESOURCES,
             description:     DESC_BEVY_LIST_RESOURCES,
             handler:         HandlerType::Brp {
@@ -627,7 +627,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_rpc_discover
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_RPC_DISCOVER,
             description:     DESC_BEVY_RPC_DISCOVER,
             handler:         HandlerType::Brp {
@@ -645,7 +645,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_brp_extras/discover_format
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
             handler:         HandlerType::Brp {
@@ -670,7 +670,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_screenshot
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_EXTRAS_SCREENSHOT,
             description:     DESC_BRP_EXTRAS_SCREENSHOT,
             handler:         HandlerType::Brp {
@@ -697,7 +697,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_extras/send_keys
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_EXTRAS_SEND_KEYS,
             description:     DESC_BRP_EXTRAS_SEND_KEYS,
             handler:         HandlerType::Brp {
@@ -729,7 +729,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_extras/set_debug_mode
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
             handler:         HandlerType::Brp {
@@ -758,10 +758,10 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
 
 /// Get tool definitions for tools with special variations
 #[allow(clippy::too_many_lines)]
-fn get_special_tools() -> Vec<BrpToolDef> {
+fn get_special_tools() -> Vec<McpToolDef> {
     vec![
         // bevy_query - has custom extractors for component counts
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_QUERY,
             description:     DESC_BEVY_QUERY,
             handler:         HandlerType::Brp {
@@ -793,7 +793,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_spawn - has dynamic entity extraction from response
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_SPAWN,
             description:     DESC_BEVY_SPAWN,
             handler:         HandlerType::Brp {
@@ -823,7 +823,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_execute - has dynamic method selection
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_EXECUTE,
             description:     DESC_BRP_EXECUTE,
             handler:         HandlerType::Brp { method: "" }, // Dynamic method
@@ -843,7 +843,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_registry_schema - has complex parameter transformation
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_REGISTRY_SCHEMA,
             description:     DESC_BEVY_REGISTRY_SCHEMA,
             handler:         HandlerType::Brp {
@@ -883,7 +883,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_reparent - has array parameter handling
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_REPARENT,
             description:     DESC_BEVY_REPARENT,
             handler:         HandlerType::Brp {
@@ -919,10 +919,10 @@ fn get_special_tools() -> Vec<BrpToolDef> {
 
 /// Get log tool definitions
 #[allow(clippy::too_many_lines)]
-fn get_log_tools() -> Vec<BrpToolDef> {
+fn get_log_tools() -> Vec<McpToolDef> {
     vec![
         // list_logs
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_LIST_LOGS,
             description:     DESC_LIST_LOGS,
             handler:         HandlerType::Local {
@@ -961,7 +961,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
             },
         },
         // read_log
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_READ_LOG,
             description:     DESC_READ_LOG,
             handler:         HandlerType::Local {
@@ -1025,7 +1025,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
             },
         },
         // cleanup_logs
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_CLEANUP_LOGS,
             description:     DESC_CLEANUP_LOGS,
             handler:         HandlerType::Local {
@@ -1068,7 +1068,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_get_trace_log_path
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_GET_TRACE_LOG_PATH,
             description:     DESC_GET_TRACE_LOG_PATH,
             handler:         HandlerType::Local {
@@ -1096,7 +1096,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_set_tracing_level
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_SET_TRACING_LEVEL,
             description:     DESC_SET_TRACING_LEVEL,
             handler:         HandlerType::Local {
@@ -1128,10 +1128,10 @@ fn get_log_tools() -> Vec<BrpToolDef> {
 
 /// Get app tool definitions
 #[allow(clippy::too_many_lines)]
-fn get_app_tools() -> Vec<BrpToolDef> {
+fn get_app_tools() -> Vec<McpToolDef> {
     vec![
         // list_bevy_apps
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_LIST_BEVY_APPS,
             description:     DESC_LIST_BEVY_APPS,
             handler:         HandlerType::Local {
@@ -1155,7 +1155,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
         },
         // list_brp_apps
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_LIST_BRP_APPS,
             description:     DESC_LIST_BRP_APPS,
             handler:         HandlerType::Local {
@@ -1179,7 +1179,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
         },
         // list_bevy_examples
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_LIST_BEVY_EXAMPLES,
             description:     DESC_LIST_BEVY_EXAMPLES,
             handler:         HandlerType::Local {
@@ -1203,7 +1203,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
         },
         // launch_bevy_app
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_LAUNCH_BEVY_APP,
             description:     DESC_LAUNCH_BEVY_APP,
             handler:         HandlerType::Local {
@@ -1267,7 +1267,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
         },
         // launch_bevy_example
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_LAUNCH_BEVY_EXAMPLE,
             description:     DESC_LAUNCH_BEVY_EXAMPLE,
             handler:         HandlerType::Local {
@@ -1338,7 +1338,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_extras_shutdown
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_SHUTDOWN,
             description:     DESC_SHUTDOWN,
             handler:         HandlerType::Local {
@@ -1360,7 +1360,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_status
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_STATUS,
             description:     DESC_STATUS,
             handler:         HandlerType::Local {
@@ -1385,10 +1385,10 @@ fn get_app_tools() -> Vec<BrpToolDef> {
 }
 
 /// Get watch tool definitions
-fn get_watch_tools() -> Vec<BrpToolDef> {
+fn get_watch_tools() -> Vec<McpToolDef> {
     vec![
         // bevy_get_watch
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_GET_WATCH,
             description:     DESC_BEVY_GET_WATCH,
             handler:         HandlerType::Local {
@@ -1410,7 +1410,7 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
             },
         },
         // bevy_list_watch
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BEVY_LIST_WATCH,
             description:     DESC_BEVY_LIST_WATCH,
             handler:         HandlerType::Local {
@@ -1431,10 +1431,10 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
 }
 
 /// Get BRP watch management tool definitions
-fn get_brp_tools() -> Vec<BrpToolDef> {
+fn get_brp_tools() -> Vec<McpToolDef> {
     vec![
         // brp_stop_watch
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_STOP_WATCH,
             description:     DESC_BRP_STOP_WATCH,
             handler:         HandlerType::Local {
@@ -1453,7 +1453,7 @@ fn get_brp_tools() -> Vec<BrpToolDef> {
             },
         },
         // brp_list_active_watches
-        BrpToolDef {
+        McpToolDef {
             name:            TOOL_BRP_LIST_ACTIVE_WATCHES,
             description:     DESC_BRP_LIST_ACTIVE_WATCHES,
             handler:         HandlerType::Local {
@@ -1485,7 +1485,7 @@ fn create_launch_params(name_param: &'static str, name_desc: &'static str) -> Ve
 }
 
 /// Get all tool definitions - combines standard, special, log, and app tools
-pub fn get_all_tools() -> Vec<BrpToolDef> {
+pub fn get_all_tools() -> Vec<McpToolDef> {
     let mut tools = Vec::new();
 
     // Add standard tools
