@@ -7,57 +7,57 @@
     "notes": ""
   },
   {
-    "id": "step1",
-    "content": "Update test names in tool_generator.rs: rename test_extract_entity_from_response() to test_spawned_entity_id()",
+    "id": "phase1-1",
+    "content": "Add from_request constructor to McpCallExtractor that accepts CallToolRequestParam",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step1-build",
-    "content": "Build and fix any compile errors and warnings after updating test names",
+    "id": "phase1-1-build",
+    "content": "Build and fix any compile errors and warnings after adding from_request constructor",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step2",
-    "content": "Update test names in tool_generator.rs: rename test_extract_entity_from_response_missing() to test_spawned_entity_id_missing()",
+    "id": "phase1-2",
+    "content": "Add Result-based extractors for required fields to McpCallExtractor (get_required_string, get_required_u64, get_required_u32)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step2-build",
-    "content": "Build and fix any compile errors and warnings after updating remaining test names",
+    "id": "phase1-2-build",
+    "content": "Build and fix any compile errors and warnings after adding required field extractors",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step3",
-    "content": "Add documentation to BevyResponseExtractor methods explaining the difference between count() and entity_count()",
+    "id": "phase1-3",
+    "content": "Add Result-based extractors for optional fields with type conversion to McpCallExtractor (get_optional_string, get_optional_bool, get_optional_u16, get_optional_u32, get_optional_path)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step3-build",
-    "content": "Build and fix any compile errors and warnings after adding documentation",
+    "id": "phase1-3-build",
+    "content": "Build and fix any compile errors and warnings after adding optional field extractors",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step4",
-    "content": "Add documentation to McpCallExtractor methods explaining when to use each method",
+    "id": "phase1-4",
+    "content": "Add specialized common extractors to McpCallExtractor (get_port, get_entity_id)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step4-build",
-    "content": "Build and fix any compile errors and warnings after adding MCP extractor documentation",
+    "id": "phase1-4-build",
+    "content": "Build and fix any compile errors and warnings after adding specialized extractors",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -71,6 +71,244 @@
   },
   {
     "id": "clippy1-fix",
+    "content": "Fix any clippy issues found",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-1",
+    "content": "Create temporary direct parameter extraction in tool_generator.rs to replace ParamExtractor usage",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-1-build",
+    "content": "Build and fix any compile errors and warnings after modifying tool_generator",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-2",
+    "content": "Update BrpHandlerConfig and handle_brp_request to not require param_extractor",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-2-build",
+    "content": "Build and fix any compile errors and warnings after updating BrpHandlerConfig",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-3",
+    "content": "Delete the entire brp_tools/request_handler/extractors.rs file",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-3-build",
+    "content": "Build and fix any compile errors and warnings after deleting extractors.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy2-fix",
+    "content": "Fix any clippy issues found",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-1",
+    "content": "Migrate app_tools/brp_launch_bevy_app.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-1-build",
+    "content": "Build and fix any compile errors and warnings after migrating brp_launch_bevy_app",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-2",
+    "content": "Migrate app_tools/brp_launch_bevy_example.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-2-build",
+    "content": "Build and fix any compile errors and warnings after migrating brp_launch_bevy_example",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-3",
+    "content": "Migrate app_tools/brp_shutdown.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-3-build",
+    "content": "Build and fix any compile errors and warnings after migrating brp_shutdown",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-4",
+    "content": "Migrate app_tools/brp_status.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-4-build",
+    "content": "Build and fix any compile errors and warnings after migrating brp_status",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-5",
+    "content": "Migrate log_tools/list_logs.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-5-build",
+    "content": "Build and fix any compile errors and warnings after migrating list_logs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-6",
+    "content": "Migrate log_tools/read_log.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-6-build",
+    "content": "Build and fix any compile errors and warnings after migrating read_log",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-7",
+    "content": "Migrate log_tools/cleanup_logs.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-7-build",
+    "content": "Build and fix any compile errors and warnings after migrating cleanup_logs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-8",
+    "content": "Migrate log_tools/set_tracing_level.rs to use McpCallExtractor.from_request()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-8-build",
+    "content": "Build and fix any compile errors and warnings after migrating set_tracing_level",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-9",
+    "content": "Migrate watch modules (bevy_get_watch.rs, bevy_list_watch.rs, brp_stop_watch.rs) to use McpCallExtractor",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase3-9-build",
+    "content": "Build and fix any compile errors and warnings after migrating watch modules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy3",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy3-fix",
+    "content": "Fix any clippy issues found",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4-1",
+    "content": "Delete support/params.rs file entirely",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4-1-build",
+    "content": "Build and fix any compile errors and warnings after deleting params.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4-2",
+    "content": "Remove all imports of params module throughout the codebase",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase4-2-build",
+    "content": "Build and fix any compile errors and warnings after removing params imports",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy4",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy4-fix",
     "content": "Fix any clippy issues found",
     "status": "pending",
     "priority": "medium",
@@ -99,7 +337,7 @@
   },
   {
     "id": "code-review",
-    "content": "Task a new subagent to do a code review focusing on duplication, complexity, and validating the implementation was correct",
+    "content": "Task a new subagent to do a code review focusing on duplication, complexity, and validating the implementation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
