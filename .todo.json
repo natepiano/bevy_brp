@@ -7,100 +7,58 @@
     "notes": ""
   },
   {
-    "id": "step1-1",
-    "content": "Create new extractors module directory structure at mcp/src/extractors with mod.rs, mcp_call.rs, and bevy_response.rs files",
-    "status": "completed",
+    "id": "step1",
+    "content": "Update test names in tool_generator.rs: rename test_extract_entity_from_response() to test_spawned_entity_id()",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step1-2",
-    "content": "Build and fix any compile errors and warnings after creating module structure",
-    "status": "completed",
+    "id": "step1-build",
+    "content": "Build and fix any compile errors and warnings after updating test names",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step2-1",
-    "content": "Add extractors module to mcp/src/lib.rs and main.rs exports",
-    "status": "completed",
+    "id": "step2",
+    "content": "Update test names in tool_generator.rs: rename test_extract_entity_from_response_missing() to test_spawned_entity_id_missing()",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step2-2",
-    "content": "Build and fix any compile errors and warnings after adding module exports",
-    "status": "completed",
+    "id": "step2-build",
+    "content": "Build and fix any compile errors and warnings after updating remaining test names",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step3-1",
-    "content": "Implement McpCallExtractor struct in mcp_call.rs with new() method and basic structure",
-    "status": "completed",
+    "id": "step3",
+    "content": "Add documentation to BevyResponseExtractor methods explaining the difference between count() and entity_count()",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step3-2",
-    "content": "Build and fix any compile errors and warnings after implementing McpCallExtractor struct",
-    "status": "completed",
+    "id": "step3-build",
+    "content": "Build and fix any compile errors and warnings after adding documentation",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step4-1",
-    "content": "Implement BevyResponseExtractor struct in bevy_response.rs with new() method and basic structure",
-    "status": "completed",
+    "id": "step4",
+    "content": "Add documentation to McpCallExtractor methods explaining when to use each method",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "step4-2",
-    "content": "Build and fix any compile errors and warnings after implementing BevyResponseExtractor struct",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step5-1",
-    "content": "Migrate entity_from_params to McpCallExtractor::entity_id() and update its usage in response_formatter.rs",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step5-2",
-    "content": "Build and fix any compile errors and warnings after migrating entity_from_params",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step6-1",
-    "content": "Migrate resource_from_params to McpCallExtractor::resource_name() and update its usage",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step6-2",
-    "content": "Build and fix any compile errors and warnings after migrating resource_from_params",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step7-1",
-    "content": "Migrate remaining McpCallExtractor methods (component_list, port, message_from_params) from response_formatter.rs",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step7-2",
-    "content": "Build and fix any compile errors and warnings after migrating remaining McpCallExtractor methods",
-    "status": "completed",
+    "id": "step4-build",
+    "content": "Build and fix any compile errors and warnings after adding MCP extractor documentation",
+    "status": "pending",
     "priority": "medium",
     "notes": ""
   },
@@ -113,202 +71,6 @@
   },
   {
     "id": "clippy1-fix",
-    "content": "Fix any clippy issues found",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step8-1",
-    "content": "Migrate pass_through_data to BevyResponseExtractor::pass_through() and update its usage",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step8-2",
-    "content": "Build and fix any compile errors and warnings after migrating pass_through_data",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step9-1",
-    "content": "Migrate array_count to BevyResponseExtractor::entity_count() and update its usage",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step9-2",
-    "content": "Build and fix any compile errors and warnings after migrating array_count",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step10-1",
-    "content": "Migrate count_from_data to BevyResponseExtractor and update its usage",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step10-2",
-    "content": "Build and fix any compile errors and warnings after migrating count_from_data",
-    "status": "completed",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step11-1",
-    "content": "Move extract_entity_from_response from tool_generator.rs to BevyResponseExtractor::spawned_entity_id()",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step11-2",
-    "content": "Build and fix any compile errors and warnings after moving extract_entity_from_response",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step12-1",
-    "content": "Move extract_query_component_count from tool_generator.rs to BevyResponseExtractor::query_component_count()",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step12-2",
-    "content": "Build and fix any compile errors and warnings after moving extract_query_component_count",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step13-1",
-    "content": "Move remaining extractors from tool_generator.rs (extract_query_params_from_context, extract_field_from_context)",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step13-2",
-    "content": "Build and fix any compile errors and warnings after moving remaining extractors",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy2",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy2-fix",
-    "content": "Fix any clippy issues found",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step14-1",
-    "content": "Update convert_extractor_type in tool_generator.rs to use new extractor methods",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step14-2",
-    "content": "Build and fix any compile errors and warnings after updating convert_extractor_type",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step15-1",
-    "content": "Migrate parameter extraction functions from support/params.rs to McpCallExtractor methods",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step15-2",
-    "content": "Build and fix any compile errors and warnings after migrating parameter extraction functions",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step16-1",
-    "content": "Update ParamExtractor implementations in request_handler/extractors.rs to use McpCallExtractor",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step16-2",
-    "content": "Build and fix any compile errors and warnings after updating ParamExtractor implementations",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step17-1",
-    "content": "Remove extractors module from response_formatter.rs and clean up imports",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step17-2",
-    "content": "Build and fix any compile errors and warnings after removing old extractors module",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step18-1",
-    "content": "Remove inline extractor functions from tool_generator.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step18-2",
-    "content": "Build and fix any compile errors and warnings after removing inline extractors",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step19-1",
-    "content": "Clean up support/params.rs to remove redundant functions now in McpCallExtractor",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "step19-2",
-    "content": "Build and fix any compile errors and warnings after cleaning up params.rs",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy3",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy3-fix",
     "content": "Fix any clippy issues found",
     "status": "pending",
     "priority": "medium",
@@ -337,7 +99,7 @@
   },
   {
     "id": "code-review",
-    "content": "Task a new subagent to do a code review focusing on duplication, complexity, and validating the implementation plan was followed",
+    "content": "Task a new subagent to do a code review focusing on duplication, complexity, and validating the implementation was correct",
     "status": "pending",
     "priority": "medium",
     "notes": ""
