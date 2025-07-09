@@ -2,14 +2,15 @@ use std::str::FromStr;
 
 use rmcp::Error as McpError;
 
+use crate::extractors::McpCallExtractor;
 use crate::response::TracingLevelResult;
-use crate::support::params;
 use crate::support::tracing::{TracingLevel, set_tracing_level};
 
 /// Handle the `brp_set_tracing_level` tool request
 pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<TracingLevelResult, McpError> {
     // Extract the required level parameter
-    let level_str = params::extract_required_string(request, "level")?;
+    let extractor = McpCallExtractor::from_request(request);
+    let level_str = extractor.get_required_string("level", "tracing level")?;
 
     // Parse the tracing level
     let tracing_level = match TracingLevel::from_str(level_str) {

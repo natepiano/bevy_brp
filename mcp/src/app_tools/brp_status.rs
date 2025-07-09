@@ -6,14 +6,15 @@ use super::constants::{PARAM_APP_NAME, PARAM_PORT};
 use crate::brp_tools::constants::DEFAULT_BRP_PORT;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::params;
+use crate::extractors::McpCallExtractor;
 use crate::support::tracing::{TracingLevel, get_current_tracing_level};
 use crate::tools::BRP_METHOD_LIST;
 
 pub async fn handle(request: rmcp::model::CallToolRequestParam) -> Result<Value, McpError> {
     // Get parameters
-    let app_name = params::extract_required_string(&request, PARAM_APP_NAME)?;
-    let port = params::extract_optional_number(&request, PARAM_PORT, u64::from(DEFAULT_BRP_PORT))?;
+    let extractor = McpCallExtractor::from_request(&request);
+    let app_name = extractor.get_required_string(PARAM_APP_NAME, "app name")?;
+    let port = extractor.optional_number(PARAM_PORT, u64::from(DEFAULT_BRP_PORT));
 
     // Check the app
     check_brp_for_app(

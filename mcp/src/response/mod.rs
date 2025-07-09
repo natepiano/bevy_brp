@@ -1,7 +1,7 @@
 // Internal modules
-pub mod local_handlers;
+mod local_tool_results;
 
 // Re-export local handler types
-pub use local_handlers::{
+pub use local_tool_results::{
     CleanupResult, LogContentResult, LogFileInfo, LogListResult, LogPathResult, TracingLevelResult,
 };

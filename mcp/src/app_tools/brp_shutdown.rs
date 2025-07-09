@@ -6,7 +6,7 @@ use tracing::debug;
 use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
-use crate::support::params;
+use crate::extractors::McpCallExtractor;
 use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
 
 /// Result of a shutdown operation
@@ -95,8 +95,9 @@ pub async fn handle(
     request: rmcp::model::CallToolRequestParam,
 ) -> std::result::Result<Value, McpError> {
     // Get parameters
-    let app_name = params::extract_required_string(&request, "app_name")?;
-    let port = params::extract_optional_number(&request, "port", u64::from(DEFAULT_BRP_PORT))?;
+    let extractor = McpCallExtractor::from_request(&request);
+    let app_name = extractor.get_required_string("app_name", "app name")?;
+    let port = extractor.optional_number("port", u64::from(DEFAULT_BRP_PORT));
 
     let port = u16::try_from(port).map_err(|_| -> McpError {
         report_to_mcp_error(

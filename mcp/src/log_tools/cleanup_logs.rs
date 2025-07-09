@@ -5,13 +5,14 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
 
 use super::support::{self, LogFileEntry};
+use crate::extractors::McpCallExtractor;
 use crate::response::CleanupResult;
-use crate::support::params;
 
 pub fn handle(request: &CallToolRequestParam) -> Result<CleanupResult, McpError> {
     // Extract parameters
-    let app_name_filter = params::extract_optional_string(request, "app_name", "");
-    let older_than_seconds = params::extract_optional_u32(request, "older_than_seconds", 0)?;
+    let extractor = McpCallExtractor::from_request(request);
+    let app_name_filter = extractor.get_optional_string("app_name", "");
+    let older_than_seconds = extractor.get_optional_u32("older_than_seconds", 0)?;
 
     let (deleted_count, deleted_files) = cleanup_log_files(app_name_filter, older_than_seconds)?;
 

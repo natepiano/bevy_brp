@@ -417,7 +417,10 @@ impl ResponseFormatterFactory {
                 success_template:      Some("Operation completed successfully".to_string()),
                 success_fields:        vec![(
                     JSON_FIELD_DATA.to_string(),
-                    Box::new(extractors::pass_through_data),
+                    Box::new(|data, _context| {
+                        use crate::extractors::BevyResponseExtractor;
+                        BevyResponseExtractor::new(data).pass_through().clone()
+                    }),
                 )],
                 large_response_config: Some(LargeResponseConfig {
                     file_prefix: "brp_response_".to_string(),
@@ -515,78 +518,6 @@ fn substitute_template(template: &str, params: Option<&Value>) -> String {
 // Common field extractors
 
 // Helper functions for common field extractors
-pub mod extractors {
-    use super::{FormatterContext, Value};
-    use crate::brp_tools::constants::{JSON_FIELD_ENTITY, JSON_FIELD_RESOURCE};
-
-    /// Extract entity ID from context params
-    pub fn entity_from_params(_data: &Value, context: &FormatterContext) -> Value {
-        context
-            .params
-            .as_ref()
-            .and_then(|p| p.get(JSON_FIELD_ENTITY))
-            .cloned()
-            .unwrap_or(Value::Null)
-    }
-
-    /// Extract resource name from context params
-    pub fn resource_from_params(_data: &Value, context: &FormatterContext) -> Value {
-        context
-            .params
-            .as_ref()
-            .and_then(|p| p.get(JSON_FIELD_RESOURCE))
-            .cloned()
-            .unwrap_or(Value::Null)
-    }
-
-    /// Pass through the BRP response data
-    pub fn pass_through_data(data: &Value, _context: &FormatterContext) -> Value {
-        data.clone()
-    }
-
-    /// Count elements in an array from the response data
-    pub fn array_count(data: &Value, _context: &FormatterContext) -> Value {
-        // Check if data is wrapped in a structure with a "data" field
-        data.as_object()
-            .and_then(|obj| obj.get("data"))
-            .map_or_else(
-                || data.as_array().map_or(0, std::vec::Vec::len).into(),
-                |inner_data| inner_data.as_array().map_or(0, std::vec::Vec::len).into(),
-            )
-    }
-
-    /// Create a field extractor that gets components from params
-    #[cfg(test)]
-    pub fn components_from_params(_data: &Value, context: &FormatterContext) -> Value {
-        context
-            .params
-            .as_ref()
-            .and_then(|p| p.get("components"))
-            .cloned()
-            .unwrap_or(Value::Null)
-    }
-
-    /// Extract count from data for local operations
-    pub fn count_from_data(data: &Value, _context: &FormatterContext) -> Value {
-        // Check if data is wrapped in a structure with a "count" field
-        data.as_object()
-            .and_then(|obj| obj.get("count"))
-            .map_or_else(
-                || data.as_array().map_or(0, std::vec::Vec::len).into(),
-                std::clone::Clone::clone,
-            )
-    }
-
-    /// Extract message from params for local operations
-    pub fn message_from_params(_data: &Value, context: &FormatterContext) -> Value {
-        context
-            .params
-            .as_ref()
-            .and_then(|p| p.get("message"))
-            .cloned()
-            .unwrap_or_else(|| Value::String("Operation completed".to_string()))
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -620,7 +551,17 @@ mod tests {
             success_template:      Some("Successfully destroyed entity {entity}".to_string()),
             success_fields:        vec![(
                 JSON_FIELD_DESTROYED_ENTITY.to_string(),
-                Box::new(extractors::entity_from_params),
+                Box::new(|_data, context| {
+                    use crate::extractors::McpCallExtractor;
+                    context
+                        .params
+                        .as_ref()
+                        .and_then(|params| {
+                            let extractor = McpCallExtractor::new(params);
+                            extractor.entity_id().map(|id| Value::Number(id.into()))
+                        })
+                        .unwrap_or(Value::Null)
+                }),
             )],
             large_response_config: None,
         };
@@ -664,7 +605,17 @@ mod tests {
             .with_template("Successfully destroyed entity {entity}")
             .with_response_field(
                 JSON_FIELD_DESTROYED_ENTITY,
-                Box::new(extractors::entity_from_params),
+                Box::new(|_data, context| {
+                    use crate::extractors::McpCallExtractor;
+                    context
+                        .params
+                        .as_ref()
+                        .and_then(|params| {
+                            let extractor = McpCallExtractor::new(params);
+                            extractor.entity_id().map(|id| Value::Number(id.into()))
+                        })
+                        .unwrap_or(Value::Null)
+                }),
             )
             .build();
 
@@ -699,53 +650,5 @@ mod tests {
         // Verify result has content
         assert_eq!(result.content.len(), 1);
         // TODO: Add proper content validation once Content type is understood
-    }
-
-    #[test]
-    fn test_extractors() {
-        let context = FormatterContext {
-            params:           Some(json!({
-                "entity": 100,
-                "resource": "TestResource"
-            })),
-            format_corrected: None,
-        };
-
-        let data = json!({"result": "success"});
-
-        assert_eq!(extractors::entity_from_params(&data, &context), 100);
-        assert_eq!(
-            extractors::resource_from_params(&data, &context),
-            "TestResource"
-        );
-        assert_eq!(extractors::pass_through_data(&data, &context), data);
-
-        // Test array_count extractor
-        let array_data = json!([1, 2, 3, 4, 5]);
-        assert_eq!(extractors::array_count(&array_data, &context), 5);
-
-        let empty_array = json!([]);
-        assert_eq!(extractors::array_count(&empty_array, &context), 0);
-
-        let non_array = json!({"not": "array"});
-        assert_eq!(extractors::array_count(&non_array, &context), 0);
-
-        // Test components_from_params extractor
-        let components_context = FormatterContext {
-            params:           Some(json!({
-                "components": ["Transform", "Sprite"]
-            })),
-            format_corrected: None,
-        };
-        assert_eq!(
-            extractors::components_from_params(&data, &components_context),
-            json!(["Transform", "Sprite"])
-        );
-
-        // Test with missing components field
-        assert_eq!(
-            extractors::components_from_params(&data, &context),
-            Value::Null
-        );
     }
 }

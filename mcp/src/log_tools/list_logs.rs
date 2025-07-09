@@ -1,16 +1,17 @@
 use rmcp::Error as McpError;
 
 use super::support::LogFileEntry;
+use crate::extractors::McpCallExtractor;
 use crate::log_tools::support;
 use crate::response::{LogFileInfo, LogListResult};
-use crate::support::params;
 
 pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<LogListResult, McpError> {
     // Extract optional app name filter
-    let app_name_filter = params::extract_optional_string(request, "app_name", "");
+    let extractor = McpCallExtractor::from_request(request);
+    let app_name_filter = extractor.get_optional_string("app_name", "");
 
     // Extract verbose flag (default to false)
-    let verbose = params::extract_optional_bool(request, "verbose", false);
+    let verbose = extractor.get_optional_bool("verbose", false);
 
     let logs = list_log_files(app_name_filter, verbose)?;
     let count = logs.len();

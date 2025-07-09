@@ -6,15 +6,16 @@ use rmcp::Error as McpError;
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
+use crate::extractors::McpCallExtractor;
 use crate::response::LogContentResult;
-use crate::support::params;
 
 pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<LogContentResult, McpError> {
     // Extract parameters
-    let filename = params::extract_required_string(request, "filename")?;
-    let keyword = params::extract_optional_string(request, "keyword", "");
-    let tail_lines = usize::try_from(params::extract_optional_number(request, "tail_lines", 0)?)
-        .map_err(|_| -> McpError {
+    let extractor = McpCallExtractor::from_request(request);
+    let filename = extractor.get_required_string("filename", "log filename")?;
+    let keyword = extractor.get_optional_string("keyword", "");
+    let tail_lines =
+        usize::try_from(extractor.optional_number("tail_lines", 0)).map_err(|_| -> McpError {
             report_to_mcp_error(&error_stack::Report::new(Error::invalid(
                 "tail_lines",
                 "value too large",

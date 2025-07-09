@@ -12,7 +12,7 @@ use super::support::cargo_detector::TargetType;
 use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::params;
+use crate::extractors::McpCallExtractor;
 use crate::support::response::ResponseBuilder;
 use crate::{BrpMcpService, service};
 
@@ -23,10 +23,11 @@ pub async fn handle(
 ) -> Result<CallToolResult, McpError> {
     service::handle_launch_binary(service, request, context, |req, search_paths| async move {
         // Get parameters
-        let app_name = params::extract_required_string(&req, PARAM_APP_NAME)?;
-        let profile = params::extract_optional_string(&req, PARAM_PROFILE, DEFAULT_PROFILE);
-        let path = params::extract_optional_path(&req);
-        let port = params::extract_optional_u16_from_request(&req, PARAM_PORT)?;
+        let extractor = McpCallExtractor::from_request(&req);
+        let app_name = extractor.get_required_string(PARAM_APP_NAME, "app name")?;
+        let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
+        let path = extractor.get_optional_path();
+        let port = extractor.get_optional_u16(PARAM_PORT)?;
 
         // Launch the app
         launch_bevy_app(app_name, profile, path.as_deref(), port, &search_paths)

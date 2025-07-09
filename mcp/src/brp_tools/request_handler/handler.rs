@@ -12,32 +12,11 @@ use crate::brp_tools::constants::{
     JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
     JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
+use crate::brp_tools::support::ResponseFormatterFactory;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
 use crate::error::{Error, report_to_mcp_error};
 use crate::tools::TOOL_BRP_EXECUTE;
-
-/// Result of parameter extraction from a request
-pub struct RequestParams {
-    /// Extracted parameters from the configured extractor
-    pub extracted: ExtractedParams,
-}
-
-/// Extract and validate all parameters from a BRP request
-fn extract_request_params(
-    request: &rmcp::model::CallToolRequestParam,
-    config: &BrpHandlerConfig,
-) -> Result<RequestParams, McpError> {
-    log_raw_request_arguments(request);
-
-    debug!("Starting parameter extraction");
-
-    // Extract parameters using the configured extractor
-    let extracted = config.param_extractor.extract(request)?;
-
-    // Log extracted method
-    Ok(RequestParams { extracted })
-}
 
 /// Log raw request arguments with sanitization
 fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
@@ -148,7 +127,7 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
 /// Context for processing responses
 struct ResponseContext<'a> {
     metadata:          BrpMetadata,
-    formatter_factory: &'a crate::brp_tools::support::response_formatter::ResponseFormatterFactory,
+    formatter_factory: &'a ResponseFormatterFactory,
     formatter_context: FormatterContext,
 }
 
@@ -265,12 +244,14 @@ pub async fn handle_brp_request(
             .unwrap_or_else(|_| "SERIALIZATION_ERROR".to_string())
     );
 
-    // Extract all parameters from the request
-    let params = extract_request_params(&request, config)?;
-    let extracted = params.extracted;
+    // Log request arguments with sanitization
+    log_raw_request_arguments(&request);
+
+    // Get pre-extracted parameters directly
+    let extracted = &config.extracted_params;
 
     // Determine the actual method to call
-    let method_name = resolve_brp_method(&extracted, config)?;
+    let method_name = resolve_brp_method(extracted, config)?;
 
     // Add debug info about calling BRP
     debug!("Calling BRP with validated parameters");

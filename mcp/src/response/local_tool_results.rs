@@ -1,4 +1,4 @@
-//! Data structures for local handler results
+//! Data structures for local tool results
 //!
 //! These types represent the raw data returned by local handlers before formatting.
 //! They are converted to JSON responses by the formatter based on tool definitions.

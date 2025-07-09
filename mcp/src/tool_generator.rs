@@ -17,17 +17,18 @@
 use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
+use serde_json::Value;
 
 use crate::brp_tools::constants::{
-    JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_PARENT,
-    JSON_FIELD_PATH, JSON_FIELD_PORT,
+    JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_METHOD,
+    JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PORT, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES,
+    PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::brp_tools::request_handler::{
-    BrpExecuteExtractor, BrpHandlerConfig, EntityParamExtractor, FormatterContext, ParamExtractor,
-    PassthroughExtractor, RegistrySchemaParamExtractor, ResourceParamExtractor,
-    SimplePortExtractor, handle_brp_request,
+    BrpHandlerConfig, ExtractedParams, FormatterContext, handle_brp_request,
 };
-use crate::brp_tools::support::{ResponseFormatterFactory, extractors};
+use crate::brp_tools::support::ResponseFormatterFactory;
+use crate::extractors::{BevyResponseExtractor, McpCallExtractor};
 use crate::support::schema;
 use crate::tool_definitions::{
     BrpToolDef, ExtractorType, FormatterType, HandlerType, ParamExtractorType, ParamType,
@@ -92,23 +93,116 @@ pub async fn generate_tool_handler(
     }
 }
 
+/// Extract parameters based on the extractor type
+fn extract_params_for_type(
+    extractor_type: &ParamExtractorType,
+    request: &CallToolRequestParam,
+) -> Result<ExtractedParams, McpError> {
+    let extractor = McpCallExtractor::from_request(request);
+    let port = extractor.get_port()?;
+
+    match extractor_type {
+        ParamExtractorType::Passthrough => {
+            // Pass through all arguments as params
+            let params = request.arguments.clone().map(serde_json::Value::Object);
+            Ok(ExtractedParams {
+                method: None,
+                params,
+                port,
+            })
+        }
+        ParamExtractorType::Entity { required } => {
+            // Extract entity parameter
+            let params = if *required {
+                let entity = extractor.get_entity_id()?;
+                Some(serde_json::json!({ JSON_FIELD_ENTITY: entity }))
+            } else {
+                // For optional entity (like list), include it if present
+                extractor
+                    .entity_id()
+                    .map(|entity| serde_json::json!({ JSON_FIELD_ENTITY: entity }))
+            };
+
+            Ok(ExtractedParams {
+                method: None,
+                params,
+                port,
+            })
+        }
+        ParamExtractorType::Resource => {
+            // Extract resource parameter
+            let resource = extractor.get_required_string(JSON_FIELD_RESOURCE, "resource name")?;
+            let params = Some(serde_json::json!({ JSON_FIELD_RESOURCE: resource }));
+
+            Ok(ExtractedParams {
+                method: None,
+                params,
+                port,
+            })
+        }
+        ParamExtractorType::EmptyParams => {
+            // Just extract port, no other params
+            Ok(ExtractedParams {
+                method: None,
+                params: None,
+                port,
+            })
+        }
+        ParamExtractorType::BrpExecute => {
+            // Extract method and params for brp_execute
+            let method = extractor.get_required_string(JSON_FIELD_METHOD, "BRP method")?;
+            let params = extractor.field("params").cloned();
+
+            Ok(ExtractedParams {
+                method: Some(method.to_string()),
+                params,
+                port,
+            })
+        }
+        ParamExtractorType::RegistrySchema => {
+            // Extract optional filter parameters for registry schema
+            let with_crates = extractor.optional_string_array(PARAM_WITH_CRATES);
+            let without_crates = extractor.optional_string_array(PARAM_WITHOUT_CRATES);
+            let with_types = extractor.optional_string_array(PARAM_WITH_TYPES);
+            let without_types = extractor.optional_string_array(PARAM_WITHOUT_TYPES);
+
+            let mut params_obj = serde_json::Map::new();
+            if let Some(crates) = with_crates {
+                params_obj.insert(PARAM_WITH_CRATES.to_string(), serde_json::json!(crates));
+            }
+            if let Some(crates) = without_crates {
+                params_obj.insert(PARAM_WITHOUT_CRATES.to_string(), serde_json::json!(crates));
+            }
+            if let Some(types) = with_types {
+                params_obj.insert(PARAM_WITH_TYPES.to_string(), serde_json::json!(types));
+            }
+            if let Some(types) = without_types {
+                params_obj.insert(PARAM_WITHOUT_TYPES.to_string(), serde_json::json!(types));
+            }
+
+            let params = if params_obj.is_empty() {
+                None
+            } else {
+                Some(serde_json::Value::Object(params_obj))
+            };
+
+            Ok(ExtractedParams {
+                method: None,
+                params,
+                port,
+            })
+        }
+    }
+}
+
 /// Generate a BRP handler
 async fn generate_brp_handler(
     def: &BrpToolDef,
     request: CallToolRequestParam,
     method: &'static str,
 ) -> Result<CallToolResult, McpError> {
-    // Create the parameter extractor based on the definition
-    let param_extractor: Box<dyn ParamExtractor> = match &def.param_extractor {
-        ParamExtractorType::Passthrough => Box::new(PassthroughExtractor),
-        ParamExtractorType::Entity { required } => Box::new(EntityParamExtractor {
-            required: *required,
-        }),
-        ParamExtractorType::Resource => Box::new(ResourceParamExtractor),
-        ParamExtractorType::EmptyParams => Box::new(SimplePortExtractor),
-        ParamExtractorType::BrpExecute => Box::new(BrpExecuteExtractor),
-        ParamExtractorType::RegistrySchema => Box::new(RegistrySchemaParamExtractor),
-    };
+    // Extract parameters directly based on the definition
+    let extracted_params = extract_params_for_type(&def.param_extractor, &request)?;
 
     // Create the formatter factory based on the definition
     let mut formatter_builder = match &def.formatter.formatter_type {
@@ -135,7 +229,7 @@ async fn generate_brp_handler(
 
     let config = BrpHandlerConfig {
         method: Some(method),
-        param_extractor,
+        extracted_params,
         formatter_factory: formatter_builder.build(),
     };
 
@@ -311,36 +405,77 @@ fn format_handler_result(
 /// Convert our `ExtractorType` enum to the actual extractor function
 fn convert_extractor_type(extractor_type: &ExtractorType) -> brp_tools::support::FieldExtractor {
     match extractor_type {
-        ExtractorType::EntityFromParams => Box::new(extractors::entity_from_params),
-        ExtractorType::ResourceFromParams => Box::new(extractors::resource_from_params),
-        ExtractorType::PassThroughData => Box::new(extractors::pass_through_data),
+        ExtractorType::EntityFromParams => Box::new(|_data, context| {
+            context
+                .params
+                .as_ref()
+                .and_then(|params| {
+                    let extractor = McpCallExtractor::new(params);
+                    extractor.entity_id().map(|id| Value::Number(id.into()))
+                })
+                .unwrap_or(Value::Null)
+        }),
+        ExtractorType::ResourceFromParams => Box::new(|_data, context| {
+            context
+                .params
+                .as_ref()
+                .and_then(|params| {
+                    let extractor = McpCallExtractor::new(params);
+                    extractor
+                        .resource_name()
+                        .map(|name| Value::String(name.to_string()))
+                })
+                .unwrap_or(Value::Null)
+        }),
+        ExtractorType::PassThroughData => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).pass_through().clone())
+        }
         ExtractorType::PassThroughResult => Box::new(|data, _| data.clone()),
         ExtractorType::EntityCountFromData | ExtractorType::ComponentCountFromData => {
-            Box::new(extractors::array_count)
+            Box::new(|data, _context| BevyResponseExtractor::new(data).entity_count().into())
         }
-        ExtractorType::EntityFromResponse => Box::new(extract_entity_from_response),
-        ExtractorType::QueryComponentCount => Box::new(extract_query_component_count),
-        ExtractorType::QueryParamsFromContext => Box::new(extract_query_params_from_context),
-        ExtractorType::ParamFromContext(param_name) => match *param_name {
-            "components" => Box::new(|data, context| {
-                extract_field_from_context(JSON_FIELD_COMPONENTS, data, context)
-            }),
-            "entities" => Box::new(|data, context| {
-                extract_field_from_context(JSON_FIELD_ENTITIES, data, context)
-            }),
-            "parent" => Box::new(|data, context| {
-                extract_field_from_context(JSON_FIELD_PARENT, data, context)
-            }),
-            "path" => {
-                Box::new(|data, context| extract_field_from_context(JSON_FIELD_PATH, data, context))
-            }
-            "port" => {
-                Box::new(|data, context| extract_field_from_context(JSON_FIELD_PORT, data, context))
-            }
-            _ => Box::new(|_data, _context| serde_json::Value::Null),
-        },
-        ExtractorType::CountFromData => Box::new(extractors::count_from_data),
-        ExtractorType::MessageFromParams => Box::new(extractors::message_from_params),
+        ExtractorType::EntityFromResponse => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).spawned_entity_id())
+        }
+        ExtractorType::QueryComponentCount => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).query_component_count())
+        }
+        ExtractorType::QueryParamsFromContext => {
+            Box::new(|_data, context| context.params.clone().unwrap_or(Value::Null))
+        }
+        ExtractorType::ParamFromContext(param_name) => {
+            let field_name = match *param_name {
+                "components" => JSON_FIELD_COMPONENTS,
+                "entities" => JSON_FIELD_ENTITIES,
+                "parent" => JSON_FIELD_PARENT,
+                "path" => JSON_FIELD_PATH,
+                "port" => JSON_FIELD_PORT,
+                _ => return Box::new(|_data, _context| Value::Null),
+            };
+            Box::new(move |_data, context| {
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|p| p.get(field_name))
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            })
+        }
+        ExtractorType::CountFromData => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).count())
+        }
+        ExtractorType::MessageFromParams => Box::new(|_data, context| {
+            context
+                .params
+                .as_ref()
+                .and_then(|params| {
+                    let extractor = McpCallExtractor::new(params);
+                    extractor
+                        .message()
+                        .map(|msg| Value::String(msg.to_string()))
+                })
+                .unwrap_or_else(|| Value::String("Operation completed".to_string()))
+        }),
         ExtractorType::DataField(field_name) => {
             let field = (*field_name).to_string();
             Box::new(move |data, _| data.get(&field).cloned().unwrap_or(serde_json::Value::Null))
@@ -348,58 +483,12 @@ fn convert_extractor_type(extractor_type: &ExtractorType) -> brp_tools::support:
     }
 }
 
-/// Extract entity ID from response data (for spawn operation)
-fn extract_entity_from_response(
-    data: &serde_json::Value,
-    _context: &FormatterContext,
-) -> serde_json::Value {
-    data.get(JSON_FIELD_ENTITY)
-        .cloned()
-        .unwrap_or_else(|| serde_json::Value::Number(serde_json::Number::from(0)))
-}
-
-/// Extract total component count from nested query results
-fn extract_query_component_count(
-    data: &serde_json::Value,
-    _context: &FormatterContext,
-) -> serde_json::Value {
-    let total = data.as_array().map_or(0, |entities| {
-        entities
-            .iter()
-            .filter_map(|e| e.as_object())
-            .map(serde_json::Map::len)
-            .sum::<usize>()
-    });
-    serde_json::Value::Number(serde_json::Number::from(total))
-}
-
-/// Extract query parameters from request context
-fn extract_query_params_from_context(
-    _data: &serde_json::Value,
-    context: &FormatterContext,
-) -> serde_json::Value {
-    context.params.clone().unwrap_or(serde_json::Value::Null)
-}
-
-/// Generic field extraction from context parameters
-fn extract_field_from_context(
-    field_name: &str,
-    _data: &serde_json::Value,
-    context: &FormatterContext,
-) -> serde_json::Value {
-    context
-        .params
-        .as_ref()
-        .and_then(|p| p.get(field_name))
-        .cloned()
-        .unwrap_or(serde_json::Value::Null)
-}
-
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
     use super::*;
+    use crate::extractors::McpCallExtractor;
     use crate::tool_definitions::{FormatterDef, ParamDef, ParamType};
 
     #[test]
@@ -506,26 +595,18 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_entity_from_response() {
+    fn test_spawned_entity_id() {
         let data = json!({"entity": 123});
-        let context = FormatterContext {
-            params:           None,
-            format_corrected: None,
-        };
-
-        let result = extract_entity_from_response(&data, &context);
+        let extractor = BevyResponseExtractor::new(&data);
+        let result = extractor.spawned_entity_id();
         assert_eq!(result, json!(123));
     }
 
     #[test]
-    fn test_extract_entity_from_response_missing() {
+    fn test_spawned_entity_id_missing() {
         let data = json!({});
-        let context = FormatterContext {
-            params:           None,
-            format_corrected: None,
-        };
-
-        let result = extract_entity_from_response(&data, &context);
+        let extractor = BevyResponseExtractor::new(&data);
+        let result = extractor.spawned_entity_id();
         assert_eq!(result, json!(0));
     }
 
@@ -535,43 +616,31 @@ mod tests {
             {"Component1": {}, "Component2": {}},
             {"Component1": {}}
         ]);
-        let context = FormatterContext {
-            params:           None,
-            format_corrected: None,
-        };
-
-        let result = extract_query_component_count(&data, &context);
+        let extractor = BevyResponseExtractor::new(&data);
+        let result = extractor.query_component_count();
         assert_eq!(result, json!(3)); // 2 + 1 components
     }
 
     #[test]
     fn test_extract_query_params_from_context() {
-        let data = json!({});
         let test_params = json!({"filter": {"with": ["Transform"]}});
-        let context = FormatterContext {
-            params:           Some(test_params.clone()),
-            format_corrected: None,
-        };
-
-        let result = extract_query_params_from_context(&data, &context);
-        assert_eq!(result, test_params);
+        let extractor = McpCallExtractor::new(&test_params);
+        let result = extractor.query_params();
+        assert_eq!(result, Some(&test_params));
     }
 
     #[test]
     fn test_extract_field_from_context() {
-        let data = json!({});
-        let context = FormatterContext {
-            params:           Some(json!({"components": ["Transform"], "entity": 42})),
-            format_corrected: None,
-        };
+        let params = json!({"components": ["Transform"], "entity": 42});
+        let extractor = McpCallExtractor::new(&params);
 
-        let result = extract_field_from_context("components", &data, &context);
-        assert_eq!(result, json!(["Transform"]));
+        let result = extractor.field("components");
+        assert_eq!(result, Some(&json!(["Transform"])));
 
-        let result = extract_field_from_context("entity", &data, &context);
-        assert_eq!(result, json!(42));
+        let result = extractor.field("entity");
+        assert_eq!(result, Some(&json!(42)));
 
-        let result = extract_field_from_context("missing", &data, &context);
-        assert_eq!(result, serde_json::Value::Null);
+        let result = extractor.field("missing");
+        assert_eq!(result, None);
     }
 }

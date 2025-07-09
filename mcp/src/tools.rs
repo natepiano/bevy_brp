@@ -24,18 +24,18 @@ macro_rules! define_tool_constants {
     // For Bevy protocol methods with custom BRP path
     (bevy, $method:ident => $brp_path:expr) => {
         paste::paste! {
-            pub const [<BRP_METHOD_ $method:upper>]: &str = $brp_path;
             pub const [<TOOL_BEVY_ $method:upper>]: &str = concat!("bevy_", stringify!($method));
             pub const [<DESC_BEVY_ $method:upper>]: &str = include_help_text!(concat!("brp_tools/bevy_", stringify!($method), ".txt"));
+            pub const [<BRP_METHOD_ $method:upper>]: &str = $brp_path;
         }
     };
 
     // For BRP extras methods (brp_extras/*)
     (brp_extras, $method:ident) => {
         paste::paste! {
-            pub const [<BRP_METHOD_EXTRAS_ $method:upper>]: &str = concat!("brp_extras/", stringify!($method));
             pub const [<TOOL_BRP_EXTRAS_ $method:upper>]: &str = concat!("brp_extras_", stringify!($method));
             pub const [<DESC_BRP_EXTRAS_ $method:upper>]: &str = include_help_text!(concat!("brp_tools/brp_extras_", stringify!($method), ".txt"));
+            pub const [<BRP_METHOD_EXTRAS_ $method:upper>]: &str = concat!("brp_extras/", stringify!($method));
         }
     };
 

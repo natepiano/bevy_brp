@@ -1,4 +1,3 @@
-use rmcp::Error as McpError;
 use serde_json::Value;
 
 /// Result of parameter extraction
@@ -13,12 +12,3 @@ pub struct ExtractedParams {
 
 // Helper methods were removed as they were never used
 // If needed in the future, they can be re-added when actually used
-
-/// Unified trait for extracting parameters from a request
-pub trait ParamExtractor: Send + Sync {
-    /// Extract parameters from the request
-    fn extract(
-        &self,
-        request: &rmcp::model::CallToolRequestParam,
-    ) -> Result<ExtractedParams, McpError>;
-}

@@ -8,17 +8,16 @@ use serde_json::Value;
 use super::manager::WATCH_MANAGER;
 use crate::BrpMcpService;
 use crate::brp_tools::constants::JSON_FIELD_WATCH_ID;
-use crate::support::params;
+use crate::extractors::McpCallExtractor;
 
 pub async fn handle(
     _service: &BrpMcpService,
     request: CallToolRequestParam,
     _context: RequestContext<RoleServer>,
 ) -> Result<Value, McpError> {
-    let arguments = Value::Object(request.arguments.unwrap_or_default());
-
     // Extract watch ID
-    let watch_id = params::extract_required_u32(&arguments, JSON_FIELD_WATCH_ID, "watch_id")?;
+    let extractor = McpCallExtractor::from_request(&request);
+    let watch_id = extractor.get_required_u32(JSON_FIELD_WATCH_ID, "watch ID")?;
 
     // Stop the watch and release lock immediately
     let result = {

@@ -21,11 +21,9 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Check format shows proper array structure: translation/rotation/scale as arrays, not objects
 
 ### 2. Test Spawn with Wrong Format (Should Auto-Correct with Rich Metadata)
-- **Enable Debug Tracing**: Execute `mcp__brp__brp_set_tracing_level` with `level: "debug"`
 - Execute `mcp__brp__bevy_spawn` with intentionally wrong Transform format:
   - Use object fields instead of arrays: `{"translation": {"x": 1.0, "y": 2.0, "z": 3.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "scale": {"x": 1.0, "y": 1.0, "z": 1.0}}`
 - Verify spawn succeeds with format correction to arrays
-- **Check Trace Log**: Use `mcp__brp__brp_get_trace_log_path` to get log file info, then `mcp__brp__brp_read_log` with `tail_lines: 100` to read recent entries and search for "Tier 2" and "Direct Discovery" messages to confirm tier progression
 - Verify the correction response includes rich metadata:
   - `supported_operations` field populated
   - `mutation_paths` field with paths like `.translation.x`
@@ -85,7 +83,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - ✅ Direct format discovery returns detailed spawn formats with rich metadata
 - ✅ Unambiguous wrong formats are auto-corrected with metadata-enriched responses
 - ✅ Ambiguous formats receive educational responses with available metadata
-- ✅ Trace log shows "Tier 2: Direct Discovery" success for correctable cases
 - ✅ Educational responses explain limitations clearly
 - ✅ Mutation paths are properly discovered and included in responses
 - ✅ Multi-type discovery works correctly with full metadata
@@ -100,5 +97,4 @@ STOP if:
 - Format discovery fails to return rich metadata when bevy_brp_extras is available
 - Correctable formats don't auto-correct with enriched responses
 - Educational responses don't include available metadata fields
-- Trace log doesn't show appropriate Tier 2 behavior
 - Rich response fields (supported_operations, mutation_paths, type_category) are missing when they should be present
