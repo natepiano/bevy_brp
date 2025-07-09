@@ -1,0 +1,254 @@
+[
+  {
+    "id": "fix-architecture-1",
+    "content": "Revert LocalPassthrough changes in tool_definitions.rs for all log handlers",
+    "status": "completed",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-2",
+    "content": "Build and fix any compile errors after reverting LocalPassthrough",
+    "status": "completed",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-3",
+    "content": "Define raw data structures for handler results (TracingLevelResult, LogPathResult, LogContentResult, LogListResult, CleanupResult)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-4",
+    "content": "Build and fix any compile errors after defining data structures",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-5",
+    "content": "Add ExtractorType::DataField variant for extracting fields from raw data",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-6",
+    "content": "Update convert_extractor_type to handle DataField extractor",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-7",
+    "content": "Build and fix any compile errors after adding extractors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-8",
+    "content": "Run cargo clippy after extractor implementation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-9",
+    "content": "Fix any clippy issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-10",
+    "content": "Update set_tracing_level handler to return TracingLevelResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-11",
+    "content": "Build and fix any compile errors after updating set_tracing_level",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-12",
+    "content": "Update get_trace_log_path handler to return LogPathResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-13",
+    "content": "Build and fix any compile errors after updating get_trace_log_path",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-14",
+    "content": "Update read_log handler to return LogContentResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-15",
+    "content": "Build and fix any compile errors after updating read_log",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-16",
+    "content": "Update list_logs handler to return LogListResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-17",
+    "content": "Build and fix any compile errors after updating list_logs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-18",
+    "content": "Update cleanup_logs handler to return CleanupResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-19",
+    "content": "Build and fix any compile errors after updating cleanup_logs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-20",
+    "content": "Run cargo clippy after handler updates",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-21",
+    "content": "Fix any clippy issues after handler updates",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-22",
+    "content": "Update tool_generator to handle new data structures in format_handler_result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-23",
+    "content": "Build and fix any compile errors after updating tool_generator",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-24",
+    "content": "Update set_tracing_level tool definition with proper template and DataField extractors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-25",
+    "content": "Update get_trace_log_path tool definition with proper template and DataField extractors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-26",
+    "content": "Update read_log tool definition with proper template and DataField extractors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-27",
+    "content": "Update list_logs tool definition with proper template and DataField extractors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-28",
+    "content": "Update cleanup_logs tool definition with proper template and DataField extractors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-29",
+    "content": "Build and fix any compile errors after updating tool definitions",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-30",
+    "content": "Run cargo clippy after all changes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-31",
+    "content": "Fix any final clippy issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-32",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-33",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-34",
+    "content": "Review test results and stop if there are issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-35",
+    "content": "Task subagent for code review focused on duplication, complexity, and plan validation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix-architecture-36",
+    "content": "Review code review feedback with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
