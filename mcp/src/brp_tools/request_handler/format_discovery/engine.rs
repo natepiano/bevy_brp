@@ -275,6 +275,12 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
         } => {
             let format_corrections = convert_corrections_to_legacy_format(corrections);
 
+            // Determine format correction status based on the actual result
+            let format_corrected = match corrected_result {
+                BrpResult::Success(_) => FormatCorrectionStatus::Succeeded,
+                BrpResult::Error(_) => FormatCorrectionStatus::AttemptedButFailed,
+            };
+
             // When recovery succeeded, we need to update the success message to indicate format
             // correction
             let enhanced_result = match corrected_result {
@@ -297,7 +303,7 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
             EnhancedBrpResult {
                 result: enhanced_result,
                 format_corrections,
-                format_corrected: FormatCorrectionStatus::Succeeded,
+                format_corrected,
             }
         }
         FormatRecoveryResult::NotRecoverable {

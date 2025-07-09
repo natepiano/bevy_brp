@@ -1,20 +1,16 @@
 use rmcp::Error as McpError;
-use rmcp::model::CallToolResult;
-use serde_json::json;
+use serde_json::Value;
 use sysinfo::System;
 
 use super::constants::{PARAM_APP_NAME, PARAM_PORT};
-use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_FIELD_PORT, JSON_FIELD_STATUS};
+use crate::brp_tools::constants::DEFAULT_BRP_PORT;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
-use crate::support::response::ResponseBuilder;
 use crate::support::tracing::{TracingLevel, get_current_tracing_level};
 use crate::tools::BRP_METHOD_LIST;
 
-pub async fn handle(
-    request: rmcp::model::CallToolRequestParam,
-) -> Result<CallToolResult, McpError> {
+pub async fn handle(request: rmcp::model::CallToolRequestParam) -> Result<Value, McpError> {
     // Get parameters
     let app_name = params::extract_required_string(&request, PARAM_APP_NAME)?;
     let port = params::extract_optional_number(&request, PARAM_PORT, u64::from(DEFAULT_BRP_PORT))?;
@@ -89,7 +85,7 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
     false
 }
 
-async fn check_brp_for_app(app_name: &str, port: u16) -> Result<CallToolResult, McpError> {
+async fn check_brp_for_app(app_name: &str, port: u16) -> Result<Value, McpError> {
     // Check if a process with this name is running using sysinfo
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -145,27 +141,20 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<CallToolResult, 
         ),
     };
 
-    let response = ResponseBuilder::success()
-        .message(message)
-        .data(json!({
-            JSON_FIELD_STATUS: status,
-            "app_name": app_name,
-            JSON_FIELD_PORT: port,
-            "app_running": app_running,
-            "brp_responsive": brp_responsive,
-            "app_pid": app_pid,
-            "mcp_debug_enabled": matches!(get_current_tracing_level(), TracingLevel::Debug | TracingLevel::Trace)
-        }))
-        .map_or_else(
-            |_| {
-                ResponseBuilder::error()
-                    .message("Failed to serialize response data")
-                    .build()
-            },
-            ResponseBuilder::build,
-        );
-
-    Ok(response.to_call_tool_result())
+    Ok(serde_json::json!({
+        "status": "success",
+        "message": message,
+        "app_status": status,
+        "app_name": app_name,
+        "port": port,
+        "app_running": app_running,
+        "brp_responsive": brp_responsive,
+        "app_pid": app_pid,
+        "mcp_debug_enabled": matches!(
+            get_current_tracing_level(),
+            TracingLevel::Debug | TracingLevel::Trace
+        ),
+    }))
 }
 
 /// Check if BRP is responding on the given port

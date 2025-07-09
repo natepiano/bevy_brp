@@ -1,6 +1,5 @@
 use rmcp::Error as McpError;
-use rmcp::model::CallToolResult;
-use serde_json::json;
+use serde_json::{Value, json};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
@@ -8,30 +7,7 @@ use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FO
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::support::params;
-use crate::support::response::ResponseBuilder;
 use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
-
-/// Helper function to build shutdown response with debug info
-fn build_shutdown_response(
-    message: &str,
-    response_data: serde_json::Value,
-    debug_info: &[String],
-) -> CallToolResult {
-    let response = ResponseBuilder::success()
-        .message(message)
-        .data(response_data)
-        .map_or_else(
-            |_| {
-                ResponseBuilder::error()
-                    .message("Failed to serialize response data")
-                    .auto_inject_debug_info(Some(debug_info))
-                    .build()
-            },
-            |builder| builder.auto_inject_debug_info(Some(debug_info)).build(),
-        );
-
-    response.to_call_tool_result()
-}
 
 /// Result of a shutdown operation
 enum ShutdownResult {
@@ -117,7 +93,7 @@ fn handle_kill_process_fallback(
 
 pub async fn handle(
     request: rmcp::model::CallToolRequestParam,
-) -> std::result::Result<CallToolResult, McpError> {
+) -> std::result::Result<Value, McpError> {
     // Get parameters
     let app_name = params::extract_required_string(&request, "app_name")?;
     let port = params::extract_optional_number(&request, "port", u64::from(DEFAULT_BRP_PORT))?;
@@ -133,7 +109,7 @@ pub async fn handle(
     })?;
 
     // Shutdown the app
-    let (result, debug_info) = shutdown_app(app_name, port).await;
+    let (result, _debug_info) = shutdown_app(app_name, port).await;
 
     // Build and return standard response
     match result {
@@ -141,88 +117,56 @@ pub async fn handle(
             let message = format!(
                 "Successfully initiated graceful shutdown for '{app_name}' via bevy_brp_extras on port {port}"
             );
-            let response_data = json!({
+            Ok(json!({
                 "status": "success",
                 "method": "clean_shutdown",
                 "app_name": app_name,
                 "port": port,
                 "message": message
-            });
-
-            Ok(build_shutdown_response(
-                &message,
-                response_data,
-                &debug_info,
-            ))
+            }))
         }
         ShutdownResult::ProcessKilled { pid } => {
             let message = format!(
                 "Terminated process '{app_name}' (PID: {pid}) using kill. Consider adding bevy_brp_extras for clean shutdown."
             );
-            let response_data = json!({
+            Ok(json!({
                 "status": "success",
                 "method": "process_kill",
                 "app_name": app_name,
                 "port": port,
                 "pid": pid,
                 "message": message
-            });
-
-            Ok(build_shutdown_response(
-                &message,
-                response_data,
-                &debug_info,
-            ))
+            }))
         }
         ShutdownResult::AlreadyShutdown => {
             let message = format!(
                 "Process '{app_name}' is not running - may have already shutdown or crashed. No action needed."
             );
-            let response_data = json!({
+            Ok(json!({
                 "status": "error",
                 "method": "already_shutdown",
                 "app_name": app_name,
                 "port": port,
                 "message": message
-            });
-
-            Ok(build_shutdown_response(
-                &message,
-                response_data,
-                &debug_info,
-            ))
+            }))
         }
         ShutdownResult::NotRunning => {
             let message = format!("Process '{app_name}' is not currently running");
-            let response_data = json!({
+            Ok(json!({
                 "status": "error",
                 "method": "none",
                 "app_name": app_name,
                 "port": port,
                 "message": message
-            });
-
-            Ok(build_shutdown_response(
-                &message,
-                response_data,
-                &debug_info,
-            ))
+            }))
         }
-        ShutdownResult::Error { message } => {
-            let response_data = json!({
-                "status": "error",
-                "method": "process_kill_failed",
-                "app_name": app_name,
-                "port": port,
-                "message": message
-            });
-
-            Ok(build_shutdown_response(
-                &message,
-                response_data,
-                &debug_info,
-            ))
-        }
+        ShutdownResult::Error { message } => Ok(json!({
+            "status": "error",
+            "method": "process_kill_failed",
+            "app_name": app_name,
+            "port": port,
+            "message": message
+        })),
     }
 }
 

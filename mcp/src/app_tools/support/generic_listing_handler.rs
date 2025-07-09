@@ -5,7 +5,6 @@ use std::collections::HashSet;
 use rmcp::model::CallToolResult;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
-use serde_json::json;
 
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
@@ -22,25 +21,17 @@ pub async fn handle_listing<S: CollectionStrategy>(
     service::handle_list_binaries(service, context, |search_paths| async move {
         let items = collect_all_items(&search_paths, &strategy);
 
-        let response = ResponseBuilder::success()
+        ResponseBuilder::success()
             .message(format!(
                 "Found {} {}",
                 items.len(),
                 strategy.get_type_name()
             ))
-            .data(json!({
-                strategy.get_data_field_name(): items
-            }))
+            .add_field(strategy.get_data_field_name(), items)
             .map_or_else(
-                |_| {
-                    ResponseBuilder::error()
-                        .message("Failed to serialize response data")
-                        .build()
-                },
-                ResponseBuilder::build,
-            );
-
-        Ok(response.to_call_tool_result())
+                |e| Err(rmcp::Error::internal_error(e.to_string(), None)),
+                |builder| Ok(builder.build().to_call_tool_result()),
+            )
     })
     .await
 }

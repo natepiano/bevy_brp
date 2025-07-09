@@ -1,13 +1,11 @@
 use rmcp::Error as McpError;
-use rmcp::model::CallToolResult;
-use serde_json::json;
 
 use super::support::LogFileEntry;
 use crate::log_tools::support;
-use crate::support::response::ResponseBuilder;
-use crate::support::{LargeResponseConfig, handle_large_response, params};
+use crate::response::{LogFileInfo, LogListResult};
+use crate::support::params;
 
-pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolResult, McpError> {
+pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<LogListResult, McpError> {
     // Extract optional app name filter
     let app_name_filter = params::extract_optional_string(request, "app_name", "");
 
@@ -15,69 +13,16 @@ pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolRes
     let verbose = params::extract_optional_bool(request, "verbose", false);
 
     let logs = list_log_files(app_name_filter, verbose)?;
+    let count = logs.len();
 
-    // Build the response data
-    let response_data = json!({
-        "logs": logs,
-        "temp_directory": support::get_log_directory().display().to_string(),
-    });
-
-    // Check if response is too large and handle accordingly
-    let final_data = handle_large_response(
-        &response_data,
-        "list_logs",
-        LargeResponseConfig {
-            file_prefix: "log_list_",
-            ..Default::default()
-        },
-    )
-    .map_err(|e| McpError::internal_error(format!("Failed to handle large response: {e}"), None))?;
-
-    // If we got a fallback response (file was created), use that
-    // Otherwise use the original response data
-    let response = final_data.map_or_else(
-        || {
-            // Original response - small enough to return inline
-            ResponseBuilder::success()
-                .message(format!("Found {} log files", logs.len()))
-                .data(response_data)
-                .map_or_else(
-                    |_| {
-                        ResponseBuilder::error()
-                            .message("Failed to serialize response data")
-                            .build()
-                    },
-                    ResponseBuilder::build,
-                )
-        },
-        |fallback_data| {
-            // Extract the message and data from the fallback response
-            let message = fallback_data
-                .get("message")
-                .and_then(|m| m.as_str())
-                .unwrap_or("Response saved to file");
-
-            ResponseBuilder::success()
-                .message(message)
-                .data(fallback_data)
-                .map_or_else(
-                    |_| {
-                        ResponseBuilder::error()
-                            .message("Failed to serialize response data")
-                            .build()
-                    },
-                    ResponseBuilder::build,
-                )
-        },
-    );
-
-    Ok(response.to_call_tool_result())
+    Ok(LogListResult {
+        logs,
+        temp_directory: support::get_log_directory().display().to_string(),
+        count,
+    })
 }
 
-fn list_log_files(
-    app_name_filter: &str,
-    verbose: bool,
-) -> Result<Vec<serde_json::Value>, McpError> {
+fn list_log_files(app_name_filter: &str, verbose: bool) -> Result<Vec<LogFileInfo>, McpError> {
     // Use the iterator to get all log files with optional filter
     let filter = |entry: &LogFileEntry| -> bool {
         app_name_filter.is_empty() || entry.app_name == app_name_filter
@@ -92,11 +37,45 @@ fn list_log_files(
         ts_b.cmp(&ts_a)
     });
 
-    // Convert to JSON values
-    let json_entries: Vec<serde_json::Value> = log_entries
+    // Convert to LogFileInfo structs
+    let log_infos: Vec<LogFileInfo> = log_entries
         .into_iter()
-        .map(|entry| entry.to_json(verbose))
+        .map(|entry| {
+            if verbose {
+                let size_bytes = entry.metadata.len();
+                let modified = entry.metadata.modified().ok().map(|t| {
+                    chrono::DateTime::<chrono::Local>::from(t)
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string()
+                });
+                let created = entry.metadata.created().ok().map(|t| {
+                    chrono::DateTime::<chrono::Local>::from(t)
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string()
+                });
+
+                LogFileInfo {
+                    filename: entry.filename,
+                    app_name: entry.app_name,
+                    path: Some(entry.path.display().to_string()),
+                    size: Some(support::format_bytes(size_bytes)),
+                    size_bytes: Some(size_bytes),
+                    created,
+                    modified,
+                }
+            } else {
+                LogFileInfo {
+                    filename:   entry.filename,
+                    app_name:   entry.app_name,
+                    path:       None,
+                    size:       None,
+                    size_bytes: None,
+                    created:    None,
+                    modified:   None,
+                }
+            }
+        })
         .collect();
 
-    Ok(json_entries)
+    Ok(log_infos)
 }

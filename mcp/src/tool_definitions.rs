@@ -1,28 +1,18 @@
-//! Declarative tool definitions for BRP (Bevy Remote Protocol) tools.
+//! Declarative tool definitions for BRP and local MCP tools.
 //!
-//! Provides a declarative approach to defining BRP tools that eliminates code duplication.
-//! Tools are defined as data structures describing parameters, extractors, and response formatting.
-//!
-//! # Tool Categories
-//!
-//! - **Standard Tools**: CRUD operations following predictable patterns (destroy, get, insert,
-//!   etc.)
-//! - **Special Tools**: Tools requiring custom extractors or response handling (query, spawn,
-//!   execute)
-//! - **Local Tools**: Execute within MCP server (log management, app lifecycle)
+//! Defines tools as data structures with parameters, extractors, and response formatting.
+//! Eliminates code duplication through declarative configuration.
 //!
 //! # Handler Types
 //!
-//! - `HandlerType::Brp`: Execute remote BRP method calls over network
-//! - `HandlerType::Local`: Execute local functions within MCP server
+//! - **`HandlerType::Brp`**: Remote BRP method calls
+//! - **`HandlerType::Local`**: Local functions within MCP server
 //!
-//! # Adding New Tools
+//! # Key Formatter Types
 //!
-//! For standard BRP tools, add to `get_standard_tools()` with `HandlerType::Brp`.
-//! For local tools, add to `get_log_tools()` or `get_app_tools()` with `HandlerType::Local`.
-//! For complex tools needing custom behavior, add to `get_special_tools()`.
-//!
-//! Use `FormatterDef::default()` for simple responses, custom formatters for structured output.
+//! - **`LocalPassthrough`**: Preserves pre-structured responses (status, control operations)
+//! - **`LocalStandard`**: Standard formatting for simple operations
+//! - **`EntityOperation`/`ResourceOperation`**: BRP operations with field extraction
 
 use crate::brp_tools::constants::{
     DESC_PORT, JSON_FIELD_COMPONENT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT, JSON_FIELD_DATA,
@@ -307,17 +297,6 @@ pub struct FormatterDef {
     pub response_fields: Vec<ResponseField>,
 }
 
-impl FormatterDef {
-    /// Creates a default formatter for local tools that don't need special formatting
-    pub const fn default() -> Self {
-        Self {
-            formatter_type:  FormatterType::Simple,
-            template:        "",
-            response_fields: vec![],
-        }
-    }
-}
-
 /// Types of formatters available
 #[derive(Clone)]
 pub enum FormatterType {
@@ -327,6 +306,12 @@ pub enum FormatterType {
     ResourceOperation,
     /// Simple formatter (no special formatting)
     Simple,
+    /// Local standard formatter for simple local operations
+    LocalStandard,
+    /// Local collection formatter for local operations returning collections
+    LocalCollection,
+    /// Local passthrough formatter for handlers that return pre-structured responses
+    LocalPassthrough,
 }
 
 /// Defines a field to include in the response
@@ -361,6 +346,12 @@ pub enum ExtractorType {
     QueryParamsFromContext,
     /// Extract specific parameter from request context
     ParamFromContext(&'static str),
+    /// Extract count from data for local operations
+    CountFromData,
+    /// Extract message from params for local operations
+    MessageFromParams,
+    /// Extract field from data structure (for local handler results)
+    DataField(&'static str),
 }
 
 /// Type of parameter extractor to use
@@ -966,6 +957,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
 }
 
 /// Get log tool definitions
+#[allow(clippy::too_many_lines)]
 fn get_log_tools() -> Vec<BrpToolDef> {
     vec![
         // list_logs
@@ -988,7 +980,24 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                 ),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalCollection,
+                template:        "Found {count} log files",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "logs",
+                        extractor: ExtractorType::DataField("logs"),
+                    },
+                    ResponseField {
+                        name:      "temp_directory",
+                        extractor: ExtractorType::DataField("temp_directory"),
+                    },
+                    ResponseField {
+                        name:      "count",
+                        extractor: ExtractorType::DataField("count"),
+                    },
+                ],
+            },
         },
         // read_log
         BrpToolDef {
@@ -1015,7 +1024,44 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                 ),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalStandard,
+                template:        "Successfully read log file: {filename}",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "filename",
+                        extractor: ExtractorType::DataField("filename"),
+                    },
+                    ResponseField {
+                        name:      "file_path",
+                        extractor: ExtractorType::DataField("file_path"),
+                    },
+                    ResponseField {
+                        name:      "size_bytes",
+                        extractor: ExtractorType::DataField("size_bytes"),
+                    },
+                    ResponseField {
+                        name:      "size_human",
+                        extractor: ExtractorType::DataField("size_human"),
+                    },
+                    ResponseField {
+                        name:      "lines_read",
+                        extractor: ExtractorType::DataField("lines_read"),
+                    },
+                    ResponseField {
+                        name:      "content",
+                        extractor: ExtractorType::DataField("content"),
+                    },
+                    ResponseField {
+                        name:      "filtered_by_keyword",
+                        extractor: ExtractorType::DataField("filtered_by_keyword"),
+                    },
+                    ResponseField {
+                        name:      "tail_mode",
+                        extractor: ExtractorType::DataField("tail_mode"),
+                    },
+                ],
+            },
         },
         // cleanup_logs
         BrpToolDef {
@@ -1037,7 +1083,28 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                 ),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalStandard,
+                template:        "Deleted {deleted_count} log files",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "deleted_count",
+                        extractor: ExtractorType::DataField("deleted_count"),
+                    },
+                    ResponseField {
+                        name:      "deleted_files",
+                        extractor: ExtractorType::DataField("deleted_files"),
+                    },
+                    ResponseField {
+                        name:      "app_name_filter",
+                        extractor: ExtractorType::DataField("app_name_filter"),
+                    },
+                    ResponseField {
+                        name:      "older_than_seconds",
+                        extractor: ExtractorType::DataField("older_than_seconds"),
+                    },
+                ],
+            },
         },
         // brp_get_trace_log_path
         BrpToolDef {
@@ -1048,7 +1115,24 @@ fn get_log_tools() -> Vec<BrpToolDef> {
             },
             params:          vec![],
             param_extractor: ParamExtractorType::EmptyParams,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalStandard,
+                template:        "Trace log file {exists:found at|not found (will be created when logging starts) at}: {log_path}",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "log_path",
+                        extractor: ExtractorType::DataField("log_path"),
+                    },
+                    ResponseField {
+                        name:      "exists",
+                        extractor: ExtractorType::DataField("exists"),
+                    },
+                    ResponseField {
+                        name:      "file_size_bytes",
+                        extractor: ExtractorType::DataField("file_size_bytes"),
+                    },
+                ],
+            },
         },
         // brp_set_tracing_level
         BrpToolDef {
@@ -1063,12 +1147,26 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                 true,
             )],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalStandard,
+                template:        "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "tracing_level",
+                        extractor: ExtractorType::DataField("level"),
+                    },
+                    ResponseField {
+                        name:      "log_file",
+                        extractor: ExtractorType::DataField("log_file"),
+                    },
+                ],
+            },
         },
     ]
 }
 
 /// Get app tool definitions
+#[allow(clippy::too_many_lines)]
 fn get_app_tools() -> Vec<BrpToolDef> {
     vec![
         // list_bevy_apps
@@ -1080,7 +1178,14 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
             params:          vec![],
             param_extractor: ParamExtractorType::EmptyParams,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalCollection,
+                template:        "Found {count} Bevy apps",
+                response_fields: vec![ResponseField {
+                    name:      "apps",
+                    extractor: ExtractorType::CountFromData,
+                }],
+            },
         },
         // list_brp_apps
         BrpToolDef {
@@ -1091,7 +1196,14 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
             params:          vec![],
             param_extractor: ParamExtractorType::EmptyParams,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalCollection,
+                template:        "Found {count} BRP-enabled apps",
+                response_fields: vec![ResponseField {
+                    name:      "apps",
+                    extractor: ExtractorType::CountFromData,
+                }],
+            },
         },
         // list_bevy_examples
         BrpToolDef {
@@ -1102,7 +1214,14 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
             params:          vec![],
             param_extractor: ParamExtractorType::EmptyParams,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalCollection,
+                template:        "Found {count} Bevy examples",
+                response_fields: vec![ResponseField {
+                    name:      "examples",
+                    extractor: ExtractorType::CountFromData,
+                }],
+            },
         },
         // launch_bevy_app
         BrpToolDef {
@@ -1113,7 +1232,14 @@ fn get_app_tools() -> Vec<BrpToolDef> {
             },
             params:          create_launch_params("app_name", "Name of the Bevy app to launch"),
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalStandard,
+                template:        "Launched Bevy app {app_name}",
+                response_fields: vec![ResponseField {
+                    name:      "app_name",
+                    extractor: ExtractorType::MessageFromParams,
+                }],
+            },
         },
         // launch_bevy_example
         BrpToolDef {
@@ -1127,7 +1253,14 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 "Name of the Bevy example to launch",
             ),
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalStandard,
+                template:        "Launched Bevy example {example_name}",
+                response_fields: vec![ResponseField {
+                    name:      "example_name",
+                    extractor: ExtractorType::MessageFromParams,
+                }],
+            },
         },
         // brp_extras_shutdown
         BrpToolDef {
@@ -1145,7 +1278,11 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 ),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalPassthrough,
+                template:        "",
+                response_fields: vec![],
+            },
         },
         // brp_status
         BrpToolDef {
@@ -1163,7 +1300,11 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 ),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalPassthrough,
+                template:        "",
+                response_fields: vec![],
+            },
         },
     ]
 }
@@ -1187,7 +1328,11 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalPassthrough,
+                template:        "",
+                response_fields: vec![],
+            },
         },
         // bevy_list_watch
         BrpToolDef {
@@ -1201,7 +1346,11 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalPassthrough,
+                template:        "",
+                response_fields: vec![],
+            },
         },
     ]
 }
@@ -1222,7 +1371,11 @@ fn get_brp_tools() -> Vec<BrpToolDef> {
                 true,
             )],
             param_extractor: ParamExtractorType::Passthrough,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalPassthrough,
+                template:        "",
+                response_fields: vec![],
+            },
         },
         // brp_list_active_watches
         BrpToolDef {
@@ -1233,7 +1386,11 @@ fn get_brp_tools() -> Vec<BrpToolDef> {
             },
             params:          vec![], // No parameters
             param_extractor: ParamExtractorType::EmptyParams,
-            formatter:       FormatterDef::default(),
+            formatter:       FormatterDef {
+                formatter_type:  FormatterType::LocalPassthrough,
+                template:        "",
+                response_fields: vec![],
+            },
         },
     ]
 }

@@ -1,3 +1,30 @@
+//! # Response Handling Module
+//!
+//! This module provides different APIs for handling responses in the Bevy BRP MCP server.
+//! There are three main approaches, each suited for different use cases:
+//!
+//! ## `ResponseBuilder` API (`ResponseBuilder`)
+//!
+//! A flexible builder pattern for constructing responses:
+//! - Allows setting message, data, and individual fields
+//! - Supports auto-injection of debug information
+//! - Provides error handling for serialization issues
+//!
+//! **Use when:** You need to build responses with multiple fields or complex data structures.
+//!
+//! ## `ResponseFormatter` API (`ResponseFormatter`)
+//!
+//! A configurable formatter that handles BRP-specific concerns:
+//! - Automatic large response handling with file fallback
+//! - Template-based message formatting with parameter substitution
+//! - Format correction status handling
+//! - Configurable field extraction from response data
+//!
+//! **Use when:** You need BRP-specific features like large response handling or template
+//! formatting.
+
+use std::sync::Arc;
+
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
@@ -9,6 +36,7 @@ use crate::brp_tools::constants::{
 use crate::brp_tools::request_handler::FormatterContext;
 use crate::error::Result;
 use crate::support::response::ResponseBuilder;
+use crate::support::{LargeResponseConfig, handle_large_response};
 
 /// Metadata about a BRP request for response formatting
 #[derive(Debug, Clone)]
@@ -164,36 +192,106 @@ fn build_enhanced_error_response(
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
-    config:  FormatterConfig,
+    config:  Arc<FormatterConfig>,
     context: FormatterContext,
 }
 
 /// Configuration for the configurable formatter
-#[derive(Clone)]
 pub struct FormatterConfig {
     /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
-    pub success_template: Option<String>,
+    pub success_template:      Option<String>,
     /// Additional fields to add to success responses
-    pub success_fields:   Vec<(String, FieldExtractor)>,
+    pub success_fields:        Vec<(String, FieldExtractor)>,
+    /// Configuration for large response handling
+    pub large_response_config: Option<LargeResponseConfig>,
 }
 
 /// Function type for extracting field values from context
-pub type FieldExtractor = fn(&Value, &FormatterContext) -> Value;
+pub type FieldExtractor = Box<dyn Fn(&Value, &FormatterContext) -> Value + Send + Sync>;
 
 impl ResponseFormatter {
-    pub const fn new(config: FormatterConfig, context: FormatterContext) -> Self {
+    #[allow(clippy::missing_const_for_fn)] // False positive - Arc doesn't support const construction
+    pub fn new(config: Arc<FormatterConfig>, context: FormatterContext) -> Self {
         Self { config, context }
     }
 
-    pub fn format_success(&self, data: &Value, _metadata: BrpMetadata) -> CallToolResult {
-        self.build_success_response(data).map_or_else(
-            |_| {
-                let fallback = ResponseBuilder::error()
-                    .message("Failed to build success response")
-                    .build();
-                fallback.to_call_tool_result()
+    pub fn format_success(&self, data: &Value, metadata: BrpMetadata) -> CallToolResult {
+        // Check if this is a passthrough formatter - if so, convert data directly to CallToolResult
+        if self.is_passthrough_formatter() {
+            return Self::format_passthrough_response(self, data);
+        }
+
+        // First build the response
+        let response_result = self.build_success_response(data);
+
+        if let Ok(response) = response_result {
+            self.handle_large_response_if_needed(response, &metadata.method)
+        } else {
+            let fallback = ResponseBuilder::error()
+                .message("Failed to build success response")
+                .build();
+            fallback.to_call_tool_result()
+        }
+    }
+
+    /// Check if this formatter is configured as a passthrough formatter
+    fn is_passthrough_formatter(&self) -> bool {
+        self.config.success_template.is_none()
+            && self.config.success_fields.is_empty()
+            && self.config.large_response_config.is_none()
+    }
+
+    /// Format a passthrough response by converting the data directly to `CallToolResult`
+    fn format_passthrough_response(_self: &Self, data: &Value) -> CallToolResult {
+        // For passthrough, the data should already be a structured response
+        // Convert it directly to CallToolResult as JSON content
+        let json_string = serde_json::to_string_pretty(data).unwrap_or_else(|_| {
+            r#"{"status":"error","message":"Failed to serialize passthrough response"}"#.to_string()
+        });
+
+        CallToolResult::success(vec![rmcp::model::Content::text(json_string)])
+    }
+
+    /// Handle large response processing if configured
+    fn handle_large_response_if_needed(
+        &self,
+        response: crate::support::response::JsonResponse,
+        method: &str,
+    ) -> CallToolResult {
+        // Check if we need to handle large response
+        self.config.large_response_config.as_ref().map_or_else(
+            || response.to_call_tool_result(),
+            |large_config| {
+                // Convert response to Value for size checking
+                let response_value = serde_json::to_value(&response).unwrap_or(Value::Null);
+
+                // Check if response is too large
+                match handle_large_response(&response_value, method, large_config.clone()) {
+                    Ok(Some(fallback_response)) => {
+                        // Response was too large and saved to file
+                        ResponseBuilder::success()
+                            .message(
+                                fallback_response["message"]
+                                    .as_str()
+                                    .unwrap_or("Response saved to file"),
+                            )
+                            .add_field("filepath", &fallback_response["filepath"])
+                            .unwrap_or_else(|_| ResponseBuilder::success())
+                            .add_field("instructions", &fallback_response["instructions"])
+                            .unwrap_or_else(|_| ResponseBuilder::success())
+                            .build()
+                            .to_call_tool_result()
+                    }
+                    Ok(None) => {
+                        // Response is small enough, return as-is
+                        response.to_call_tool_result()
+                    }
+                    Err(_) => {
+                        // Error handling large response, return original
+                        response.to_call_tool_result()
+                    }
+                }
             },
-            |response| response.to_call_tool_result(),
         )
     }
 
@@ -255,7 +353,7 @@ impl ResponseFormatter {
             builder = builder.add_field(field_name, &value)?;
 
             // Add extracted value to template substitution map
-            template_values.insert(field_name.clone(), value);
+            template_values.insert(field_name.to_string(), value);
         }
 
         // Apply success template if provided (after collecting all field values)
@@ -281,28 +379,32 @@ impl ResponseFormatter {
 
 /// Factory for creating configurable formatters
 pub struct ResponseFormatterFactory {
-    config: FormatterConfig,
+    config: Arc<FormatterConfig>,
 }
 
 impl ResponseFormatterFactory {
-    /// Create a formatter for simple entity operations (destroy, etc.)
-    pub fn entity_operation(_entity_field: &str) -> ResponseFormatterBuilder {
+    /// Create a standard formatter with common configuration
+    pub fn standard() -> ResponseFormatterBuilder {
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template: None,
-                success_fields:   vec![],
+                success_template:      None,
+                success_fields:        vec![],
+                large_response_config: Some(LargeResponseConfig {
+                    file_prefix: "brp_response_".to_string(),
+                    ..Default::default()
+                }),
             },
         }
     }
 
+    /// Create a formatter for simple entity operations (destroy, etc.)
+    pub fn entity_operation(_entity_field: &str) -> ResponseFormatterBuilder {
+        Self::standard()
+    }
+
     /// Create a formatter for resource operations
     pub fn resource_operation(_resource_field: &str) -> ResponseFormatterBuilder {
-        ResponseFormatterBuilder {
-            config: FormatterConfig {
-                success_template: None,
-                success_fields:   vec![],
-            },
-        }
+        Self::standard()
     }
 
     /// Create a formatter that passes through the response data
@@ -312,21 +414,41 @@ impl ResponseFormatterFactory {
 
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template: Some("Operation completed successfully".to_string()),
-                success_fields:   vec![(
+                success_template:      Some("Operation completed successfully".to_string()),
+                success_fields:        vec![(
                     JSON_FIELD_DATA.to_string(),
-                    extractors::pass_through_data,
+                    Box::new(extractors::pass_through_data),
                 )],
+                large_response_config: Some(LargeResponseConfig {
+                    file_prefix: "brp_response_".to_string(),
+                    ..Default::default()
+                }),
             },
         }
     }
 
     /// Create a formatter for list operations
     pub fn list_operation() -> ResponseFormatterBuilder {
+        Self::standard()
+    }
+
+    /// Create a formatter for local standard operations
+    pub fn local_standard() -> ResponseFormatterBuilder {
+        Self::standard()
+    }
+
+    /// Create a formatter for local collection operations
+    pub fn local_collection() -> ResponseFormatterBuilder {
+        Self::standard()
+    }
+
+    /// Create a formatter for local operations that return pre-structured responses
+    pub fn local_passthrough() -> ResponseFormatterBuilder {
         ResponseFormatterBuilder {
             config: FormatterConfig {
-                success_template: None,
-                success_fields:   vec![],
+                success_template:      None,
+                success_fields:        vec![],
+                large_response_config: None, // No large response handling for passthrough
             },
         }
     }
@@ -334,7 +456,7 @@ impl ResponseFormatterFactory {
 
 impl ResponseFormatterFactory {
     pub fn create(&self, context: FormatterContext) -> ResponseFormatter {
-        ResponseFormatter::new(self.config.clone(), context)
+        ResponseFormatter::new(Arc::clone(&self.config), context)
     }
 }
 
@@ -363,7 +485,7 @@ impl ResponseFormatterBuilder {
     /// Build the formatter factory
     pub fn build(self) -> ResponseFormatterFactory {
         ResponseFormatterFactory {
-            config: self.config,
+            config: Arc::new(self.config),
         }
     }
 }
@@ -443,6 +565,27 @@ pub mod extractors {
             .cloned()
             .unwrap_or(Value::Null)
     }
+
+    /// Extract count from data for local operations
+    pub fn count_from_data(data: &Value, _context: &FormatterContext) -> Value {
+        // Check if data is wrapped in a structure with a "count" field
+        data.as_object()
+            .and_then(|obj| obj.get("count"))
+            .map_or_else(
+                || data.as_array().map_or(0, std::vec::Vec::len).into(),
+                std::clone::Clone::clone,
+            )
+    }
+
+    /// Extract message from params for local operations
+    pub fn message_from_params(_data: &Value, context: &FormatterContext) -> Value {
+        context
+            .params
+            .as_ref()
+            .and_then(|p| p.get("message"))
+            .cloned()
+            .unwrap_or_else(|| Value::String("Operation completed".to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -474,11 +617,12 @@ mod tests {
         use crate::brp_tools::constants::JSON_FIELD_DESTROYED_ENTITY;
 
         let config = FormatterConfig {
-            success_template: Some("Successfully destroyed entity {entity}".to_string()),
-            success_fields:   vec![(
+            success_template:      Some("Successfully destroyed entity {entity}".to_string()),
+            success_fields:        vec![(
                 JSON_FIELD_DESTROYED_ENTITY.to_string(),
-                extractors::entity_from_params,
+                Box::new(extractors::entity_from_params),
             )],
+            large_response_config: None,
         };
 
         let context = FormatterContext {
@@ -486,7 +630,7 @@ mod tests {
             format_corrected: None,
         };
 
-        let formatter = ResponseFormatter::new(config, context);
+        let formatter = ResponseFormatter::new(Arc::new(config), context);
         let metadata = BrpMetadata::new("bevy/destroy", DEFAULT_BRP_PORT);
         let result = formatter.format_success(&Value::Null, metadata);
 
@@ -518,7 +662,10 @@ mod tests {
 
         let factory = ResponseFormatterFactory::entity_operation(JSON_FIELD_DESTROYED_ENTITY)
             .with_template("Successfully destroyed entity {entity}")
-            .with_response_field(JSON_FIELD_DESTROYED_ENTITY, extractors::entity_from_params)
+            .with_response_field(
+                JSON_FIELD_DESTROYED_ENTITY,
+                Box::new(extractors::entity_from_params),
+            )
             .build();
 
         let context = FormatterContext {

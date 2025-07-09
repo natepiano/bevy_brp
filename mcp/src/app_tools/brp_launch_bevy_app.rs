@@ -57,7 +57,7 @@ pub fn launch_bevy_app(
             if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
                 // Convert to proper tool response
                 return Ok(ResponseBuilder::error()
-                    .message(error_msg.as_ref())
+                    .message(error_msg.to_string())
                     .build()
                     .to_call_tool_result());
             }

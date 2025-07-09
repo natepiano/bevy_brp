@@ -76,22 +76,32 @@ pub fn build_launch_success_response(params: LaunchResponseParams) -> CallToolRe
     // Add workspace info
     response::add_workspace_info_to_response(&mut response_data, params.workspace_root);
 
-    let response = ResponseBuilder::success()
-        .message(format!(
-            "Successfully launched '{}' (PID: {})",
-            params.name, params.pid
-        ))
-        .data(response_data)
-        .map_or_else(
-            |_| {
-                ResponseBuilder::error()
-                    .message("Failed to serialize response data")
-                    .build()
-            },
-            ResponseBuilder::build,
-        );
+    let mut builder = ResponseBuilder::success().message(format!(
+        "Successfully launched '{}' (PID: {})",
+        params.name, params.pid
+    ));
 
-    response.to_call_tool_result()
+    // Add all fields from response_data
+    if let Value::Object(map) = response_data {
+        let mut current_builder = builder;
+        for (key, value) in map {
+            current_builder = match current_builder.add_field(&key, value) {
+                Ok(new_builder) => new_builder,
+                Err(e) => {
+                    // Log error but continue with remaining fields
+                    tracing::warn!("Failed to add field '{}': {}", key, e);
+                    // Create a new builder with the current message and continue
+                    ResponseBuilder::success().message(format!(
+                        "Successfully launched '{}' (PID: {})",
+                        params.name, params.pid
+                    ))
+                }
+            };
+        }
+        builder = current_builder;
+    }
+
+    builder.build().to_call_tool_result()
 }
 
 /// Sets BRP-related environment variables on a command

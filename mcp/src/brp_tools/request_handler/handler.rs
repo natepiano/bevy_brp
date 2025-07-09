@@ -15,7 +15,6 @@ use crate::brp_tools::constants::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
 use crate::error::{Error, report_to_mcp_error};
-use crate::support::handle_brp_large_response;
 use crate::tools::TOOL_BRP_EXECUTE;
 
 /// Result of parameter extraction from a request
@@ -157,9 +156,8 @@ struct ResponseContext<'a> {
 fn process_success_response(
     data: Option<Value>,
     enhanced_result: &EnhancedBrpResult,
-    method_name: &str,
     context: ResponseContext<'_>,
-) -> Result<CallToolResult, McpError> {
+) -> CallToolResult {
     let mut response_data = data.unwrap_or(Value::Null);
 
     // Debug info is now logged via tracing during execution
@@ -176,12 +174,8 @@ fn process_success_response(
     // Create new formatter with updated context
     let updated_formatter = context.formatter_factory.create(new_formatter_context);
 
-    // Check if response is too large and use file fallback if needed
-    let final_data = handle_brp_large_response(&response_data, method_name)
-        .map_err(|e| report_to_mcp_error(&e))?
-        .map_or(response_data, |fallback_response| fallback_response);
-
-    Ok(updated_formatter.format_success(&final_data, context.metadata))
+    // Large response handling is now done inside the formatter
+    updated_formatter.format_success(&response_data, context.metadata)
 }
 
 /// Process an error BRP response - routes ALL errors through enhanced `format_error_default`
@@ -321,7 +315,11 @@ pub async fn handle_brp_request(
                 formatter_factory: &config.formatter_factory,
                 formatter_context,
             };
-            process_success_response(data.clone(), &enhanced_result, &method_name, context)
+            Ok(process_success_response(
+                data.clone(),
+                &enhanced_result,
+                context,
+            ))
         }
         BrpResult::Error(error_info) => Ok(process_error_response(
             error_info.clone(),

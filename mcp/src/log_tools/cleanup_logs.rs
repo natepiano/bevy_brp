@@ -2,36 +2,33 @@ use std::fs;
 use std::time::{Duration, SystemTime};
 
 use rmcp::Error as McpError;
-use rmcp::model::{CallToolRequestParam, CallToolResult};
-use serde_json::json;
+use rmcp::model::CallToolRequestParam;
 
 use super::support::{self, LogFileEntry};
+use crate::response::CleanupResult;
 use crate::support::params;
-use crate::support::response::ResponseBuilder;
 
-pub fn handle(request: &CallToolRequestParam) -> Result<CallToolResult, McpError> {
+pub fn handle(request: &CallToolRequestParam) -> Result<CleanupResult, McpError> {
     // Extract parameters
     let app_name_filter = params::extract_optional_string(request, "app_name", "");
     let older_than_seconds = params::extract_optional_u32(request, "older_than_seconds", 0)?;
 
     let (deleted_count, deleted_files) = cleanup_log_files(app_name_filter, older_than_seconds)?;
 
-    let response = ResponseBuilder::success()
-        .message(format!("Deleted {deleted_count} log files"))
-        .data(json!({
-            "deleted_count": deleted_count,
-            "deleted_files": deleted_files,
-            "app_name_filter": if app_name_filter.is_empty() { json!(null) } else { json!(app_name_filter) },
-            "older_than_seconds": if older_than_seconds == 0 { json!(null) } else { json!(older_than_seconds) },
-        }))
-        .map_or_else(
-            |_| ResponseBuilder::error()
-                .message("Failed to serialize response data")
-                .build(),
-            ResponseBuilder::build,
-        );
-
-    Ok(response.to_call_tool_result())
+    Ok(CleanupResult {
+        deleted_count,
+        deleted_files,
+        app_name_filter: if app_name_filter.is_empty() {
+            None
+        } else {
+            Some(app_name_filter.to_string())
+        },
+        older_than_seconds: if older_than_seconds == 0 {
+            None
+        } else {
+            Some(older_than_seconds)
+        },
+    })
 }
 
 fn cleanup_log_files(

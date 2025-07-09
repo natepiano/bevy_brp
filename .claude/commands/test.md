@@ -74,7 +74,6 @@ Configuration: Port [PORT], App [APP_NAME]
 
 **CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
 - Error message quality issues are FAILURES, not minor issues
-- Half of our codebase exists to construct proper error messages
 - Any deviation from expected behavior is a FAILURE
 - Do NOT categorize any issue as "minor" - mark it as FAILED
 

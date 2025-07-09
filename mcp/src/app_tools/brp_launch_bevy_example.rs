@@ -12,6 +12,7 @@ use super::constants::{
 };
 use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
+use crate::error::{Error, report_to_mcp_error};
 use crate::support::params;
 use crate::{BrpMcpService, service};
 
@@ -51,10 +52,9 @@ pub fn launch_bevy_example(
                 let error_msg = &mcp_error.message;
                 if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
                     // Convert to proper tool response
-                    return Ok(crate::support::response::ResponseBuilder::error()
-                        .message(error_msg.as_ref())
-                        .build()
-                        .to_call_tool_result());
+                    return Err(report_to_mcp_error(&error_stack::Report::new(
+                        Error::Configuration(error_msg.to_string()),
+                    )));
                 }
                 return Err(mcp_error);
             }

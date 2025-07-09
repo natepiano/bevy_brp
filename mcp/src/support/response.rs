@@ -81,15 +81,6 @@ impl ResponseBuilder {
         self
     }
 
-    pub fn data(mut self, data: impl Serialize) -> Result<Self> {
-        use error_stack::ResultExt;
-
-        self.data = Some(serde_json::to_value(data).change_context(Error::General(
-            "Failed to serialize response data".to_string(),
-        ))?);
-        Ok(self)
-    }
-
     /// Add a field to the data object. Creates a new object if data is None.
     pub fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;

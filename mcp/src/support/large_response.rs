@@ -14,19 +14,20 @@ use crate::constants::{CHARS_PER_TOKEN, DEFAULT_MAX_RESPONSE_TOKENS};
 use crate::error::{Error, Result};
 
 /// Configuration for large response handling
-pub struct LargeResponseConfig<'a> {
+#[derive(Clone)]
+pub struct LargeResponseConfig {
     /// Prefix for generated filenames (e.g., "`brp_response`_", "`log_list`_")
-    pub file_prefix: &'a str,
+    pub file_prefix: String,
     /// Optional custom token limit (defaults to `DEFAULT_MAX_RESPONSE_TOKENS`)
     pub max_tokens:  Option<usize>,
     /// Optional custom temp directory (defaults to `std::env::temp_dir()`)
     pub temp_dir:    Option<PathBuf>,
 }
 
-impl Default for LargeResponseConfig<'_> {
+impl Default for LargeResponseConfig {
     fn default() -> Self {
         Self {
-            file_prefix: "mcp_response_",
+            file_prefix: "mcp_response_".to_string(),
             max_tokens:  None,
             temp_dir:    None,
         }
@@ -82,19 +83,4 @@ pub fn handle_large_response(
     } else {
         Ok(None)
     }
-}
-
-/// Convenience function for BRP responses with default configuration
-pub fn handle_brp_large_response(
-    response_data: &Value,
-    method_name: &str,
-) -> Result<Option<Value>> {
-    handle_large_response(
-        response_data,
-        method_name,
-        LargeResponseConfig {
-            file_prefix: "brp_response_",
-            ..Default::default()
-        },
-    )
 }

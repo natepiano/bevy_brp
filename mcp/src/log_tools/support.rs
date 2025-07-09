@@ -1,13 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::SystemTime;
 
 use error_stack::Report;
 use rmcp::Error as McpError;
-use serde_json::json;
 
 use crate::error::{Error, report_to_mcp_error};
-use crate::log_tools::constants::PARAM_FILE_PATH;
 
 // Constants
 pub const LOG_PREFIX: &str = "bevy_brp_mcp_";
@@ -80,51 +77,6 @@ pub struct LogFileEntry {
     pub timestamp: String,
     pub path:      PathBuf,
     pub metadata:  fs::Metadata,
-}
-
-impl LogFileEntry {
-    /// Converts the entry to a JSON value for API responses
-    /// If verbose is false, returns only filename and `app_name` for minimal output
-    pub fn to_json(&self, verbose: bool) -> serde_json::Value {
-        if !verbose {
-            // Minimal output - just filename and app_name
-            return json!({
-                "filename": self.filename,
-                "app_name": self.app_name,
-            });
-        }
-
-        // Full verbose output
-        let size = self.metadata.len();
-        let modified = self
-            .metadata
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
-            .map_or(0, |d| d.as_secs());
-
-        let modified_str = self.metadata.modified().ok().map_or_else(
-            || "Unknown".to_string(),
-            |t| {
-                chrono::DateTime::<chrono::Local>::from(t)
-                    .format("%Y-%m-%d %H:%M:%S")
-                    .to_string()
-            },
-        );
-
-        let timestamp_value = self.timestamp.parse::<u128>().unwrap_or(0);
-
-        json!({
-            "filename": self.filename,
-            "app_name": self.app_name,
-            "timestamp": timestamp_value,
-            "size_bytes": size,
-            "size_human": format_bytes(size),
-            "last_modified": modified_str,
-            "last_modified_timestamp": modified,
-            PARAM_FILE_PATH: self.path.display().to_string(),
-        })
-    }
 }
 
 /// Iterates over log files in the temp directory with optional filtering

@@ -11,6 +11,9 @@ pub struct ExtractedParams {
     pub port:   u16,
 }
 
+// Helper methods were removed as they were never used
+// If needed in the future, they can be re-added when actually used
+
 /// Unified trait for extracting parameters from a request
 pub trait ParamExtractor: Send + Sync {
     /// Extract parameters from the request

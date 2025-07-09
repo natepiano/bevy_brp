@@ -3,16 +3,13 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use rmcp::Error as McpError;
-use rmcp::model::CallToolResult;
-use serde_json::json;
 
-use super::constants::PARAM_FILE_PATH;
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
+use crate::response::LogContentResult;
 use crate::support::params;
-use crate::support::response::ResponseBuilder;
 
-pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolResult, McpError> {
+pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<LogContentResult, McpError> {
     // Extract parameters
     let filename = params::extract_required_string(request, "filename")?;
     let keyword = params::extract_optional_string(request, "keyword", "");
@@ -43,28 +40,16 @@ pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<CallToolRes
     // Read the log file
     let (content, metadata) = read_log_file(&log_path, keyword, tail_lines)?;
 
-    let response = ResponseBuilder::success()
-        .message(format!("Successfully read log file: {filename}"))
-        .data(json!({
-            "filename": filename,
-            PARAM_FILE_PATH: log_path.display().to_string(),
-            "size_bytes": metadata.len(),
-            "size_human": support::format_bytes(metadata.len()),
-            "lines_read": content.lines().count(),
-            "content": content,
-            "filtered_by_keyword": !keyword.is_empty(),
-            "tail_mode": tail_lines > 0,
-        }))
-        .map_or_else(
-            |_| {
-                ResponseBuilder::error()
-                    .message("Failed to serialize response data")
-                    .build()
-            },
-            ResponseBuilder::build,
-        );
-
-    Ok(response.to_call_tool_result())
+    Ok(LogContentResult {
+        filename: filename.to_string(),
+        file_path: log_path.display().to_string(),
+        size_bytes: metadata.len(),
+        size_human: support::format_bytes(metadata.len()),
+        lines_read: content.lines().count(),
+        content,
+        filtered_by_keyword: !keyword.is_empty(),
+        tail_mode: tail_lines > 0,
+    })
 }
 
 fn read_log_file(

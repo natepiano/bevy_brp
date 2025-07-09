@@ -1,6 +1,6 @@
 //! Stop an active watch
 
-use rmcp::model::{CallToolRequestParam, CallToolResult};
+use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
@@ -14,7 +14,7 @@ pub async fn handle(
     _service: &BrpMcpService,
     request: CallToolRequestParam,
     _context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
+) -> Result<Value, McpError> {
     let arguments = Value::Object(request.arguments.unwrap_or_default());
 
     // Extract watch ID
@@ -27,5 +27,5 @@ pub async fn handle(
             super::wrap_watch_error("Failed to stop watch", None, format!("{watch_id}: {e}"))
         })
     };
-    Ok(super::format_watch_stop_response(result, watch_id))
+    Ok(super::format_watch_stop_response_value(result, watch_id))
 }
