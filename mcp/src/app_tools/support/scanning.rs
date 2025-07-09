@@ -265,7 +265,6 @@ fn shallow_scan_internal(
 
 /// Extract workspace name from workspace root path
 /// Returns the last component of the path as the workspace name
-
 /// Compute the relative path from the search roots to the given path
 /// This is used to provide a stable identifier for disambiguation
 ///
@@ -684,23 +683,6 @@ mod tests {
                 .iter()
                 .any(|i| i.relative_path == PathBuf::from("workspace2/app1"))
         );
-    }
-
-    #[test]
-    fn test_extract_workspace_name() {
-        let workspace_path = PathBuf::from("/home/user/projects/my-workspace");
-        let name = extract_workspace_name(&workspace_path);
-        assert_eq!(name, Some("my-workspace".to_string()));
-
-        // Test with trailing slash
-        let workspace_path = PathBuf::from("/home/user/projects/my-workspace/");
-        let name = extract_workspace_name(&workspace_path);
-        assert_eq!(name, Some("my-workspace".to_string()));
-
-        // Test with root path
-        let workspace_path = PathBuf::from("/");
-        let name = extract_workspace_name(&workspace_path);
-        assert_eq!(name, None);
     }
 
     #[test]

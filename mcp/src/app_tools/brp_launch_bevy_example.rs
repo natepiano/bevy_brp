@@ -88,7 +88,7 @@ pub fn launch_bevy_example(
                             .to_string(),
                         example_name:       error_response["example_name"]
                             .as_str()
-                            .map(|s| s.to_string()),
+                            .map(String::from),
                         pid:                None,
                         working_directory:  None,
                         profile:            None,
@@ -100,7 +100,7 @@ pub fn launch_bevy_example(
                         duplicate_paths:    error_response["duplicate_paths"].as_array().map(
                             |arr| {
                                 arr.iter()
-                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .filter_map(|v| v.as_str().map(String::from))
                                     .collect()
                             },
                         ),
@@ -283,10 +283,13 @@ fn build_launch_response(
 ) -> Result<BevyExampleLaunchResult, McpError> {
     let manifest_dir = launch_common::validate_manifest_directory(&example.manifest_path)?;
 
-    let launch_duration_ms = launch_result
-        .launch_end
-        .duration_since(launch_start)
-        .as_millis() as u64;
+    let launch_duration_ms = u64::try_from(
+        launch_result
+            .launch_end
+            .duration_since(launch_start)
+            .as_millis(),
+    )
+    .unwrap_or(u64::MAX);
     let launch_timestamp = chrono::Utc::now().to_rfc3339();
 
     // Extract workspace name
@@ -294,13 +297,13 @@ fn build_launch_response(
         .workspace_root
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|s| s.to_string());
+        .map(String::from);
 
     Ok(BevyExampleLaunchResult {
         status: "success".to_string(),
         message: format!(
-            "Successfully launched '{}' (PID: {})",
-            example_name, launch_result.pid
+            "Successfully launched '{example_name}' (PID: {})",
+            launch_result.pid
         ),
         example_name: Some(example_name.to_string()),
         pid: Some(launch_result.pid),

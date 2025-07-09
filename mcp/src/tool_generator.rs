@@ -437,8 +437,7 @@ fn format_handler_result(
             let is_error = value
                 .get("status")
                 .and_then(|s| s.as_str())
-                .map(|s| s == "error")
-                .unwrap_or(false);
+                .is_some_and(|s| s == "error");
 
             let metadata =
                 crate::brp_tools::support::response_formatter::BrpMetadata::new(method_name, 0);
@@ -454,20 +453,50 @@ fn format_handler_result(
                 let error_response =
                     crate::support::response::ResponseBuilder::error().message(message);
 
-                // Add all fields from the value as data
+                // For disambiguation errors, only include specific fields
                 let error_response = if let serde_json::Value::Object(map) = &value {
-                    map.iter()
-                        .filter(|(key, _)| key.as_str() != "status" && key.as_str() != "message")
-                        .fold(Ok(error_response), |builder_result, (key, val)| {
-                            match builder_result {
-                                Ok(builder) => builder.add_field(key, val),
-                                Err(_) => builder_result, // Keep the error
-                            }
-                        })
-                        .unwrap_or_else(|_| {
-                            // If adding fields failed, just return the basic error response
-                            crate::support::response::ResponseBuilder::error().message(message)
-                        })
+                    // Check if this is a disambiguation error by looking for duplicate_paths
+                    let is_disambiguation = map
+                        .get("duplicate_paths")
+                        .and_then(|v| v.as_array())
+                        .is_some_and(|arr| !arr.is_empty());
+
+                    if is_disambiguation {
+                        // For disambiguation errors, only include the name field and
+                        // duplicate_paths
+                        map.iter()
+                            .filter(|(key, val)| {
+                                let k = key.as_str();
+                                k != "status"
+                                    && k != "message"
+                                    && (k == "duplicate_paths"
+                                        || k == "app_name"
+                                        || k == "example_name")
+                                    && !val.is_null()
+                            })
+                            .try_fold(error_response, |builder, (key, val)| {
+                                builder.add_field(key, val)
+                            })
+                            .unwrap_or_else(|_| {
+                                // If adding fields failed, just return the basic error response
+                                crate::support::response::ResponseBuilder::error().message(message)
+                            })
+                    } else {
+                        // For other errors, include all non-null fields
+                        map.iter()
+                            .filter(|(key, val)| {
+                                key.as_str() != "status"
+                                    && key.as_str() != "message"
+                                    && !val.is_null()
+                            })
+                            .try_fold(error_response, |builder, (key, val)| {
+                                builder.add_field(key, val)
+                            })
+                            .unwrap_or_else(|_| {
+                                // If adding fields failed, just return the basic error response
+                                crate::support::response::ResponseBuilder::error().message(message)
+                            })
+                    }
                 } else {
                     error_response
                 };

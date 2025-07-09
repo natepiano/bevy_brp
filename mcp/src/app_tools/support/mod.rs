@@ -24,10 +24,10 @@ pub fn create_disambiguation_error(
     item_name: &str,
     duplicate_paths: Vec<String>,
 ) -> serde_json::Value {
-    let field_name = format!("{}_name", item_type);
+    let field_name = format!("{item_type}_name");
     json!({
         "status": "error",
-        "message": format!("Found multiple {}s named '{}'. Please specify which path to use.", item_type, item_name),
+        "message": format!("Found multiple {item_type}s named '{item_name}'. Please specify which path to use."),
         field_name: item_name,
         "duplicate_paths": duplicate_paths,
     })

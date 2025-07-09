@@ -34,6 +34,7 @@ pub async fn handle(
     launch_bevy_app(app_name, profile, path.as_deref(), port, &search_paths)
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn launch_bevy_app(
     app_name: &str,
     profile: &str,
@@ -90,7 +91,7 @@ pub fn launch_bevy_app(
                         .as_str()
                         .unwrap_or("")
                         .to_string(),
-                    app_name:           error_response["app_name"].as_str().map(|s| s.to_string()),
+                    app_name:           error_response["app_name"].as_str().map(String::from),
                     pid:                None,
                     working_directory:  None,
                     profile:            None,
@@ -101,7 +102,7 @@ pub fn launch_bevy_app(
                     workspace:          None,
                     duplicate_paths:    error_response["duplicate_paths"].as_array().map(|arr| {
                         arr.iter()
-                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .filter_map(|v| v.as_str().map(String::from))
                             .collect()
                     }),
                 });
@@ -171,7 +172,8 @@ pub fn launch_bevy_app(
     }
 
     // Collect enhanced debug info
-    let launch_duration_ms = launch_end.duration_since(launch_start).as_millis() as u64;
+    let launch_duration_ms =
+        u64::try_from(launch_end.duration_since(launch_start).as_millis()).unwrap_or(u64::MAX);
     let launch_timestamp = chrono::Utc::now().to_rfc3339();
 
     // Extract workspace name
@@ -179,11 +181,11 @@ pub fn launch_bevy_app(
         .workspace_root
         .file_name()
         .and_then(|name| name.to_str())
-        .map(|s| s.to_string());
+        .map(String::from);
 
     Ok(BevyAppLaunchResult {
         status: "success".to_string(),
-        message: format!("Successfully launched '{}' (PID: {})", app_name, pid),
+        message: format!("Successfully launched '{app_name}' (PID: {pid})"),
         app_name: Some(app_name.to_string()),
         pid: Some(pid),
         working_directory: Some(manifest_dir.display().to_string()),
