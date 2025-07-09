@@ -39,7 +39,8 @@ Validate path parameter handling when multiple apps or examples with the same na
 #### 3d. Invalid Path Test
 - Execute `mcp__brp__brp_launch_bevy_app` with same app name
 - Use non-existent path parameter to test error handling
-- Verify appropriate error message about path not found
+- Verify error message is the same disambiguation error as step 2
+- Confirm `duplicate_paths` array is empty (indicating no matches with provided path)
 - Confirm error handling is robust
 
 ### 4. Test Example Launch Disambiguation
@@ -49,7 +50,7 @@ Validate path parameter handling when multiple apps or examples with the same na
   - Test launch without path (expect error with relative paths)
   - Test launch with full relative path (expect success)
   - Test launch with partial path (expect success if unambiguous)
-  - Test launch with invalid path (expect error)
+  - Test launch with invalid path (expect same disambiguation error with empty `duplicate_paths` array)
 
 ### 5. Validate Error Message Quality
 - Check that disambiguation errors are clear and actionable
@@ -70,7 +71,7 @@ Validate path parameter handling when multiple apps or examples with the same na
 - ✅ Full relative path parameter resolves conflicts successfully
 - ✅ Partial path matching works when unambiguous
 - ✅ Ambiguous partial paths produce appropriate errors
-- ✅ Invalid path parameters produce appropriate error messages
+- ✅ Invalid path parameters produce disambiguation error with empty `duplicate_paths` array
 - ✅ Launched apps include path information in responses
 - ✅ Error handling is consistent between apps and examples
 
