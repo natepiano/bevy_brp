@@ -8,84 +8,70 @@
   },
   {
     "id": "phase1-1",
-    "content": "Create mcp/src/response/formatter.rs and move ResponseFormatter struct and impl from brp_tools/support/response_formatter.rs",
+    "content": "Update mcp/src/tool_definitions.rs - Add new FormatterType variants (LocalStandard, LocalCollection, LocalStatus, LocalError)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-2",
-    "content": "Build and fix any compile errors and warnings after moving ResponseFormatter",
+    "content": "Build and fix any compile errors and warnings after adding FormatterType variants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-3",
-    "content": "Create mcp/src/response/types.rs and move FormatterDef, FormatterConfig, FormatterContext from their current locations",
+    "content": "Update mcp/src/tool_definitions.rs - Add new ExtractorType variants for local patterns (StatusFromContext, CountFromData, MessageFromParams, TempDirectory)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-4",
-    "content": "Build and fix any compile errors and warnings after moving formatter types",
+    "content": "Build and fix any compile errors and warnings after adding ExtractorType variants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-5",
-    "content": "Create mcp/src/response/extractors.rs and move all field extractor functions and FieldExtractor type",
+    "content": "Update mcp/src/response/formatter.rs - Extend ResponseFormatterFactory to handle new FormatterType variants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-6",
-    "content": "Build and fix any compile errors and warnings after moving extractors",
+    "content": "Build and fix any compile errors and warnings after updating ResponseFormatterFactory",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-7",
-    "content": "Create mcp/src/response/error.rs and move format_error_default and related error formatting functions",
+    "content": "Update mcp/src/response/extractors.rs - Add new extractor functions for local patterns",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-8",
-    "content": "Build and fix any compile errors and warnings after moving error formatting",
+    "content": "Build and fix any compile errors and warnings after adding new extractors",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-9",
-    "content": "Move large_response.rs content to mcp/src/response/large_response.rs and remove duplicate from response/size_check.rs",
+    "content": "Update mcp/src/tool_generator.rs - Update convert_extractor_type to handle new ExtractorType variants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase1-10",
-    "content": "Build and fix any compile errors and warnings after consolidating large response handling",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase1-11",
-    "content": "Update mcp/src/response/mod.rs to export all moved types and functions",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase1-12",
-    "content": "Build and fix any compile errors and warnings after updating module exports",
+    "content": "Build and fix any compile errors and warnings after updating convert_extractor_type",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -106,42 +92,70 @@
   },
   {
     "id": "phase2-1",
-    "content": "Modify mcp/src/response/response.rs Response::success to use ResponseFormatter internally",
+    "content": "Update mcp/src/tool_definitions.rs - Change list_logs tool definition to use FormatterType::LocalCollection",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase2-2",
-    "content": "Build and fix any compile errors and warnings after modifying Response::success",
+    "content": "Build and fix any compile errors and warnings after updating list_logs definition",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase2-3",
-    "content": "Modify mcp/src/response/response.rs Response::error to use format_error_default internally",
+    "content": "Update mcp/src/tool_definitions.rs - Change read_log tool definition to use FormatterType::LocalStandard",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase2-4",
-    "content": "Build and fix any compile errors and warnings after modifying Response::error",
+    "content": "Build and fix any compile errors and warnings after updating read_log definition",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase2-5",
-    "content": "Modify mcp/src/response/response.rs Response::new to return builder that uses ResponseFormatter",
+    "content": "Update mcp/src/tool_definitions.rs - Change cleanup_logs tool definition to use FormatterType::LocalStandard",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase2-6",
-    "content": "Build and fix any compile errors and warnings after modifying Response::new",
+    "content": "Build and fix any compile errors and warnings after updating cleanup_logs definition",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-7",
+    "content": "Update mcp/src/tool_definitions.rs - Change brp_status tool definition to use FormatterType::LocalStatus",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-8",
+    "content": "Build and fix any compile errors and warnings after updating brp_status definition",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-9",
+    "content": "Update remaining local tool definitions to use appropriate FormatterType variants",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase2-10",
+    "content": "Build and fix any compile errors and warnings after updating all local tool definitions",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -162,28 +176,28 @@
   },
   {
     "id": "phase3-1",
-    "content": "Update mcp/src/response/builder.rs ResponseBuilder to use ResponseFormatter internally",
+    "content": "Update mcp/src/tool_generator.rs - Modify generate_local_handler to create ResponseFormatter from tool definition",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase3-2",
-    "content": "Build and fix any compile errors and warnings after updating ResponseBuilder",
+    "content": "Build and fix any compile errors and warnings after updating generate_local_handler",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase3-3",
-    "content": "Remove direct CallToolResult building from ResponseBuilder, delegate to ResponseFormatter",
+    "content": "Create local handler adapter pattern in tool_generator.rs to convert handler results to formatter data",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase3-4",
-    "content": "Build and fix any compile errors and warnings after removing direct CallToolResult building",
+    "content": "Build and fix any compile errors and warnings after creating local handler adapter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -204,70 +218,56 @@
   },
   {
     "id": "phase4-1",
-    "content": "Update all BRP handler imports to use new mcp/src/response module locations",
+    "content": "Refactor mcp/src/log_tools/list_logs.rs to return Value instead of CallToolResult",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-2",
-    "content": "Build and fix any compile errors and warnings after updating BRP imports",
+    "content": "Build and fix any compile errors and warnings after refactoring list_logs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-3",
-    "content": "Update all local handler imports to use new unified response API",
+    "content": "Refactor mcp/src/log_tools/read_log.rs to return Value instead of CallToolResult",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-4",
-    "content": "Build and fix any compile errors and warnings after updating local handler imports",
+    "content": "Build and fix any compile errors and warnings after refactoring read_log",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-5",
-    "content": "Remove old mcp/src/support/response.rs module and update any remaining references",
+    "content": "Refactor mcp/src/app_tools/brp_status.rs to return Value instead of CallToolResult",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-6",
-    "content": "Build and fix any compile errors and warnings after removing old response module",
+    "content": "Build and fix any compile errors and warnings after refactoring brp_status",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-7",
-    "content": "Update tool_definitions.rs to use new type locations from response module",
+    "content": "Refactor remaining local handlers to return Value instead of CallToolResult",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "phase4-8",
-    "content": "Build and fix any compile errors and warnings after updating tool_definitions",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase4-9",
-    "content": "Remove old mcp/src/brp_tools/support/response_formatter.rs file",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "phase4-10",
-    "content": "Build and fix any compile errors and warnings after removing old formatter file",
+    "content": "Build and fix any compile errors and warnings after refactoring all local handlers",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -281,6 +281,62 @@
   },
   {
     "id": "clippy4-fix",
+    "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-1",
+    "content": "Remove mcp/src/response/response.rs file",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-2",
+    "content": "Remove mcp/src/response/builder.rs file",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-3",
+    "content": "Update mcp/src/response/mod.rs to remove exports of Response and ResponseBuilder",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-4",
+    "content": "Build and fix any compile errors and warnings after removing old Response API",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-5",
+    "content": "Remove any remaining imports of Response API throughout the codebase",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "phase5-6",
+    "content": "Build and fix any compile errors and warnings after removing all Response imports",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy5",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy5-fix",
     "content": "Fix any clippy issues following our rules (remove dead code, don't use _ prefixes)",
     "status": "pending",
     "priority": "medium",
