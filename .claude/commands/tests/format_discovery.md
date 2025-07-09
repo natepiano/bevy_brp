@@ -57,15 +57,16 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
   - **Test 1 - Transform with bare array**: Use `{"bevy_transform::components::transform::Transform": [1.0, 2.0, 3.0]}`
     - Verify error includes:
       - Error message explaining the type mismatch
-      - `format_corrected: false` in error data
+      - `format_corrected: "not_attempted"` in error data
       - `hint` field with correct format example
   - **Test 2 - Transform with partial object**: Use `{"bevy_transform::components::transform::Transform": {"x": 1.0, "y": 2.0, "z": 3.0}}`
     - Verify error includes:
       - Error message about missing required fields
-      - `format_corrected: false` in error data
+      - `format_corrected: "not_attempted"` in error data
       - `hint` field with correct format example
   - **Test 3 - Name with wrong type**: Use `{"bevy_ecs::name::Name": 123}`
     - Verify error provides guidance about Name expecting a string value
+    - Verify error includes `format_corrected: "not_attempted"` in error data
 - Verify all responses demonstrate that ambiguous formats cannot be auto-corrected
 - Confirm each response includes educational guidance via error messages and hints
 
