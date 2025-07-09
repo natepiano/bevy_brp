@@ -9,98 +9,98 @@
   {
     "id": "step1-1",
     "content": "Create new extractors module directory structure at mcp/src/extractors with mod.rs, mcp_call.rs, and bevy_response.rs files",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step1-2",
     "content": "Build and fix any compile errors and warnings after creating module structure",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step2-1",
     "content": "Add extractors module to mcp/src/lib.rs and main.rs exports",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step2-2",
     "content": "Build and fix any compile errors and warnings after adding module exports",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step3-1",
     "content": "Implement McpCallExtractor struct in mcp_call.rs with new() method and basic structure",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step3-2",
     "content": "Build and fix any compile errors and warnings after implementing McpCallExtractor struct",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step4-1",
     "content": "Implement BevyResponseExtractor struct in bevy_response.rs with new() method and basic structure",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step4-2",
     "content": "Build and fix any compile errors and warnings after implementing BevyResponseExtractor struct",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step5-1",
     "content": "Migrate entity_from_params to McpCallExtractor::entity_id() and update its usage in response_formatter.rs",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step5-2",
     "content": "Build and fix any compile errors and warnings after migrating entity_from_params",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step6-1",
     "content": "Migrate resource_from_params to McpCallExtractor::resource_name() and update its usage",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step6-2",
     "content": "Build and fix any compile errors and warnings after migrating resource_from_params",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step7-1",
     "content": "Migrate remaining McpCallExtractor methods (component_list, port, message_from_params) from response_formatter.rs",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step7-2",
     "content": "Build and fix any compile errors and warnings after migrating remaining McpCallExtractor methods",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
@@ -121,42 +121,42 @@
   {
     "id": "step8-1",
     "content": "Migrate pass_through_data to BevyResponseExtractor::pass_through() and update its usage",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step8-2",
     "content": "Build and fix any compile errors and warnings after migrating pass_through_data",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step9-1",
     "content": "Migrate array_count to BevyResponseExtractor::entity_count() and update its usage",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step9-2",
     "content": "Build and fix any compile errors and warnings after migrating array_count",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step10-1",
     "content": "Migrate count_from_data to BevyResponseExtractor and update its usage",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "step10-2",
     "content": "Build and fix any compile errors and warnings after migrating count_from_data",
-    "status": "pending",
+    "status": "completed",
     "priority": "medium",
     "notes": ""
   },
