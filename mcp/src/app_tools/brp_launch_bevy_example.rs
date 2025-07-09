@@ -1,10 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use rmcp::model::CallToolResult;
+use chrono;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
-use serde_json::json;
 use tracing::debug;
 
 use super::constants::{
@@ -12,27 +11,27 @@ use super::constants::{
 };
 use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
-use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
+use crate::response::BevyExampleLaunchResult;
 use crate::{BrpMcpService, service};
 
 pub async fn handle(
     service: &BrpMcpService,
     request: rmcp::model::CallToolRequestParam,
     context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
-    service::handle_launch_binary(service, request, context, |req, search_paths| async move {
-        // Get parameters
-        let extractor = McpCallExtractor::from_request(&req);
-        let example_name = extractor.get_required_string(PARAM_EXAMPLE_NAME, "example name")?;
-        let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
-        let path = extractor.get_optional_path();
-        let port = extractor.get_optional_u16(PARAM_PORT)?;
+) -> Result<BevyExampleLaunchResult, McpError> {
+    // Get parameters
+    let extractor = McpCallExtractor::from_request(&request);
+    let example_name = extractor.get_required_string(PARAM_EXAMPLE_NAME, "example name")?;
+    let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
+    let path = extractor.get_optional_path();
+    let port = extractor.get_optional_u16(PARAM_PORT)?;
 
-        // Launch the example
-        launch_bevy_example(example_name, profile, path.as_deref(), port, &search_paths)
-    })
-    .await
+    // Get search paths
+    let search_paths = service::fetch_roots_and_get_paths(service, context).await?;
+
+    // Launch the example
+    launch_bevy_example(example_name, profile, path.as_deref(), port, &search_paths)
 }
 
 pub fn launch_bevy_example(
@@ -41,7 +40,7 @@ pub fn launch_bevy_example(
     path: Option<&str>,
     port: Option<u16>,
     search_paths: &[PathBuf],
-) -> Result<CallToolResult, McpError> {
+) -> Result<BevyExampleLaunchResult, McpError> {
     let launch_start = Instant::now();
 
     // Find and validate the example
@@ -52,10 +51,61 @@ pub fn launch_bevy_example(
                 // Check if this is a path disambiguation error
                 let error_msg = &mcp_error.message;
                 if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
-                    // Convert to proper tool response
-                    return Err(report_to_mcp_error(&error_stack::Report::new(
-                        Error::Configuration(error_msg.to_string()),
-                    )));
+                    // Parse duplicate paths from error message
+                    let duplicate_paths = if error_msg.contains("Found multiple") {
+                        // Extract paths from error message like "Found multiple example named
+                        // 'basic_app' at:\n- hana\n- hana-brp-extras-2-1"
+                        let lines: Vec<&str> = error_msg.lines().collect();
+                        let mut paths = Vec::new();
+                        for line in &lines[1..] {
+                            // Skip first line
+                            if let Some(path) = line.strip_prefix("- ") {
+                                paths.push(path.to_string());
+                            }
+                        }
+                        if paths.is_empty() { None } else { Some(paths) }
+                    } else {
+                        None
+                    };
+
+                    // Return structured error response with minimal fields
+                    let error_response = super::support::create_disambiguation_error(
+                        "example",
+                        example_name,
+                        duplicate_paths.unwrap_or_default(),
+                    );
+
+                    // Convert the JSON value to our typed result
+                    // We only populate the fields that are in the error response
+                    return Ok(BevyExampleLaunchResult {
+                        status:             error_response["status"]
+                            .as_str()
+                            .unwrap_or("error")
+                            .to_string(),
+                        message:            error_response["message"]
+                            .as_str()
+                            .unwrap_or("")
+                            .to_string(),
+                        example_name:       error_response["example_name"]
+                            .as_str()
+                            .map(|s| s.to_string()),
+                        pid:                None,
+                        working_directory:  None,
+                        profile:            None,
+                        log_file:           None,
+                        launch_duration_ms: None,
+                        launch_timestamp:   None,
+                        workspace:          None,
+                        package_name:       None,
+                        duplicate_paths:    error_response["duplicate_paths"].as_array().map(
+                            |arr| {
+                                arr.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect()
+                            },
+                        ),
+                        note:               None,
+                    });
                 }
                 return Err(mcp_error);
             }
@@ -230,28 +280,38 @@ fn build_launch_response(
     launch_result: LaunchResult,
     launch_start: Instant,
     profile: &str,
-) -> Result<CallToolResult, McpError> {
-    let additional_data = json!({
-        "package_name": example.package_name,
-        "note": "Cargo will build the example if needed before running"
-    });
-
+) -> Result<BevyExampleLaunchResult, McpError> {
     let manifest_dir = launch_common::validate_manifest_directory(&example.manifest_path)?;
 
-    let response_params = launch_common::LaunchResponseParams {
-        name: example_name,
-        name_field: "example_name",
-        pid: launch_result.pid,
-        manifest_dir,
-        profile,
-        log_file_path: &launch_result.log_file_path,
-        additional_data: Some(additional_data),
-        workspace_root: Some(&example.workspace_root),
-        launch_start,
-        launch_end: launch_result.launch_end,
-    };
+    let launch_duration_ms = launch_result
+        .launch_end
+        .duration_since(launch_start)
+        .as_millis() as u64;
+    let launch_timestamp = chrono::Utc::now().to_rfc3339();
 
-    Ok(launch_common::build_launch_success_response(
-        response_params,
-    ))
+    // Extract workspace name
+    let workspace = example
+        .workspace_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|s| s.to_string());
+
+    Ok(BevyExampleLaunchResult {
+        status: "success".to_string(),
+        message: format!(
+            "Successfully launched '{}' (PID: {})",
+            example_name, launch_result.pid
+        ),
+        example_name: Some(example_name.to_string()),
+        pid: Some(launch_result.pid),
+        working_directory: Some(manifest_dir.display().to_string()),
+        profile: Some(profile.to_string()),
+        log_file: Some(launch_result.log_file_path.display().to_string()),
+        launch_duration_ms: Some(launch_duration_ms),
+        launch_timestamp: Some(launch_timestamp),
+        workspace,
+        package_name: Some(example.package_name.clone()),
+        duplicate_paths: None, // No duplicates for successful launches
+        note: Some("Cargo will build the example if needed before running".to_string()),
+    })
 }

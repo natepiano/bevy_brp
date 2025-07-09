@@ -88,3 +88,90 @@ pub struct CleanupResult {
     /// Age filter in seconds that was applied (if any)
     pub older_than_seconds: Option<u32>,
 }
+
+/// Result from listing Bevy apps
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListBevyAppsResult {
+    /// List of Bevy apps found
+    pub apps:  Vec<serde_json::Value>,
+    /// Total count of apps
+    pub count: usize,
+}
+
+/// Result from listing BRP apps
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListBrpAppsResult {
+    /// List of BRP-enabled apps found
+    pub apps:  Vec<serde_json::Value>,
+    /// Total count of apps
+    pub count: usize,
+}
+
+/// Result from listing Bevy examples
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListBevyExamplesResult {
+    /// List of Bevy examples found
+    pub examples: Vec<serde_json::Value>,
+    /// Total count of examples
+    pub count:    usize,
+}
+
+/// Result from launching a Bevy app
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BevyAppLaunchResult {
+    /// Status of the launch operation
+    pub status:             String,
+    /// Status message
+    pub message:            String,
+    /// App name that was launched
+    pub app_name:           Option<String>,
+    /// Process ID of the launched app
+    pub pid:                Option<u32>,
+    /// Working directory used for launch
+    pub working_directory:  Option<String>,
+    /// Build profile used (debug/release)
+    pub profile:            Option<String>,
+    /// Log file path for the launched app
+    pub log_file:           Option<String>,
+    /// Binary path of the launched app
+    pub binary_path:        Option<String>,
+    /// Launch duration in milliseconds
+    pub launch_duration_ms: Option<u64>,
+    /// Launch timestamp
+    pub launch_timestamp:   Option<String>,
+    /// Workspace information
+    pub workspace:          Option<String>,
+    /// Available duplicate paths (for disambiguation errors)
+    pub duplicate_paths:    Option<Vec<String>>,
+}
+
+/// Result from launching a Bevy example
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BevyExampleLaunchResult {
+    /// Status of the launch operation
+    pub status:             String,
+    /// Status message
+    pub message:            String,
+    /// Example name that was launched
+    pub example_name:       Option<String>,
+    /// Process ID of the launched example
+    pub pid:                Option<u32>,
+    /// Working directory used for launch
+    pub working_directory:  Option<String>,
+    /// Build profile used (debug/release)
+    pub profile:            Option<String>,
+    /// Log file path for the launched example
+    pub log_file:           Option<String>,
+    /// Launch duration in milliseconds
+    pub launch_duration_ms: Option<u64>,
+    /// Launch timestamp
+    pub launch_timestamp:   Option<String>,
+    /// Workspace information
+    pub workspace:          Option<String>,
+    /// Package name containing the example
+    pub package_name:       Option<String>,
+    /// Available duplicate paths (for disambiguation errors)
+    pub duplicate_paths:    Option<Vec<String>>,
+    /// Note about build behavior
+    pub note:               Option<String>,
+}

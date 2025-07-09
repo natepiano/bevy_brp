@@ -24,6 +24,7 @@ use crate::brp_tools::constants::{
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::constants::PARAM_BINARY_PATH;
+use crate::extractors::{ExtractorType, ResponseField};
 use crate::tools::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
     BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
@@ -314,49 +315,9 @@ pub enum FormatterType {
     LocalPassthrough,
 }
 
-/// Defines a field to include in the response
-#[derive(Clone)]
-pub struct ResponseField {
-    /// Name of the field in the response
-    pub name:      &'static str,
-    /// Type of extractor to use
-    pub extractor: ExtractorType,
-}
-
-/// Types of extractors for response fields
-#[derive(Clone)]
-pub enum ExtractorType {
-    /// Extract entity from params
-    EntityFromParams,
-    /// Extract resource from params
-    ResourceFromParams,
-    /// Pass through data from BRP response
-    PassThroughData,
-    /// Pass through entire result
-    PassThroughResult,
-    /// Extract entity count from data
-    EntityCountFromData,
-    /// Extract component count from data
-    ComponentCountFromData,
-    /// Extract entity from response data (for spawn operation)
-    EntityFromResponse,
-    /// Extract total component count from nested query results
-    QueryComponentCount,
-    /// Extract query parameters from request context
-    QueryParamsFromContext,
-    /// Extract specific parameter from request context
-    ParamFromContext(&'static str),
-    /// Extract count from data for local operations
-    CountFromData,
-    /// Extract message from params for local operations
-    MessageFromParams,
-    /// Extract field from data structure (for local handler results)
-    DataField(&'static str),
-}
-
 /// Type of parameter extractor to use
 #[derive(Clone)]
-pub enum ParamExtractorType {
+pub enum BrpMethodParamCategory {
     /// Pass through all parameters
     Passthrough,
     /// Extract entity parameter
@@ -398,7 +359,7 @@ pub struct BrpToolDef {
     /// Parameters for the tool
     pub params:          Vec<ParamDef>,
     /// Parameter extractor type
-    pub param_extractor: ParamExtractorType,
+    pub param_extractor: BrpMethodParamCategory,
     /// Response formatter definition
     pub formatter:       FormatterDef,
 }
@@ -415,7 +376,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 method: BRP_METHOD_DESTROY,
             },
             params:          ParamDef::entity_with_port("The entity ID to destroy").to_vec(),
-            param_extractor: ParamExtractorType::Entity { required: true },
+            param_extractor: BrpMethodParamCategory::Entity { required: true },
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::EntityOperation(JSON_FIELD_DESTROYED_ENTITY),
                 template:        "Successfully destroyed entity {entity}",
@@ -440,7 +401,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::EntityOperation(JSON_FIELD_ENTITY),
                 template:        "Retrieved component data from entity {entity}",
@@ -467,7 +428,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ParamDef::entity("Optional entity ID to list components for", false),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Entity { required: false },
+            param_extractor: BrpMethodParamCategory::Entity { required: false },
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Listed {count} components",
@@ -495,7 +456,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ParamDef::components("Array of component type names to remove", true),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::EntityOperation(JSON_FIELD_ENTITY),
                 template:        "Successfully removed components from entity {entity}",
@@ -520,7 +481,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::EntityOperation(JSON_FIELD_ENTITY),
                 template:        "Successfully inserted components into entity {entity}",
@@ -541,7 +502,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 "The fully-qualified type name of the resource to get",
             )
             .to_vec(),
-            param_extractor: ParamExtractorType::Resource,
+            param_extractor: BrpMethodParamCategory::Resource,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Retrieved resource: {resource}",
@@ -574,7 +535,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Successfully inserted/updated resource: {resource}",
@@ -595,7 +556,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 "The fully-qualified type name of the resource to remove",
             )
             .to_vec(),
-            param_extractor: ParamExtractorType::Resource,
+            param_extractor: BrpMethodParamCategory::Resource,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Successfully removed resource: {resource}",
@@ -613,7 +574,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 method: BRP_METHOD_MUTATE_COMPONENT,
             },
             params:          ParamDef::component_mutation_params().to_vec(),
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::EntityOperation(JSON_FIELD_ENTITY),
                 template:        "Successfully mutated component on entity {entity}",
@@ -631,7 +592,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 method: BRP_METHOD_MUTATE_RESOURCE,
             },
             params:          ParamDef::resource_mutation_params().to_vec(),
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Successfully mutated resource: {resource}",
@@ -649,7 +610,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 method: BRP_METHOD_LIST_RESOURCES,
             },
             params:          vec![ParamDef::port()],
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Listed {count} resources",
@@ -673,7 +634,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 method: BRP_METHOD_RPC_DISCOVER,
             },
             params:          vec![ParamDef::port()],
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Retrieved BRP method discovery information",
@@ -698,7 +659,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Format discovery completed",
@@ -719,7 +680,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ParamDef::path("File path where the screenshot should be saved"),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Successfully captured screenshot and saved to {path}",
@@ -751,7 +712,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Successfully sent keyboard input",
@@ -782,7 +743,7 @@ fn get_standard_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Debug mode updated successfully",
@@ -807,7 +768,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
                 method: BRP_METHOD_QUERY,
             },
             params:          ParamDef::query_params().to_vec(),
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Query completed successfully",
@@ -845,7 +806,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::EntityOperation(PARAM_SPAWNED_ENTITY),
                 template:        "Successfully spawned entity",
@@ -871,7 +832,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
                 ParamDef::optional_params(),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::BrpExecute,
+            param_extractor: BrpMethodParamCategory::BrpExecute,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Method executed successfully",
@@ -911,7 +872,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::RegistrySchema,
+            param_extractor: BrpMethodParamCategory::RegistrySchema,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Retrieved schema information",
@@ -937,7 +898,7 @@ fn get_special_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::Simple,
                 template:        "Successfully reparented entities",
@@ -979,7 +940,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                     false,
                 ),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalCollection,
                 template:        "Found {count} log files",
@@ -994,7 +955,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                     },
                     ResponseField {
                         name:      "count",
-                        extractor: ExtractorType::DataField("count"),
+                        extractor: ExtractorType::CountFromData,
                     },
                 ],
             },
@@ -1023,7 +984,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                     false,
                 ),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalStandard,
                 template:        "Successfully read log file: {filename}",
@@ -1082,7 +1043,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                     false,
                 ),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalStandard,
                 template:        "Deleted {deleted_count} log files",
@@ -1114,7 +1075,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                 handler: HANDLER_GET_TRACE_LOG_PATH,
             },
             params:          vec![],
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalStandard,
                 template:        "Trace log file {exists:found at|not found (will be created when logging starts) at}: {log_path}",
@@ -1146,7 +1107,7 @@ fn get_log_tools() -> Vec<BrpToolDef> {
                 "Tracing level to set (error, warn, info, debug, trace)",
                 true,
             )],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalStandard,
                 template:        "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
@@ -1177,14 +1138,20 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 handler: HANDLER_LIST_BEVY_APPS,
             },
             params:          vec![],
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalCollection,
                 template:        "Found {count} Bevy apps",
-                response_fields: vec![ResponseField {
-                    name:      "apps",
-                    extractor: ExtractorType::CountFromData,
-                }],
+                response_fields: vec![
+                    ResponseField {
+                        name:      "apps",
+                        extractor: ExtractorType::DataField("apps"),
+                    },
+                    ResponseField {
+                        name:      "count",
+                        extractor: ExtractorType::CountFromData,
+                    },
+                ],
             },
         },
         // list_brp_apps
@@ -1195,14 +1162,20 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 handler: HANDLER_LIST_BRP_APPS,
             },
             params:          vec![],
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalCollection,
                 template:        "Found {count} BRP-enabled apps",
-                response_fields: vec![ResponseField {
-                    name:      "apps",
-                    extractor: ExtractorType::CountFromData,
-                }],
+                response_fields: vec![
+                    ResponseField {
+                        name:      "apps",
+                        extractor: ExtractorType::DataField("apps"),
+                    },
+                    ResponseField {
+                        name:      "count",
+                        extractor: ExtractorType::CountFromData,
+                    },
+                ],
             },
         },
         // list_bevy_examples
@@ -1213,14 +1186,20 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 handler: HANDLER_LIST_BEVY_EXAMPLES,
             },
             params:          vec![],
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalCollection,
                 template:        "Found {count} Bevy examples",
-                response_fields: vec![ResponseField {
-                    name:      "examples",
-                    extractor: ExtractorType::CountFromData,
-                }],
+                response_fields: vec![
+                    ResponseField {
+                        name:      "examples",
+                        extractor: ExtractorType::DataField("examples"),
+                    },
+                    ResponseField {
+                        name:      "count",
+                        extractor: ExtractorType::CountFromData,
+                    },
+                ],
             },
         },
         // launch_bevy_app
@@ -1231,14 +1210,60 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 handler: HANDLER_LAUNCH_BEVY_APP,
             },
             params:          create_launch_params("app_name", "Name of the Bevy app to launch"),
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalStandard,
-                template:        "Launched Bevy app {app_name}",
-                response_fields: vec![ResponseField {
-                    name:      "app_name",
-                    extractor: ExtractorType::MessageFromParams,
-                }],
+                template:        "{message}",
+                response_fields: vec![
+                    ResponseField {
+                        name:      "status",
+                        extractor: ExtractorType::DataField("status"),
+                    },
+                    ResponseField {
+                        name:      "message",
+                        extractor: ExtractorType::DataField("message"),
+                    },
+                    ResponseField {
+                        name:      "app_name",
+                        extractor: ExtractorType::DataField("app_name"),
+                    },
+                    ResponseField {
+                        name:      "pid",
+                        extractor: ExtractorType::DataField("pid"),
+                    },
+                    ResponseField {
+                        name:      "working_directory",
+                        extractor: ExtractorType::DataField("working_directory"),
+                    },
+                    ResponseField {
+                        name:      "profile",
+                        extractor: ExtractorType::DataField("profile"),
+                    },
+                    ResponseField {
+                        name:      "log_file",
+                        extractor: ExtractorType::DataField("log_file"),
+                    },
+                    ResponseField {
+                        name:      "binary_path",
+                        extractor: ExtractorType::DataField("binary_path"),
+                    },
+                    ResponseField {
+                        name:      "launch_duration_ms",
+                        extractor: ExtractorType::DataField("launch_duration_ms"),
+                    },
+                    ResponseField {
+                        name:      "launch_timestamp",
+                        extractor: ExtractorType::DataField("launch_timestamp"),
+                    },
+                    ResponseField {
+                        name:      "workspace",
+                        extractor: ExtractorType::DataField("workspace"),
+                    },
+                    ResponseField {
+                        name:      "duplicate_paths",
+                        extractor: ExtractorType::DataField("duplicate_paths"),
+                    },
+                ],
             },
         },
         // launch_bevy_example
@@ -1252,14 +1277,64 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                 "example_name",
                 "Name of the Bevy example to launch",
             ),
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalStandard,
                 template:        "Launched Bevy example {example_name}",
-                response_fields: vec![ResponseField {
-                    name:      "example_name",
-                    extractor: ExtractorType::MessageFromParams,
-                }],
+                response_fields: vec![
+                    ResponseField {
+                        name:      "status",
+                        extractor: ExtractorType::DataField("status"),
+                    },
+                    ResponseField {
+                        name:      "message",
+                        extractor: ExtractorType::DataField("message"),
+                    },
+                    ResponseField {
+                        name:      "example_name",
+                        extractor: ExtractorType::DataField("example_name"),
+                    },
+                    ResponseField {
+                        name:      "pid",
+                        extractor: ExtractorType::DataField("pid"),
+                    },
+                    ResponseField {
+                        name:      "working_directory",
+                        extractor: ExtractorType::DataField("working_directory"),
+                    },
+                    ResponseField {
+                        name:      "profile",
+                        extractor: ExtractorType::DataField("profile"),
+                    },
+                    ResponseField {
+                        name:      "log_file",
+                        extractor: ExtractorType::DataField("log_file"),
+                    },
+                    ResponseField {
+                        name:      "launch_duration_ms",
+                        extractor: ExtractorType::DataField("launch_duration_ms"),
+                    },
+                    ResponseField {
+                        name:      "launch_timestamp",
+                        extractor: ExtractorType::DataField("launch_timestamp"),
+                    },
+                    ResponseField {
+                        name:      "workspace",
+                        extractor: ExtractorType::DataField("workspace"),
+                    },
+                    ResponseField {
+                        name:      "package_name",
+                        extractor: ExtractorType::DataField("package_name"),
+                    },
+                    ResponseField {
+                        name:      "duplicate_paths",
+                        extractor: ExtractorType::DataField("duplicate_paths"),
+                    },
+                    ResponseField {
+                        name:      "note",
+                        extractor: ExtractorType::DataField("note"),
+                    },
+                ],
             },
         },
         // brp_extras_shutdown
@@ -1277,7 +1352,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                     false,
                 ),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
@@ -1299,7 +1374,7 @@ fn get_app_tools() -> Vec<BrpToolDef> {
                     false,
                 ),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
@@ -1327,7 +1402,7 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
                 ),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
@@ -1345,7 +1420,7 @@ fn get_watch_tools() -> Vec<BrpToolDef> {
                 ParamDef::entity("The entity ID to watch for component list changes", true),
                 ParamDef::port(),
             ],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
@@ -1370,7 +1445,7 @@ fn get_brp_tools() -> Vec<BrpToolDef> {
                 "The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch",
                 true,
             )],
-            param_extractor: ParamExtractorType::Passthrough,
+            param_extractor: BrpMethodParamCategory::Passthrough,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
@@ -1385,7 +1460,7 @@ fn get_brp_tools() -> Vec<BrpToolDef> {
                 handler: HANDLER_BRP_LIST_ACTIVE_WATCHES,
             },
             params:          vec![], // No parameters
-            param_extractor: ParamExtractorType::EmptyParams,
+            param_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:       FormatterDef {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",

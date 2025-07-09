@@ -1,5 +1,5 @@
-use super::traits::ExtractedParams;
 use crate::brp_tools::support::response_formatter::ResponseFormatterFactory;
+use crate::extractors::ExtractedParams;
 
 /// Unified configuration for a BRP handler
 /// Works for both static and dynamic methods
@@ -10,11 +10,4 @@ pub struct BrpHandlerConfig {
     pub extracted_params:  ExtractedParams,
     /// Function to create the appropriate formatter
     pub formatter_factory: ResponseFormatterFactory,
-}
-
-/// Context passed to formatter factory
-#[derive(Debug, Clone)]
-pub struct FormatterContext {
-    pub params:           Option<serde_json::Value>,
-    pub format_corrected: Option<super::format_discovery::FormatCorrectionStatus>,
 }

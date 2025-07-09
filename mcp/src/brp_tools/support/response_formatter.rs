@@ -33,8 +33,8 @@ use crate::brp_tools::constants::{
     JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA,
     JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
-use crate::brp_tools::request_handler::FormatterContext;
 use crate::error::Result;
+use crate::extractors::{FieldExtractor, FormatterContext};
 use crate::support::response::ResponseBuilder;
 use crate::support::{LargeResponseConfig, handle_large_response};
 
@@ -205,9 +205,6 @@ pub struct FormatterConfig {
     /// Configuration for large response handling
     pub large_response_config: Option<LargeResponseConfig>,
 }
-
-/// Function type for extracting field values from context
-pub type FieldExtractor = Box<dyn Fn(&Value, &FormatterContext) -> Value + Send + Sync>;
 
 impl ResponseFormatter {
     #[allow(clippy::missing_const_for_fn)] // False positive - Arc doesn't support const construction

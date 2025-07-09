@@ -69,3 +69,37 @@ impl<'a> BevyResponseExtractor<'a> {
         Value::Number(serde_json::Number::from(total))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_spawned_entity_id() {
+        let data = json!({"entity": 123});
+        let extractor = BevyResponseExtractor::new(&data);
+        let result = extractor.spawned_entity_id();
+        assert_eq!(result, json!(123));
+    }
+
+    #[test]
+    fn test_spawned_entity_id_missing() {
+        let data = json!({});
+        let extractor = BevyResponseExtractor::new(&data);
+        let result = extractor.spawned_entity_id();
+        assert_eq!(result, json!(0));
+    }
+
+    #[test]
+    fn test_extract_query_component_count() {
+        let data = json!([
+            {"Component1": {}, "Component2": {}},
+            {"Component1": {}}
+        ]);
+        let extractor = BevyResponseExtractor::new(&data);
+        let result = extractor.query_component_count();
+        assert_eq!(result, json!(3)); // 2 + 1 components
+    }
+}

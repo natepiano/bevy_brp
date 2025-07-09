@@ -265,12 +265,6 @@ fn shallow_scan_internal(
 
 /// Extract workspace name from workspace root path
 /// Returns the last component of the path as the workspace name
-pub fn extract_workspace_name(workspace_root: &Path) -> Option<String> {
-    workspace_root
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(std::string::ToString::to_string)
-}
 
 /// Compute the relative path from the search roots to the given path
 /// This is used to provide a stable identifier for disambiguation
@@ -496,35 +490,32 @@ fn partial_path_match(relative_path: &Path, path_str: &str) -> bool {
     false
 }
 
-/// Check if an item matches the given path using all available strategies
-fn item_matches_path<T>(
-    item: &T,
-    path_str: &str,
-    get_relative_path: &impl Fn(&T) -> &PathBuf,
-) -> bool {
-    let relative_path = get_relative_path(item);
-
-    // Try exact match first
-    if exact_path_match(relative_path, path_str) {
-        return true;
-    }
-
-    // Then try partial match
-    partial_path_match(relative_path, path_str)
-}
-
 /// Find items by name and filter by path if provided
-/// Supports full relative paths and partial paths
+/// Prioritizes exact matches over partial matches
 fn find_and_filter_by_path<T>(
     all_items: Vec<T>,
     path: Option<&str>,
     get_relative_path: impl Fn(&T) -> &PathBuf,
 ) -> Vec<T> {
     if let Some(path_str) = path {
-        all_items
-            .into_iter()
-            .filter(|item| item_matches_path(item, path_str, &get_relative_path))
-            .collect()
+        // First, check if there are any exact matches
+        let has_exact_match = all_items
+            .iter()
+            .any(|item| exact_path_match(get_relative_path(item), path_str));
+
+        if has_exact_match {
+            // Return only exact matches
+            all_items
+                .into_iter()
+                .filter(|item| exact_path_match(get_relative_path(item), path_str))
+                .collect()
+        } else {
+            // No exact matches, fall back to partial matches
+            all_items
+                .into_iter()
+                .filter(|item| partial_path_match(get_relative_path(item), path_str))
+                .collect()
+        }
     } else {
         all_items
     }

@@ -3,11 +3,10 @@ use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 use tracing::{debug, trace};
 
-use super::config::{BrpHandlerConfig, FormatterContext};
+use super::config::BrpHandlerConfig;
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
-use super::traits::ExtractedParams;
 use crate::brp_tools::constants::{
     JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
     JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
@@ -16,6 +15,7 @@ use crate::brp_tools::support::ResponseFormatterFactory;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
 use crate::error::{Error, report_to_mcp_error};
+use crate::extractors::{ExtractedParams, FormatterContext};
 use crate::tools::TOOL_BRP_EXECUTE;
 
 /// Log raw request arguments with sanitization

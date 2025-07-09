@@ -14,7 +14,6 @@ pub struct McpCallExtractor<'a> {
     request: Option<&'a CallToolRequestParam>,
 }
 
-#[allow(dead_code)]
 impl<'a> McpCallExtractor<'a> {
     /// Create a new extractor from MCP tool call parameters
     pub const fn new(params: &'a Value) -> Self {
@@ -49,8 +48,7 @@ impl<'a> McpCallExtractor<'a> {
 
     /// Extract entity ID from MCP tool call parameters
     pub fn entity_id(&self) -> Option<u64> {
-        self.get_field("entity")
-            .and_then(Value::as_u64)
+        self.get_field("entity").and_then(Value::as_u64)
     }
 
     /// Extract resource name from MCP tool call parameters
@@ -58,36 +56,20 @@ impl<'a> McpCallExtractor<'a> {
         self.get_field("resource").and_then(|v| v.as_str())
     }
 
-    /// Extract message from MCP tool call parameters
-    pub fn message(&self) -> Option<&str> {
-        self.get_field("message").and_then(|v| v.as_str())
-    }
-
-    /// Extract query parameters from request context (returns the full params object)
-    pub const fn query_params(&self) -> Option<&Value> {
-        match self.params {
-            Some(params) => Some(params),
-            None => {
-                // For request, we need to return a Value::Object from the JsonObject
-                // This is not ideal as we can't return a reference to a temporary
-                None
-            }
-        }
-    }
+    // pub const fn query_params(&self) -> Option<&Value> {
+    //     match self.params {
+    //         Some(params) => Some(params),
+    //         None => {
+    //             // For request, we need to return a Value::Object from the JsonObject
+    //             // This is not ideal as we can't return a reference to a temporary
+    //             None
+    //         }
+    //     }
+    // }
 
     /// Extract a specific field from the context parameters
     pub fn field(&self, field_name: &str) -> Option<&Value> {
         self.get_field(field_name)
-    }
-
-    /// Extract a required string parameter
-    pub fn required_string(&self, field_name: &str) -> Option<&str> {
-        self.get_field(field_name)?.as_str()
-    }
-
-    /// Extract a required number parameter as u64
-    pub fn required_number(&self, field_name: &str) -> Option<u64> {
-        self.get_field(field_name)?.as_u64()
     }
 
     /// Extract an optional number parameter with default
@@ -259,5 +241,27 @@ impl<'a> McpCallExtractor<'a> {
     /// Extract entity ID parameter
     pub fn get_entity_id(&self) -> Result<u64, McpError> {
         self.get_required_u64("entity", "entity ID")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_extract_field_from_context() {
+        let params = json!({"components": ["Transform"], "entity": 42});
+        let extractor = McpCallExtractor::new(&params);
+
+        let result = extractor.field("components");
+        assert_eq!(result, Some(&json!(["Transform"])));
+
+        let result = extractor.field("entity");
+        assert_eq!(result, Some(&json!(42)));
+
+        let result = extractor.field("missing");
+        assert_eq!(result, None);
     }
 }

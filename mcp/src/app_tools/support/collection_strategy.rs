@@ -26,12 +26,6 @@ pub trait CollectionStrategy {
     /// Collect items from the detector
     fn collect_items(&self, detector: &CargoDetector) -> Vec<Self::Item>;
 
-    /// Get the type name for messages
-    fn get_type_name(&self) -> &'static str;
-
-    /// Get the data field name for JSON response
-    fn get_data_field_name(&self) -> &'static str;
-
     /// Create a unique key for deduplication
     fn create_unique_key(&self, item: &Self::Item) -> String;
 
@@ -51,14 +45,6 @@ impl CollectionStrategy for BevyAppsStrategy {
             .into_iter()
             .filter(BevyTarget::is_app)
             .collect()
-    }
-
-    fn get_type_name(&self) -> &'static str {
-        "Bevy apps"
-    }
-
-    fn get_data_field_name(&self) -> &'static str {
-        "apps"
     }
 
     fn create_unique_key(&self, item: &Self::Item) -> String {
@@ -93,14 +79,6 @@ impl CollectionStrategy for BrpAppsStrategy {
             .collect()
     }
 
-    fn get_type_name(&self) -> &'static str {
-        "BRP-enabled Bevy apps"
-    }
-
-    fn get_data_field_name(&self) -> &'static str {
-        "apps"
-    }
-
     fn create_unique_key(&self, item: &Self::Item) -> String {
         format!("{}::{}", item.workspace_root.display(), item.name)
     }
@@ -128,14 +106,6 @@ impl CollectionStrategy for BevyExamplesStrategy {
             .into_iter()
             .filter(BevyTarget::is_example)
             .collect()
-    }
-
-    fn get_type_name(&self) -> &'static str {
-        "Bevy examples"
-    }
-
-    fn get_data_field_name(&self) -> &'static str {
-        "examples"
     }
 
     fn create_unique_key(&self, item: &Self::Item) -> String {

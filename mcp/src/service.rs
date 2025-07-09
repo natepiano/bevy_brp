@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::future::Future;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -115,7 +114,7 @@ impl ServerHandler for BrpMcpService {
 }
 
 /// Fetch roots from the client and return the search paths
-async fn fetch_roots_and_get_paths(
+pub async fn fetch_roots_and_get_paths(
     service: &BrpMcpService,
     context: RequestContext<RoleServer>,
 ) -> Result<Vec<PathBuf>, McpError> {
@@ -137,37 +136,19 @@ async fn fetch_roots_and_get_paths(
         .clone())
 }
 
-/// Handler wrapper for binary listing operations that fetches search paths
-/// This eliminates the repetitive pattern of fetching roots in `list_bevy_apps` and
-/// `list_bevy_examples`
-pub async fn handle_list_binaries<F, Fut>(
+/// Typed handler wrapper for binary listing operations that fetches search paths
+/// Returns typed results for use with `format_handler_result`
+pub async fn handle_list_binaries_typed<F, Fut, T>(
     service: &BrpMcpService,
     context: RequestContext<RoleServer>,
     handler: F,
-) -> Result<CallToolResult, McpError>
+) -> Result<T, McpError>
 where
     F: FnOnce(Vec<PathBuf>) -> Fut,
-    Fut: Future<Output = Result<CallToolResult, McpError>>,
+    Fut: Future<Output = Result<T, McpError>>,
 {
     let search_paths = fetch_roots_and_get_paths(service, context).await?;
     handler(search_paths).await
-}
-
-/// Handler wrapper for binary launch operations that fetches search paths and extracts request data
-/// This eliminates boilerplate for handlers that launch binaries with parameters used by
-/// `launch_bevy_app` and `launch_bevy_example`
-pub async fn handle_launch_binary<F, Fut>(
-    service: &BrpMcpService,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
-    handler: F,
-) -> Result<CallToolResult, McpError>
-where
-    F: FnOnce(CallToolRequestParam, Vec<PathBuf>) -> Fut,
-    Fut: Future<Output = Result<CallToolResult, McpError>>,
-{
-    let search_paths = fetch_roots_and_get_paths(service, context).await?;
-    handler(request, search_paths).await
 }
 
 fn register_tools() -> ListToolsResult {

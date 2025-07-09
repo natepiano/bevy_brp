@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 use std::time::Instant;
 
-use rmcp::model::CallToolResult;
+use chrono;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
-use serde_json::json;
 use tracing::debug;
 
 use super::constants::{DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE};
@@ -13,26 +12,26 @@ use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::support::response::ResponseBuilder;
+use crate::response::BevyAppLaunchResult;
 use crate::{BrpMcpService, service};
 
 pub async fn handle(
     service: &BrpMcpService,
     request: rmcp::model::CallToolRequestParam,
     context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
-    service::handle_launch_binary(service, request, context, |req, search_paths| async move {
-        // Get parameters
-        let extractor = McpCallExtractor::from_request(&req);
-        let app_name = extractor.get_required_string(PARAM_APP_NAME, "app name")?;
-        let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
-        let path = extractor.get_optional_path();
-        let port = extractor.get_optional_u16(PARAM_PORT)?;
+) -> Result<BevyAppLaunchResult, McpError> {
+    // Get parameters
+    let extractor = McpCallExtractor::from_request(&request);
+    let app_name = extractor.get_required_string(PARAM_APP_NAME, "app name")?;
+    let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
+    let path = extractor.get_optional_path();
+    let port = extractor.get_optional_u16(PARAM_PORT)?;
 
-        // Launch the app
-        launch_bevy_app(app_name, profile, path.as_deref(), port, &search_paths)
-    })
-    .await
+    // Get search paths
+    let search_paths = service::fetch_roots_and_get_paths(service, context).await?;
+
+    // Launch the app
+    launch_bevy_app(app_name, profile, path.as_deref(), port, &search_paths)
 }
 
 pub fn launch_bevy_app(
@@ -41,7 +40,7 @@ pub fn launch_bevy_app(
     path: Option<&str>,
     port: Option<u16>,
     search_paths: &[PathBuf],
-) -> Result<CallToolResult, McpError> {
+) -> Result<BevyAppLaunchResult, McpError> {
     let launch_start = Instant::now();
 
     // Find the app
@@ -56,11 +55,56 @@ pub fn launch_bevy_app(
             // Check if this is a path disambiguation error
             let error_msg = &mcp_error.message;
             if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
-                // Convert to proper tool response
-                return Ok(ResponseBuilder::error()
-                    .message(error_msg.to_string())
-                    .build()
-                    .to_call_tool_result());
+                // Parse duplicate paths from error message
+                let duplicate_paths = if error_msg.contains("Found multiple") {
+                    // Extract paths from error message like "Found multiple app named 'hana' at:\n-
+                    // hana\n- hana-brp-extras-2-1"
+                    let lines: Vec<&str> = error_msg.lines().collect();
+                    let mut paths = Vec::new();
+                    for line in &lines[1..] {
+                        // Skip first line
+                        if let Some(path) = line.strip_prefix("- ") {
+                            paths.push(path.to_string());
+                        }
+                    }
+                    if paths.is_empty() { None } else { Some(paths) }
+                } else {
+                    None
+                };
+
+                // Return structured error response with minimal fields
+                let error_response = super::support::create_disambiguation_error(
+                    "app",
+                    app_name,
+                    duplicate_paths.unwrap_or_default(),
+                );
+
+                // Convert the JSON value to our typed result
+                // We only populate the fields that are in the error response
+                return Ok(BevyAppLaunchResult {
+                    status:             error_response["status"]
+                        .as_str()
+                        .unwrap_or("error")
+                        .to_string(),
+                    message:            error_response["message"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
+                    app_name:           error_response["app_name"].as_str().map(|s| s.to_string()),
+                    pid:                None,
+                    working_directory:  None,
+                    profile:            None,
+                    log_file:           None,
+                    binary_path:        None,
+                    launch_duration_ms: None,
+                    launch_timestamp:   None,
+                    workspace:          None,
+                    duplicate_paths:    error_response["duplicate_paths"].as_array().map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                            .collect()
+                    }),
+                });
             }
             return Err(mcp_error);
         }
@@ -126,25 +170,29 @@ pub fn launch_bevy_app(
         debug!("Environment variable: BRP_PORT={}", port);
     }
 
-    // Create additional app-specific data
-    let additional_data = json!({
-        "binary_path": binary_path.display().to_string()
-    });
+    // Collect enhanced debug info
+    let launch_duration_ms = launch_end.duration_since(launch_start).as_millis() as u64;
+    let launch_timestamp = chrono::Utc::now().to_rfc3339();
 
-    let response_params = launch_common::LaunchResponseParams {
-        name: app_name,
-        name_field: "app_name",
-        pid,
-        manifest_dir,
-        profile,
-        log_file_path: &log_file_path,
-        additional_data: Some(additional_data),
-        workspace_root: Some(&app.workspace_root),
-        launch_start,
-        launch_end,
-    };
+    // Extract workspace name
+    let workspace = app
+        .workspace_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(|s| s.to_string());
 
-    Ok(launch_common::build_launch_success_response(
-        response_params,
-    ))
+    Ok(BevyAppLaunchResult {
+        status: "success".to_string(),
+        message: format!("Successfully launched '{}' (PID: {})", app_name, pid),
+        app_name: Some(app_name.to_string()),
+        pid: Some(pid),
+        working_directory: Some(manifest_dir.display().to_string()),
+        profile: Some(profile.to_string()),
+        log_file: Some(log_file_path.display().to_string()),
+        binary_path: Some(binary_path.display().to_string()),
+        launch_duration_ms: Some(launch_duration_ms),
+        launch_timestamp: Some(launch_timestamp),
+        workspace,
+        duplicate_paths: None, // No duplicates for successful launches
+    })
 }
