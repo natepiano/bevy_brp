@@ -73,6 +73,24 @@ pub fn discover_type_as_response(
     let (in_registry, type_info_opt, has_serialize, has_deserialize) =
         determine_type_capabilities(world, type_name);
 
+    // If type is not in registry, return minimal response with error
+    if !in_registry {
+        debug_context.push(format!("Type {type_name} not found in registry"));
+        return TypeDiscoveryResponse {
+            type_name:            type_name.to_string(),
+            in_registry:          false,
+            has_serialize:        false,
+            has_deserialize:      false,
+            supported_operations: Vec::new(),
+            mutation_paths:       HashMap::new(),
+            example_values:       HashMap::new(),
+            type_category:        "Unknown".to_string(),
+            child_types:          HashMap::new(),
+            enum_info:            None,
+            error:                Some("Type not found in registry".to_string()),
+        };
+    }
+
     let supported_operations = determine_supported_operations(
         in_registry,
         has_serialize,
@@ -106,6 +124,7 @@ pub fn discover_type_as_response(
         type_category,
         child_types,
         enum_info,
+        error: None,
     }
 }
 

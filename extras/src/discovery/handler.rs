@@ -102,25 +102,55 @@ pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpR
 
     // Discover formats for the requested types using new response format
     let mut responses = HashMap::new();
+    let mut successful_discoveries = 0;
+    let mut failed_discoveries = 0;
 
     for type_name in &type_names {
         debug_info.push(format!("Processing type: {type_name}"));
 
         let mut type_debug_context = DebugContext::new();
         let type_response = discover_type_as_response(world, type_name, &mut type_debug_context);
-        debug_info.push(format!("Successfully discovered type: {type_name}"));
+
+        // Count successes and failures based on in_registry field
+        if type_response.in_registry {
+            successful_discoveries += 1;
+            debug_info.push(format!("Successfully discovered type: {type_name}"));
+        } else {
+            failed_discoveries += 1;
+            debug_info.push(format!(
+                "Failed to discover type: {type_name} - not in registry"
+            ));
+        }
+
         if include_debug {
             debug_info.messages.extend(type_debug_context.messages);
         }
         responses.insert(type_name.clone(), type_response);
     }
 
+    // Convert responses to JSON values, creating minimal responses for errors
+    let mut type_info_json = serde_json::Map::new();
+    for (type_name, type_response) in responses {
+        let json_value = if let Some(ref error_msg) = type_response.error {
+            // Minimal response for errors
+            json!({
+                "type_name": type_response.type_name,
+                "in_registry": type_response.in_registry,
+                "error": error_msg
+            })
+        } else {
+            // Full response for successful discoveries
+            serde_json::to_value(&type_response).unwrap_or(json!({}))
+        };
+        type_info_json.insert(type_name, json_value);
+    }
+
     // Create comprehensive response
     let mut response = json!({
         "success": true,
-        "type_info": responses,
+        "type_info": type_info_json,
         "requested_types": type_names,
-        "discovered_count": responses.len()
+        "discovered_count": successful_discoveries  // Only count successful discoveries
     });
 
     // Add debug info if enabled
@@ -128,11 +158,11 @@ pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpR
         response["debug_info"] = json!(debug_info.messages);
     }
 
-    // Add summary information
+    // Add summary information with correct counts
     response["summary"] = json!({
         "total_requested": type_names.len(),
-        "successful_discoveries": responses.len(),
-        "failed_discoveries": 0,
+        "successful_discoveries": successful_discoveries,
+        "failed_discoveries": failed_discoveries,
     });
 
     debug_info.push("Request processing complete".to_string());

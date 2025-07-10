@@ -5,15 +5,16 @@ use tracing::{debug, trace};
 
 use super::config::BrpHandlerConfig;
 use super::format_discovery::{
-    EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
+    EnhancedBrpResult, FORMAT_DISCOVERY_METHODS, FormatCorrection,
+    execute_brp_method_with_format_discovery,
 };
 use crate::brp_tools::constants::{
-    JSON_FIELD_DATA, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
+    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
     JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
 use crate::brp_tools::support::ResponseFormatterFactory;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
-use crate::brp_tools::support::response_formatter::{self, BrpMetadata};
+use crate::brp_tools::support::response_formatter::{self, BrpToolCallInfo};
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::{ExtractedParams, FormatterContext};
 use crate::tools::TOOL_BRP_EXECUTE;
@@ -117,7 +118,7 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
     } else {
         // If not an object, wrap it
         let wrapped = json!({
-            JSON_FIELD_DATA: response_data.clone(),
+            JSON_FIELD_METADATA: response_data.clone(),
             JSON_FIELD_FORMAT_CORRECTIONS: corrections_value,
         });
         *response_data = wrapped;
@@ -126,9 +127,10 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
 
 /// Context for processing responses
 struct ResponseContext<'a> {
-    metadata:          BrpMetadata,
+    call_info:         BrpToolCallInfo,
     formatter_factory: &'a ResponseFormatterFactory,
     formatter_context: FormatterContext,
+    method:            &'a str,
 }
 
 /// Process a successful BRP response
@@ -141,27 +143,35 @@ fn process_success_response(
 
     // Debug info is now logged via tracing during execution
 
-    // Add format corrections only (not debug info, as it will be handled separately)
-    add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
+    // Only add format corrections for methods that support format discovery
+    if FORMAT_DISCOVERY_METHODS.contains(&context.method) {
+        // Add format corrections only (not debug info, as it will be handled separately)
+        add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
+    }
 
-    // Create new FormatterContext with format_corrected status
+    // Create new FormatterContext with format_corrected status only for supported methods
     let new_formatter_context = FormatterContext {
         params:           context.formatter_context.params.clone(),
-        format_corrected: Some(enhanced_result.format_corrected.clone()),
+        format_corrected: if FORMAT_DISCOVERY_METHODS.contains(&context.method) {
+            Some(enhanced_result.format_corrected.clone())
+        } else {
+            None
+        },
     };
 
     // Create new formatter with updated context
     let updated_formatter = context.formatter_factory.create(new_formatter_context);
 
     // Large response handling is now done inside the formatter
-    updated_formatter.format_success(&response_data, context.metadata)
+    updated_formatter.format_success(&response_data, context.call_info)
 }
 
 /// Process an error BRP response - routes ALL errors through enhanced `format_error_default`
 fn process_error_response(
     mut error_info: BrpError,
     enhanced_result: &EnhancedBrpResult,
-    metadata: &BrpMetadata,
+    call_info: &BrpToolCallInfo,
+    method: &str,
 ) -> CallToolResult {
     let original_error_message = error_info.message.clone();
 
@@ -191,8 +201,10 @@ fn process_error_response(
         error_info.message = enhanced_msg;
     }
 
-    // Add format corrections to error data if present
-    if !enhanced_result.format_corrections.is_empty() || has_enhanced {
+    // Only add format corrections for methods that support format discovery
+    if FORMAT_DISCOVERY_METHODS.contains(&method)
+        && (!enhanced_result.format_corrections.is_empty() || has_enhanced)
+    {
         let mut data_obj = error_info.data.unwrap_or_else(|| json!({}));
 
         if let Value::Object(map) = &mut data_obj {
@@ -217,7 +229,7 @@ fn process_error_response(
                 );
             }
 
-            // Always add format_corrected field to indicate whether format correction occurred
+            // Add format_corrected field to indicate whether format correction occurred
             map.insert(
                 JSON_FIELD_FORMAT_CORRECTED.to_string(),
                 json!(enhanced_result.format_corrected),
@@ -228,11 +240,11 @@ fn process_error_response(
     }
 
     // Route ALL errors through the enhanced format_error_default
-    response_formatter::format_error_default(error_info, metadata)
+    response_formatter::format_error_default(error_info, call_info)
 }
 
 /// Unified handler for all BRP methods (both static and dynamic)
-pub async fn handle_brp_request(
+pub async fn handle_brp_method_tool_call(
     request: rmcp::model::CallToolRequestParam,
     config: &BrpHandlerConfig,
 ) -> Result<CallToolResult, McpError> {
@@ -286,15 +298,16 @@ pub async fn handle_brp_request(
     } else {
         &method_name
     };
-    let metadata = BrpMetadata::new(metadata_method, extracted.port);
+    let call_info = BrpToolCallInfo::new(metadata_method, extracted.port);
 
     // Process response using ResponseFormatter, including format corrections if present
     match &enhanced_result.result {
         BrpResult::Success(data) => {
             let context = ResponseContext {
-                metadata,
+                call_info,
                 formatter_factory: &config.formatter_factory,
                 formatter_context,
+                method: &method_name,
             };
             Ok(process_success_response(
                 data.clone(),
@@ -305,7 +318,8 @@ pub async fn handle_brp_request(
         BrpResult::Error(error_info) => Ok(process_error_response(
             error_info.clone(),
             &enhanced_result,
-            &metadata,
+            &call_info,
+            &method_name,
         )),
     }
 }

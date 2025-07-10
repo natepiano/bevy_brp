@@ -10,7 +10,9 @@ pub struct JsonResponse {
     pub status:                ResponseStatus,
     pub message:               String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data:                  Option<Value>,
+    pub metadata:              Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result:                Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brp_extras_debug_info: Option<Value>,
 }
@@ -50,7 +52,8 @@ impl JsonResponse {
 pub struct ResponseBuilder {
     status:                ResponseStatus,
     message:               String,
-    data:                  Option<Value>,
+    metadata:              Option<Value>,
+    result:                Option<Value>,
     brp_extras_debug_info: Option<Value>,
 }
 
@@ -59,7 +62,8 @@ impl ResponseBuilder {
         Self {
             status:                ResponseStatus::Success,
             message:               String::new(),
-            data:                  None,
+            metadata:              None,
+            result:                None,
             brp_extras_debug_info: None,
         }
     }
@@ -68,7 +72,8 @@ impl ResponseBuilder {
         Self {
             status:                ResponseStatus::Error,
             message:               String::new(),
-            data:                  None,
+            metadata:              None,
+            result:                None,
             brp_extras_debug_info: None,
         }
     }
@@ -78,22 +83,38 @@ impl ResponseBuilder {
         self
     }
 
-    /// Add a field to the data object. Creates a new object if data is None.
+    /// Add a field to the metadata object. Creates a new object if metadata is None.
     pub fn add_field(mut self, key: &str, value: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
 
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
 
-        if let Some(Value::Object(map)) = &mut self.data {
+        if let Some(Value::Object(map)) = &mut self.metadata {
             map.insert(key.to_string(), value_json);
         } else {
             let mut map = serde_json::Map::new();
             map.insert(key.to_string(), value_json);
-            self.data = Some(Value::Object(map));
+            self.metadata = Some(Value::Object(map));
         }
 
         Ok(self)
+    }
+
+    /// Set the result field directly for Raw responses
+    pub fn with_result(mut self, result: impl Serialize) -> Result<Self> {
+        use error_stack::ResultExt;
+
+        let result_json = serde_json::to_value(result)
+            .change_context(Error::General("Failed to serialize result".to_string()))?;
+
+        self.result = Some(result_json);
+        Ok(self)
+    }
+
+    /// Add a field to the metadata object (alias for clarity)
+    pub fn add_metadata_field(self, key: &str, value: impl Serialize) -> Result<Self> {
+        self.add_field(key, value)
     }
 
     /// Auto-inject debug info if debug mode is enabled
@@ -113,7 +134,8 @@ impl ResponseBuilder {
         JsonResponse {
             status:                self.status,
             message:               self.message,
-            data:                  self.data,
+            metadata:              self.metadata,
+            result:                self.result,
             brp_extras_debug_info: self.brp_extras_debug_info,
         }
     }

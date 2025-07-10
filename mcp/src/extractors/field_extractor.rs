@@ -51,7 +51,6 @@ pub fn convert_extractor_type(extractor_type: &ExtractorType) -> FieldExtractor 
         ExtractorType::PassThroughData => {
             Box::new(|data, _context| BevyResponseExtractor::new(data).pass_through().clone())
         }
-        ExtractorType::PassThroughResult => Box::new(|data, _| data.clone()),
         ExtractorType::EntityCountFromData | ExtractorType::ComponentCountFromData => {
             Box::new(|data, _context| BevyResponseExtractor::new(data).entity_count().into())
         }
@@ -93,6 +92,12 @@ pub fn convert_extractor_type(extractor_type: &ExtractorType) -> FieldExtractor 
 }
 
 /// Create a field accessor for already-extracted request parameters.
+///
+/// FieldExtractor defines a closure that will allow us to specify the field name
+/// (captured in the closure) that we want to use to access arguments passed in
+/// on the initial tool call.
+///
+/// Or put another way...
 ///
 /// This function creates extractors that reference fields from the `ExtractedParams`,
 /// which were already validated during the parameter extraction phase.
@@ -217,7 +222,10 @@ pub fn create_response_extractor(extractor: &ResponseExtractorType) -> FieldExtr
 /// separated extraction strategy defined by the `ResponseFieldV2` variant.
 pub fn convert_response_field_v2(field: &ResponseFieldV2) -> FieldExtractor {
     match field {
-        ResponseFieldV2::FromRequest { field, .. } => create_request_field_accessor(field),
+        ResponseFieldV2::FromRequest {
+            parameter_field_name: field,
+            ..
+        } => create_request_field_accessor(field),
         ResponseFieldV2::FromResponse { extractor, .. } => create_response_extractor(extractor),
     }
 }

@@ -11,7 +11,6 @@
 pub const JSON_FIELD_COMPONENT: &str = "component";
 pub const JSON_FIELD_COMPONENTS: &str = "components";
 pub const JSON_FIELD_COUNT: &str = "count";
-pub const JSON_FIELD_DATA: &str = "data";
 pub const JSON_FIELD_DEBUG_INFO: &str = "debug_info";
 pub const JSON_FIELD_DESTROYED_ENTITY: &str = "destroyed_entity";
 pub const JSON_FIELD_ENTITIES: &str = "entities";
@@ -47,7 +46,6 @@ pub const PARAM_WITH_TYPES: &str = "with_types";
 pub const PARAM_WITHOUT_TYPES: &str = "without_types";
 pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_PARENT: &str = "parent";
-pub const PARAM_RESULT: &str = "result";
 pub const PARAM_ENTITY_COUNT: &str = "entity_count";
 pub const PARAM_COMPONENT_COUNT: &str = "component_count";
 pub const PARAM_QUERY_PARAMS: &str = "query_params";

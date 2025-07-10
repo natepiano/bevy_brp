@@ -15,11 +15,11 @@
 //! - **`EntityOperation`/`ResourceOperation`**: BRP operations with field extraction
 
 use crate::brp_tools::constants::{
-    DESC_PORT, JSON_FIELD_COMPONENT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT, JSON_FIELD_DATA,
-    JSON_FIELD_DESTROYED_ENTITY, JSON_FIELD_ENTITY, JSON_FIELD_LOG_PATH, JSON_FIELD_PATH,
-    JSON_FIELD_PORT, JSON_FIELD_RESOURCE, JSON_FIELD_RESOURCES, JSON_FIELD_VALUE,
+    DESC_PORT, JSON_FIELD_COMPONENT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT,
+    JSON_FIELD_DESTROYED_ENTITY, JSON_FIELD_ENTITY, JSON_FIELD_LOG_PATH, JSON_FIELD_METADATA,
+    JSON_FIELD_PATH, JSON_FIELD_PORT, JSON_FIELD_RESOURCE, JSON_FIELD_RESOURCES, JSON_FIELD_VALUE,
     PARAM_COMPONENT_COUNT, PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY_COUNT, PARAM_FILTER,
-    PARAM_FORMATS, PARAM_METHOD, PARAM_PARAMS, PARAM_PARENT, PARAM_QUERY_PARAMS, PARAM_RESULT,
+    PARAM_FORMATS, PARAM_METHOD, PARAM_PARAMS, PARAM_PARENT, PARAM_QUERY_PARAMS,
     PARAM_SPAWNED_ENTITY, PARAM_STRICT, PARAM_TYPES, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
@@ -336,12 +336,12 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             },
             params:          ParamDef::entity_with_port("The entity ID to destroy").to_vec(),
             param_extractor: BrpMethodParamCategory::Entity { required: true },
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::EntityOperation,
                 template:        "Successfully destroyed entity {entity}",
-                response_fields: vec![ResponseFieldCompat::V1(ResponseField {
-                    name:      JSON_FIELD_DESTROYED_ENTITY,
-                    extractor: ExtractorType::EntityFromParams,
+                response_fields: vec![ResponseFieldCompat::V2(ResponseFieldV2::FromRequest {
+                    response_field_name:  JSON_FIELD_DESTROYED_ENTITY,
+                    parameter_field_name: JSON_FIELD_ENTITY,
                 })],
             },
         },
@@ -361,7 +361,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::EntityOperation,
                 template:        "Retrieved component data from entity {entity}",
                 response_fields: vec![
@@ -388,7 +388,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Entity { required: false },
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Listed {count} components",
                 response_fields: vec![
@@ -416,12 +416,12 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::EntityOperation,
                 template:        "Successfully removed components from entity {entity}",
-                response_fields: vec![ResponseFieldCompat::V1(ResponseField {
-                    name:      JSON_FIELD_ENTITY,
-                    extractor: ExtractorType::EntityFromParams,
+                response_fields: vec![ResponseFieldCompat::V2(ResponseFieldV2::FromRequest {
+                    response_field_name:  JSON_FIELD_ENTITY,
+                    parameter_field_name: JSON_FIELD_ENTITY,
                 })],
             },
         },
@@ -441,12 +441,12 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::EntityOperation,
                 template:        "Successfully inserted components into entity {entity}",
-                response_fields: vec![ResponseFieldCompat::V1(ResponseField {
-                    name:      JSON_FIELD_ENTITY,
-                    extractor: ExtractorType::EntityFromParams,
+                response_fields: vec![ResponseFieldCompat::V2(ResponseFieldV2::FromRequest {
+                    response_field_name:  JSON_FIELD_ENTITY,
+                    parameter_field_name: JSON_FIELD_ENTITY,
                 })],
             },
         },
@@ -462,7 +462,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             )
             .to_vec(),
             param_extractor: BrpMethodParamCategory::Resource,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Retrieved resource: {resource}",
                 response_fields: vec![
@@ -471,7 +471,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                         extractor: ExtractorType::ResourceFromParams,
                     }),
                     ResponseFieldCompat::V1(ResponseField {
-                        name:      JSON_FIELD_DATA,
+                        name:      JSON_FIELD_METADATA,
                         extractor: ExtractorType::PassThroughData,
                     }),
                 ],
@@ -495,7 +495,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Successfully inserted/updated resource: {resource}",
                 response_fields: vec![ResponseFieldCompat::V1(ResponseField {
@@ -516,7 +516,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             )
             .to_vec(),
             param_extractor: BrpMethodParamCategory::Resource,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Successfully removed resource: {resource}",
                 response_fields: vec![ResponseFieldCompat::V1(ResponseField {
@@ -534,7 +534,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             },
             params:          ParamDef::component_mutation_params().to_vec(),
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::EntityOperation,
                 template:        "Successfully mutated component on entity {entity}",
                 response_fields: vec![ResponseFieldCompat::V1(ResponseField {
@@ -552,7 +552,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             },
             params:          ParamDef::resource_mutation_params().to_vec(),
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::ResourceOperation,
                 template:        "Successfully mutated resource: {resource}",
                 response_fields: vec![ResponseFieldCompat::V1(ResponseField {
@@ -570,7 +570,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             },
             params:          vec![ParamDef::port()],
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Listed {count} resources",
                 response_fields: vec![
@@ -594,13 +594,8 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             },
             params:          vec![ParamDef::port()],
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
-                formatter_type:  FormatterType::Simple,
-                template:        "Retrieved BRP method discovery information",
-                response_fields: vec![ResponseFieldCompat::V2(ResponseFieldV2::FromResponse {
-                    name:      PARAM_RESULT,
-                    extractor: ResponseExtractorType::PassThroughRaw,
-                })],
+            formatter:       ResponseSpecification::Raw {
+                template: "Retrieved BRP method discovery information",
             },
         },
         // bevy_brp_extras/discover_format
@@ -619,12 +614,12 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Format discovery completed",
-                response_fields: vec![ResponseFieldCompat::V1(ResponseField {
-                    name:      PARAM_FORMATS,
-                    extractor: ExtractorType::PassThroughResult,
+                response_fields: vec![ResponseFieldCompat::V2(ResponseFieldV2::FromResponse {
+                    response_field_name: PARAM_FORMATS,
+                    extractor:           ResponseExtractorType::PassThroughData,
                 })],
             },
         },
@@ -640,7 +635,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Successfully captured screenshot and saved to {path}",
                 response_fields: vec![
@@ -672,7 +667,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Successfully sent keyboard input",
                 response_fields: vec![
@@ -703,7 +698,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Debug mode updated successfully",
                 response_fields: vec![ResponseFieldCompat::V1(ResponseField {
@@ -728,12 +723,12 @@ fn get_special_tools() -> Vec<McpToolDef> {
             },
             params:          ParamDef::query_params().to_vec(),
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Query completed successfully",
                 response_fields: vec![
                     ResponseFieldCompat::V1(ResponseField {
-                        name:      JSON_FIELD_DATA,
+                        name:      JSON_FIELD_METADATA,
                         extractor: ExtractorType::PassThroughData,
                     }),
                     ResponseFieldCompat::V1(ResponseField {
@@ -766,7 +761,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::EntityOperation,
                 template:        "Successfully spawned entity",
                 response_fields: vec![
@@ -792,13 +787,8 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::BrpExecute,
-            formatter:       ResponseSpecification {
-                formatter_type:  FormatterType::Simple,
-                template:        "Method executed successfully",
-                response_fields: vec![ResponseFieldCompat::V1(ResponseField {
-                    name:      PARAM_RESULT,
-                    extractor: ExtractorType::PassThroughResult,
-                })],
+            formatter:       ResponseSpecification::Raw {
+                template: "Method executed successfully",
             },
         },
         // bevy_registry_schema - has complex parameter transformation
@@ -832,11 +822,11 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::RegistrySchema,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Retrieved schema information",
                 response_fields: vec![ResponseFieldCompat::V1(ResponseField {
-                    name:      JSON_FIELD_DATA,
+                    name:      JSON_FIELD_METADATA,
                     extractor: ExtractorType::PassThroughData,
                 })],
             },
@@ -858,7 +848,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Simple,
                 template:        "Successfully reparented entities",
                 response_fields: vec![
@@ -900,7 +890,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 ),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Found {count} log files",
                 response_fields: vec![
@@ -944,7 +934,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 ),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Successfully read log file: {filename}",
                 response_fields: vec![
@@ -1003,7 +993,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 ),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Deleted {deleted_count} log files",
                 response_fields: vec![
@@ -1035,7 +1025,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             },
             params:          vec![],
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Trace log file {exists:found at|not found (will be created when logging starts) at}: {log_path}",
                 response_fields: vec![
@@ -1067,7 +1057,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 true,
             )],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
                 response_fields: vec![
@@ -1098,7 +1088,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             },
             params:          vec![],
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Found {count} Bevy apps",
                 response_fields: vec![
@@ -1122,7 +1112,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             },
             params:          vec![],
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Found {count} BRP-enabled apps",
                 response_fields: vec![
@@ -1146,7 +1136,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             },
             params:          vec![],
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Found {count} Bevy examples",
                 response_fields: vec![
@@ -1170,7 +1160,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             },
             params:          create_launch_params("app_name", "Name of the Bevy app to launch"),
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "{message}",
                 response_fields: vec![
@@ -1237,7 +1227,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 "Name of the Bevy example to launch",
             ),
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::Local,
                 template:        "Launched Bevy example {example_name}",
                 response_fields: vec![
@@ -1312,7 +1302,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 ),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
                 response_fields: vec![],
@@ -1334,7 +1324,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 ),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
                 response_fields: vec![],
@@ -1362,7 +1352,7 @@ fn get_watch_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
                 response_fields: vec![],
@@ -1380,7 +1370,7 @@ fn get_watch_tools() -> Vec<McpToolDef> {
                 ParamDef::port(),
             ],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
                 response_fields: vec![],
@@ -1405,7 +1395,7 @@ fn get_brp_tools() -> Vec<McpToolDef> {
                 true,
             )],
             param_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
                 response_fields: vec![],
@@ -1420,7 +1410,7 @@ fn get_brp_tools() -> Vec<McpToolDef> {
             },
             params:          vec![], // No parameters
             param_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:       ResponseSpecification {
+            formatter:       ResponseSpecification::Structured {
                 formatter_type:  FormatterType::LocalPassthrough,
                 template:        "",
                 response_fields: vec![],

@@ -13,19 +13,19 @@ pub enum ResponseFieldV2 {
     /// the parameter extraction phase, avoiding redundant extraction and ensuring
     /// consistent validation.
     FromRequest {
-        /// Name of the field in the response
-        name:  &'static str,
-        /// Field name in the `ExtractedParams` structure
-        field: &'static str,
+        /// Name of the field to be output in the response
+        response_field_name:  &'static str,
+        /// Field name in the `ExtractedParams` structure, i.e, tool call request parameters
+        parameter_field_name: &'static str,
     },
     /// Extract a field from response data.
     ///
     /// This variant specifies extraction of data from the handler or BRP response payload.
     FromResponse {
         /// Name of the field in the response
-        name:      &'static str,
+        response_field_name: &'static str,
         /// Extractor type for response data
-        extractor: ResponseExtractorType,
+        extractor:           ResponseExtractorType,
     },
 }
 
@@ -36,9 +36,14 @@ pub enum ResponseFieldV2 {
 #[derive(Clone, Debug)]
 #[allow(dead_code)] // Temporarily allow during migration
 pub enum ResponseExtractorType {
-    /// Pass through the entire response and store it under "data" field without modification
+    /// Pass through the entire BRP response data wrapped in the "metadata" field of the MCP
+    /// response. Used for Structured responses where the BRP data should be included under
+    /// "metadata". Example output: `{ "status": "success", "message": "...", "metadata": {
+    /// ...brp_data... } }`
     PassThroughData,
-    /// Pass through response fields as peers of status/message (no data wrapper)
+    /// Pass through the entire BRP response directly in the "result" field of the MCP response.
+    /// Used for Raw responses to provide direct access to BRP data without wrapping.
+    /// Example output: `{ "status": "success", "message": "...", "result": { ...brp_data... } }`
     PassThroughRaw,
     /// Extract a specific field from the response data structure
     Field(&'static str),
@@ -58,20 +63,39 @@ impl ResponseFieldV2 {
     /// Get the field name for this response field specification.
     pub const fn name(&self) -> &'static str {
         match self {
-            Self::FromRequest { name, .. } | Self::FromResponse { name, .. } => name,
+            Self::FromRequest {
+                response_field_name: name,
+                ..
+            }
+            | Self::FromResponse {
+                response_field_name: name,
+                ..
+            } => name,
         }
     }
 }
 
-/// Defines how to format the response for a tool
+/// Defines how to format the response for a tool.
+///
+/// This enum provides type-safe response patterns, making illegal states unrepresentable:
+/// - `Structured`: Traditional response with extracted/processed fields under "metadata"
+/// - `Raw`: Raw BRP response directly in "result" field (no other fields allowed)
 #[derive(Clone)]
-pub struct ResponseSpecification {
-    /// Type of formatter to use
-    pub formatter_type:  FormatterType,
-    /// Template for success messages
-    pub template:        &'static str,
-    /// Fields to include in the response
-    pub response_fields: Vec<ResponseFieldCompat>,
+pub enum ResponseSpecification {
+    /// Traditional response with extracted/processed fields under "metadata"
+    Structured {
+        /// Type of formatter to use
+        formatter_type:  FormatterType,
+        /// Template for success messages
+        template:        &'static str,
+        /// Fields to include in the response
+        response_fields: Vec<ResponseFieldCompat>,
+    },
+    /// Raw BRP response directly in "result" field (no other fields allowed)
+    Raw {
+        /// Template for success messages
+        template: &'static str,
+    },
 }
 
 /// Types of formatters available

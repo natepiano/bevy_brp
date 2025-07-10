@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use crate::brp_tools::constants::JSON_FIELD_ENTITY;
+use crate::brp_tools::constants::{JSON_FIELD_ENTITY, JSON_FIELD_METADATA};
 
 /// Extractor for data from Bevy BRP responses
 pub struct BevyResponseExtractor<'a> {
@@ -22,10 +22,10 @@ impl<'a> BevyResponseExtractor<'a> {
 
     /// Count elements in an array from the response data
     pub fn entity_count(&self) -> usize {
-        // Check if data is wrapped in a structure with a "data" field
+        // Check if data is wrapped in a structure with a "metadata" field
         self.response
             .as_object()
-            .and_then(|obj| obj.get("data"))
+            .and_then(|obj| obj.get(JSON_FIELD_METADATA))
             .map_or_else(
                 || self.response.as_array().map_or(0, std::vec::Vec::len),
                 |inner_data| inner_data.as_array().map_or(0, std::vec::Vec::len),

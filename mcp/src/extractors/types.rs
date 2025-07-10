@@ -56,10 +56,6 @@ pub enum ExtractorType {
     PassThroughData,
     /// Extract total component count from nested query results
     QueryComponentCount,
-
-    // === DIRECT EXTRACTION (no extractor needed) ===
-    /// Pass through entire result
-    PassThroughResult,
 }
 
 /// Result of parameter extraction

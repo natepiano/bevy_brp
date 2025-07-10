@@ -198,7 +198,11 @@ pub struct TypeDiscoveryResponse {
     pub child_types:          HashMap<String, String>,
     /// Enum variant information (only populated for enum types)
     pub enum_info:            Option<serde_json::Map<String, Value>>,
+    /// Error message when type discovery fails
+    pub error:                Option<String>,
 }
+
+
 
 /// Check if a type registration has Serialize and Deserialize traits
 pub fn check_serialization_traits(registration: &bevy::reflect::TypeRegistration) -> (bool, bool) {

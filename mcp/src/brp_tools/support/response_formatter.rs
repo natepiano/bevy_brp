@@ -40,12 +40,12 @@ use crate::support::{LargeResponseConfig, handle_large_response};
 
 /// Metadata about a BRP request for response formatting
 #[derive(Debug, Clone)]
-pub struct BrpMetadata {
+pub struct BrpToolCallInfo {
     pub tool_name: String,
-    pub port:   u16,
+    pub port:      u16,
 }
 
-impl BrpMetadata {
+impl BrpToolCallInfo {
     pub fn new(tool_name: &str, port: u16) -> Self {
         Self {
             tool_name: tool_name.to_string(),
@@ -55,7 +55,7 @@ impl BrpMetadata {
 }
 
 /// Default error formatter implementation with rich guidance extraction
-pub fn format_error_default(error: BrpError, metadata: &BrpMetadata) -> CallToolResult {
+pub fn format_error_default(error: BrpError, metadata: &BrpToolCallInfo) -> CallToolResult {
     // Extract rich guidance from format_corrections if present
     let rich_guidance = extract_rich_guidance_from_error(&error);
 
@@ -146,7 +146,7 @@ struct RichGuidance {
 
 fn build_enhanced_error_response(
     error: &BrpError,
-    metadata: &BrpMetadata,
+    metadata: &BrpToolCallInfo,
     rich_guidance: Option<RichGuidance>,
 ) -> Result<crate::support::response::JsonResponse> {
     let mut builder = ResponseBuilder::error()
@@ -212,10 +212,15 @@ impl ResponseFormatter {
         Self { config, context }
     }
 
-    pub fn format_success(&self, data: &Value, metadata: BrpMetadata) -> CallToolResult {
+    pub fn format_success(&self, data: &Value, metadata: BrpToolCallInfo) -> CallToolResult {
         // Check if this is a passthrough formatter - if so, convert data directly to CallToolResult
         if self.is_passthrough_formatter() {
             return Self::format_passthrough_response(self, data);
+        }
+
+        // Check if this is a raw result formatter - if so, put BRP data in result field
+        if self.is_raw_result_formatter() {
+            return self.format_raw_result_response(data, metadata);
         }
 
         // First build the response
@@ -238,6 +243,19 @@ impl ResponseFormatter {
             && self.config.large_response_config.is_none()
     }
 
+    /// Check if this formatter is configured as a raw result formatter
+    fn is_raw_result_formatter(&self) -> bool {
+        // Raw result formatters have no success fields and have large response config
+        // They may have a template for the message
+        self.config.success_fields.is_empty()
+            && self.config.large_response_config.is_some()
+            && self
+                .config
+                .large_response_config
+                .as_ref()
+                .is_some_and(|config| config.file_prefix == "brp_response_")
+    }
+
     /// Format a passthrough response by converting the data directly to `CallToolResult`
     fn format_passthrough_response(_self: &Self, data: &Value) -> CallToolResult {
         // For passthrough, the data should already be a structured response
@@ -247,6 +265,93 @@ impl ResponseFormatter {
         });
 
         CallToolResult::success(vec![rmcp::model::Content::text(json_string)])
+    }
+
+    /// Format a raw result response by putting BRP data in the result field
+    fn format_raw_result_response(
+        &self,
+        data: &Value,
+        metadata: BrpToolCallInfo,
+    ) -> CallToolResult {
+        // Build response with BRP data in result field
+        let mut builder = ResponseBuilder::success();
+
+        // Set template message if provided
+        if let Some(template) = &self.config.success_template {
+            let template_params = self.context.params.as_ref();
+            let message = substitute_template(template, template_params);
+            builder = builder.message(message);
+        }
+
+        // Clean the data to remove any format_corrections before putting in result
+        let mut clean_data = data.clone();
+        let format_corrections_to_add = if let Value::Object(data_map) = data {
+            // Check if format corrections exist and are non-empty
+            if let Some(format_corrections) = data_map.get("format_corrections") {
+                if !format_corrections.is_null()
+                    && format_corrections.is_array()
+                    && format_corrections
+                        .as_array()
+                        .is_some_and(|arr| !arr.is_empty())
+                {
+                    Some(format_corrections.clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Remove format_corrections from the clean data
+        if let Value::Object(data_map) = &mut clean_data {
+            data_map.remove("format_corrections");
+        }
+
+        // For raw responses, put the entire BRP response in the result field
+        builder = match builder.with_result(&clean_data) {
+            Ok(b) => b,
+            Err(_) => {
+                return ResponseBuilder::error()
+                    .message("Failed to set result field")
+                    .build()
+                    .to_call_tool_result();
+            }
+        };
+
+        // Only add metadata if there are format corrections
+        if let Some(format_corrections) = format_corrections_to_add {
+            // Try to add both fields, but if it fails, continue without metadata
+            match builder
+                .add_metadata_field("format_corrected", "attempted")
+                .and_then(|b| b.add_metadata_field("format_corrections", &format_corrections))
+            {
+                Ok(b) => builder = b,
+                Err(_) => {
+                    // If adding metadata failed, recreate the builder with just the result
+                    builder = ResponseBuilder::success();
+                    if let Some(template) = &self.config.success_template {
+                        let template_params = self.context.params.as_ref();
+                        let message = substitute_template(template, template_params);
+                        builder = builder.message(message);
+                    }
+                    builder = match builder.with_result(&clean_data) {
+                        Ok(b) => b,
+                        Err(_) => {
+                            return ResponseBuilder::error()
+                                .message("Failed to set result field")
+                                .build()
+                                .to_call_tool_result();
+                        }
+                    };
+                }
+            }
+        }
+
+        let response = builder.build();
+        self.handle_large_response_if_needed(response, &metadata.tool_name)
     }
 
     /// Handle large response processing if configured
@@ -431,6 +536,20 @@ impl ResponseFormatterFactory {
             },
         }
     }
+
+    /// Create a formatter for Raw BRP responses that go directly to result field
+    pub fn raw_result() -> ResponseFormatterBuilder {
+        ResponseFormatterBuilder {
+            config: FormatterConfig {
+                success_template:      None,
+                success_fields:        vec![],
+                large_response_config: Some(LargeResponseConfig {
+                    file_prefix: "brp_response_".to_string(),
+                    ..Default::default()
+                }),
+            },
+        }
+    }
 }
 
 impl ResponseFormatterFactory {
@@ -548,7 +667,7 @@ mod tests {
         };
 
         let formatter = ResponseFormatter::new(Arc::new(config), context);
-        let metadata = BrpMetadata::new("bevy/destroy", DEFAULT_BRP_PORT);
+        let metadata = BrpToolCallInfo::new("bevy/destroy", DEFAULT_BRP_PORT);
         let result = formatter.format_success(&Value::Null, metadata);
 
         // Verify result has content
@@ -559,7 +678,7 @@ mod tests {
 
     #[test]
     fn test_enhanced_error_formatting_direct() {
-        let metadata = BrpMetadata::new("bevy/destroy", DEFAULT_BRP_PORT);
+        let metadata = BrpToolCallInfo::new("bevy/destroy", DEFAULT_BRP_PORT);
         let error = BrpError {
             code:    -32603,
             message: "Entity not found".to_string(),
@@ -583,7 +702,7 @@ mod tests {
         };
 
         let formatter = factory.create(context);
-        let metadata = BrpMetadata::new("bevy/query", DEFAULT_BRP_PORT);
+        let metadata = BrpToolCallInfo::new("bevy/query", DEFAULT_BRP_PORT);
         let data = json!([{"entity": 1}, {"entity": 2}]);
         let result = formatter.format_success(&data, metadata);
 

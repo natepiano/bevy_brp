@@ -63,6 +63,7 @@ mod unified_types;
 #[cfg(test)]
 mod tests;
 
+pub use self::constants::FORMAT_DISCOVERY_METHODS;
 pub use self::engine::{
     EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus,
     execute_brp_method_with_format_discovery,

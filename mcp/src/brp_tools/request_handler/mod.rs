@@ -9,4 +9,4 @@ mod handler;
 // Public exports
 pub use config::BrpHandlerConfig;
 pub use format_discovery::FormatCorrectionStatus;
-pub use handler::handle_brp_request;
+pub use handler::handle_brp_method_tool_call;

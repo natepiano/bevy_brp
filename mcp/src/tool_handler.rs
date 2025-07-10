@@ -26,9 +26,9 @@ use crate::brp_tools::constants::{
     JSON_FIELD_ENTITY, JSON_FIELD_METHOD, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
-use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_request};
+use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
 use crate::brp_tools::support::ResponseFormatterFactory;
-use crate::brp_tools::support::response_formatter::BrpMetadata;
+use crate::brp_tools::support::response_formatter::BrpToolCallInfo;
 use crate::extractors::{
     ExtractedParams, FormatterContext, McpCallExtractor, convert_extractor_type,
     convert_response_field_v2,
@@ -213,6 +213,59 @@ async fn local_tool_call(
     format_tool_call_result(result, def.name, &formatter_factory, &formatter_context)
 }
 
+/// Build a formatter factory from a tool definition's response specification
+fn build_formatter_factory_from_spec(
+    formatter_spec: &crate::response::ResponseSpecification,
+) -> ResponseFormatterFactory {
+    // Create the formatter factory based on the definition
+    let mut formatter_builder = match formatter_spec {
+        crate::response::ResponseSpecification::Structured { formatter_type, .. } => {
+            match formatter_type {
+                FormatterType::LocalPassthrough => ResponseFormatterFactory::local_passthrough(),
+                _ => ResponseFormatterFactory::standard(),
+            }
+        }
+        crate::response::ResponseSpecification::Raw { .. } => {
+            // Raw responses put BRP data directly in result field
+            ResponseFormatterFactory::raw_result()
+        }
+    };
+
+    // Set the template if provided
+    let template = match formatter_spec {
+        crate::response::ResponseSpecification::Structured { template, .. } => template,
+        crate::response::ResponseSpecification::Raw { template } => template,
+    };
+    if !template.is_empty() {
+        formatter_builder = formatter_builder.with_template(*template);
+    }
+
+    // Add response fields (only for Structured responses)
+    if let crate::response::ResponseSpecification::Structured {
+        response_fields, ..
+    } = formatter_spec
+    {
+        for field in response_fields {
+            match field {
+                ResponseFieldCompat::V1(response_field) => {
+                    formatter_builder = formatter_builder.with_response_field(
+                        response_field.name,
+                        convert_extractor_type(&response_field.extractor),
+                    );
+                }
+                ResponseFieldCompat::V2(response_field_v2) => {
+                    formatter_builder = formatter_builder.with_response_field(
+                        response_field_v2.name(),
+                        convert_response_field_v2(response_field_v2),
+                    );
+                }
+            }
+        }
+    }
+
+    formatter_builder.build()
+}
+
 /// Generate a BRP handler
 async fn brp_method_tool_call(
     def: &McpToolDef,
@@ -222,42 +275,16 @@ async fn brp_method_tool_call(
     // Extract parameters directly based on the definition
     let extracted_params = extract_params_for_type(&def.param_extractor, &request)?;
 
-    // Create the formatter factory based on the definition
-    let mut formatter_builder = match &def.formatter.formatter_type {
-        FormatterType::LocalPassthrough => ResponseFormatterFactory::local_passthrough(),
-        _ => ResponseFormatterFactory::standard(),
-    };
-
-    // Set the template if provided
-    if !def.formatter.template.is_empty() {
-        formatter_builder = formatter_builder.with_template(def.formatter.template);
-    }
-
-    // Add response fields
-    for field in &def.formatter.response_fields {
-        match field {
-            ResponseFieldCompat::V1(response_field) => {
-                formatter_builder = formatter_builder.with_response_field(
-                    response_field.name,
-                    convert_extractor_type(&response_field.extractor),
-                );
-            }
-            ResponseFieldCompat::V2(response_field_v2) => {
-                formatter_builder = formatter_builder.with_response_field(
-                    response_field_v2.name(),
-                    convert_response_field_v2(response_field_v2),
-                );
-            }
-        }
-    }
+    // Use the shared function to build the formatter factory
+    let formatter_factory = build_formatter_factory_from_spec(&def.formatter);
 
     let config = BrpHandlerConfig {
         method: Some(method),
         extracted_params,
-        formatter_factory: formatter_builder.build(),
+        formatter_factory,
     };
 
-    handle_brp_request(request, &config).await
+    handle_brp_method_tool_call(request, &config).await
 }
 
 /// Create formatter factory and context from tool definition
@@ -265,37 +292,9 @@ fn create_formatter_from_def(
     def: &McpToolDef,
     request: &CallToolRequestParam,
 ) -> (ResponseFormatterFactory, FormatterContext) {
-    // Create the formatter factory based on the definition
-    let mut formatter_builder = match &def.formatter.formatter_type {
-        FormatterType::LocalPassthrough => ResponseFormatterFactory::local_passthrough(),
-        _ => ResponseFormatterFactory::standard(),
-    };
+    // Use the shared function to build the formatter factory
+    let formatter_factory = build_formatter_factory_from_spec(&def.formatter);
 
-    // Set the template if provided
-    if !def.formatter.template.is_empty() {
-        formatter_builder = formatter_builder.with_template(def.formatter.template);
-    }
-
-    // Add response fields
-    for field in &def.formatter.response_fields {
-        match field {
-            ResponseFieldCompat::V1(response_field) => {
-                formatter_builder = formatter_builder.with_response_field(
-                    response_field.name,
-                    convert_extractor_type(&response_field.extractor),
-                );
-            }
-            ResponseFieldCompat::V2(response_field_v2) => {
-                formatter_builder = formatter_builder.with_response_field(
-                    response_field_v2.name(),
-                    convert_response_field_v2(response_field_v2),
-                );
-            }
-        }
-    }
-
-    // Create the formatter
-    let formatter_factory = formatter_builder.build();
     let formatter_context = FormatterContext {
         params:           request.arguments.clone().map(serde_json::Value::Object),
         format_corrected: None,
@@ -319,7 +318,7 @@ fn format_tool_call_result(
                 .and_then(|s| s.as_str())
                 .is_some_and(|s| s == "error");
 
-            let metadata = BrpMetadata::new(tool_name, 0);
+            let metadata = BrpToolCallInfo::new(tool_name, 0);
 
             if is_error {
                 // For error responses, build the error response directly
