@@ -202,8 +202,6 @@ pub struct TypeDiscoveryResponse {
     pub error:                Option<String>,
 }
 
-
-
 /// Check if a type registration has Serialize and Deserialize traits
 pub fn check_serialization_traits(registration: &bevy::reflect::TypeRegistration) -> (bool, bool) {
     let has_serialize = registration

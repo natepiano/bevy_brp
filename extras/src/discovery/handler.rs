@@ -140,7 +140,7 @@ pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpR
             })
         } else {
             // Full response for successful discoveries
-            serde_json::to_value(&type_response).unwrap_or(json!({}))
+            serde_json::to_value(&type_response).unwrap_or_else(|_| json!({}))
         };
         type_info_json.insert(type_name, json_value);
     }
