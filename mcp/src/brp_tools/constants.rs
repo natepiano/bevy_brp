@@ -30,7 +30,6 @@ pub const JSON_FIELD_RESOURCE: &str = "resource";
 pub const JSON_FIELD_RESOURCES: &str = "resources";
 pub const JSON_FIELD_VALUE: &str = "value";
 pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
-pub const JSON_FIELD_WATCHES: &str = "watches";
 
 // ============================================================================
 // PARAMETER CONSTANTS

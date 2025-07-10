@@ -26,6 +26,9 @@ pub enum Error {
     #[error("File operation failed: {0}")]
     FileOperation(String),
 
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
+
     #[error("Invalid state: {0}")]
     InvalidState(String),
 
@@ -37,9 +40,6 @@ pub enum Error {
 
     #[error("Process management error: {0}")]
     ProcessManagement(String),
-
-    #[error("Parameter extraction failed: {0}")]
-    ParameterExtraction(String),
 
     #[error("Path disambiguation required: {message}")]
     PathDisambiguation {
@@ -68,7 +68,7 @@ impl Error {
         Self::categorize_error(&message)
     }
 
-    /// Create a "Cannot X" error  
+    /// Create a "Cannot X" error
     pub fn cannot(action: &str, reason: impl std::fmt::Display) -> Self {
         let message = format!("{MSG_CANNOT_PREFIX} {action}: {reason}");
         Self::categorize_error(&message)
@@ -76,12 +76,12 @@ impl Error {
 
     /// Create an "Invalid X" error
     pub fn invalid(what: &str, details: impl std::fmt::Display) -> Self {
-        Self::ParameterExtraction(format!("{MSG_INVALID_PREFIX} {what}: {details}"))
+        Self::InvalidArgument(format!("{MSG_INVALID_PREFIX} {what}: {details}"))
     }
 
     /// Create a "Missing X" error
     pub fn missing(what: &str) -> Self {
-        Self::ParameterExtraction(format!("{MSG_MISSING_PREFIX} {what}"))
+        Self::InvalidArgument(format!("{MSG_MISSING_PREFIX} {what}"))
     }
 
     /// Create an "Unexpected X" error
@@ -134,7 +134,7 @@ impl Error {
 
     /// Create error for validation failures
     pub fn validation_failed(what: &str, reason: impl std::fmt::Display) -> Self {
-        Self::ParameterExtraction(format!("Validation failed for {what}: {reason}"))
+        Self::InvalidArgument(format!("Validation failed for {what}: {reason}"))
     }
 
     /// Create error for stream operations
@@ -164,7 +164,7 @@ impl Error {
             || message.contains("extract")
             || message.contains("invalid")
         {
-            Self::ParameterExtraction(message.to_string())
+            Self::InvalidArgument(message.to_string())
         } else {
             Self::General(message.to_string()) // Default fallback
         }
@@ -179,7 +179,7 @@ impl From<Error> for McpError {
             | Error::JsonRpc(msg)
             | Error::FormatDiscovery(msg)
             | Error::Configuration(msg)
-            | Error::ParameterExtraction(msg) => Self::invalid_params(msg, None),
+            | Error::InvalidArgument(msg) => Self::invalid_params(msg, None),
             Error::PathDisambiguation { message, .. } => {
                 // For path disambiguation, we want to preserve the detailed message
                 // as an invalid_params error since it's a parameter issue that can be resolved

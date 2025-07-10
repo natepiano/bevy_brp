@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use chrono;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
+use rmcp::Error as McpError;
+use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use super::constants::{
@@ -12,26 +13,98 @@ use super::constants::{
 use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::extractors::McpCallExtractor;
-use crate::response::BevyExampleLaunchResult;
-use crate::{BrpMcpService, service};
+use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service;
 
-pub async fn handle(
-    service: &BrpMcpService,
-    request: rmcp::model::CallToolRequestParam,
-    context: RequestContext<RoleServer>,
-) -> Result<BevyExampleLaunchResult, McpError> {
-    // Get parameters
-    let extractor = McpCallExtractor::from_request(&request);
-    let example_name = extractor.get_required_string(PARAM_EXAMPLE_NAME, "example name")?;
-    let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
-    let path = extractor.get_optional_path();
-    let port = extractor.get_optional_u16(PARAM_PORT)?;
+/// Result from launching a Bevy example
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaunchBevyExampleResult {
+    /// Status of the launch operation
+    pub status:             String,
+    /// Status message
+    pub message:            String,
+    /// Example name that was launched
+    pub example_name:       Option<String>,
+    /// Process ID of the launched example
+    pub pid:                Option<u32>,
+    /// Working directory used for launch
+    pub working_directory:  Option<String>,
+    /// Build profile used (debug/release)
+    pub profile:            Option<String>,
+    /// Log file path for the launched example
+    pub log_file:           Option<String>,
+    /// Launch duration in milliseconds
+    pub launch_duration_ms: Option<u64>,
+    /// Launch timestamp
+    pub launch_timestamp:   Option<String>,
+    /// Workspace information
+    pub workspace:          Option<String>,
+    /// Package name containing the example
+    pub package_name:       Option<String>,
+    /// Available duplicate paths (for disambiguation errors)
+    pub duplicate_paths:    Option<Vec<String>>,
+    /// Note about build behavior
+    pub note:               Option<String>,
+}
 
+impl HandlerResult for LaunchBevyExampleResult {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+    }
+}
+
+pub struct LaunchBevyExample;
+
+impl LocalHandler for LaunchBevyExample {
+    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+        let extractor = McpCallExtractor::from_request(&ctx.request);
+        let example_name = match extractor.get_required_string(PARAM_EXAMPLE_NAME, "example name") {
+            Ok(name) => name.to_string(),
+            Err(e) => return Box::pin(async move { Err(e) }),
+        };
+        let profile = extractor
+            .get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE)
+            .to_string();
+        let path = extractor
+            .get_optional_path()
+            .as_deref()
+            .map(ToString::to_string);
+        let port = match extractor.get_optional_u16(PARAM_PORT) {
+            Ok(p) => p,
+            Err(e) => return Box::pin(async move { Err(e) }),
+        };
+
+        let service = Arc::clone(&ctx.service);
+        let context = ctx.context.clone();
+
+        Box::pin(async move {
+            handle_impl(
+                &example_name,
+                &profile,
+                path.as_deref(),
+                port,
+                service,
+                context,
+            )
+            .await
+            .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+        })
+    }
+}
+
+async fn handle_impl(
+    example_name: &str,
+    profile: &str,
+    path: Option<&str>,
+    port: Option<u16>,
+    service: Arc<crate::McpService>,
+    context: rmcp::service::RequestContext<rmcp::RoleServer>,
+) -> Result<LaunchBevyExampleResult, McpError> {
     // Get search paths
     let search_paths = service::fetch_roots_and_get_paths(service, context).await?;
 
     // Launch the example
-    launch_bevy_example(example_name, profile, path.as_deref(), port, &search_paths)
+    launch_bevy_example(example_name, profile, path, port, &search_paths)
 }
 
 pub fn launch_bevy_example(
@@ -40,7 +113,7 @@ pub fn launch_bevy_example(
     path: Option<&str>,
     port: Option<u16>,
     search_paths: &[PathBuf],
-) -> Result<BevyExampleLaunchResult, McpError> {
+) -> Result<LaunchBevyExampleResult, McpError> {
     let launch_start = Instant::now();
 
     // Find and validate the example
@@ -77,7 +150,7 @@ pub fn launch_bevy_example(
 
                     // Convert the JSON value to our typed result
                     // We only populate the fields that are in the error response
-                    return Ok(BevyExampleLaunchResult {
+                    return Ok(LaunchBevyExampleResult {
                         status:             error_response["status"]
                             .as_str()
                             .unwrap_or("error")
@@ -280,7 +353,7 @@ fn build_launch_response(
     launch_result: LaunchResult,
     launch_start: Instant,
     profile: &str,
-) -> Result<BevyExampleLaunchResult, McpError> {
+) -> Result<LaunchBevyExampleResult, McpError> {
     let manifest_dir = launch_common::validate_manifest_directory(&example.manifest_path)?;
 
     let launch_duration_ms = u64::try_from(
@@ -299,7 +372,7 @@ fn build_launch_response(
         .and_then(|name| name.to_str())
         .map(String::from);
 
-    Ok(BevyExampleLaunchResult {
+    Ok(LaunchBevyExampleResult {
         status: "success".to_string(),
         message: format!(
             "Successfully launched '{example_name}' (PID: {})",

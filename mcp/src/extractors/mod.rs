@@ -10,6 +10,6 @@ mod mcp_call;
 mod types;
 
 pub use bevy_response::BevyResponseExtractor;
-pub use field_extractor::{FieldExtractor, convert_extractor_type};
+pub use field_extractor::{FieldExtractor, convert_extractor_type, convert_response_field_v2};
 pub use mcp_call::McpCallExtractor;
-pub use types::{ExtractedParams, ExtractorType, FormatterContext, ResponseField};
+pub use types::{ExtractedParams, ExtractorType, FormatterContext};

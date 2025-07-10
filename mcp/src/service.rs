@@ -10,14 +10,14 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
-use crate::{tool_definitions, tool_generator};
+use crate::{tool_definitions, tool_handler};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
 /// This service provides tools for interacting with Bevy applications through BRP,
 /// including entity manipulation, component management, and resource access.
 #[derive(Clone)]
-pub struct BrpMcpService {
+pub struct McpService {
     /// Project root directories configured by the MCP client.
     ///
     /// These paths are used to locate Bevy applications and projects
@@ -25,7 +25,7 @@ pub struct BrpMcpService {
     pub roots: Arc<Mutex<Vec<PathBuf>>>,
 }
 
-impl BrpMcpService {
+impl McpService {
     pub fn new() -> Self {
         Self {
             roots: Arc::new(Mutex::new(Vec::new())),
@@ -88,7 +88,7 @@ impl BrpMcpService {
     }
 }
 
-impl ServerHandler for BrpMcpService {
+impl ServerHandler for McpService {
     fn get_info(&self) -> rmcp::model::ServerInfo {
         rmcp::model::ServerInfo {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
@@ -101,7 +101,7 @@ impl ServerHandler for BrpMcpService {
         _request: PaginatedRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        Ok(register_tools())
+        Ok(list_mcp_tools())
     }
 
     async fn call_tool(
@@ -109,13 +109,13 @@ impl ServerHandler for BrpMcpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        handle_tool_call(self, request, context).await
+        find_and_call_tool(self, request, context).await
     }
 }
 
 /// Fetch roots from the client and return the search paths
 pub async fn fetch_roots_and_get_paths(
-    service: &BrpMcpService,
+    service: Arc<McpService>,
     context: RequestContext<RoleServer>,
 ) -> Result<Vec<PathBuf>, McpError> {
     // Fetch current roots from client
@@ -139,7 +139,7 @@ pub async fn fetch_roots_and_get_paths(
 /// Typed handler wrapper for binary listing operations that fetches search paths
 /// Returns typed results for use with `format_handler_result`
 pub async fn handle_list_binaries_typed<F, Fut, T>(
-    service: &BrpMcpService,
+    service: Arc<McpService>,
     context: RequestContext<RoleServer>,
     handler: F,
 ) -> Result<T, McpError>
@@ -151,40 +151,37 @@ where
     handler(search_paths).await
 }
 
-fn register_tools() -> ListToolsResult {
-    let mut tools = vec![];
-
-    // Generate tools from declarative definitions
-    for def in tool_definitions::get_all_tools() {
-        tools.push(tool_generator::generate_tool_registration(&def));
-    }
-
-    // Sort all tools alphabetically by name for consistent ordering
-    tools.sort_by(|a, b| a.name.cmp(&b.name));
-
+fn list_mcp_tools() -> ListToolsResult {
     ListToolsResult {
         next_cursor: None,
-        tools,
+        tools:       {
+            let mut tools: Vec<_> = tool_definitions::get_all_tool_definitions()
+                .into_iter()
+                .map(tool_handler::get_tool)
+                .collect();
+            tools.sort_by_key(|tool| tool.name.clone());
+            tools
+        },
     }
 }
 
-async fn handle_tool_call(
-    service: &BrpMcpService,
+async fn find_and_call_tool(
+    service: &McpService,
     request: CallToolRequestParam,
     context: RequestContext<RoleServer>,
 ) -> Result<CallToolResult, McpError> {
     // Check if this is one of the declaratively defined tools
-    let all_tools = tool_definitions::get_all_tools();
+    let all_tools = tool_definitions::get_all_tool_definitions();
     if let Some(def) = all_tools.iter().find(|d| d.name == request.name) {
-        return tool_generator::generate_tool_handler(def, service, request, context).await;
+        return tool_handler::handle_call_tool(def, service, request, context).await;
     }
 
     // All tools have been migrated to declarative definitions
     let tool_name = &request.name;
     Err(report_to_mcp_error(
-        &error_stack::Report::new(ServiceError::ParameterExtraction(format!(
+        &error_stack::Report::new(ServiceError::InvalidArgument(format!(
             "unknown tool: {tool_name}"
         )))
-        .attach_printable("Tool not found in registry"),
+        .attach_printable("Tool not found"),
     ))
 }

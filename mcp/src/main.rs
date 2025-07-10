@@ -10,19 +10,20 @@ use std::error::Error;
 
 use rmcp::ServiceExt;
 use rmcp::transport::stdio;
-use service::BrpMcpService;
+use service::McpService;
 
 mod app_tools;
 mod brp_tools;
 mod constants;
 mod error;
 mod extractors;
+mod handler;
 mod log_tools;
 mod response;
 mod service;
 mod support;
 mod tool_definitions;
-mod tool_generator;
+mod tool_handler;
 mod tools;
 
 #[tokio::main]
@@ -34,7 +35,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the watch manager
     brp_tools::initialize_watch_manager().await;
 
-    let service = BrpMcpService::new();
+    let service = McpService::new();
 
     let server = service.serve(stdio()).await?;
     server.waiting().await?;

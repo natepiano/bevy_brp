@@ -14,34 +14,32 @@
 //! - **`LocalStandard`**: Standard formatting for simple operations
 //! - **`EntityOperation`/`ResourceOperation`**: BRP-specific operations with field extraction
 
+use std::sync::Arc;
+
 use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+// use crate::tools::{HANDLER_BRP_LIST_ACTIVE_WATCHES, HANDLER_BRP_STOP_WATCH};
+use crate::McpService;
 use crate::brp_tools::constants::{
     JSON_FIELD_ENTITY, JSON_FIELD_METHOD, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_request};
 use crate::brp_tools::support::ResponseFormatterFactory;
+use crate::brp_tools::support::response_formatter::BrpMetadata;
 use crate::extractors::{
     ExtractedParams, FormatterContext, McpCallExtractor, convert_extractor_type,
+    convert_response_field_v2,
 };
+use crate::handler::HandlerType;
+use crate::response::{FormatterType, ResponseFieldCompat};
 use crate::support::schema;
-use crate::tool_definitions::{
-    BrpMethodParamCategory, FormatterType, HandlerType, McpToolDef, ParamType,
-};
-use crate::tools::{
-    HANDLER_BEVY_GET_WATCH, HANDLER_BEVY_LIST_WATCH, HANDLER_BRP_LIST_ACTIVE_WATCHES,
-    HANDLER_BRP_STOP_WATCH, HANDLER_CLEANUP_LOGS, HANDLER_GET_TRACE_LOG_PATH,
-    HANDLER_LAUNCH_BEVY_APP, HANDLER_LAUNCH_BEVY_EXAMPLE, HANDLER_LIST_BEVY_APPS,
-    HANDLER_LIST_BEVY_EXAMPLES, HANDLER_LIST_BRP_APPS, HANDLER_LIST_LOGS, HANDLER_READ_LOG,
-    HANDLER_SET_TRACING_LEVEL, HANDLER_SHUTDOWN, HANDLER_STATUS,
-};
-use crate::{BrpMcpService, app_tools, brp_tools, error, log_tools};
+use crate::tool_definitions::{BrpMethodParamCategory, McpToolDef, ParamType};
 
 /// Generate tool registration from a declarative definition
-pub fn generate_tool_registration(def: &McpToolDef) -> Tool {
+pub fn get_tool(def: McpToolDef) -> Tool {
     let mut builder = schema::SchemaBuilder::new();
 
     // Add all parameters to the schema
@@ -69,25 +67,6 @@ pub fn generate_tool_registration(def: &McpToolDef) -> Tool {
         name:         def.name.into(),
         description:  def.description.into(),
         input_schema: builder.build(),
-    }
-}
-
-/// Generate a handler function for a declarative tool definition
-pub async fn generate_tool_handler(
-    def: &McpToolDef,
-    service: &BrpMcpService,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
-    match &def.handler {
-        HandlerType::Brp { method } => {
-            // Handle BRP method calls
-            generate_brp_handler(def, request, method).await
-        }
-        HandlerType::Local { handler } => {
-            // Handle local method calls
-            generate_local_handler(def, service, request, context, handler).await
-        }
     }
 }
 
@@ -193,8 +172,49 @@ fn extract_params_for_type(
     }
 }
 
+/// Generate a handler function for a declarative tool definition
+pub async fn handle_call_tool(
+    def: &McpToolDef,
+    service: &McpService,
+    request: CallToolRequestParam,
+    context: RequestContext<RoleServer>,
+) -> Result<CallToolResult, McpError> {
+    match &def.handler {
+        HandlerType::Brp { method } => {
+            // Handle BRP method calls
+            brp_method_tool_call(def, request, method).await
+        }
+
+        HandlerType::Local { handler } => {
+            local_tool_call(def, service, request, context, handler.as_ref()).await
+        }
+    }
+}
+
+/// Generate a `LocalFn` handler using function pointer approach
+async fn local_tool_call(
+    def: &McpToolDef,
+    service: &McpService,
+    request: CallToolRequestParam,
+    context: RequestContext<RoleServer>,
+    handler: &dyn crate::handler::LocalHandler,
+) -> Result<CallToolResult, McpError> {
+    let (formatter_factory, formatter_context) = create_formatter_from_def(def, &request);
+
+    let handler_context =
+        crate::handler::HandlerContext::new(Arc::new(service.clone()), request, context);
+
+    // Handler returns typed result, we ALWAYS pass it through format_handler_result
+    let result = handler
+        .handle(&handler_context)
+        .await
+        .map(|typed_result| typed_result.to_json());
+
+    format_tool_call_result(result, def.name, &formatter_factory, &formatter_context)
+}
+
 /// Generate a BRP handler
-async fn generate_brp_handler(
+async fn brp_method_tool_call(
     def: &McpToolDef,
     request: CallToolRequestParam,
     method: &'static str,
@@ -204,12 +224,8 @@ async fn generate_brp_handler(
 
     // Create the formatter factory based on the definition
     let mut formatter_builder = match &def.formatter.formatter_type {
-        FormatterType::EntityOperation(field) => ResponseFormatterFactory::entity_operation(field),
-        FormatterType::ResourceOperation => ResponseFormatterFactory::resource_operation(""),
-        FormatterType::Simple => ResponseFormatterFactory::list_operation(),
-        FormatterType::LocalStandard => ResponseFormatterFactory::local_standard(),
-        FormatterType::LocalCollection => ResponseFormatterFactory::local_collection(),
         FormatterType::LocalPassthrough => ResponseFormatterFactory::local_passthrough(),
+        _ => ResponseFormatterFactory::standard(),
     };
 
     // Set the template if provided
@@ -219,11 +235,21 @@ async fn generate_brp_handler(
 
     // Add response fields
     for field in &def.formatter.response_fields {
-        formatter_builder = formatter_builder
-            .with_response_field(field.name, convert_extractor_type(&field.extractor));
+        match field {
+            ResponseFieldCompat::V1(response_field) => {
+                formatter_builder = formatter_builder.with_response_field(
+                    response_field.name,
+                    convert_extractor_type(&response_field.extractor),
+                );
+            }
+            ResponseFieldCompat::V2(response_field_v2) => {
+                formatter_builder = formatter_builder.with_response_field(
+                    response_field_v2.name(),
+                    convert_response_field_v2(response_field_v2),
+                );
+            }
+        }
     }
-
-    // All errors now route through format_error_default automatically
 
     let config = BrpHandlerConfig {
         method: Some(method),
@@ -234,160 +260,6 @@ async fn generate_brp_handler(
     handle_brp_request(request, &config).await
 }
 
-/// Generate a local handler
-#[allow(clippy::too_many_lines)]
-async fn generate_local_handler(
-    def: &McpToolDef,
-    service: &BrpMcpService,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
-    handler: &str,
-) -> Result<CallToolResult, McpError> {
-    let (formatter_factory, formatter_context) = create_formatter_from_def(def, &request);
-
-    // Route to the appropriate local handler based on the handler name
-    // and format the result using the ResponseFormatter
-    match handler {
-        HANDLER_LIST_LOGS => {
-            let result = log_tools::list_logs::handle(&request)
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(result, "list_logs", &formatter_factory, &formatter_context)
-        }
-        HANDLER_READ_LOG => {
-            let result = log_tools::read_log::handle(&request)
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(result, "read_log", &formatter_factory, &formatter_context)
-        }
-        HANDLER_CLEANUP_LOGS => {
-            let result = log_tools::cleanup_logs::handle(&request)
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "cleanup_logs",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_LIST_BEVY_APPS => {
-            let result = app_tools::brp_list_bevy_apps::handle(service, context)
-                .await
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "brp_list_bevy_apps",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_LIST_BRP_APPS => {
-            let result = app_tools::brp_list_brp_apps::handle(service, context)
-                .await
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "brp_list_brp_apps",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_LIST_BEVY_EXAMPLES => {
-            let result = app_tools::brp_list_bevy_examples::handle(service, context)
-                .await
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "brp_list_bevy_examples",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_LAUNCH_BEVY_APP => {
-            let result = app_tools::brp_launch_bevy_app::handle(service, request, context)
-                .await
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "brp_launch_bevy_app",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_LAUNCH_BEVY_EXAMPLE => {
-            let result = app_tools::brp_launch_bevy_example::handle(service, request, context)
-                .await
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "brp_launch_bevy_example",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_SHUTDOWN => format_handler_result(
-            app_tools::brp_shutdown::handle(request).await,
-            "shutdown",
-            &formatter_factory,
-            &formatter_context,
-        ),
-        HANDLER_STATUS => format_handler_result(
-            app_tools::brp_status::handle(request).await,
-            "brp_status",
-            &formatter_factory,
-            &formatter_context,
-        ),
-        HANDLER_GET_TRACE_LOG_PATH => {
-            let result = log_tools::get_trace_log_path::handle();
-            let value = serde_json::to_value(result).unwrap_or(serde_json::Value::Null);
-            format_handler_result(
-                Ok(value),
-                "get_trace_log_path",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_SET_TRACING_LEVEL => {
-            let result = log_tools::set_tracing_level::handle(&request)
-                .map(|data| serde_json::to_value(data).unwrap_or(serde_json::Value::Null));
-            format_handler_result(
-                result,
-                "set_tracing_level",
-                &formatter_factory,
-                &formatter_context,
-            )
-        }
-        HANDLER_BEVY_GET_WATCH => format_handler_result(
-            brp_tools::watch::bevy_get_watch::handle(request).await,
-            "bevy_get_watch",
-            &formatter_factory,
-            &formatter_context,
-        ),
-        HANDLER_BEVY_LIST_WATCH => format_handler_result(
-            brp_tools::watch::bevy_list_watch::handle(service, request, context).await,
-            "bevy_list_watch",
-            &formatter_factory,
-            &formatter_context,
-        ),
-        HANDLER_BRP_STOP_WATCH => format_handler_result(
-            brp_tools::watch::brp_stop_watch::handle(service, request, context).await,
-            "brp_stop_watch",
-            &formatter_factory,
-            &formatter_context,
-        ),
-        HANDLER_BRP_LIST_ACTIVE_WATCHES => format_handler_result(
-            brp_tools::watch::brp_list_active::handle(service, request, context).await,
-            "brp_list_active_watches",
-            &formatter_factory,
-            &formatter_context,
-        ),
-        _ => Err(error::report_to_mcp_error(
-            &error_stack::Report::new(error::Error::ParameterExtraction(format!(
-                "unknown local handler: {handler}"
-            )))
-            .attach_printable("Invalid handler parameter"),
-        )),
-    }
-}
-
 /// Create formatter factory and context from tool definition
 fn create_formatter_from_def(
     def: &McpToolDef,
@@ -395,12 +267,8 @@ fn create_formatter_from_def(
 ) -> (ResponseFormatterFactory, FormatterContext) {
     // Create the formatter factory based on the definition
     let mut formatter_builder = match &def.formatter.formatter_type {
-        FormatterType::EntityOperation(field) => ResponseFormatterFactory::entity_operation(field),
-        FormatterType::ResourceOperation => ResponseFormatterFactory::resource_operation(""),
-        FormatterType::Simple => ResponseFormatterFactory::list_operation(),
-        FormatterType::LocalStandard => ResponseFormatterFactory::local_standard(),
-        FormatterType::LocalCollection => ResponseFormatterFactory::local_collection(),
         FormatterType::LocalPassthrough => ResponseFormatterFactory::local_passthrough(),
+        _ => ResponseFormatterFactory::standard(),
     };
 
     // Set the template if provided
@@ -410,8 +278,20 @@ fn create_formatter_from_def(
 
     // Add response fields
     for field in &def.formatter.response_fields {
-        formatter_builder = formatter_builder
-            .with_response_field(field.name, convert_extractor_type(&field.extractor));
+        match field {
+            ResponseFieldCompat::V1(response_field) => {
+                formatter_builder = formatter_builder.with_response_field(
+                    response_field.name,
+                    convert_extractor_type(&response_field.extractor),
+                );
+            }
+            ResponseFieldCompat::V2(response_field_v2) => {
+                formatter_builder = formatter_builder.with_response_field(
+                    response_field_v2.name(),
+                    convert_response_field_v2(response_field_v2),
+                );
+            }
+        }
     }
 
     // Create the formatter
@@ -425,9 +305,9 @@ fn create_formatter_from_def(
 }
 
 /// Format the result of a handler that returns `Result<Value, McpError>`
-fn format_handler_result(
+fn format_tool_call_result(
     result: Result<serde_json::Value, McpError>,
-    method_name: &str,
+    tool_name: &str,
     formatter_factory: &ResponseFormatterFactory,
     formatter_context: &FormatterContext,
 ) -> Result<CallToolResult, McpError> {
@@ -439,8 +319,7 @@ fn format_handler_result(
                 .and_then(|s| s.as_str())
                 .is_some_and(|s| s == "error");
 
-            let metadata =
-                crate::brp_tools::support::response_formatter::BrpMetadata::new(method_name, 0);
+            let metadata = BrpMetadata::new(tool_name, 0);
 
             if is_error {
                 // For error responses, build the error response directly

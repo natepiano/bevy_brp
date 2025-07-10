@@ -15,9 +15,9 @@ macro_rules! define_tool_constants {
     // For Bevy protocol methods (bevy/*)
     (bevy, $method:ident) => {
         paste::paste! {
-            pub const [<BRP_METHOD_ $method:upper>]: &str = concat!("bevy/", stringify!($method));
             pub const [<TOOL_BEVY_ $method:upper>]: &str = concat!("bevy_", stringify!($method));
             pub const [<DESC_BEVY_ $method:upper>]: &str = include_help_text!(concat!("brp_tools/bevy_", stringify!($method), ".txt"));
+            pub const [<BRP_METHOD_ $method:upper>]: &str = concat!("bevy/", stringify!($method));
         }
     };
 
@@ -52,7 +52,6 @@ macro_rules! define_tool_constants {
         paste::paste! {
             pub const [<TOOL_ $method:upper>]: &str = concat!("brp_", stringify!($method));
             pub const [<DESC_ $method:upper>]: &str = include_help_text!(concat!("app_tools/brp_", stringify!($method), ".txt"));
-            pub const [<HANDLER_ $method:upper>]: &str = concat!("handler_", stringify!($method));
         }
     };
 
@@ -61,7 +60,6 @@ macro_rules! define_tool_constants {
         paste::paste! {
             pub const [<TOOL_ $method:upper>]: &str = concat!("brp_", stringify!($method));
             pub const [<DESC_ $method:upper>]: &str = include_help_text!(concat!("log_tools/brp_", stringify!($method), ".txt"));
-            pub const [<HANDLER_ $method:upper>]: &str = concat!("handler_", stringify!($method));
         }
     };
 }
@@ -104,22 +102,6 @@ define_tool_constants!(bevy, list_watch => "bevy/list+watch");
 // BRP execute tool (not a direct Bevy method, server-only) but still uses
 // the HandlerType::Brp even though we don't define it the same
 define_tool_constants!(brp, execute);
-
-// -----------------------------------------------------------------------------
-// Manually defined local handlers for bevy/get+watch and bevy/list+watch
-// -----------------------------------------------------------------------------
-// manual constant for handler so we can handle bevy/get+watch locally but still
-// align the exposed tool name with the brp protocol name
-pub const HANDLER_BEVY_GET_WATCH: &str = "handler_bevy_get_watch";
-pub const HANDLER_BEVY_LIST_WATCH: &str = "handler_bevy_list_watch";
-
-// -----------------------------------------------------------------------------
-// Manually defined local handlers for BRP watch management tools
-// -----------------------------------------------------------------------------
-// These are manual constants for BRP watch management tools that are handled locally
-// rather than being passed through to the BRP protocol
-pub const HANDLER_BRP_STOP_WATCH: &str = "handler_brp_stop_watch";
-pub const HANDLER_BRP_LIST_ACTIVE_WATCHES: &str = "handler_brp_list_active_watches";
 
 // -----------------------------------------------------------------------------
 // BRP Extras Tools (bevy_brp_extras plugin methods)

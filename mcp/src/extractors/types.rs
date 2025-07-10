@@ -62,15 +62,6 @@ pub enum ExtractorType {
     PassThroughResult,
 }
 
-/// Defines a field to include in the response
-#[derive(Clone)]
-pub struct ResponseField {
-    /// Name of the field in the response
-    pub name:      &'static str,
-    /// Type of extractor to use
-    pub extractor: ExtractorType,
-}
-
 /// Result of parameter extraction
 pub struct ExtractedParams {
     /// The method name for dynamic handlers, None for static

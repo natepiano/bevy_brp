@@ -6,10 +6,9 @@ pub mod brp_list_active;
 pub mod brp_stop_watch;
 mod logger;
 pub mod manager;
-mod response;
 mod task;
+mod types;
 
-pub use response::{format_watch_start_response_value, format_watch_stop_response_value};
 pub use task::{start_entity_watch_task, start_list_watch_task};
 
 use crate::error::Error;

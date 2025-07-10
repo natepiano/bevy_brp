@@ -1,5 +1,5 @@
 use rmcp::Error as McpError;
-use serde_json::{Value, json};
+use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
@@ -7,7 +7,31 @@ use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FO
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
+use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
+
+/// Result from shutting down a Bevy app
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShutdownResultData {
+    /// Status of the shutdown operation
+    pub status:   String,
+    /// Shutdown method used
+    pub method:   String,
+    /// App name that was shut down
+    pub app_name: String,
+    /// Port that was checked
+    pub port:     u16,
+    /// Process ID if terminated via kill
+    pub pid:      Option<u32>,
+    /// Status message
+    pub message:  String,
+}
+
+impl HandlerResult for ShutdownResultData {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+    }
+}
 
 /// Result of a shutdown operation
 enum ShutdownResult {
@@ -91,84 +115,106 @@ fn handle_kill_process_fallback(
     }
 }
 
-pub async fn handle(
-    request: rmcp::model::CallToolRequestParam,
-) -> std::result::Result<Value, McpError> {
-    // Get parameters
-    let extractor = McpCallExtractor::from_request(&request);
-    let app_name = extractor.get_required_string("app_name", "app name")?;
-    let port = extractor.optional_number("port", u64::from(DEFAULT_BRP_PORT));
+pub struct Shutdown;
 
-    let port = u16::try_from(port).map_err(|_| -> McpError {
-        report_to_mcp_error(
-            &error_stack::Report::new(Error::ParameterExtraction(
-                "Invalid port parameter".to_string(),
-            ))
-            .attach_printable("Port must be a valid u16")
-            .attach_printable(format!("Provided value: {port}")),
-        )
-    })?;
+impl LocalHandler for Shutdown {
+    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+        let extractor = McpCallExtractor::from_request(&ctx.request);
+        let app_name = match extractor.get_required_string("app_name", "app name") {
+            Ok(name) => name.to_string(),
+            Err(e) => return Box::pin(async move { Err(e) }),
+        };
+        let port = extractor.optional_number("port", u64::from(DEFAULT_BRP_PORT));
+        let Ok(port) = u16::try_from(port) else {
+            return Box::pin(async move {
+                Err(report_to_mcp_error(
+                    &error_stack::Report::new(Error::InvalidArgument(
+                        "Invalid port parameter".to_string(),
+                    ))
+                    .attach_printable("Port must be a valid u16")
+                    .attach_printable(format!("Provided value: {port}")),
+                ))
+            });
+        };
 
+        Box::pin(async move {
+            handle_impl(&app_name, port)
+                .await
+                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+        })
+    }
+}
+
+async fn handle_impl(
+    app_name: &str,
+    port: u16,
+) -> std::result::Result<ShutdownResultData, McpError> {
     // Shutdown the app
     let (result, _debug_info) = shutdown_app(app_name, port).await;
 
-    // Build and return standard response
-    match result {
+    // Build and return typed response
+    let shutdown_result = match result {
         ShutdownResult::CleanShutdown => {
             let message = format!(
                 "Successfully initiated graceful shutdown for '{app_name}' via bevy_brp_extras on port {port}"
             );
-            Ok(json!({
-                "status": "success",
-                "method": "clean_shutdown",
-                "app_name": app_name,
-                "port": port,
-                "message": message
-            }))
+            ShutdownResultData {
+                status: "success".to_string(),
+                method: "clean_shutdown".to_string(),
+                app_name: app_name.to_string(),
+                port,
+                pid: None,
+                message,
+            }
         }
         ShutdownResult::ProcessKilled { pid } => {
             let message = format!(
                 "Terminated process '{app_name}' (PID: {pid}) using kill. Consider adding bevy_brp_extras for clean shutdown."
             );
-            Ok(json!({
-                "status": "success",
-                "method": "process_kill",
-                "app_name": app_name,
-                "port": port,
-                "pid": pid,
-                "message": message
-            }))
+            ShutdownResultData {
+                status: "success".to_string(),
+                method: "process_kill".to_string(),
+                app_name: app_name.to_string(),
+                port,
+                pid: Some(pid),
+                message,
+            }
         }
         ShutdownResult::AlreadyShutdown => {
             let message = format!(
                 "Process '{app_name}' is not running - may have already shutdown or crashed. No action needed."
             );
-            Ok(json!({
-                "status": "error",
-                "method": "already_shutdown",
-                "app_name": app_name,
-                "port": port,
-                "message": message
-            }))
+            ShutdownResultData {
+                status: "error".to_string(),
+                method: "already_shutdown".to_string(),
+                app_name: app_name.to_string(),
+                port,
+                pid: None,
+                message,
+            }
         }
         ShutdownResult::NotRunning => {
             let message = format!("Process '{app_name}' is not currently running");
-            Ok(json!({
-                "status": "error",
-                "method": "none",
-                "app_name": app_name,
-                "port": port,
-                "message": message
-            }))
+            ShutdownResultData {
+                status: "error".to_string(),
+                method: "none".to_string(),
+                app_name: app_name.to_string(),
+                port,
+                pid: None,
+                message,
+            }
         }
-        ShutdownResult::Error { message } => Ok(json!({
-            "status": "error",
-            "method": "process_kill_failed",
-            "app_name": app_name,
-            "port": port,
-            "message": message
-        })),
-    }
+        ShutdownResult::Error { message } => ShutdownResultData {
+            status: "error".to_string(),
+            method: "process_kill_failed".to_string(),
+            app_name: app_name.to_string(),
+            port,
+            pid: None,
+            message,
+        },
+    };
+
+    Ok(shutdown_result)
 }
 
 /// Try to gracefully shutdown via `bevy_brp_extras`

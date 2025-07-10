@@ -1,26 +1,53 @@
 use rmcp::Error as McpError;
+use serde::{Deserialize, Serialize};
 
 use super::support::LogFileEntry;
 use crate::extractors::McpCallExtractor;
+use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 use crate::log_tools::support;
-use crate::response::{LogFileInfo, LogListResult};
 
-pub fn handle(request: &rmcp::model::CallToolRequestParam) -> Result<LogListResult, McpError> {
-    // Extract optional app name filter
-    let extractor = McpCallExtractor::from_request(request);
-    let app_name_filter = extractor.get_optional_string("app_name", "");
+/// Result from listing log files
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListLogResult {
+    /// List of log files found
+    pub logs:           Vec<LogFileInfo>,
+    /// Path to the temp directory containing logs
+    pub temp_directory: String,
+    /// Total count of log files
+    pub count:          usize,
+}
 
-    // Extract verbose flag (default to false)
-    let verbose = extractor.get_optional_bool("verbose", false);
+impl HandlerResult for ListLogResult {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+    }
+}
 
-    let logs = list_log_files(app_name_filter, verbose)?;
-    let count = logs.len();
+/// Handler for the `brp_list_logs` tool using the `LocalFn` approach
+pub struct ListLogs;
 
-    Ok(LogListResult {
-        logs,
-        temp_directory: support::get_log_directory().display().to_string(),
-        count,
-    })
+impl LocalHandler for ListLogs {
+    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+        // Extract optional app name filter
+        let extractor = McpCallExtractor::from_request(&ctx.request);
+        let app_name_filter = extractor.get_optional_string("app_name", "").to_string();
+
+        // Extract verbose flag (default to false)
+        let verbose = extractor.get_optional_bool("verbose", false);
+
+        Box::pin(async move {
+            let logs = list_log_files(&app_name_filter, verbose)?;
+            let count = logs.len();
+
+            let result = ListLogResult {
+                logs,
+                temp_directory: support::get_log_directory().display().to_string(),
+                count,
+            };
+
+            Ok(Box::new(result) as Box<dyn HandlerResult>)
+        })
+    }
 }
 
 fn list_log_files(app_name_filter: &str, verbose: bool) -> Result<Vec<LogFileInfo>, McpError> {
@@ -79,4 +106,23 @@ fn list_log_files(app_name_filter: &str, verbose: bool) -> Result<Vec<LogFileInf
         .collect();
 
     Ok(log_infos)
+}
+
+/// Individual log file entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogFileInfo {
+    /// The filename
+    pub filename:   String,
+    /// The app name extracted from the filename
+    pub app_name:   String,
+    /// Full path to the file (included in verbose mode)
+    pub path:       Option<String>,
+    /// Human-readable file size (included in verbose mode)
+    pub size:       Option<String>,
+    /// File size in bytes (included in verbose mode)
+    pub size_bytes: Option<u64>,
+    /// Creation time as ISO string (included in verbose mode)
+    pub created:    Option<String>,
+    /// Modification time as ISO string (included in verbose mode)
+    pub modified:   Option<String>,
 }

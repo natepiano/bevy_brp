@@ -1,44 +1,81 @@
 //! List all active watches
 
-use rmcp::model::CallToolRequestParam;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
-use serde_json::{Value, json};
+use rmcp::Error as McpError;
+use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::BrpMcpService;
-use crate::brp_tools::constants::{JSON_FIELD_COUNT, JSON_FIELD_WATCHES};
+use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 
-pub async fn handle(
-    _service: &BrpMcpService,
-    _request: CallToolRequestParam,
-    _context: RequestContext<RoleServer>,
-) -> std::result::Result<Value, McpError> {
+/// Individual watch information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WatchInfo {
+    /// Watch ID
+    pub watch_id:   u32,
+    /// Entity ID being watched
+    pub entity_id:  u64,
+    /// Type of watch (get/list)
+    pub watch_type: String,
+    /// Log file path
+    pub log_path:   String,
+    /// BRP port
+    pub port:       u16,
+}
+
+/// Result from listing active watches
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ListActiveWatchesResult {
+    /// Status of the operation
+    pub status:  String,
+    /// Status message
+    pub message: String,
+    /// List of active watches
+    pub watches: Vec<WatchInfo>,
+    /// Total count of watches
+    pub count:   usize,
+}
+
+impl HandlerResult for ListActiveWatchesResult {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+    }
+}
+
+pub struct BrpListActiveWatches;
+
+impl LocalHandler for BrpListActiveWatches {
+    fn handle(&self, _ctx: &HandlerContext) -> HandlerResponse<'_> {
+        Box::pin(async move {
+            handle_impl()
+                .await
+                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+        })
+    }
+}
+
+async fn handle_impl() -> std::result::Result<ListActiveWatchesResult, McpError> {
     // Get active watches from manager and release lock immediately
     let active_watches = {
         let manager = WATCH_MANAGER.lock().await;
         manager.list_active_watches()
     };
 
-    // Convert to JSON format
-    let watches_json: Vec<Value> = active_watches
+    // Convert to our typed format
+    let watches: Vec<WatchInfo> = active_watches
         .iter()
-        .map(|watch| {
-            json!({
-                "watch_id": watch.watch_id,
-                "entity_id": watch.entity_id,
-                "watch_type": watch.watch_type,
-                "log_path": watch.log_path.to_string_lossy(),
-                "port": watch.port,
-            })
+        .map(|watch| WatchInfo {
+            watch_id:   watch.watch_id,
+            entity_id:  watch.entity_id,
+            watch_type: watch.watch_type.clone(),
+            log_path:   watch.log_path.to_string_lossy().to_string(),
+            port:       watch.port,
         })
         .collect();
 
-    let count = watches_json.len();
-    Ok(json!({
-        "status": "success",
-        "message": format!("Found {} active watches", count),
-        JSON_FIELD_WATCHES: watches_json,
-        JSON_FIELD_COUNT: count
-    }))
+    let count = watches.len();
+    Ok(ListActiveWatchesResult {
+        status: "success".to_string(),
+        message: format!("Found {count} active watches"),
+        watches,
+        count,
+    })
 }

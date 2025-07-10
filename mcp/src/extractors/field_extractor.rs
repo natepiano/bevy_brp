@@ -9,6 +9,7 @@ use super::{BevyResponseExtractor, ExtractorType, FormatterContext, McpCallExtra
 use crate::brp_tools::constants::{
     JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITIES, JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PORT,
 };
+use crate::response::{ResponseExtractorType, ResponseFieldV2};
 
 /// Function type for extracting field values from response data and context.
 ///
@@ -88,6 +89,136 @@ pub fn convert_extractor_type(extractor_type: &ExtractorType) -> FieldExtractor 
             let field = (*field_name).to_string();
             Box::new(move |data, _| data.get(&field).cloned().unwrap_or(serde_json::Value::Null))
         }
+    }
+}
+
+/// Create a field accessor for already-extracted request parameters.
+///
+/// This function creates extractors that reference fields from the `ExtractedParams`,
+/// which were already validated during the parameter extraction phase.
+pub fn create_request_field_accessor(field: &'static str) -> FieldExtractor {
+    Box::new(move |_data, context| {
+        match field {
+            "entity" => {
+                // Extract entity ID from request parameters
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| {
+                        let extractor = McpCallExtractor::new(params);
+                        extractor.entity_id().map(|id| Value::Number(id.into()))
+                    })
+                    .unwrap_or(Value::Null)
+            }
+            "resource" => {
+                // Extract resource name from request parameters
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| {
+                        let extractor = McpCallExtractor::new(params);
+                        extractor
+                            .resource_name()
+                            .map(|name| Value::String(name.to_string()))
+                    })
+                    .unwrap_or(Value::Null)
+            }
+            "path" => {
+                // Extract path parameter from request
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| params.get("path"))
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }
+            "port" => {
+                // Extract port parameter from request
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| params.get("port"))
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }
+            "components" => {
+                // Extract components parameter from request
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| params.get("components"))
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }
+            "entities" => {
+                // Extract entities parameter from request
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| params.get("entities"))
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }
+            "parent" => {
+                // Extract parent parameter from request
+                context
+                    .params
+                    .as_ref()
+                    .and_then(|params| params.get("parent"))
+                    .cloned()
+                    .unwrap_or(Value::Null)
+            }
+            _ => Value::Null,
+        }
+    })
+}
+
+/// Create an extractor for response data.
+///
+/// This function creates extractors that extract data from the response payload,
+/// which is the appropriate place for response data extraction.
+pub fn create_response_extractor(extractor: &ResponseExtractorType) -> FieldExtractor {
+    match extractor {
+        ResponseExtractorType::PassThroughData => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).pass_through().clone())
+        }
+        ResponseExtractorType::PassThroughRaw => {
+            Box::new(|data, _context| {
+                // Extract fields from the JSON-RPC result and return them directly
+                // This will be merged at the top level as peers of status/message
+                BevyResponseExtractor::new(data).pass_through().clone()
+            })
+        }
+        ResponseExtractorType::Field(field_name) => {
+            let field = (*field_name).to_string();
+            Box::new(move |data, _| data.get(&field).cloned().unwrap_or(Value::Null))
+        }
+        ResponseExtractorType::Count => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).count())
+        }
+        ResponseExtractorType::EntityCount => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).entity_count().into())
+        }
+        ResponseExtractorType::ComponentCount => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).entity_count().into())
+        }
+        ResponseExtractorType::QueryComponentCount => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).query_component_count())
+        }
+        ResponseExtractorType::EntityId => {
+            Box::new(|data, _context| BevyResponseExtractor::new(data).spawned_entity_id())
+        }
+    }
+}
+
+/// Convert a `ResponseFieldV2` specification to a field extractor function.
+///
+/// This creates the actual closure that will extract data based on the new
+/// separated extraction strategy defined by the `ResponseFieldV2` variant.
+pub fn convert_response_field_v2(field: &ResponseFieldV2) -> FieldExtractor {
+    match field {
+        ResponseFieldV2::FromRequest { field, .. } => create_request_field_accessor(field),
+        ResponseFieldV2::FromResponse { extractor, .. } => create_response_extractor(extractor),
     }
 }
 

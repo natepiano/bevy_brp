@@ -100,7 +100,7 @@ impl<'a> McpCallExtractor<'a> {
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
                 report_to_mcp_error(
-                    &error_stack::Report::new(Error::ParameterExtraction(format!(
+                    &error_stack::Report::new(Error::InvalidArgument(format!(
                         "Missing {field_description} parameter"
                     )))
                     .attach_printable(format!("Field name: {field_name}"))
@@ -119,7 +119,7 @@ impl<'a> McpCallExtractor<'a> {
             .and_then(serde_json::Value::as_u64)
             .ok_or_else(|| {
                 report_to_mcp_error(
-                    &error_stack::Report::new(Error::ParameterExtraction(format!(
+                    &error_stack::Report::new(Error::InvalidArgument(format!(
                         "Missing {field_description} parameter"
                     )))
                     .attach_printable(format!("Field name: {field_name}"))
@@ -137,7 +137,7 @@ impl<'a> McpCallExtractor<'a> {
         let value = self.get_required_u64(field_name, field_description)?;
         u32::try_from(value).map_err(|_| {
             report_to_mcp_error(
-                &error_stack::Report::new(Error::ParameterExtraction(format!(
+                &error_stack::Report::new(Error::InvalidArgument(format!(
                     "Invalid {field_description} value"
                 )))
                 .attach_printable(format!("Field name: {field_name}"))
@@ -168,7 +168,7 @@ impl<'a> McpCallExtractor<'a> {
             Some(v) => {
                 let value = v.as_u64().ok_or_else(|| {
                     report_to_mcp_error(
-                        &error_stack::Report::new(Error::ParameterExtraction(format!(
+                        &error_stack::Report::new(Error::InvalidArgument(format!(
                             "Invalid parameter '{param_name}'"
                         )))
                         .attach_printable(format!("Parameter name: {param_name}"))
@@ -177,7 +177,7 @@ impl<'a> McpCallExtractor<'a> {
                 })?;
                 let port = u16::try_from(value).map_err(|_| {
                     report_to_mcp_error(
-                        &error_stack::Report::new(Error::ParameterExtraction(format!(
+                        &error_stack::Report::new(Error::InvalidArgument(format!(
                             "Invalid parameter '{param_name}'"
                         )))
                         .attach_printable(format!("Parameter name: {param_name}"))
@@ -188,7 +188,7 @@ impl<'a> McpCallExtractor<'a> {
                 // Validate port range (1024-65535 for non-privileged ports)
                 if port < 1024 {
                     return Err(report_to_mcp_error(
-                        &error_stack::Report::new(Error::ParameterExtraction(format!(
+                        &error_stack::Report::new(Error::InvalidArgument(format!(
                             "Invalid parameter '{param_name}'"
                         )))
                         .attach_printable(format!("Parameter name: {param_name}"))
@@ -211,7 +211,7 @@ impl<'a> McpCallExtractor<'a> {
 
         u32::try_from(value).map_err(|_| {
             report_to_mcp_error(
-                &error_stack::Report::new(Error::ParameterExtraction(format!(
+                &error_stack::Report::new(Error::InvalidArgument(format!(
                     "Invalid parameter '{param_name}'"
                 )))
                 .attach_printable(format!("Parameter name: {param_name}"))

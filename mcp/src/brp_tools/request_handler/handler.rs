@@ -60,7 +60,7 @@ fn resolve_brp_method(
         .map(String::from)
         .ok_or_else(|| -> McpError {
             report_to_mcp_error(
-                &error_stack::Report::new(Error::ParameterExtraction(
+                &error_stack::Report::new(Error::InvalidArgument(
                     "Missing BRP method specification".to_string(),
                 ))
                 .attach_printable("Either method from request or config must be specified"),

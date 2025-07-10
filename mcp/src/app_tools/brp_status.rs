@@ -1,5 +1,5 @@
 use rmcp::Error as McpError;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
 use super::constants::{PARAM_APP_NAME, PARAM_PORT};
@@ -7,29 +7,66 @@ use crate::brp_tools::constants::DEFAULT_BRP_PORT;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::support::tracing::{TracingLevel, get_current_tracing_level};
+use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 use crate::tools::BRP_METHOD_LIST;
 
-pub async fn handle(request: rmcp::model::CallToolRequestParam) -> Result<Value, McpError> {
-    // Get parameters
-    let extractor = McpCallExtractor::from_request(&request);
-    let app_name = extractor.get_required_string(PARAM_APP_NAME, "app name")?;
-    let port = extractor.optional_number(PARAM_PORT, u64::from(DEFAULT_BRP_PORT));
+/// Result from checking status of a Bevy app
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatusResult {
+    /// Status of the check operation
+    pub status:         String,
+    /// App name that was checked
+    pub app_name:       String,
+    /// Port that was checked
+    pub port:           u16,
+    /// Whether the app process is running
+    pub app_running:    bool,
+    /// Whether BRP is responsive
+    pub brp_responsive: bool,
+    /// Process ID if running
+    pub app_pid:        Option<u32>,
+    /// Status message
+    pub message:        String,
+}
 
-    // Check the app
-    check_brp_for_app(
-        app_name,
-        u16::try_from(port).map_err(|_| -> McpError {
-            report_to_mcp_error(
-                &error_stack::Report::new(Error::ParameterExtraction(
-                    "Invalid port value".to_string(),
+impl HandlerResult for StatusResult {
+    fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+    }
+}
+
+pub struct Status;
+
+impl LocalHandler for Status {
+    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+        let extractor = McpCallExtractor::from_request(&ctx.request);
+        let app_name = match extractor.get_required_string(PARAM_APP_NAME, "app name") {
+            Ok(name) => name.to_string(),
+            Err(e) => return Box::pin(async move { Err(e) }),
+        };
+        let port = extractor.optional_number(PARAM_PORT, u64::from(DEFAULT_BRP_PORT));
+        let Ok(port) = u16::try_from(port) else {
+            return Box::pin(async move {
+                Err(report_to_mcp_error(
+                    &error_stack::Report::new(Error::InvalidArgument(
+                        "Invalid port value".to_string(),
+                    ))
+                    .attach_printable("Port must be a valid u16")
+                    .attach_printable(format!("Provided value: {port}")),
                 ))
-                .attach_printable("Port must be a valid u16")
-                .attach_printable(format!("Provided value: {port}")),
-            )
-        })?,
-    )
-    .await
+            });
+        };
+
+        Box::pin(async move {
+            handle_impl(&app_name, port)
+                .await
+                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+        })
+    }
+}
+
+async fn handle_impl(app_name: &str, port: u16) -> std::result::Result<StatusResult, McpError> {
+    check_brp_for_app(app_name, port).await
 }
 
 /// Normalize process name for robust matching
@@ -86,7 +123,10 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
     false
 }
 
-async fn check_brp_for_app(app_name: &str, port: u16) -> Result<Value, McpError> {
+async fn check_brp_for_app(
+    app_name: &str,
+    port: u16,
+) -> std::result::Result<StatusResult, McpError> {
     // Check if a process with this name is running using sysinfo
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -142,24 +182,19 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<Value, McpError>
         ),
     };
 
-    Ok(serde_json::json!({
-        "status": "success",
-        "message": message,
-        "app_status": status,
-        "app_name": app_name,
-        "port": port,
-        "app_running": app_running,
-        "brp_responsive": brp_responsive,
-        "app_pid": app_pid,
-        "mcp_debug_enabled": matches!(
-            get_current_tracing_level(),
-            TracingLevel::Debug | TracingLevel::Trace
-        ),
-    }))
+    Ok(StatusResult {
+        status: status.to_string(),
+        app_name: app_name.to_string(),
+        port,
+        app_running,
+        brp_responsive,
+        app_pid,
+        message,
+    })
 }
 
 /// Check if BRP is responding on the given port
-async fn check_brp_on_port(port: u16) -> Result<bool, McpError> {
+async fn check_brp_on_port(port: u16) -> std::result::Result<bool, McpError> {
     // Try a simple BRP request to check connectivity using bevy/list
     match execute_brp_method(BRP_METHOD_LIST, None, Some(port)).await {
         Ok(BrpResult::Success(_)) => {

@@ -41,14 +41,14 @@ use crate::support::{LargeResponseConfig, handle_large_response};
 /// Metadata about a BRP request for response formatting
 #[derive(Debug, Clone)]
 pub struct BrpMetadata {
-    pub method: String,
+    pub tool_name: String,
     pub port:   u16,
 }
 
 impl BrpMetadata {
-    pub fn new(method: &str, port: u16) -> Self {
+    pub fn new(tool_name: &str, port: u16) -> Self {
         Self {
-            method: method.to_string(),
+            tool_name: tool_name.to_string(),
             port,
         }
     }
@@ -155,7 +155,7 @@ fn build_enhanced_error_response(
         .add_field(
             JSON_FIELD_METADATA,
             json!({
-                JSON_FIELD_METHOD: metadata.method,
+                JSON_FIELD_METHOD: metadata.tool_name,
                 JSON_FIELD_PORT: metadata.port
             }),
         )?;
@@ -222,7 +222,7 @@ impl ResponseFormatter {
         let response_result = self.build_success_response(data);
 
         if let Ok(response) = response_result {
-            self.handle_large_response_if_needed(response, &metadata.method)
+            self.handle_large_response_if_needed(response, &metadata.tool_name)
         } else {
             let fallback = ResponseBuilder::error()
                 .message("Failed to build success response")
@@ -259,8 +259,11 @@ impl ResponseFormatter {
         self.config.large_response_config.as_ref().map_or_else(
             || response.to_call_tool_result(),
             |large_config| {
-                // Convert response to Value for size checking
-                let response_value = serde_json::to_value(&response).unwrap_or(Value::Null);
+                // We need to check the size of the actual JSON that will be sent to MCP
+                // This is what to_call_tool_result() will serialize
+                let final_json = response.to_json_fallback();
+                let response_value =
+                    serde_json::from_str::<Value>(&final_json).unwrap_or(Value::Null);
 
                 // Check if response is too large
                 match handle_large_response(&response_value, method, large_config.clone()) {
@@ -283,7 +286,8 @@ impl ResponseFormatter {
                         // Response is small enough, return as-is
                         response.to_call_tool_result()
                     }
-                    Err(_) => {
+                    Err(e) => {
+                        tracing::warn!("Error handling large response: {:?}", e);
                         // Error handling large response, return original
                         response.to_call_tool_result()
                     }
@@ -394,16 +398,6 @@ impl ResponseFormatterFactory {
         }
     }
 
-    /// Create a formatter for simple entity operations (destroy, etc.)
-    pub fn entity_operation(_entity_field: &str) -> ResponseFormatterBuilder {
-        Self::standard()
-    }
-
-    /// Create a formatter for resource operations
-    pub fn resource_operation(_resource_field: &str) -> ResponseFormatterBuilder {
-        Self::standard()
-    }
-
     /// Create a formatter that passes through the response data
     #[cfg(test)]
     pub fn pass_through() -> ResponseFormatterBuilder {
@@ -425,21 +419,6 @@ impl ResponseFormatterFactory {
                 }),
             },
         }
-    }
-
-    /// Create a formatter for list operations
-    pub fn list_operation() -> ResponseFormatterBuilder {
-        Self::standard()
-    }
-
-    /// Create a formatter for local standard operations
-    pub fn local_standard() -> ResponseFormatterBuilder {
-        Self::standard()
-    }
-
-    /// Create a formatter for local collection operations
-    pub fn local_collection() -> ResponseFormatterBuilder {
-        Self::standard()
     }
 
     /// Create a formatter for local operations that return pre-structured responses
@@ -592,42 +571,6 @@ mod tests {
         // Verify result has content
         assert_eq!(result.content.len(), 1);
         // All errors now use the enhanced format_error_default function
-    }
-
-    #[test]
-    fn test_entity_operation_builder() {
-        use crate::brp_tools::constants::JSON_FIELD_DESTROYED_ENTITY;
-
-        let factory = ResponseFormatterFactory::entity_operation(JSON_FIELD_DESTROYED_ENTITY)
-            .with_template("Successfully destroyed entity {entity}")
-            .with_response_field(
-                JSON_FIELD_DESTROYED_ENTITY,
-                Box::new(|_data, context| {
-                    use crate::extractors::McpCallExtractor;
-                    context
-                        .params
-                        .as_ref()
-                        .and_then(|params| {
-                            let extractor = McpCallExtractor::new(params);
-                            extractor.entity_id().map(|id| Value::Number(id.into()))
-                        })
-                        .unwrap_or(Value::Null)
-                }),
-            )
-            .build();
-
-        let context = FormatterContext {
-            params:           Some(json!({ "entity": 789 })),
-            format_corrected: None,
-        };
-
-        let formatter = factory.create(context);
-        let metadata = BrpMetadata::new("bevy/destroy", DEFAULT_BRP_PORT);
-        let result = formatter.format_success(&Value::Null, metadata);
-
-        // Verify result has content
-        assert_eq!(result.content.len(), 1);
-        // TODO: Add proper content validation once Content type is understood
     }
 
     #[test]
