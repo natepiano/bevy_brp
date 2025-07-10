@@ -11,16 +11,16 @@ use serde_json::Value;
 use super::error::{DebugContext, DiscoveryResult};
 use super::mutation::generate_mutation_info;
 use super::registry::get_type_info_from_registry;
-use super::spawn::generate_spawn_format;
+use super::serialization_format::generate_serialization_format;
 use super::types::{
-    TypeDiscoveryResponse, analyze_type_info, check_serialization_traits, is_mutable_type,
+    DiscoveryInfo, MutationInfo, TypeDiscoveryResponse, analyze_type_info,
+    check_serialization_traits, is_mutable_type,
 };
-use crate::format::FormatInfo;
 
 /// Result of discovering multiple component formats
 #[derive(Debug, Clone)]
 pub struct MultiDiscoveryResult {
-    pub formats: HashMap<String, FormatInfo>,
+    pub formats: HashMap<String, DiscoveryInfo>,
     pub errors:  HashMap<String, serde_json::Map<String, Value>>,
 }
 
@@ -29,15 +29,15 @@ pub fn discover_component_format(
     world: &World,
     type_name: &str,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<FormatInfo> {
+) -> DiscoveryResult<DiscoveryInfo> {
     debug_context.push(format!("Discovering format for type: {type_name}"));
 
     // Get type info from registry
     let type_info = get_type_info_from_registry(world, type_name, debug_context.as_mut_vec())?;
 
-    // Generate spawn format
-    debug_context.push("Generating spawn format".to_string());
-    let spawn_info = generate_spawn_format(&type_info, type_name, debug_context)?;
+    // Generate format
+    debug_context.push("Generating format".to_string());
+    let spawn_info = generate_serialization_format(&type_info, type_name, debug_context)?;
 
     // Generate mutation info (if supported)
     debug_context.push("Generating mutation info".to_string());
@@ -45,15 +45,15 @@ pub fn discover_component_format(
         generate_mutation_info(&type_info, type_name, debug_context)?
     } else {
         debug_context.push("Type is not mutable, creating empty mutation info".to_string());
-        crate::format::MutationInfo {
+        MutationInfo {
             fields:      HashMap::new(),
             description: format!("Type {type_name} does not support mutation"),
         }
     };
 
-    let format_info = FormatInfo {
+    let format_info = DiscoveryInfo {
         type_name: type_name.to_string(),
-        spawn_format: spawn_info,
+        serialization_format: spawn_info,
         mutation_info,
     };
 

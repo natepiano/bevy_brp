@@ -7,7 +7,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use super::constants::{DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PORT, PARAM_PROFILE};
+use super::constants::{DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PROFILE};
 use super::support::cargo_detector::{BevyTarget, TargetType};
 use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
@@ -27,6 +27,8 @@ pub struct LaunchBevyAppResult {
     pub app_name:           Option<String>,
     /// Process ID of the launched app
     pub pid:                Option<u32>,
+    /// Port used for launch
+    pub port:               Option<u16>,
     /// Working directory used for launch
     pub working_directory:  Option<String>,
     /// Build profile used (debug/release)
@@ -60,14 +62,12 @@ impl LocalHandler for LaunchBevyApp {
             Ok(name) => name.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let profile = extractor
-            .get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE)
-            .to_string();
+        let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
         let path = extractor
             .get_optional_path()
             .as_deref()
             .map(ToString::to_string);
-        let port = match extractor.get_optional_u16(PARAM_PORT) {
+        let port = match extractor.get_port() {
             Ok(p) => p,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
@@ -87,7 +87,7 @@ async fn handle_impl(
     app_name: &str,
     profile: &str,
     path: Option<&str>,
-    port: Option<u16>,
+    port: u16,
     service: Arc<crate::McpService>,
     context: rmcp::service::RequestContext<rmcp::RoleServer>,
 ) -> Result<LaunchBevyAppResult, McpError> {
@@ -102,12 +102,12 @@ pub fn launch_bevy_app(
     app_name: &str,
     profile: &str,
     path: Option<&str>,
-    port: Option<u16>,
+    port: u16,
     search_paths: &[PathBuf],
 ) -> Result<LaunchBevyAppResult, McpError> {
     let launch_start = Instant::now();
 
-    let app = match find_and_validate_app(app_name, path, search_paths)? {
+    let app = match find_and_validate_app(app_name, path, search_paths, port)? {
         AppDiscoveryResult::Found(app) => app,
         AppDiscoveryResult::DisambiguationError(result) => return Ok(result),
     };
@@ -144,11 +144,14 @@ fn find_and_validate_app(
     app_name: &str,
     path: Option<&str>,
     search_paths: &[PathBuf],
+    port: u16,
 ) -> Result<AppDiscoveryResult, McpError> {
     match scanning::find_required_target_with_path(app_name, TargetType::App, path, search_paths) {
         Ok(app) => Ok(AppDiscoveryResult::Found(app)),
         Err(mcp_error) => {
-            if let Some(disambiguation_result) = handle_disambiguation_error(&mcp_error, app_name) {
+            if let Some(disambiguation_result) =
+                handle_disambiguation_error(&mcp_error, app_name, port)
+            {
                 return Ok(AppDiscoveryResult::DisambiguationError(
                     disambiguation_result,
                 ));
@@ -161,6 +164,7 @@ fn find_and_validate_app(
 fn handle_disambiguation_error(
     mcp_error: &McpError,
     app_name: &str,
+    port: u16,
 ) -> Option<LaunchBevyAppResult> {
     let error_msg = &mcp_error.message;
     if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
@@ -180,6 +184,7 @@ fn handle_disambiguation_error(
             message:            error_response["message"].as_str().unwrap_or("").to_string(),
             app_name:           error_response["app_name"].as_str().map(String::from),
             pid:                None,
+            port:               Some(port),
             working_directory:  None,
             profile:            None,
             log_file:           None,
@@ -247,7 +252,7 @@ fn log_launch_info(
 fn execute_launch(
     app_name: &str,
     profile: &str,
-    port: Option<u16>,
+    port: u16,
     app: &BevyTarget,
     manifest_dir: &std::path::Path,
 ) -> Result<u32, McpError> {
@@ -259,11 +264,11 @@ fn execute_launch(
         profile,
         &binary_path,
         manifest_dir,
-        port,
+        Some(port),
         None,
     )?;
 
-    let cmd = launch_common::build_app_command(&binary_path, port);
+    let cmd = launch_common::build_app_command(&binary_path, Some(port));
 
     process::launch_detached_process(
         &cmd,
@@ -281,16 +286,14 @@ fn create_success_result(
     manifest_dir: &std::path::Path,
     pid: u32,
     launch_start: Instant,
-    port: Option<u16>,
+    port: u16,
 ) -> Result<LaunchBevyAppResult, McpError> {
     let launch_end = Instant::now();
     let launch_duration_ms = launch_end.duration_since(launch_start).as_millis();
 
     debug!("Launch duration: {}ms", launch_duration_ms);
 
-    if let Some(port) = port {
-        debug!("Environment variable: BRP_PORT={}", port);
-    }
+    debug!("Environment variable: BRP_PORT={}", port);
 
     let launch_duration_ms = u64::try_from(launch_duration_ms).unwrap_or(u64::MAX);
     let launch_timestamp = chrono::Utc::now().to_rfc3339();
@@ -308,7 +311,7 @@ fn create_success_result(
         profile,
         &binary_path,
         manifest_dir,
-        port,
+        Some(port),
         None,
     )?;
 
@@ -317,6 +320,7 @@ fn create_success_result(
         message: format!("Successfully launched '{app_name}' (PID: {pid})"),
         app_name: Some(app_name.to_string()),
         pid: Some(pid),
+        port: Some(port),
         working_directory: Some(manifest_dir.display().to_string()),
         profile: Some(profile.to_string()),
         log_file: Some(log_file_path.display().to_string()),

@@ -6,7 +6,7 @@
 // Macro to include help text files
 macro_rules! include_help_text {
     ($file:expr) => {
-        include_str!(concat!("../help_text/", $file))
+        include_str!(concat!("../../help_text/", $file))
     };
 }
 

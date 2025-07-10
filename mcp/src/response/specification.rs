@@ -1,12 +1,9 @@
-use crate::extractors::ExtractorType;
-
 /// New response field specification that separates request and response concerns.
 ///
 /// This enum replaces the old `ResponseField` struct, providing clear separation
 /// between request parameter referencing and response data extraction specifications.
 #[derive(Clone, Debug)]
-#[allow(dead_code)] // Temporarily allow during migration
-pub enum ResponseFieldV2 {
+pub enum ResponseField {
     /// Reference a field from already-extracted request parameters.
     ///
     /// This variant references data that was already extracted and validated during
@@ -30,21 +27,14 @@ pub enum ResponseFieldV2 {
 }
 
 /// Extraction strategies for response data only.
-///
-/// This enum contains only the extractors that should be used for response data,
-/// removing the request parameter extractors that were incorrectly mixed in the old system.
 #[derive(Clone, Debug)]
-#[allow(dead_code)] // Temporarily allow during migration
 pub enum ResponseExtractorType {
     /// Pass through the entire BRP response data wrapped in the "metadata" field of the MCP
     /// response. Used for Structured responses where the BRP data should be included under
     /// "metadata". Example output: `{ "status": "success", "message": "...", "metadata": {
     /// ...brp_data... } }`
     PassThroughData,
-    /// Pass through the entire BRP response directly in the "result" field of the MCP response.
-    /// Used for Raw responses to provide direct access to BRP data without wrapping.
-    /// Example output: `{ "status": "success", "message": "...", "result": { ...brp_data... } }`
-    PassThroughRaw,
+
     /// Extract a specific field from the response data structure
     Field(&'static str),
     /// Extract count field from response data
@@ -59,7 +49,68 @@ pub enum ResponseExtractorType {
     EntityId,
 }
 
-impl ResponseFieldV2 {
+impl ResponseExtractorType {
+    /// Extract data based on the extraction strategy
+    pub fn extract(&self, data: &serde_json::Value) -> serde_json::Value {
+        match self {
+            Self::PassThroughData => data.clone(),
+            Self::Field(field_name) => data
+                .get(field_name)
+                .cloned()
+                .unwrap_or(serde_json::Value::Null),
+            Self::Count => {
+                // Check if data is wrapped in a structure with a "count" field
+                data.as_object()
+                    .and_then(|obj| obj.get("count"))
+                    .map_or_else(
+                        || data.as_array().map_or(0, std::vec::Vec::len).into(),
+                        std::clone::Clone::clone,
+                    )
+            }
+            Self::EntityCount => {
+                // Check if data is wrapped in a structure with a "metadata" field
+                let count = data
+                    .as_object()
+                    .and_then(|obj| obj.get("metadata"))
+                    .map_or_else(
+                        || data.as_array().map_or(0, std::vec::Vec::len),
+                        |inner_data| inner_data.as_array().map_or(0, std::vec::Vec::len),
+                    );
+                serde_json::Value::Number(serde_json::Number::from(count))
+            }
+            Self::ComponentCount => {
+                // Same as EntityCount for now
+                let count = data
+                    .as_object()
+                    .and_then(|obj| obj.get("metadata"))
+                    .map_or_else(
+                        || data.as_array().map_or(0, std::vec::Vec::len),
+                        |inner_data| inner_data.as_array().map_or(0, std::vec::Vec::len),
+                    );
+                serde_json::Value::Number(serde_json::Number::from(count))
+            }
+            Self::QueryComponentCount => {
+                // Extract total component count from nested query results
+                let total = data.as_array().map_or(0, |entities| {
+                    entities
+                        .iter()
+                        .filter_map(|e| e.as_object())
+                        .map(serde_json::Map::len)
+                        .sum::<usize>()
+                });
+                serde_json::Value::Number(serde_json::Number::from(total))
+            }
+            Self::EntityId => {
+                // Extract entity ID from response data (for spawn operation)
+                data.get("entity")
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::Value::Number(serde_json::Number::from(0)))
+            }
+        }
+    }
+}
+
+impl ResponseField {
     /// Get the field name for this response field specification.
     pub const fn name(&self) -> &'static str {
         match self {
@@ -84,54 +135,14 @@ impl ResponseFieldV2 {
 pub enum ResponseSpecification {
     /// Traditional response with extracted/processed fields under "metadata"
     Structured {
-        /// Type of formatter to use
-        formatter_type:  FormatterType,
         /// Template for success messages
-        template:        &'static str,
+        message_template: &'static str,
         /// Fields to include in the response
-        response_fields: Vec<ResponseFieldCompat>,
+        response_fields:  Vec<ResponseField>,
     },
     /// Raw BRP response directly in "result" field (no other fields allowed)
     Raw {
         /// Template for success messages
         template: &'static str,
     },
-}
-
-/// Types of formatters available
-#[derive(Clone)]
-pub enum FormatterType {
-    /// Entity operation formatter
-    EntityOperation,
-    /// Resource operation formatter
-    ResourceOperation,
-    /// Simple formatter (no special formatting)
-    Simple,
-    /// Formatter for local operations
-    Local,
-    /// Local passthrough formatter for handlers that return pre-structured responses
-    LocalPassthrough,
-}
-
-/// Defines a field to include in the response
-#[derive(Clone)]
-pub struct ResponseField {
-    /// Name of the field in the response
-    pub name:      &'static str,
-    /// Type of extractor to use
-    pub extractor: ExtractorType,
-}
-
-/// Compatibility wrapper for `ResponseField` during migration.
-///
-/// This enum allows both the old `ResponseField` struct and the new `ResponseFieldV2` enum
-/// to coexist during the migration process. Once all tools are migrated, this wrapper
-/// will be removed.
-#[derive(Clone)]
-#[allow(dead_code)] // Temporarily allow during migration
-pub enum ResponseFieldCompat {
-    /// Legacy `ResponseField` struct (current format)
-    V1(ResponseField),
-    /// New `ResponseFieldV2` enum (target format)
-    V2(ResponseFieldV2),
 }

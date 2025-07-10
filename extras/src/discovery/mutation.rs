@@ -14,10 +14,9 @@ use super::examples::{
     generate_default_example_for_type, generate_primitive_example, is_primitive_type,
 };
 use super::types::{
-    TypeCategory, analyze_type_info, cast_type_info, extract_struct_fields,
-    extract_tuple_struct_fields, is_mutable_type,
+    MutationInfo, MutationPathInfo, TypeCategory, analyze_type_info, cast_type_info,
+    extract_struct_fields, extract_tuple_struct_fields, is_mutable_type,
 };
-use crate::format::{FieldInfo, MutationInfo};
 
 /// Helper function to create a `FieldInfo` instance
 fn create_field_info(
@@ -25,8 +24,8 @@ fn create_field_info(
     value_type: impl Into<String>,
     example: Value,
     description: impl Into<String>,
-) -> FieldInfo {
-    FieldInfo {
+) -> MutationPathInfo {
+    MutationPathInfo {
         path: path.into(),
         value_type: value_type.into(),
         example,
@@ -35,7 +34,7 @@ fn create_field_info(
 }
 
 /// Helper function to convert `Vec<FieldInfo>` to `HashMap<String, FieldInfo>`
-fn field_info_vec_to_map(field_paths: Vec<FieldInfo>) -> HashMap<String, FieldInfo> {
+fn field_info_vec_to_map(field_paths: Vec<MutationPathInfo>) -> HashMap<String, MutationPathInfo> {
     field_paths
         .into_iter()
         .map(|field_info| (field_info.path.clone(), field_info))
@@ -144,7 +143,7 @@ pub fn generate_field_mutation_paths(
     field_name: &str,
     field_type: &str,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<Vec<FieldInfo>> {
+) -> DiscoveryResult<Vec<MutationPathInfo>> {
     let mut paths = Vec::new();
 
     // Base path for the field itself
@@ -187,7 +186,7 @@ pub fn generate_field_mutation_paths(
 }
 
 /// Generate mutation paths for Vec types
-fn generate_vec_mutation_paths(base_path: &str, _field_type: &str) -> Vec<FieldInfo> {
+fn generate_vec_mutation_paths(base_path: &str, _field_type: &str) -> Vec<MutationPathInfo> {
     let mut paths = Vec::new();
 
     // Array index access
@@ -209,7 +208,7 @@ fn generate_vec_mutation_paths(base_path: &str, _field_type: &str) -> Vec<FieldI
 }
 
 /// Generate mutation paths for Map types
-fn generate_map_mutation_paths(base_path: &str, _field_type: &str) -> Vec<FieldInfo> {
+fn generate_map_mutation_paths(base_path: &str, _field_type: &str) -> Vec<MutationPathInfo> {
     let mut paths = Vec::new();
 
     // Map key access
@@ -224,7 +223,7 @@ fn generate_map_mutation_paths(base_path: &str, _field_type: &str) -> Vec<FieldI
 }
 
 /// Generate mutation paths for Bevy math types
-fn generate_math_type_mutation_paths(base_path: &str, field_type: &str) -> Vec<FieldInfo> {
+fn generate_math_type_mutation_paths(base_path: &str, field_type: &str) -> Vec<MutationPathInfo> {
     let components = if field_type.contains("Vec2") {
         vec![("x", 1.0), ("y", 2.0)]
     } else if field_type.contains("Vec3") {
@@ -254,7 +253,7 @@ fn generate_vec3_field_paths(
     field_name: &str,
     default_value: [f32; 3],
     component_values: Option<[f32; 3]>,
-) -> Vec<FieldInfo> {
+) -> Vec<MutationPathInfo> {
     let mut paths = vec![create_field_info(
         format!("{base_path}.{field_name}"),
         "bevy_math::vec3::Vec3",
@@ -278,7 +277,7 @@ fn generate_vec3_field_paths(
 }
 
 /// Generate mutation paths for Transform types
-fn generate_transform_mutation_paths(base_path: &str) -> Vec<FieldInfo> {
+fn generate_transform_mutation_paths(base_path: &str) -> Vec<MutationPathInfo> {
     let mut paths = Vec::new();
 
     // Translation paths

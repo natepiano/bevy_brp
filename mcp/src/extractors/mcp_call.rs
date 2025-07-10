@@ -4,68 +4,33 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::Value;
 
-use crate::brp_tools::constants::DEFAULT_BRP_PORT;
-use crate::constants::PARAM_BINARY_PATH;
+use crate::brp_tools::constants::{DEFAULT_BRP_PORT, PARAM_PATH};
 use crate::error::{Error, report_to_mcp_error};
 
 /// Extractor for data from MCP tool call arguments
-pub struct McpCallExtractor<'a> {
-    params:  Option<&'a Value>,
-    request: Option<&'a CallToolRequestParam>,
+#[derive(Clone)]
+pub struct McpCallExtractor {
+    /// The arguments from the request (owned)
+    arguments: Option<serde_json::Map<String, Value>>,
 }
 
-impl<'a> McpCallExtractor<'a> {
-    /// Create a new extractor from MCP tool call parameters
-    pub const fn new(params: &'a Value) -> Self {
-        Self {
-            params:  Some(params),
-            request: None,
-        }
-    }
-
+impl McpCallExtractor {
     /// Create an extractor from a `CallToolRequestParam`
-    pub const fn from_request(request: &'a CallToolRequestParam) -> Self {
+    pub fn from_request(request: &CallToolRequestParam) -> Self {
         Self {
-            params:  None,
-            request: Some(request),
+            arguments: request.arguments.clone(),
         }
     }
 
-    /// Get a field value from either params or request
-    fn get_field(&self, field_name: &str) -> Option<&'a Value> {
-        self.params.map_or_else(
-            || {
-                self.request.and_then(|request| {
-                    request
-                        .arguments
-                        .as_ref()
-                        .and_then(|args| args.get(field_name))
-                })
-            },
-            |params| params.get(field_name),
-        )
+    /// Get a field value from the arguments
+    fn get_field(&self, field_name: &str) -> Option<&Value> {
+        self.arguments.as_ref()?.get(field_name)
     }
 
     /// Extract entity ID from MCP tool call parameters
     pub fn entity_id(&self) -> Option<u64> {
         self.get_field("entity").and_then(Value::as_u64)
     }
-
-    /// Extract resource name from MCP tool call parameters
-    pub fn resource_name(&self) -> Option<&str> {
-        self.get_field("resource").and_then(|v| v.as_str())
-    }
-
-    // pub const fn query_params(&self) -> Option<&Value> {
-    //     match self.params {
-    //         Some(params) => Some(params),
-    //         None => {
-    //             // For request, we need to return a Value::Object from the JsonObject
-    //             // This is not ideal as we can't return a reference to a temporary
-    //             None
-    //         }
-    //     }
-    // }
 
     /// Extract a specific field from the context parameters
     pub fn field(&self, field_name: &str) -> Option<&Value> {
@@ -149,10 +114,11 @@ impl<'a> McpCallExtractor<'a> {
     // Result-based extractors for optional fields
 
     /// Extract an optional string parameter with a default value
-    pub fn get_optional_string<'b>(&'b self, param_name: &str, default: &'b str) -> &'b str {
+    pub fn get_optional_string(&self, param_name: &str, default: &str) -> String {
         self.get_field(param_name)
             .and_then(|v| v.as_str())
             .unwrap_or(default)
+            .to_string()
     }
 
     /// Extract an optional bool parameter with a default value
@@ -223,12 +189,8 @@ impl<'a> McpCallExtractor<'a> {
     /// Extract an optional path parameter
     /// Returns None if not provided or empty string
     pub fn get_optional_path(&self) -> Option<String> {
-        let path = self.get_optional_string(PARAM_BINARY_PATH, "");
-        if path.is_empty() {
-            None
-        } else {
-            Some(path.to_string())
-        }
+        let path = self.get_optional_string(PARAM_PATH, "");
+        if path.is_empty() { None } else { Some(path) }
     }
 
     // Specialized common extractors
@@ -252,8 +214,14 @@ mod tests {
 
     #[test]
     fn test_extract_field_from_context() {
-        let params = json!({"components": ["Transform"], "entity": 42});
-        let extractor = McpCallExtractor::new(&params);
+        let request = CallToolRequestParam {
+            arguments: Some(serde_json::Map::from_iter([
+                ("components".to_string(), json!(["Transform"])),
+                ("entity".to_string(), json!(42)),
+            ])),
+            name:      "test".into(),
+        };
+        let extractor = McpCallExtractor::from_request(&request);
 
         let result = extractor.field("components");
         assert_eq!(result, Some(&json!(["Transform"])));

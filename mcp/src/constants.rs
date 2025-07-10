@@ -1,6 +1,3 @@
-// Parameter name constants used across modules
-pub const PARAM_BINARY_PATH: &str = "path";
-
 // ---- large response token calculation constants ----
 
 /// Estimated characters per token for response size calculation

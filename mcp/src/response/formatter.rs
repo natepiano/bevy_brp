@@ -28,30 +28,23 @@ use std::sync::Arc;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
-use super::brp_client::BrpError;
+use super::builder::{JsonResponse, ResponseBuilder};
+use super::field_extractor::FieldExtractor;
 use crate::brp_tools::constants::{
-    JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA,
-    JSON_FIELD_METHOD, JSON_FIELD_PORT,
+    JSON_FIELD_BRP_CALL_INFO, JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE,
+    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
+use crate::brp_tools::support::brp_client::BrpError;
 use crate::error::Result;
-use crate::extractors::{FieldExtractor, FormatterContext};
-use crate::support::response::ResponseBuilder;
 use crate::support::{LargeResponseConfig, handle_large_response};
+use crate::tool::BrpToolCallInfo;
 
-/// Metadata about a BRP request for response formatting
-#[derive(Debug, Clone)]
-pub struct BrpToolCallInfo {
-    pub tool_name: String,
-    pub port:      u16,
-}
-
-impl BrpToolCallInfo {
-    pub fn new(tool_name: &str, port: u16) -> Self {
-        Self {
-            tool_name: tool_name.to_string(),
-            port,
-        }
-    }
+/// Context passed to formatter factory
+#[derive(Clone)]
+pub struct FormatterContext {
+    /// Parameters with defaults applied (e.g., port always present)
+    pub params:           Option<Value>,
+    pub format_corrected: Option<crate::brp_tools::request_handler::FormatCorrectionStatus>,
 }
 
 /// Default error formatter implementation with rich guidance extraction
@@ -148,12 +141,12 @@ fn build_enhanced_error_response(
     error: &BrpError,
     metadata: &BrpToolCallInfo,
     rich_guidance: Option<RichGuidance>,
-) -> Result<crate::support::response::JsonResponse> {
+) -> Result<JsonResponse> {
     let mut builder = ResponseBuilder::error()
         .message(&error.message)
         .add_field(JSON_FIELD_ERROR_CODE, error.code)?
         .add_field(
-            JSON_FIELD_METADATA,
+            JSON_FIELD_BRP_CALL_INFO,
             json!({
                 JSON_FIELD_METHOD: metadata.tool_name,
                 JSON_FIELD_PORT: metadata.port
@@ -287,20 +280,20 @@ impl ResponseFormatter {
         let mut clean_data = data.clone();
         let format_corrections_to_add = if let Value::Object(data_map) = data {
             // Check if format corrections exist and are non-empty
-            if let Some(format_corrections) = data_map.get("format_corrections") {
-                if !format_corrections.is_null()
-                    && format_corrections.is_array()
-                    && format_corrections
-                        .as_array()
-                        .is_some_and(|arr| !arr.is_empty())
-                {
-                    Some(format_corrections.clone())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+            data_map
+                .get("format_corrections")
+                .and_then(|format_corrections| {
+                    if !format_corrections.is_null()
+                        && format_corrections.is_array()
+                        && format_corrections
+                            .as_array()
+                            .is_some_and(|arr| !arr.is_empty())
+                    {
+                        Some(format_corrections.clone())
+                    } else {
+                        None
+                    }
+                })
         } else {
             None
         };
@@ -324,29 +317,28 @@ impl ResponseFormatter {
         // Only add metadata if there are format corrections
         if let Some(format_corrections) = format_corrections_to_add {
             // Try to add both fields, but if it fails, continue without metadata
-            match builder
+            if let Ok(b) = builder
                 .add_metadata_field("format_corrected", "attempted")
                 .and_then(|b| b.add_metadata_field("format_corrections", &format_corrections))
             {
-                Ok(b) => builder = b,
-                Err(_) => {
-                    // If adding metadata failed, recreate the builder with just the result
-                    builder = ResponseBuilder::success();
-                    if let Some(template) = &self.config.success_template {
-                        let template_params = self.context.params.as_ref();
-                        let message = substitute_template(template, template_params);
-                        builder = builder.message(message);
-                    }
-                    builder = match builder.with_result(&clean_data) {
-                        Ok(b) => b,
-                        Err(_) => {
-                            return ResponseBuilder::error()
-                                .message("Failed to set result field")
-                                .build()
-                                .to_call_tool_result();
-                        }
-                    };
+                builder = b;
+            } else {
+                // If adding metadata failed, recreate the builder with just the result
+                builder = ResponseBuilder::success();
+                if let Some(template) = &self.config.success_template {
+                    let template_params = self.context.params.as_ref();
+                    let message = substitute_template(template, template_params);
+                    builder = builder.message(message);
                 }
+                builder = match builder.with_result(&clean_data) {
+                    Ok(b) => b,
+                    Err(_) => {
+                        return ResponseBuilder::error()
+                            .message("Failed to set result field")
+                            .build()
+                            .to_call_tool_result();
+                    }
+                };
             }
         }
 
@@ -357,7 +349,7 @@ impl ResponseFormatter {
     /// Handle large response processing if configured
     fn handle_large_response_if_needed(
         &self,
-        response: crate::support::response::JsonResponse,
+        response: JsonResponse,
         method: &str,
     ) -> CallToolResult {
         // Check if we need to handle large response
@@ -401,10 +393,7 @@ impl ResponseFormatter {
         )
     }
 
-    fn build_success_response(
-        &self,
-        data: &Value,
-    ) -> Result<crate::support::response::JsonResponse> {
+    fn build_success_response(&self, data: &Value) -> Result<JsonResponse> {
         let mut builder = ResponseBuilder::success();
 
         // Collect extracted field values for template substitution
@@ -464,7 +453,33 @@ impl ResponseFormatter {
 
         // Apply success template if provided (after collecting all field values)
         if let Some(template) = &self.config.success_template {
-            let template_params = Value::Object(template_values);
+            // Check if template contains placeholders that aren't in template_values
+            // If so, try to find them in the response data
+            let mut final_template_values = template_values.clone();
+
+            // Simple regex-free placeholder detection
+            let mut remaining = template.as_str();
+            while let Some(start) = remaining.find('{') {
+                if let Some(end) = remaining[start + 1..].find('}') {
+                    let placeholder = &remaining[start + 1..start + 1 + end];
+
+                    // If this placeholder isn't in our values, check response data
+                    if !final_template_values.contains_key(placeholder) {
+                        if let Value::Object(data_map) = &clean_data {
+                            if let Some(value) = data_map.get(placeholder) {
+                                final_template_values
+                                    .insert(placeholder.to_string(), value.clone());
+                            }
+                        }
+                    }
+
+                    remaining = &remaining[start + 1 + end + 1..];
+                } else {
+                    break;
+                }
+            }
+
+            let template_params = Value::Object(final_template_values);
             let message = substitute_template(template, Some(&template_params));
             builder = builder.message(message);
         }
@@ -499,40 +514,6 @@ impl ResponseFormatterFactory {
                     file_prefix: "brp_response_".to_string(),
                     ..Default::default()
                 }),
-            },
-        }
-    }
-
-    /// Create a formatter that passes through the response data
-    #[cfg(test)]
-    pub fn pass_through() -> ResponseFormatterBuilder {
-        use crate::brp_tools::constants::JSON_FIELD_DATA;
-
-        ResponseFormatterBuilder {
-            config: FormatterConfig {
-                success_template:      Some("Operation completed successfully".to_string()),
-                success_fields:        vec![(
-                    JSON_FIELD_DATA.to_string(),
-                    Box::new(|data, _context| {
-                        use crate::extractors::BevyResponseExtractor;
-                        BevyResponseExtractor::new(data).pass_through().clone()
-                    }),
-                )],
-                large_response_config: Some(LargeResponseConfig {
-                    file_prefix: "brp_response_".to_string(),
-                    ..Default::default()
-                }),
-            },
-        }
-    }
-
-    /// Create a formatter for local operations that return pre-structured responses
-    pub fn local_passthrough() -> ResponseFormatterBuilder {
-        ResponseFormatterBuilder {
-            config: FormatterConfig {
-                success_template:      None,
-                success_fields:        vec![],
-                large_response_config: None, // No large response handling for passthrough
             },
         }
     }
@@ -652,8 +633,17 @@ mod tests {
                         .params
                         .as_ref()
                         .and_then(|params| {
-                            let extractor = McpCallExtractor::new(params);
-                            extractor.entity_id().map(|id| Value::Number(id.into()))
+                            // Create a temporary request to use the extractor
+                            if let Value::Object(args) = params {
+                                let request = rmcp::model::CallToolRequestParam {
+                                    arguments: Some(args.clone()),
+                                    name:      String::new().into(),
+                                };
+                                let extractor = McpCallExtractor::from_request(&request);
+                                extractor.entity_id().map(|id| Value::Number(id.into()))
+                            } else {
+                                None
+                            }
                         })
                         .unwrap_or(Value::Null)
                 }),
@@ -690,24 +680,5 @@ mod tests {
         // Verify result has content
         assert_eq!(result.content.len(), 1);
         // All errors now use the enhanced format_error_default function
-    }
-
-    #[test]
-    fn test_pass_through_builder() {
-        let factory = ResponseFormatterFactory::pass_through().build();
-
-        let context = FormatterContext {
-            params:           None,
-            format_corrected: None,
-        };
-
-        let formatter = factory.create(context);
-        let metadata = BrpToolCallInfo::new("bevy/query", DEFAULT_BRP_PORT);
-        let data = json!([{"entity": 1}, {"entity": 2}]);
-        let result = formatter.format_success(&data, metadata);
-
-        // Verify result has content
-        assert_eq!(result.content.len(), 1);
-        // TODO: Add proper content validation once Content type is understood
     }
 }

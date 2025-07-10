@@ -2,7 +2,6 @@
 
 mod large_response;
 mod lazy_file_writer;
-pub mod response;
 pub mod schema;
 pub mod tracing;
 

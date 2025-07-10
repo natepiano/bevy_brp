@@ -4,9 +4,8 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support::collection_strategy::BevyAppsStrategy;
-use super::support::generic_listing_handler;
+use super::support::list_common;
 use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
-use crate::service;
 
 /// Result from listing Bevy apps
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,8 +41,8 @@ async fn handle_impl(
     service: Arc<crate::McpService>,
     context: rmcp::service::RequestContext<rmcp::RoleServer>,
 ) -> Result<ListBevyAppsResult, McpError> {
-    service::handle_list_binaries_typed(service, context, |search_paths| async move {
-        let items = generic_listing_handler::collect_all_items(&search_paths, &BevyAppsStrategy);
+    list_common::handle_list_binaries(service, context, |search_paths| async move {
+        let items = list_common::collect_all_items(&search_paths, &BevyAppsStrategy);
 
         Ok(ListBevyAppsResult {
             count: items.len(),

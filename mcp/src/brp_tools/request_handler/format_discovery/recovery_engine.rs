@@ -19,7 +19,7 @@ use super::unified_types::{
 };
 use crate::brp_tools::request_handler::format_discovery::extras_integration;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
-use crate::tools::{
+use crate::tool::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
     BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_SPAWN,
 };
@@ -294,18 +294,21 @@ fn execute_level_3_pattern_transformations(
             debug!("Level 3: No pattern-based correction found for '{type_name}'");
 
             // Create a failure correction to provide structured feedback
-            let type_info_for_failure = type_info.cloned().unwrap_or_else(|| {
-                super::unified_types::UnifiedTypeInfo::new(
-                    type_name.to_string(),
-                    super::unified_types::DiscoverySource::PatternMatching,
-                )
-            });
-
-            let failure_correction = CorrectionResult::CannotCorrect {
-                type_info: type_info_for_failure,
-                reason:    format!(
-                    "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern. This may indicate a limitation in the current transformation logic or an unsupported format combination."
-                ),
+            let failure_correction = if let Some(existing_type_info) = type_info.cloned() {
+                // Type was discovered but couldn't be corrected
+                CorrectionResult::CannotCorrect {
+                    type_info: existing_type_info,
+                    reason:    format!(
+                        "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern. This may indicate a limitation in the current transformation logic or an unsupported format combination."
+                    ),
+                }
+            } else {
+                // Type was never discovered - don't create synthetic type info
+                // This will be handled by the original BRP error message
+                debug!(
+                    "Level 3: Type '{type_name}' was never discovered, skipping synthetic correction"
+                );
+                continue;
             };
             corrections.push(failure_correction);
         }

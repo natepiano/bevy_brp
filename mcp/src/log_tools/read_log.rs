@@ -47,7 +47,7 @@ impl LocalHandler for ReadLog {
             Ok(f) => f.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let keyword = extractor.get_optional_string("keyword", "").to_string();
+        let keyword = extractor.get_optional_string("keyword", "");
         let Ok(tail_lines) = usize::try_from(extractor.optional_number("tail_lines", 0)) else {
             return Box::pin(async move {
                 Err(report_to_mcp_error(&error_stack::Report::new(

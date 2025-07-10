@@ -13,13 +13,13 @@ use super::core::{
     discover_multiple_formats, discover_type_as_response, get_common_component_types,
 };
 use super::error::DebugContext;
-use crate::format::FormatInfo;
+use super::types::DiscoveryInfo;
 
 /// Discover format information for a single component type (public API)
 ///
 /// Returns `None` if the type is not found or cannot be processed.
 /// For detailed error information, use `discover_component_format_with_context`.
-pub fn discover_component_format_simple(world: &World, type_name: &str) -> Option<FormatInfo> {
+pub fn discover_component_format_simple(world: &World, type_name: &str) -> Option<DiscoveryInfo> {
     let mut debug_context = DebugContext::new();
     super::core::discover_component_format(world, type_name, &mut debug_context).ok()
 }

@@ -17,7 +17,7 @@ macro_rules! define_regex {
     };
 }
 
-use crate::tools::{
+use crate::tool::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
     BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_SPAWN,
 };

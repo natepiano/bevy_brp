@@ -19,17 +19,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Resource, Default)]
 struct KeyboardInputHistory {
     /// Currently pressed keys
-    active_keys:      Vec<String>,
+    active_keys:          Vec<String>,
     /// Last pressed keys (for display after release)
-    last_keys:        Vec<String>,
+    last_keys:            Vec<String>,
     /// Active modifier keys
-    modifiers:        Vec<String>,
+    modifiers:            Vec<String>,
+    /// Complete key combination (all keys that were pressed together)
+    complete_combination: Vec<String>,
+    /// Complete modifiers from the last combination
+    complete_modifiers:   Vec<String>,
     /// Time when the last key was pressed
-    press_time:       Option<Instant>,
+    press_time:           Option<Instant>,
     /// Duration between press and release in milliseconds
-    last_duration_ms: Option<u64>,
+    last_duration_ms:     Option<u64>,
     /// Whether the last key press has completed
-    completed:        bool,
+    completed:            bool,
 }
 
 /// Marker component for the keyboard input display text
@@ -221,53 +225,75 @@ fn track_keyboard_input(
             bevy::input::ButtonState::Pressed => {
                 info!("Key pressed: {key_str}");
                 history.completed = false;
-                history.press_time = Some(Instant::now());
+
+                // If this is the first key in a new combination, reset the combination tracking
+                if history.active_keys.is_empty() {
+                    history.complete_combination.clear();
+                    history.press_time = Some(Instant::now());
+                }
 
                 if !history.active_keys.contains(&key_str) {
                     history.active_keys.push(key_str.clone());
                 }
 
-                // Track modifiers
-                if key_str.contains("Control") && !history.modifiers.contains(&"Ctrl".to_string()) {
-                    history.modifiers.push("Ctrl".to_string());
-                } else if key_str.contains("Shift")
-                    && !history.modifiers.contains(&"Shift".to_string())
-                {
-                    history.modifiers.push("Shift".to_string());
-                } else if key_str.contains("Alt") && !history.modifiers.contains(&"Alt".to_string())
-                {
-                    history.modifiers.push("Alt".to_string());
+                // Add to complete combination if not already there
+                if !history.complete_combination.contains(&key_str) {
+                    history.complete_combination.push(key_str.clone());
                 }
             }
             bevy::input::ButtonState::Released => {
                 info!("Key released: {key_str}");
 
-                if let Some(press_time) = history.press_time {
-                    let duration = Instant::now().duration_since(press_time);
-                    history.last_duration_ms = duration.as_millis().try_into().ok();
-                }
-
                 history.active_keys.retain(|k| k != &key_str);
 
-                // Update modifiers
-                if key_str.contains("Control") {
-                    history.modifiers.retain(|m| m != "Ctrl");
-                } else if key_str.contains("Shift") {
-                    history.modifiers.retain(|m| m != "Shift");
-                } else if key_str.contains("Alt") {
-                    history.modifiers.retain(|m| m != "Alt");
-                }
+                // When all keys are released, finalize the combination
+                if history.active_keys.is_empty() {
+                    if let Some(press_time) = history.press_time {
+                        let duration = Instant::now().duration_since(press_time);
+                        history.last_duration_ms = duration.as_millis().try_into().ok();
+                    }
 
-                if history.active_keys.is_empty() && !history.last_keys.is_empty() {
+                    // Save the complete combination as last_keys
+                    history.last_keys = history.complete_combination.clone();
+
+                    // Extract modifiers from the complete combination
+                    let mut modifiers = Vec::new();
+                    for key in &history.complete_combination {
+                        if key.contains("Control") && !modifiers.contains(&"Ctrl".to_string()) {
+                            modifiers.push("Ctrl".to_string());
+                        } else if key.contains("Shift") && !modifiers.contains(&"Shift".to_string())
+                        {
+                            modifiers.push("Shift".to_string());
+                        } else if key.contains("Alt") && !modifiers.contains(&"Alt".to_string()) {
+                            modifiers.push("Alt".to_string());
+                        } else if key.contains("Super") && !modifiers.contains(&"Cmd".to_string()) {
+                            modifiers.push("Cmd".to_string());
+                        }
+                    }
+                    history.complete_modifiers = modifiers;
+
                     history.completed = true;
                 }
             }
         }
 
-        if !history.active_keys.is_empty() {
-            history.last_keys = history.active_keys.clone();
+        // Remove this - we now update last_keys only when all keys are released
+    }
+
+    // Update modifiers based on currently active keys
+    let mut new_modifiers = Vec::new();
+    for key in &history.active_keys {
+        if key.contains("Control") && !new_modifiers.contains(&"Ctrl".to_string()) {
+            new_modifiers.push("Ctrl".to_string());
+        } else if key.contains("Shift") && !new_modifiers.contains(&"Shift".to_string()) {
+            new_modifiers.push("Shift".to_string());
+        } else if key.contains("Alt") && !new_modifiers.contains(&"Alt".to_string()) {
+            new_modifiers.push("Alt".to_string());
+        } else if key.contains("Super") && !new_modifiers.contains(&"Cmd".to_string()) {
+            new_modifiers.push("Cmd".to_string());
         }
     }
+    history.modifiers = new_modifiers;
 }
 
 /// Update the keyboard display
@@ -281,16 +307,14 @@ fn update_keyboard_display(
     }
 
     for mut text in &mut query {
-        let keys_display = if history.last_keys.is_empty() {
-            "None".to_string()
-        } else {
+        let keys_display = if !history.active_keys.is_empty() {
+            // Show current active keys
+            history.active_keys.join(", ")
+        } else if !history.last_keys.is_empty() {
+            // Show last completed combination
             history.last_keys.join(", ")
-        };
-
-        let modifiers_display = if history.modifiers.is_empty() {
-            "None".to_string()
         } else {
-            history.modifiers.join(", ")
+            "None".to_string()
         };
 
         let duration_display = if let Some(ms) = history.last_duration_ms {
@@ -310,7 +334,7 @@ fn update_keyboard_display(
         };
 
         text.0 = format!(
-            "Last keys: [{keys_display}]\nModifiers: [{modifiers_display}]\nDuration: {duration_display}\nStatus: {status}\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
+            "Last keys: [{keys_display}]\nDuration: {duration_display}\nStatus: {status}\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
             port.0
         );
     }

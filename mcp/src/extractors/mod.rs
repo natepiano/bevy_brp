@@ -1,15 +1,11 @@
-//! Extractors for handling MCP tool calls and Bevy BRP responses
+//! Extractors for handling MCP tool calls and response data
 //!
-//! This module provides two main extractor types:
+//! This module provides extractor functionality:
 //! - `McpCallExtractor` - extracts data from MCP tool call arguments
-//! - `BevyResponseExtractor` - extracts data from Bevy BRP responses
+//! - `ResponseExtractorType` - defines extraction strategies for response data
 
-mod bevy_response;
-mod field_extractor;
 mod mcp_call;
 mod types;
 
-pub use bevy_response::BevyResponseExtractor;
-pub use field_extractor::{FieldExtractor, convert_extractor_type, convert_response_field_v2};
 pub use mcp_call::McpCallExtractor;
-pub use types::{ExtractedParams, ExtractorType, FormatterContext};
+pub use types::ExtractedParams;

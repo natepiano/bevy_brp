@@ -1,6 +1,6 @@
-//! Spawn format generation logic for BRP operations
+//! Serialization format generation logic for BRP operations
 //!
-//! This module consolidates all spawn format generation functions, eliminating
+//! This module consolidates all serialization format generation functions, eliminating
 //! the duplication between debug and error-handling variants.
 
 use bevy::prelude::*;
@@ -12,51 +12,52 @@ use super::examples::{
     generate_default_example_for_type, generate_primitive_example, is_primitive_type,
 };
 use super::types::{
-    TypeCategory, analyze_type_info, cast_type_info, extract_enum_variants, extract_struct_fields,
-    extract_tuple_struct_fields,
+    SerializationFormat, TypeCategory, analyze_type_info, cast_type_info, extract_enum_variants,
+    extract_struct_fields, extract_tuple_struct_fields,
 };
-use crate::format::SpawnInfo;
 
-/// Generate spawn format for any type based on its `TypeInfo`
-pub fn generate_spawn_format(
+/// Generate serialization format for any type based on its `TypeInfo`
+pub fn generate_serialization_format(
     type_info: &TypeInfo,
     type_name: &str,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<SpawnInfo> {
-    debug_context.push(format!("Generating spawn format for: {type_name}"));
+) -> DiscoveryResult<SerializationFormat> {
+    debug_context.push(format!("Generating serialization format for: {type_name}"));
 
     match analyze_type_info(type_info) {
         TypeCategory::Struct => {
             let struct_info = cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")?;
-            generate_spawn_format_for_struct(struct_info, debug_context)
+            generate_serialization_format_for_struct(struct_info, debug_context)
         }
         TypeCategory::TupleStruct => {
             let tuple_struct_info =
                 cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo")?;
-            generate_spawn_format_for_tuple_struct(tuple_struct_info, debug_context)
+            generate_serialization_format_for_tuple_struct(tuple_struct_info, debug_context)
         }
         TypeCategory::Enum => {
             let enum_info = cast_type_info(type_info, TypeInfo::as_enum, "EnumInfo")?;
-            generate_spawn_format_for_enum(enum_info, debug_context)
+            generate_serialization_format_for_enum(enum_info, debug_context)
         }
-        TypeCategory::Opaque => generate_spawn_format_for_primitive(type_name, debug_context),
+        TypeCategory::Opaque => {
+            generate_serialization_format_for_primitive(type_name, debug_context)
+        }
         _ => Err(DiscoveryError::type_not_supported_for(
             type_name,
-            "Spawn format generation",
+            "Serialization format generation",
         )),
     }
 }
 
-/// Generate spawn format for struct types
+/// Generate serialization format for struct types
 #[allow(clippy::unnecessary_wraps)] // Used in Result context for consistency
-pub fn generate_spawn_format_for_struct(
+pub fn generate_serialization_format_for_struct(
     struct_info: &StructInfo,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<SpawnInfo> {
-    debug_context.push("Processing struct type for spawn format".to_string());
+) -> DiscoveryResult<SerializationFormat> {
+    debug_context.push("Processing struct type for serialization format".to_string());
 
     let fields = extract_struct_fields(struct_info);
-    let mut spawn_example = serde_json::Map::new();
+    let mut serialization_example = serde_json::Map::new();
 
     for (field_name, field_type) in fields {
         debug_context.push(format!(
@@ -74,26 +75,26 @@ pub fn generate_spawn_format_for_struct(
             generate_default_example_for_type(&field_type)
         };
 
-        spawn_example.insert(field_name, field_example);
+        serialization_example.insert(field_name, field_example);
     }
 
-    let field_count = spawn_example.len();
-    Ok(SpawnInfo {
-        example:     Value::Object(spawn_example),
-        description: format!("Spawn format for struct with {field_count} fields"),
+    let field_count = serialization_example.len();
+    Ok(SerializationFormat {
+        example:     Value::Object(serialization_example),
+        description: format!("Serialization format for struct with {field_count} fields"),
     })
 }
 
-/// Generate spawn format for tuple struct types
+/// Generate serialization format for tuple struct types
 #[allow(clippy::unnecessary_wraps)] // Used in Result context for consistency
-pub fn generate_spawn_format_for_tuple_struct(
+pub fn generate_serialization_format_for_tuple_struct(
     tuple_struct_info: &TupleStructInfo,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<SpawnInfo> {
-    debug_context.push("Processing tuple struct type for spawn format".to_string());
+) -> DiscoveryResult<SerializationFormat> {
+    debug_context.push("Processing tuple struct type for serialization format".to_string());
 
     let fields = extract_tuple_struct_fields(tuple_struct_info);
-    let mut spawn_example = Vec::new();
+    let mut serialization_example = Vec::new();
 
     for (index, field_type) in fields {
         debug_context.push(format!(
@@ -111,22 +112,22 @@ pub fn generate_spawn_format_for_tuple_struct(
             generate_default_example_for_type(&field_type)
         };
 
-        spawn_example.push(field_example);
+        serialization_example.push(field_example);
     }
 
-    let field_count = spawn_example.len();
-    Ok(SpawnInfo {
-        example:     Value::Array(spawn_example),
-        description: format!("Spawn format for tuple struct with {field_count} fields"),
+    let field_count = serialization_example.len();
+    Ok(SerializationFormat {
+        example:     Value::Array(serialization_example),
+        description: format!("Serialization format for tuple struct with {field_count} fields"),
     })
 }
 
-/// Generate spawn format for enum types
-pub fn generate_spawn_format_for_enum(
+/// Generate serialization format for enum types
+pub fn generate_serialization_format_for_enum(
     enum_info: &EnumInfo,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<SpawnInfo> {
-    debug_context.push("Processing enum type for spawn format".to_string());
+) -> DiscoveryResult<SerializationFormat> {
+    debug_context.push("Processing enum type for serialization format".to_string());
 
     let variants = extract_enum_variants(enum_info);
 
@@ -190,25 +191,25 @@ pub fn generate_spawn_format_for_enum(
     }
 
     let variant_count = variant_examples.len();
-    Ok(SpawnInfo {
+    Ok(SerializationFormat {
         example:     Value::Object(variant_examples),
         description: format!(
-            "Spawn format for enum with {variant_count} variants (showing all possible variants)"
+            "Serialization format for enum with {variant_count} variants (showing all possible variants)"
         ),
     })
 }
 
-/// Generate spawn format for primitive types
-pub fn generate_spawn_format_for_primitive(
+/// Generate serialization format for primitive types
+pub fn generate_serialization_format_for_primitive(
     type_name: &str,
     debug_context: &mut DebugContext,
-) -> DiscoveryResult<SpawnInfo> {
+) -> DiscoveryResult<SerializationFormat> {
     debug_context.push(format!("Processing primitive type: {type_name}"));
 
     let example = generate_primitive_example(type_name)?;
 
-    Ok(SpawnInfo {
+    Ok(SerializationFormat {
         example,
-        description: format!("Spawn format for primitive type: {type_name}"),
+        description: format!("Serialization format for primitive type: {type_name}"),
     })
 }

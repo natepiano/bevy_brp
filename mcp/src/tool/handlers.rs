@@ -20,6 +20,9 @@ use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use super::BrpToolCallInfo;
+use super::definitions::{BrpMethodParamCategory, McpToolDef};
+use super::parameters::ParamType;
 // use crate::tools::{HANDLER_BRP_LIST_ACTIVE_WATCHES, HANDLER_BRP_STOP_WATCH};
 use crate::McpService;
 use crate::brp_tools::constants::{
@@ -27,23 +30,18 @@ use crate::brp_tools::constants::{
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
-use crate::brp_tools::support::ResponseFormatterFactory;
-use crate::brp_tools::support::response_formatter::BrpToolCallInfo;
-use crate::extractors::{
-    ExtractedParams, FormatterContext, McpCallExtractor, convert_extractor_type,
-    convert_response_field_v2,
-};
+use crate::extractors::{ExtractedParams, McpCallExtractor};
 use crate::handler::HandlerType;
-use crate::response::{FormatterType, ResponseFieldCompat};
+use crate::response;
+use crate::response::{FormatterContext, ResponseBuilder, ResponseFormatterFactory};
 use crate::support::schema;
-use crate::tool_definitions::{BrpMethodParamCategory, McpToolDef, ParamType};
 
 /// Generate tool registration from a declarative definition
 pub fn get_tool(def: McpToolDef) -> Tool {
     let mut builder = schema::SchemaBuilder::new();
 
     // Add all parameters to the schema
-    for param in &def.params {
+    for param in &def.parameters {
         builder = match param.param_type {
             ParamType::Number => {
                 builder.add_number_property(param.name, param.description, param.required)
@@ -219,11 +217,8 @@ fn build_formatter_factory_from_spec(
 ) -> ResponseFormatterFactory {
     // Create the formatter factory based on the definition
     let mut formatter_builder = match formatter_spec {
-        crate::response::ResponseSpecification::Structured { formatter_type, .. } => {
-            match formatter_type {
-                FormatterType::LocalPassthrough => ResponseFormatterFactory::local_passthrough(),
-                _ => ResponseFormatterFactory::standard(),
-            }
+        crate::response::ResponseSpecification::Structured { .. } => {
+            ResponseFormatterFactory::standard()
         }
         crate::response::ResponseSpecification::Raw { .. } => {
             // Raw responses put BRP data directly in result field
@@ -233,8 +228,11 @@ fn build_formatter_factory_from_spec(
 
     // Set the template if provided
     let template = match formatter_spec {
-        crate::response::ResponseSpecification::Structured { template, .. } => template,
-        crate::response::ResponseSpecification::Raw { template } => template,
+        crate::response::ResponseSpecification::Structured {
+            message_template: template,
+            ..
+        }
+        | crate::response::ResponseSpecification::Raw { template } => template,
     };
     if !template.is_empty() {
         formatter_builder = formatter_builder.with_template(*template);
@@ -246,20 +244,8 @@ fn build_formatter_factory_from_spec(
     } = formatter_spec
     {
         for field in response_fields {
-            match field {
-                ResponseFieldCompat::V1(response_field) => {
-                    formatter_builder = formatter_builder.with_response_field(
-                        response_field.name,
-                        convert_extractor_type(&response_field.extractor),
-                    );
-                }
-                ResponseFieldCompat::V2(response_field_v2) => {
-                    formatter_builder = formatter_builder.with_response_field(
-                        response_field_v2.name(),
-                        convert_response_field_v2(response_field_v2),
-                    );
-                }
-            }
+            formatter_builder = formatter_builder
+                .with_response_field(field.name(), response::convert_response_field(field));
         }
     }
 
@@ -273,7 +259,7 @@ async fn brp_method_tool_call(
     method: &'static str,
 ) -> Result<CallToolResult, McpError> {
     // Extract parameters directly based on the definition
-    let extracted_params = extract_params_for_type(&def.param_extractor, &request)?;
+    let extracted_params = extract_params_for_type(&def.parameter_extractor, &request)?;
 
     // Use the shared function to build the formatter factory
     let formatter_factory = build_formatter_factory_from_spec(&def.formatter);
@@ -328,8 +314,7 @@ fn format_tool_call_result(
                     .unwrap_or("Operation failed");
 
                 // Build error response with all the data fields
-                let error_response =
-                    crate::support::response::ResponseBuilder::error().message(message);
+                let error_response = ResponseBuilder::error().message(message);
 
                 // For disambiguation errors, only include specific fields
                 let error_response = if let serde_json::Value::Object(map) = &value {
@@ -357,7 +342,7 @@ fn format_tool_call_result(
                             })
                             .unwrap_or_else(|_| {
                                 // If adding fields failed, just return the basic error response
-                                crate::support::response::ResponseBuilder::error().message(message)
+                                ResponseBuilder::error().message(message)
                             })
                     } else {
                         // For other errors, include all non-null fields
@@ -372,7 +357,7 @@ fn format_tool_call_result(
                             })
                             .unwrap_or_else(|_| {
                                 // If adding fields failed, just return the basic error response
-                                crate::support::response::ResponseBuilder::error().message(message)
+                                ResponseBuilder::error().message(message)
                             })
                     }
                 } else {

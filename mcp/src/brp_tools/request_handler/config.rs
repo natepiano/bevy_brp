@@ -1,5 +1,5 @@
-use crate::brp_tools::support::response_formatter::ResponseFormatterFactory;
 use crate::extractors::ExtractedParams;
+use crate::response::ResponseFormatterFactory;
 
 /// Unified configuration for a BRP handler
 /// Works for both static and dynamic methods

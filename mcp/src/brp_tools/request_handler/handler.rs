@@ -12,12 +12,11 @@ use crate::brp_tools::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
     JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
-use crate::brp_tools::support::ResponseFormatterFactory;
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
-use crate::brp_tools::support::response_formatter::{self, BrpToolCallInfo};
 use crate::error::{Error, report_to_mcp_error};
-use crate::extractors::{ExtractedParams, FormatterContext};
-use crate::tools::TOOL_BRP_EXECUTE;
+use crate::extractors::ExtractedParams;
+use crate::response::{self, FormatterContext, ResponseFormatterFactory};
+use crate::tool::{BrpToolCallInfo, TOOL_BRP_EXECUTE};
 
 /// Log raw request arguments with sanitization
 fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
@@ -240,7 +239,7 @@ fn process_error_response(
     }
 
     // Route ALL errors through the enhanced format_error_default
-    response_formatter::format_error_default(error_info, call_info)
+    response::format_error_default(error_info, call_info)
 }
 
 /// Unified handler for all BRP methods (both static and dynamic)

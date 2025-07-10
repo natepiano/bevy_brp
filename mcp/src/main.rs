@@ -22,9 +22,7 @@ mod log_tools;
 mod response;
 mod service;
 mod support;
-mod tool_definitions;
-mod tool_handler;
-mod tools;
+mod tool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

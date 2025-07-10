@@ -33,7 +33,7 @@ impl LocalHandler for CleanupLogs {
     fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
         // Extract parameters before the async block
         let extractor = McpCallExtractor::from_request(&ctx.request);
-        let app_name_filter = extractor.get_optional_string("app_name", "").to_string();
+        let app_name_filter = extractor.get_optional_string("app_name", "");
         let older_than_seconds = match extractor.get_optional_u32("older_than_seconds", 0) {
             Ok(n) => n,
             Err(e) => return Box::pin(async move { Err(e) }),

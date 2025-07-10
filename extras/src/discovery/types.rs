@@ -12,6 +12,48 @@ use serde_json::Value;
 
 use super::error::{DiscoveryError, DiscoveryResult};
 
+/// Information about available mutation paths and formats
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MutationInfo {
+    /// Available field paths for mutation
+    pub fields:      HashMap<String, MutationPathInfo>,
+    /// Root-level description
+    pub description: String,
+}
+
+/// Information about a specific field that can be mutated
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MutationPathInfo {
+    /// The mutation path (e.g., "translation.x")
+    pub path:        String,
+    /// The expected value type/format
+    pub value_type:  String,
+    /// Example value
+    pub example:     serde_json::Value,
+    /// Human-readable description
+    pub description: String,
+}
+
+/// Complete format information for component and resource types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveryInfo {
+    /// The fully-qualified type name
+    pub type_name:            String,
+    /// Serialization format for types
+    pub serialization_format: SerializationFormat,
+    /// Format information for mutation operations
+    pub mutation_info:        MutationInfo,
+}
+
+/// Information about how to format data for operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerializationFormat {
+    /// Example data structure for spawn operations
+    pub example:     serde_json::Value,
+    /// Description of the expected format
+    pub description: String,
+}
+
 /// Analyze a `TypeInfo` and determine its category
 #[derive(Debug, Clone)]
 pub enum TypeCategory {

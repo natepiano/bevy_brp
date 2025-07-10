@@ -7,9 +7,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use super::constants::{
-    DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PORT, PARAM_PROFILE, PROFILE_RELEASE,
-};
+use super::constants::{DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PROFILE, PROFILE_RELEASE};
 use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::extractors::McpCallExtractor;
@@ -27,6 +25,8 @@ pub struct LaunchBevyExampleResult {
     pub example_name:       Option<String>,
     /// Process ID of the launched example
     pub pid:                Option<u32>,
+    /// Port used for launch
+    pub port:               Option<u16>,
     /// Working directory used for launch
     pub working_directory:  Option<String>,
     /// Build profile used (debug/release)
@@ -62,14 +62,12 @@ impl LocalHandler for LaunchBevyExample {
             Ok(name) => name.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let profile = extractor
-            .get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE)
-            .to_string();
+        let profile = extractor.get_optional_string(PARAM_PROFILE, DEFAULT_PROFILE);
         let path = extractor
             .get_optional_path()
             .as_deref()
             .map(ToString::to_string);
-        let port = match extractor.get_optional_u16(PARAM_PORT) {
+        let port = match extractor.get_port() {
             Ok(p) => p,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
@@ -96,7 +94,7 @@ async fn handle_impl(
     example_name: &str,
     profile: &str,
     path: Option<&str>,
-    port: Option<u16>,
+    port: u16,
     service: Arc<crate::McpService>,
     context: rmcp::service::RequestContext<rmcp::RoleServer>,
 ) -> Result<LaunchBevyExampleResult, McpError> {
@@ -111,7 +109,7 @@ pub fn launch_bevy_example(
     example_name: &str,
     profile: &str,
     path: Option<&str>,
-    port: Option<u16>,
+    port: u16,
     search_paths: &[PathBuf],
 ) -> Result<LaunchBevyExampleResult, McpError> {
     let launch_start = Instant::now();
@@ -163,6 +161,7 @@ pub fn launch_bevy_example(
                             .as_str()
                             .map(String::from),
                         pid:                None,
+                        port:               Some(port),
                         working_directory:  None,
                         profile:            None,
                         log_file:           None,
@@ -203,7 +202,14 @@ pub fn launch_bevy_example(
     let launch_result = execute_launch_process(launch_params)?;
 
     // Build and return response
-    build_launch_response(example_name, &example, launch_result, launch_start, profile)
+    build_launch_response(
+        example_name,
+        &example,
+        launch_result,
+        launch_start,
+        profile,
+        port,
+    )
 }
 
 struct LaunchResult {
@@ -277,7 +283,7 @@ fn collect_debug_info_if_enabled(
 struct LaunchProcessParams<'a> {
     example_name:  &'a str,
     profile:       &'a str,
-    port:          Option<u16>,
+    port:          u16,
     manifest_dir:  &'a Path,
     package_name:  &'a str,
     cargo_command: &'a str,
@@ -294,7 +300,7 @@ fn execute_launch_process(params: LaunchProcessParams<'_>) -> Result<LaunchResul
         params.profile,
         &PathBuf::from(params.cargo_command),
         params.manifest_dir,
-        params.port,
+        Some(params.port),
         Some(&format!("Package: {}", params.package_name)),
     )?;
     let log_setup_duration = log_setup_start.elapsed();
@@ -304,7 +310,7 @@ fn execute_launch_process(params: LaunchProcessParams<'_>) -> Result<LaunchResul
     let cmd = launch_common::build_cargo_example_command(
         params.example_name,
         params.profile,
-        params.port,
+        Some(params.port),
     );
     let cmd_setup_duration = cmd_setup_start.elapsed();
 
@@ -336,9 +342,7 @@ fn execute_launch_process(params: LaunchProcessParams<'_>) -> Result<LaunchResul
     );
     debug!("TIMING - Spawn process: {}ms", spawn_duration.as_millis());
 
-    if let Some(port) = params.port {
-        debug!("Environment variable: BRP_PORT={}", port);
-    }
+    debug!("Environment variable: BRP_PORT={}", params.port);
 
     Ok(LaunchResult {
         pid,
@@ -353,6 +357,7 @@ fn build_launch_response(
     launch_result: LaunchResult,
     launch_start: Instant,
     profile: &str,
+    port: u16,
 ) -> Result<LaunchBevyExampleResult, McpError> {
     let manifest_dir = launch_common::validate_manifest_directory(&example.manifest_path)?;
 
@@ -372,6 +377,8 @@ fn build_launch_response(
         .and_then(|name| name.to_str())
         .map(String::from);
 
+    debug!("Environment variable: BRP_PORT={}", port);
+
     Ok(LaunchBevyExampleResult {
         status: "success".to_string(),
         message: format!(
@@ -379,6 +386,7 @@ fn build_launch_response(
             launch_result.pid
         ),
         example_name: Some(example_name.to_string()),
+        port: Some(port),
         pid: Some(launch_result.pid),
         working_directory: Some(manifest_dir.display().to_string()),
         profile: Some(profile.to_string()),

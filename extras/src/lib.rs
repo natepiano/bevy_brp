@@ -24,7 +24,6 @@
 
 mod debug_mode;
 mod discovery;
-mod format;
 mod keyboard;
 
 mod plugin;
@@ -34,7 +33,6 @@ mod shutdown;
 pub use discovery::{
     discover_component_format, discover_multiple_formats, get_common_component_types,
 };
-pub use format::{FieldInfo, FormatInfo, MutationInfo, SpawnInfo};
 pub use keyboard::{
     KeyCodeInfo, KeyCodeWrapper, SendKeysRequest, SendKeysResponse, TimedKeyRelease,
 };

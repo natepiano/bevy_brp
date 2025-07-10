@@ -30,7 +30,7 @@ impl LocalHandler for ListLogs {
     fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
         // Extract optional app name filter
         let extractor = McpCallExtractor::from_request(&ctx.request);
-        let app_name_filter = extractor.get_optional_string("app_name", "").to_string();
+        let app_name_filter = extractor.get_optional_string("app_name", "");
 
         // Extract verbose flag (default to false)
         let verbose = extractor.get_optional_bool("verbose", false);

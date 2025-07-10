@@ -10,7 +10,7 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
-use crate::{tool_definitions, tool_handler};
+use crate::tool;
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -136,28 +136,13 @@ pub async fn fetch_roots_and_get_paths(
         .clone())
 }
 
-/// Typed handler wrapper for binary listing operations that fetches search paths
-/// Returns typed results for use with `format_handler_result`
-pub async fn handle_list_binaries_typed<F, Fut, T>(
-    service: Arc<McpService>,
-    context: RequestContext<RoleServer>,
-    handler: F,
-) -> Result<T, McpError>
-where
-    F: FnOnce(Vec<PathBuf>) -> Fut,
-    Fut: Future<Output = Result<T, McpError>>,
-{
-    let search_paths = fetch_roots_and_get_paths(service, context).await?;
-    handler(search_paths).await
-}
-
 fn list_mcp_tools() -> ListToolsResult {
     ListToolsResult {
         next_cursor: None,
         tools:       {
-            let mut tools: Vec<_> = tool_definitions::get_all_tool_definitions()
+            let mut tools: Vec<_> = tool::get_all_tool_definitions()
                 .into_iter()
-                .map(tool_handler::get_tool)
+                .map(tool::get_tool)
                 .collect();
             tools.sort_by_key(|tool| tool.name.clone());
             tools
@@ -171,9 +156,9 @@ async fn find_and_call_tool(
     context: RequestContext<RoleServer>,
 ) -> Result<CallToolResult, McpError> {
     // Check if this is one of the declaratively defined tools
-    let all_tools = tool_definitions::get_all_tool_definitions();
+    let all_tools = tool::get_all_tool_definitions();
     if let Some(def) = all_tools.iter().find(|d| d.name == request.name) {
-        return tool_handler::handle_call_tool(def, service, request, context).await;
+        return tool::handle_call_tool(def, service, request, context).await;
     }
 
     // All tools have been migrated to declarative definitions

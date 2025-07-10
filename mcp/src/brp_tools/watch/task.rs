@@ -16,7 +16,7 @@ use crate::brp_tools::support::{BrpJsonRpcBuilder, http_client};
 use crate::brp_tools::watch::logger::{self as watch_logger, BufferedWatchLogger};
 use crate::brp_tools::watch::manager::{WATCH_MANAGER, WatchInfo};
 use crate::error::{Error, Result};
-use crate::tools::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
+use crate::tool::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {

@@ -20,7 +20,7 @@ mod examples;
 mod handler;
 mod mutation;
 mod registry;
-mod spawn;
+mod serialization_format;
 mod types;
 
 // Re-export public API to maintain compatibility

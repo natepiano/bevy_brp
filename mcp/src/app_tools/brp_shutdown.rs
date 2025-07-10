@@ -8,23 +8,25 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
 use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
-use crate::tools::BRP_METHOD_EXTRAS_SHUTDOWN;
+use crate::tool::BRP_METHOD_EXTRAS_SHUTDOWN;
 
 /// Result from shutting down a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShutdownResultData {
     /// Status of the shutdown operation
-    pub status:   String,
+    pub status:           String,
     /// Shutdown method used
-    pub method:   String,
+    pub method:           String,
     /// App name that was shut down
-    pub app_name: String,
+    pub app_name:         String,
     /// Port that was checked
-    pub port:     u16,
+    pub port:             u16,
     /// Process ID if terminated via kill
-    pub pid:      Option<u32>,
-    /// Status message
-    pub message:  String,
+    pub pid:              Option<u32>,
+    /// Status message (deprecated - use `shutdown_message`)
+    pub message:          String,
+    /// Detailed shutdown message for display
+    pub shutdown_message: String,
 }
 
 impl HandlerResult for ShutdownResultData {
@@ -164,7 +166,8 @@ async fn handle_impl(
                 app_name: app_name.to_string(),
                 port,
                 pid: None,
-                message,
+                message: message.clone(),
+                shutdown_message: message,
             }
         }
         ShutdownResult::ProcessKilled { pid } => {
@@ -177,7 +180,8 @@ async fn handle_impl(
                 app_name: app_name.to_string(),
                 port,
                 pid: Some(pid),
-                message,
+                message: message.clone(),
+                shutdown_message: message,
             }
         }
         ShutdownResult::AlreadyShutdown => {
@@ -190,7 +194,8 @@ async fn handle_impl(
                 app_name: app_name.to_string(),
                 port,
                 pid: None,
-                message,
+                message: message.clone(),
+                shutdown_message: message,
             }
         }
         ShutdownResult::NotRunning => {
@@ -201,7 +206,8 @@ async fn handle_impl(
                 app_name: app_name.to_string(),
                 port,
                 pid: None,
-                message,
+                message: message.clone(),
+                shutdown_message: message,
             }
         }
         ShutdownResult::Error { message } => ShutdownResultData {
@@ -210,7 +216,8 @@ async fn handle_impl(
             app_name: app_name.to_string(),
             port,
             pid: None,
-            message,
+            message: message.clone(),
+            shutdown_message: message,
         },
     };
 

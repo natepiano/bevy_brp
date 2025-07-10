@@ -17,7 +17,7 @@ use crate::brp_tools::constants::{
     JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 use crate::error::{Error, Result};
-use crate::tools::BRP_EXTRAS_PREFIX;
+use crate::tool::BRP_EXTRAS_PREFIX;
 
 /// Result of a BRP operation
 #[derive(Debug, Clone)]
