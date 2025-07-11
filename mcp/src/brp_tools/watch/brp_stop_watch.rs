@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use super::manager::WATCH_MANAGER;
 use crate::constants::JSON_FIELD_WATCH_ID;
 use crate::extractors::McpCallExtractor;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]

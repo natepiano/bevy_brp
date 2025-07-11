@@ -6,7 +6,8 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::{DEFAULT_BRP_PORT, PARAM_APP_NAME, PARAM_PORT};
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::tool::{BRP_METHOD_LIST, HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]

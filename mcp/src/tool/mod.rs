@@ -12,6 +12,4 @@ pub use constants::{
 };
 pub use definitions::get_all_tool_definitions;
 pub use handlers::{get_tool, handle_call_tool};
-pub use types::{
-    BrpToolCallInfo, HandlerContext, HandlerResponse, HandlerResult, HandlerType, LocalHandler,
-};
+pub use types::{BrpToolCallInfo, HandlerResponse, HandlerResult, HandlerType, LocalHandler};

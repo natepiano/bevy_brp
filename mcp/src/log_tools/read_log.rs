@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize)]

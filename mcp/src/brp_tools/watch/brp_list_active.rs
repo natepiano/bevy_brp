@@ -4,7 +4,8 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]

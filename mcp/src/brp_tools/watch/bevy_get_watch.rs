@@ -7,7 +7,8 @@ use crate::constants::{
     DEFAULT_BRP_PORT, JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITY, JSON_FIELD_PORT,
 };
 use crate::extractors::McpCallExtractor;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 pub struct BevyGetWatch;
 
