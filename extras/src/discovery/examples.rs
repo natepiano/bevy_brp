@@ -122,8 +122,8 @@ pub fn generate_default_example_for_type(type_name: &str) -> Value {
         } else {
             // Return a descriptive object instead of a placeholder string
             json!({
-                "_type": type_name,
-                "_note": "Complex type - use recursive discovery for accurate format"
+                "type_name": type_name,
+                "note": "Complex type - use recursive discovery for accurate format"
             })
         }
     })
