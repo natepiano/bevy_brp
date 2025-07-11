@@ -22,7 +22,7 @@ use rmcp::{Error as McpError, RoleServer};
 
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
-use super::{BrpToolCallInfo, HandlerContext, HandlerType, LocalHandler};
+use super::{BrpToolCallInfo, HandlerType, LocalHandler};
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
 use crate::constants::{
     JSON_FIELD_ENTITY, JSON_FIELD_METHOD, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
@@ -30,6 +30,7 @@ use crate::constants::{
 };
 use crate::extractors::{ExtractedParams, McpCallExtractor};
 use crate::response::{FormatterContext, ResponseBuilder, ResponseFormatterFactory};
+use crate::service::HandlerContext;
 use crate::support::schema;
 use crate::{McpService, response};
 

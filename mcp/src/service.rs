@@ -12,6 +12,27 @@ use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::tool;
 
+/// Context passed to all local handlers containing service, request, and MCP context
+pub struct HandlerContext {
+    pub service: Arc<McpService>,
+    pub request: CallToolRequestParam,
+    pub context: RequestContext<RoleServer>,
+}
+
+impl HandlerContext {
+    pub const fn new(
+        service: Arc<McpService>,
+        request: CallToolRequestParam,
+        context: RequestContext<RoleServer>,
+    ) -> Self {
+        Self {
+            service,
+            request,
+            context,
+        }
+    }
+}
+
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
 /// This service provides tools for interacting with Bevy applications through BRP,

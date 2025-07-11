@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use super::support::collection_strategy::BevyAppsStrategy;
 use super::support::list_common;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from listing Bevy apps
 #[derive(Debug, Clone, Serialize, Deserialize)]

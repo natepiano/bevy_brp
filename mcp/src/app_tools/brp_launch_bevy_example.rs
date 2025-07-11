@@ -13,7 +13,8 @@ use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::constants::{PARAM_EXAMPLE_NAME, PARAM_PROFILE};
 use crate::extractors::McpCallExtractor;
 use crate::service;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::HandlerContext;
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from launching a Bevy example
 #[derive(Debug, Clone, Serialize, Deserialize)]

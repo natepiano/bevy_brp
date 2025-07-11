@@ -7,9 +7,8 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::tool::{
-    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HandlerResult, LocalHandler,
-};
+use crate::service::HandlerContext;
+use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from shutting down a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]

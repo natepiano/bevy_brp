@@ -1,11 +1,8 @@
 use std::pin::Pin;
-use std::sync::Arc;
 
-use rmcp::model::CallToolRequestParam;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
+use rmcp::Error as McpError;
 
-use crate::service::McpService;
+use crate::service::HandlerContext;
 
 /// Metadata about a BRP request for response formatting
 #[derive(Debug, Clone)]
@@ -44,27 +41,6 @@ pub trait HandlerResult: Send + Sync {
 pub trait LocalHandler: Send + Sync {
     /// Handle the request and return a typed result
     fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_>;
-}
-
-/// Context passed to all local handlers containing service, request, and MCP context
-pub struct HandlerContext {
-    pub service: Arc<McpService>,
-    pub request: CallToolRequestParam,
-    pub context: RequestContext<RoleServer>,
-}
-
-impl HandlerContext {
-    pub const fn new(
-        service: Arc<McpService>,
-        request: CallToolRequestParam,
-        context: RequestContext<RoleServer>,
-    ) -> Self {
-        Self {
-            service,
-            request,
-            context,
-        }
-    }
 }
 
 /// Type of handler for the tool
