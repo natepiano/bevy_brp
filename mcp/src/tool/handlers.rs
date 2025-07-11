@@ -244,8 +244,9 @@ fn build_formatter_factory_from_spec(
     } = formatter_spec
     {
         for field in response_fields {
-            formatter_builder = formatter_builder
-                .with_response_field(field.name(), response::convert_response_field(field));
+            let (extractor, placement) = response::convert_response_field(field);
+            formatter_builder =
+                formatter_builder.with_response_field_placed(field.name(), extractor, placement);
         }
     }
 

@@ -16,15 +16,14 @@ pub struct ShutdownResultData {
     /// Status of the shutdown operation
     pub status:           String,
     /// Shutdown method used
-    pub method:           String,
+    pub shutdown_method:  String,
     /// App name that was shut down
     pub app_name:         String,
     /// Port that was checked
     pub port:             u16,
     /// Process ID if terminated via kill
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pid:              Option<u32>,
-    /// Status message (deprecated - use `shutdown_message`)
-    pub message:          String,
     /// Detailed shutdown message for display
     pub shutdown_message: String,
 }
@@ -162,11 +161,10 @@ async fn handle_impl(
             );
             ShutdownResultData {
                 status: "success".to_string(),
-                method: "clean_shutdown".to_string(),
+                shutdown_method: "clean_shutdown".to_string(),
                 app_name: app_name.to_string(),
                 port,
                 pid: None,
-                message: message.clone(),
                 shutdown_message: message,
             }
         }
@@ -176,11 +174,10 @@ async fn handle_impl(
             );
             ShutdownResultData {
                 status: "success".to_string(),
-                method: "process_kill".to_string(),
+                shutdown_method: "process_kill".to_string(),
                 app_name: app_name.to_string(),
                 port,
                 pid: Some(pid),
-                message: message.clone(),
                 shutdown_message: message,
             }
         }
@@ -190,11 +187,10 @@ async fn handle_impl(
             );
             ShutdownResultData {
                 status: "error".to_string(),
-                method: "already_shutdown".to_string(),
+                shutdown_method: "already_shutdown".to_string(),
                 app_name: app_name.to_string(),
                 port,
                 pid: None,
-                message: message.clone(),
                 shutdown_message: message,
             }
         }
@@ -202,21 +198,19 @@ async fn handle_impl(
             let message = format!("Process '{app_name}' is not currently running");
             ShutdownResultData {
                 status: "error".to_string(),
-                method: "none".to_string(),
+                shutdown_method: "none".to_string(),
                 app_name: app_name.to_string(),
                 port,
                 pid: None,
-                message: message.clone(),
                 shutdown_message: message,
             }
         }
         ShutdownResult::Error { message } => ShutdownResultData {
             status: "error".to_string(),
-            method: "process_kill_failed".to_string(),
+            shutdown_method: "process_kill_failed".to_string(),
             app_name: app_name.to_string(),
             port,
             pid: None,
-            message: message.clone(),
             shutdown_message: message,
         },
     };

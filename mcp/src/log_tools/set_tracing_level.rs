@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::extractors::McpCallExtractor;
 use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
-use crate::support::tracing::{TracingLevel, set_tracing_level};
+use crate::support::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 
 /// Result from setting the tracing level
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,8 +56,12 @@ fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult, McpError> {
     // Update the tracing level
     set_tracing_level(tracing_level);
 
+    // Get the actual trace log path
+    let log_path = get_trace_log_path();
+    let log_path_str = log_path.to_string_lossy().to_string();
+
     Ok(SetTracingLevelResult {
         level:    tracing_level.as_str().to_string(),
-        log_file: "bevy_brp_mcp_trace.log (in temp directory)".to_string(),
+        log_file: log_path_str,
     })
 }

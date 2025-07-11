@@ -30,9 +30,10 @@ use serde_json::{Value, json};
 
 use super::builder::{JsonResponse, ResponseBuilder};
 use super::field_extractor::FieldExtractor;
+use super::specification::FieldPlacement;
 use crate::brp_tools::constants::{
     JSON_FIELD_BRP_CALL_INFO, JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE,
-    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METHOD, JSON_FIELD_PORT,
+    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
 use crate::brp_tools::support::brp_client::BrpError;
 use crate::error::Result;
@@ -194,9 +195,11 @@ pub struct FormatterConfig {
     /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
     pub success_template:      Option<String>,
     /// Additional fields to add to success responses
-    pub success_fields:        Vec<(String, FieldExtractor)>,
+    pub success_fields:        Vec<(String, FieldExtractor, FieldPlacement)>,
     /// Configuration for large response handling
     pub large_response_config: Option<LargeResponseConfig>,
+    /// Whether this formatter should put BRP data directly in result field (Raw mode)
+    pub is_raw_formatter:      bool,
 }
 
 impl ResponseFormatter {
@@ -238,15 +241,8 @@ impl ResponseFormatter {
 
     /// Check if this formatter is configured as a raw result formatter
     fn is_raw_result_formatter(&self) -> bool {
-        // Raw result formatters have no success fields and have large response config
-        // They may have a template for the message
-        self.config.success_fields.is_empty()
-            && self.config.large_response_config.is_some()
-            && self
-                .config
-                .large_response_config
-                .as_ref()
-                .is_some_and(|config| config.file_prefix == "brp_response_")
+        // Use the explicit flag to determine if this is a raw formatter
+        self.config.is_raw_formatter
     }
 
     /// Format a passthrough response by converting the data directly to `CallToolResult`
@@ -396,6 +392,13 @@ impl ResponseFormatter {
     fn build_success_response(&self, data: &Value) -> Result<JsonResponse> {
         let mut builder = ResponseBuilder::success();
 
+        // Debug: log the incoming data
+        tracing::debug!("build_success_response: incoming data = {:?}", data);
+        tracing::debug!(
+            "build_success_response: response_fields count = {}",
+            self.config.success_fields.len()
+        );
+
         // Collect extracted field values for template substitution
         let mut template_values = serde_json::Map::new();
 
@@ -416,13 +419,6 @@ impl ResponseFormatter {
                 }
             }
 
-            // Always preserve format_corrections from the input data
-            if let Some(format_corrections) = data_map.get("format_corrections") {
-                if !format_corrections.is_null() && format_corrections.is_array() {
-                    builder = builder.add_field("format_corrections", format_corrections)?;
-                }
-            }
-
             // Add format_corrected from context if present
             if let Some(ref format_corrected) = self.context.format_corrected {
                 let format_corrected_value =
@@ -433,6 +429,24 @@ impl ResponseFormatter {
                     })?;
                 builder =
                     builder.add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
+
+                // Only add format_corrections if format correction was attempted and there are
+                // corrections
+                if format_corrected
+                    != &crate::brp_tools::request_handler::FormatCorrectionStatus::NotAttempted
+                {
+                    if let Some(format_corrections) = data_map.get("format_corrections") {
+                        if format_corrections.is_array() {
+                            // Only add if the array is non-empty
+                            if let Some(arr) = format_corrections.as_array() {
+                                if !arr.is_empty() {
+                                    builder = builder
+                                        .add_field("format_corrections", format_corrections)?;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Clean debug_info from data to prevent duplication
@@ -443,9 +457,20 @@ impl ResponseFormatter {
 
         // Add configured fields and collect their values for template substitution (using clean
         // data)
-        for (field_name, extractor) in &self.config.success_fields {
+        for (field_name, extractor, placement) in &self.config.success_fields {
             let value = extractor(&clean_data, &self.context);
-            builder = builder.add_field(field_name, &value)?;
+
+            // Special handling for DirectToMetadata - merge all fields into metadata
+            if field_name == JSON_FIELD_METADATA && matches!(placement, FieldPlacement::Metadata) {
+                // This is DirectToMetadata - merge all fields from value into metadata
+                if let Value::Object(data_map) = &value {
+                    for (key, val) in data_map {
+                        builder = builder.add_field(key, val)?;
+                    }
+                }
+            } else {
+                builder = builder.add_field_to(field_name, &value, placement.clone())?;
+            }
 
             // Add extracted value to template substitution map
             template_values.insert(field_name.to_string(), value);
@@ -494,7 +519,9 @@ impl ResponseFormatter {
         // Auto-inject debug info at response level if debug mode is enabled
         builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
 
-        Ok(builder.build())
+        let response = builder.build();
+        tracing::debug!("build_success_response: final response = {:?}", response);
+        Ok(response)
     }
 }
 
@@ -514,6 +541,7 @@ impl ResponseFormatterFactory {
                     file_prefix: "brp_response_".to_string(),
                     ..Default::default()
                 }),
+                is_raw_formatter:      false,
             },
         }
     }
@@ -528,6 +556,7 @@ impl ResponseFormatterFactory {
                     file_prefix: "brp_response_".to_string(),
                     ..Default::default()
                 }),
+                is_raw_formatter:      true,
             },
         }
     }
@@ -551,13 +580,16 @@ impl ResponseFormatterBuilder {
         self
     }
 
-    /// Add a field to the success response
-    pub fn with_response_field(
+    /// Add a field to the success response with explicit placement
+    pub fn with_response_field_placed(
         mut self,
         name: impl Into<String>,
         extractor: FieldExtractor,
+        placement: FieldPlacement,
     ) -> Self {
-        self.config.success_fields.push((name.into(), extractor));
+        self.config
+            .success_fields
+            .push((name.into(), extractor, placement));
         self
     }
 
@@ -589,13 +621,8 @@ fn substitute_template(template: &str, params: Option<&Value>) -> String {
     result
 }
 
-// Response size estimation functions
-
-// Common field extractors
-
-// Helper functions for common field extractors
-
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use serde_json::json;
 
@@ -620,53 +647,6 @@ mod tests {
     }
 
     #[test]
-    fn test_configurable_formatter_success() {
-        use crate::brp_tools::constants::JSON_FIELD_DESTROYED_ENTITY;
-
-        let config = FormatterConfig {
-            success_template:      Some("Successfully destroyed entity {entity}".to_string()),
-            success_fields:        vec![(
-                JSON_FIELD_DESTROYED_ENTITY.to_string(),
-                Box::new(|_data, context| {
-                    use crate::extractors::McpCallExtractor;
-                    context
-                        .params
-                        .as_ref()
-                        .and_then(|params| {
-                            // Create a temporary request to use the extractor
-                            if let Value::Object(args) = params {
-                                let request = rmcp::model::CallToolRequestParam {
-                                    arguments: Some(args.clone()),
-                                    name:      String::new().into(),
-                                };
-                                let extractor = McpCallExtractor::from_request(&request);
-                                extractor.entity_id().map(|id| Value::Number(id.into()))
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap_or(Value::Null)
-                }),
-            )],
-            large_response_config: None,
-        };
-
-        let context = FormatterContext {
-            params:           Some(json!({ "entity": 123 })),
-            format_corrected: None,
-        };
-
-        let formatter = ResponseFormatter::new(Arc::new(config), context);
-        let metadata = BrpToolCallInfo::new("bevy/destroy", DEFAULT_BRP_PORT);
-        let result = formatter.format_success(&Value::Null, metadata);
-
-        // Verify result has content
-        assert_eq!(result.content.len(), 1);
-        // For now, we'll just verify that formatting doesn't panic
-        // TODO: Once we understand Content type better, add proper content validation
-    }
-
-    #[test]
     fn test_enhanced_error_formatting_direct() {
         let metadata = BrpToolCallInfo::new("bevy/destroy", DEFAULT_BRP_PORT);
         let error = BrpError {
@@ -680,5 +660,43 @@ mod tests {
         // Verify result has content
         assert_eq!(result.content.len(), 1);
         // All errors now use the enhanced format_error_default function
+    }
+
+    #[test]
+    fn test_result_placement_direct_value() {
+        // Test that FieldPlacement::Result puts data directly in result field
+        use crate::response::builder::ResponseBuilder;
+
+        let test_data = json!({
+            "value": {
+                "Srgba": {
+                    "alpha": 1.0,
+                    "blue": 0.1843,
+                    "green": 0.1725,
+                    "red": 0.1686
+                }
+            }
+        });
+
+        let response = ResponseBuilder::success()
+            .message("Retrieved resource")
+            .add_field_to("ignored_field_name", &test_data, FieldPlacement::Result)
+            .expect("Failed to add field")
+            .build();
+
+        // The result field should directly contain our test_data
+        assert_eq!(response.result, Some(test_data));
+
+        // Convert to JSON to verify structure
+        let json_str = response.to_json().expect("Failed to convert to JSON");
+        let parsed: Value = serde_json::from_str(&json_str).expect("Failed to parse JSON");
+
+        // Verify the structure matches expected format
+        assert_eq!(parsed["status"], "success");
+        assert_eq!(parsed["message"], "Retrieved resource");
+        assert_eq!(parsed["result"]["value"]["Srgba"]["alpha"], 1.0);
+
+        // Ensure no wrapping field name was added
+        assert!(parsed["result"].get("ignored_field_name").is_none());
     }
 }

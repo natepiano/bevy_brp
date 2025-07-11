@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::{Error, Result};
+use crate::response::FieldPlacement;
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +91,13 @@ impl ResponseBuilder {
         let value_json = serde_json::to_value(value)
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
 
+        // Skip fields marked for nullable skipping
+        if let Value::String(s) = &value_json {
+            if s == "__SKIP_NULL_FIELD__" {
+                return Ok(self);
+            }
+        }
+
         if let Some(Value::Object(map)) = &mut self.metadata {
             map.insert(key.to_string(), value_json);
         } else {
@@ -117,6 +125,46 @@ impl ResponseBuilder {
         self.add_field(key, value)
     }
 
+    /// Add a field to the specified location (metadata or result object)
+    pub fn add_field_to(
+        mut self,
+        key: &str,
+        value: impl Serialize,
+        placement: FieldPlacement,
+    ) -> Result<Self> {
+        use error_stack::ResultExt;
+
+        let value_json = serde_json::to_value(value)
+            .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
+
+        // Skip fields marked for nullable skipping
+        if let Value::String(s) = &value_json {
+            if s == "__SKIP_NULL_FIELD__" {
+                return Ok(self);
+            }
+        }
+
+        match placement {
+            FieldPlacement::Metadata => {
+                // For metadata, use field name as key in object
+                if let Some(Value::Object(map)) = &mut self.metadata {
+                    map.insert(key.to_string(), value_json);
+                } else {
+                    let mut map = serde_json::Map::new();
+                    map.insert(key.to_string(), value_json);
+                    self.metadata = Some(Value::Object(map));
+                }
+            }
+            FieldPlacement::Result => {
+                // For result, set the entire result field to the value
+                // Field name is ignored to match raw BRP behavior
+                self.result = Some(value_json);
+            }
+        }
+
+        Ok(self)
+    }
+
     /// Auto-inject debug info if debug mode is enabled
     /// This should be called before `build()` to ensure debug info is included when appropriate
     pub fn auto_inject_debug_info(mut self, brp_extras_debug: Option<impl Serialize>) -> Self {
@@ -131,12 +179,17 @@ impl ResponseBuilder {
     }
 
     pub fn build(self) -> JsonResponse {
-        JsonResponse {
+        let response = JsonResponse {
             status:                self.status,
             message:               self.message,
             metadata:              self.metadata,
             result:                self.result,
             brp_extras_debug_info: self.brp_extras_debug_info,
-        }
+        };
+        tracing::debug!(
+            "ResponseBuilder::build - result field: {:?}",
+            response.result
+        );
+        response
     }
 }

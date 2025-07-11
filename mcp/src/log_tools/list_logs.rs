@@ -116,13 +116,18 @@ pub struct LogFileInfo {
     /// The app name extracted from the filename
     pub app_name:   String,
     /// Full path to the file (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub path:       Option<String>,
     /// Human-readable file size (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub size:       Option<String>,
     /// File size in bytes (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub size_bytes: Option<u64>,
     /// Creation time as ISO string (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created:    Option<String>,
     /// Modification time as ISO string (included in verbose mode)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub modified:   Option<String>,
 }

@@ -44,17 +44,20 @@ use super::constants::{
 use super::parameters::Parameter;
 use crate::app_tools::brp_status::Status;
 use crate::brp_tools::constants::{
-    JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT,
-    JSON_FIELD_DESTROYED_ENTITY, JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_LOG_PATH,
-    JSON_FIELD_PATH, JSON_FIELD_PORT, JSON_FIELD_RESOURCE, JSON_FIELD_RESOURCES, PARAM_COMPONENT,
-    PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY_COUNT, PARAM_FILTER, PARAM_FORMATS, PARAM_PARAMS,
-    PARAM_PARENT, PARAM_PATH, PARAM_SPAWNED_ENTITY, PARAM_TYPES, PARAM_WITH_CRATES,
-    PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
+    JSON_FIELD_APP_NAME, JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT,
+    JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_ENTITY_COUNT, JSON_FIELD_LOG_PATH,
+    JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PORT, JSON_FIELD_RESOURCE,
+    JSON_FIELD_SPAWNED_ENTITY, PARAM_APP_NAME, PARAM_COMPONENT, PARAM_COMPONENTS, PARAM_DATA,
+    PARAM_ENTITIES, PARAM_ENTITY, PARAM_FILTER, PARAM_FORMATS, PARAM_PARAMS, PARAM_PARENT,
+    PARAM_PATH, PARAM_PORT, PARAM_RESOURCE, PARAM_TYPES, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
+    PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::handler::HandlerType;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
-use crate::response::{ResponseExtractorType, ResponseField, ResponseSpecification};
+use crate::response::{
+    FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
+};
 
 /// Complete definition of a BRP tool
 pub struct McpToolDef {
@@ -108,9 +111,10 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Entity { required: true },
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully destroyed entity {entity}",
-                response_fields: vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_DESTROYED_ENTITY,
+                response_fields: vec![ResponseField::FromRequestWithPlacement {
+                    response_field_name:  JSON_FIELD_ENTITY,
                     parameter_field_name: JSON_FIELD_ENTITY,
+                    placement:            FieldPlacement::Metadata,
                 }],
             },
         },
@@ -133,13 +137,15 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Retrieved component data from entity {entity}",
                 response_fields: vec![
-                    ResponseField::FromRequest {
+                    ResponseField::FromRequestWithPlacement {
                         response_field_name:  JSON_FIELD_ENTITY,
-                        parameter_field_name: JSON_FIELD_ENTITY,
+                        parameter_field_name: PARAM_ENTITY,
+                        placement:            FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_COMPONENTS,
                         extractor:           ResponseExtractorType::Field(JSON_FIELD_COMPONENTS),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -159,13 +165,11 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Listed {count} components",
                 response_fields: vec![
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_COMPONENTS,
-                        extractor:           ResponseExtractorType::PassThroughData,
-                    },
-                    ResponseField::FromResponse {
+                    ResponseField::DirectToResult,
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::ComponentCount,
+                        extractor:           ResponseExtractorType::ItemCount,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -185,10 +189,18 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully removed components from entity {entity}",
-                response_fields: vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_ENTITY,
-                    parameter_field_name: JSON_FIELD_ENTITY,
-                }],
+                response_fields: vec![
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_ENTITY,
+                        parameter_field_name: PARAM_ENTITY,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_COMPONENTS,
+                        parameter_field_name: PARAM_COMPONENTS,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                ],
             },
         },
         // bevy_insert
@@ -209,10 +221,18 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully inserted components into entity {entity}",
-                response_fields: vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_ENTITY,
-                    parameter_field_name: JSON_FIELD_ENTITY,
-                }],
+                response_fields: vec![
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_ENTITY,
+                        parameter_field_name: PARAM_ENTITY,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_COMPONENTS,
+                        parameter_field_name: PARAM_COMPONENTS,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                ],
             },
         },
         // bevy_get_resource
@@ -222,11 +242,11 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             handler:             HandlerType::Brp {
                 method: BRP_METHOD_GET_RESOURCE,
             },
-            parameters: [Parameter::resource( "The fully-qualified type name of the resource to get"), Parameter::port()]
-            .to_vec(),
+            parameters: vec![Parameter::resource( "The fully-qualified type name of the resource to get"), Parameter::port()],
             parameter_extractor: BrpMethodParamCategory::Resource,
-            formatter:           ResponseSpecification::Raw {
-                template: "Retrieved resource: {resource}",
+            formatter:           ResponseSpecification::Structured {
+                message_template: "Retrieved resource: {resource}",
+                response_fields:  vec![ResponseField::DirectToResult],
             },
         },
         // bevy_insert_resource
@@ -249,9 +269,10 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully inserted/updated resource: {resource}",
-                response_fields: vec![ResponseField::FromRequest {
+                response_fields: vec![ResponseField::FromRequestWithPlacement {
                     response_field_name:  JSON_FIELD_RESOURCE,
-                    parameter_field_name: JSON_FIELD_RESOURCE,
+                    parameter_field_name: PARAM_RESOURCE,
+                    placement:            FieldPlacement::Metadata,
                 }],
             },
         },
@@ -266,9 +287,10 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Resource,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully removed resource",
-                response_fields: vec![ResponseField::FromRequest {
+                response_fields: vec![ResponseField::FromRequestWithPlacement {
                     response_field_name:  JSON_FIELD_RESOURCE,
-                    parameter_field_name: JSON_FIELD_RESOURCE,
+                    parameter_field_name: PARAM_RESOURCE,
+                    placement:            FieldPlacement::Metadata,
                 }],
             },
         },
@@ -298,9 +320,10 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully mutated component on entity {entity}",
-                response_fields: vec![ResponseField::FromRequest {
+                response_fields: vec![ResponseField::FromRequestWithPlacement {
                     response_field_name:  JSON_FIELD_ENTITY,
-                    parameter_field_name: JSON_FIELD_ENTITY,
+                    parameter_field_name: PARAM_ENTITY,
+                    placement:            FieldPlacement::Metadata,
                 }],
             },
         },
@@ -323,9 +346,10 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully mutated resource: `{resource}`",
-                response_fields: vec![ResponseField::FromRequest {
+                response_fields: vec![ResponseField::FromRequestWithPlacement {
                     response_field_name:  JSON_FIELD_RESOURCE,
-                    parameter_field_name: JSON_FIELD_RESOURCE,
+                    parameter_field_name: PARAM_RESOURCE,
+                    placement:            FieldPlacement::Metadata,
                 }],
             },
         },
@@ -341,13 +365,11 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Listed {count} resources",
                 response_fields: vec![
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_RESOURCES,
-                        extractor:           ResponseExtractorType::PassThroughData,
-                    },
-                    ResponseField::FromResponse {
+                    ResponseField::DirectToResult,
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::ComponentCount,
+                        extractor:           ResponseExtractorType::ItemCount,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -361,8 +383,9 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             },
             parameters:          vec![Parameter::port()],
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
-            formatter:           ResponseSpecification::Raw {
-                template: "Retrieved BRP method discovery information",
+            formatter:           ResponseSpecification::Structured {
+                message_template: "Retrieved BRP method discovery information",
+                response_fields:  vec![ResponseField::DirectToResult],
             },
         },
         // bevy_brp_extras/discover_format
@@ -383,10 +406,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Format discovery completed",
-                response_fields: vec![ResponseField::FromResponse {
-                    response_field_name: PARAM_FORMATS,
-                    extractor:           ResponseExtractorType::PassThroughData,
-                }],
+                response_fields: vec![ResponseField::DirectToResult],
             },
         },
         // bevy_screenshot
@@ -404,13 +424,15 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully captured screenshot",
                 response_fields: vec![
-                    ResponseField::FromRequest {
+                    ResponseField::FromRequestWithPlacement {
                         response_field_name:  JSON_FIELD_PATH,
-                        parameter_field_name: JSON_FIELD_PATH,
+                        parameter_field_name: PARAM_PATH,
+                        placement:            FieldPlacement::Metadata,
                     },
-                    ResponseField::FromRequest {
+                    ResponseField::FromRequestWithPlacement {
                         response_field_name:  JSON_FIELD_PORT,
-                        parameter_field_name: JSON_FIELD_PORT,
+                        parameter_field_name: PARAM_PORT,
+                        placement:            FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -435,13 +457,15 @@ fn get_standard_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully sent keyboard input",
                 response_fields: vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "keys_sent",
                         extractor:           ResponseExtractorType::Field("keys_sent"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "duration_ms",
                         extractor:           ResponseExtractorType::Field("duration_ms"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -462,8 +486,20 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 Parameter::port(),
             ],
             parameter_extractor: BrpMethodParamCategory::Passthrough,
-            formatter:           ResponseSpecification::Raw {
-                template: "Debug mode updated successfully",
+            formatter:           ResponseSpecification::Structured {
+                message_template: "Debug mode updated successfully",
+                response_fields:  vec![
+                    ResponseField::FromResponseWithPlacement {
+                        response_field_name: "debug_enabled",
+                        extractor:           ResponseExtractorType::Field("debug_enabled"),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                    ResponseField::FromResponseWithPlacement {
+                        response_field_name: "details",
+                        extractor:           ResponseExtractorType::Field("message"),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                ],
             },
         },
     ]
@@ -498,17 +534,16 @@ fn get_special_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Query completed successfully",
                 response_fields: vec![
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_ENTITIES,
-                        extractor:           ResponseExtractorType::PassThroughData,
+                    ResponseField::DirectToResult,
+                    ResponseField::FromResponseWithPlacement {
+                        response_field_name: JSON_FIELD_ENTITY_COUNT,
+                        extractor:           ResponseExtractorType::ItemCount,
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
-                        response_field_name: PARAM_ENTITY_COUNT,
-                        extractor:           ResponseExtractorType::EntityCount,
-                    },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_COMPONENT_COUNT,
                         extractor:           ResponseExtractorType::QueryComponentCount,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -531,13 +566,15 @@ fn get_special_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully spawned entity",
                 response_fields: vec![
-                    ResponseField::FromResponse {
-                        response_field_name: PARAM_SPAWNED_ENTITY,
+                    ResponseField::FromResponseWithPlacement {
+                        response_field_name: JSON_FIELD_SPAWNED_ENTITY,
                         extractor:           ResponseExtractorType::EntityId,
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromRequest {
+                    ResponseField::FromRequestWithPlacement {
                         response_field_name:  JSON_FIELD_COMPONENTS,
-                        parameter_field_name: JSON_FIELD_COMPONENTS,
+                        parameter_field_name: PARAM_COMPONENTS,
+                        placement:            FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -557,8 +594,9 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 Parameter::port(),
                 ].to_vec(),
             parameter_extractor: BrpMethodParamCategory::BrpExecute,
-            formatter:           ResponseSpecification::Raw {
-                template: "Method executed successfully",
+            formatter:           ResponseSpecification::Structured {
+                message_template: "Method executed successfully",
+                response_fields:  vec![ResponseField::DirectToResult],
             },
         },
         // bevy_registry_schema - has complex parameter transformation
@@ -592,8 +630,9 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 Parameter::port(),
                 ].to_vec(),
             parameter_extractor: BrpMethodParamCategory::RegistrySchema,
-            formatter:           ResponseSpecification::Raw {
-                template: "Retrieved schema information",
+            formatter:           ResponseSpecification::Structured {
+                message_template: "Retrieved schema information",
+                response_fields:  vec![ResponseField::DirectToResult],
             },
         },
         // bevy_reparent - has array parameter handling
@@ -616,13 +655,15 @@ fn get_special_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully reparented entities",
                 response_fields: vec![
-                    ResponseField::FromRequest {
-                        response_field_name:  PARAM_ENTITIES,
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_ENTITIES,
                         parameter_field_name: PARAM_ENTITIES,
+                        placement:            FieldPlacement::Metadata,
                     },
-                    ResponseField::FromRequest {
-                        response_field_name:  PARAM_PARENT,
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_PARENT,
                         parameter_field_name: PARAM_PARENT,
+                        placement:            FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -657,17 +698,20 @@ fn get_log_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Found {count} log files",
                 response_fields: vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "logs",
                         extractor:           ResponseExtractorType::Field("logs"),
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "temp_directory",
                         extractor:           ResponseExtractorType::Field("temp_directory"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "count",
                         extractor:           ResponseExtractorType::Count,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -700,37 +744,45 @@ fn get_log_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Successfully read log file: {filename}",
                 response_fields: [
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "filename",
                         extractor:           ResponseExtractorType::Field("filename"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "file_path",
                         extractor:           ResponseExtractorType::Field("file_path"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "size_bytes",
                         extractor:           ResponseExtractorType::Field("size_bytes"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "size_human",
                         extractor:           ResponseExtractorType::Field("size_human"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "lines_read",
                         extractor:           ResponseExtractorType::Field("lines_read"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "content",
-                        extractor:           ResponseExtractorType::Field("content"),
+                        extractor:           ResponseExtractorType::SplitContentIntoLines,
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "filtered_by_keyword",
                         extractor:           ResponseExtractorType::Field("filtered_by_keyword"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "tail_mode",
                         extractor:           ResponseExtractorType::Field("tail_mode"),
+                        placement:           FieldPlacement::Metadata,
                     },
                     ].to_vec(),
             },
@@ -758,21 +810,25 @@ fn get_log_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Deleted {deleted_count} log files",
                 response_fields: vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "deleted_count",
                         extractor:           ResponseExtractorType::Field("deleted_count"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "deleted_files",
                         extractor:           ResponseExtractorType::Field("deleted_files"),
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "app_name_filter",
                         extractor:           ResponseExtractorType::Field("app_name_filter"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "older_than_seconds",
                         extractor:           ResponseExtractorType::Field("older_than_seconds"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -787,19 +843,22 @@ fn get_log_tools() -> Vec<McpToolDef> {
             parameters:          [].to_vec(),
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:           ResponseSpecification::Structured {
-                message_template:        "Trace log file {exists:found at|not found (will be created when logging starts) at}: {log_path}",
+                message_template:        "Trace log found",
                 response_fields: vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_LOG_PATH,
                         extractor:           ResponseExtractorType::Field(JSON_FIELD_LOG_PATH),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "exists",
                         extractor:           ResponseExtractorType::Field("exists"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "file_size_bytes",
                         extractor:           ResponseExtractorType::Field("file_size_bytes"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -820,13 +879,15 @@ fn get_log_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
                 response_fields: vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "tracing_level",
                         extractor:           ResponseExtractorType::Field("level"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "log_file",
                         extractor:           ResponseExtractorType::Field("log_file"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -850,13 +911,15 @@ fn get_app_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template: "Found {count} Bevy apps",
                 response_fields:  vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "apps",
                         extractor:           ResponseExtractorType::Field("apps"),
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "count",
                         extractor:           ResponseExtractorType::Count,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -873,13 +936,15 @@ fn get_app_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template: "Found {count} BRP-enabled apps",
                 response_fields:  [
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "apps",
                         extractor:           ResponseExtractorType::Field("apps"),
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "count",
                         extractor:           ResponseExtractorType::Count,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ]
                 .to_vec(),
@@ -897,13 +962,15 @@ fn get_app_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template: "Found {count} Bevy examples",
                 response_fields:  [
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "examples",
                         extractor:           ResponseExtractorType::Field("examples"),
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "count",
                         extractor:           ResponseExtractorType::Count,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ]
                 .to_vec(),
@@ -920,61 +987,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template: "Launched Bevy app `{app_name}`",
-                response_fields:  [
-                    ResponseField::FromResponse {
-                        response_field_name: "status",
-                        extractor:           ResponseExtractorType::Field("status"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "message",
-                        extractor:           ResponseExtractorType::Field("message"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "app_name",
-                        extractor:           ResponseExtractorType::Field("app_name"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "pid",
-                        extractor:           ResponseExtractorType::Field("pid"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_PORT,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_PORT),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "working_directory",
-                        extractor:           ResponseExtractorType::Field("working_directory"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "profile",
-                        extractor:           ResponseExtractorType::Field("profile"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "log_file",
-                        extractor:           ResponseExtractorType::Field("log_file"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "binary_path",
-                        extractor:           ResponseExtractorType::Field("binary_path"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "launch_duration_ms",
-                        extractor:           ResponseExtractorType::Field("launch_duration_ms"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "launch_timestamp",
-                        extractor:           ResponseExtractorType::Field("launch_timestamp"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "workspace",
-                        extractor:           ResponseExtractorType::Field("workspace"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "duplicate_paths",
-                        extractor:           ResponseExtractorType::Field("duplicate_paths"),
-                    },
-                ]
-                .to_vec(),
+                response_fields:  vec![ResponseField::DirectToMetadata],
             },
         },
         // launch_bevy_example
@@ -991,65 +1004,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification::Structured {
                 message_template: "Launched Bevy example `{example_name}`",
-                response_fields:  [
-                    ResponseField::FromResponse {
-                        response_field_name: "status",
-                        extractor:           ResponseExtractorType::Field("status"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "message",
-                        extractor:           ResponseExtractorType::Field("message"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "example_name",
-                        extractor:           ResponseExtractorType::Field("example_name"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "pid",
-                        extractor:           ResponseExtractorType::Field("pid"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_PORT,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_PORT),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "working_directory",
-                        extractor:           ResponseExtractorType::Field("working_directory"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "profile",
-                        extractor:           ResponseExtractorType::Field("profile"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "log_file",
-                        extractor:           ResponseExtractorType::Field("log_file"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "launch_duration_ms",
-                        extractor:           ResponseExtractorType::Field("launch_duration_ms"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "launch_timestamp",
-                        extractor:           ResponseExtractorType::Field("launch_timestamp"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "workspace",
-                        extractor:           ResponseExtractorType::Field("workspace"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "package_name",
-                        extractor:           ResponseExtractorType::Field("package_name"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "duplicate_paths",
-                        extractor:           ResponseExtractorType::Field("duplicate_paths"),
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: "note",
-                        extractor:           ResponseExtractorType::Field("note"),
-                    },
-                ]
-                .to_vec(),
+                response_fields:  vec![ResponseField::DirectToMetadata],
             },
         },
         // brp_extras_shutdown
@@ -1072,21 +1027,25 @@ fn get_app_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template: "{shutdown_message}",
                 response_fields:  vec![
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "method",
-                        extractor:           ResponseExtractorType::Field("method"),
+                        extractor:           ResponseExtractorType::Field("shutdown_method"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "app_name",
                         extractor:           ResponseExtractorType::Field("app_name"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "port",
                         extractor:           ResponseExtractorType::Field("port"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseNullableWithPlacement {
                         response_field_name: "pid",
                         extractor:           ResponseExtractorType::Field("pid"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -1110,26 +1069,30 @@ fn get_app_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template: "Status check for `{app_name}` on port {port}",
                 response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name:  "app_name",
-                        parameter_field_name: "app_name",
+                    ResponseField::FromRequestWithPlacement {
+                        response_field_name:  JSON_FIELD_APP_NAME,
+                        parameter_field_name: PARAM_APP_NAME,
+                        placement:            FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_PORT,
-                        //parameter_field_name: JSON_FIELD_PORT,
                         extractor:           ResponseExtractorType::Field(JSON_FIELD_PORT),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "app_running",
                         extractor:           ResponseExtractorType::Field("app_running"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "brp_responsive",
                         extractor:           ResponseExtractorType::Field("brp_responsive"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "app_pid",
                         extractor:           ResponseExtractorType::Field("app_pid"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -1159,17 +1122,20 @@ fn get_watch_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:"Started entity watch for entity {entity}",
                 response_fields: [
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "watch_id",
                         extractor:           ResponseExtractorType::Field("watch_id"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_LOG_PATH,
                         extractor:           ResponseExtractorType::Field("log_path"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromRequest {
+                    ResponseField::FromRequestWithPlacement {
                         response_field_name:  JSON_FIELD_ENTITY,
-                        parameter_field_name: JSON_FIELD_ENTITY,
+                        parameter_field_name: PARAM_ENTITY,
+                        placement:            FieldPlacement::Metadata,
                     },
                     ].to_vec(),
             },
@@ -1190,17 +1156,20 @@ fn get_watch_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template:        "Started list watch for entity {entity}",
                 response_fields: [
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "watch_id",
                         extractor:           ResponseExtractorType::Field("watch_id"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: JSON_FIELD_LOG_PATH,
                         extractor:           ResponseExtractorType::Field("log_path"),
+                        placement:           FieldPlacement::Metadata,
                     },
-                    ResponseField::FromRequest {
+                    ResponseField::FromRequestWithPlacement {
                         response_field_name:  JSON_FIELD_ENTITY,
                         parameter_field_name: JSON_FIELD_ENTITY,
+                        placement:            FieldPlacement::Metadata,
                     },
                     ].to_vec(),
             },
@@ -1242,13 +1211,15 @@ fn get_brp_tools() -> Vec<McpToolDef> {
             formatter:           ResponseSpecification::Structured {
                 message_template: "Found {count} active watches",
                 response_fields:  [
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "watches",
                         extractor:           ResponseExtractorType::Field("watches"),
+                        placement:           FieldPlacement::Result,
                     },
-                    ResponseField::FromResponse {
+                    ResponseField::FromResponseWithPlacement {
                         response_field_name: "count",
                         extractor:           ResponseExtractorType::Field("count"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ]
                 .to_vec(),

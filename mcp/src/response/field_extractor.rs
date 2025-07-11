@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::FormatterContext;
 use crate::extractors::McpCallExtractor;
-use crate::response::ResponseField;
+use crate::response::{FieldPlacement, ResponseField};
 
 /// Function type for extracting field values from response data and context.
 ///
@@ -63,19 +63,70 @@ pub fn create_request_field_accessor(field: &'static str) -> FieldExtractor {
     })
 }
 
-/// Convert a `ResponseField` specification to a field extractor function.
+/// Convert a `ResponseField` specification to a field extractor function with placement info.
 ///
 /// This creates the actual closure that will extract data based on the
-/// extraction strategy defined by the `ResponseField` variant.
-pub fn convert_response_field(field: &ResponseField) -> FieldExtractor {
+/// extraction strategy defined by the `ResponseField` variant, and returns
+/// the placement information for where the field should be put in the response.
+pub fn convert_response_field(field: &ResponseField) -> (FieldExtractor, FieldPlacement) {
     match field {
         ResponseField::FromRequest {
             parameter_field_name: field,
             ..
-        } => create_request_field_accessor(field),
+        } => (
+            create_request_field_accessor(field),
+            FieldPlacement::Metadata,
+        ),
         ResponseField::FromResponse { extractor, .. } => {
             let extractor = extractor.clone();
-            Box::new(move |data, _context| extractor.extract(data))
+            (
+                Box::new(move |data, _context| extractor.extract(data)),
+                FieldPlacement::Metadata,
+            )
+        }
+        ResponseField::FromRequestWithPlacement {
+            parameter_field_name: field,
+            placement,
+            ..
+        } => (create_request_field_accessor(field), placement.clone()),
+        ResponseField::FromResponseWithPlacement {
+            extractor,
+            placement,
+            ..
+        } => {
+            let extractor = extractor.clone();
+            (
+                Box::new(move |data, _context| extractor.extract(data)),
+                placement.clone(),
+            )
+        }
+        ResponseField::DirectToResult => (
+            Box::new(|data, _context| data.clone()),
+            FieldPlacement::Result,
+        ),
+        ResponseField::DirectToMetadata => (
+            Box::new(|data, _context| data.clone()),
+            FieldPlacement::Metadata,
+        ),
+        ResponseField::FromResponseNullableWithPlacement {
+            extractor,
+            placement,
+            ..
+        } => {
+            let extractor = extractor.clone();
+            let placement = placement.clone();
+            (
+                Box::new(move |data, _context| {
+                    // Return a special marker for null values that the formatter can detect
+                    let value = extractor.extract(data);
+                    if value.is_null() {
+                        serde_json::Value::String("__SKIP_NULL_FIELD__".to_string())
+                    } else {
+                        value
+                    }
+                }),
+                placement,
+            )
         }
     }
 }

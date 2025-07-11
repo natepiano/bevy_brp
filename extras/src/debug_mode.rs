@@ -46,7 +46,7 @@ pub fn handler(In(params): In<Option<Value>>, _world: &mut World) -> BrpResult {
     DEBUG_ENABLED.store(enabled, Ordering::Relaxed);
 
     let message = if enabled {
-        "Debug mode enabled - detailed discovery information will be included in responses"
+        "Debug mode enabled - detailed discovery information will be included in responses on the `brp_extras_debug_info` field"
     } else {
         "Debug mode disabled - detailed discovery information will be excluded from responses"
     };
