@@ -174,6 +174,11 @@ pub async fn handle_call_tool(handler_context: HandlerContext) -> Result<CallToo
             brp_method_tool_call(&handler_context, method).await
         }
 
+        HandlerType::BrpExecute => {
+            // Handle BRP execute calls with dynamic method
+            brp_method_tool_call(&handler_context, "").await
+        }
+
         HandlerType::Local { handler } => local_tool_call(&handler_context, handler.as_ref()).await,
     }
 }

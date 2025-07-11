@@ -53,6 +53,9 @@ pub enum HandlerType {
         method: &'static str,
     },
 
+    /// BRP execute handler - calls a dynamic BRP method determined at runtime
+    BrpExecute,
+
     /// Local handler using function pointer approach
     Local {
         /// Handler trait object

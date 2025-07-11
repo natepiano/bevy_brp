@@ -585,7 +585,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BRP_EXECUTE,
             description:         DESC_BRP_EXECUTE,
-            handler:             HandlerType::Brp { method: "" }, // Dynamic method
+            handler:             HandlerType::BrpExecute, // Dynamic method
             parameters:          [
                 Parameter::method(),
                 Parameter::any(
