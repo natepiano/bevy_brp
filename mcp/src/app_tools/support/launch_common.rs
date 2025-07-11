@@ -7,7 +7,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
-use crate::service::{self, HandlerContext};
+use crate::service::HandlerContext;
 use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Marker type for App launch configuration
@@ -161,7 +161,10 @@ impl<T: FromLaunchParams> LocalHandler for GenericLaunchHandler<T> {
         let ctx_clone = ctx.clone();
         Box::pin(async move {
             // Get search paths
-            let search_paths = service::fetch_roots_and_get_paths(&ctx_clone).await?;
+            let search_paths = ctx_clone
+                .service
+                .fetch_roots_and_get_paths(ctx_clone.context.peer.clone())
+                .await?;
 
             // Create config from params
             let config = T::from_params(&params);

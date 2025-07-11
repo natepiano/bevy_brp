@@ -9,7 +9,6 @@ use rmcp::Error as McpError;
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
-use crate::service;
 
 /// Typed handler wrapper for binary listing operations that fetches search paths
 pub async fn handle_list_binaries<F, Fut, T>(
@@ -20,7 +19,10 @@ where
     F: FnOnce(Vec<PathBuf>) -> Fut,
     Fut: Future<Output = Result<T, McpError>>,
 {
-    let search_paths = service::fetch_roots_and_get_paths(handler_context).await?;
+    let search_paths = handler_context
+        .service
+        .fetch_roots_and_get_paths(handler_context.context.peer.clone())
+        .await?;
     handler(search_paths).await
 }
 

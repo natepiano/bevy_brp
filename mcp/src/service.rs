@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use rmcp::model::{
     CallToolRequestParam, CallToolResult, ListToolsResult, PaginatedRequestParam,
-    ServerCapabilities,
+    ServerCapabilities, Tool,
 };
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
@@ -16,10 +17,9 @@ use crate::tool::McpToolDef;
 /// Context passed to all local handlers containing service, request, and MCP context
 #[derive(Clone)]
 pub struct HandlerContext {
-    pub service:  Arc<McpService>,
-    pub request:  CallToolRequestParam,
-    pub context:  RequestContext<RoleServer>,
-    pub tool_def: McpToolDef,
+    pub service: Arc<McpService>,
+    pub request: CallToolRequestParam,
+    pub context: RequestContext<RoleServer>,
 }
 
 impl HandlerContext {
@@ -27,14 +27,31 @@ impl HandlerContext {
         service: Arc<McpService>,
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
-        tool_def: McpToolDef,
     ) -> Self {
         Self {
             service,
             request,
             context,
-            tool_def,
         }
+    }
+
+    /// Get tool definition by looking up the request name in the service's tool registry
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tool definition is not found.
+    pub fn tool_def(&self) -> Result<&McpToolDef, McpError> {
+        self.service
+            .get_tool_def(&self.request.name)
+            .ok_or_else(|| {
+                crate::error::report_to_mcp_error(
+                    &error_stack::Report::new(crate::error::Error::InvalidArgument(format!(
+                        "unknown tool: {}",
+                        self.request.name
+                    )))
+                    .attach_printable("Tool not found"),
+                )
+            })
     }
 }
 
@@ -48,14 +65,70 @@ pub struct McpService {
     ///
     /// These paths are used to locate Bevy applications and projects
     /// for scanning and launching operations.
-    pub roots: Arc<Mutex<Vec<PathBuf>>>,
+    roots:     Arc<Mutex<Vec<PathBuf>>>,
+    /// Tool definitions `HashMap` for O(1) lookup by name
+    tool_defs: HashMap<String, McpToolDef>,
+    /// Pre-converted MCP tools for list operations
+    tools:     Vec<Tool>,
 }
 
 impl McpService {
     pub fn new() -> Self {
+        let all_defs = tool::get_all_tool_definitions();
+        let tool_defs = all_defs
+            .iter()
+            .map(|def| (def.name.to_string(), def.clone()))
+            .collect();
+        let mut tools: Vec<_> = all_defs.into_iter().map(tool::get_tool).collect();
+        tools.sort_by_key(|tool| tool.name.clone());
+
         Self {
             roots: Arc::new(Mutex::new(Vec::new())),
+            tool_defs,
+            tools,
         }
+    }
+
+    /// Get tool definition by name with O(1) lookup
+    pub fn get_tool_def(&self, name: &str) -> Option<&McpToolDef> {
+        self.tool_defs.get(name)
+    }
+
+    /// List all MCP tools using pre-converted and sorted tools
+    pub fn list_mcp_tools(&self) -> ListToolsResult {
+        ListToolsResult {
+            next_cursor: None,
+            tools:       self.tools.clone(),
+        }
+    }
+
+    /// Fetch roots from the client and return the search paths
+    ///
+    /// # Errors
+    /// Returns an error if the MCP client cannot be contacted, if the `list_roots` call fails,
+    /// or if the mutex lock on roots is poisoned.
+    pub async fn fetch_roots_and_get_paths(
+        &self,
+        peer: Peer<RoleServer>,
+    ) -> Result<Vec<PathBuf>, McpError> {
+        // Fetch current roots from client
+        tracing::debug!("Fetching current roots from client...");
+        if let Err(e) = self.fetch_roots_from_client(peer.clone()).await {
+            tracing::debug!("Failed to fetch roots: {}", e);
+        }
+
+        Ok(self
+            .roots
+            .lock()
+            .map_err(|e| {
+                report_to_mcp_error(
+                    &error_stack::Report::new(ServiceError::MutexPoisoned(
+                        "roots lock".to_string(),
+                    ))
+                    .attach_printable(format!("Lock error: {e}")),
+                )
+            })?
+            .clone())
     }
 
     /// Fetches search roots from the connected MCP client.
@@ -65,10 +138,7 @@ impl McpService {
     ///
     /// # Panics
     /// Panics if the mutex lock on roots is poisoned.
-    pub async fn fetch_roots_from_client(
-        &self,
-        peer: Peer<RoleServer>,
-    ) -> Result<(), Box<dyn Error>> {
+    async fn fetch_roots_from_client(&self, peer: Peer<RoleServer>) -> Result<(), Box<dyn Error>> {
         // Use the peer extension method to list roots
         match peer.list_roots().await {
             Ok(result) => {
@@ -127,7 +197,7 @@ impl ServerHandler for McpService {
         _request: PaginatedRequestParam,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
-        Ok(list_mcp_tools())
+        Ok(self.list_mcp_tools())
     }
 
     async fn call_tool(
@@ -135,69 +205,7 @@ impl ServerHandler for McpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        find_and_call_tool(Arc::new(self.clone()), request, context).await
+        let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
+        tool::handle_call_tool(handler_context).await
     }
-}
-
-/// Fetch roots from the client and return the search paths
-pub async fn fetch_roots_and_get_paths(
-    handler_context: &HandlerContext,
-) -> Result<Vec<PathBuf>, McpError> {
-    // Fetch current roots from client
-    tracing::debug!("Fetching current roots from client...");
-    if let Err(e) = handler_context
-        .service
-        .fetch_roots_from_client(handler_context.context.peer.clone())
-        .await
-    {
-        tracing::debug!("Failed to fetch roots: {}", e);
-    }
-
-    Ok(handler_context
-        .service
-        .roots
-        .lock()
-        .map_err(|e| {
-            report_to_mcp_error(
-                &error_stack::Report::new(ServiceError::MutexPoisoned("roots lock".to_string()))
-                    .attach_printable(format!("Lock error: {e}")),
-            )
-        })?
-        .clone())
-}
-
-fn list_mcp_tools() -> ListToolsResult {
-    ListToolsResult {
-        next_cursor: None,
-        tools:       {
-            let mut tools: Vec<_> = tool::get_all_tool_definitions()
-                .into_iter()
-                .map(tool::get_tool)
-                .collect();
-            tools.sort_by_key(|tool| tool.name.clone());
-            tools
-        },
-    }
-}
-
-async fn find_and_call_tool(
-    service: Arc<McpService>,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
-    // Check if this is one of the declaratively defined tools
-    let all_tools = tool::get_all_tool_definitions();
-    if let Some(def) = all_tools.into_iter().find(|d| d.name == request.name) {
-        let handler_context = HandlerContext::new(service, request, context, def);
-        return tool::handle_call_tool(handler_context).await;
-    }
-
-    // All tools have been migrated to declarative definitions
-    let tool_name = &request.name;
-    Err(report_to_mcp_error(
-        &error_stack::Report::new(ServiceError::InvalidArgument(format!(
-            "unknown tool: {tool_name}"
-        )))
-        .attach_printable("Tool not found"),
-    ))
 }
