@@ -393,6 +393,31 @@ fn prepare_launch_environment<T: LaunchConfigTrait>(
     ))
 }
 
+/// Create an error LaunchResult with common fields populated
+fn create_error_launch_result<T: LaunchConfigTrait>(
+    config: &T,
+    message: String,
+    duplicate_paths: Option<Vec<String>>,
+) -> LaunchResult {
+    LaunchResult {
+        status: "error".to_string(),
+        message,
+        target_name: Some(config.target_name().to_string()),
+        pid: None,
+        port: Some(config.port()),
+        working_directory: None,
+        profile: None,
+        log_file: None,
+        binary_path: None,
+        launch_duration_ms: None,
+        launch_timestamp: None,
+        workspace: None,
+        package_name: None,
+        duplicate_paths,
+        note: None,
+    }
+}
+
 /// Find and validate a Bevy target based on configuration
 fn find_and_validate_target<T: LaunchConfigTrait>(
     config: &T,
@@ -408,7 +433,26 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
         TargetType::Example
     };
 
-    // Find the target
+    // First, find all targets with the given name to check for duplicates
+    let all_targets = scanning::find_all_targets_by_name(
+        config.target_name(),
+        Some(target_type),
+        search_paths,
+    );
+
+    // If multiple targets exist, we always want to include their paths
+    let duplicate_paths = if all_targets.len() > 1 {
+        Some(
+            all_targets
+                .iter()
+                .map(|target| target.relative_path.to_string_lossy().to_string())
+                .collect(),
+        )
+    } else {
+        None
+    };
+
+    // Find the specific target with path disambiguation
     let target = match scanning::find_required_target_with_path(
         config.target_name(),
         target_type,
@@ -417,72 +461,48 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
     ) {
         Ok(target) => target,
         Err(mcp_error) => {
-            // Check if this is a path disambiguation error
-            let error_msg = &mcp_error.message;
-            if error_msg.contains("Found multiple") || error_msg.contains("not found at path") {
-                let duplicate_paths = super::extract_duplicate_paths(error_msg);
-
-                return Err(Box::new(LaunchResult {
-                    status: "error".to_string(),
-                    message: format!(
+            // For any error when duplicates exist, return disambiguation error with paths
+            if duplicate_paths.is_some() {
+                let message = if let Some(path) = config.path() {
+                    // User provided a path but it didn't match
+                    format!(
+                        "Found multiple {}s named '{}'. The path '{}' does not match any available paths.",
+                        T::TARGET_TYPE,
+                        config.target_name(),
+                        path
+                    )
+                } else {
+                    // No path provided
+                    format!(
                         "Found multiple {}s named '{}'. Please specify which path to use.",
                         T::TARGET_TYPE,
                         config.target_name()
-                    ),
-                    target_name: Some(config.target_name().to_string()),
-                    pid: None,
-                    port: Some(config.port()),
-                    working_directory: None,
-                    profile: None,
-                    log_file: None,
-                    binary_path: None,
-                    launch_duration_ms: None,
-                    launch_timestamp: None,
-                    workspace: None,
-                    package_name: None,
+                    )
+                };
+
+                return Err(Box::new(create_error_launch_result(
+                    config,
+                    message,
                     duplicate_paths,
-                    note: None,
-                }));
+                )));
             }
-            return Err(Box::new(LaunchResult {
-                status:             "error".to_string(),
-                message:            mcp_error.message.to_string(),
-                target_name:        Some(config.target_name().to_string()),
-                pid:                None,
-                port:               Some(config.port()),
-                working_directory:  None,
-                profile:            None,
-                log_file:           None,
-                binary_path:        None,
-                launch_duration_ms: None,
-                launch_timestamp:   None,
-                workspace:          None,
-                package_name:       None,
-                duplicate_paths:    None,
-                note:               None,
-            }));
+            
+            // For non-duplicate errors, return standard error
+            return Err(Box::new(create_error_launch_result(
+                config,
+                mcp_error.message.to_string(),
+                None,
+            )));
         }
     };
 
     // Validate the target
     if let Err(e) = config.validate_target(&target) {
-        return Err(Box::new(LaunchResult {
-            status:             "error".to_string(),
-            message:            e.message.to_string(),
-            target_name:        Some(config.target_name().to_string()),
-            pid:                None,
-            port:               Some(config.port()),
-            working_directory:  None,
-            profile:            None,
-            log_file:           None,
-            binary_path:        None,
-            launch_duration_ms: None,
-            launch_timestamp:   None,
-            workspace:          None,
-            package_name:       None,
-            duplicate_paths:    None,
-            note:               None,
-        }));
+        return Err(Box::new(create_error_launch_result(
+            config,
+            e.message.to_string(),
+            None,
+        )));
     }
 
     Ok(target)

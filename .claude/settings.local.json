@@ -55,7 +55,9 @@
       "Bash(echo:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(./.claude/commands/test_runner.sh:*)"
+      "Bash(./.claude/commands/test_runner.sh:*)",
+      "mcp__brp__brp_shutdown",
+      "mcp__brp__bevy_remove_resource"
     ],
     "deny": []
   }

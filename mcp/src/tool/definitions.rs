@@ -59,6 +59,7 @@ use crate::response::{
 };
 
 /// Complete definition of a BRP tool
+#[derive(Clone)]
 pub struct McpToolDef {
     /// Tool name (e.g., "`bevy_destroy`")
     pub name:                &'static str,

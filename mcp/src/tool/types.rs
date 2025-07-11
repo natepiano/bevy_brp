@@ -44,6 +44,7 @@ pub trait LocalHandler: Send + Sync {
 }
 
 /// Type of handler for the tool
+#[derive(Clone)]
 pub enum HandlerType {
     /// BRP handler - calls a BRP method
     Brp {
