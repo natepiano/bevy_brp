@@ -8,7 +8,8 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::service::{self, HandlerContext};
+use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -87,7 +88,6 @@ impl HandlerResult for LaunchResult {
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
 use crate::constants::{BRP_PORT_ENV_VAR, PARAM_PROFILE};
 use crate::extractors::McpCallExtractor;
-use crate::service;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -159,12 +159,15 @@ impl<T: FromLaunchParams> LocalHandler for GenericLaunchHandler<T> {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let service = Arc::clone(&ctx.service);
-        let context = ctx.context.clone();
+        let handler_context = HandlerContext::new(
+            Arc::clone(&ctx.service),
+            ctx.request.clone(),
+            ctx.context.clone(),
+        );
 
         Box::pin(async move {
             // Get search paths
-            let search_paths = service::fetch_roots_and_get_paths(service, context).await?;
+            let search_paths = service::fetch_roots_and_get_paths(&handler_context).await?;
 
             // Create config from params
             let config = T::from_params(&params);
