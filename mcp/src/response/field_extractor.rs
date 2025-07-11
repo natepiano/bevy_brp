@@ -76,7 +76,7 @@ pub fn convert_response_field(field: &ResponseField) -> (FieldExtractor, FieldPl
             ..
         } => (create_request_field_accessor(field), placement.clone()),
         ResponseField::FromResponse {
-            extractor,
+            response_extractor: extractor,
             placement,
             ..
         } => {
@@ -95,7 +95,7 @@ pub fn convert_response_field(field: &ResponseField) -> (FieldExtractor, FieldPl
             FieldPlacement::Metadata,
         ),
         ResponseField::FromResponseNullableWithPlacement {
-            extractor,
+            response_extractor: extractor,
             placement,
             ..
         } => {

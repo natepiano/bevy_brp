@@ -143,7 +143,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COMPONENTS,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_COMPONENTS),
+                        response_extractor:           ResponseExtractorType::Field(JSON_FIELD_COMPONENTS),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -167,7 +167,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                     ResponseField::DirectToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::ItemCount,
+                        response_extractor:           ResponseExtractorType::ItemCount,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -367,7 +367,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                     ResponseField::DirectToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::ItemCount,
+                        response_extractor:           ResponseExtractorType::ItemCount,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -458,12 +458,12 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 response_fields: vec![
                     ResponseField::FromResponse {
                         response_field_name: "keys_sent",
-                        extractor:           ResponseExtractorType::Field("keys_sent"),
+                        response_extractor:           ResponseExtractorType::Field("keys_sent"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "duration_ms",
-                        extractor:           ResponseExtractorType::Field("duration_ms"),
+                        response_extractor:           ResponseExtractorType::Field("duration_ms"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -490,12 +490,12 @@ fn get_standard_tools() -> Vec<McpToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: "debug_enabled",
-                        extractor:           ResponseExtractorType::Field("debug_enabled"),
+                        response_extractor:           ResponseExtractorType::Field("debug_enabled"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "details",
-                        extractor:           ResponseExtractorType::Field("message"),
+                        response_extractor:           ResponseExtractorType::Field("message"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -536,12 +536,12 @@ fn get_special_tools() -> Vec<McpToolDef> {
                     ResponseField::DirectToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_ENTITY_COUNT,
-                        extractor:           ResponseExtractorType::ItemCount,
+                        response_extractor:           ResponseExtractorType::ItemCount,
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COMPONENT_COUNT,
-                        extractor:           ResponseExtractorType::QueryComponentCount,
+                        response_extractor:           ResponseExtractorType::QueryComponentCount,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -567,7 +567,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
                 response_fields: vec![
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_ENTITY,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_ENTITY),
+                        response_extractor:           ResponseExtractorType::Field(JSON_FIELD_ENTITY),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
@@ -699,17 +699,17 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 response_fields: vec![
                     ResponseField::FromResponse {
                         response_field_name: "logs",
-                        extractor:           ResponseExtractorType::Field("logs"),
+                        response_extractor:           ResponseExtractorType::Field("logs"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "temp_directory",
-                        extractor:           ResponseExtractorType::Field("temp_directory"),
+                        response_extractor:           ResponseExtractorType::Field("temp_directory"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::Count,
+                        response_extractor:           ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -745,42 +745,42 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 response_fields: [
                     ResponseField::FromResponse {
                         response_field_name: "filename",
-                        extractor:           ResponseExtractorType::Field("filename"),
+                        response_extractor:           ResponseExtractorType::Field("filename"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "file_path",
-                        extractor:           ResponseExtractorType::Field("file_path"),
+                        response_extractor:           ResponseExtractorType::Field("file_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "size_bytes",
-                        extractor:           ResponseExtractorType::Field("size_bytes"),
+                        response_extractor:           ResponseExtractorType::Field("size_bytes"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "size_human",
-                        extractor:           ResponseExtractorType::Field("size_human"),
+                        response_extractor:           ResponseExtractorType::Field("size_human"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "lines_read",
-                        extractor:           ResponseExtractorType::Field("lines_read"),
+                        response_extractor:           ResponseExtractorType::Field("lines_read"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "content",
-                        extractor:           ResponseExtractorType::SplitContentIntoLines,
+                        response_extractor:           ResponseExtractorType::SplitContentIntoLines,
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "filtered_by_keyword",
-                        extractor:           ResponseExtractorType::Field("filtered_by_keyword"),
+                        response_extractor:           ResponseExtractorType::Field("filtered_by_keyword"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "tail_mode",
-                        extractor:           ResponseExtractorType::Field("tail_mode"),
+                        response_extractor:           ResponseExtractorType::Field("tail_mode"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ].to_vec(),
@@ -811,22 +811,22 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 response_fields: vec![
                     ResponseField::FromResponse {
                         response_field_name: "deleted_count",
-                        extractor:           ResponseExtractorType::Field("deleted_count"),
+                        response_extractor:           ResponseExtractorType::Field("deleted_count"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "deleted_files",
-                        extractor:           ResponseExtractorType::Field("deleted_files"),
+                        response_extractor:           ResponseExtractorType::Field("deleted_files"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "app_name_filter",
-                        extractor:           ResponseExtractorType::Field("app_name_filter"),
+                        response_extractor:           ResponseExtractorType::Field("app_name_filter"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "older_than_seconds",
-                        extractor:           ResponseExtractorType::Field("older_than_seconds"),
+                        response_extractor:           ResponseExtractorType::Field("older_than_seconds"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -846,17 +846,17 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 response_fields: vec![
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_LOG_PATH,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_LOG_PATH),
+                        response_extractor:           ResponseExtractorType::Field(JSON_FIELD_LOG_PATH),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "exists",
-                        extractor:           ResponseExtractorType::Field("exists"),
+                        response_extractor:           ResponseExtractorType::Field("exists"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "file_size_bytes",
-                        extractor:           ResponseExtractorType::Field("file_size_bytes"),
+                        response_extractor:           ResponseExtractorType::Field("file_size_bytes"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -880,12 +880,12 @@ fn get_log_tools() -> Vec<McpToolDef> {
                 response_fields: vec![
                     ResponseField::FromResponse {
                         response_field_name: "tracing_level",
-                        extractor:           ResponseExtractorType::Field("level"),
+                        response_extractor:           ResponseExtractorType::Field("level"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "log_file",
-                        extractor:           ResponseExtractorType::Field("log_file"),
+                        response_extractor:           ResponseExtractorType::Field("log_file"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -912,12 +912,12 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: "apps",
-                        extractor:           ResponseExtractorType::Field("apps"),
+                        response_extractor:  ResponseExtractorType::Field("apps"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "count",
-                        extractor:           ResponseExtractorType::Count,
+                        response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -937,12 +937,12 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 response_fields:  [
                     ResponseField::FromResponse {
                         response_field_name: "apps",
-                        extractor:           ResponseExtractorType::Field("apps"),
+                        response_extractor:  ResponseExtractorType::Field("apps"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::Count,
+                        response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
                 ]
@@ -963,12 +963,12 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 response_fields:  [
                     ResponseField::FromResponse {
                         response_field_name: "examples",
-                        extractor:           ResponseExtractorType::Field("examples"),
+                        response_extractor:  ResponseExtractorType::Field("examples"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::Count,
+                        response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
                 ]
@@ -1028,22 +1028,22 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: "method",
-                        extractor:           ResponseExtractorType::Field("shutdown_method"),
+                        response_extractor:  ResponseExtractorType::Field("shutdown_method"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "app_name",
-                        extractor:           ResponseExtractorType::Field("app_name"),
+                        response_extractor:  ResponseExtractorType::Field("app_name"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "port",
-                        extractor:           ResponseExtractorType::Field("port"),
+                        response_extractor:  ResponseExtractorType::Field("port"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponseNullableWithPlacement {
                         response_field_name: "pid",
-                        extractor:           ResponseExtractorType::Field("pid"),
+                        response_extractor:  ResponseExtractorType::Field("pid"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1075,22 +1075,22 @@ fn get_app_tools() -> Vec<McpToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_PORT,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_PORT),
+                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_PORT),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "app_running",
-                        extractor:           ResponseExtractorType::Field("app_running"),
+                        response_extractor:  ResponseExtractorType::Field("app_running"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "brp_responsive",
-                        extractor:           ResponseExtractorType::Field("brp_responsive"),
+                        response_extractor:  ResponseExtractorType::Field("brp_responsive"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "app_pid",
-                        extractor:           ResponseExtractorType::Field("app_pid"),
+                        response_extractor:  ResponseExtractorType::Field("app_pid"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1123,12 +1123,12 @@ fn get_watch_tools() -> Vec<McpToolDef> {
                 response_fields: [
                     ResponseField::FromResponse {
                         response_field_name: "watch_id",
-                        extractor:           ResponseExtractorType::Field("watch_id"),
+                        response_extractor:           ResponseExtractorType::Field("watch_id"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_LOG_PATH,
-                        extractor:           ResponseExtractorType::Field("log_path"),
+                        response_extractor:           ResponseExtractorType::Field("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
@@ -1157,12 +1157,12 @@ fn get_watch_tools() -> Vec<McpToolDef> {
                 response_fields: [
                     ResponseField::FromResponse {
                         response_field_name: "watch_id",
-                        extractor:           ResponseExtractorType::Field("watch_id"),
+                        response_extractor:           ResponseExtractorType::Field("watch_id"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_LOG_PATH,
-                        extractor:           ResponseExtractorType::Field("log_path"),
+                        response_extractor:           ResponseExtractorType::Field("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
@@ -1212,12 +1212,12 @@ fn get_brp_tools() -> Vec<McpToolDef> {
                 response_fields:  [
                     ResponseField::FromResponse {
                         response_field_name: "watches",
-                        extractor:           ResponseExtractorType::Field("watches"),
+                        response_extractor:  ResponseExtractorType::Field("watches"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        extractor:           ResponseExtractorType::Field(JSON_FIELD_COUNT),
+                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_COUNT),
                         placement:           FieldPlacement::Metadata,
                     },
                 ]

@@ -36,7 +36,7 @@ pub enum ResponseField {
         /// Name of the field in the response
         response_field_name: &'static str,
         /// Extractor type for response data
-        extractor:           ResponseExtractorType,
+        response_extractor:  ResponseExtractorType,
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
@@ -58,7 +58,7 @@ pub enum ResponseField {
         /// Name of the field in the response
         response_field_name: &'static str,
         /// Extractor type for response data
-        extractor:           ResponseExtractorType,
+        response_extractor:  ResponseExtractorType,
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
@@ -91,9 +91,10 @@ impl ResponseExtractorType {
                 // Extract count field as a number, return Null if not found or not a number
                 data.as_object()
                     .and_then(|obj| obj.get(JSON_FIELD_COUNT))
-                    .and_then(|v| v.as_u64())
-                    .map(|count| serde_json::Value::Number(serde_json::Number::from(count)))
-                    .unwrap_or(serde_json::Value::Null)
+                    .and_then(serde_json::Value::as_u64)
+                    .map_or(serde_json::Value::Null, |count| {
+                        serde_json::Value::Number(serde_json::Number::from(count))
+                    })
             }
             Self::ItemCount => {
                 // Count items in an array response

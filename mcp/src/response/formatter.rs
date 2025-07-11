@@ -409,16 +409,15 @@ impl ResponseFormatter {
     ) {
         if let Some(template) = &self.config.success_template {
             let final_template_values =
-                self.resolve_template_placeholders(template, template_values, clean_data);
+                Self::resolve_template_placeholders(template, template_values, clean_data);
             let template_params = Value::Object(final_template_values);
             let message = substitute_template(template, Some(&template_params));
             *builder = builder.clone().message(message);
         }
     }
 
-    /// Resolve template placeholders by checking both template_values and response data
+    /// Resolve template placeholders by checking both `template_values` and response data
     fn resolve_template_placeholders(
-        &self,
         template: &str,
         template_values: &serde_json::Map<String, Value>,
         clean_data: &Value,
