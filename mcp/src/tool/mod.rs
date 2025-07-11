@@ -10,6 +10,6 @@ pub use constants::{
     BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_REGISTRY_SCHEMA,
     BRP_METHOD_SPAWN, TOOL_BRP_EXECUTE,
 };
-pub use definitions::get_all_tool_definitions;
+pub use definitions::{McpToolDef, get_all_tool_definitions};
 pub use handlers::{get_tool, handle_call_tool};
 pub use types::{BrpToolCallInfo, HandlerResponse, HandlerResult, HandlerType, LocalHandler};

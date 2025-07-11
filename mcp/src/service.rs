@@ -11,13 +11,15 @@ use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::tool;
+use crate::tool::McpToolDef;
 
 /// Context passed to all local handlers containing service, request, and MCP context
 #[derive(Clone)]
 pub struct HandlerContext {
-    pub service: Arc<McpService>,
-    pub request: CallToolRequestParam,
-    pub context: RequestContext<RoleServer>,
+    pub service:  Arc<McpService>,
+    pub request:  CallToolRequestParam,
+    pub context:  RequestContext<RoleServer>,
+    pub tool_def: McpToolDef,
 }
 
 impl HandlerContext {
@@ -25,11 +27,13 @@ impl HandlerContext {
         service: Arc<McpService>,
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
+        tool_def: McpToolDef,
     ) -> Self {
         Self {
             service,
             request,
             context,
+            tool_def,
         }
     }
 }
@@ -131,8 +135,7 @@ impl ServerHandler for McpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
-        find_and_call_tool(handler_context).await
+        find_and_call_tool(Arc::new(self.clone()), request, context).await
     }
 }
 
@@ -177,18 +180,20 @@ fn list_mcp_tools() -> ListToolsResult {
     }
 }
 
-async fn find_and_call_tool(handler_context: HandlerContext) -> Result<CallToolResult, McpError> {
+async fn find_and_call_tool(
+    service: Arc<McpService>,
+    request: CallToolRequestParam,
+    context: RequestContext<RoleServer>,
+) -> Result<CallToolResult, McpError> {
     // Check if this is one of the declaratively defined tools
     let all_tools = tool::get_all_tool_definitions();
-    if let Some(def) = all_tools
-        .iter()
-        .find(|d| d.name == handler_context.request.name)
-    {
-        return tool::handle_call_tool(def, handler_context).await;
+    if let Some(def) = all_tools.into_iter().find(|d| d.name == request.name) {
+        let handler_context = HandlerContext::new(service, request, context, def);
+        return tool::handle_call_tool(handler_context).await;
     }
 
     // All tools have been migrated to declarative definitions
-    let tool_name = &handler_context.request.name;
+    let tool_name = &request.name;
     Err(report_to_mcp_error(
         &error_stack::Report::new(ServiceError::InvalidArgument(format!(
             "unknown tool: {tool_name}"

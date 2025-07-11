@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Arc;
 
 use chrono;
 use rmcp::Error as McpError;
@@ -159,15 +158,10 @@ impl<T: FromLaunchParams> LocalHandler for GenericLaunchHandler<T> {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let handler_context = HandlerContext::new(
-            Arc::clone(&ctx.service),
-            ctx.request.clone(),
-            ctx.context.clone(),
-        );
-
+        let ctx_clone = ctx.clone();
         Box::pin(async move {
             // Get search paths
-            let search_paths = service::fetch_roots_and_get_paths(&handler_context).await?;
+            let search_paths = service::fetch_roots_and_get_paths(&ctx_clone).await?;
 
             // Create config from params
             let config = T::from_params(&params);
@@ -393,7 +387,7 @@ fn prepare_launch_environment<T: LaunchConfigTrait>(
     ))
 }
 
-/// Create an error LaunchResult with common fields populated
+/// Create an error `LaunchResult` with common fields populated
 fn create_error_launch_result<T: LaunchConfigTrait>(
     config: &T,
     message: String,
@@ -434,11 +428,8 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
     };
 
     // First, find all targets with the given name to check for duplicates
-    let all_targets = scanning::find_all_targets_by_name(
-        config.target_name(),
-        Some(target_type),
-        search_paths,
-    );
+    let all_targets =
+        scanning::find_all_targets_by_name(config.target_name(), Some(target_type), search_paths);
 
     // If multiple targets exist, we always want to include their paths
     let duplicate_paths = if all_targets.len() > 1 {
@@ -463,22 +454,25 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
         Err(mcp_error) => {
             // For any error when duplicates exist, return disambiguation error with paths
             if duplicate_paths.is_some() {
-                let message = if let Some(path) = config.path() {
-                    // User provided a path but it didn't match
-                    format!(
-                        "Found multiple {}s named '{}'. The path '{}' does not match any available paths.",
-                        T::TARGET_TYPE,
-                        config.target_name(),
-                        path
-                    )
-                } else {
-                    // No path provided
-                    format!(
-                        "Found multiple {}s named '{}'. Please specify which path to use.",
-                        T::TARGET_TYPE,
-                        config.target_name()
-                    )
-                };
+                let message = config.path().map_or_else(
+                    || {
+                        // No path provided
+                        format!(
+                            "Found multiple {}s named '{}'. Please specify which path to use.",
+                            T::TARGET_TYPE,
+                            config.target_name()
+                        )
+                    },
+                    |path| {
+                        // User provided a path but it didn't match
+                        format!(
+                            "Found multiple {}s named '{}'. The path '{}' does not match any available paths.",
+                            T::TARGET_TYPE,
+                            config.target_name(),
+                            path
+                        )
+                    }
+                );
 
                 return Err(Box::new(create_error_launch_result(
                     config,
@@ -486,7 +480,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     duplicate_paths,
                 )));
             }
-            
+
             // For non-duplicate errors, return standard error
             return Err(Box::new(create_error_launch_result(
                 config,

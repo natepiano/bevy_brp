@@ -14,6 +14,8 @@
 //! - **`LocalStandard`**: Standard formatting for simple operations
 //! - **`EntityOperation`/`ResourceOperation`**: BRP operations with field extraction
 
+use std::sync::Arc;
+
 use super::HandlerType;
 use super::constants::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
@@ -680,7 +682,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             name:                TOOL_LIST_LOGS,
             description:         DESC_LIST_LOGS,
             handler:             HandlerType::Local {
-                handler: Box::new(ListLogs),
+                handler: Arc::new(ListLogs),
             },
             parameters:          [
                 Parameter::string(
@@ -721,7 +723,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             name:                TOOL_READ_LOG,
             description:         DESC_READ_LOG,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::log_tools::read_log::ReadLog),
+                handler: Arc::new(crate::log_tools::read_log::ReadLog),
             },
             parameters:          [
                 Parameter::string(
@@ -792,7 +794,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             name:                TOOL_CLEANUP_LOGS,
             description:         DESC_CLEANUP_LOGS,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::log_tools::cleanup_logs::CleanupLogs),
+                handler: Arc::new(crate::log_tools::cleanup_logs::CleanupLogs),
             },
             parameters:          vec![
                 Parameter::string(
@@ -838,7 +840,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             name:                TOOL_GET_TRACE_LOG_PATH,
             description:         DESC_GET_TRACE_LOG_PATH,
             handler:             HandlerType::Local {
-                handler: Box::new(GetTraceLogPath),
+                handler: Arc::new(GetTraceLogPath),
             },
             parameters:          [].to_vec(),
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
@@ -868,7 +870,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             name:                TOOL_SET_TRACING_LEVEL,
             description:         DESC_SET_TRACING_LEVEL,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::log_tools::set_tracing_level::SetTracingLevel),
+                handler: Arc::new(crate::log_tools::set_tracing_level::SetTracingLevel),
             },
             parameters:          vec![Parameter::string(
                 "level",
@@ -904,7 +906,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LIST_BEVY_APPS,
             description:         DESC_LIST_BEVY_APPS,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::app_tools::brp_list_bevy_apps::ListBevyApps),
+                handler: Arc::new(crate::app_tools::brp_list_bevy_apps::ListBevyApps),
             },
             parameters:          [].to_vec(),
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
@@ -929,7 +931,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LIST_BRP_APPS,
             description:         DESC_LIST_BRP_APPS,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::app_tools::brp_list_brp_apps::ListBrpApps),
+                handler: Arc::new(crate::app_tools::brp_list_brp_apps::ListBrpApps),
             },
             parameters:          [].to_vec(),
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
@@ -955,7 +957,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LIST_BEVY_EXAMPLES,
             description:         DESC_LIST_BEVY_EXAMPLES,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::app_tools::brp_list_bevy_examples::ListBevyExamples),
+                handler: Arc::new(crate::app_tools::brp_list_bevy_examples::ListBevyExamples),
             },
             parameters:          [].to_vec(),
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
@@ -981,7 +983,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LAUNCH_BEVY_APP,
             description:         DESC_LAUNCH_BEVY_APP,
             handler:             HandlerType::Local {
-                handler: Box::new(
+                handler: Arc::new(
                     crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
                 ),
             },
@@ -997,7 +999,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LAUNCH_BEVY_EXAMPLE,
             description:         DESC_LAUNCH_BEVY_EXAMPLE,
             handler:             HandlerType::Local {
-                handler: Box::new(
+                handler: Arc::new(
                     crate::app_tools::brp_launch_bevy_example::create_launch_bevy_example_handler(),
                 ),
             },
@@ -1016,7 +1018,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_SHUTDOWN,
             description:         DESC_SHUTDOWN,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::app_tools::brp_shutdown::Shutdown),
+                handler: Arc::new(crate::app_tools::brp_shutdown::Shutdown),
             },
             parameters:          [
                 Parameter::string("app_name", "Name of the Bevy app to shutdown", true),
@@ -1059,7 +1061,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_STATUS,
             description:         DESC_STATUS,
             handler:             HandlerType::Local {
-                handler: Box::new(Status),
+                handler: Arc::new(Status),
             },
             parameters:          vec![
                 Parameter::string("app_name", "Name of the process to check for", true),
@@ -1112,7 +1114,7 @@ fn get_watch_tools() -> Vec<McpToolDef> {
             name:                TOOL_BEVY_GET_WATCH,
             description:         DESC_BEVY_GET_WATCH,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::brp_tools::watch::bevy_get_watch::BevyGetWatch),
+                handler: Arc::new(crate::brp_tools::watch::bevy_get_watch::BevyGetWatch),
             },
             parameters:          [
                 Parameter::entity("The entity ID to watch for component changes", true),
@@ -1149,7 +1151,7 @@ fn get_watch_tools() -> Vec<McpToolDef> {
             name:                TOOL_BEVY_LIST_WATCH,
             description:         DESC_BEVY_LIST_WATCH,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::brp_tools::watch::bevy_list_watch::BevyListWatch),
+                handler: Arc::new(crate::brp_tools::watch::bevy_list_watch::BevyListWatch),
             },
             parameters:          [
                 Parameter::entity("The entity ID to watch for component list changes", true),
@@ -1189,7 +1191,7 @@ fn get_brp_tools() -> Vec<McpToolDef> {
             name:                TOOL_BRP_STOP_WATCH,
             description:         DESC_BRP_STOP_WATCH,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::brp_tools::watch::brp_stop_watch::BrpStopWatch),
+                handler: Arc::new(crate::brp_tools::watch::brp_stop_watch::BrpStopWatch),
             },
             parameters:          [Parameter::number(
                 "watch_id",
@@ -1208,7 +1210,7 @@ fn get_brp_tools() -> Vec<McpToolDef> {
             name:                TOOL_BRP_LIST_ACTIVE_WATCHES,
             description:         DESC_BRP_LIST_ACTIVE_WATCHES,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::brp_tools::watch::brp_list_active::BrpListActiveWatches),
+                handler: Arc::new(crate::brp_tools::watch::brp_list_active::BrpListActiveWatches),
             },
             parameters:          [].to_vec(),
             parameter_extractor: BrpMethodParamCategory::EmptyParams,

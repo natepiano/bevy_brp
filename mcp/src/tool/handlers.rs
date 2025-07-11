@@ -166,38 +166,36 @@ fn extract_params_for_type(
 }
 
 /// Generate a handler function for a declarative tool definition
-pub async fn handle_call_tool(
-    def: &McpToolDef,
-    handler_context: HandlerContext,
-) -> Result<CallToolResult, McpError> {
-    match &def.handler {
+pub async fn handle_call_tool(handler_context: HandlerContext) -> Result<CallToolResult, McpError> {
+    match &handler_context.tool_def.handler {
         HandlerType::Brp { method } => {
             // Handle BRP method calls
-            brp_method_tool_call(def, handler_context, method).await
+            brp_method_tool_call(&handler_context, method).await
         }
 
-        HandlerType::Local { handler } => {
-            local_tool_call(def, handler_context, handler.as_ref()).await
-        }
+        HandlerType::Local { handler } => local_tool_call(&handler_context, handler.as_ref()).await,
     }
 }
 
 /// Generate a `LocalFn` handler using function pointer approach
 async fn local_tool_call(
-    def: &McpToolDef,
-    handler_context: HandlerContext,
+    handler_context: &HandlerContext,
     handler: &dyn LocalHandler,
 ) -> Result<CallToolResult, McpError> {
-    let (formatter_factory, formatter_context) =
-        create_formatter_from_def(def, &handler_context.request);
+    let (formatter_factory, formatter_context) = create_formatter_from_def(handler_context);
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
     let result = handler
-        .handle(&handler_context)
+        .handle(handler_context)
         .await
         .map(|typed_result| typed_result.to_json());
 
-    format_tool_call_result(result, def.name, &formatter_factory, &formatter_context)
+    format_tool_call_result(
+        result,
+        handler_context.tool_def.name,
+        &formatter_factory,
+        &formatter_context,
+    )
 }
 
 /// Build a formatter factory from a tool definition's response specification
@@ -225,16 +223,17 @@ fn build_formatter_factory_from_spec(
 
 /// Generate a BRP handler
 async fn brp_method_tool_call(
-    def: &McpToolDef,
-    handler_context: HandlerContext,
+    handler_context: &HandlerContext,
     method: &'static str,
 ) -> Result<CallToolResult, McpError> {
     // Extract parameters directly based on the definition
-    let extracted_params =
-        extract_params_for_type(&def.parameter_extractor, &handler_context.request)?;
+    let extracted_params = extract_params_for_type(
+        &handler_context.tool_def.parameter_extractor,
+        &handler_context.request,
+    )?;
 
     // Use the shared function to build the formatter factory
-    let formatter_factory = build_formatter_factory_from_spec(&def.formatter);
+    let formatter_factory = build_formatter_factory_from_spec(&handler_context.tool_def.formatter);
 
     let config = BrpHandlerConfig {
         method: Some(method),
@@ -242,19 +241,22 @@ async fn brp_method_tool_call(
         formatter_factory,
     };
 
-    handle_brp_method_tool_call(handler_context, &config).await
+    handle_brp_method_tool_call(handler_context.clone(), &config).await
 }
 
 /// Create formatter factory and context from tool definition
 fn create_formatter_from_def(
-    def: &McpToolDef,
-    request: &CallToolRequestParam,
+    handler_context: &HandlerContext,
 ) -> (ResponseFormatterFactory, FormatterContext) {
     // Use the shared function to build the formatter factory
-    let formatter_factory = build_formatter_factory_from_spec(&def.formatter);
+    let formatter_factory = build_formatter_factory_from_spec(&handler_context.tool_def.formatter);
 
     let formatter_context = FormatterContext {
-        params:           request.arguments.clone().map(serde_json::Value::Object),
+        params:           handler_context
+            .request
+            .arguments
+            .clone()
+            .map(serde_json::Value::Object),
         format_corrected: None,
     };
 

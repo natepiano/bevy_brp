@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::sync::Arc;
 
 use rmcp::Error as McpError;
 
@@ -55,6 +56,6 @@ pub enum HandlerType {
     /// Local handler using function pointer approach
     Local {
         /// Handler trait object
-        handler: Box<dyn LocalHandler>,
+        handler: Arc<dyn LocalHandler>,
     },
 }
