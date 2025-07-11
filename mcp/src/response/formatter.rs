@@ -198,8 +198,6 @@ pub struct FormatterConfig {
     pub success_fields:        Vec<(String, FieldExtractor, FieldPlacement)>,
     /// Configuration for large response handling
     pub large_response_config: Option<LargeResponseConfig>,
-    /// Whether this formatter should put BRP data directly in result field (Raw mode)
-    pub is_raw_formatter:      bool,
 }
 
 impl ResponseFormatter {
@@ -212,11 +210,6 @@ impl ResponseFormatter {
         // Check if this is a passthrough formatter - if so, convert data directly to CallToolResult
         if self.is_passthrough_formatter() {
             return Self::format_passthrough_response(self, data);
-        }
-
-        // Check if this is a raw result formatter - if so, put BRP data in result field
-        if self.is_raw_result_formatter() {
-            return self.format_raw_result_response(data, metadata);
         }
 
         // First build the response
@@ -239,12 +232,6 @@ impl ResponseFormatter {
             && self.config.large_response_config.is_none()
     }
 
-    /// Check if this formatter is configured as a raw result formatter
-    fn is_raw_result_formatter(&self) -> bool {
-        // Use the explicit flag to determine if this is a raw formatter
-        self.config.is_raw_formatter
-    }
-
     /// Format a passthrough response by converting the data directly to `CallToolResult`
     fn format_passthrough_response(_self: &Self, data: &Value) -> CallToolResult {
         // For passthrough, the data should already be a structured response
@@ -254,92 +241,6 @@ impl ResponseFormatter {
         });
 
         CallToolResult::success(vec![rmcp::model::Content::text(json_string)])
-    }
-
-    /// Format a raw result response by putting BRP data in the result field
-    fn format_raw_result_response(
-        &self,
-        data: &Value,
-        metadata: BrpToolCallInfo,
-    ) -> CallToolResult {
-        // Build response with BRP data in result field
-        let mut builder = ResponseBuilder::success();
-
-        // Set template message if provided
-        if let Some(template) = &self.config.success_template {
-            let template_params = self.context.params.as_ref();
-            let message = substitute_template(template, template_params);
-            builder = builder.message(message);
-        }
-
-        // Clean the data to remove any format_corrections before putting in result
-        let mut clean_data = data.clone();
-        let format_corrections_to_add = if let Value::Object(data_map) = data {
-            // Check if format corrections exist and are non-empty
-            data_map
-                .get("format_corrections")
-                .and_then(|format_corrections| {
-                    if !format_corrections.is_null()
-                        && format_corrections.is_array()
-                        && format_corrections
-                            .as_array()
-                            .is_some_and(|arr| !arr.is_empty())
-                    {
-                        Some(format_corrections.clone())
-                    } else {
-                        None
-                    }
-                })
-        } else {
-            None
-        };
-
-        // Remove format_corrections from the clean data
-        if let Value::Object(data_map) = &mut clean_data {
-            data_map.remove("format_corrections");
-        }
-
-        // For raw responses, put the entire BRP response in the result field
-        builder = match builder.with_result(&clean_data) {
-            Ok(b) => b,
-            Err(_) => {
-                return ResponseBuilder::error()
-                    .message("Failed to set result field")
-                    .build()
-                    .to_call_tool_result();
-            }
-        };
-
-        // Only add metadata if there are format corrections
-        if let Some(format_corrections) = format_corrections_to_add {
-            // Try to add both fields, but if it fails, continue without metadata
-            if let Ok(b) = builder
-                .add_metadata_field("format_corrected", "attempted")
-                .and_then(|b| b.add_metadata_field("format_corrections", &format_corrections))
-            {
-                builder = b;
-            } else {
-                // If adding metadata failed, recreate the builder with just the result
-                builder = ResponseBuilder::success();
-                if let Some(template) = &self.config.success_template {
-                    let template_params = self.context.params.as_ref();
-                    let message = substitute_template(template, template_params);
-                    builder = builder.message(message);
-                }
-                builder = match builder.with_result(&clean_data) {
-                    Ok(b) => b,
-                    Err(_) => {
-                        return ResponseBuilder::error()
-                            .message("Failed to set result field")
-                            .build()
-                            .to_call_tool_result();
-                    }
-                };
-            }
-        }
-
-        let response = builder.build();
-        self.handle_large_response_if_needed(response, &metadata.tool_name)
     }
 
     /// Handle large response processing if configured
@@ -390,138 +291,171 @@ impl ResponseFormatter {
     }
 
     fn build_success_response(&self, data: &Value) -> Result<JsonResponse> {
-        let mut builder = ResponseBuilder::success();
-
-        // Debug: log the incoming data
         tracing::debug!("build_success_response: incoming data = {:?}", data);
         tracing::debug!(
             "build_success_response: response_fields count = {}",
             self.config.success_fields.len()
         );
 
-        // Collect extracted field values for template substitution
-        let mut template_values = serde_json::Map::new();
+        let mut builder = ResponseBuilder::success();
+        let template_values = self.initialize_template_values();
+        let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
 
-        // Add original params to template values
+        self.add_format_corrections(&mut builder, data)?;
+        let template_values =
+            self.add_configured_fields(&mut builder, &clean_data, template_values)?;
+        self.apply_template_if_provided(&mut builder, &clean_data, &template_values);
+        self.override_message_for_format_correction(&mut builder);
+        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
+
+        let response = builder.build();
+        tracing::debug!("build_success_response: final response = {:?}", response);
+        Ok(response)
+    }
+
+    /// Initialize template values with original parameters
+    fn initialize_template_values(&self) -> serde_json::Map<String, Value> {
+        let mut template_values = serde_json::Map::new();
         if let Some(Value::Object(params)) = &self.context.params {
             template_values.extend(params.clone());
         }
+        template_values
+    }
 
-        // Extract debug info and format corrections from data first
+    /// Extract debug info and clean data from incoming response
+    fn extract_debug_and_clean_data(data: &Value) -> (Value, Option<Value>) {
         let mut clean_data = data.clone();
         let mut brp_extras_debug_info = None;
 
         if let Value::Object(data_map) = data {
-            // Extract brp_extras_debug_info from data (if exists)
             if let Some(debug_info) = data_map.get(JSON_FIELD_DEBUG_INFO) {
                 if !debug_info.is_null() && (debug_info.is_array() || debug_info.is_string()) {
                     brp_extras_debug_info = Some(debug_info.clone());
                 }
             }
 
-            // Add format_corrected from context if present
-            if let Some(ref format_corrected) = self.context.format_corrected {
-                let format_corrected_value =
-                    serde_json::to_value(format_corrected).map_err(|e| {
-                        error_stack::Report::new(crate::error::Error::General(format!(
-                            "Failed to serialize format_corrected: {e}"
-                        )))
-                    })?;
-                builder =
-                    builder.add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
-
-                // Only add format_corrections if format correction was attempted and there are
-                // corrections
-                if format_corrected
-                    != &crate::brp_tools::request_handler::FormatCorrectionStatus::NotAttempted
-                {
-                    if let Some(format_corrections) = data_map.get("format_corrections") {
-                        if format_corrections.is_array() {
-                            // Only add if the array is non-empty
-                            if let Some(arr) = format_corrections.as_array() {
-                                if !arr.is_empty() {
-                                    builder = builder
-                                        .add_field("format_corrections", format_corrections)?;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Clean debug_info from data to prevent duplication
             if let Value::Object(clean_map) = &mut clean_data {
                 clean_map.remove(JSON_FIELD_DEBUG_INFO);
             }
         }
 
-        // Add configured fields and collect their values for template substitution (using clean
-        // data)
-        for (field_name, extractor, placement) in &self.config.success_fields {
-            let value = extractor(&clean_data, &self.context);
+        (clean_data, brp_extras_debug_info)
+    }
 
-            // Special handling for DirectToMetadata - merge all fields into metadata
-            if field_name == JSON_FIELD_METADATA && matches!(placement, FieldPlacement::Metadata) {
-                // This is DirectToMetadata - merge all fields from value into metadata
-                if let Value::Object(data_map) = &value {
-                    for (key, val) in data_map {
-                        builder = builder.add_field(key, val)?;
-                    }
-                }
-            } else {
-                builder = builder.add_field_to(field_name, &value, placement.clone())?;
-            }
+    /// Add format corrections to the response builder
+    fn add_format_corrections(&self, builder: &mut ResponseBuilder, data: &Value) -> Result<()> {
+        if let Some(ref format_corrected) = self.context.format_corrected {
+            let format_corrected_value = serde_json::to_value(format_corrected).map_err(|e| {
+                error_stack::Report::new(crate::error::Error::General(format!(
+                    "Failed to serialize format_corrected: {e}"
+                )))
+            })?;
+            *builder = builder
+                .clone()
+                .add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
 
-            // Add extracted value to template substitution map
-            template_values.insert(field_name.to_string(), value);
-        }
-
-        // Apply success template if provided (after collecting all field values)
-        if let Some(template) = &self.config.success_template {
-            // Check if template contains placeholders that aren't in template_values
-            // If so, try to find them in the response data
-            let mut final_template_values = template_values.clone();
-
-            // Simple regex-free placeholder detection
-            let mut remaining = template.as_str();
-            while let Some(start) = remaining.find('{') {
-                if let Some(end) = remaining[start + 1..].find('}') {
-                    let placeholder = &remaining[start + 1..start + 1 + end];
-
-                    // If this placeholder isn't in our values, check response data
-                    if !final_template_values.contains_key(placeholder) {
-                        if let Value::Object(data_map) = &clean_data {
-                            if let Some(value) = data_map.get(placeholder) {
-                                final_template_values
-                                    .insert(placeholder.to_string(), value.clone());
+            if format_corrected
+                != &crate::brp_tools::request_handler::FormatCorrectionStatus::NotAttempted
+            {
+                if let Value::Object(data_map) = data {
+                    if let Some(format_corrections) = data_map.get("format_corrections") {
+                        if let Some(arr) = format_corrections.as_array() {
+                            if !arr.is_empty() {
+                                *builder = builder
+                                    .clone()
+                                    .add_field("format_corrections", format_corrections)?;
                             }
                         }
                     }
-
-                    remaining = &remaining[start + 1 + end + 1..];
-                } else {
-                    break;
                 }
             }
+        }
+        Ok(())
+    }
 
+    /// Add configured fields and collect their values for template substitution
+    fn add_configured_fields(
+        &self,
+        builder: &mut ResponseBuilder,
+        clean_data: &Value,
+        mut template_values: serde_json::Map<String, Value>,
+    ) -> Result<serde_json::Map<String, Value>> {
+        for (field_name, extractor, placement) in &self.config.success_fields {
+            let value = extractor(clean_data, &self.context);
+
+            if field_name == JSON_FIELD_METADATA && matches!(placement, FieldPlacement::Metadata) {
+                if let Value::Object(data_map) = &value {
+                    for (key, val) in data_map {
+                        *builder = builder.clone().add_field(key, val)?;
+                    }
+                }
+            } else {
+                *builder = builder
+                    .clone()
+                    .add_field_to(field_name, &value, placement.clone())?;
+            }
+
+            template_values.insert(field_name.to_string(), value);
+        }
+        Ok(template_values)
+    }
+
+    /// Apply template substitution if template is provided
+    fn apply_template_if_provided(
+        &self,
+        builder: &mut ResponseBuilder,
+        clean_data: &Value,
+        template_values: &serde_json::Map<String, Value>,
+    ) {
+        if let Some(template) = &self.config.success_template {
+            let final_template_values =
+                self.resolve_template_placeholders(template, template_values, clean_data);
             let template_params = Value::Object(final_template_values);
             let message = substitute_template(template, Some(&template_params));
-            builder = builder.message(message);
+            *builder = builder.clone().message(message);
+        }
+    }
+
+    /// Resolve template placeholders by checking both template_values and response data
+    fn resolve_template_placeholders(
+        &self,
+        template: &str,
+        template_values: &serde_json::Map<String, Value>,
+        clean_data: &Value,
+    ) -> serde_json::Map<String, Value> {
+        let mut final_template_values = template_values.clone();
+
+        let mut remaining = template;
+        while let Some(start) = remaining.find('{') {
+            if let Some(end) = remaining[start + 1..].find('}') {
+                let placeholder = &remaining[start + 1..start + 1 + end];
+
+                if !final_template_values.contains_key(placeholder) {
+                    if let Value::Object(data_map) = clean_data {
+                        if let Some(value) = data_map.get(placeholder) {
+                            final_template_values.insert(placeholder.to_string(), value.clone());
+                        }
+                    }
+                }
+
+                remaining = &remaining[start + 1 + end + 1..];
+            } else {
+                break;
+            }
         }
 
-        // Override message if format correction occurred
+        final_template_values
+    }
+
+    /// Override message if format correction occurred
+    fn override_message_for_format_correction(&self, builder: &mut ResponseBuilder) {
         if self.context.format_corrected
             == Some(crate::brp_tools::request_handler::FormatCorrectionStatus::Succeeded)
         {
-            builder = builder.message("Request succeeded with format correction applied");
+            *builder = builder
+                .clone()
+                .message("Request succeeded with format correction applied");
         }
-
-        // Auto-inject debug info at response level if debug mode is enabled
-        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
-
-        let response = builder.build();
-        tracing::debug!("build_success_response: final response = {:?}", response);
-        Ok(response)
     }
 }
 
@@ -541,22 +475,6 @@ impl ResponseFormatterFactory {
                     file_prefix: "brp_response_".to_string(),
                     ..Default::default()
                 }),
-                is_raw_formatter:      false,
-            },
-        }
-    }
-
-    /// Create a formatter for Raw BRP responses that go directly to result field
-    pub fn raw_result() -> ResponseFormatterBuilder {
-        ResponseFormatterBuilder {
-            config: FormatterConfig {
-                success_template:      None,
-                success_fields:        vec![],
-                large_response_config: Some(LargeResponseConfig {
-                    file_prefix: "brp_response_".to_string(),
-                    ..Default::default()
-                }),
-                is_raw_formatter:      true,
             },
         }
     }

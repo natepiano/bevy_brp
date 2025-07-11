@@ -1,4 +1,6 @@
-use crate::brp_tools::constants::{JSON_FIELD_APP_NAME, JSON_FIELD_METADATA, JSON_FIELD_RESULT};
+use crate::brp_tools::constants::{
+    JSON_FIELD_CONTENT, JSON_FIELD_COUNT, JSON_FIELD_METADATA, JSON_FIELD_RESULT,
+};
 
 /// Specifies where a response field should be placed in the output JSON
 #[derive(Clone, Debug)]
@@ -6,46 +8,22 @@ pub enum FieldPlacement {
     /// Place field in the metadata object
     Metadata,
     /// Place field in the result object
-    #[allow(dead_code)] // Will be used in upcoming migration
     Result,
 }
 
-/// New response field specification that separates request and response concerns.
+/// Response field specification for structured responses.
 ///
-/// This enum replaces the old `ResponseField` struct, providing clear separation
-/// between request parameter referencing and response data extraction specifications.
+/// Defines how to extract and place fields in the response JSON structure.
 #[derive(Clone, Debug)]
-#[allow(clippy::enum_variant_names)] // Existing variants follow established naming pattern
 pub enum ResponseField {
-    /// Reference a field from already-extracted request parameters.
-    ///
-    /// This variant references data that was already extracted and validated during
-    /// the parameter extraction phase, avoiding redundant extraction and ensuring
-    /// consistent validation.
-    FromRequest {
-        /// Name of the field to be output in the response
-        response_field_name:  &'static str,
-        /// Field name in the `ExtractedParams` structure, i.e, tool call request parameters
-        parameter_field_name: &'static str,
-    },
-    /// Extract a field from response data.
-    ///
-    /// This variant specifies extraction of data from the handler or BRP response payload.
-    FromResponse {
-        /// Name of the field in the response
-        response_field_name: &'static str,
-        /// Extractor type for response data
-        extractor:           ResponseExtractorType,
-    },
     /// Reference a field from already-extracted request parameters with explicit placement.
     ///
     /// This variant references data that was already extracted and validated during
     /// the parameter extraction phase, with explicit control over where the field is placed.
-    #[allow(dead_code)] // Will be used in upcoming migration
-    FromRequestWithPlacement {
+    FromRequest {
         /// Name of the field to be output in the response
         response_field_name:  &'static str,
-        /// Field name in the `ExtractedParams` structure, i.e, tool call request parameters
+        /// Field name in the tool call request parameters
         parameter_field_name: &'static str,
         /// Where to place this field in the response
         placement:            FieldPlacement,
@@ -54,8 +32,7 @@ pub enum ResponseField {
     ///
     /// This variant specifies extraction of data from the handler or BRP response payload
     /// with explicit control over where the field is placed.
-    #[allow(dead_code)] // Will be used in upcoming migration
-    FromResponseWithPlacement {
+    FromResponse {
         /// Name of the field in the response
         response_field_name: &'static str,
         /// Extractor type for response data
@@ -98,8 +75,6 @@ pub enum ResponseExtractorType {
     ItemCount,
     /// Extract total component count from nested query results
     QueryComponentCount,
-    /// Extract entity ID from response data (for spawn operations)
-    EntityId,
     /// Split content field into numbered lines
     SplitContentIntoLines,
 }
@@ -113,23 +88,16 @@ impl ResponseExtractorType {
                 .cloned()
                 .unwrap_or(serde_json::Value::Null),
             Self::Count => {
-                // Check if data is wrapped in a structure with a "count" field
+                // Extract count field as a number, return Null if not found or not a number
                 data.as_object()
-                    .and_then(|obj| obj.get("count"))
-                    .map_or_else(
-                        || data.as_array().map_or(0, std::vec::Vec::len).into(),
-                        std::clone::Clone::clone,
-                    )
+                    .and_then(|obj| obj.get(JSON_FIELD_COUNT))
+                    .and_then(|v| v.as_u64())
+                    .map(|count| serde_json::Value::Number(serde_json::Number::from(count)))
+                    .unwrap_or(serde_json::Value::Null)
             }
             Self::ItemCount => {
-                // Check if data is wrapped in a structure with a "metadata" field
-                let count = data
-                    .as_object()
-                    .and_then(|obj| obj.get("metadata"))
-                    .map_or_else(
-                        || data.as_array().map_or(0, std::vec::Vec::len),
-                        |inner_data| inner_data.as_array().map_or(0, std::vec::Vec::len),
-                    );
+                // Count items in an array response
+                let count = data.as_array().map_or(0, std::vec::Vec::len);
                 serde_json::Value::Number(serde_json::Number::from(count))
             }
             Self::QueryComponentCount => {
@@ -143,24 +111,17 @@ impl ResponseExtractorType {
                 });
                 serde_json::Value::Number(serde_json::Number::from(total))
             }
-            Self::EntityId => {
-                // Extract entity ID from response data (for spawn operation)
-                data.get("entity")
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::Value::Number(serde_json::Number::from(0)))
-            }
             Self::SplitContentIntoLines => {
                 // Extract content field and split into array of lines
-                data.get("content")
+                data.get(JSON_FIELD_CONTENT)
                     .and_then(|content| content.as_str())
-                    .map(|content_str| {
+                    .map_or(serde_json::Value::Array(vec![]), |content_str| {
                         let lines: Vec<serde_json::Value> = content_str
                             .lines()
                             .map(|line| serde_json::Value::String(line.to_string()))
                             .collect();
                         serde_json::Value::Array(lines)
                     })
-                    .unwrap_or(serde_json::Value::Array(vec![]))
             }
         }
     }
@@ -178,14 +139,6 @@ impl ResponseField {
                 response_field_name: name,
                 ..
             }
-            | Self::FromRequestWithPlacement {
-                response_field_name: name,
-                ..
-            }
-            | Self::FromResponseWithPlacement {
-                response_field_name: name,
-                ..
-            }
             | Self::FromResponseNullableWithPlacement {
                 response_field_name: name,
                 ..
@@ -198,21 +151,11 @@ impl ResponseField {
 
 /// Defines how to format the response for a tool.
 ///
-/// This enum provides type-safe response patterns, making illegal states unrepresentable:
-/// - `Structured`: Traditional response with extracted/processed fields under "metadata"
-/// - `Raw`: Raw BRP response directly in "result" field (no other fields allowed)
+/// Specifies the message template and fields to include in structured responses.
 #[derive(Clone)]
-pub enum ResponseSpecification {
-    /// Traditional response with extracted/processed fields under "metadata"
-    Structured {
-        /// Template for success messages
-        message_template: &'static str,
-        /// Fields to include in the response
-        response_fields:  Vec<ResponseField>,
-    },
-    /// Raw BRP response directly in "result" field (no other fields allowed)
-    Raw {
-        /// Template for success messages
-        template: &'static str,
-    },
+pub struct ResponseSpecification {
+    /// Template for success messages
+    pub message_template: &'static str,
+    /// Fields to include in the response
+    pub response_fields:  Vec<ResponseField>,
 }

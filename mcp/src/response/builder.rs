@@ -50,6 +50,7 @@ impl JsonResponse {
 }
 
 /// Builder for constructing JSON responses
+#[derive(Clone)]
 pub struct ResponseBuilder {
     status:                ResponseStatus,
     message:               String,
@@ -107,22 +108,6 @@ impl ResponseBuilder {
         }
 
         Ok(self)
-    }
-
-    /// Set the result field directly for Raw responses
-    pub fn with_result(mut self, result: impl Serialize) -> Result<Self> {
-        use error_stack::ResultExt;
-
-        let result_json = serde_json::to_value(result)
-            .change_context(Error::General("Failed to serialize result".to_string()))?;
-
-        self.result = Some(result_json);
-        Ok(self)
-    }
-
-    /// Add a field to the metadata object (alias for clarity)
-    pub fn add_metadata_field(self, key: &str, value: impl Serialize) -> Result<Self> {
-        self.add_field(key, value)
     }
 
     /// Add a field to the specified location (metadata or result object)

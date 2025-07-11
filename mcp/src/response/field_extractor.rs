@@ -72,24 +72,10 @@ pub fn convert_response_field(field: &ResponseField) -> (FieldExtractor, FieldPl
     match field {
         ResponseField::FromRequest {
             parameter_field_name: field,
-            ..
-        } => (
-            create_request_field_accessor(field),
-            FieldPlacement::Metadata,
-        ),
-        ResponseField::FromResponse { extractor, .. } => {
-            let extractor = extractor.clone();
-            (
-                Box::new(move |data, _context| extractor.extract(data)),
-                FieldPlacement::Metadata,
-            )
-        }
-        ResponseField::FromRequestWithPlacement {
-            parameter_field_name: field,
             placement,
             ..
         } => (create_request_field_accessor(field), placement.clone()),
-        ResponseField::FromResponseWithPlacement {
+        ResponseField::FromResponse {
             extractor,
             placement,
             ..

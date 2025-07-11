@@ -12,6 +12,7 @@ pub const JSON_FIELD_APP_NAME: &str = "app_name";
 pub const JSON_FIELD_BRP_CALL_INFO: &str = "brp_call_info";
 pub const JSON_FIELD_COMPONENT_COUNT: &str = "component_count";
 pub const JSON_FIELD_COMPONENTS: &str = "components";
+pub const JSON_FIELD_CONTENT: &str = "content";
 pub const JSON_FIELD_COUNT: &str = "count";
 pub const JSON_FIELD_DEBUG_INFO: &str = "debug_info";
 pub const JSON_FIELD_ENTITY: &str = "entity";
@@ -29,7 +30,6 @@ pub const JSON_FIELD_PATH: &str = "path";
 pub const JSON_FIELD_PORT: &str = "port";
 pub const JSON_FIELD_RESULT: &str = "result";
 pub const JSON_FIELD_RESOURCE: &str = "resource";
-pub const JSON_FIELD_SPAWNED_ENTITY: &str = "spawned_entity";
 pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
 
 // ============================================================================
@@ -44,7 +44,6 @@ pub const PARAM_DATA: &str = "data";
 pub const PARAM_ENTITY: &str = "entity";
 pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_FILTER: &str = "filter";
-pub const PARAM_FORMATS: &str = "formats";
 pub const PARAM_METHOD: &str = "method";
 pub const PARAM_PARAMS: &str = "params";
 pub const PARAM_PARENT: &str = "parent";
