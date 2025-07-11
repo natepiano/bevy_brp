@@ -1,238 +1,259 @@
 [
   {
     "id": "1",
-    "content": "Set terminal title for simplification work",
+    "content": "Set terminal title for final config consolidation",
     "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "2",
-    "content": "Add TARGET_TYPE constants to constants.rs",
+    "content": "Add marker types App and Example to launch_common.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "3",
-    "content": "Build and fix any compile errors/warnings after adding constants",
+    "content": "Build and fix any compile errors/warnings after adding marker types",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "4",
-    "content": "Create support/macros.rs module file",
+    "content": "Create new parameterized LaunchConfig<T> struct",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "5",
-    "content": "Build and fix any compile errors/warnings after creating macros module",
+    "content": "Build and fix any compile errors/warnings after creating LaunchConfig<T>",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "6",
-    "content": "Extract validate_binary_exists function in launch_common.rs",
+    "content": "Update LaunchConfig trait to remove log_type method",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "7",
-    "content": "Build and fix any compile errors/warnings after validation extraction",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "8",
-    "content": "Run cargo clippy after foundation work",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "9",
-    "content": "Fix any clippy issues",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "10",
-    "content": "Update LaunchConfig trait to use associated constant",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "11",
     "content": "Build and fix any compile errors/warnings after trait update",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
+    "id": "8",
+    "content": "Implement FromLaunchParams for LaunchConfig<App>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Build and fix any compile errors/warnings after App FromLaunchParams",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Implement FromLaunchParams for LaunchConfig<Example>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Build and fix any compile errors/warnings after Example FromLaunchParams",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
     "id": "12",
-    "content": "Add define_launch_config macro to macros.rs",
+    "content": "Run cargo clippy after FromLaunchParams implementations",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "13",
-    "content": "Build and fix any compile errors/warnings after macro creation",
+    "content": "Fix any clippy issues",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "14",
-    "content": "Delete borrowed AppLaunchConfig and ExampleLaunchConfig variants",
+    "content": "Implement LaunchConfig trait for LaunchConfig<App>",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "15",
-    "content": "Build and fix any compile errors/warnings after deletion",
+    "content": "Build and fix any compile errors/warnings after App trait implementation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "16",
-    "content": "Replace config structs with macro invocations",
+    "content": "Implement LaunchConfig trait for LaunchConfig<Example>",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "17",
-    "content": "Build and fix any compile errors/warnings after macro replacement",
+    "content": "Build and fix any compile errors/warnings after Example trait implementation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "18",
-    "content": "Update validate_target implementations to use helper",
+    "content": "Delete old AppLaunchConfig struct and its implementations",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "19",
-    "content": "Build and fix any compile errors/warnings after validation updates",
+    "content": "Build and fix any compile errors/warnings after deleting AppLaunchConfig",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "20",
-    "content": "Run cargo clippy after config refactoring",
+    "content": "Delete old ExampleLaunchConfig struct and its implementations",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "21",
-    "content": "Fix any clippy issues",
+    "content": "Build and fix any compile errors/warnings after deleting ExampleLaunchConfig",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "22",
-    "content": "Break launch_target into find_and_validate_target function",
+    "content": "Run cargo clippy after config struct changes",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "23",
-    "content": "Build and fix any compile errors/warnings after first function split",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "24",
-    "content": "Break launch_target into prepare_launch_environment function",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "25",
-    "content": "Build and fix any compile errors/warnings after second function split",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "26",
-    "content": "Break launch_target into execute_and_build_result function",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "27",
-    "content": "Build and fix any compile errors/warnings after third function split",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "28",
-    "content": "Update all references to use new constants",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "29",
-    "content": "Build and fix any compile errors/warnings after reference updates",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "30",
-    "content": "Run cargo clippy after all refactoring",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "31",
     "content": "Fix any clippy issues",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
+    "id": "24",
+    "content": "Update type aliases in brp_launch_bevy_app.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Build and fix any compile errors/warnings after app type alias update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Update type aliases in brp_launch_bevy_example.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Build and fix any compile errors/warnings after example type alias update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Update all log_type references to use TARGET_TYPE instead",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Build and fix any compile errors/warnings after log_type removal",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "Remove macros.rs file",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Remove mod macros from support/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
     "id": "32",
-    "content": "Run cargo +nightly fmt",
+    "content": "Build and fix any compile errors/warnings after removing macros",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "33",
-    "content": "Run cargo nextest run",
+    "content": "Run cargo clippy after all changes",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "34",
-    "content": "Task subagent for code review of simplification changes",
+    "content": "Fix any clippy issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "35",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "36",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "37",
+    "content": "Task subagent for code review of final consolidation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
