@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
@@ -27,14 +25,11 @@ pub struct ListBevyApps;
 
 impl LocalHandler for ListBevyApps {
     fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
-        let handler_context = crate::service::HandlerContext::new(
-            Arc::clone(&ctx.service),
-            ctx.request.clone(),
-            ctx.context.clone(),
-        );
+        // Clone context to owned data for async move closure
+        let owned_ctx = ctx.clone();
 
         Box::pin(async move {
-            handle_impl(&handler_context)
+            handle_impl(&owned_ctx)
                 .await
                 .map(|result| Box::new(result) as Box<dyn HandlerResult>)
         })
