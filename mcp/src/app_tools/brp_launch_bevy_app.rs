@@ -13,8 +13,8 @@ use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 use crate::service;
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from launching a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]

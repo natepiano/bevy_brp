@@ -14,6 +14,7 @@
 //! - **`LocalStandard`**: Standard formatting for simple operations
 //! - **`EntityOperation`/`ResourceOperation`**: BRP operations with field extraction
 
+use super::HandlerType;
 use super::constants::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
     BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
@@ -51,7 +52,6 @@ use crate::brp_tools::constants::{
     PARAM_PARAMS, PARAM_PARENT, PARAM_PATH, PARAM_PORT, PARAM_RESOURCE, PARAM_TYPES,
     PARAM_WITH_CRATES, PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
-use crate::handler::HandlerType;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
 use crate::response::{

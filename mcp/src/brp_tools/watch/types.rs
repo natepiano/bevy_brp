@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::handler::HandlerResult;
+use crate::tool::HandlerResult;
 
 /// Result from starting a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]

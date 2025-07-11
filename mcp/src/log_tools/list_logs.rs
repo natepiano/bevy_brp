@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use super::support::LogFileEntry;
 use crate::extractors::McpCallExtractor;
-use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 use crate::log_tools::support;
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from listing log files
 #[derive(Debug, Clone, Serialize, Deserialize)]

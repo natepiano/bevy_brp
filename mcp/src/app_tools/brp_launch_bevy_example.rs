@@ -11,8 +11,8 @@ use super::constants::{DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PROFILE, PROFI
 use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
 use crate::extractors::McpCallExtractor;
-use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 use crate::service;
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from launching a Bevy example
 #[derive(Debug, Clone, Serialize, Deserialize)]

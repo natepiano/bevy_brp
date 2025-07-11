@@ -20,21 +20,18 @@ use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use super::BrpToolCallInfo;
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
-// use crate::tools::{HANDLER_BRP_LIST_ACTIVE_WATCHES, HANDLER_BRP_STOP_WATCH};
-use crate::McpService;
+use super::{BrpToolCallInfo, HandlerContext, HandlerType, LocalHandler};
 use crate::brp_tools::constants::{
     JSON_FIELD_ENTITY, JSON_FIELD_METHOD, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
 use crate::extractors::{ExtractedParams, McpCallExtractor};
-use crate::handler::HandlerType;
-use crate::response;
 use crate::response::{FormatterContext, ResponseBuilder, ResponseFormatterFactory};
 use crate::support::schema;
+use crate::{McpService, response};
 
 /// Generate tool registration from a declarative definition
 pub fn get_tool(def: McpToolDef) -> Tool {
@@ -195,12 +192,11 @@ async fn local_tool_call(
     service: &McpService,
     request: CallToolRequestParam,
     context: RequestContext<RoleServer>,
-    handler: &dyn crate::handler::LocalHandler,
+    handler: &dyn LocalHandler,
 ) -> Result<CallToolResult, McpError> {
     let (formatter_factory, formatter_context) = create_formatter_from_def(def, &request);
 
-    let handler_context =
-        crate::handler::HandlerContext::new(Arc::new(service.clone()), request, context);
+    let handler_context = HandlerContext::new(Arc::new(service.clone()), request, context);
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
     let result = handler

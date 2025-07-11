@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support::collection_strategy::BevyExamplesStrategy;
 use super::support::list_common;
-use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -17,7 +17,6 @@ mod brp_tools;
 mod constants;
 mod error;
 mod extractors;
-mod handler;
 mod log_tools;
 mod response;
 mod service;

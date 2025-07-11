@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
 use crate::extractors::McpCallExtractor;
-use crate::handler::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from cleaning up log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
