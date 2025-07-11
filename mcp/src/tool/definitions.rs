@@ -980,7 +980,9 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LAUNCH_BEVY_APP,
             description:         DESC_LAUNCH_BEVY_APP,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::app_tools::brp_launch_bevy_app::LaunchBevyApp),
+                handler: Box::new(
+                    crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
+                ),
             },
             parameters:          create_launch_params("app_name", "Name of the Bevy app to launch"),
             parameter_extractor: BrpMethodParamCategory::Passthrough,
@@ -994,7 +996,9 @@ fn get_app_tools() -> Vec<McpToolDef> {
             name:                TOOL_LAUNCH_BEVY_EXAMPLE,
             description:         DESC_LAUNCH_BEVY_EXAMPLE,
             handler:             HandlerType::Local {
-                handler: Box::new(crate::app_tools::brp_launch_bevy_example::LaunchBevyExample),
+                handler: Box::new(
+                    crate::app_tools::brp_launch_bevy_example::create_launch_bevy_example_handler(),
+                ),
             },
             parameters:          create_launch_params(
                 "example_name",
