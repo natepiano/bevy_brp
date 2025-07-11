@@ -3,7 +3,7 @@ use std::process::Command;
 
 use rmcp::Error as McpError;
 
-use crate::brp_tools::constants::BRP_PORT_ENV_VAR;
+use crate::constants::BRP_PORT_ENV_VAR;
 use crate::error::{Error, report_to_mcp_error};
 
 /// Validates and extracts the manifest directory from a manifest path

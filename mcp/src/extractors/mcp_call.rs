@@ -4,7 +4,7 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::Value;
 
-use crate::brp_tools::constants::{DEFAULT_BRP_PORT, PARAM_PATH};
+use crate::constants::{DEFAULT_BRP_PORT, PARAM_PATH};
 use crate::error::{Error, report_to_mcp_error};
 
 /// Extractor for data from MCP tool call arguments

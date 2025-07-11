@@ -44,7 +44,7 @@ use super::constants::{
 };
 use super::parameters::Parameter;
 use crate::app_tools::brp_status::Status;
-use crate::brp_tools::constants::{
+use crate::constants::{
     JSON_FIELD_APP_NAME, JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT,
     JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_ENTITY_COUNT, JSON_FIELD_LOG_PATH,
     JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PORT, JSON_FIELD_RESOURCE, PARAM_APP_NAME,

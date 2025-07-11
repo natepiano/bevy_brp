@@ -1,6 +1,5 @@
 // BRP tools module
 
-pub mod constants;
 pub mod request_handler;
 pub mod watch;
 

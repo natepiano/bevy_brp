@@ -12,7 +12,7 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use super::BrpJsonRpcBuilder;
-use crate::brp_tools::constants::{
+use crate::constants::{
     BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, DEFAULT_BRP_PORT,
     JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
@@ -45,7 +45,7 @@ impl BrpError {
     /// the second section I think is less correct but it will take some time to validate that
     /// moving to an "error codes only" approach doesn't have other issues
     pub const fn is_format_error(&self) -> bool {
-        use crate::brp_tools::constants::{
+        use crate::constants::{
             BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
             JSON_RPC_ERROR_INTERNAL_ERROR, JSON_RPC_ERROR_INVALID_PARAMS,
         };

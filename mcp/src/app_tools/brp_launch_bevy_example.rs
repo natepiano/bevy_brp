@@ -7,9 +7,10 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use super::constants::{DEFAULT_PROFILE, PARAM_EXAMPLE_NAME, PARAM_PROFILE, PROFILE_RELEASE};
+use super::constants::{DEFAULT_PROFILE, PROFILE_RELEASE};
 use super::support::cargo_detector::TargetType;
 use super::support::{cargo_detector, launch_common, process, scanning};
+use crate::constants::{PARAM_EXAMPLE_NAME, PARAM_PROFILE};
 use crate::extractors::McpCallExtractor;
 use crate::service;
 use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};

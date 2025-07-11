@@ -1,4 +1,4 @@
-use crate::brp_tools::constants::{
+use crate::constants::{
     JSON_FIELD_CONTENT, JSON_FIELD_COUNT, JSON_FIELD_METADATA, JSON_FIELD_RESULT,
 };
 

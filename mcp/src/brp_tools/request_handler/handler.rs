@@ -8,11 +8,11 @@ use super::format_discovery::{
     EnhancedBrpResult, FORMAT_DISCOVERY_METHODS, FormatCorrection,
     execute_brp_method_with_format_discovery,
 };
-use crate::brp_tools::constants::{
+use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
+use crate::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
     JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
-use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::ExtractedParams;
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};

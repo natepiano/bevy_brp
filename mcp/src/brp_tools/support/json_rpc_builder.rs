@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use crate::brp_tools::constants::{
+use crate::constants::{
     JSONRPC_DEFAULT_ID, JSONRPC_FIELD, JSONRPC_FIELD_ID, JSONRPC_FIELD_METHOD,
     JSONRPC_FIELD_PARAMS, JSONRPC_VERSION,
 };

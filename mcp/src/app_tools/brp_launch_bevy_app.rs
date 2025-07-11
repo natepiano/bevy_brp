@@ -7,10 +7,11 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use super::constants::{DEFAULT_PROFILE, PARAM_APP_NAME, PARAM_PROFILE};
+use super::constants::DEFAULT_PROFILE;
 use super::support::cargo_detector::{BevyTarget, TargetType};
 use super::support::{launch_common, process, scanning};
 use crate::app_tools::constants::PROFILE_RELEASE;
+use crate::constants::{PARAM_APP_NAME, PARAM_PROFILE};
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
 use crate::service;

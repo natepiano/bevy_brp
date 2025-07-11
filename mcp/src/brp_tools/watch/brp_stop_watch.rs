@@ -4,7 +4,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::brp_tools::constants::JSON_FIELD_WATCH_ID;
+use crate::constants::JSON_FIELD_WATCH_ID;
 use crate::extractors::McpCallExtractor;
 use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalHandler};
 

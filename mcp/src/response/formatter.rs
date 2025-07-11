@@ -31,11 +31,11 @@ use serde_json::{Value, json};
 use super::builder::{JsonResponse, ResponseBuilder};
 use super::field_extractor::FieldExtractor;
 use super::specification::FieldPlacement;
-use crate::brp_tools::constants::{
+use crate::brp_tools::support::brp_client::BrpError;
+use crate::constants::{
     JSON_FIELD_BRP_CALL_INFO, JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE,
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA, JSON_FIELD_METHOD, JSON_FIELD_PORT,
 };
-use crate::brp_tools::support::brp_client::BrpError;
 use crate::error::Result;
 use crate::support::{LargeResponseConfig, handle_large_response};
 use crate::tool::BrpToolCallInfo;
@@ -544,7 +544,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::brp_tools::constants::DEFAULT_BRP_PORT;
+    use crate::constants::DEFAULT_BRP_PORT;
 
     #[test]
     fn test_substitute_template() {

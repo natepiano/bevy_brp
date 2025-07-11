@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
-use crate::brp_tools::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
 use crate::tool::{

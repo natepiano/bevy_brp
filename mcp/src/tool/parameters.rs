@@ -1,6 +1,6 @@
 //! Parameter definitions for our MCP tools
 
-use crate::brp_tools::constants::{
+use crate::constants::{
     DESC_PORT, PARAM_COMPONENTS, PARAM_ENTITY, PARAM_METHOD, PARAM_PATH, PARAM_PORT,
     PARAM_RESOURCE, PARAM_STRICT, PARAM_VALUE,
 };
