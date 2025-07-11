@@ -130,22 +130,27 @@ impl ServerHandler for McpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        find_and_call_tool(self, request, context).await
+        let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
+        find_and_call_tool(handler_context).await
     }
 }
 
 /// Fetch roots from the client and return the search paths
 pub async fn fetch_roots_and_get_paths(
-    service: Arc<McpService>,
-    context: RequestContext<RoleServer>,
+    handler_context: &HandlerContext,
 ) -> Result<Vec<PathBuf>, McpError> {
     // Fetch current roots from client
     tracing::debug!("Fetching current roots from client...");
-    if let Err(e) = service.fetch_roots_from_client(context.peer.clone()).await {
+    if let Err(e) = handler_context
+        .service
+        .fetch_roots_from_client(handler_context.context.peer.clone())
+        .await
+    {
         tracing::debug!("Failed to fetch roots: {}", e);
     }
 
-    Ok(service
+    Ok(handler_context
+        .service
         .roots
         .lock()
         .map_err(|e| {
@@ -171,19 +176,18 @@ fn list_mcp_tools() -> ListToolsResult {
     }
 }
 
-async fn find_and_call_tool(
-    service: &McpService,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
-) -> Result<CallToolResult, McpError> {
+async fn find_and_call_tool(handler_context: HandlerContext) -> Result<CallToolResult, McpError> {
     // Check if this is one of the declaratively defined tools
     let all_tools = tool::get_all_tool_definitions();
-    if let Some(def) = all_tools.iter().find(|d| d.name == request.name) {
-        return tool::handle_call_tool(def, service, request, context).await;
+    if let Some(def) = all_tools
+        .iter()
+        .find(|d| d.name == handler_context.request.name)
+    {
+        return tool::handle_call_tool(def, handler_context).await;
     }
 
     // All tools have been migrated to declarative definitions
-    let tool_name = &request.name;
+    let tool_name = &handler_context.request.name;
     Err(report_to_mcp_error(
         &error_stack::Report::new(ServiceError::InvalidArgument(format!(
             "unknown tool: {tool_name}"

@@ -244,19 +244,19 @@ fn process_error_response(
 
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_method_tool_call(
-    request: rmcp::model::CallToolRequestParam,
+    handler_context: crate::service::HandlerContext,
     config: &BrpHandlerConfig,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
-    debug!("MCP ENTRY - Tool: {}", request.name);
+    debug!("MCP ENTRY - Tool: {}", handler_context.request.name);
     trace!(
         "MCP ENTRY - Raw arguments: {}",
-        serde_json::to_string(&request.arguments)
+        serde_json::to_string(&handler_context.request.arguments)
             .unwrap_or_else(|_| "SERIALIZATION_ERROR".to_string())
     );
 
     // Log request arguments with sanitization
-    log_raw_request_arguments(&request);
+    log_raw_request_arguments(&handler_context.request);
 
     // Get pre-extracted parameters directly
     let extracted = &config.extracted_params;

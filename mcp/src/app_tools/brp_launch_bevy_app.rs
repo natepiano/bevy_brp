@@ -74,11 +74,14 @@ impl LocalHandler for LaunchBevyApp {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let service = Arc::clone(&ctx.service);
-        let context = ctx.context.clone();
+        let handler_context = crate::service::HandlerContext::new(
+            Arc::clone(&ctx.service),
+            ctx.request.clone(),
+            ctx.context.clone(),
+        );
 
         Box::pin(async move {
-            handle_impl(&app_name, &profile, path.as_deref(), port, service, context)
+            handle_impl(&app_name, &profile, path.as_deref(), port, &handler_context)
                 .await
                 .map(|result| Box::new(result) as Box<dyn HandlerResult>)
         })
@@ -90,11 +93,10 @@ async fn handle_impl(
     profile: &str,
     path: Option<&str>,
     port: u16,
-    service: Arc<crate::McpService>,
-    context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    handler_context: &crate::service::HandlerContext,
 ) -> Result<LaunchBevyAppResult, McpError> {
     // Get search paths
-    let search_paths = service::fetch_roots_and_get_paths(service, context).await?;
+    let search_paths = service::fetch_roots_and_get_paths(handler_context).await?;
 
     // Launch the app
     launch_bevy_app(app_name, profile, path, port, &search_paths)

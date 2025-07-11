@@ -14,11 +14,8 @@
 //! - **`LocalStandard`**: Standard formatting for simple operations
 //! - **`EntityOperation`/`ResourceOperation`**: BRP-specific operations with field extraction
 
-use std::sync::Arc;
-
+use rmcp::Error as McpError;
 use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
@@ -29,10 +26,10 @@ use crate::constants::{
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::extractors::{ExtractedParams, McpCallExtractor};
+use crate::response;
 use crate::response::{FormatterContext, ResponseBuilder, ResponseFormatterFactory};
 use crate::service::HandlerContext;
 use crate::support::schema;
-use crate::{McpService, response};
 
 /// Generate tool registration from a declarative definition
 pub fn get_tool(def: McpToolDef) -> Tool {
@@ -171,18 +168,16 @@ fn extract_params_for_type(
 /// Generate a handler function for a declarative tool definition
 pub async fn handle_call_tool(
     def: &McpToolDef,
-    service: &McpService,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
+    handler_context: HandlerContext,
 ) -> Result<CallToolResult, McpError> {
     match &def.handler {
         HandlerType::Brp { method } => {
             // Handle BRP method calls
-            brp_method_tool_call(def, request, method).await
+            brp_method_tool_call(def, handler_context, method).await
         }
 
         HandlerType::Local { handler } => {
-            local_tool_call(def, service, request, context, handler.as_ref()).await
+            local_tool_call(def, handler_context, handler.as_ref()).await
         }
     }
 }
@@ -190,14 +185,11 @@ pub async fn handle_call_tool(
 /// Generate a `LocalFn` handler using function pointer approach
 async fn local_tool_call(
     def: &McpToolDef,
-    service: &McpService,
-    request: CallToolRequestParam,
-    context: RequestContext<RoleServer>,
+    handler_context: HandlerContext,
     handler: &dyn LocalHandler,
 ) -> Result<CallToolResult, McpError> {
-    let (formatter_factory, formatter_context) = create_formatter_from_def(def, &request);
-
-    let handler_context = HandlerContext::new(Arc::new(service.clone()), request, context);
+    let (formatter_factory, formatter_context) =
+        create_formatter_from_def(def, &handler_context.request);
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
     let result = handler
@@ -234,11 +226,12 @@ fn build_formatter_factory_from_spec(
 /// Generate a BRP handler
 async fn brp_method_tool_call(
     def: &McpToolDef,
-    request: CallToolRequestParam,
+    handler_context: HandlerContext,
     method: &'static str,
 ) -> Result<CallToolResult, McpError> {
     // Extract parameters directly based on the definition
-    let extracted_params = extract_params_for_type(&def.parameter_extractor, &request)?;
+    let extracted_params =
+        extract_params_for_type(&def.parameter_extractor, &handler_context.request)?;
 
     // Use the shared function to build the formatter factory
     let formatter_factory = build_formatter_factory_from_spec(&def.formatter);
@@ -249,7 +242,7 @@ async fn brp_method_tool_call(
         formatter_factory,
     };
 
-    handle_brp_method_tool_call(request, &config).await
+    handle_brp_method_tool_call(handler_context, &config).await
 }
 
 /// Create formatter factory and context from tool definition

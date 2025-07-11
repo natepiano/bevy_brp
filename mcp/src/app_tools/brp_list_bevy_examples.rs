@@ -27,11 +27,14 @@ pub struct ListBevyExamples;
 
 impl LocalHandler for ListBevyExamples {
     fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
-        let service = Arc::clone(&ctx.service);
-        let context = ctx.context.clone();
+        let handler_context = crate::service::HandlerContext::new(
+            Arc::clone(&ctx.service),
+            ctx.request.clone(),
+            ctx.context.clone(),
+        );
 
         Box::pin(async move {
-            handle_impl(service, context)
+            handle_impl(&handler_context)
                 .await
                 .map(|result| Box::new(result) as Box<dyn HandlerResult>)
         })
@@ -39,10 +42,9 @@ impl LocalHandler for ListBevyExamples {
 }
 
 async fn handle_impl(
-    service: Arc<crate::McpService>,
-    context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    handler_context: &crate::service::HandlerContext,
 ) -> Result<ListBevyExamplesResult, McpError> {
-    list_common::handle_list_binaries(service, context, |search_paths| async move {
+    list_common::handle_list_binaries(handler_context, |search_paths| async move {
         let items = list_common::collect_all_items(&search_paths, &BevyExamplesStrategy);
 
         Ok(ListBevyExamplesResult {
