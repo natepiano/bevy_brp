@@ -1,56 +1,56 @@
 [
   {
     "id": "1",
-    "content": "Set terminal title for consolidation work",
+    "content": "Set terminal title for simplification work",
     "status": "completed",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "2",
-    "content": "Create generic result type LaunchTargetResult in launch_common.rs",
+    "content": "Add TARGET_TYPE constants to constants.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "3",
-    "content": "Build and fix any compile errors/warnings after generic result type",
+    "content": "Build and fix any compile errors/warnings after adding constants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "4",
-    "content": "Add type aliases for backward compatibility",
+    "content": "Create support/macros.rs module file",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "5",
-    "content": "Build and fix any compile errors/warnings after type aliases",
+    "content": "Build and fix any compile errors/warnings after creating macros module",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "6",
-    "content": "Update From<LaunchResult> implementations to be generic",
+    "content": "Extract validate_binary_exists function in launch_common.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "7",
-    "content": "Build and fix any compile errors/warnings after From implementations",
+    "content": "Build and fix any compile errors/warnings after validation extraction",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "8",
-    "content": "Run cargo clippy after result type consolidation",
+    "content": "Run cargo clippy after foundation work",
     "status": "pending",
     "priority": "medium",
     "notes": ""
@@ -64,147 +64,175 @@
   },
   {
     "id": "10",
-    "content": "Create extract_launch_params function in launch_common.rs",
+    "content": "Update LaunchConfig trait to use associated constant",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "11",
-    "content": "Build and fix any compile errors/warnings after parameter extraction",
+    "content": "Build and fix any compile errors/warnings after trait update",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "12",
-    "content": "Create GenericLaunchHandler struct in launch_common.rs",
+    "content": "Add define_launch_config macro to macros.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "13",
-    "content": "Build and fix any compile errors/warnings after generic handler",
+    "content": "Build and fix any compile errors/warnings after macro creation",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "14",
-    "content": "Implement LocalHandler for GenericLaunchHandler",
+    "content": "Delete borrowed AppLaunchConfig and ExampleLaunchConfig variants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "15",
-    "content": "Build and fix any compile errors/warnings after LocalHandler implementation",
+    "content": "Build and fix any compile errors/warnings after deletion",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "16",
-    "content": "Run cargo clippy after handler infrastructure",
+    "content": "Replace config structs with macro invocations",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "17",
-    "content": "Fix any clippy issues",
+    "content": "Build and fix any compile errors/warnings after macro replacement",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "18",
-    "content": "Move BRP_PORT debug logging to launch_target function",
+    "content": "Update validate_target implementations to use helper",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "19",
-    "content": "Build and fix any compile errors/warnings after moving debug logging",
+    "content": "Build and fix any compile errors/warnings after validation updates",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "20",
-    "content": "Replace LaunchBevyApp with generic handler instance",
+    "content": "Run cargo clippy after config refactoring",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "21",
-    "content": "Build and fix any compile errors/warnings after LaunchBevyApp replacement",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "22",
-    "content": "Replace LaunchBevyExample with generic handler instance",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "23",
-    "content": "Build and fix any compile errors/warnings after LaunchBevyExample replacement",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "24",
-    "content": "Remove duplicate code from individual launch files",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "25",
-    "content": "Build and fix any compile errors/warnings after cleanup",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "26",
-    "content": "Run cargo clippy after all consolidation",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "27",
     "content": "Fix any clippy issues",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
+    "id": "22",
+    "content": "Break launch_target into find_and_validate_target function",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Build and fix any compile errors/warnings after first function split",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Break launch_target into prepare_launch_environment function",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Build and fix any compile errors/warnings after second function split",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Break launch_target into execute_and_build_result function",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Build and fix any compile errors/warnings after third function split",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
     "id": "28",
-    "content": "Run cargo +nightly fmt",
+    "content": "Update all references to use new constants",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "29",
-    "content": "Run cargo nextest run",
+    "content": "Build and fix any compile errors/warnings after reference updates",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "30",
-    "content": "Task subagent for code review of consolidation changes",
+    "content": "Run cargo clippy after all refactoring",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Fix any clippy issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "33",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "34",
+    "content": "Task subagent for code review of simplification changes",
     "status": "pending",
     "priority": "medium",
     "notes": ""
