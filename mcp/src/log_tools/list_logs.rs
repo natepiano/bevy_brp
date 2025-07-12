@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::extractors::McpCallExtractor;
 use crate::log_tools::support;
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from listing log files
@@ -28,7 +28,7 @@ impl HandlerResult for ListLogResult {
 pub struct ListLogs;
 
 impl LocalHandler for ListLogs {
-    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract optional app name filter
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let app_name_filter = extractor.get_optional_string("app_name", "");

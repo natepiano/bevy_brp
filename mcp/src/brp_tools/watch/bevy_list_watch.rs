@@ -5,13 +5,13 @@ use rmcp::Error as McpError;
 use super::types::WatchStartResult;
 use crate::constants::{DEFAULT_BRP_PORT, JSON_FIELD_ENTITY, JSON_FIELD_PORT};
 use crate::extractors::McpCallExtractor;
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 pub struct BevyListWatch;
 
 impl LocalHandler for BevyListWatch {
-    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let entity_id = match extractor.get_required_u64(JSON_FIELD_ENTITY, "entity ID") {
             Ok(id) => id,

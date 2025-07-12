@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use rmcp::Error as McpError;
 
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, LocalContext};
 
 /// Type alias for the response from local handlers
 ///
@@ -25,7 +25,7 @@ pub trait HandlerResult: Send + Sync {
 /// Trait for local handlers using function pointer approach
 pub trait LocalHandler: Send + Sync {
     /// Handle the request and return a typed result
-    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_>;
+    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_>;
 }
 
 /// Type of handler for the tool

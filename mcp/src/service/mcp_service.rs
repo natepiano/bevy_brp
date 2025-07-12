@@ -10,113 +10,9 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
-use crate::constants::{DEFAULT_BRP_PORT, PARAM_METHOD, PARAM_PORT};
+use super::handler_context::{HandlerContext, TypedContext};
 use crate::error::{Error as ServiceError, report_to_mcp_error};
-use crate::response::CallInfo;
-use crate::tool;
-use crate::tool::{HandlerType, McpToolDef};
-
-/// Context passed to all local handlers containing service, request, and MCP context
-#[derive(Clone)]
-pub struct HandlerContext {
-    pub service: Arc<McpService>,
-    pub request: CallToolRequestParam,
-    pub context: RequestContext<RoleServer>,
-}
-
-impl HandlerContext {
-    pub const fn new(
-        service: Arc<McpService>,
-        request: CallToolRequestParam,
-        context: RequestContext<RoleServer>,
-    ) -> Self {
-        Self {
-            service,
-            request,
-            context,
-        }
-    }
-
-    /// Get tool definition by looking up the request name in the service's tool registry
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the tool definition is not found.
-    pub fn tool_def(&self) -> Result<&McpToolDef, McpError> {
-        self.service
-            .get_tool_def(&self.request.name)
-            .ok_or_else(|| {
-                crate::error::report_to_mcp_error(
-                    &error_stack::Report::new(crate::error::Error::InvalidArgument(format!(
-                        "unknown tool: {}",
-                        self.request.name
-                    )))
-                    .attach_printable("Tool not found"),
-                )
-            })
-    }
-
-    /// Extract port number from request arguments
-    fn extract_port(&self) -> Option<u16> {
-        self.request
-            .arguments
-            .as_ref()
-            .and_then(|args| args.get(PARAM_PORT))
-            .and_then(serde_json::Value::as_u64)
-            .and_then(|p| u16::try_from(p).ok())
-    }
-
-    /// Extract method parameter from request arguments
-    /// Only used with `brp_execute` which allows you to execute
-    /// arbitrary brp methods
-    fn extract_method_param(&self) -> Option<String> {
-        self.request
-            .arguments
-            .as_ref()
-            .and_then(|args| args.get(PARAM_METHOD))
-            .and_then(|v| v.as_str())
-            .map(std::string::ToString::to_string)
-    }
-
-    /// Get the BRP method name from request arguments (e.g., "bevy/spawn")
-    /// Returns None for local tools that don't use BRP
-    pub fn brp_method(&self) -> Option<String> {
-        let tool_def = self.tool_def().ok()?;
-        match &tool_def.handler {
-            HandlerType::Local { .. } => None,
-            HandlerType::Brp { method } => Some((*method).to_string()),
-            HandlerType::BrpExecute => self.extract_method_param(),
-        }
-    }
-
-    /// Get the BRP port number from request arguments
-    /// Returns None for local tools that don't use BRP
-    /// For BRP tools, returns provided port or DEFAULT_BRP_PORT if none provided
-    pub fn port(&self) -> Option<u16> {
-        let tool_def = self.tool_def().ok()?;
-        match &tool_def.handler {
-            HandlerType::Local { .. } => None,
-            HandlerType::Brp { .. } | HandlerType::BrpExecute => {
-                Some(self.extract_port().unwrap_or(DEFAULT_BRP_PORT))
-            }
-        }
-    }
-
-    /// Build `CallInfo` structure from the current request context
-    pub fn call_info(&self) -> CallInfo {
-        let mcp_tool = self.request.name.to_string();
-        let tool_def = self.tool_def().expect("Tool def must exist by this point");
-
-        match &tool_def.handler {
-            HandlerType::Local { .. } => CallInfo::local(mcp_tool),
-            HandlerType::Brp { .. } | HandlerType::BrpExecute => {
-                let brp_method = self.brp_method().expect("BRP tools must have brp_method");
-                let port = self.port().expect("BRP tools must have port");
-                CallInfo::brp(mcp_tool, brp_method, port)
-            }
-        }
-    }
-}
+use crate::tool::{self, McpToolDef};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -269,6 +165,10 @@ impl ServerHandler for McpService {
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
-        tool::handle_call_tool(handler_context).await
+
+        match handler_context.into_typed()? {
+            TypedContext::Local(ctx) => tool::local_tool_call(&ctx).await,
+            TypedContext::Brp(ctx) => tool::brp_method_tool_call(&ctx).await,
+        }
     }
 }

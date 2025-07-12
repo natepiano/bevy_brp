@@ -7,7 +7,7 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use crate::error::{Error, Result, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from shutting down a Bevy app
@@ -119,7 +119,7 @@ fn handle_kill_process_fallback(
 pub struct Shutdown;
 
 impl LocalHandler for Shutdown {
-    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let app_name = match extractor.get_required_string("app_name", "app name") {
             Ok(name) => name.to_string(),

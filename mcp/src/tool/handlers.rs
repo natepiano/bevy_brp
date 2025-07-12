@@ -17,18 +17,19 @@
 use rmcp::Error as McpError;
 use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 
+use super::LocalHandler;
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
-use super::{HandlerType, LocalHandler};
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
 use crate::constants::{
-    JSON_FIELD_ENTITY, JSON_FIELD_METHOD, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
+    JSON_FIELD_ENTITY, JSON_FIELD_RESOURCE, PARAM_PARAMS, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::extractors::{ExtractedParams, McpCallExtractor};
-use crate::response;
-use crate::response::{FormatterContext, ResponseBuilder, ResponseFormatterFactory};
-use crate::service::HandlerContext;
+use crate::response::{
+    self, FormatterContext, ResponseBuilder, ResponseFormatterFactory, ResponseSpecification,
+};
+use crate::service::{BrpContext, HandlerContext, LocalContext};
 use crate::support::schema;
 
 /// Generate tool registration from a declarative definition
@@ -75,11 +76,7 @@ fn extract_params_for_type(
         BrpMethodParamCategory::Passthrough => {
             // Pass through all arguments as params
             let params = request.arguments.clone().map(serde_json::Value::Object);
-            Ok(ExtractedParams {
-                method: None,
-                params,
-                port,
-            })
+            Ok(ExtractedParams { params, port })
         }
         BrpMethodParamCategory::Entity { required } => {
             // Extract entity parameter
@@ -93,41 +90,24 @@ fn extract_params_for_type(
                     .map(|entity| serde_json::json!({ JSON_FIELD_ENTITY: entity }))
             };
 
-            Ok(ExtractedParams {
-                method: None,
-                params,
-                port,
-            })
+            Ok(ExtractedParams { params, port })
         }
         BrpMethodParamCategory::Resource => {
             // Extract resource parameter
             let resource = extractor.get_required_string(JSON_FIELD_RESOURCE, "resource name")?;
             let params = Some(serde_json::json!({ JSON_FIELD_RESOURCE: resource }));
 
-            Ok(ExtractedParams {
-                method: None,
-                params,
-                port,
-            })
+            Ok(ExtractedParams { params, port })
         }
         BrpMethodParamCategory::EmptyParams => {
             // Just extract port, no other params
-            Ok(ExtractedParams {
-                method: None,
-                params: None,
-                port,
-            })
+            Ok(ExtractedParams { params: None, port })
         }
         BrpMethodParamCategory::BrpExecute => {
-            // Extract method and params for brp_execute
-            let method = extractor.get_required_string(JSON_FIELD_METHOD, "BRP method")?;
-            let params = extractor.field("params").cloned();
+            // Extract params for brp_execute
+            let params = extractor.field(PARAM_PARAMS).cloned();
 
-            Ok(ExtractedParams {
-                method: Some(method.to_string()),
-                params,
-                port,
-            })
+            Ok(ExtractedParams { params, port })
         }
         BrpMethodParamCategory::RegistrySchema => {
             // Extract optional filter parameters for registry schema
@@ -156,33 +136,17 @@ fn extract_params_for_type(
                 Some(serde_json::Value::Object(params_obj))
             };
 
-            Ok(ExtractedParams {
-                method: None,
-                params,
-                port,
-            })
+            Ok(ExtractedParams { params, port })
         }
-    }
-}
-
-/// Generate a handler function for a declarative tool definition
-pub async fn handle_call_tool(handler_context: HandlerContext) -> Result<CallToolResult, McpError> {
-    let tool_def = handler_context.tool_def()?;
-    match &tool_def.handler {
-        HandlerType::Brp { .. } | HandlerType::BrpExecute => {
-            // Handle BRP execute calls with dynamic method
-            brp_method_tool_call(&handler_context).await
-        }
-
-        HandlerType::Local { handler } => local_tool_call(&handler_context, handler.as_ref()).await,
     }
 }
 
 /// Generate a `LocalFn` handler using function pointer approach
-async fn local_tool_call(
-    handler_context: &HandlerContext,
-    handler: &dyn LocalHandler,
+pub async fn local_tool_call(
+    handler_context: &HandlerContext<LocalContext>,
 ) -> Result<CallToolResult, McpError> {
+    let handler = handler_context.handler().as_ref();
+
     let (formatter_factory, formatter_context) = create_formatter_from_def(handler_context)?;
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
@@ -201,7 +165,7 @@ async fn local_tool_call(
 
 /// Build a formatter factory from a tool definition's response specification
 fn build_formatter_factory_from_spec(
-    formatter_spec: &crate::response::ResponseSpecification,
+    formatter_spec: &ResponseSpecification,
 ) -> ResponseFormatterFactory {
     // Create the formatter factory for structured responses
     let mut formatter_builder = ResponseFormatterFactory::standard();
@@ -223,8 +187,8 @@ fn build_formatter_factory_from_spec(
 }
 
 /// Generate a BRP handler
-async fn brp_method_tool_call(
-    handler_context: &HandlerContext,
+pub async fn brp_method_tool_call(
+    handler_context: &HandlerContext<BrpContext>,
 ) -> Result<CallToolResult, McpError> {
     let tool_def = handler_context.tool_def()?;
 
@@ -236,7 +200,6 @@ async fn brp_method_tool_call(
     let formatter_factory = build_formatter_factory_from_spec(&tool_def.formatter);
 
     let config = BrpHandlerConfig {
-        method: handler_context.brp_method(),
         extracted_params,
         formatter_factory,
     };
@@ -246,7 +209,7 @@ async fn brp_method_tool_call(
 
 /// Create formatter factory and context from tool definition
 fn create_formatter_from_def(
-    handler_context: &HandlerContext,
+    handler_context: &HandlerContext<LocalContext>,
 ) -> Result<(ResponseFormatterFactory, FormatterContext), McpError> {
     let tool_def = handler_context.tool_def()?;
 
@@ -270,7 +233,7 @@ fn create_formatter_from_def(
 /// system?
 fn format_tool_call_result(
     result: Result<serde_json::Value, McpError>,
-    handler_context: &HandlerContext,
+    handler_context: &HandlerContext<LocalContext>,
     formatter_factory: &ResponseFormatterFactory,
     formatter_context: &FormatterContext,
 ) -> Result<CallToolResult, McpError> {

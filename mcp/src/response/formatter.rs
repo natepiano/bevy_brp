@@ -31,12 +31,13 @@ use serde_json::Value;
 use super::builder::{CallInfo, JsonResponse, ResponseBuilder};
 use super::field_extractor::FieldExtractor;
 use super::specification::FieldPlacement;
+use crate::brp_tools::request_handler::FormatCorrectionStatus;
 use crate::brp_tools::support::brp_client::BrpError;
 use crate::constants::{
     JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA,
 };
 use crate::error::Result;
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, HasCallInfo};
 use crate::support::{LargeResponseConfig, handle_large_response};
 
 /// Context passed to formatter factory
@@ -44,11 +45,17 @@ use crate::support::{LargeResponseConfig, handle_large_response};
 pub struct FormatterContext {
     /// Parameters with defaults applied (e.g., port always present)
     pub params:           Option<Value>,
-    pub format_corrected: Option<crate::brp_tools::request_handler::FormatCorrectionStatus>,
+    pub format_corrected: Option<FormatCorrectionStatus>,
 }
 
-/// Default error formatter implementation using `HandlerContext` for `call_info`
-pub fn format_error_default(error: BrpError, handler_context: &HandlerContext) -> CallToolResult {
+/// Generic default error formatter - works with any `HandlerContext` that has `call_info`
+pub fn format_error_default<T>(
+    error: BrpError,
+    handler_context: &HandlerContext<T>,
+) -> CallToolResult
+where
+    HandlerContext<T>: HasCallInfo,
+{
     // Extract rich guidance from format_corrections if present
     let rich_guidance = extract_rich_guidance_from_error(&error);
 
@@ -200,8 +207,16 @@ impl ResponseFormatter {
         Self { config, context }
     }
 
-    /// Format a successful response using `HandlerContext` for `call_info`
-    pub fn format_success(&self, data: &Value, handler_context: &HandlerContext) -> CallToolResult {
+    /// Generic format for successful responses - works with any `HandlerContext` that has
+    /// `call_info`
+    pub fn format_success<T>(
+        &self,
+        data: &Value,
+        handler_context: &HandlerContext<T>,
+    ) -> CallToolResult
+    where
+        HandlerContext<T>: HasCallInfo,
+    {
         // Check if this is a passthrough formatter - if so, convert data directly to CallToolResult
         if self.is_passthrough_formatter() {
             return Self::format_passthrough_response(self, data);
@@ -288,17 +303,26 @@ impl ResponseFormatter {
         )
     }
 
-    fn build_success_response(
+    fn build_success_response<T>(
         &self,
         data: &Value,
-        handler_context: &HandlerContext,
-    ) -> Result<JsonResponse> {
+        handler_context: &HandlerContext<T>,
+    ) -> Result<JsonResponse>
+    where
+        HandlerContext<T>: HasCallInfo,
+    {
+        let type_name = std::any::type_name::<T>()
+            .split("::")
+            .last()
+            .unwrap_or("Unknown");
         tracing::debug!(
-            "build_success_response_with_context: incoming data = {:?}",
+            "build_success_response<{}>: incoming data = {:?}",
+            type_name,
             data
         );
         tracing::debug!(
-            "build_success_response_with_context: response_fields count = {}",
+            "build_success_response<{}>: response_fields count = {}",
+            type_name,
             self.config.success_fields.len()
         );
 
@@ -316,7 +340,8 @@ impl ResponseFormatter {
 
         let response = builder.build();
         tracing::debug!(
-            "build_success_response_with_context: final response = {:?}",
+            "build_success_response<{}>: final response = {:?}",
+            type_name,
             response
         );
         Ok(response)
@@ -363,9 +388,7 @@ impl ResponseFormatter {
                 .clone()
                 .add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
 
-            if format_corrected
-                != &crate::brp_tools::request_handler::FormatCorrectionStatus::NotAttempted
-            {
+            if format_corrected != &FormatCorrectionStatus::NotAttempted {
                 if let Value::Object(data_map) = data {
                     if let Some(format_corrections) = data_map.get("format_corrections") {
                         if let Some(arr) = format_corrections.as_array() {
@@ -570,23 +593,6 @@ mod tests {
         let result = substitute_template("Missing {missing} placeholder", params.as_ref());
         assert_eq!(result, "Missing {missing} placeholder");
     }
-
-    // TODO: This test needs to be updated to use HandlerContext
-    // #[test]
-    // fn test_enhanced_error_formatting_direct() {
-    //     let metadata = BrpToolCallInfo::new("bevy/destroy", DEFAULT_BRP_PORT);
-    //     let error = BrpError {
-    //         code:    -32603,
-    //         message: "Entity not found".to_string(),
-    //         data:    None,
-    //     };
-    //
-    //     let result = format_error_default(error, &metadata);
-    //
-    //     // Verify result has content
-    //     assert_eq!(result.content.len(), 1);
-    //     // All errors now use the enhanced format_error_default function
-    // }
 
     #[test]
     fn test_result_placement_direct_value() {

@@ -13,9 +13,8 @@ use crate::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
     JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
 };
-use crate::error::{Error, report_to_mcp_error};
-use crate::extractors::ExtractedParams;
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};
+use crate::service::{BrpContext, HandlerContext};
 
 /// Log raw request arguments with sanitization
 fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
@@ -29,46 +28,6 @@ fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
     } else {
         trace!("Raw request arguments: None");
     }
-}
-
-/// Resolve the actual BRP method name to call
-fn resolve_brp_method(
-    extracted: &ExtractedParams,
-    config: &BrpHandlerConfig,
-) -> Result<String, McpError> {
-    debug!("Starting method resolution");
-
-    // Log the method resolution sources
-    if let Some(ref method) = extracted.method {
-        debug!("Method from request: {}", method);
-    } else {
-        debug!("Method from request: None");
-    }
-
-    if let Some(ref config_method) = config.method {
-        debug!("Method from config: {}", config_method);
-    } else {
-        debug!("Method from config: None");
-    }
-
-    // Perform the actual resolution
-    let resolved_method = extracted
-        .method
-        .as_ref()
-        .or(config.method.as_ref())
-        .cloned()
-        .ok_or_else(|| -> McpError {
-            report_to_mcp_error(
-                &error_stack::Report::new(Error::InvalidArgument(
-                    "Missing BRP method specification".to_string(),
-                ))
-                .attach_printable("Either method from request or config must be specified"),
-            )
-        })?;
-
-    debug!("Method resolution: {}", resolved_method);
-
-    Ok(resolved_method)
 }
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
@@ -135,7 +94,7 @@ fn process_success_response(
     data: Option<Value>,
     enhanced_result: &EnhancedBrpResult,
     context: ResponseContext<'_>,
-    handler_context: &crate::service::HandlerContext,
+    handler_context: &HandlerContext<BrpContext>,
 ) -> CallToolResult {
     let mut response_data = data.unwrap_or(Value::Null);
 
@@ -168,7 +127,7 @@ fn process_success_response(
 fn process_error_response(
     mut error_info: BrpError,
     enhanced_result: &EnhancedBrpResult,
-    handler_context: &crate::service::HandlerContext,
+    handler_context: &HandlerContext<BrpContext>,
     method: &str,
 ) -> CallToolResult {
     let original_error_message = error_info.message.clone();
@@ -243,7 +202,7 @@ fn process_error_response(
 
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_method_tool_call(
-    handler_context: crate::service::HandlerContext,
+    handler_context: HandlerContext<BrpContext>,
     config: &BrpHandlerConfig,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
@@ -260,15 +219,15 @@ pub async fn handle_brp_method_tool_call(
     // Get pre-extracted parameters directly
     let extracted = &config.extracted_params;
 
-    // Determine the actual method to call
-    let method_name = resolve_brp_method(extracted, config)?;
+    // Get the method directly from the typed context - no Options!
+    let method_name = handler_context.brp_method();
 
     // Add debug info about calling BRP
     debug!("Calling BRP with validated parameters");
 
     // Call BRP using format discovery
     let enhanced_result = execute_brp_method_with_format_discovery(
-        &method_name,
+        method_name,
         extracted.params.clone(),
         Some(extracted.port),
     )
@@ -296,7 +255,7 @@ pub async fn handle_brp_method_tool_call(
             let context = ResponseContext {
                 formatter_factory: &config.formatter_factory,
                 formatter_context,
-                method: &method_name,
+                method: method_name,
             };
             Ok(process_success_response(
                 data.clone(),
@@ -309,7 +268,7 @@ pub async fn handle_brp_method_tool_call(
             error_info.clone(),
             &enhanced_result,
             &handler_context,
-            &method_name,
+            method_name,
         )),
     }
 }

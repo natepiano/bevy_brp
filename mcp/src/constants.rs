@@ -22,7 +22,6 @@ pub const JSON_FIELD_FORMAT_CORRECTIONS: &str = "format_corrections";
 pub const JSON_FIELD_FORMAT_CORRECTED: &str = "format_corrected";
 pub const JSON_FIELD_LOG_PATH: &str = "log_path";
 pub const JSON_FIELD_METADATA: &str = "metadata";
-pub const JSON_FIELD_METHOD: &str = "method";
 pub const JSON_FIELD_ORIGINAL_ERROR: &str = "original_error";
 pub const JSON_FIELD_PARENT: &str = "parent";
 pub const JSON_FIELD_PATH: &str = "path";

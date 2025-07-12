@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
 /// Result from reading a log file
@@ -41,7 +41,7 @@ impl HandlerResult for ReadLogResult {
 pub struct ReadLog;
 
 impl LocalHandler for ReadLog {
-    fn handle(&self, ctx: &HandlerContext) -> HandlerResponse<'_> {
+    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let filename = match extractor.get_required_string("filename", "log filename") {

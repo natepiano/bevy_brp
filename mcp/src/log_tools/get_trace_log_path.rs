@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::service::HandlerContext;
+use crate::service::{HandlerContext, LocalContext};
 use crate::support::tracing::get_trace_log_path;
 use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
 
@@ -25,7 +25,7 @@ impl HandlerResult for GetTraceLogPathResult {
 pub struct GetTraceLogPath;
 
 impl LocalHandler for GetTraceLogPath {
-    fn handle(&self, _ctx: &HandlerContext) -> HandlerResponse<'_> {
+    fn handle(&self, _ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         Box::pin(async move {
             // Get the trace log path
             let log_path = get_trace_log_path();

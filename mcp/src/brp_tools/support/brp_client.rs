@@ -14,7 +14,7 @@ use tracing::{debug, warn};
 use super::BrpJsonRpcBuilder;
 use crate::constants::{
     BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, DEFAULT_BRP_PORT,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND,
+    JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_PARAMS,
 };
 use crate::error::{Error, Result};
 use crate::tool::BRP_EXTRAS_PREFIX;
@@ -179,7 +179,7 @@ fn handle_http_error(
 
     // Try to parse request body to extract component/entity info for mutations
     if let Ok(body_json) = serde_json::from_str::<Value>(request_body) {
-        if let Some(params) = body_json.get("params").and_then(|p| p.as_object()) {
+        if let Some(params) = body_json.get(PARAM_PARAMS).and_then(|p| p.as_object()) {
             if let Some(entity) = params.get("entity") {
                 context_info.push(format!("Entity: {entity}"));
             }

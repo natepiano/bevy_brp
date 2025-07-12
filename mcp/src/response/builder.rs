@@ -48,13 +48,13 @@ pub enum CallInfo {
 }
 
 impl CallInfo {
-    /// Create CallInfo for a local tool
-    pub fn local(mcp_tool: String) -> Self {
+    /// Create `CallInfo` for a local tool
+    pub const fn local(mcp_tool: String) -> Self {
         Self::Local { mcp_tool }
     }
 
-    /// Create CallInfo for a BRP tool
-    pub fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
+    /// Create `CallInfo` for a BRP tool
+    pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
         Self::Brp {
             mcp_tool,
             brp_method,
