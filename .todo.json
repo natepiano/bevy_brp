@@ -1,0 +1,219 @@
+[
+  {
+    "id": "meta-1",
+    "content": "Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "0",
+    "content": "Create TECH_DEBT.md file to track redundancy and duplications",
+    "status": "completed",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "1",
+    "content": "Create CallInfo struct in /Users/natemccoy/rust/brp-context/mcp/src/response/builder.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Build and fix any compile errors and warnings after creating CallInfo struct",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Update JsonResponse structure to include call_info field in response/builder.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Build and fix any compile errors and warnings after updating JsonResponse",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Export CallInfo from response/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Build and fix any compile errors and warnings after exporting CallInfo",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Add helper methods (extract_port, extract_method_param, brp_method, port, call_info) to HandlerContext in service.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Build and fix any compile errors and warnings after adding HandlerContext methods",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Add new ResponseBuilder constructors (success_with_call_info, error_with_call_info) to response/builder.rs and update TECH_DEBT.md",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Build and fix any compile errors and warnings after adding ResponseBuilder constructors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Run clippy after core data structure changes: cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Fix any clippy issues from core data structure changes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Add format_tool_call_result_with_context function to tool/handlers.rs and update TECH_DEBT.md",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Build and fix any compile errors and warnings after adding format_tool_call_result_with_context",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Add format_success_with_context method to ResponseFormatter in response/formatter.rs and update TECH_DEBT.md",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Add format_error_with_context function to response/formatter.rs and update TECH_DEBT.md",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Build and fix any compile errors and warnings after adding new formatter functions",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Update local_tool_call to use format_tool_call_result_with_context in tool/handlers.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Update brp_method_tool_call to use new response formatting in tool/handlers.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Update handle_brp_method_tool_call to use format_error_with_context in brp_tools/request_handler/handler.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Build and fix any compile errors and warnings after updating functions to use new formatting",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Remove brp_call_info metadata block from response/formatter.rs lines 150-155",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Build and fix any compile errors and warnings after removing brp_call_info metadata",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run clippy after implementation completion: cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Fix any clippy issues from final implementation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "STOP work here and return control to main agent for code review",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
