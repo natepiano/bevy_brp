@@ -19,7 +19,7 @@ use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
-use super::{BrpToolCallInfo, HandlerType, LocalHandler};
+use super::{HandlerType, LocalHandler};
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
 use crate::constants::{
     JSON_FIELD_ENTITY, JSON_FIELD_METHOD, JSON_FIELD_RESOURCE, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
@@ -169,14 +169,9 @@ fn extract_params_for_type(
 pub async fn handle_call_tool(handler_context: HandlerContext) -> Result<CallToolResult, McpError> {
     let tool_def = handler_context.tool_def()?;
     match &tool_def.handler {
-        HandlerType::Brp { method } => {
-            // Handle BRP method calls
-            brp_method_tool_call(&handler_context, method).await
-        }
-
-        HandlerType::BrpExecute => {
+        HandlerType::Brp { .. } | HandlerType::BrpExecute => {
             // Handle BRP execute calls with dynamic method
-            brp_method_tool_call(&handler_context, "").await
+            brp_method_tool_call(&handler_context).await
         }
 
         HandlerType::Local { handler } => local_tool_call(&handler_context, handler.as_ref()).await,
@@ -188,7 +183,6 @@ async fn local_tool_call(
     handler_context: &HandlerContext,
     handler: &dyn LocalHandler,
 ) -> Result<CallToolResult, McpError> {
-    let tool_def = handler_context.tool_def()?;
     let (formatter_factory, formatter_context) = create_formatter_from_def(handler_context)?;
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
@@ -199,7 +193,7 @@ async fn local_tool_call(
 
     format_tool_call_result(
         result,
-        tool_def.name,
+        handler_context,
         &formatter_factory,
         &formatter_context,
     )
@@ -231,7 +225,6 @@ fn build_formatter_factory_from_spec(
 /// Generate a BRP handler
 async fn brp_method_tool_call(
     handler_context: &HandlerContext,
-    method: &'static str,
 ) -> Result<CallToolResult, McpError> {
     let tool_def = handler_context.tool_def()?;
 
@@ -243,7 +236,7 @@ async fn brp_method_tool_call(
     let formatter_factory = build_formatter_factory_from_spec(&tool_def.formatter);
 
     let config = BrpHandlerConfig {
-        method: Some(method),
+        method: handler_context.brp_method(),
         extracted_params,
         formatter_factory,
     };
@@ -272,10 +265,12 @@ fn create_formatter_from_def(
     Ok((formatter_factory, formatter_context))
 }
 
-/// Format the result of a handler that returns `Result<Value, McpError>`
+/// Format the result of a handler that returns `Result<Value, McpError>` using `HandlerContext`
+/// todo: address the cognitive load of all of these conditionals - can we refactor to use the type
+/// system?
 fn format_tool_call_result(
     result: Result<serde_json::Value, McpError>,
-    tool_name: &str,
+    handler_context: &HandlerContext,
     formatter_factory: &ResponseFormatterFactory,
     formatter_context: &FormatterContext,
 ) -> Result<CallToolResult, McpError> {
@@ -287,7 +282,7 @@ fn format_tool_call_result(
                 .and_then(|s| s.as_str())
                 .is_some_and(|s| s == "error");
 
-            let metadata = BrpToolCallInfo::new(tool_name, 0);
+            let call_info = handler_context.call_info();
 
             if is_error {
                 // For error responses, build the error response directly
@@ -297,7 +292,7 @@ fn format_tool_call_result(
                     .unwrap_or("Operation failed");
 
                 // Build error response with all the data fields
-                let error_response = ResponseBuilder::error().message(message);
+                let error_response = ResponseBuilder::error(call_info.clone()).message(message);
 
                 // For disambiguation errors, only include specific fields
                 let error_response = if let serde_json::Value::Object(map) = &value {
@@ -325,7 +320,7 @@ fn format_tool_call_result(
                             })
                             .unwrap_or_else(|_| {
                                 // If adding fields failed, just return the basic error response
-                                ResponseBuilder::error().message(message)
+                                ResponseBuilder::error(call_info.clone()).message(message)
                             })
                     } else {
                         // For other errors, include all non-null fields
@@ -340,7 +335,7 @@ fn format_tool_call_result(
                             })
                             .unwrap_or_else(|_| {
                                 // If adding fields failed, just return the basic error response
-                                ResponseBuilder::error().message(message)
+                                ResponseBuilder::error(call_info.clone()).message(message)
                             })
                     }
                 } else {
@@ -349,9 +344,10 @@ fn format_tool_call_result(
 
                 Ok(error_response.build().to_call_tool_result())
             } else {
+                // Use the new format_success_with_context to include call_info
                 Ok(formatter_factory
                     .create(formatter_context.clone())
-                    .format_success(&value, metadata))
+                    .format_success(&value, handler_context))
             }
         }
         Err(e) => Err(e),

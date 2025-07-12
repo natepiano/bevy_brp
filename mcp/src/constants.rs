@@ -9,7 +9,6 @@
 
 /// JSON field name constants for BRP responses
 pub const JSON_FIELD_APP_NAME: &str = "app_name";
-pub const JSON_FIELD_BRP_CALL_INFO: &str = "brp_call_info";
 pub const JSON_FIELD_COMPONENT_COUNT: &str = "component_count";
 pub const JSON_FIELD_COMPONENTS: &str = "components";
 pub const JSON_FIELD_CONTENT: &str = "content";

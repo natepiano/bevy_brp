@@ -10,6 +10,7 @@ use crate::response::FieldPlacement;
 pub struct JsonResponse {
     pub status:                ResponseStatus,
     pub message:               String,
+    pub call_info:             CallInfo,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata:              Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,6 +25,42 @@ pub struct JsonResponse {
 pub enum ResponseStatus {
     Success,
     Error,
+}
+
+/// Call information for tracking tool execution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CallInfo {
+    /// Local tool execution (no BRP involved)
+    Local {
+        /// The MCP tool name (e.g., "`brp_status`")
+        mcp_tool: String,
+    },
+    /// BRP tool execution (calls Bevy Remote Protocol)
+    Brp {
+        /// The MCP tool name (e.g., "`bevy_spawn`")
+        mcp_tool:   String,
+        /// The BRP method name (e.g., "bevy/spawn")
+        brp_method: String,
+        /// The BRP port number
+        port:       u16,
+    },
+}
+
+impl CallInfo {
+    /// Create CallInfo for a local tool
+    pub fn local(mcp_tool: String) -> Self {
+        Self::Local { mcp_tool }
+    }
+
+    /// Create CallInfo for a BRP tool
+    pub fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
+        Self::Brp {
+            mcp_tool,
+            brp_method,
+            port,
+        }
+    }
 }
 
 impl JsonResponse {
@@ -54,28 +91,33 @@ impl JsonResponse {
 pub struct ResponseBuilder {
     status:                ResponseStatus,
     message:               String,
+    call_info:             CallInfo,
     metadata:              Option<Value>,
     result:                Option<Value>,
     brp_extras_debug_info: Option<Value>,
 }
 
 impl ResponseBuilder {
-    pub const fn success() -> Self {
+    /// Create a success response with call info pre-populated
+    pub const fn success(call_info: CallInfo) -> Self {
         Self {
-            status:                ResponseStatus::Success,
-            message:               String::new(),
-            metadata:              None,
-            result:                None,
+            status: ResponseStatus::Success,
+            message: String::new(),
+            call_info,
+            metadata: None,
+            result: None,
             brp_extras_debug_info: None,
         }
     }
 
-    pub const fn error() -> Self {
+    /// Create an error response with call info pre-populated
+    pub const fn error(call_info: CallInfo) -> Self {
         Self {
-            status:                ResponseStatus::Error,
-            message:               String::new(),
-            metadata:              None,
-            result:                None,
+            status: ResponseStatus::Error,
+            message: String::new(),
+            call_info,
+            metadata: None,
+            result: None,
             brp_extras_debug_info: None,
         }
     }
@@ -167,6 +209,7 @@ impl ResponseBuilder {
         let response = JsonResponse {
             status:                self.status,
             message:               self.message,
+            call_info:             self.call_info,
             metadata:              self.metadata,
             result:                self.result,
             brp_extras_debug_info: self.brp_extras_debug_info,

@@ -16,7 +16,6 @@ use crate::constants::{
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::ExtractedParams;
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};
-use crate::tool::{BrpToolCallInfo, TOOL_BRP_EXECUTE};
 
 /// Log raw request arguments with sanitization
 fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
@@ -46,7 +45,7 @@ fn resolve_brp_method(
         debug!("Method from request: None");
     }
 
-    if let Some(config_method) = config.method {
+    if let Some(ref config_method) = config.method {
         debug!("Method from config: {}", config_method);
     } else {
         debug!("Method from config: None");
@@ -55,9 +54,9 @@ fn resolve_brp_method(
     // Perform the actual resolution
     let resolved_method = extracted
         .method
-        .as_deref()
-        .or(config.method)
-        .map(String::from)
+        .as_ref()
+        .or(config.method.as_ref())
+        .cloned()
         .ok_or_else(|| -> McpError {
             report_to_mcp_error(
                 &error_stack::Report::new(Error::InvalidArgument(
@@ -126,7 +125,6 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
 
 /// Context for processing responses
 struct ResponseContext<'a> {
-    call_info:         BrpToolCallInfo,
     formatter_factory: &'a ResponseFormatterFactory,
     formatter_context: FormatterContext,
     method:            &'a str,
@@ -137,6 +135,7 @@ fn process_success_response(
     data: Option<Value>,
     enhanced_result: &EnhancedBrpResult,
     context: ResponseContext<'_>,
+    handler_context: &crate::service::HandlerContext,
 ) -> CallToolResult {
     let mut response_data = data.unwrap_or(Value::Null);
 
@@ -161,15 +160,15 @@ fn process_success_response(
     // Create new formatter with updated context
     let updated_formatter = context.formatter_factory.create(new_formatter_context);
 
-    // Large response handling is now done inside the formatter
-    updated_formatter.format_success(&response_data, context.call_info)
+    // Use format_success to include call_info
+    updated_formatter.format_success(&response_data, handler_context)
 }
 
 /// Process an error BRP response - routes ALL errors through enhanced `format_error_default`
 fn process_error_response(
     mut error_info: BrpError,
     enhanced_result: &EnhancedBrpResult,
-    call_info: &BrpToolCallInfo,
+    handler_context: &crate::service::HandlerContext,
     method: &str,
 ) -> CallToolResult {
     let original_error_message = error_info.message.clone();
@@ -239,7 +238,7 @@ fn process_error_response(
     }
 
     // Route ALL errors through the enhanced format_error_default
-    response::format_error_default(error_info, call_info)
+    response::format_error_default(error_info, handler_context)
 }
 
 /// Unified handler for all BRP methods (both static and dynamic)
@@ -291,19 +290,10 @@ pub async fn handle_brp_method_tool_call(
         format_corrected: None, // Initial context doesn't have format correction status yet
     };
 
-    // Use "brp_execute" for dynamic methods for special error formatting
-    let metadata_method = if extracted.method.is_some() {
-        TOOL_BRP_EXECUTE
-    } else {
-        &method_name
-    };
-    let call_info = BrpToolCallInfo::new(metadata_method, extracted.port);
-
     // Process response using ResponseFormatter, including format corrections if present
     match &enhanced_result.result {
         BrpResult::Success(data) => {
             let context = ResponseContext {
-                call_info,
                 formatter_factory: &config.formatter_factory,
                 formatter_context,
                 method: &method_name,
@@ -312,12 +302,13 @@ pub async fn handle_brp_method_tool_call(
                 data.clone(),
                 &enhanced_result,
                 context,
+                &handler_context,
             ))
         }
         BrpResult::Error(error_info) => Ok(process_error_response(
             error_info.clone(),
             &enhanced_result,
-            &call_info,
+            &handler_context,
             &method_name,
         )),
     }

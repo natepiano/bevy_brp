@@ -33,7 +33,7 @@ mcp__brp__bevy_insert with parameters:
 ```
 
 **Expected Result**: 
-- ✅ Success with format_corrected: true
+- ✅ Success with format_corrected: "succeeded"
 - ✅ Message: "Request succeeded with format correction applied"
 - ✅ Object format {x,y,z} automatically converted to array [x,y,z]
 
@@ -55,7 +55,7 @@ mcp__brp__bevy_insert with parameters:
 ```
 
 **Expected Result**:
-- ❌ Error with format_corrected: false
+- ❌ Error with format_corrected: "not_attempted" or "attempted_but_failed"
 - ❌ Guidance message with correct format example
 - ❌ No invented values - system should not guess what user intended
 
@@ -101,7 +101,7 @@ mcp__brp__bevy_spawn with parameters:
 ```
 
 **Expected Result**:
-- ✅ Success with format_corrected: true
+- ✅ Success with format_corrected: "succeeded"
 - ✅ Message: "Request succeeded with format correction applied"  
 - ✅ Returns new entity ID
 
@@ -146,8 +146,8 @@ mcp__brp__bevy_spawn with parameters:
 ## Expected Results
 
 ### Transform Format Correction
-- ✅ **Transformable input succeeds**: Object format {x,y,z} → array [x,y,z] with format_corrected: true
-- ✅ **Non-transformable input fails**: Integers/invalid data returns error with guidance, format_corrected: false
+- ✅ **Transformable input succeeds**: Object format {x,y,z} → array [x,y,z] with format_corrected: "succeeded"
+- ✅ **Non-transformable input fails**: Integers/invalid data returns error with guidance, format_corrected: "not_attempted" or "attempted_but_failed"
 - ✅ **No value invention**: System never creates fake data when transformation fails
 - ✅ **Clear success messaging**: "Request succeeded with format correction applied" when corrected
 - ✅ **Spawn and insert both work**: Format correction applies to both operations
