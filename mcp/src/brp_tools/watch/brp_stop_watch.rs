@@ -7,7 +7,7 @@ use super::manager::WATCH_MANAGER;
 use crate::constants::JSON_FIELD_WATCH_ID;
 use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,8 +26,8 @@ impl HandlerResult for StopWatchResult {
 
 pub struct BrpStopWatch;
 
-impl LocalHandler for BrpStopWatch {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for BrpStopWatch {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before async block
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let watch_id = match extractor.get_required_u32(JSON_FIELD_WATCH_ID, "watch ID") {

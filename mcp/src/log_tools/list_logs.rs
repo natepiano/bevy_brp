@@ -5,7 +5,7 @@ use super::support::LogFileEntry;
 use crate::extractors::McpCallExtractor;
 use crate::log_tools::support;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from listing log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,8 +27,8 @@ impl HandlerResult for ListLogResult {
 /// Handler for the `brp_list_logs` tool using the `LocalFn` approach
 pub struct ListLogs;
 
-impl LocalHandler for ListLogs {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for ListLogs {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract optional app name filter
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let app_name_filter = extractor.get_optional_string("app_name", "");

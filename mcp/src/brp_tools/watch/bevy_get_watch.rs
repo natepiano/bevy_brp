@@ -8,12 +8,12 @@ use crate::constants::{
 };
 use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 pub struct BevyGetWatch;
 
-impl LocalHandler for BevyGetWatch {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for BevyGetWatch {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let entity_id = match extractor.get_required_u64(JSON_FIELD_ENTITY, "entity ID") {
             Ok(id) => id,

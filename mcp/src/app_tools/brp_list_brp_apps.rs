@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support::collection_strategy::BrpAppsStrategy;
 use super::support::list_common;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from listing BRP apps
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,8 +23,8 @@ impl HandlerResult for ListBrpAppsResult {
 
 pub struct ListBrpApps;
 
-impl LocalHandler for ListBrpApps {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for ListBrpApps {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Clone context to owned data for async move closure
         let owned_ctx = ctx.clone();
 

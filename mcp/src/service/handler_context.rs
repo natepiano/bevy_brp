@@ -8,7 +8,7 @@ use super::mcp_service::McpService;
 use crate::constants::{DEFAULT_BRP_PORT, PARAM_METHOD, PARAM_PORT};
 use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::response::CallInfo;
-use crate::tool::{HandlerType, LocalHandler, McpToolDef};
+use crate::tool::{HandlerType, LocalToolFunction, McpToolDef};
 
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
@@ -18,7 +18,7 @@ pub trait HasCallInfo {
 /// Data type for local handler contexts (carries the extracted handler)
 #[derive(Clone)]
 pub struct LocalContext {
-    pub handler: Arc<dyn LocalHandler>,
+    pub handler: Arc<dyn LocalToolFunction>,
 }
 
 /// Data type for BRP handler contexts (carries extracted request data)
@@ -155,7 +155,7 @@ impl HandlerContext<LocalContext> {
         CallInfo::local(self.request.name.to_string())
     }
 
-    pub fn handler(&self) -> &Arc<dyn LocalHandler> {
+    pub fn handler(&self) -> &Arc<dyn LocalToolFunction> {
         &self.handler_data.handler
     }
 }

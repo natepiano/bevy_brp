@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
 use crate::support::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
-use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from setting the tracing level
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,8 +25,8 @@ impl HandlerResult for SetTracingLevelResult {
 
 pub struct SetTracingLevel;
 
-impl LocalHandler for SetTracingLevel {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for SetTracingLevel {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract the required level parameter before the async block
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let level_str = match extractor.get_required_string("level", "tracing level") {

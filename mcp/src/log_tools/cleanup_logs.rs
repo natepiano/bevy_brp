@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::support::{self, LogFileEntry};
 use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from cleaning up log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,8 +30,8 @@ impl HandlerResult for CleanupLogsResult {
 
 pub struct CleanupLogs;
 
-impl LocalHandler for CleanupLogs {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for CleanupLogs {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let app_name_filter = extractor.get_optional_string("app_name", "");

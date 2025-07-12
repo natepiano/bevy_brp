@@ -7,7 +7,7 @@ use crate::constants::{DEFAULT_BRP_PORT, PARAM_APP_NAME, PARAM_PORT};
 use crate::error::{Error, report_to_mcp_error};
 use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalHandler};
+use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,8 +36,8 @@ impl HandlerResult for StatusResult {
 
 pub struct Status;
 
-impl LocalHandler for Status {
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunction for Status {
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         let extractor = McpCallExtractor::from_request(&ctx.request);
         let app_name = match extractor.get_required_string(PARAM_APP_NAME, "app name") {
             Ok(name) => name.to_string(),

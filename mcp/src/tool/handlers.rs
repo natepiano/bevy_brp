@@ -17,7 +17,7 @@
 use rmcp::Error as McpError;
 use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 
-use super::LocalHandler;
+use super::LocalToolFunction;
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
@@ -151,7 +151,7 @@ pub async fn local_tool_call(
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
     let result = handler
-        .handle(handler_context)
+        .call(handler_context)
         .await
         .map(|typed_result| typed_result.to_json());
 

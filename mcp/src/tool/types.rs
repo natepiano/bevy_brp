@@ -23,9 +23,9 @@ pub trait HandlerResult: Send + Sync {
 }
 
 /// Trait for local handlers using function pointer approach
-pub trait LocalHandler: Send + Sync {
+pub trait LocalToolFunction: Send + Sync {
     /// Handle the request and return a typed result
-    fn handle(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_>;
+    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_>;
 }
 
 /// Type of handler for the tool
@@ -43,6 +43,6 @@ pub enum HandlerType {
     /// Local handler using function pointer approach
     Local {
         /// Handler trait object
-        handler: Arc<dyn LocalHandler>,
+        handler: Arc<dyn LocalToolFunction>,
     },
 }
