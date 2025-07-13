@@ -99,12 +99,12 @@ impl HandlerType {
                 let (method, port) = match method_source {
                     BrpMethodSource::Static { method } => {
                         let method_string = (*method).to_string();
-                        let port = context.extract_port();
+                        let port = context.extract_port_param();
                         (method_string, port)
                     }
                     BrpMethodSource::Dynamic => {
-                        let method = context.extract_method()?;
-                        let port = context.extract_port();
+                        let method = context.extract_method_param()?;
+                        let port = context.extract_port_param();
                         (method, port)
                     }
                 };

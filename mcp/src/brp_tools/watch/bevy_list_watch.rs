@@ -3,8 +3,7 @@
 use rmcp::Error as McpError;
 
 use super::types::WatchStartResult;
-use crate::constants::{DEFAULT_BRP_PORT, JSON_FIELD_ENTITY, JSON_FIELD_PORT};
-use crate::extractors::McpCallExtractor;
+use crate::constants::JSON_FIELD_ENTITY;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -12,13 +11,12 @@ pub struct BevyListWatch;
 
 impl LocalToolFunction for BevyListWatch {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let entity_id = match extractor.get_required_u64(JSON_FIELD_ENTITY, "entity ID") {
+        let entity_id = match ctx.extract_required_u64(JSON_FIELD_ENTITY, "entity ID") {
             Ok(id) => id,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let port = match extractor.get_optional_u16(JSON_FIELD_PORT) {
-            Ok(p) => p.unwrap_or(DEFAULT_BRP_PORT),
+        let port = match ctx.extract_port() {
+            Ok(p) => p,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 

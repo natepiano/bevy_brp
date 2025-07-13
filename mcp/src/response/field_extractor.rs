@@ -6,7 +6,6 @@
 use serde_json::Value;
 
 use super::FormatterContext;
-use crate::extractors::McpCallExtractor;
 use crate::response::{FieldPlacement, ResponseField};
 
 /// Function type for extracting field values from response data and context.
@@ -37,17 +36,8 @@ pub fn create_request_field_accessor(field: &'static str) -> FieldExtractor {
                     .params
                     .as_ref()
                     .and_then(|params| {
-                        // Create a temporary request to use the extractor
-                        if let Value::Object(args) = params {
-                            let request = rmcp::model::CallToolRequestParam {
-                                arguments: Some(args.clone()),
-                                name:      String::new().into(),
-                            };
-                            let extractor = McpCallExtractor::from_request(&request);
-                            extractor.entity_id().map(|id| Value::Number(id.into()))
-                        } else {
-                            None
-                        }
+                        // Look for entity field in params
+                        params.get("entity").cloned()
                     })
                     .unwrap_or(Value::Null)
             }

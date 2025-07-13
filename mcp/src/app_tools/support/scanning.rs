@@ -1,11 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use rmcp::Error as McpError;
 use tracing::debug;
 
 use super::cargo_detector::{BevyTarget, CargoDetector, TargetType};
-use crate::error::{Error, report_to_mcp_error};
+use crate::error::Error;
 
 /// Helper function to safely canonicalize a path
 /// Returns the canonicalized path if successful, otherwise returns the original path
@@ -339,7 +338,7 @@ pub fn find_required_target_with_path(
     target_type: TargetType,
     path: Option<&str>,
     search_paths: &[PathBuf],
-) -> Result<BevyTarget, McpError> {
+) -> Result<BevyTarget, Error> {
     let target_type_str = match target_type {
         TargetType::App => "app",
         TargetType::Example => "example",
@@ -387,14 +386,12 @@ pub fn find_required_target_with_path(
                             .join("\n")
                     );
 
-                    return Err(report_to_mcp_error(&error_stack::Report::new(
-                        Error::PathDisambiguation {
-                            message:         error_msg,
-                            item_type:       target_type_str.to_string(),
-                            item_name:       target_name.to_string(),
-                            available_paths: paths,
-                        },
-                    )));
+                    return Err(Error::PathDisambiguation {
+                        message:         error_msg,
+                        item_type:       target_type_str.to_string(),
+                        item_name:       target_name.to_string(),
+                        available_paths: paths,
+                    });
                 }
 
                 // Enhanced error message for path not found
@@ -412,14 +409,12 @@ pub fn find_required_target_with_path(
                         .join("\n")
                 );
 
-                return Err(report_to_mcp_error(&error_stack::Report::new(
-                    Error::PathDisambiguation {
-                        message: error_msg,
-                        item_type: target_type_str.to_string(),
-                        item_name: target_name.to_string(),
-                        available_paths,
-                    },
-                )));
+                return Err(Error::PathDisambiguation {
+                    message: error_msg,
+                    item_type: target_type_str.to_string(),
+                    item_name: target_name.to_string(),
+                    available_paths,
+                });
             }
 
             return validate_single_result_or_error(
@@ -527,27 +522,19 @@ fn validate_single_result_or_error<T>(
     item_type: &str,
     param_name: &str,
     get_relative_path: impl Fn(&T) -> &PathBuf,
-) -> Result<T, McpError> {
+) -> Result<T, Error> {
     match items.len() {
-        0 => Err(report_to_mcp_error(
-            &error_stack::Report::new(Error::Configuration(format!(
-                "Bevy {item_type} '{item_name}' not found in search paths"
-            )))
-            .attach_printable(format!("Item type: {item_type}"))
-            .attach_printable(format!("Item name: {item_name}")),
-        )),
+        0 => Err(Error::FileOrPathNotFound(format!(
+            "Bevy {item_type} '{item_name}' not found in search paths"
+        ))),
         1 => {
             // We know exactly one item exists
             let mut iter = items.into_iter();
             iter.next().map_or_else(
                 || {
-                    Err(report_to_mcp_error(
-                        &error_stack::Report::new(Error::Configuration(format!(
-                            "Bevy {item_type} '{item_name}' not found in search paths"
-                        )))
-                        .attach_printable(format!("Item type: {item_type}"))
-                        .attach_printable(format!("Item name: {item_name}")),
-                    ))
+                    Err(Error::FileOrPathNotFound(format!(
+                        "Bevy {item_type} '{item_name}' not found in search paths"
+                    )))
                 },
                 |item| Ok(item),
             )
@@ -570,14 +557,12 @@ fn validate_single_result_or_error<T>(
             let error_msg =
                 build_path_selection_error(item_type, item_name, param_name, &non_empty_paths);
 
-            Err(report_to_mcp_error(&error_stack::Report::new(
-                Error::PathDisambiguation {
-                    message:         error_msg,
-                    item_type:       item_type.to_string(),
-                    item_name:       item_name.to_string(),
-                    available_paths: non_empty_paths,
-                },
-            )))
+            Err(Error::PathDisambiguation {
+                message:         error_msg,
+                item_type:       item_type.to_string(),
+                item_name:       item_name.to_string(),
+                available_paths: non_empty_paths,
+            })
         }
     }
 }

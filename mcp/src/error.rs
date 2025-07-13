@@ -32,8 +32,8 @@ pub enum Error {
     #[error("Invalid state: {0}")]
     InvalidState(String),
 
-    #[error("Configuration error: {0}")]
-    Configuration(String),
+    #[error("File or path not found error: {0}")]
+    FileOrPathNotFound(String),
 
     #[error("Watch operation failed: {0}")]
     WatchOperation(String),
@@ -178,7 +178,7 @@ impl From<Error> for McpError {
             Error::BrpCommunication(msg)
             | Error::JsonRpc(msg)
             | Error::FormatDiscovery(msg)
-            | Error::Configuration(msg)
+            | Error::FileOrPathNotFound(msg)
             | Error::InvalidArgument(msg) => Self::invalid_params(msg, None),
             Error::PathDisambiguation { message, .. } => {
                 // For path disambiguation, we want to preserve the detailed message

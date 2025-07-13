@@ -2,7 +2,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support::LogFileEntry;
-use crate::extractors::McpCallExtractor;
+use crate::constants::PARAM_APP_NAME;
 use crate::log_tools::support;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
@@ -30,11 +30,10 @@ pub struct ListLogs;
 impl LocalToolFunction for ListLogs {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract optional app name filter
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let app_name_filter = extractor.get_optional_string("app_name", "");
+        let app_name_filter = ctx.extract_optional_string(PARAM_APP_NAME, "");
 
         // Extract verbose flag (default to false)
-        let verbose = extractor.get_optional_bool("verbose", false);
+        let verbose = ctx.extract_optional_bool("verbose", false);
 
         Box::pin(async move {
             let logs = list_log_files(&app_name_filter, verbose)?;

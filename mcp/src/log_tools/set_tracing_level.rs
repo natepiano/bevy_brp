@@ -3,7 +3,6 @@ use std::str::FromStr;
 use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
-use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
 use crate::support::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
@@ -28,8 +27,7 @@ pub struct SetTracingLevel;
 impl LocalToolFunction for SetTracingLevel {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract the required level parameter before the async block
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let level_str = match extractor.get_required_string("level", "tracing level") {
+        let level_str = match ctx.extract_required_string("level", "tracing level") {
             Ok(s) => s.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };

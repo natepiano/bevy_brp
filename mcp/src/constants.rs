@@ -21,13 +21,16 @@ pub const JSON_FIELD_ERROR_CODE: &str = "error_code";
 pub const JSON_FIELD_FORMAT_CORRECTIONS: &str = "format_corrections";
 pub const JSON_FIELD_FORMAT_CORRECTED: &str = "format_corrected";
 pub const JSON_FIELD_LOG_PATH: &str = "log_path";
+pub const JSON_FIELD_METHOD: &str = "method";
 pub const JSON_FIELD_METADATA: &str = "metadata";
 pub const JSON_FIELD_ORIGINAL_ERROR: &str = "original_error";
 pub const JSON_FIELD_PARENT: &str = "parent";
 pub const JSON_FIELD_PATH: &str = "path";
+pub const JSON_FIELD_PID: &str = "pid";
 pub const JSON_FIELD_PORT: &str = "port";
 pub const JSON_FIELD_RESULT: &str = "result";
 pub const JSON_FIELD_RESOURCE: &str = "resource";
+pub const JSON_FIELD_SHUTDOWN_METHOD: &str = "shutdown_method";
 pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
 
 // ============================================================================

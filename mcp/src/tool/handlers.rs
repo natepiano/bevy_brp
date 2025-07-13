@@ -15,16 +15,15 @@
 //! - **`EntityOperation`/`ResourceOperation`**: BRP-specific operations with field extraction
 
 use rmcp::Error as McpError;
-use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
+use rmcp::model::{CallToolResult, Tool};
 
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
-use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};
+use crate::brp_tools::request_handler::handle_brp_method_tool_call;
 use crate::constants::{
     JSON_FIELD_ENTITY, JSON_FIELD_RESOURCE, PARAM_PARAMS, PARAM_WITH_CRATES, PARAM_WITH_TYPES,
     PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
-use crate::extractors::{ExtractedParams, McpCallExtractor};
 use crate::response::{
     self, FormatterContext, ResponseBuilder, ResponseFormatterFactory, ResponseSpecification,
 };
@@ -66,54 +65,52 @@ pub fn get_tool(def: McpToolDef) -> Tool {
 /// Extract parameters based on the extractor type
 fn extract_params_for_type(
     extractor_type: &BrpMethodParamCategory,
-    request: &CallToolRequestParam,
-) -> Result<ExtractedParams, McpError> {
-    let extractor = McpCallExtractor::from_request(request);
-    let port = extractor.get_port()?;
+    ctx: &HandlerContext<BrpContext>,
+) -> Result<(Option<serde_json::Value>, u16), McpError> {
+    let port = ctx.extract_port()?;
 
     match extractor_type {
         BrpMethodParamCategory::Passthrough => {
             // Pass through all arguments as params
-            let params = request.arguments.clone().map(serde_json::Value::Object);
-            Ok(ExtractedParams { params, port })
+            let params = ctx.request.arguments.clone().map(serde_json::Value::Object);
+            Ok((params, port))
         }
         BrpMethodParamCategory::Entity { required } => {
             // Extract entity parameter
             let params = if *required {
-                let entity = extractor.get_entity_id()?;
+                let entity = ctx.get_entity_id()?;
                 Some(serde_json::json!({ JSON_FIELD_ENTITY: entity }))
             } else {
                 // For optional entity (like list), include it if present
-                extractor
-                    .entity_id()
+                ctx.entity_id()
                     .map(|entity| serde_json::json!({ JSON_FIELD_ENTITY: entity }))
             };
 
-            Ok(ExtractedParams { params, port })
+            Ok((params, port))
         }
         BrpMethodParamCategory::Resource => {
             // Extract resource parameter
-            let resource = extractor.get_required_string(JSON_FIELD_RESOURCE, "resource name")?;
+            let resource = ctx.extract_required_string(JSON_FIELD_RESOURCE, "resource name")?;
             let params = Some(serde_json::json!({ JSON_FIELD_RESOURCE: resource }));
 
-            Ok(ExtractedParams { params, port })
+            Ok((params, port))
         }
         BrpMethodParamCategory::EmptyParams => {
             // Just extract port, no other params
-            Ok(ExtractedParams { params: None, port })
+            Ok((None, port))
         }
         BrpMethodParamCategory::BrpExecute => {
             // Extract params for brp_execute
-            let params = extractor.field(PARAM_PARAMS).cloned();
+            let params = ctx.extract_optional_named_field(PARAM_PARAMS).cloned();
 
-            Ok(ExtractedParams { params, port })
+            Ok((params, port))
         }
         BrpMethodParamCategory::RegistrySchema => {
             // Extract optional filter parameters for registry schema
-            let with_crates = extractor.optional_string_array(PARAM_WITH_CRATES);
-            let without_crates = extractor.optional_string_array(PARAM_WITHOUT_CRATES);
-            let with_types = extractor.optional_string_array(PARAM_WITH_TYPES);
-            let without_types = extractor.optional_string_array(PARAM_WITHOUT_TYPES);
+            let with_crates = ctx.extract_optional_string_array(PARAM_WITH_CRATES);
+            let without_crates = ctx.extract_optional_string_array(PARAM_WITHOUT_CRATES);
+            let with_types = ctx.extract_optional_string_array(PARAM_WITH_TYPES);
+            let without_types = ctx.extract_optional_string_array(PARAM_WITHOUT_TYPES);
 
             let mut params_obj = serde_json::Map::new();
             if let Some(crates) = with_crates {
@@ -135,7 +132,7 @@ fn extract_params_for_type(
                 Some(serde_json::Value::Object(params_obj))
             };
 
-            Ok(ExtractedParams { params, port })
+            Ok((params, port))
         }
     }
 }
@@ -192,18 +189,12 @@ pub async fn brp_method_tool_call(
     let tool_def = handler_context.tool_def()?;
 
     // Extract parameters directly based on the definition
-    let extracted_params =
-        extract_params_for_type(&tool_def.parameter_extractor, &handler_context.request)?;
+    let (params, port) = extract_params_for_type(&tool_def.parameter_extractor, handler_context)?;
 
     // Use the shared function to build the formatter factory
     let formatter_factory = build_formatter_factory_from_spec(&tool_def.formatter);
 
-    let config = BrpHandlerConfig {
-        extracted_params,
-        formatter_factory,
-    };
-
-    handle_brp_method_tool_call(handler_context.clone(), &config).await
+    handle_brp_method_tool_call(handler_context.clone(), params, port, &formatter_factory).await
 }
 
 /// Create formatter factory and context from tool definition

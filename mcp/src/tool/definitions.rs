@@ -49,8 +49,9 @@ use crate::app_tools::brp_status::Status;
 use crate::constants::{
     JSON_FIELD_APP_NAME, JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT,
     JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_ENTITY_COUNT, JSON_FIELD_LOG_PATH,
-    JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PORT, JSON_FIELD_RESOURCE, PARAM_APP_NAME,
-    PARAM_COMPONENT, PARAM_COMPONENTS, PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY, PARAM_FILTER,
+    JSON_FIELD_METHOD, JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PID, JSON_FIELD_PORT,
+    JSON_FIELD_RESOURCE, JSON_FIELD_SHUTDOWN_METHOD, PARAM_APP_NAME, PARAM_COMPONENT,
+    PARAM_COMPONENTS, PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY, PARAM_FILTER,
     PARAM_PARAMS, PARAM_PARENT, PARAM_PATH, PARAM_PORT, PARAM_RESOURCE, PARAM_TYPES,
     PARAM_WITH_CRATES, PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
@@ -646,7 +647,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             },
             parameters:          [
                 Parameter::string(
-                    "app_name",
+                    PARAM_APP_NAME,
                     "Optional filter to list logs for a specific app only",
                     false,
                 ),
@@ -758,7 +759,7 @@ fn get_log_tools() -> Vec<McpToolDef> {
             },
             parameters:          vec![
                 Parameter::string(
-                    "app_name",
+                    PARAM_APP_NAME,
                     "Optional filter to delete logs for a specific app only",
                     false,
                 ),
@@ -947,7 +948,10 @@ fn get_app_tools() -> Vec<McpToolDef> {
                     crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
                 ),
             },
-            parameters:          create_launch_params("app_name", "Name of the Bevy app to launch"),
+            parameters:          create_launch_params(
+                PARAM_APP_NAME,
+                "Name of the Bevy app to launch",
+            ),
             parameter_extractor: BrpMethodParamCategory::Passthrough,
             formatter:           ResponseSpecification {
                 message_template: "Launched Bevy app `{app_name}`",
@@ -981,7 +985,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 handler: Arc::new(crate::app_tools::brp_shutdown::Shutdown),
             },
             parameters:          [
-                Parameter::string("app_name", "Name of the Bevy app to shutdown", true),
+                Parameter::string(PARAM_APP_NAME, "Name of the Bevy app to shutdown", true),
                 Parameter::number(
                     JSON_FIELD_PORT,
                     "BRP port to connect to (default: 15702)",
@@ -994,23 +998,25 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 message_template: "{shutdown_message}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "method",
-                        response_extractor:  ResponseExtractorType::Field("shutdown_method"),
+                        response_field_name: JSON_FIELD_METHOD,
+                        response_extractor:  ResponseExtractorType::Field(
+                            JSON_FIELD_SHUTDOWN_METHOD,
+                        ),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "app_name",
-                        response_extractor:  ResponseExtractorType::Field("app_name"),
+                        response_field_name: JSON_FIELD_APP_NAME,
+                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_APP_NAME),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "port",
-                        response_extractor:  ResponseExtractorType::Field("port"),
+                        response_field_name: JSON_FIELD_PORT,
+                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_PORT),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponseNullableWithPlacement {
-                        response_field_name: "pid",
-                        response_extractor:  ResponseExtractorType::Field("pid"),
+                        response_field_name: JSON_FIELD_PID,
+                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_PID),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1024,7 +1030,7 @@ fn get_app_tools() -> Vec<McpToolDef> {
                 handler: Arc::new(Status),
             },
             parameters:          vec![
-                Parameter::string("app_name", "Name of the process to check for", true),
+                Parameter::string(PARAM_APP_NAME, "Name of the process to check for", true),
                 Parameter::number(
                     JSON_FIELD_PORT,
                     "Port to check for BRP (default: 15702)",
@@ -1056,8 +1062,8 @@ fn get_app_tools() -> Vec<McpToolDef> {
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "app_pid",
-                        response_extractor:  ResponseExtractorType::Field("app_pid"),
+                        response_field_name: JSON_FIELD_PID,
+                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_PID),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],

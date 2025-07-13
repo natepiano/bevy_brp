@@ -3,7 +3,6 @@ use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 use tracing::{debug, trace};
 
-use super::config::BrpHandlerConfig;
 use super::format_discovery::{
     EnhancedBrpResult, FORMAT_DISCOVERY_METHODS, FormatCorrection,
     execute_brp_method_with_format_discovery,
@@ -203,7 +202,9 @@ fn process_error_response(
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_method_tool_call(
     handler_context: HandlerContext<BrpContext>,
-    config: &BrpHandlerConfig,
+    params: Option<Value>,
+    port: u16,
+    formatter_factory: &ResponseFormatterFactory,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
     debug!("MCP ENTRY - Tool: {}", handler_context.request.name);
@@ -216,9 +217,6 @@ pub async fn handle_brp_method_tool_call(
     // Log request arguments with sanitization
     log_raw_request_arguments(&handler_context.request);
 
-    // Get pre-extracted parameters directly
-    let extracted = &config.extracted_params;
-
     // Get the method directly from the typed context - no Options!
     let method_name = handler_context.brp_method();
 
@@ -226,21 +224,18 @@ pub async fn handle_brp_method_tool_call(
     debug!("Calling BRP with validated parameters");
 
     // Call BRP using format discovery
-    let enhanced_result = execute_brp_method_with_format_discovery(
-        method_name,
-        extracted.params.clone(),
-        Some(extracted.port),
-    )
-    .await
-    .map_err(|err| crate::error::report_to_mcp_error(&err))?;
+    let enhanced_result =
+        execute_brp_method_with_format_discovery(method_name, params.clone(), Some(port))
+            .await
+            .map_err(|err| crate::error::report_to_mcp_error(&err))?;
 
     // Create formatter and metadata
     // Ensure port is included in params for extractors that need it
-    let mut context_params = extracted.params.clone().unwrap_or_else(|| json!({}));
+    let mut context_params = params.clone().unwrap_or_else(|| json!({}));
     if let Value::Object(ref mut map) = context_params {
         // Only add port if it's not already present (to avoid overwriting explicit port params)
         if !map.contains_key(JSON_FIELD_PORT) {
-            map.insert(JSON_FIELD_PORT.to_string(), json!(extracted.port));
+            map.insert(JSON_FIELD_PORT.to_string(), json!(port));
         }
     }
 
@@ -253,7 +248,7 @@ pub async fn handle_brp_method_tool_call(
     match &enhanced_result.result {
         BrpResult::Success(data) => {
             let context = ResponseContext {
-                formatter_factory: &config.formatter_factory,
+                formatter_factory,
                 formatter_context,
                 method: method_name,
             };

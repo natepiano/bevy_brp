@@ -5,7 +5,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
-use crate::extractors::McpCallExtractor;
+use crate::constants::PARAM_APP_NAME;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -33,9 +33,8 @@ pub struct CleanupLogs;
 impl LocalToolFunction for CleanupLogs {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let app_name_filter = extractor.get_optional_string("app_name", "");
-        let older_than_seconds = match extractor.get_optional_u32("older_than_seconds", 0) {
+        let app_name_filter = ctx.extract_optional_string(PARAM_APP_NAME, "");
+        let older_than_seconds = match ctx.extract_optional_u32("older_than_seconds", 0) {
             Ok(n) => n,
             Err(e) => return Box::pin(async move { Err(e) }),
         };

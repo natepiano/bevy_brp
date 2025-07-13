@@ -16,7 +16,6 @@ mod app_tools;
 mod brp_tools;
 mod constants;
 mod error;
-mod extractors;
 mod log_tools;
 mod response;
 mod service;

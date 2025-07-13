@@ -4,9 +4,8 @@ use sysinfo::{Signal, System};
 use tracing::debug;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND};
+use crate::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_APP_NAME};
 use crate::error::{Error, Result, report_to_mcp_error};
-use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -120,12 +119,11 @@ pub struct Shutdown;
 
 impl LocalToolFunction for Shutdown {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let app_name = match extractor.get_required_string("app_name", "app name") {
+        let app_name = match ctx.extract_required_string(PARAM_APP_NAME, "app name") {
             Ok(name) => name.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let port = extractor.optional_number("port", u64::from(DEFAULT_BRP_PORT));
+        let port = ctx.extract_optional_number("port", u64::from(DEFAULT_BRP_PORT));
         let Ok(port) = u16::try_from(port) else {
             return Box::pin(async move {
                 Err(report_to_mcp_error(

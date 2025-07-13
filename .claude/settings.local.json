@@ -57,7 +57,8 @@
       "Bash(git commit:*)",
       "Bash(./.claude/commands/test_runner.sh:*)",
       "mcp__brp__brp_shutdown",
-      "mcp__brp__bevy_remove_resource"
+      "mcp__brp__bevy_remove_resource",
+      "Bash(.claude/commands/tests/all:*)"
     ],
     "deny": []
   }

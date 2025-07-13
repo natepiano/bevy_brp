@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::constants::JSON_FIELD_WATCH_ID;
-use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -29,8 +28,7 @@ pub struct BrpStopWatch;
 impl LocalToolFunction for BrpStopWatch {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before async block
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let watch_id = match extractor.get_required_u32(JSON_FIELD_WATCH_ID, "watch ID") {
+        let watch_id = match ctx.extract_required_u32(JSON_FIELD_WATCH_ID, "watch ID") {
             Ok(id) => id,
             Err(e) => return Box::pin(async move { Err(e) }),
         };

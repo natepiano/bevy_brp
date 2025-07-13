@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::extractors::McpCallExtractor;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -43,13 +42,12 @@ pub struct ReadLog;
 impl LocalToolFunction for ReadLog {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-        let filename = match extractor.get_required_string("filename", "log filename") {
+        let filename = match ctx.extract_required_string("filename", "log filename") {
             Ok(f) => f.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let keyword = extractor.get_optional_string("keyword", "");
-        let Ok(tail_lines) = usize::try_from(extractor.optional_number("tail_lines", 0)) else {
+        let keyword = ctx.extract_optional_string("keyword", "");
+        let Ok(tail_lines) = usize::try_from(ctx.extract_optional_number("tail_lines", 0)) else {
             return Box::pin(async move {
                 Err(report_to_mcp_error(&error_stack::Report::new(
                     Error::invalid("tail_lines", "value too large"),

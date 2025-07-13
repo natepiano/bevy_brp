@@ -86,7 +86,6 @@ impl HandlerResult for LaunchResult {
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
 use crate::constants::{BRP_PORT_ENV_VAR, PARAM_PROFILE};
-use crate::extractors::McpCallExtractor;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -97,19 +96,16 @@ pub struct LaunchParams {
 }
 
 /// Extract common launch parameters from an MCP request
-pub fn extract_launch_params(
-    extractor: &McpCallExtractor,
+pub fn extract_launch_params<T>(
+    ctx: &HandlerContext<T>,
     target_param_name: &str,
     target_type_name: &str,
     default_profile: &str,
 ) -> Result<LaunchParams, McpError> {
-    let target_name = extractor.get_required_string(target_param_name, target_type_name)?;
-    let profile = extractor.get_optional_string(PARAM_PROFILE, default_profile);
-    let path = extractor
-        .get_optional_path()
-        .as_deref()
-        .map(ToString::to_string);
-    let port = extractor.get_port()?;
+    let target_name = ctx.extract_required_string(target_param_name, target_type_name)?;
+    let profile = ctx.extract_optional_string(PARAM_PROFILE, default_profile);
+    let path = ctx.extract_optional_path();
+    let port = ctx.extract_port()?;
 
     Ok(LaunchParams {
         target_name: target_name.to_string(),
@@ -145,11 +141,9 @@ impl<T: FromLaunchParams> GenericLaunchHandler<T> {
 
 impl<T: FromLaunchParams> LocalToolFunction for GenericLaunchHandler<T> {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
-        let extractor = McpCallExtractor::from_request(&ctx.request);
-
         // Extract parameters
         let params = match extract_launch_params(
-            &extractor,
+            ctx,
             self.target_param_name,
             self.target_type_name,
             self.default_profile,
@@ -225,9 +219,11 @@ pub trait LaunchConfigTrait {
 pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path, McpError> {
     manifest_path.parent().ok_or_else(|| -> McpError {
         report_to_mcp_error(
-            &error_stack::Report::new(Error::Configuration("Invalid manifest path".to_string()))
-                .attach_printable("No parent directory found")
-                .attach_printable(format!("Path: {}", manifest_path.display())),
+            &error_stack::Report::new(Error::FileOrPathNotFound(
+                "Invalid manifest path".to_string(),
+            ))
+            .attach_printable("No parent directory found")
+            .attach_printable(format!("Path: {}", manifest_path.display())),
         )
     })
 }
@@ -236,7 +232,7 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path, McpErr
 pub fn validate_binary_exists(binary_path: &Path, profile: &str) -> Result<(), McpError> {
     if !binary_path.exists() {
         return Err(report_to_mcp_error(
-            &error_stack::Report::new(Error::Configuration("Missing binary file".to_string()))
+            &error_stack::Report::new(Error::FileOrPathNotFound("Missing binary file".to_string()))
                 .attach_printable(format!("Binary path: {}", binary_path.display()))
                 .attach_printable(format!(
                     "Please build the app with 'cargo build{}' first",
@@ -454,8 +450,25 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
         search_paths,
     ) {
         Ok(target) => target,
-        Err(mcp_error) => {
-            // For any error when duplicates exist, return disambiguation error with paths
+        Err(err) => {
+            use crate::error::Error;
+
+            // Check if this is already a PathDisambiguation error
+            if let Error::PathDisambiguation {
+                message,
+                available_paths,
+                ..
+            } = &err
+            {
+                // Use the original error message and paths
+                return Err(Box::new(create_error_launch_result(
+                    config,
+                    message.clone(),
+                    Some(available_paths.clone()),
+                )));
+            }
+
+            // For any other error when duplicates exist, return disambiguation error with paths
             if duplicate_paths.is_some() {
                 let message = config.path().map_or_else(
                     || {
@@ -487,7 +500,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
             // For non-duplicate errors, return standard error
             return Err(Box::new(create_error_launch_result(
                 config,
-                mcp_error.message.to_string(),
+                err.to_string(),
                 None,
             )));
         }
