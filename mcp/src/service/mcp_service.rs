@@ -10,7 +10,7 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
-use super::handler_context::{HandlerContext, TypedContext};
+use super::handler_context::HandlerContext;
 use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::tool::{self, McpToolDef};
 
@@ -166,9 +166,10 @@ impl ServerHandler for McpService {
     ) -> Result<CallToolResult, McpError> {
         let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
 
-        match handler_context.into_typed()? {
-            TypedContext::Local(ctx) => tool::local_tool_call(&ctx).await,
-            TypedContext::Brp(ctx) => tool::brp_method_tool_call(&ctx).await,
-        }
+        handler_context
+            .into_typed()?
+            .into_tool_handler()
+            .call_tool()
+            .await
     }
 }

@@ -17,7 +17,6 @@
 use rmcp::Error as McpError;
 use rmcp::model::{CallToolRequestParam, CallToolResult, Tool};
 
-use super::LocalToolFunction;
 use super::definitions::{BrpMethodParamCategory, McpToolDef};
 use super::parameters::ParamType;
 use crate::brp_tools::request_handler::{BrpHandlerConfig, handle_brp_method_tool_call};

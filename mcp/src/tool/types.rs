@@ -2,8 +2,29 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use rmcp::Error as McpError;
+use rmcp::model::CallToolResult;
 
 use crate::service::{HandlerContext, LocalContext};
+
+/// Trait for individual tool handler implementations
+pub trait ToolHandlerImpl {
+    async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError>;
+}
+
+/// Enum for tool handlers in the flat structure
+pub enum ToolHandler {
+    Local(crate::tool::LocalToolHandler),
+    Brp(crate::tool::BrpToolHandler),
+}
+
+impl ToolHandler {
+    pub async fn call_tool(self) -> Result<CallToolResult, McpError> {
+        match self {
+            Self::Local(handler) => Box::new(handler).call_tool().await,
+            Self::Brp(handler) => Box::new(handler).call_tool().await,
+        }
+    }
+}
 
 /// Type alias for the response from local handlers
 ///
