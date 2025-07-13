@@ -1,0 +1,177 @@
+[
+  {
+    "id": "terminal-title",
+    "content": "Run `echo -e \"\\e]2;Implementation: Unify Parameter Extraction in HandlerContext\\007\"` to set terminal title",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "meta-todo",
+    "content": "MetaTodo: Do not deviate from the plan - if you think you need to deviate, STOP and ask the user for guidance",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step1-add-common-methods",
+    "content": "Step 1: Add common extraction methods to HandlerContext<T> in handler_context.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step1-build-fix",
+    "content": "Build and fix any compile errors and warnings after adding common methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step2-add-brp-methods",
+    "content": "Step 2: Add BRP-specific extraction methods to HandlerContext<BrpContext> in handler_context.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step2-build-fix",
+    "content": "Build and fix any compile errors and warnings after adding BRP methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-check-1",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-1",
+    "content": "Fix any clippy issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step3a-update-local-handlers",
+    "content": "Step 3a: Update all local handlers to use ctx methods instead of McpCallExtractor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step3a-build-fix",
+    "content": "Build and fix any compile errors and warnings after updating local handlers",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step3b-update-brp-handlers",
+    "content": "Step 3b: Update BRP handler code to remove pre-extraction and use ctx methods directly",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step3b-build-fix",
+    "content": "Build and fix any compile errors and warnings after updating BRP handlers",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-check-2",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-fix-2",
+    "content": "Fix any clippy issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step4a-remove-extractedparams",
+    "content": "Step 4a: Remove ExtractedParams struct and its usage",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step4a-build-fix",
+    "content": "Build and fix any compile errors and warnings after removing ExtractedParams",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step4b-remove-mcpcallextractor",
+    "content": "Step 4b: Remove McpCallExtractor struct and clean up extractors module",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "step4b-build-fix",
+    "content": "Build and fix any compile errors and warnings after removing McpCallExtractor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "final-clippy-check",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "final-clippy-fix",
+    "content": "Fix any clippy issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "format",
+    "content": "Run `cargo +nightly fmt`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test",
+    "content": "Run `cargo nextest run`",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test-review",
+    "content": "If there are test issues, STOP and review them with the user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "code-review",
+    "content": "Task a new subagent to do a code review focusing on duplication, complexity, and validating the implementation plan",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "review-changes",
+    "content": "When subagent returns, STOP and review the suggested changes with the user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
