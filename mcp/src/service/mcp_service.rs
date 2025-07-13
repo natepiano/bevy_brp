@@ -165,10 +165,11 @@ impl ServerHandler for McpService {
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
         let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
+        let tool_def = handler_context.tool_def()?;
 
-        handler_context
-            .into_typed()?
-            .into_tool_handler()
+        tool_def
+            .handler
+            .create_handler(handler_context.clone())?
             .call_tool()
             .await
     }

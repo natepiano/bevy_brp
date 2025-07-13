@@ -16,6 +16,4 @@ pub use constants::{
 pub use definitions::{McpToolDef, get_all_tool_definitions};
 pub use handlers::{brp_method_tool_call, get_tool, local_tool_call};
 pub use local_handler::LocalToolHandler;
-pub use types::{
-    HandlerResponse, HandlerResult, HandlerType, LocalToolFunction, ToolHandler, ToolHandlerImpl,
-};
+pub use types::{HandlerResponse, HandlerResult, HandlerType, LocalToolFunction, ToolHandler};

@@ -5,12 +5,8 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
 use super::mcp_service::McpService;
-use crate::constants::{DEFAULT_BRP_PORT, PARAM_METHOD, PARAM_PORT};
-use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::response::CallInfo;
-use crate::tool::{
-    BrpToolHandler, HandlerType, LocalToolFunction, LocalToolHandler, McpToolDef, ToolHandler,
-};
+use crate::tool::{LocalToolFunction, McpToolDef};
 
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
@@ -28,12 +24,6 @@ pub struct LocalContext {
 pub struct BrpContext {
     pub method: String,
     pub port:   u16,
-}
-
-/// Typed context variants for pattern matching
-pub enum TypedContext {
-    Local(HandlerContext<LocalContext>),
-    Brp(HandlerContext<BrpContext>),
 }
 
 /// Context passed to all handlers containing service, request, and MCP context
@@ -60,6 +50,23 @@ impl HandlerContext {
     }
 }
 
+impl<T> HandlerContext<T> {
+    /// Create a new `HandlerContext` with specific handler data
+    pub const fn with_data(
+        service: Arc<McpService>,
+        request: CallToolRequestParam,
+        context: RequestContext<RoleServer>,
+        handler_data: T,
+    ) -> Self {
+        Self {
+            service,
+            request,
+            context,
+            handler_data,
+        }
+    }
+}
+
 // Common methods available for all HandlerContext types
 impl<T> HandlerContext<T> {
     /// Get tool definition by looking up the request name in the service's tool registry
@@ -80,74 +87,43 @@ impl<T> HandlerContext<T> {
                 )
             })
     }
-}
 
-// Helper functions for extracting parameters
-fn extract_port_from_request(request: &CallToolRequestParam) -> u16 {
-    request
-        .arguments
-        .as_ref()
-        .and_then(|args| args.get(PARAM_PORT))
-        .and_then(serde_json::Value::as_u64)
-        .and_then(|p| u16::try_from(p).ok())
-        .unwrap_or(DEFAULT_BRP_PORT)
-}
+    /// Extract port from request arguments, defaulting to `DEFAULT_BRP_PORT`
+    pub fn extract_port(&self) -> u16 {
+        use crate::constants::{DEFAULT_BRP_PORT, PARAM_PORT};
 
-fn extract_method_from_request(request: &CallToolRequestParam) -> Result<String, McpError> {
-    request
-        .arguments
-        .as_ref()
-        .and_then(|args| args.get(PARAM_METHOD))
-        .and_then(|v| v.as_str())
-        .map(std::string::ToString::to_string)
-        .ok_or_else(|| {
-            report_to_mcp_error(
-                &error_stack::Report::new(ServiceError::InvalidArgument(
-                    "Missing BRP method parameter".to_string(),
-                ))
-                .attach_printable("BrpExecute requires a method parameter"),
-            )
-        })
-}
+        self.request
+            .arguments
+            .as_ref()
+            .and_then(|args| args.get(PARAM_PORT))
+            .and_then(serde_json::Value::as_u64)
+            .and_then(|p| u16::try_from(p).ok())
+            .unwrap_or(DEFAULT_BRP_PORT)
+    }
 
-// Conversion method for creating typed contexts
-impl HandlerContext {
-    pub fn into_typed(self) -> Result<TypedContext, McpError> {
-        let binding = self.clone();
-        let tool_def = binding.tool_def()?;
-        match &tool_def.handler {
-            HandlerType::Local { handler } => Ok(TypedContext::Local(HandlerContext {
-                service:      self.service,
-                request:      self.request,
-                context:      self.context,
-                handler_data: LocalContext {
-                    handler: handler.clone(),
-                },
-            })),
-            HandlerType::Brp { method } => {
-                let method_string = (*method).to_string();
-                let port = extract_port_from_request(&self.request);
-                Ok(TypedContext::Brp(HandlerContext {
-                    service:      self.service,
-                    request:      self.request,
-                    context:      self.context,
-                    handler_data: BrpContext {
-                        method: method_string,
-                        port,
-                    },
-                }))
-            }
-            HandlerType::BrpExecute => {
-                let method = extract_method_from_request(&self.request)?;
-                let port = extract_port_from_request(&self.request);
-                Ok(TypedContext::Brp(HandlerContext {
-                    service:      self.service,
-                    request:      self.request,
-                    context:      self.context,
-                    handler_data: BrpContext { method, port },
-                }))
-            }
-        }
+    /// Extract method from request arguments
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the method parameter is missing.
+    pub fn extract_method(&self) -> Result<String, McpError> {
+        use crate::constants::PARAM_METHOD;
+        use crate::error::{Error as ServiceError, report_to_mcp_error};
+
+        self.request
+            .arguments
+            .as_ref()
+            .and_then(|args| args.get(PARAM_METHOD))
+            .and_then(|v| v.as_str())
+            .map(std::string::ToString::to_string)
+            .ok_or_else(|| {
+                report_to_mcp_error(
+                    &error_stack::Report::new(ServiceError::InvalidArgument(
+                        "Missing BRP method parameter".to_string(),
+                    ))
+                    .attach_printable("BrpExecute requires a method parameter"),
+                )
+            })
     }
 }
 
@@ -185,14 +161,5 @@ impl HandlerContext<BrpContext> {
 impl HasCallInfo for HandlerContext<BrpContext> {
     fn call_info(&self) -> CallInfo {
         self.call_info()
-    }
-}
-
-impl TypedContext {
-    pub fn into_tool_handler(self) -> ToolHandler {
-        match self {
-            Self::Local(context) => ToolHandler::Local(LocalToolHandler::new(context)),
-            Self::Brp(context) => ToolHandler::Brp(BrpToolHandler::new(context)),
-        }
     }
 }

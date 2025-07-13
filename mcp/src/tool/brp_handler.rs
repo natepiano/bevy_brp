@@ -1,8 +1,9 @@
+use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use crate::service::{BrpContext, HandlerContext};
-use crate::tool::ToolHandlerImpl;
+use crate::tool::ToolHandler;
 
 pub struct BrpToolHandler {
     context: HandlerContext<BrpContext>,
@@ -14,7 +15,8 @@ impl BrpToolHandler {
     }
 }
 
-impl ToolHandlerImpl for BrpToolHandler {
+#[async_trait]
+impl ToolHandler for BrpToolHandler {
     async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError> {
         crate::tool::brp_method_tool_call(&self.context).await
     }

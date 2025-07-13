@@ -16,6 +16,7 @@ bevy = { workspace = true, features = ["bevy_remote"] }
 
 # All other dependencies use workspace
 anyhow.workspace             = true
+async-trait.workspace        = true
 cargo_metadata.workspace     = true
 chrono.workspace             = true
 error-stack.workspace        = true

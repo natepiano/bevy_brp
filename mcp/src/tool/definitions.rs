@@ -102,9 +102,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_DESTROY,
             description:         DESC_BEVY_DESTROY,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_DESTROY,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_DESTROY),
             parameters:          [
                 Parameter::entity("The entity ID to destroy", true),
                 Parameter::port(),
@@ -124,9 +122,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_GET,
             description:         DESC_BEVY_GET,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_GET,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_GET),
             parameters:         [
                 Parameter::entity("The entity ID to get component data from", true),
                 Parameter::components(
@@ -156,9 +152,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_LIST,
             description:         DESC_BEVY_LIST,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_LIST,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_LIST),
             parameters:          [
                 Parameter::entity("Optional entity ID to list components for", false),
                 Parameter::port(),
@@ -180,9 +174,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_REMOVE,
             description:         DESC_BEVY_REMOVE,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_REMOVE,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_REMOVE),
             parameters:          vec![
                 Parameter::entity("The entity ID to remove components from", true),
                 Parameter::components("Array of component type names to remove", true),
@@ -209,9 +201,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_INSERT,
             description:         DESC_BEVY_INSERT,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_INSERT,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_INSERT),
             parameters:          vec![
                 Parameter::entity("The entity ID to insert components into", true),
                 Parameter::components(
@@ -241,9 +231,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_GET_RESOURCE,
             description:         DESC_BEVY_GET_RESOURCE,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_GET_RESOURCE,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_GET_RESOURCE),
             parameters: vec![Parameter::resource( "The fully-qualified type name of the resource to get"), Parameter::port()],
             parameter_extractor: BrpMethodParamCategory::Resource,
             formatter:           ResponseSpecification {
@@ -255,9 +243,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_INSERT_RESOURCE,
             description:         DESC_BEVY_INSERT_RESOURCE,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_INSERT_RESOURCE,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_INSERT_RESOURCE),
             parameters:          vec![
                 Parameter::resource(
                     "The fully-qualified type name of the resource to insert or update",
@@ -282,9 +268,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_REMOVE_RESOURCE,
             description:         DESC_BEVY_REMOVE_RESOURCE,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_REMOVE_RESOURCE,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_REMOVE_RESOURCE),
             parameters:  [Parameter::resource( "The fully-qualified type name of the resource to remove"), Parameter::port()].to_vec(),
             parameter_extractor: BrpMethodParamCategory::Resource,
             formatter:           ResponseSpecification {
@@ -300,9 +284,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_MUTATE_COMPONENT,
             description:         DESC_BEVY_MUTATE_COMPONENT,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_MUTATE_COMPONENT,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_MUTATE_COMPONENT),
             parameters:          vec![
                 Parameter::entity("The entity ID containing the component to mutate", true),
                 Parameter::string(
@@ -333,9 +315,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_MUTATE_RESOURCE,
             description:         DESC_BEVY_MUTATE_RESOURCE,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_MUTATE_RESOURCE,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_MUTATE_RESOURCE),
             parameters:           [
                 Parameter::resource("The fully-qualified type name of the resource to mutate"),
                 Parameter::path("The path to the field within the resource (e.g., 'settings.volume')"),
@@ -359,9 +339,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_LIST_RESOURCES,
             description:         DESC_BEVY_LIST_RESOURCES,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_LIST_RESOURCES,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_LIST_RESOURCES),
             parameters:          vec![Parameter::port()],
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:           ResponseSpecification {
@@ -380,9 +358,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_RPC_DISCOVER,
             description:         DESC_BEVY_RPC_DISCOVER,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_RPC_DISCOVER,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_RPC_DISCOVER),
             parameters:          vec![Parameter::port()],
             parameter_extractor: BrpMethodParamCategory::EmptyParams,
             formatter:           ResponseSpecification {
@@ -394,9 +370,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:         DESC_BRP_EXTRAS_DISCOVER_FORMAT,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_EXTRAS_DISCOVER_FORMAT),
             parameters:          vec![
                 Parameter::string_array(
                     PARAM_TYPES,
@@ -415,9 +389,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BRP_EXTRAS_SCREENSHOT,
             description:         DESC_BRP_EXTRAS_SCREENSHOT,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_EXTRAS_SCREENSHOT,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_EXTRAS_SCREENSHOT),
             parameters:          vec![
                 Parameter::path("File path where the screenshot should be saved"),
                 Parameter::port(),
@@ -443,9 +415,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BRP_EXTRAS_SEND_KEYS,
             description:         DESC_BRP_EXTRAS_SEND_KEYS,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_EXTRAS_SEND_KEYS,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_EXTRAS_SEND_KEYS),
             parameters:          vec![
                 Parameter::string_array("keys", "Array of key code names to send", true),
                 Parameter::number(
@@ -476,9 +446,7 @@ fn get_standard_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:         DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_EXTRAS_SET_DEBUG_MODE),
             parameters:          vec![
                 Parameter::boolean(
                     "enabled",
@@ -515,9 +483,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_QUERY,
             description:         DESC_BEVY_QUERY,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_QUERY,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_QUERY),
             parameters:          vec![
                 Parameter::any(
                     PARAM_DATA,
@@ -554,9 +520,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_SPAWN,
             description:         DESC_BEVY_SPAWN,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_SPAWN,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_SPAWN),
             parameters:          vec![
                 Parameter::components(
                     "Object containing component data to spawn with. Keys are component types, values are component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
@@ -585,7 +549,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BRP_EXECUTE,
             description:         DESC_BRP_EXECUTE,
-            handler:             HandlerType::BrpExecute, // Dynamic method
+            handler:             HandlerType::brp_execute(), // Dynamic method
             parameters:          [
                 Parameter::method(),
                 Parameter::any(
@@ -605,9 +569,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_REGISTRY_SCHEMA,
             description:         DESC_BEVY_REGISTRY_SCHEMA,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_REGISTRY_SCHEMA,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_REGISTRY_SCHEMA),
             parameters:          [
                 Parameter::string_array(
                     PARAM_WITH_CRATES,
@@ -641,9 +603,7 @@ fn get_special_tools() -> Vec<McpToolDef> {
         McpToolDef {
             name:                TOOL_BEVY_REPARENT,
             description:         DESC_BEVY_REPARENT,
-            handler:             HandlerType::Brp {
-                method: BRP_METHOD_REPARENT,
-            },
+            handler:             HandlerType::brp(BRP_METHOD_REPARENT),
             parameters:          [
                 Parameter::any(PARAM_ENTITIES, "Array of entity IDs to reparent", true),
                 Parameter::number(

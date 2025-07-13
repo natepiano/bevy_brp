@@ -1,11 +1,15 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use error_stack::Report;
 use rmcp::Error as McpError;
 
 use crate::error::{Error, report_to_mcp_error};
+
+/// Global atomic counter for ensuring unique log file names across concurrent operations
+static LOG_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Create a log file for a Bevy app launch
 pub fn create_log_file(
@@ -26,9 +30,17 @@ pub fn create_log_file(
             )
         })?
         .as_millis();
+
+    // Get unique counter to prevent filename collisions during concurrent operations
+    let unique_id = LOG_COUNTER.fetch_add(1, Ordering::SeqCst);
+
     let log_file_path = port.map_or_else(
-        || std::env::temp_dir().join(format!("bevy_brp_mcp_{name}_{timestamp}.log")),
-        |port| std::env::temp_dir().join(format!("bevy_brp_mcp_{name}_port{port}_{timestamp}.log")),
+        || std::env::temp_dir().join(format!("bevy_brp_mcp_{name}_{timestamp}_{unique_id}.log")),
+        |port| {
+            std::env::temp_dir().join(format!(
+                "bevy_brp_mcp_{name}_port{port}_{timestamp}_{unique_id}.log"
+            ))
+        },
     );
 
     // Create log file
