@@ -38,7 +38,7 @@ impl McpService {
             .iter()
             .map(|def| (def.name.to_string(), def.clone()))
             .collect();
-        let mut tools: Vec<_> = all_defs.into_iter().map(tool::get_tool).collect();
+        let mut tools: Vec<_> = all_defs.into_iter().map(|def| def.to_tool()).collect();
         tools.sort_by_key(|tool| tool.name.clone());
 
         Self {

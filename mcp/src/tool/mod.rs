@@ -3,6 +3,7 @@ mod constants;
 mod definitions;
 mod handlers;
 mod local_handler;
+mod mcp_tool_def;
 mod parameters;
 mod types;
 
@@ -13,7 +14,8 @@ pub use constants::{
     BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_REGISTRY_SCHEMA,
     BRP_METHOD_SPAWN,
 };
-pub use definitions::{McpToolDef, get_all_tool_definitions};
-pub use handlers::{brp_method_tool_call, get_tool, local_tool_call};
+pub use definitions::get_all_tool_definitions;
 pub use local_handler::LocalToolHandler;
+pub use mcp_tool_def::McpToolDef;
+pub use parameters::BrpMethodParamCategory;
 pub use types::{HandlerResponse, HandlerResult, HandlerType, LocalToolFunction, ToolHandler};

@@ -10,24 +10,12 @@ use super::format_discovery::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
-    JSON_FIELD_ORIGINAL_ERROR, JSON_FIELD_PORT,
+    JSON_FIELD_ORIGINAL_ERROR, PARAM_ENTITY, PARAM_PARAMS, PARAM_RESOURCE, PARAM_WITH_CRATES,
+    PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};
 use crate::service::{BrpContext, HandlerContext};
-
-/// Log raw request arguments with sanitization
-fn log_raw_request_arguments(request: &rmcp::model::CallToolRequestParam) {
-    if let Some(ref args) = request.arguments {
-        let sanitized_args = serde_json::to_string(args)
-            .unwrap_or_else(|_| "<serialization error>".to_string())
-            .replace("\"value\":{", "\"value\":\"Hidden\",\"_original\":{")
-            .replace("\"value\":[", "\"value\":\"Hidden\",\"_original\":[");
-
-        trace!("Raw request arguments: {}", sanitized_args);
-    } else {
-        trace!("Raw request arguments: None");
-    }
-}
+use crate::tool::BrpMethodParamCategory;
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -202,8 +190,6 @@ fn process_error_response(
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_method_tool_call(
     handler_context: HandlerContext<BrpContext>,
-    params: Option<Value>,
-    port: u16,
     formatter_factory: &ResponseFormatterFactory,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
@@ -214,14 +200,11 @@ pub async fn handle_brp_method_tool_call(
             .unwrap_or_else(|_| "SERIALIZATION_ERROR".to_string())
     );
 
-    // Log request arguments with sanitization
-    log_raw_request_arguments(&handler_context.request);
+    // Extract parameters for the call based on the tool definition
+    let (params, port) = extract_params_for_type(&handler_context)?;
 
     // Get the method directly from the typed context - no Options!
     let method_name = handler_context.brp_method();
-
-    // Add debug info about calling BRP
-    debug!("Calling BRP with validated parameters");
 
     // Call BRP using format discovery
     let enhanced_result =
@@ -230,17 +213,8 @@ pub async fn handle_brp_method_tool_call(
             .map_err(|err| crate::error::report_to_mcp_error(&err))?;
 
     // Create formatter and metadata
-    // Ensure port is included in params for extractors that need it
-    let mut context_params = params.clone().unwrap_or_else(|| json!({}));
-    if let Value::Object(ref mut map) = context_params {
-        // Only add port if it's not already present (to avoid overwriting explicit port params)
-        if !map.contains_key(JSON_FIELD_PORT) {
-            map.insert(JSON_FIELD_PORT.to_string(), json!(port));
-        }
-    }
-
     let formatter_context = FormatterContext {
-        params:           Some(context_params),
+        params,
         format_corrected: None, // Initial context doesn't have format correction status yet
     };
 
@@ -265,5 +239,80 @@ pub async fn handle_brp_method_tool_call(
             &handler_context,
             method_name,
         )),
+    }
+}
+
+/// Extract parameters based on the extractor type
+fn extract_params_for_type(
+    ctx: &HandlerContext<BrpContext>,
+) -> Result<(Option<serde_json::Value>, u16), McpError> {
+    let port = ctx.extract_port()?;
+    let extractor_type = &ctx.tool_def()?.parameter_extractor;
+
+    match extractor_type {
+        BrpMethodParamCategory::Passthrough => {
+            // Pass through all arguments as params
+            let params = ctx.request.arguments.clone().map(serde_json::Value::Object);
+            Ok((params, port))
+        }
+        BrpMethodParamCategory::Entity { required } => {
+            // Extract entity parameter
+            let params = if *required {
+                let entity = ctx.get_entity_id()?;
+                Some(serde_json::json!({ PARAM_ENTITY: entity }))
+            } else {
+                // For optional entity (like list), include it if present
+                ctx.entity_id()
+                    .map(|entity| serde_json::json!({ PARAM_ENTITY: entity }))
+            };
+
+            Ok((params, port))
+        }
+        BrpMethodParamCategory::Resource => {
+            // Extract resource parameter
+            let resource = ctx.extract_required_string(PARAM_RESOURCE, "resource name")?;
+            let params = Some(serde_json::json!({ PARAM_RESOURCE: resource }));
+
+            Ok((params, port))
+        }
+        BrpMethodParamCategory::EmptyParams => {
+            // Just extract port, no other params
+            Ok((None, port))
+        }
+        BrpMethodParamCategory::BrpExecute => {
+            // Extract params for brp_execute
+            let params = ctx.extract_optional_named_field(PARAM_PARAMS).cloned();
+
+            Ok((params, port))
+        }
+        BrpMethodParamCategory::RegistrySchema => {
+            // Extract optional filter parameters for registry schema
+            let with_crates = ctx.extract_optional_string_array(PARAM_WITH_CRATES);
+            let without_crates = ctx.extract_optional_string_array(PARAM_WITHOUT_CRATES);
+            let with_types = ctx.extract_optional_string_array(PARAM_WITH_TYPES);
+            let without_types = ctx.extract_optional_string_array(PARAM_WITHOUT_TYPES);
+
+            let mut params_obj = serde_json::Map::new();
+            if let Some(crates) = with_crates {
+                params_obj.insert(PARAM_WITH_CRATES.to_string(), serde_json::json!(crates));
+            }
+            if let Some(crates) = without_crates {
+                params_obj.insert(PARAM_WITHOUT_CRATES.to_string(), serde_json::json!(crates));
+            }
+            if let Some(types) = with_types {
+                params_obj.insert(PARAM_WITH_TYPES.to_string(), serde_json::json!(types));
+            }
+            if let Some(types) = without_types {
+                params_obj.insert(PARAM_WITHOUT_TYPES.to_string(), serde_json::json!(types));
+            }
+
+            let params = if params_obj.is_empty() {
+                None
+            } else {
+                Some(serde_json::Value::Object(params_obj))
+            };
+
+            Ok((params, port))
+        }
     }
 }

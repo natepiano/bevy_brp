@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
+use super::handlers;
+use crate::brp_tools::request_handler::handle_brp_method_tool_call;
 use crate::service::{BrpContext, HandlerContext};
 use crate::tool::ToolHandler;
 
@@ -18,6 +20,18 @@ impl BrpToolHandler {
 #[async_trait]
 impl ToolHandler for BrpToolHandler {
     async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError> {
-        crate::tool::brp_method_tool_call(&self.context).await
+        brp_method_tool_call(self.context).await
     }
+}
+
+/// Generate a BRP handler
+pub async fn brp_method_tool_call(
+    handler_context: HandlerContext<BrpContext>,
+) -> Result<CallToolResult, McpError> {
+    let tool_def = handler_context.tool_def()?;
+
+    // Use the shared function to build the formatter factory
+    let formatter_factory = handlers::build_formatter_factory_from_spec(&tool_def.formatter);
+
+    handle_brp_method_tool_call(handler_context.clone(), &formatter_factory).await
 }

@@ -16,7 +16,6 @@
 
 use std::sync::Arc;
 
-use super::HandlerType;
 use super::constants::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
     BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
@@ -45,55 +44,23 @@ use super::constants::{
     TOOL_STATUS,
 };
 use super::parameters::Parameter;
+use super::{HandlerType, McpToolDef};
 use crate::app_tools::brp_status::Status;
 use crate::constants::{
     JSON_FIELD_APP_NAME, JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS, JSON_FIELD_COUNT,
     JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_ENTITY_COUNT, JSON_FIELD_LOG_PATH,
     JSON_FIELD_METHOD, JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PID, JSON_FIELD_PORT,
     JSON_FIELD_RESOURCE, JSON_FIELD_SHUTDOWN_METHOD, PARAM_APP_NAME, PARAM_COMPONENT,
-    PARAM_COMPONENTS, PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY, PARAM_FILTER,
-    PARAM_PARAMS, PARAM_PARENT, PARAM_PATH, PARAM_PORT, PARAM_RESOURCE, PARAM_TYPES,
-    PARAM_WITH_CRATES, PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
+    PARAM_COMPONENTS, PARAM_DATA, PARAM_ENTITIES, PARAM_ENTITY, PARAM_FILTER, PARAM_PARAMS,
+    PARAM_PARENT, PARAM_PATH, PARAM_PORT, PARAM_RESOURCE, PARAM_TYPES, PARAM_WITH_CRATES,
+    PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
 };
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
 use crate::response::{
     FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
 };
-
-/// Complete definition of a BRP tool
-#[derive(Clone)]
-pub struct McpToolDef {
-    /// Tool name (e.g., "`bevy_destroy`")
-    pub name:                &'static str,
-    /// Tool description
-    pub description:         &'static str,
-    /// Handler type (BRP or Local)
-    pub handler:             HandlerType,
-    /// Parameters for the tool
-    pub parameters:          Vec<Parameter>,
-    /// Parameter extractor type
-    pub parameter_extractor: BrpMethodParamCategory,
-    /// Response formatter definition
-    pub formatter:           ResponseSpecification,
-}
-
-/// Type of parameter extractor to use
-#[derive(Clone)]
-pub enum BrpMethodParamCategory {
-    /// Pass through all parameters
-    Passthrough,
-    /// Extract entity parameter
-    Entity { required: bool },
-    /// Extract resource parameter
-    Resource,
-    /// Extract empty params
-    EmptyParams,
-    /// Custom extractor for BRP execute (dynamic method)
-    BrpExecute,
-    /// Custom extractor for registry schema (parameter transformation)
-    RegistrySchema,
-}
+use crate::tool::BrpMethodParamCategory;
 
 /// Get all standard tool definitions
 #[allow(clippy::too_many_lines)]

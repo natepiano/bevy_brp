@@ -5,6 +5,23 @@ use crate::constants::{
     PARAM_RESOURCE, PARAM_STRICT, PARAM_VALUE,
 };
 
+/// Type of parameter extractor to use
+#[derive(Clone)]
+pub enum BrpMethodParamCategory {
+    /// Pass through all parameters
+    Passthrough,
+    /// Extract entity parameter
+    Entity { required: bool },
+    /// Extract resource parameter
+    Resource,
+    /// Extract empty params
+    EmptyParams,
+    /// Custom extractor for BRP execute (dynamic method)
+    BrpExecute,
+    /// Custom extractor for registry schema (parameter transformation)
+    RegistrySchema,
+}
+
 /// Represents a parameter definition for a BRP tool
 #[derive(Clone)]
 pub struct Parameter {

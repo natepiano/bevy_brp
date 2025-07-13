@@ -199,6 +199,8 @@ pub async fn execute_brp_method_with_format_discovery(
     params: Option<Value>,
     port: Option<u16>,
 ) -> Result<EnhancedBrpResult> {
+    // Add debug info about calling BRP
+    debug!("Calling BRP `{method}` with validated parameters");
     trace!("Discovery: Format Discovery: Starting request for method '{method}'");
 
     // Level 1: Direct BRP execution (normal path)

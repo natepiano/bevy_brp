@@ -6,35 +6,21 @@ use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
 
 use super::mcp_service::McpService;
-use crate::constants::PARAM_ENTITY;
 use crate::response::CallInfo;
-use crate::tool::{LocalToolFunction, McpToolDef};
+use crate::tool::McpToolDef;
 
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
     fn call_info(&self) -> CallInfo;
 }
 
-/// Data type for local handler contexts (carries the extracted handler)
-#[derive(Clone)]
-pub struct LocalContext {
-    pub handler: Arc<dyn LocalToolFunction>,
-}
-
-/// Data type for BRP handler contexts (carries extracted request data)
-#[derive(Clone)]
-pub struct BrpContext {
-    pub method: String,
-    pub port:   u16,
-}
-
 /// Context passed to all handlers containing service, request, and MCP context
 #[derive(Clone)]
 pub struct HandlerContext<T = ()> {
-    pub service:  Arc<McpService>,
-    pub request:  CallToolRequestParam,
-    pub context:  RequestContext<RoleServer>,
-    handler_data: T,
+    pub service:             Arc<McpService>,
+    pub request:             CallToolRequestParam,
+    pub context:             RequestContext<RoleServer>,
+    pub(super) handler_data: T,
 }
 
 impl HandlerContext {
@@ -264,11 +250,11 @@ impl<T> HandlerContext<T> {
         use crate::error::{Error as ServiceError, report_to_mcp_error};
 
         let port_u64 = self.extract_optional_number(PARAM_PORT, u64::from(DEFAULT_BRP_PORT));
-        
+
         let port = u16::try_from(port_u64).map_err(|_| {
             report_to_mcp_error(
                 &error_stack::Report::new(ServiceError::InvalidArgument(
-                    "Invalid port parameter".to_string()
+                    "Invalid port parameter".to_string(),
                 ))
                 .attach_printable("Value too large for u16"),
             )
@@ -278,72 +264,12 @@ impl<T> HandlerContext<T> {
         if port < 1024 {
             return Err(report_to_mcp_error(
                 &error_stack::Report::new(ServiceError::InvalidArgument(
-                    "Invalid port parameter".to_string()
+                    "Invalid port parameter".to_string(),
                 ))
                 .attach_printable("Port must be >= 1024 (non-privileged ports only)"),
             ));
         }
 
         Ok(port)
-    }
-}
-
-// Type-specific implementations
-impl HandlerContext<LocalContext> {
-    pub fn call_info(&self) -> CallInfo {
-        CallInfo::local(self.request.name.to_string())
-    }
-
-    pub fn handler(&self) -> &Arc<dyn LocalToolFunction> {
-        &self.handler_data.handler
-    }
-}
-
-impl HasCallInfo for HandlerContext<LocalContext> {
-    fn call_info(&self) -> CallInfo {
-        self.call_info()
-    }
-}
-
-impl HandlerContext<BrpContext> {
-    pub fn brp_method(&self) -> &str {
-        &self.handler_data.method
-    }
-
-    pub fn call_info(&self) -> CallInfo {
-        CallInfo::brp(
-            self.request.name.to_string(),
-            self.handler_data.method.clone(),
-            self.handler_data.port,
-        )
-    }
-
-    // BRP-specific extraction methods
-
-    /// Extract entity ID from MCP tool call parameters
-    pub fn entity_id(&self) -> Option<u64> {
-        self.extract_optional_named_field(PARAM_ENTITY)
-            .and_then(Value::as_u64)
-    }
-
-    /// Extract entity ID parameter (required)
-    pub fn get_entity_id(&self) -> Result<u64, McpError> {
-        use crate::error::{Error as ServiceError, report_to_mcp_error};
-
-        self.entity_id().ok_or_else(|| {
-            report_to_mcp_error(
-                &error_stack::Report::new(ServiceError::InvalidArgument(
-                    "Missing entity ID parameter".to_string(),
-                ))
-                .attach_printable("Field name: entity")
-                .attach_printable("Expected: u64 number"),
-            )
-        })
-    }
-}
-
-impl HasCallInfo for HandlerContext<BrpContext> {
-    fn call_info(&self) -> CallInfo {
-        self.call_info()
     }
 }
