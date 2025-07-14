@@ -21,7 +21,7 @@ pub struct StatusResult {
     /// Whether BRP is responsive
     pub brp_responsive: bool,
     /// Process ID if running
-    pub app_pid:        Option<u32>,
+    pub pid:            Option<u32>,
     /// Status message
     pub message:        String,
 }
@@ -176,7 +176,7 @@ async fn check_brp_for_app(
         port,
         app_running,
         brp_responsive,
-        app_pid,
+        pid: app_pid,
         message,
     })
 }

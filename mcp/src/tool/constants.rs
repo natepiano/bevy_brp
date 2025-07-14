@@ -42,8 +42,8 @@ macro_rules! define_tool_constants {
     // For BRP internal tools (server-side functionality)
     (brp, $method:ident) => {
         paste::paste! {
-            pub const [<TOOL_BRP_ $method:upper>]: &str = concat!("brp_", stringify!($method));
-            pub const [<DESC_BRP_ $method:upper>]: &str = include_help_text!(concat!("brp_tools/brp_", stringify!($method), ".txt"));
+            pub const [<TOOL_$method:upper>]: &str = concat!("brp_", stringify!($method));
+            pub const [<DESC_$method:upper>]: &str = include_help_text!(concat!("brp_tools/brp_", stringify!($method), ".txt"));
         }
     };
 
@@ -101,7 +101,12 @@ define_tool_constants!(bevy, list_watch => "bevy/list+watch");
 
 // BRP execute tool (not a direct Bevy method, server-only) but still uses
 // the HandlerType::Brp even though we don't define it the same
-define_tool_constants!(brp, execute);
+// we made this to execute an arbitrary command - largely for troubleshooting
+// by bypassing the standard tool call flow
+// it creates a bunch of exceptions in the code so i'm not sure if it's worth it...
+// we'll keep it for now as it is a pretty good troubleshooting tool
+pub const TOOL_BRP_EXECUTE: &str = "brp_execute";
+pub const DESC_BRP_EXECUTE: &str = include_help_text!("brp_tools/brp_execute.txt");
 
 // -----------------------------------------------------------------------------
 // BRP Extras Tools (bevy_brp_extras plugin methods)

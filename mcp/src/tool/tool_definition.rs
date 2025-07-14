@@ -6,9 +6,10 @@ use rmcp::model::{CallToolRequestParam, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
-use crate::tool::{LocalParameter, ToolHandler};
+use crate::tool::ToolHandler;
 
 /// Specifies whether a tool requires a port parameter
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +52,9 @@ pub trait ToolDefinition: Send + Sync {
     /// Get the port parameter requirement for this tool
     fn port_parameter(&self) -> PortParameter;
 
+    /// Check if this tool needs a method parameter (for dynamic BRP tools)
+    fn needs_method_parameter(&self) -> bool;
+
     /// Convert to MCP Tool for registration
     fn to_tool(&self) -> Tool {
         use crate::support::schema;
@@ -88,14 +92,21 @@ pub trait ToolDefinition: Send + Sync {
             };
         }
 
-        // Add port parameter if needed
-        if self.port_parameter() == PortParameter::Required {
-            let port_param = LocalParameter::port();
-            builder = builder.add_number_property(
-                port_param.name(),
-                port_param.description(),
-                port_param.required(),
+        // Add method parameter if needed (for dynamic BRP tools)
+        if self.needs_method_parameter() {
+            builder = builder.add_string_property(
+                PARAM_METHOD,
+                "The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')",
+                true,
             );
+        }
+
+        // Add port parameter if needed
+        // can't be created any other way as neither LocalParameterName or BrpParameterName
+        // has a Port variant
+        if self.port_parameter() == PortParameter::Required {
+            builder =
+                builder.add_number_property(PARAM_PORT, "The BRP port (default: 15702)", false);
         }
 
         Tool {

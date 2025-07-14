@@ -19,8 +19,6 @@ pub enum BrpParameterName {
     Path,
     /// Value for mutations and inserts
     Value,
-    /// Method name for dynamic execution
-    Method,
     /// Strict mode flag for queries
     Strict,
     /// Component type for mutations
@@ -83,8 +81,6 @@ pub enum LocalParameterName {
     Value,
     /// Method name for dynamic execution
     Method,
-    /// Port number for BRP connection
-    Port,
     /// Build profile (debug/release)
     Profile,
     /// Application name
@@ -182,7 +178,9 @@ where
     }
 }
 
-// BRP-specific constructors
+/// BRP-specific constructors
+/// if a description param is provided, it's because
+/// these parameters are used in multiple tools and can have different descriptions
 impl BrpParameter {
     /// Entity ID parameter with custom description
     pub const fn entity(description: &'static str, required: bool) -> Self {
@@ -321,13 +319,21 @@ impl BrpParameter {
     }
 
     /// Data parameter for queries
-    pub const fn data(description: &'static str) -> Self {
-        Self::any(BrpParameterName::Data, description, true)
+    pub const fn data() -> Self {
+        Self::any(
+            BrpParameterName::Data,
+            "Object specifying what component data to retrieve. Properties: components (array), option (array), has (array)",
+            true,
+        )
     }
 
     /// Filter parameter for queries
-    pub const fn filter(description: &'static str) -> Self {
-        Self::any(BrpParameterName::Filter, description, true)
+    pub const fn filter() -> Self {
+        Self::any(
+            BrpParameterName::Filter,
+            "Object specifying which entities to query. Properties: with (array), without (array)",
+            false,
+        )
     }
 
     /// Entities parameter for batch operations
@@ -336,53 +342,80 @@ impl BrpParameter {
     }
 
     /// Parent parameter for reparenting
-    pub const fn parent(description: &'static str, required: bool) -> Self {
-        Self::number(BrpParameterName::Parent, description, required)
+    pub const fn parent() -> Self {
+        Self::number(
+            BrpParameterName::Parent,
+            "The new parent entity ID (omit to remove parent)",
+            false,
+        )
     }
 
     /// `With_crates` parameter for schema filtering
-    pub const fn with_crates(description: &'static str, required: bool) -> Self {
-        Self::string_array(BrpParameterName::WithCrates, description, required)
+    pub const fn with_crates() -> Self {
+        Self::string_array(
+            BrpParameterName::WithCrates,
+            "Include only types from these crates (e.g., [\"bevy_transform\", \"my_game\"])",
+            false,
+        )
     }
 
     /// `Without_crates` parameter for schema filtering
-    pub const fn without_crates(description: &'static str, required: bool) -> Self {
-        Self::string_array(BrpParameterName::WithoutCrates, description, required)
+    pub const fn without_crates() -> Self {
+        Self::string_array(
+            BrpParameterName::WithoutCrates,
+            "Exclude types from these crates (e.g., [\"bevy_render\", \"bevy_pbr\"])",
+            false,
+        )
     }
 
     /// `With_types` parameter for schema filtering
-    pub const fn with_types(description: &'static str, required: bool) -> Self {
-        Self::string_array(BrpParameterName::WithTypes, description, required)
+    pub const fn with_types() -> Self {
+        Self::string_array(
+            BrpParameterName::WithTypes,
+            "Include only types with these reflect traits (e.g., [\"Component\", \"Resource\"])",
+            false,
+        )
     }
 
     /// `Without_types` parameter for schema filtering
-    pub const fn without_types(description: &'static str, required: bool) -> Self {
-        Self::string_array(BrpParameterName::WithoutTypes, description, required)
+    pub const fn without_types() -> Self {
+        Self::string_array(
+            BrpParameterName::WithoutTypes,
+            "Exclude types with these reflect traits (e.g., [\"RenderResource\"])",
+            false,
+        )
     }
 
     /// Enabled parameter for boolean operations
-    pub const fn enabled(description: &'static str) -> Self {
-        Self::boolean(BrpParameterName::Enabled, description, true)
+    pub const fn enabled() -> Self {
+        Self::boolean(
+            BrpParameterName::Enabled,
+            "Enable or disable debug mode for bevy_brp_extras plugin",
+            true,
+        )
     }
 
     /// Keys parameter for input simulation
-    pub const fn keys(description: &'static str, required: bool) -> Self {
-        Self::string_array(BrpParameterName::Keys, description, required)
+    pub const fn keys() -> Self {
+        Self::string_array(
+            BrpParameterName::Keys,
+            "Array of key code names to send",
+            true,
+        )
     }
 
     /// `Duration_ms` parameter for timing
-    pub const fn duration_ms(description: &'static str, required: bool) -> Self {
-        Self::number(BrpParameterName::DurationMs, description, required)
+    pub const fn duration_ms() -> Self {
+        Self::number(
+            BrpParameterName::DurationMs,
+            "Duration in milliseconds to hold the keys before releasing (default: 100ms, max: 60000ms/1)",
+            false,
+        )
     }
 
     /// Types parameter for discovery operations
     pub const fn types(description: &'static str, required: bool) -> Self {
         Self::string_array(BrpParameterName::Types, description, required)
-    }
-
-    /// Method parameter for dynamic execution
-    pub const fn method(description: &'static str) -> Self {
-        Self::string(BrpParameterName::Method, description, true)
     }
 
     /// Params parameter for dynamic execution
@@ -411,16 +444,6 @@ impl ParameterDefinition for BrpParameter {
 
 // Local-specific constructors
 impl LocalParameter {
-    /// Port parameter
-    pub const fn port() -> Self {
-        Self {
-            name:        LocalParameterName::Port,
-            description: "The BRP port (default: 15702)",
-            required:    false,
-            param_type:  ParamType::Number,
-        }
-    }
-
     /// Generic string parameter
     pub const fn string(
         name: LocalParameterName,

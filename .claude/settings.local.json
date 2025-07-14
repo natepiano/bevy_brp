@@ -58,7 +58,10 @@
       "Bash(./.claude/commands/test_runner.sh:*)",
       "mcp__brp__brp_shutdown",
       "mcp__brp__bevy_remove_resource",
-      "Bash(.claude/commands/tests/all:*)"
+      "Bash(.claude/commands/tests/all:*)",
+      "Bash(cat:*)",
+      "mcp__brp__brp_get_trace_log_path",
+      "mcp__brp__brp_set_tracing_level"
     ],
     "deny": []
   }

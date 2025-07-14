@@ -40,15 +40,19 @@ impl ToolDefinition for LocalToolDef {
         &self.formatter
     }
 
-    fn port_parameter(&self) -> PortParameter {
-        self.port_parameter
-    }
-
     fn parameters(&self) -> Vec<&dyn ParameterDefinition> {
         self.parameters
             .iter()
             .map(|p| p as &dyn ParameterDefinition)
             .collect()
+    }
+
+    fn port_parameter(&self) -> PortParameter {
+        self.port_parameter
+    }
+
+    fn needs_method_parameter(&self) -> bool {
+        false // Local tools never need method parameters
     }
 
     fn create_handler(

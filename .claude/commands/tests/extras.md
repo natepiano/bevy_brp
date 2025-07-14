@@ -46,7 +46,7 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, se
 
 ### 7. Clean Shutdown Test
 - Execute `mcp__brp__brp_extras_shutdown` with app_name
-- Verify clean shutdown response (method: "clean_shutdown")
+- Verify clean shutdown response (shutdown_method: "clean_shutdown")
 - Confirm app process terminates gracefully
 
 ## Expected Results

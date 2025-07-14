@@ -316,11 +316,6 @@ impl ResponseFormatter {
             .last()
             .unwrap_or("Unknown");
         tracing::debug!(
-            "build_success_response<{}>: incoming data = {:?}",
-            type_name,
-            data
-        );
-        tracing::debug!(
             "build_success_response<{}>: response_fields count = {}",
             type_name,
             self.config.success_fields.len()
@@ -339,7 +334,7 @@ impl ResponseFormatter {
         builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
 
         let response = builder.build();
-        tracing::debug!(
+        tracing::trace!(
             "build_success_response<{}>: final response = {:?}",
             type_name,
             response

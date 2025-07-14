@@ -9,6 +9,7 @@
 
 /// JSON field name constants for BRP responses
 pub const JSON_FIELD_APP_NAME: &str = "app_name";
+pub const JSON_FIELD_APPS: &str = "apps";
 pub const JSON_FIELD_COMPONENT_COUNT: &str = "component_count";
 pub const JSON_FIELD_COMPONENTS: &str = "components";
 pub const JSON_FIELD_CONTENT: &str = "content";
@@ -21,7 +22,6 @@ pub const JSON_FIELD_ERROR_CODE: &str = "error_code";
 pub const JSON_FIELD_FORMAT_CORRECTIONS: &str = "format_corrections";
 pub const JSON_FIELD_FORMAT_CORRECTED: &str = "format_corrected";
 pub const JSON_FIELD_LOG_PATH: &str = "log_path";
-pub const JSON_FIELD_METHOD: &str = "method";
 pub const JSON_FIELD_METADATA: &str = "metadata";
 pub const JSON_FIELD_ORIGINAL_ERROR: &str = "original_error";
 pub const JSON_FIELD_PARENT: &str = "parent";
@@ -38,7 +38,6 @@ pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
 
 /// Parameter name constants for BRP tool inputs
 pub const PARAM_APP_NAME: &str = "app_name";
-pub const PARAM_COMPONENTS: &str = "components";
 pub const PARAM_ENTITY: &str = "entity";
 pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_EXAMPLE_NAME: &str = "example_name";

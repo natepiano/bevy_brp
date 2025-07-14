@@ -47,15 +47,19 @@ impl ToolDefinition for BrpToolDef {
         &self.formatter
     }
 
-    fn port_parameter(&self) -> PortParameter {
-        PortParameter::Required
-    }
-
     fn parameters(&self) -> Vec<&dyn ParameterDefinition> {
         self.parameters
             .iter()
             .map(|p| p as &dyn ParameterDefinition)
             .collect()
+    }
+
+    fn port_parameter(&self) -> PortParameter {
+        PortParameter::Required
+    }
+
+    fn needs_method_parameter(&self) -> bool {
+        matches!(self.method_source, BrpMethodSource::Dynamic)
     }
 
     fn create_handler(
