@@ -4,8 +4,8 @@ use sysinfo::{Signal, System};
 use tracing::debug;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::constants::{DEFAULT_BRP_PORT, JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_APP_NAME};
-use crate::error::{Error, Result, report_to_mcp_error};
+use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_APP_NAME};
+use crate::error::{Error, Result};
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -123,17 +123,9 @@ impl LocalToolFunction for Shutdown {
             Ok(name) => name.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let port = ctx.extract_optional_number("port", u64::from(DEFAULT_BRP_PORT));
-        let Ok(port) = u16::try_from(port) else {
-            return Box::pin(async move {
-                Err(report_to_mcp_error(
-                    &error_stack::Report::new(Error::InvalidArgument(
-                        "Invalid port parameter".to_string(),
-                    ))
-                    .attach_printable("Port must be a valid u16")
-                    .attach_printable(format!("Provided value: {port}")),
-                ))
-            });
+        let port = match ctx.extract_port() {
+            Ok(p) => p,
+            Err(e) => return Box::pin(async move { Err(e) }),
         };
 
         Box::pin(async move {

@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::constants::{DEFAULT_BRP_PORT, PARAM_APP_NAME, PARAM_PORT};
-use crate::error::{Error, report_to_mcp_error};
+use crate::constants::PARAM_APP_NAME;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -41,17 +40,9 @@ impl LocalToolFunction for Status {
             Ok(name) => name.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let port = ctx.extract_optional_number(PARAM_PORT, u64::from(DEFAULT_BRP_PORT));
-        let Ok(port) = u16::try_from(port) else {
-            return Box::pin(async move {
-                Err(report_to_mcp_error(
-                    &error_stack::Report::new(Error::InvalidArgument(
-                        "Invalid port value".to_string(),
-                    ))
-                    .attach_printable("Port must be a valid u16")
-                    .attach_printable(format!("Provided value: {port}")),
-                ))
-            });
+        let port = match ctx.extract_port() {
+            Ok(p) => p,
+            Err(e) => return Box::pin(async move { Err(e) }),
         };
 
         Box::pin(async move {

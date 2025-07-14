@@ -31,7 +31,7 @@ pub async fn brp_method_tool_call(
     let tool_def = handler_context.tool_def()?;
 
     // Use the shared function to build the formatter factory
-    let formatter_factory = handlers::build_formatter_factory_from_spec(&tool_def.formatter);
+    let formatter_factory = handlers::build_formatter_factory_from_spec(tool_def.formatter());
 
     handle_brp_method_tool_call(handler_context.clone(), &formatter_factory).await
 }

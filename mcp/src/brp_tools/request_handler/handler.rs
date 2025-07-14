@@ -10,10 +10,12 @@ use super::format_discovery::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
-    JSON_FIELD_ORIGINAL_ERROR, PARAM_ENTITY, PARAM_METHOD, PARAM_PORT,
+    JSON_FIELD_ORIGINAL_ERROR, PARAM_ENTITY, PARAM_PORT,
 };
+use crate::error::{self, Error};
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};
 use crate::service::{BrpContext, HandlerContext};
+use crate::tool::ParamType;
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -211,7 +213,7 @@ pub async fn handle_brp_method_tool_call(
         handler_context.extract_port()?,
     )
     .await
-    .map_err(|err| crate::error::report_to_mcp_error(&err))?;
+    .map_err(|err| error::report_to_mcp_error(&err))?;
 
     // Create formatter and metadata
     let formatter_context = FormatterContext {
@@ -248,24 +250,14 @@ pub async fn handle_brp_method_tool_call(
 fn extract_params_from_definition(
     ctx: &HandlerContext<BrpContext>,
 ) -> Result<Option<serde_json::Value>, McpError> {
-    use crate::tool::ParamType;
-
     // Get the tool definition
     let tool_def = ctx.tool_def()?;
-
-    // Special case: brp_execute tool handles "method" separately
-    let is_brp_execute = tool_def.name == "brp_execute";
 
     // Build params from parameter definitions
     let mut params_obj = serde_json::Map::new();
     let mut has_params = false;
 
-    for param in &tool_def.parameters {
-        // Skip method parameter for brp_execute (it's extracted separately)
-        if is_brp_execute && param.name() == PARAM_METHOD {
-            continue;
-        }
-
+    for param in tool_def.parameters() {
         // Extract parameter value based on type
         let value = match param.param_type() {
             ParamType::Number => {
@@ -286,9 +278,10 @@ fn extract_params_from_definition(
             }
             ParamType::String => {
                 if param.required() {
-                    Some(json!(
-                        ctx.extract_required_string(param.name(), param.description())?
-                    ))
+                    Some(json!(ctx.extract_required_string(
+                        param.name(),
+                        param.description()
+                    )?))
                 } else {
                     ctx.extract_optional_named_field(param.name())
                         .and_then(|v| v.as_str())
@@ -319,36 +312,71 @@ fn extract_params_from_definition(
             }
             ParamType::StringArray => {
                 if param.required() {
-                    let array = ctx
-                        .extract_optional_string_array(param.name())
-                        .ok_or_else(|| {
-                            crate::error::report_to_mcp_error(
-                                &error_stack::Report::new(crate::error::Error::InvalidArgument(
-                                    format!("Missing {} parameter", param.description()),
-                                ))
-                                .attach_printable(format!("Field name: {}", param.name()))
-                                .attach_printable("Expected: array of strings"),
-                            )
-                        })?;
+                    let array =
+                        ctx.extract_optional_string_array(param.name())
+                            .ok_or_else(|| {
+                                crate::error::report_to_mcp_error(
+                                    &error_stack::Report::new(
+                                        crate::error::Error::InvalidArgument(format!(
+                                            "Missing {} parameter",
+                                            param.description()
+                                        )),
+                                    )
+                                    .attach_printable(format!("Field name: {}", param.name()))
+                                    .attach_printable("Expected: array of strings"),
+                                )
+                            })?;
                     Some(json!(array))
                 } else {
                     ctx.extract_optional_string_array(param.name())
                         .map(|v| json!(v))
                 }
             }
-            ParamType::Any => {
+            ParamType::NumberArray => {
                 if param.required() {
-                    let value = ctx
+                    let array = ctx
                         .extract_optional_named_field(param.name())
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| {
+                            arr.iter()
+                                .map(serde_json::Value::as_u64)
+                                .collect::<Option<Vec<_>>>()
+                        })
                         .ok_or_else(|| {
                             crate::error::report_to_mcp_error(
                                 &error_stack::Report::new(crate::error::Error::InvalidArgument(
                                     format!("Missing {} parameter", param.description()),
                                 ))
                                 .attach_printable(format!("Field name: {}", param.name()))
-                                .attach_printable("Expected: JSON value"),
+                                .attach_printable("Expected: array of numbers"),
                             )
                         })?;
+                    Some(json!(array))
+                } else {
+                    ctx.extract_optional_named_field(param.name())
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| {
+                            arr.iter()
+                                .map(serde_json::Value::as_u64)
+                                .collect::<Option<Vec<_>>>()
+                        })
+                        .map(|v| json!(v))
+                }
+            }
+            ParamType::Any => {
+                if param.required() {
+                    let value =
+                        ctx.extract_optional_named_field(param.name())
+                            .ok_or_else(|| {
+                                crate::error::report_to_mcp_error(
+                                    &error_stack::Report::new(Error::InvalidArgument(format!(
+                                        "Missing {} parameter",
+                                        param.description()
+                                    )))
+                                    .attach_printable(format!("Field name: {}", param.name()))
+                                    .attach_printable("Expected: JSON value"),
+                                )
+                            })?;
                     Some(value.clone())
                 } else {
                     ctx.extract_optional_named_field(param.name()).cloned()
@@ -366,7 +394,7 @@ fn extract_params_from_definition(
     // Special case: For passthrough tools (tools that had Passthrough category),
     // we need to pass all arguments except port
     // We can detect these by checking if they have no parameters defined
-    if tool_def.parameters.is_empty() && ctx.request.arguments.is_some() {
+    if tool_def.parameters().is_empty() && ctx.request.arguments.is_some() {
         // This is a passthrough tool - pass all arguments except port
         if let Some(args) = &ctx.request.arguments {
             let mut passthrough_args = args.clone();

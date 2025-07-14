@@ -13,8 +13,8 @@ use tracing::{debug, warn};
 
 use super::BrpJsonRpcBuilder;
 use crate::constants::{
-    BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, DEFAULT_BRP_PORT,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_PARAMS,
+    BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_METHOD_NOT_FOUND,
+    PARAM_PARAMS,
 };
 use crate::error::{Error, Result};
 use crate::tool::BRP_EXTRAS_PREFIX;
@@ -141,12 +141,6 @@ fn handle_http_error(
     // Always log HTTP errors to help debug intermittent failures
     warn!("BRP execute_brp_method: HTTP request failed - error={}", e);
 
-    // Write detailed error to temp file for debugging
-    let port_source = if port == DEFAULT_BRP_PORT {
-        " (DEFAULT - port parameter missing!)"
-    } else {
-        " (explicit)"
-    };
     let error_details = format!(
         "HTTP Error at {}\nMethod: {}\nPort: {}{}\nURL: {}\nError: {:?}\n",
         std::time::SystemTime::now()
@@ -155,7 +149,7 @@ fn handle_http_error(
             .unwrap_or(0),
         method,
         port,
-        port_source,
+        port,
         url,
         e
     );
@@ -208,12 +202,8 @@ fn handle_http_error(
 
     context_info.push(format!("Error type: {error_type}"));
 
-    // Add port source information
-    if port == DEFAULT_BRP_PORT {
-        context_info.push("Port source: DEFAULT (port parameter missing!)".to_string());
-    } else {
-        context_info.push(format!("Port source: explicit ({port})"));
-    }
+    // Add port info
+    context_info.push(format!("Port: ({port})"));
 
     let error_msg = format!("HTTP request failed for {method} operation - {error_type}: {e}");
 

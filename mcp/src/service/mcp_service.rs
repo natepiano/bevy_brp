@@ -10,15 +10,13 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
-use super::handler_context::HandlerContext;
 use crate::error::{Error as ServiceError, report_to_mcp_error};
-use crate::tool::{self, McpToolDef};
+use crate::tool::{self, ToolDefinition};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
 /// This service provides tools for interacting with Bevy applications through BRP,
 /// including entity manipulation, component management, and resource access.
-#[derive(Clone)]
 pub struct McpService {
     /// Project root directories configured by the MCP client.
     ///
@@ -26,7 +24,7 @@ pub struct McpService {
     /// for scanning and launching operations.
     roots:     Arc<Mutex<Vec<PathBuf>>>,
     /// Tool definitions `HashMap` for O(1) lookup by name
-    tool_defs: HashMap<String, McpToolDef>,
+    tool_defs: HashMap<String, Box<dyn ToolDefinition>>,
     /// Pre-converted MCP tools for list operations
     tools:     Vec<Tool>,
 }
@@ -36,9 +34,9 @@ impl McpService {
         let all_defs = tool::get_all_tool_definitions();
         let tool_defs = all_defs
             .iter()
-            .map(|def| (def.name.to_string(), def.clone()))
+            .map(|def| (def.name().to_string(), def.clone_box()))
             .collect();
-        let mut tools: Vec<_> = all_defs.into_iter().map(|def| def.to_tool()).collect();
+        let mut tools: Vec<_> = all_defs.iter().map(|def| def.to_tool()).collect();
         tools.sort_by_key(|tool| tool.name.clone());
 
         Self {
@@ -49,8 +47,8 @@ impl McpService {
     }
 
     /// Get tool definition by name with O(1) lookup
-    pub fn get_tool_def(&self, name: &str) -> Option<&McpToolDef> {
-        self.tool_defs.get(name)
+    pub fn get_tool_def(&self, name: &str) -> Option<&dyn ToolDefinition> {
+        self.tool_defs.get(name).map(std::convert::AsRef::as_ref)
     }
 
     /// List all MCP tools using pre-converted and sorted tools
@@ -143,6 +141,20 @@ impl McpService {
     }
 }
 
+impl Clone for McpService {
+    fn clone(&self) -> Self {
+        Self {
+            roots:     Arc::clone(&self.roots),
+            tool_defs: self
+                .tool_defs
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone_box()))
+                .collect(),
+            tools:     self.tools.clone(),
+        }
+    }
+}
+
 impl ServerHandler for McpService {
     fn get_info(&self) -> rmcp::model::ServerInfo {
         rmcp::model::ServerInfo {
@@ -164,12 +176,19 @@ impl ServerHandler for McpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        let handler_context = HandlerContext::new(Arc::new(self.clone()), request, context);
-        let tool_def = handler_context.tool_def()?;
+        let service_arc = Arc::new(self.clone());
+        let tool_def = service_arc.get_tool_def(&request.name).ok_or_else(|| {
+            crate::error::report_to_mcp_error(
+                &error_stack::Report::new(crate::error::Error::InvalidArgument(format!(
+                    "unknown tool: {}",
+                    request.name
+                )))
+                .attach_printable("Tool not found"),
+            )
+        })?;
 
         tool_def
-            .handler
-            .create_handler(handler_context.clone())?
+            .create_handler(Arc::clone(&service_arc), request, context)?
             .call_tool()
             .await
     }

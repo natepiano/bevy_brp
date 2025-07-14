@@ -38,13 +38,10 @@ pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
 
 /// Parameter name constants for BRP tool inputs
 pub const PARAM_APP_NAME: &str = "app_name";
-pub const PARAM_COMPONENT: &str = "component";
 pub const PARAM_COMPONENTS: &str = "components";
-pub const PARAM_DATA: &str = "data";
 pub const PARAM_ENTITY: &str = "entity";
 pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_EXAMPLE_NAME: &str = "example_name";
-pub const PARAM_FILTER: &str = "filter";
 pub const PARAM_METHOD: &str = "method";
 pub const PARAM_PARAMS: &str = "params";
 pub const PARAM_PARENT: &str = "parent";
@@ -52,13 +49,6 @@ pub const PARAM_PATH: &str = "path";
 pub const PARAM_PORT: &str = "port";
 pub const PARAM_PROFILE: &str = "profile";
 pub const PARAM_RESOURCE: &str = "resource";
-pub const PARAM_STRICT: &str = "strict";
-pub const PARAM_TYPES: &str = "types";
-pub const PARAM_VALUE: &str = "value";
-pub const PARAM_WITHOUT_CRATES: &str = "without_crates";
-pub const PARAM_WITHOUT_TYPES: &str = "without_types";
-pub const PARAM_WITH_CRATES: &str = "with_crates";
-pub const PARAM_WITH_TYPES: &str = "with_types";
 
 // ============================================================================
 // NETWORK CONSTANTS

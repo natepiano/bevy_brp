@@ -53,7 +53,7 @@ fn create_formatter_from_def(
     let tool_def = handler_context.tool_def()?;
 
     // Use the shared function to build the formatter factory
-    let formatter_factory = handlers::build_formatter_factory_from_spec(&tool_def.formatter);
+    let formatter_factory = handlers::build_formatter_factory_from_spec(tool_def.formatter());
 
     let formatter_context = FormatterContext {
         params:           handler_context

@@ -54,6 +54,30 @@ impl SchemaBuilder {
         self
     }
 
+    /// Add a number array property to the schema
+    pub fn add_number_array_property(
+        mut self,
+        name: &str,
+        description: &str,
+        required: bool,
+    ) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), "array".into());
+
+        let mut items = Map::new();
+        items.insert("type".to_string(), "number".into());
+        prop.insert("items".to_string(), items.into());
+
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
     /// Add a number property to the schema
     pub fn add_number_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();

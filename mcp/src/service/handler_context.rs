@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::mcp_service::McpService;
 use crate::response::CallInfo;
-use crate::tool::McpToolDef;
+use crate::tool::ToolDefinition;
 
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
@@ -62,7 +62,7 @@ impl<T> HandlerContext<T> {
     /// # Errors
     ///
     /// Returns an error if the tool definition is not found.
-    pub fn tool_def(&self) -> Result<&McpToolDef, McpError> {
+    pub fn tool_def(&self) -> Result<&dyn ToolDefinition, McpError> {
         self.service
             .get_tool_def(&self.request.name)
             .ok_or_else(|| {
@@ -72,44 +72,6 @@ impl<T> HandlerContext<T> {
                         self.request.name
                     )))
                     .attach_printable("Tool not found"),
-                )
-            })
-    }
-
-    /// Extract port from request arguments, defaulting to `DEFAULT_BRP_PORT`
-    pub fn extract_port_param(&self) -> u16 {
-        use crate::constants::{DEFAULT_BRP_PORT, PARAM_PORT};
-
-        self.request
-            .arguments
-            .as_ref()
-            .and_then(|args| args.get(PARAM_PORT))
-            .and_then(serde_json::Value::as_u64)
-            .and_then(|p| u16::try_from(p).ok())
-            .unwrap_or(DEFAULT_BRP_PORT)
-    }
-
-    /// Extract method from request arguments
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the method parameter is missing.
-    pub fn extract_method_param(&self) -> Result<String, McpError> {
-        use crate::constants::PARAM_METHOD;
-        use crate::error::{Error as ServiceError, report_to_mcp_error};
-
-        self.request
-            .arguments
-            .as_ref()
-            .and_then(|args| args.get(PARAM_METHOD))
-            .and_then(|v| v.as_str())
-            .map(std::string::ToString::to_string)
-            .ok_or_else(|| {
-                report_to_mcp_error(
-                    &error_stack::Report::new(ServiceError::InvalidArgument(
-                        "Missing BRP method parameter".to_string(),
-                    ))
-                    .attach_printable("BrpExecute requires a method parameter"),
                 )
             })
     }
@@ -242,6 +204,13 @@ impl<T> HandlerContext<T> {
         use crate::constants::PARAM_PATH;
         let path = self.extract_optional_string(PARAM_PATH, "");
         if path.is_empty() { None } else { Some(path) }
+    }
+
+    /// Extract method parameter for `brp_execute` tool
+    pub fn extract_method_param(&self) -> Result<String, McpError> {
+        use crate::constants::PARAM_METHOD;
+        self.extract_required_string(PARAM_METHOD, "BRP method")
+            .map(std::string::ToString::to_string)
     }
 
     /// Extract port parameter with default value

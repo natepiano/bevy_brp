@@ -64,49 +64,6 @@ use crate::response::{
 #[allow(clippy::too_many_lines)]
 fn get_standard_tools() -> Vec<McpToolDef> {
     vec![
-        // bevy_destroy
-        McpToolDef {
-            name:        TOOL_BEVY_DESTROY,
-            description: DESC_BEVY_DESTROY,
-            handler:     HandlerType::brp(BRP_METHOD_DESTROY),
-            parameters:  vec![Parameter::entity("The entity ID to destroy", true)],
-            formatter:   ResponseSpecification {
-                message_template: "Successfully destroyed entity {entity}",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_ENTITY,
-                    parameter_field_name: JSON_FIELD_ENTITY,
-                    placement:            FieldPlacement::Metadata,
-                }],
-            },
-        },
-        // bevy_get
-        McpToolDef {
-            name:        TOOL_BEVY_GET,
-            description: DESC_BEVY_GET,
-            handler:     HandlerType::brp(BRP_METHOD_GET),
-            parameters:  vec![
-                Parameter::entity("The entity ID to get component data from", true),
-                Parameter::components(
-                    "Array of component types to retrieve. Each component must be a fully-qualified type name",
-                    true,
-                ),
-            ],
-            formatter:   ResponseSpecification {
-                message_template: "Retrieved component data from entity {entity}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name:  JSON_FIELD_ENTITY,
-                        parameter_field_name: PARAM_ENTITY,
-                        placement:            FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_COMPONENTS,
-                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_COMPONENTS),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
-            },
-        },
         // bevy_list
         McpToolDef {
             name:        TOOL_BEVY_LIST,
@@ -410,41 +367,6 @@ fn get_standard_tools() -> Vec<McpToolDef> {
 #[allow(clippy::too_many_lines)]
 fn get_special_tools() -> Vec<McpToolDef> {
     vec![
-        // bevy_query - has custom extractors for component counts
-        McpToolDef {
-            name:        TOOL_BEVY_QUERY,
-            description: DESC_BEVY_QUERY,
-            handler:     HandlerType::brp(BRP_METHOD_QUERY),
-            parameters:  vec![
-                Parameter::any(
-                    PARAM_DATA,
-                    "Object specifying what component data to retrieve. Properties: components (array), option (array), has (array)",
-                    true,
-                ),
-                Parameter::any(
-                    PARAM_FILTER,
-                    "Object specifying which entities to query. Properties: with (array), without (array)",
-                    true,
-                ),
-                Parameter::strict(),
-            ],
-            formatter:   ResponseSpecification {
-                message_template: "Query completed successfully",
-                response_fields:  vec![
-                    ResponseField::DirectToResult,
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_ENTITY_COUNT,
-                        response_extractor:  ResponseExtractorType::ItemCount,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_COMPONENT_COUNT,
-                        response_extractor:  ResponseExtractorType::QueryComponentCount,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
-            },
-        },
         // bevy_spawn - has dynamic entity extraction from response
         McpToolDef {
             name:        TOOL_BEVY_SPAWN,
@@ -861,21 +783,6 @@ fn get_app_tools() -> Vec<McpToolDef> {
             parameters:  create_launch_params(PARAM_APP_NAME, "Name of the Bevy app to launch"),
             formatter:   ResponseSpecification {
                 message_template: "Launched Bevy app `{app_name}`",
-                response_fields:  vec![ResponseField::DirectToMetadata],
-            },
-        },
-        // launch_bevy_example
-        McpToolDef {
-            name:        TOOL_LAUNCH_BEVY_EXAMPLE,
-            description: DESC_LAUNCH_BEVY_EXAMPLE,
-            handler:     HandlerType::Local {
-                handler: Arc::new(
-                    crate::app_tools::brp_launch_bevy_example::create_launch_bevy_example_handler(),
-                ),
-            },
-            parameters:  create_launch_params("example_name", "Name of the Bevy example to launch"),
-            formatter:   ResponseSpecification {
-                message_template: "Launched Bevy example `{example_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         },
