@@ -1,28 +1,205 @@
 [
-  {"id": "1", "content": "Create BrpMethodSource enum in mcp/src/tool/brp_tool_def.rs with Static and DynamicFromParameter variants", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "2", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "3", "content": "Update BrpToolDef struct to use method_source: BrpMethodSource instead of brp_method: &'static str", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "4", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "5", "content": "Restore extract_method_param() method to HandlerContext in mcp/src/service/handler_context.rs", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "6", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "7", "content": "Update BrpToolDef::create_handler() to pattern match on BrpMethodSource enum for method resolution", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "8", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "9", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "10", "content": "Fix all clippy issues following warning rules", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "11", "content": "Remove special case handling for brp_execute in mcp/src/brp_tools/request_handler/handler.rs extract_params_from_definition()", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "12", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "13", "content": "Enable brp_execute constants by uncommenting define_tool_constants!(brp, execute) in mcp/src/tool/constants.rs", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "14", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "15", "content": "Update all existing BrpToolDef definitions in mcp/src/tool/definitions.rs to use BrpMethodSource::Static", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "16", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "17", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "18", "content": "Fix all clippy issues following warning rules", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "19", "content": "Add brp_execute tool definition to get_special_tools() in mcp/src/tool/definitions.rs using BrpMethodSource::DynamicFromParameter", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "20", "content": "Run cargo build and fix errors", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "21", "content": "Run cargo +nightly fmt", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "22", "content": "Run cargo nextest run", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "23", "content": "STOP if test failures - review with user", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "24", "content": "Subagent: STOP and return control", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "25", "content": "Main: Task new subagent for code review (read-only) - Focus: enum design, method extraction logic, plan adherence", "status": "pending", "priority": "medium", "notes": ""},
-  {"id": "26", "content": "Review suggestions with user", "status": "pending", "priority": "medium", "notes": ""}
+  {
+    "id": "setup1",
+    "content": "Stay on plan - STOP and ask user if deviation needed",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "setup2",
+    "content": "Track technical debt in TECH_DEBT.md (create if needed)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "setup3",
+    "content": "Document context overflow details in TECH_DEBT.md",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl1",
+    "content": "Create PortParameter enum with Required/NotUsed variants in tool_definition.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build1",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl2",
+    "content": "Replace needs_port_parameter() method with port_parameter() in ToolDefinition trait",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build2",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl3",
+    "content": "Update BrpToolDef to implement port_parameter() returning PortParameter::Required",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build3",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl4",
+    "content": "Add port_parameter field to LocalToolDef struct",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build4",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_fix1",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl5",
+    "content": "Update LocalToolDef to implement port_parameter() returning field value",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build5",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl6",
+    "content": "Update to_tool() implementation to use port_parameter() == PortParameter::Required",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build6",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl7",
+    "content": "Update all LocalToolDef instances in definitions.rs to specify port_parameter explicitly",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build7",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl8",
+    "content": "Update BrpToolDef create_handler to conditionally extract port based on port_parameter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build8",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_fix2",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "val1",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "val2",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "val3",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review1",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review2",
+    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review3",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
 ]
