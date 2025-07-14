@@ -92,9 +92,8 @@ pub fn build_brp_url(port: u16) -> String {
 pub async fn execute_brp_method(
     method: &str,
     params: Option<Value>,
-    port: Option<u16>,
+    port: u16,
 ) -> Result<BrpResult> {
-    let port = port.unwrap_or(DEFAULT_BRP_PORT);
     let url = build_brp_url(port);
 
     // Build JSON-RPC request body

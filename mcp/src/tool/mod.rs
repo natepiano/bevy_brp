@@ -17,5 +17,5 @@ pub use constants::{
 pub use definitions::get_all_tool_definitions;
 pub use local_handler::LocalToolHandler;
 pub use mcp_tool_def::McpToolDef;
-pub use parameters::BrpMethodParamCategory;
+pub use parameters::ParamType;
 pub use types::{HandlerResponse, HandlerResult, HandlerType, LocalToolFunction, ToolHandler};

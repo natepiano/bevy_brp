@@ -193,7 +193,7 @@ async fn check_brp_for_app(
 /// Check if BRP is responding on the given port
 async fn check_brp_on_port(port: u16) -> std::result::Result<bool, McpError> {
     // Try a simple BRP request to check connectivity using bevy/list
-    match execute_brp_method(BRP_METHOD_LIST, None, Some(port)).await {
+    match execute_brp_method(BRP_METHOD_LIST, None, port).await {
         Ok(BrpResult::Success(_)) => {
             // BRP is responding and working
             Ok(true)

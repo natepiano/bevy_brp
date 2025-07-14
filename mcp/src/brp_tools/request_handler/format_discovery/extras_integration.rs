@@ -14,7 +14,7 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 /// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(
     type_name: &str,
-    port: Option<u16>,
+    port: u16,
 ) -> Result<Option<UnifiedTypeInfo>, String> {
     debug!("Extras Integration: Starting discovery for type '{type_name}'");
 

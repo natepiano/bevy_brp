@@ -27,7 +27,6 @@ pub const JSON_FIELD_ORIGINAL_ERROR: &str = "original_error";
 pub const JSON_FIELD_PARENT: &str = "parent";
 pub const JSON_FIELD_PATH: &str = "path";
 pub const JSON_FIELD_PID: &str = "pid";
-pub const JSON_FIELD_PORT: &str = "port";
 pub const JSON_FIELD_RESULT: &str = "result";
 pub const JSON_FIELD_RESOURCE: &str = "resource";
 pub const JSON_FIELD_SHUTDOWN_METHOD: &str = "shutdown_method";
@@ -74,9 +73,6 @@ pub const BRP_DEFAULT_HOST: &str = "127.0.0.1";
 
 /// HTTP protocol for BRP connections
 pub const BRP_HTTP_PROTOCOL: &str = "http";
-
-/// Documentation/Help Constants
-pub const DESC_PORT: &str = "The BRP port (default: 15702)";
 
 /// Network/Port Constants
 pub const DEFAULT_BRP_PORT: u16 = 15702;

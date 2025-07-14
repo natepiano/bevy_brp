@@ -10,12 +10,10 @@ use super::format_discovery::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
-    JSON_FIELD_ORIGINAL_ERROR, PARAM_ENTITY, PARAM_PARAMS, PARAM_RESOURCE, PARAM_WITH_CRATES,
-    PARAM_WITH_TYPES, PARAM_WITHOUT_CRATES, PARAM_WITHOUT_TYPES,
+    JSON_FIELD_ORIGINAL_ERROR, PARAM_ENTITY, PARAM_METHOD, PARAM_PORT,
 };
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};
 use crate::service::{BrpContext, HandlerContext};
-use crate::tool::BrpMethodParamCategory;
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -201,16 +199,19 @@ pub async fn handle_brp_method_tool_call(
     );
 
     // Extract parameters for the call based on the tool definition
-    let (params, port) = extract_params_for_type(&handler_context)?;
+    let params = extract_params_from_definition(&handler_context)?;
 
     // Get the method directly from the typed context - no Options!
     let method_name = handler_context.brp_method();
 
     // Call BRP using format discovery
-    let enhanced_result =
-        execute_brp_method_with_format_discovery(method_name, params.clone(), Some(port))
-            .await
-            .map_err(|err| crate::error::report_to_mcp_error(&err))?;
+    let enhanced_result = execute_brp_method_with_format_discovery(
+        method_name,
+        params.clone(),
+        handler_context.extract_port()?,
+    )
+    .await
+    .map_err(|err| crate::error::report_to_mcp_error(&err))?;
 
     // Create formatter and metadata
     let formatter_context = FormatterContext {
@@ -242,77 +243,147 @@ pub async fn handle_brp_method_tool_call(
     }
 }
 
-/// Extract parameters based on the extractor type
-fn extract_params_for_type(
+/// Extract parameters from tool definition instead of using category
+#[allow(clippy::too_many_lines)]
+fn extract_params_from_definition(
     ctx: &HandlerContext<BrpContext>,
-) -> Result<(Option<serde_json::Value>, u16), McpError> {
-    let port = ctx.extract_port()?;
-    let extractor_type = &ctx.tool_def()?.parameter_extractor;
+) -> Result<Option<serde_json::Value>, McpError> {
+    use crate::tool::ParamType;
 
-    match extractor_type {
-        BrpMethodParamCategory::Passthrough => {
-            // Pass through all arguments as params
-            let params = ctx.request.arguments.clone().map(serde_json::Value::Object);
-            Ok((params, port))
-        }
-        BrpMethodParamCategory::Entity { required } => {
-            // Extract entity parameter
-            let params = if *required {
-                let entity = ctx.get_entity_id()?;
-                Some(serde_json::json!({ PARAM_ENTITY: entity }))
-            } else {
-                // For optional entity (like list), include it if present
-                ctx.entity_id()
-                    .map(|entity| serde_json::json!({ PARAM_ENTITY: entity }))
-            };
+    // Get the tool definition
+    let tool_def = ctx.tool_def()?;
 
-            Ok((params, port))
-        }
-        BrpMethodParamCategory::Resource => {
-            // Extract resource parameter
-            let resource = ctx.extract_required_string(PARAM_RESOURCE, "resource name")?;
-            let params = Some(serde_json::json!({ PARAM_RESOURCE: resource }));
+    // Special case: brp_execute tool handles "method" separately
+    let is_brp_execute = tool_def.name == "brp_execute";
 
-            Ok((params, port))
-        }
-        BrpMethodParamCategory::EmptyParams => {
-            // Just extract port, no other params
-            Ok((None, port))
-        }
-        BrpMethodParamCategory::BrpExecute => {
-            // Extract params for brp_execute
-            let params = ctx.extract_optional_named_field(PARAM_PARAMS).cloned();
+    // Build params from parameter definitions
+    let mut params_obj = serde_json::Map::new();
+    let mut has_params = false;
 
-            Ok((params, port))
+    for param in &tool_def.parameters {
+        // Skip method parameter for brp_execute (it's extracted separately)
+        if is_brp_execute && param.name() == PARAM_METHOD {
+            continue;
         }
-        BrpMethodParamCategory::RegistrySchema => {
-            // Extract optional filter parameters for registry schema
-            let with_crates = ctx.extract_optional_string_array(PARAM_WITH_CRATES);
-            let without_crates = ctx.extract_optional_string_array(PARAM_WITHOUT_CRATES);
-            let with_types = ctx.extract_optional_string_array(PARAM_WITH_TYPES);
-            let without_types = ctx.extract_optional_string_array(PARAM_WITHOUT_TYPES);
 
-            let mut params_obj = serde_json::Map::new();
-            if let Some(crates) = with_crates {
-                params_obj.insert(PARAM_WITH_CRATES.to_string(), serde_json::json!(crates));
+        // Extract parameter value based on type
+        let value = match param.param_type() {
+            ParamType::Number => {
+                if param.required() {
+                    // Special handling for entity parameter
+                    if param.name() == PARAM_ENTITY {
+                        Some(json!(ctx.get_entity_id()?))
+                    } else {
+                        Some(json!(
+                            ctx.extract_required_u64(param.name(), param.description())?
+                        ))
+                    }
+                } else {
+                    ctx.extract_optional_named_field(param.name())
+                        .and_then(serde_json::Value::as_u64)
+                        .map(|v| json!(v))
+                }
             }
-            if let Some(crates) = without_crates {
-                params_obj.insert(PARAM_WITHOUT_CRATES.to_string(), serde_json::json!(crates));
+            ParamType::String => {
+                if param.required() {
+                    Some(json!(
+                        ctx.extract_required_string(param.name(), param.description())?
+                    ))
+                } else {
+                    ctx.extract_optional_named_field(param.name())
+                        .and_then(|v| v.as_str())
+                        .map(|s| json!(s))
+                }
             }
-            if let Some(types) = with_types {
-                params_obj.insert(PARAM_WITH_TYPES.to_string(), serde_json::json!(types));
+            ParamType::Boolean => {
+                if param.required() {
+                    // For required boolean, we need to check if it exists and is a bool
+                    let value = ctx
+                        .extract_optional_named_field(param.name())
+                        .and_then(serde_json::Value::as_bool)
+                        .ok_or_else(|| {
+                            crate::error::report_to_mcp_error(
+                                &error_stack::Report::new(crate::error::Error::InvalidArgument(
+                                    format!("Missing {} parameter", param.description()),
+                                ))
+                                .attach_printable(format!("Field name: {}", param.name()))
+                                .attach_printable("Expected: boolean value"),
+                            )
+                        })?;
+                    Some(json!(value))
+                } else {
+                    ctx.extract_optional_named_field(param.name())
+                        .and_then(serde_json::Value::as_bool)
+                        .map(|v| json!(v))
+                }
             }
-            if let Some(types) = without_types {
-                params_obj.insert(PARAM_WITHOUT_TYPES.to_string(), serde_json::json!(types));
+            ParamType::StringArray => {
+                if param.required() {
+                    let array = ctx
+                        .extract_optional_string_array(param.name())
+                        .ok_or_else(|| {
+                            crate::error::report_to_mcp_error(
+                                &error_stack::Report::new(crate::error::Error::InvalidArgument(
+                                    format!("Missing {} parameter", param.description()),
+                                ))
+                                .attach_printable(format!("Field name: {}", param.name()))
+                                .attach_printable("Expected: array of strings"),
+                            )
+                        })?;
+                    Some(json!(array))
+                } else {
+                    ctx.extract_optional_string_array(param.name())
+                        .map(|v| json!(v))
+                }
             }
+            ParamType::Any => {
+                if param.required() {
+                    let value = ctx
+                        .extract_optional_named_field(param.name())
+                        .ok_or_else(|| {
+                            crate::error::report_to_mcp_error(
+                                &error_stack::Report::new(crate::error::Error::InvalidArgument(
+                                    format!("Missing {} parameter", param.description()),
+                                ))
+                                .attach_printable(format!("Field name: {}", param.name()))
+                                .attach_printable("Expected: JSON value"),
+                            )
+                        })?;
+                    Some(value.clone())
+                } else {
+                    ctx.extract_optional_named_field(param.name()).cloned()
+                }
+            }
+        };
 
-            let params = if params_obj.is_empty() {
-                None
-            } else {
-                Some(serde_json::Value::Object(params_obj))
-            };
-
-            Ok((params, port))
+        // Add to params if value exists
+        if let Some(val) = value {
+            params_obj.insert(param.name().to_string(), val);
+            has_params = true;
         }
     }
+
+    // Special case: For passthrough tools (tools that had Passthrough category),
+    // we need to pass all arguments except port
+    // We can detect these by checking if they have no parameters defined
+    if tool_def.parameters.is_empty() && ctx.request.arguments.is_some() {
+        // This is a passthrough tool - pass all arguments except port
+        if let Some(args) = &ctx.request.arguments {
+            let mut passthrough_args = args.clone();
+            passthrough_args.remove(PARAM_PORT);
+
+            if !passthrough_args.is_empty() {
+                return Ok(Some(Value::Object(passthrough_args)));
+            }
+        }
+    }
+
+    // Return params
+    let params = if has_params {
+        Some(Value::Object(params_obj))
+    } else {
+        None
+    };
+
+    Ok(params)
 }

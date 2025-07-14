@@ -70,7 +70,7 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
 pub async fn get_registry_type_info(
     method: &str,
     params: Option<&serde_json::Value>,
-    port: Option<u16>,
+    port: u16,
 ) -> std::collections::HashMap<String, UnifiedTypeInfo> {
     use super::constants::FORMAT_DISCOVERY_METHODS;
 
@@ -160,7 +160,7 @@ fn extract_type_names_from_params(method: &str, params: Option<&serde_json::Valu
 /// Batch check multiple types in a single registry call
 pub async fn check_multiple_types_registry_status(
     type_names: &[String],
-    port: Option<u16>,
+    port: u16,
 ) -> Vec<(String, Option<UnifiedTypeInfo>)> {
     debug!(
         "Registry Integration: Batch checking {} types",

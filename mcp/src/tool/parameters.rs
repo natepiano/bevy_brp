@@ -1,49 +1,43 @@
 //! Parameter definitions for our MCP tools
 
 use crate::constants::{
-    DESC_PORT, PARAM_COMPONENTS, PARAM_ENTITY, PARAM_METHOD, PARAM_PATH, PARAM_PORT,
-    PARAM_RESOURCE, PARAM_STRICT, PARAM_VALUE,
+    PARAM_COMPONENTS, PARAM_ENTITY, PARAM_METHOD, PARAM_PATH, PARAM_PORT, PARAM_RESOURCE,
+    PARAM_STRICT, PARAM_VALUE,
 };
-
-/// Type of parameter extractor to use
-#[derive(Clone)]
-pub enum BrpMethodParamCategory {
-    /// Pass through all parameters
-    Passthrough,
-    /// Extract entity parameter
-    Entity { required: bool },
-    /// Extract resource parameter
-    Resource,
-    /// Extract empty params
-    EmptyParams,
-    /// Custom extractor for BRP execute (dynamic method)
-    BrpExecute,
-    /// Custom extractor for registry schema (parameter transformation)
-    RegistrySchema,
-}
+use crate::error::Error;
 
 /// Represents a parameter definition for a BRP tool
 #[derive(Clone)]
 pub struct Parameter {
     /// Parameter name as it appears in the API
-    pub name:        &'static str,
+    name:        &'static str,
     /// Description of the parameter
-    pub description: &'static str,
+    description: &'static str,
     /// Whether this parameter is required
-    pub required:    bool,
+    required:    bool,
     /// Type of the parameter
-    pub param_type:  ParamType,
+    param_type:  ParamType,
 }
 
 impl Parameter {
-    /// Standard port parameter (appears in 21+ tools)
-    pub const fn port() -> Self {
-        Self {
-            name:        PARAM_PORT,
-            description: DESC_PORT,
-            required:    false,
-            param_type:  ParamType::Number,
-        }
+    /// Get parameter name
+    pub const fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Get parameter description
+    pub const fn description(&self) -> &'static str {
+        self.description
+    }
+
+    /// Get whether parameter is required
+    pub const fn required(&self) -> bool {
+        self.required
+    }
+
+    /// Get parameter type
+    pub const fn param_type(&self) -> &ParamType {
+        &self.param_type
     }
 
     /// Entity ID parameter with custom description

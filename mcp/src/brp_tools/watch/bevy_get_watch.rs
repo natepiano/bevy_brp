@@ -3,9 +3,7 @@
 use rmcp::Error as McpError;
 
 use super::types::WatchStartResult;
-use crate::constants::{
-    JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITY,
-};
+use crate::constants::{JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITY};
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 

@@ -18,7 +18,7 @@ use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
 use crate::brp_tools::request_handler::format_discovery::extras_integration;
-use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
+use crate::brp_tools::support::brp_client::{self, BrpError, BrpResult};
 use crate::tool::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
     BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_SPAWN,
@@ -30,7 +30,7 @@ pub async fn attempt_format_recovery_with_type_infos(
     original_params: Option<Value>,
     error: BrpResult,
     registry_type_info: HashMap<String, UnifiedTypeInfo>,
-    port: Option<u16>,
+    port: u16,
 ) -> FormatRecoveryResult {
     debug!("Recovery Engine: FUNCTION ENTRY - attempt_format_recovery_with_type_infos called");
     debug!(
@@ -137,7 +137,7 @@ async fn execute_level_2_direct_discovery(
     method: &str,
     type_infos: &HashMap<String, UnifiedTypeInfo>,
     original_params: Option<&Value>,
-    port: Option<u16>,
+    port: u16,
 ) -> LevelResult {
     debug!(
         "Level 2: Attempting direct discovery for {} types",
@@ -867,7 +867,7 @@ async fn build_recovery_success(
     method: &str,
     original_params: Option<&Value>,
     original_error: &BrpResult,
-    port: Option<u16>,
+    port: u16,
 ) -> FormatRecoveryResult {
     let mut corrections = Vec::new();
     let mut has_applied_corrections = false;
@@ -922,12 +922,8 @@ async fn build_recovery_success(
                 debug!("Recovery Engine: Built corrected parameters, executing retry");
 
                 // Execute the retry asynchronously
-                let retry_result = crate::brp_tools::support::brp_client::execute_brp_method(
-                    method,
-                    corrected_params,
-                    port,
-                )
-                .await;
+                let retry_result =
+                    brp_client::execute_brp_method(method, corrected_params, port).await;
 
                 match retry_result {
                     Ok(success_result) => {

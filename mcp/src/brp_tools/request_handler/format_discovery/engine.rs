@@ -90,7 +90,7 @@ pub struct EnhancedBrpResult {
 async fn execute_level_1(
     method: &str,
     params: Option<Value>,
-    port: Option<u16>,
+    port: u16,
 ) -> Result<BrpRequestResult> {
     // Direct BRP execution - no format discovery overhead
     let result = execute_brp_method(method, params.clone(), port).await?;
@@ -178,7 +178,7 @@ async fn execute_exception_path(
     original_params: Option<Value>,
     error: BrpResult,
     registry_type_info: HashMap<String, super::unified_types::UnifiedTypeInfo>,
-    port: Option<u16>,
+    port: u16,
 ) -> FormatRecoveryResult {
     tracing::trace!("Discovery: Exception Path: Entering format recovery for method '{method}'");
 
@@ -197,7 +197,7 @@ async fn execute_exception_path(
 pub async fn execute_brp_method_with_format_discovery(
     method: &str,
     params: Option<Value>,
-    port: Option<u16>,
+    port: u16,
 ) -> Result<EnhancedBrpResult> {
     // Add debug info about calling BRP
     debug!("Calling BRP `{method}` with validated parameters");
