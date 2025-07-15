@@ -1,5 +1,5 @@
 use super::constants::DEFAULT_PROFILE;
-use super::support::launch_common::{App, GenericLaunchHandler, LaunchConfig};
+use super::support::{App, GenericLaunchHandler, LaunchConfig};
 use crate::constants::PARAM_APP_NAME;
 
 /// Handler for launching Bevy apps

@@ -1,5 +1,5 @@
 use super::constants::DEFAULT_PROFILE;
-use super::support::launch_common::{Example, GenericLaunchHandler, LaunchConfig};
+use super::support::{Example, GenericLaunchHandler, LaunchConfig};
 use crate::constants::PARAM_EXAMPLE_NAME;
 
 /// Handler for launching Bevy examples

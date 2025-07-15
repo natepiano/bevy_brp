@@ -1,8 +1,8 @@
 use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
-use super::support::collection_strategy::BevyAppsStrategy;
-use super::support::list_common;
+use super::support;
+use super::support::BevyAppsStrategy;
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
@@ -39,8 +39,8 @@ impl LocalToolFunction for ListBevyApps {
 async fn handle_impl(
     handler_context: &HandlerContext<LocalContext>,
 ) -> Result<ListBevyAppsResult, McpError> {
-    list_common::handle_list_binaries(handler_context, |search_paths| async move {
-        let items = list_common::collect_all_items(&search_paths, &BevyAppsStrategy);
+    support::handle_list_binaries(handler_context, |search_paths| async move {
+        let items = support::collect_all_items(&search_paths, &BevyAppsStrategy);
 
         Ok(ListBevyAppsResult {
             count: items.len(),
