@@ -13,7 +13,7 @@ Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not exa
 
 ### 2. BRP Status Check
 - Execute `mcp__brp__brp_status` with app name and port
-- Verify status shows "running_with_brp"
+- Verify response status is "success" and metadata shows app_running: true, brp_responsive: true
 - Confirm app process is detected and BRP is responsive
 
 ### 3. RPC Discovery
