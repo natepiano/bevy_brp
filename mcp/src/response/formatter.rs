@@ -23,8 +23,6 @@
 //! **Use when:** You need BRP-specific features like large response handling or template
 //! formatting.
 
-use std::sync::Arc;
-
 use rmcp::model::CallToolResult;
 use serde_json::Value;
 
@@ -40,7 +38,7 @@ use crate::constants::{
 use crate::error::Result;
 use crate::service::{HandlerContext, HasCallInfo};
 
-/// Context passed to formatter factory
+/// Context passed to formatter construction
 #[derive(Clone)]
 pub struct FormatterContext {
     pub format_corrected: Option<FormatCorrectionStatus>,
@@ -185,7 +183,7 @@ fn build_enhanced_error_response(
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
-    config:  Arc<FormatterConfig>,
+    config:  FormatterConfig,
     context: FormatterContext,
 }
 
@@ -200,8 +198,7 @@ pub struct FormatterConfig {
 }
 
 impl ResponseFormatter {
-    #[allow(clippy::missing_const_for_fn)] // False positive - Arc doesn't support const construction
-    pub fn new(config: Arc<FormatterConfig>, context: FormatterContext) -> Self {
+    pub const fn new(config: FormatterConfig, context: FormatterContext) -> Self {
         Self { config, context }
     }
 
@@ -215,11 +212,6 @@ impl ResponseFormatter {
     where
         HandlerContext<T>: HasCallInfo,
     {
-        // Check if this is a passthrough formatter - if so, convert data directly to CallToolResult
-        if self.is_passthrough_formatter() {
-            return Self::format_passthrough_response(self, data);
-        }
-
         // First build the response
         let response_result = self.build_success_response(data, handler_context);
         response_result.map_or_else(
@@ -233,24 +225,6 @@ impl ResponseFormatter {
                 self.handle_large_response_if_needed(response, &handler_context.request.name)
             },
         )
-    }
-
-    /// Check if this formatter is configured as a passthrough formatter
-    fn is_passthrough_formatter(&self) -> bool {
-        self.config.success_template.is_none()
-            && self.config.success_fields.is_empty()
-            && self.config.large_response_config.is_none()
-    }
-
-    /// Format a passthrough response by converting the data directly to `CallToolResult`
-    fn format_passthrough_response(_self: &Self, data: &Value) -> CallToolResult {
-        // For passthrough, the data should already be a structured response
-        // Convert it directly to CallToolResult as JSON content
-        let json_string = serde_json::to_string_pretty(data).unwrap_or_else(|_| {
-            r#"{"status":"error","message":"Failed to serialize passthrough response"}"#.to_string()
-        });
-
-        CallToolResult::success(vec![rmcp::model::Content::text(json_string)])
     }
 
     /// Handle large response processing if configured
@@ -486,66 +460,6 @@ impl ResponseFormatter {
             *builder = builder
                 .clone()
                 .message("Request succeeded with format correction applied");
-        }
-    }
-}
-
-/// Factory for creating configurable formatters
-pub struct ResponseFormatterFactory {
-    config: Arc<FormatterConfig>,
-}
-
-impl ResponseFormatterFactory {
-    /// Create a standard formatter with common configuration
-    pub fn standard() -> ResponseFormatterBuilder {
-        ResponseFormatterBuilder {
-            config: FormatterConfig {
-                success_template:      None,
-                success_fields:        vec![],
-                large_response_config: Some(LargeResponseConfig {
-                    file_prefix: "brp_response_".to_string(),
-                    ..Default::default()
-                }),
-            },
-        }
-    }
-}
-
-impl ResponseFormatterFactory {
-    pub fn create(&self, context: FormatterContext) -> ResponseFormatter {
-        ResponseFormatter::new(Arc::clone(&self.config), context)
-    }
-}
-
-/// Builder for configuring formatters
-pub struct ResponseFormatterBuilder {
-    config: FormatterConfig,
-}
-
-impl ResponseFormatterBuilder {
-    /// Set the success message template
-    pub fn with_template(mut self, template: impl Into<String>) -> Self {
-        self.config.success_template = Some(template.into());
-        self
-    }
-
-    /// Add a field to the success response with explicit placement
-    pub fn with_response_field_placed(
-        mut self,
-        name: impl Into<String>,
-        extractor: FieldExtractor,
-        placement: FieldPlacement,
-    ) -> Self {
-        self.config
-            .success_fields
-            .push((name.into(), extractor, placement));
-        self
-    }
-
-    /// Build the formatter factory
-    pub fn build(self) -> ResponseFormatterFactory {
-        ResponseFormatterFactory {
-            config: Arc::new(self.config),
         }
     }
 }

@@ -464,7 +464,6 @@ dependencies = [
  "error-stack",
  "futures",
  "itertools 0.14.0",
- "libc",
  "once_cell",
  "paste",
  "regex",

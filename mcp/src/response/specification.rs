@@ -162,23 +162,33 @@ pub struct ResponseSpecification {
 }
 
 impl ResponseSpecification {
-    /// Build a formatter factory from this response specification
-    pub fn build_formatter_factory(&self) -> super::ResponseFormatterFactory {
-        // Create the formatter factory for structured responses
-        let mut formatter_builder = super::ResponseFormatterFactory::standard();
+    /// Build formatter configuration from this response specification
+    pub fn build_formatter_config(&self) -> super::FormatterConfig {
+        use super::large_response::LargeResponseConfig;
 
-        // Set the template if provided
-        if !self.message_template.is_empty() {
-            formatter_builder = formatter_builder.with_template(self.message_template);
-        }
+        // Create the formatter config for structured responses
+        let mut success_fields = Vec::new();
 
         // Add response fields
         for field in &self.response_fields {
             let (extractor, placement) = super::convert_response_field(field);
-            formatter_builder =
-                formatter_builder.with_response_field_placed(field.name(), extractor, placement);
+            success_fields.push((field.name().to_string(), extractor, placement));
         }
 
-        formatter_builder.build()
+        // Set the template if provided
+        let success_template = if self.message_template.is_empty() {
+            None
+        } else {
+            Some(self.message_template.to_string())
+        };
+
+        super::FormatterConfig {
+            success_template,
+            success_fields,
+            large_response_config: Some(LargeResponseConfig {
+                file_prefix: "brp_response_".to_string(),
+                ..Default::default()
+            }),
+        }
     }
 }

@@ -13,7 +13,7 @@ use crate::constants::{
     JSON_FIELD_ORIGINAL_ERROR,
 };
 use crate::error;
-use crate::response::{self, FormatterContext, ResponseFormatterFactory};
+use crate::response::{self, FormatterConfig, FormatterContext, ResponseFormatter};
 use crate::service::{BrpContext, HandlerContext};
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
@@ -72,7 +72,7 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
 fn process_success_response(
     data: Option<Value>,
     enhanced_result: &EnhancedBrpResult,
-    formatter_factory: ResponseFormatterFactory,
+    formatter_config: FormatterConfig,
     handler_context: &HandlerContext<BrpContext>,
 ) -> CallToolResult {
     let mut response_data = data.unwrap_or(Value::Null);
@@ -95,7 +95,7 @@ fn process_success_response(
     };
 
     // Create new formatter with updated context
-    let updated_formatter = formatter_factory.create(new_formatter_context);
+    let updated_formatter = ResponseFormatter::new(formatter_config, new_formatter_context);
 
     // Use format_success to include call_info
     updated_formatter.format_success(&response_data, handler_context)
@@ -180,7 +180,7 @@ fn process_error_response(
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_method_tool_call(
     handler_context: HandlerContext<BrpContext>,
-    formatter_factory: ResponseFormatterFactory,
+    formatter_config: FormatterConfig,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
     debug!("MCP ENTRY - Tool: {}", handler_context.request.name);
@@ -210,7 +210,7 @@ pub async fn handle_brp_method_tool_call(
         BrpResult::Success(data) => Ok(process_success_response(
             data.clone(),
             &enhanced_result,
-            formatter_factory,
+            formatter_config,
             &handler_context,
         )),
         BrpResult::Error(error_info) => Ok(process_error_response(

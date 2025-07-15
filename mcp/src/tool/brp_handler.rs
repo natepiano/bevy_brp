@@ -29,8 +29,8 @@ pub async fn brp_method_tool_call(
 ) -> Result<CallToolResult, McpError> {
     let tool_def = handler_context.tool_def()?;
 
-    // Build the formatter factory from the response specification
-    let formatter_factory = tool_def.formatter().build_formatter_factory();
+    // Build the formatter config from the response specification
+    let formatter_config = tool_def.formatter().build_formatter_config();
 
-    handle_brp_method_tool_call(handler_context.clone(), formatter_factory).await
+    handle_brp_method_tool_call(handler_context.clone(), formatter_config).await
 }
