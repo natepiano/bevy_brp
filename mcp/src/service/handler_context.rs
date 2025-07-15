@@ -241,4 +241,58 @@ impl<T> HandlerContext<T> {
 
         Ok(port)
     }
+
+    /// Generic helper for extracting typed parameters with unified required/optional logic
+    ///
+    /// This method encapsulates the common pattern of:
+    /// - If required: extract and validate, return error if missing/invalid
+    /// - If optional: extract if present, return None if missing
+    ///
+    /// The extractor function should return Some(value) for valid data, None for missing/invalid
+    pub fn extract_typed_param<F, V>(
+        &self,
+        param_name: &str,
+        param_description: &str,
+        required: bool,
+        extractor: F,
+    ) -> Result<Option<V>, McpError>
+    where
+        F: Fn(&Value) -> Option<V>,
+    {
+        use crate::error::{Error as ServiceError, report_to_mcp_error};
+
+        self.extract_optional_named_field(param_name).map_or_else(
+            || {
+                if required {
+                    Err(report_to_mcp_error(
+                        &error_stack::Report::new(ServiceError::InvalidArgument(format!(
+                            "Missing {param_description} parameter"
+                        )))
+                        .attach_printable(format!("Field name: {param_name}"))
+                        .attach_printable("Required parameter not provided"),
+                    ))
+                } else {
+                    Ok(None)
+                }
+            },
+            |value| {
+                extractor(value).map_or_else(
+                    || {
+                        if required {
+                            Err(report_to_mcp_error(
+                                &error_stack::Report::new(ServiceError::InvalidArgument(format!(
+                                    "Invalid {param_description} parameter"
+                                )))
+                                .attach_printable(format!("Field name: {param_name}"))
+                                .attach_printable("Value present but invalid type/format"),
+                            ))
+                        } else {
+                            Ok(None)
+                        }
+                    },
+                    |extracted| Ok(Some(extracted)),
+                )
+            },
+        )
+    }
 }
