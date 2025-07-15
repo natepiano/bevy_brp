@@ -2,10 +2,41 @@
 
 use strum::{Display, EnumString};
 
-// Note: Parameter names are now generated automatically by strum's Display trait
-use crate::tool::tool_definition::ParameterDefinition;
+/// Common interface for parameter definitions
+/// Parameter names are generated automatically by strum's Display trait
+pub trait ParameterDefinition {
+    /// Get the parameter name as string
+    fn name(&self) -> &str;
+
+    /// Check if the parameter is required
+    fn required(&self) -> bool;
+
+    /// Get the parameter description
+    fn description(&self) -> &'static str;
+
+    /// Get the parameter type (we need to import `ParamType`)
+    fn param_type(&self) -> &ParamType;
+}
+
+/// Types of parameters that can be defined
+#[derive(Clone)]
+pub enum ParamType {
+    /// Any JSON value (object, array, etc.)
+    Any,
+    /// A boolean parameter
+    Boolean,
+    /// A numeric parameter (typically entity IDs or ports)
+    Number,
+    /// An array of numbers
+    NumberArray,
+    /// A string parameter
+    String,
+    /// An array of strings
+    StringArray,
+}
 
 /// Parameter names for BRP tools (excludes port parameter)
+/// serialized into parameter names provided to the rcmp mcp tool framework
 #[derive(Display, EnumString, Clone, Copy, strum::IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum BrpParameterName {
@@ -66,6 +97,7 @@ pub enum BrpParameterName {
 }
 
 /// Parameter names for local tools (includes all parameters)
+/// serialized into parameter names provided to the rcmp mcp tool framework
 #[derive(Display, EnumString, Clone, Copy, strum::IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum LocalParameterName {
@@ -134,6 +166,8 @@ pub enum LocalParameterName {
 }
 
 /// Generic parameter definition that works for both BRP and Local tools
+/// allows a common parameter pattern but ensures that each type can only work
+/// with the parameters defined for it
 #[derive(Clone)]
 pub struct Parameter<N> {
     /// Parameter name as enum variant
@@ -147,12 +181,14 @@ pub struct Parameter<N> {
 }
 
 /// Type alias for BRP tool parameters
+/// only usable on `BrpToolDef`
 pub type BrpParameter = Parameter<BrpParameterName>;
 
 /// Type alias for local tool parameters
+/// only usable on `LocalToolDef`
 pub type LocalParameter = Parameter<LocalParameterName>;
 
-// Implement common methods for any Parameter<N> where N can convert to &str
+/// Implement common methods for any Parameter<N> where N can convert to &str
 impl<N> Parameter<N>
 where
     N: Into<&'static str> + Copy,
@@ -437,7 +473,7 @@ impl ParameterDefinition for BrpParameter {
         self.description()
     }
 
-    fn param_type(&self) -> &crate::tool::ParamType {
+    fn param_type(&self) -> &ParamType {
         self.param_type()
     }
 }
@@ -514,24 +550,7 @@ impl ParameterDefinition for LocalParameter {
         self.description()
     }
 
-    fn param_type(&self) -> &crate::tool::ParamType {
+    fn param_type(&self) -> &ParamType {
         self.param_type()
     }
-}
-
-/// Types of parameters that can be defined
-#[derive(Clone)]
-pub enum ParamType {
-    /// Any JSON value (object, array, etc.)
-    Any,
-    /// A boolean parameter
-    Boolean,
-    /// A numeric parameter (typically entity IDs or ports)
-    Number,
-    /// An array of numbers
-    NumberArray,
-    /// A string parameter
-    String,
-    /// An array of strings
-    StringArray,
 }

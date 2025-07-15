@@ -6,10 +6,12 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use super::local_handler::LocalToolHandler;
+use super::parameters::{LocalParameter, ParameterDefinition};
+use super::tool_definition::{PortParameter, ToolDefinition};
 use crate::response::ResponseSpecification;
 use crate::service::{HandlerContext, LocalContext, McpService};
-use crate::tool::tool_definition::{ParameterDefinition, PortParameter, ToolDefinition};
-use crate::tool::{LocalParameter, LocalToolFunction, LocalToolHandler, ToolHandler};
+use crate::tool::{LocalToolFunction, ToolHandler};
 
 /// Definition for local tools that execute within the MCP server
 pub struct LocalToolDef {

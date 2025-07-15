@@ -9,7 +9,7 @@ mod parameters;
 mod tool_definition;
 mod types;
 
-pub use brp_handler::BrpToolHandler;
+/// cconstants used in the wild
 pub use constants::{
     BRP_EXTRAS_PREFIX, BRP_METHOD_EXTRAS_SHUTDOWN, BRP_METHOD_GET_WATCH, BRP_METHOD_INSERT,
     BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_LIST, BRP_METHOD_LIST_WATCH,
@@ -17,7 +17,6 @@ pub use constants::{
     BRP_METHOD_SPAWN,
 };
 pub use definitions::get_all_tool_definitions;
-pub use local_handler::LocalToolHandler;
-pub use parameters::{BrpParameter, LocalParameter, ParamType};
+pub use parameters::ParamType;
 pub use tool_definition::ToolDefinition;
 pub use types::{HandlerResponse, HandlerResult, LocalToolFunction, ToolHandler};

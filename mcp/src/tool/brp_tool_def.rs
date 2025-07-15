@@ -6,10 +6,12 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use super::ToolHandler;
+use super::brp_handler::BrpToolHandler;
+use super::parameters::{BrpParameter, ParameterDefinition};
+use super::tool_definition::{PortParameter, ToolDefinition};
 use crate::response::ResponseSpecification;
 use crate::service::{BrpContext, HandlerContext, McpService};
-use crate::tool::tool_definition::{ParameterDefinition, PortParameter, ToolDefinition};
-use crate::tool::{BrpParameter, BrpToolHandler, ToolHandler};
 
 /// Source for BRP method name resolution
 #[derive(Debug, Clone)]

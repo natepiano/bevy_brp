@@ -6,9 +6,11 @@ use rmcp::model::{CallToolRequestParam, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use super::parameters::{ParamType, ParameterDefinition};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
+use crate::support::schema;
 use crate::tool::ToolHandler;
 
 /// Specifies whether a tool requires a port parameter
@@ -18,21 +20,6 @@ pub enum PortParameter {
     Required,
     /// Tool does not use a port parameter
     NotUsed,
-}
-
-/// Common interface for parameter definitions
-pub trait ParameterDefinition {
-    /// Get the parameter name as string
-    fn name(&self) -> &str;
-
-    /// Check if the parameter is required
-    fn required(&self) -> bool;
-
-    /// Get the parameter description
-    fn description(&self) -> &'static str;
-
-    /// Get the parameter type (we need to import `ParamType`)
-    fn param_type(&self) -> &crate::tool::ParamType;
 }
 
 /// Common interface for all tool definitions
@@ -57,9 +44,6 @@ pub trait ToolDefinition: Send + Sync {
 
     /// Convert to MCP Tool for registration
     fn to_tool(&self) -> Tool {
-        use crate::support::schema;
-        use crate::tool::ParamType;
-
         let mut builder = schema::SchemaBuilder::new();
 
         // Add tool-specific parameters
