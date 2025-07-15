@@ -30,6 +30,7 @@ use serde_json::Value;
 
 use super::builder::{CallInfo, JsonResponse, ResponseBuilder};
 use super::field_extractor::FieldExtractor;
+use super::large_response::{LargeResponseConfig, handle_large_response};
 use super::specification::FieldPlacement;
 use crate::brp_tools::request_handler::FormatCorrectionStatus;
 use crate::brp_tools::support::brp_client::BrpError;
@@ -38,7 +39,6 @@ use crate::constants::{
 };
 use crate::error::Result;
 use crate::service::{HandlerContext, HasCallInfo};
-use crate::support::{LargeResponseConfig, handle_large_response};
 
 /// Context passed to formatter factory
 #[derive(Clone)]

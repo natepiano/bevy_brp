@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
-/// Builder for creating JSON schemas for tool registration
-pub struct SchemaBuilder {
+/// Builder for creating JSON schemas for MCP tool registration in rmcp framework
+pub struct McpToolSchemaBuilder {
     properties: Map<String, Value>,
     required:   Vec<String>,
 }
 
-impl SchemaBuilder {
+impl McpToolSchemaBuilder {
     pub fn new() -> Self {
         Self {
             properties: Map::new(),

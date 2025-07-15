@@ -2,6 +2,7 @@
 mod builder;
 mod field_extractor;
 mod formatter;
+mod large_response;
 mod specification;
 
 pub use builder::{CallInfo, ResponseBuilder};

@@ -5,6 +5,7 @@ mod definitions;
 mod handlers;
 mod local_handler;
 mod local_tool_def;
+mod mcp_tool_schema;
 mod parameters;
 mod tool_definition;
 mod types;

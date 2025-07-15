@@ -128,7 +128,7 @@ async fn check_brp_for_app(
     let brp_responsive = check_brp_on_port(port).await?;
 
     // Build response based on findings
-    let (status, message, app_running, app_pid) = match (running_process, brp_responsive) {
+    let (status, message, app_running, pid) = match (running_process, brp_responsive) {
         (Some(process), true) => {
             let pid = process.pid().as_u32();
             (
@@ -176,7 +176,7 @@ async fn check_brp_for_app(
         port,
         app_running,
         brp_responsive,
-        pid: app_pid,
+        pid,
         message,
     })
 }

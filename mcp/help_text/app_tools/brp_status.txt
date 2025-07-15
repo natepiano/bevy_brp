@@ -16,6 +16,6 @@ Response includes:
 - port: Checked port
 - app_running: Boolean if app process detected
 - brp_responsive: Boolean if BRP responded
-- app_pid: Process ID if detected (null otherwise)
+- pid: Process ID if detected (null otherwise)
 
 IMPORTANT: Requires RemotePlugin in Bevy app plugin configuration.
