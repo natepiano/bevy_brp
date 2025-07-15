@@ -30,19 +30,10 @@ use super::builder::{CallInfo, JsonResponse, ResponseBuilder};
 use super::field_extractor::FieldExtractor;
 use super::large_response::{LargeResponseConfig, handle_large_response};
 use super::specification::FieldPlacement;
-use crate::brp_tools::request_handler::FormatCorrectionStatus;
 use crate::brp_tools::support::brp_client::BrpError;
-use crate::constants::{
-    JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_METADATA,
-};
+use crate::constants::{JSON_FIELD_DEBUG_INFO, JSON_FIELD_ERROR_CODE, JSON_FIELD_METADATA};
 use crate::error::Result;
 use crate::service::{HandlerContext, HasCallInfo};
-
-/// Context passed to formatter construction
-#[derive(Clone)]
-pub struct FormatterContext {
-    pub format_corrected: Option<FormatCorrectionStatus>,
-}
 
 /// Generic default error formatter - works with any `HandlerContext` that has `call_info`
 pub fn format_error_default<T>(
@@ -183,8 +174,7 @@ fn build_enhanced_error_response(
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
-    config:  FormatterConfig,
-    context: FormatterContext,
+    config: FormatterConfig,
 }
 
 /// Configuration for the configurable formatter
@@ -194,12 +184,12 @@ pub struct FormatterConfig {
     /// Additional fields to add to success responses
     pub success_fields:        Vec<(String, FieldExtractor, FieldPlacement)>,
     /// Configuration for large response handling
-    pub large_response_config: Option<LargeResponseConfig>,
+    pub large_response_config: LargeResponseConfig,
 }
 
 impl ResponseFormatter {
-    pub const fn new(config: FormatterConfig, context: FormatterContext) -> Self {
-        Self { config, context }
+    pub const fn new(config: FormatterConfig) -> Self {
+        Self { config }
     }
 
     /// Generic format for successful responses - works with any `HandlerContext` that has
@@ -233,46 +223,43 @@ impl ResponseFormatter {
         response: JsonResponse,
         method: &str,
     ) -> CallToolResult {
-        // Check if we need to handle large response
-        self.config.large_response_config.as_ref().map_or_else(
-            || response.to_call_tool_result(),
-            |large_config| {
-                // We need to check the size of the actual JSON that will be sent to MCP
-                // This is what to_call_tool_result() will serialize
-                let final_json = response.to_json_fallback();
-                let response_value =
-                    serde_json::from_str::<Value>(&final_json).unwrap_or(Value::Null);
+        // We need to check the size of the actual JSON that will be sent to MCP
+        // This is what to_call_tool_result() will serialize
+        let final_json = response.to_json_fallback();
+        let response_value = serde_json::from_str::<Value>(&final_json).unwrap_or(Value::Null);
 
-                // Check if response is too large
-                match handle_large_response(&response_value, method, large_config.clone()) {
-                    Ok(Some(fallback_response)) => {
-                        // Response was too large and saved to file
-                        let call_info = response.call_info.clone();
-                        ResponseBuilder::success(call_info.clone())
-                            .message(
-                                fallback_response["message"]
-                                    .as_str()
-                                    .unwrap_or("Response saved to file"),
-                            )
-                            .add_field("filepath", &fallback_response["filepath"])
-                            .unwrap_or_else(|_| ResponseBuilder::success(call_info.clone()))
-                            .add_field("instructions", &fallback_response["instructions"])
-                            .unwrap_or_else(|_| ResponseBuilder::success(call_info))
-                            .build()
-                            .to_call_tool_result()
-                    }
-                    Ok(None) => {
-                        // Response is small enough, return as-is
-                        response.to_call_tool_result()
-                    }
-                    Err(e) => {
-                        tracing::warn!("Error handling large response: {:?}", e);
-                        // Error handling large response, return original
-                        response.to_call_tool_result()
-                    }
-                }
-            },
-        )
+        // Check if response is too large
+        match handle_large_response(
+            &response_value,
+            method,
+            self.config.large_response_config.clone(),
+        ) {
+            Ok(Some(fallback_response)) => {
+                // Response was too large and saved to file
+                let call_info = response.call_info;
+                ResponseBuilder::success(call_info.clone())
+                    .message(
+                        fallback_response["message"]
+                            .as_str()
+                            .unwrap_or("Response saved to file"),
+                    )
+                    .add_field("filepath", &fallback_response["filepath"])
+                    .unwrap_or_else(|_| ResponseBuilder::success(call_info.clone()))
+                    .add_field("instructions", &fallback_response["instructions"])
+                    .unwrap_or_else(|_| ResponseBuilder::success(call_info))
+                    .build()
+                    .to_call_tool_result()
+            }
+            Ok(None) => {
+                // Response is small enough, return as-is
+                response.to_call_tool_result()
+            }
+            Err(e) => {
+                tracing::warn!("Error handling large response: {:?}", e);
+                // Error handling large response, return original
+                response.to_call_tool_result()
+            }
+        }
     }
 
     fn build_success_response<T>(
@@ -298,7 +285,7 @@ impl ResponseFormatter {
         let template_values = Self::initialize_template_values(handler_context);
         let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
 
-        self.add_format_corrections(&mut builder, data)?;
+        // Format corrections are now handled in BRP handler directly
         let template_values = self.add_configured_fields(
             &mut builder,
             &clean_data,
@@ -306,7 +293,7 @@ impl ResponseFormatter {
             handler_context,
         )?;
         self.apply_template_if_provided(&mut builder, &clean_data, &template_values);
-        self.override_message_for_format_correction(&mut builder);
+        // Message override for format correction is now handled in BRP handler directly
         builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
 
         let response = builder.build();
@@ -347,35 +334,6 @@ impl ResponseFormatter {
         }
 
         (clean_data, brp_extras_debug_info)
-    }
-
-    /// Add format corrections to the response builder
-    fn add_format_corrections(&self, builder: &mut ResponseBuilder, data: &Value) -> Result<()> {
-        if let Some(ref format_corrected) = self.context.format_corrected {
-            let format_corrected_value = serde_json::to_value(format_corrected).map_err(|e| {
-                error_stack::Report::new(crate::error::Error::General(format!(
-                    "Failed to serialize format_corrected: {e}"
-                )))
-            })?;
-            *builder = builder
-                .clone()
-                .add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
-
-            if format_corrected != &FormatCorrectionStatus::NotAttempted {
-                if let Value::Object(data_map) = data {
-                    if let Some(format_corrections) = data_map.get("format_corrections") {
-                        if let Some(arr) = format_corrections.as_array() {
-                            if !arr.is_empty() {
-                                *builder = builder
-                                    .clone()
-                                    .add_field("format_corrections", format_corrections)?;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Add configured fields and collect their values for template substitution
@@ -450,17 +408,6 @@ impl ResponseFormatter {
         }
 
         final_template_values
-    }
-
-    /// Override message if format correction occurred
-    fn override_message_for_format_correction(&self, builder: &mut ResponseBuilder) {
-        if self.context.format_corrected
-            == Some(crate::brp_tools::request_handler::FormatCorrectionStatus::Succeeded)
-        {
-            *builder = builder
-                .clone()
-                .message("Request succeeded with format correction applied");
-        }
     }
 }
 

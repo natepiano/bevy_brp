@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use tracing::{debug, trace};
 
 use super::format_discovery::{
-    EnhancedBrpResult, FORMAT_DISCOVERY_METHODS, FormatCorrection,
+    EnhancedBrpResult, FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus,
     execute_brp_method_with_format_discovery,
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
@@ -13,7 +13,7 @@ use crate::constants::{
     JSON_FIELD_ORIGINAL_ERROR,
 };
 use crate::error;
-use crate::response::{self, FormatterConfig, FormatterContext, ResponseFormatter};
+use crate::response::{self, FormatterConfig, ResponseFormatter};
 use crate::service::{BrpContext, HandlerContext};
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
@@ -57,7 +57,7 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
     // If response_data is an object, add fields
     if let Value::Object(map) = response_data {
         map.insert(JSON_FIELD_FORMAT_CORRECTIONS.to_string(), corrections_value);
-        // Note: format_corrected is now passed via FormatterContext, not serialized here
+        // Note: format_corrected is now added directly to response data
     } else {
         // If not an object, wrap it
         let wrapped = json!({
@@ -83,19 +83,34 @@ fn process_success_response(
     if FORMAT_DISCOVERY_METHODS.contains(&method) {
         // Add format corrections only (not debug info, as it will be handled separately)
         add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
+
+        // Add format_corrected status directly to response data
+        if let Value::Object(ref mut map) = response_data {
+            if let Ok(format_corrected_value) =
+                serde_json::to_value(&enhanced_result.format_corrected)
+            {
+                map.insert(
+                    JSON_FIELD_FORMAT_CORRECTED.to_string(),
+                    format_corrected_value,
+                );
+            }
+        }
     }
 
-    // Create new FormatterContext with format_corrected status only for supported methods
-    let new_formatter_context = FormatterContext {
-        format_corrected: if FORMAT_DISCOVERY_METHODS.contains(&method) {
-            Some(enhanced_result.format_corrected.clone())
+    // Create formatter with appropriate message template
+    let final_formatter_config =
+        if enhanced_result.format_corrected == FormatCorrectionStatus::Succeeded {
+            // Clone and modify the config for format correction success
+            let mut modified_config = formatter_config;
+            modified_config.success_template =
+                Some("Request succeeded with format correction applied".to_string());
+            modified_config
         } else {
-            None
-        },
-    };
+            formatter_config
+        };
 
-    // Create new formatter with updated context
-    let updated_formatter = ResponseFormatter::new(formatter_config, new_formatter_context);
+    // Create new formatter
+    let updated_formatter = ResponseFormatter::new(final_formatter_config);
 
     // Use format_success to include call_info
     updated_formatter.format_success(&response_data, handler_context)

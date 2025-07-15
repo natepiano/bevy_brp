@@ -25,15 +25,15 @@ pub enum BrpMethodSource {
 /// Definition for BRP tools that communicate with Bevy Remote Protocol
 pub struct BrpToolDef {
     /// Tool name
-    pub name:          &'static str,
+    pub name:            &'static str,
     /// Tool description
-    pub description:   &'static str,
+    pub description:     &'static str,
     /// BRP method name resolution strategy
-    pub method_source: BrpMethodSource,
+    pub method_source:   BrpMethodSource,
     /// Type-safe BRP parameters (excludes port)
-    pub parameters:    Vec<BrpParameter>,
+    pub parameters:      Vec<BrpParameter>,
     /// Response formatting specification
-    pub formatter:     ResponseSpecification,
+    pub response_format: ResponseSpecification,
 }
 
 impl ToolDefinition for BrpToolDef {
@@ -46,7 +46,7 @@ impl ToolDefinition for BrpToolDef {
     }
 
     fn formatter(&self) -> &ResponseSpecification {
-        &self.formatter
+        &self.response_format
     }
 
     fn parameters(&self) -> Vec<&dyn ParameterDefinition> {
@@ -98,11 +98,11 @@ impl ToolDefinition for BrpToolDef {
 
     fn clone_box(&self) -> Box<dyn ToolDefinition> {
         Box::new(Self {
-            name:          self.name,
-            description:   self.description,
-            method_source: self.method_source.clone(),
-            parameters:    self.parameters.clone(),
-            formatter:     self.formatter.clone(),
+            name:            self.name,
+            description:     self.description,
+            method_source:   self.method_source.clone(),
+            parameters:      self.parameters.clone(),
+            response_format: self.response_format.clone(),
         })
     }
 }

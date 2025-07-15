@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
-use crate::response::{FormatterConfig, FormatterContext, ResponseBuilder, ResponseFormatter};
+use crate::response::{FormatterConfig, ResponseBuilder, ResponseFormatter};
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::ToolHandler;
 
@@ -29,7 +29,7 @@ pub async fn local_tool_call(
 ) -> Result<CallToolResult, McpError> {
     let handler = handler_context.handler().as_ref();
 
-    let (formatter_config, formatter_context) = create_formatter_from_def(handler_context)?;
+    let formatter_config = create_formatter_from_def(handler_context)?;
 
     // Handler returns typed result, we ALWAYS pass it through format_handler_result
     let result = handler
@@ -37,23 +37,19 @@ pub async fn local_tool_call(
         .await
         .map(|typed_result| typed_result.to_json());
 
-    format_tool_call_result(result, handler_context, formatter_config, formatter_context)
+    format_tool_call_result(result, handler_context, formatter_config)
 }
 
-/// Create formatter config and context from tool definition
+/// Create formatter config from tool definition
 fn create_formatter_from_def(
     handler_context: &HandlerContext<LocalContext>,
-) -> Result<(FormatterConfig, FormatterContext), McpError> {
+) -> Result<FormatterConfig, McpError> {
     let tool_def = handler_context.tool_def()?;
 
     // Build the formatter config from the response specification
     let formatter_config = tool_def.formatter().build_formatter_config();
 
-    let formatter_context = FormatterContext {
-        format_corrected: None,
-    };
-
-    Ok((formatter_config, formatter_context))
+    Ok(formatter_config)
 }
 
 /// Format the result of a local tool handler that returns `Result<Value, McpError>` using
@@ -65,7 +61,6 @@ fn format_tool_call_result(
     result: Result<serde_json::Value, McpError>,
     handler_context: &HandlerContext<LocalContext>,
     formatter_config: FormatterConfig,
-    formatter_context: FormatterContext,
 ) -> Result<CallToolResult, McpError> {
     match result {
         Ok(value) => {
@@ -138,8 +133,10 @@ fn format_tool_call_result(
                 Ok(error_response.build().to_call_tool_result())
             } else {
                 // Use the new format_success_with_context to include call_info
-                Ok(ResponseFormatter::new(formatter_config, formatter_context)
-                    .format_success(&value, handler_context))
+                Ok(
+                    ResponseFormatter::new(formatter_config)
+                        .format_success(&value, handler_context),
+                )
             }
         }
         Err(e) => Err(e),

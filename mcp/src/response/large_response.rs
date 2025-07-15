@@ -35,9 +35,6 @@ impl Default for LargeResponseConfig {
 }
 
 /// Check if response exceeds token limit and save to file if needed
-///
-/// Returns `Ok(Some(fallback_response))` if the response was saved to a file,
-/// or Ok(None) if the response is small enough to return inline.
 pub fn handle_large_response(
     response_data: &Value,
     identifier: &str,

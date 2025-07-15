@@ -185,10 +185,10 @@ impl ResponseSpecification {
         super::FormatterConfig {
             success_template,
             success_fields,
-            large_response_config: Some(LargeResponseConfig {
+            large_response_config: LargeResponseConfig {
                 file_prefix: "brp_response_".to_string(),
                 ..Default::default()
-            }),
+            },
         }
     }
 }

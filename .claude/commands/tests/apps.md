@@ -3,6 +3,8 @@
 ## Objective
 Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not example launch), testing the distinction between apps and examples, and verifying BRP operations work with actual binary applications.
 
+**Known Issue**: The `value` parameter in mutation operations must be passed as a JSON number, not a string. Passing `"100.0"` (string) instead of `100.0` (number) will result in a type error. This is a known limitation in how the MCP tool handles the `value` parameter.
+
 ## Test Steps
 
 ### 1. Launch Application
@@ -45,8 +47,10 @@ Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not exa
 
 ### 6. Mutate Component
 - Use `mcp__brp__bevy_mutate_component` on spawned entity
-- Change translation.x to 100.0
+- Change translation.x to 100.0 (pass as numeric value, not string)
 - Verify mutation succeeds
+- **IMPORTANT**: The value must be passed as a number (100.0), not as a string ("100.0")
+- If passed as string, expect error: `invalid type: string "100.0", expected f32`
 
 ### 7. Get Component Data
 - Execute `mcp__brp__bevy_get` on mutated entity
