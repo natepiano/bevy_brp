@@ -24,7 +24,7 @@ impl ToolHandler for LocalToolHandler {
 }
 
 /// Generate a `LocalFn` handler using function pointer approach
-pub async fn local_tool_call(
+async fn local_tool_call(
     handler_context: &HandlerContext<LocalContext>,
 ) -> Result<CallToolResult, McpError> {
     let handler = handler_context.handler().as_ref();

@@ -24,7 +24,7 @@ impl ToolHandler for BrpToolHandler {
 }
 
 /// Generate a BRP handler
-pub async fn brp_method_tool_call(
+async fn brp_method_tool_call(
     handler_context: HandlerContext<BrpContext>,
 ) -> Result<CallToolResult, McpError> {
     let tool_def = handler_context.tool_def()?;

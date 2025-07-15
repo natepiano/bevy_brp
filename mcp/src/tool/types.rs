@@ -35,3 +35,9 @@ pub trait LocalToolFunction: Send + Sync {
     /// Handle the request and return a typed result
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_>;
 }
+
+/// Trait for local handlers using function pointer approach
+pub trait LocalToolFunctionWithPort: Send + Sync {
+    /// Handle the request and return a typed result
+    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_>;
+}

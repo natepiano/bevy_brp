@@ -248,7 +248,12 @@ impl ResponseFormatter {
         format_corrected: Option<&FormatCorrectionStatus>,
     ) -> CallToolResult {
         // First build the response with BRP method name
-        let response_result = self.build_success_response_with_corrections_brp(data, handler_context, format_corrections, format_corrected);
+        let response_result = self.build_success_response_with_corrections_brp(
+            data,
+            handler_context,
+            format_corrections,
+            format_corrected,
+        );
         response_result.map_or_else(
             |_| {
                 let fallback = ResponseBuilder::error(handler_context.call_info())
@@ -534,15 +539,25 @@ impl ResponseFormatter {
         format_corrected: Option<&FormatCorrectionStatus>,
         brp_method_name: Option<&str>,
     ) -> Result<()> {
-        tracing::debug!("add_format_corrections called for method: {}", handler_context.request.name);
-        tracing::debug!("format_corrections: {:?}", format_corrections.map(|c| c.len()));
+        tracing::debug!(
+            "add_format_corrections called for method: {}",
+            handler_context.request.name
+        );
+        tracing::debug!(
+            "format_corrections: {:?}",
+            format_corrections.map(|c| c.len())
+        );
         tracing::debug!("format_corrected: {:?}", format_corrected);
         tracing::debug!("brp_method_name: {:?}", brp_method_name);
-        
-        // Early return if method doesn't support format discovery - check BRP method name, not MCP tool name
+
+        // Early return if method doesn't support format discovery - check BRP method name, not MCP
+        // tool name
         if let Some(brp_method) = brp_method_name {
             if !FORMAT_DISCOVERY_METHODS.contains(&brp_method) {
-                tracing::debug!("BRP method {} doesn't support format discovery, returning early", brp_method);
+                tracing::debug!(
+                    "BRP method {} doesn't support format discovery, returning early",
+                    brp_method
+                );
                 return Ok(());
             }
         } else {
@@ -597,28 +612,46 @@ impl ResponseFormatter {
                 *builder = builder
                     .clone()
                     .add_field(JSON_FIELD_FORMAT_CORRECTIONS, &corrections_value)?;
-                    
-                // Add rich metadata from first correction to metadata field when format correction succeeds
+
+                // Add rich metadata from first correction to metadata field when format correction
+                // succeeds
                 if let Some(first_correction) = corrections.first() {
                     tracing::debug!("Found first correction: {:?}", first_correction.component);
                     if let Some(status) = format_corrected {
                         tracing::debug!("Format corrected status: {:?}", status);
                         if status == &FormatCorrectionStatus::Succeeded {
-                            tracing::debug!("Format correction succeeded, adding rich metadata to response");
+                            tracing::debug!(
+                                "Format correction succeeded, adding rich metadata to response"
+                            );
                             if let Some(ops) = &first_correction.supported_operations {
                                 tracing::debug!("Adding supported_operations: {:?}", ops);
-                                *builder = builder.clone().add_field_to("supported_operations", &json!(ops), crate::response::FieldPlacement::Metadata)?;
+                                *builder = builder.clone().add_field_to(
+                                    "supported_operations",
+                                    &json!(ops),
+                                    crate::response::FieldPlacement::Metadata,
+                                )?;
                             }
                             if let Some(paths) = &first_correction.mutation_paths {
                                 tracing::debug!("Adding mutation_paths: {:?}", paths);
-                                *builder = builder.clone().add_field_to("mutation_paths", &json!(paths), crate::response::FieldPlacement::Metadata)?;
+                                *builder = builder.clone().add_field_to(
+                                    "mutation_paths",
+                                    &json!(paths),
+                                    crate::response::FieldPlacement::Metadata,
+                                )?;
                             }
                             if let Some(cat) = &first_correction.type_category {
                                 tracing::debug!("Adding type_category: {:?}", cat);
-                                *builder = builder.clone().add_field_to("type_category", &json!(cat), crate::response::FieldPlacement::Metadata)?;
+                                *builder = builder.clone().add_field_to(
+                                    "type_category",
+                                    &json!(cat),
+                                    crate::response::FieldPlacement::Metadata,
+                                )?;
                             }
                         } else {
-                            tracing::debug!("Format correction status is not Succeeded: {:?}", status);
+                            tracing::debug!(
+                                "Format correction status is not Succeeded: {:?}",
+                                status
+                            );
                         }
                     } else {
                         tracing::debug!("No format corrected status provided");

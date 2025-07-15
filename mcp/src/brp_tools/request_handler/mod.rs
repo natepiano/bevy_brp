@@ -6,5 +6,5 @@ mod format_discovery;
 mod handler;
 
 // Public exports
+pub use format_discovery::{FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus};
 pub use handler::handle_brp_method_tool_call;
-pub use format_discovery::{FormatCorrection, FormatCorrectionStatus, FORMAT_DISCOVERY_METHODS};
