@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::service::{HandlerContext, LocalContext};
-use crate::support::tracing::get_trace_log_path;
+use super::tracing::get_trace_log_path;
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from getting the trace log path

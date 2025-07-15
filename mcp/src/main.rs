@@ -19,14 +19,13 @@ mod error;
 mod log_tools;
 mod response;
 mod service;
-mod support;
 mod tool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize file-based tracing with dynamic level management
     // Uses lazy file creation - file only created on first log write
-    support::tracing::init_file_tracing();
+    log_tools::init_file_tracing();
 
     // Initialize the watch manager
     brp_tools::initialize_watch_manager().await;

@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::os::unix::io::AsRawFd;
+// use std::os::unix::io::AsRawFd;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Stdio;
@@ -27,27 +27,27 @@ pub fn launch_detached_process(
     })?;
 
     // Set FD_CLOEXEC on log file descriptors to prevent interference between concurrent spawns
-    let log_fd = log_file.as_raw_fd();
-    let stderr_fd = log_file_for_stderr.as_raw_fd();
+    // let log_fd = log_file.as_raw_fd();
+    // let stderr_fd = log_file_for_stderr.as_raw_fd();
 
-    tracing::debug!(
-        "Setting up file descriptors for {process_name}: stdout_fd={log_fd}, stderr_fd={stderr_fd}"
-    );
+    // tracing::debug!(
+    //     "Setting up file descriptors for {process_name}: stdout_fd={log_fd},
+    // stderr_fd={stderr_fd}" );
 
-    unsafe {
-        if libc::fcntl(log_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
-            tracing::warn!(
-                "Failed to set FD_CLOEXEC on stdout log file descriptor for {process_name}"
-            );
-        }
-        if libc::fcntl(stderr_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
-            tracing::warn!(
-                "Failed to set FD_CLOEXEC on stderr log file descriptor for {process_name}"
-            );
-        }
-    }
+    // unsafe {
+    //     if libc::fcntl(log_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
+    //         tracing::warn!(
+    //             "Failed to set FD_CLOEXEC on stdout log file descriptor for {process_name}"
+    //         );
+    //     }
+    //     if libc::fcntl(stderr_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
+    //         tracing::warn!(
+    //             "Failed to set FD_CLOEXEC on stderr log file descriptor for {process_name}"
+    //         );
+    //     }
+    // }
 
-    tracing::debug!("FD_CLOEXEC flags set successfully for {process_name}");
+    // tracing::debug!("FD_CLOEXEC flags set successfully for {process_name}");
 
     // Create a new command from the provided one
     let mut new_cmd = std::process::Command::new(cmd.get_program());

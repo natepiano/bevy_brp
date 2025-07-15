@@ -122,7 +122,11 @@ async fn check_brp_for_app(
     let running_process = system
         .processes()
         .values()
-        .find(|process| process_matches_app(process, app_name));
+        .find(|process| {
+            // Filter out defunct/zombie processes
+            !matches!(process.status(), sysinfo::ProcessStatus::Zombie) 
+                && process_matches_app(process, app_name)
+        });
 
     // Check BRP connectivity
     let brp_responsive = check_brp_on_port(port).await?;
