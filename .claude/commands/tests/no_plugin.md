@@ -13,12 +13,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - Execute `mcp__brp__brp_extras_send_keys`
 - Verify consistent error messaging
 
-### 2. Fallback Shutdown Test
-- Execute `mcp__brp__brp_extras_shutdown` with app_name
-- Verify fallback to process termination
-- Check response indicates method: "process_kill" with warning about clean shutdown
-
-### 3. Tier 3 Format Discovery Fallback
+### 2. Tier 3 Format Discovery Fallback
 - Execute `mcp__brp__bevy_spawn` with intentionally incorrect Transform format:
   ```json
   {
@@ -38,22 +33,28 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - Verify error message indicates format issue (expects "sequence of 3 f32 values" but got "map") 
 - Confirm response includes helpful hint about the transformation that was attempted
 
-### 4. Basic BRP Functionality (Should Work)
+### 3. Basic BRP Functionality (Should Work)
 - Execute `mcp__brp__bevy_list` to verify basic BRP works
 - Execute `mcp__brp__bevy_query` with simple filter
 - Execute `mcp__brp__bevy_get` on entity (if any exist)
 - Verify core BRP methods function without plugin
 
-### 5. Registry Discovery Without Plugin
+### 4. Registry Discovery Without Plugin
 - Test spawn with components lacking Serialize/Deserialize traits
 - Try spawning with Visibility component
 - Verify error includes component name and mentions missing Serialize/Deserialize traits
 - Confirm error provides standard guidance for adding Serialize/Deserialize traits (this is the correct generic message regardless of whether the component is user-defined or from Bevy core)
 
-### 6. Path Error Discovery
+### 5. Path Error Discovery
 - Execute component mutation with wrong path (e.g., `.red` for ClearColor)
 - Verify error suggests correct path (e.g., `.0.Srgba.red`)
 - Check error guidance is actionable
+
+### 6. Fallback Shutdown Test (PERFORM LAST)
+- Execute `mcp__brp__brp_extras_shutdown` with app_name
+- Verify fallback to process termination
+- Check response indicates shutdown_method: "process_kill" with warning about clean shutdown
+- **NOTE**: This step shuts down the app, so it must be performed LAST
 
 ## Expected Results
 - ✅ BRP extras methods return helpful installation guidance

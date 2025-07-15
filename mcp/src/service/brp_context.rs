@@ -32,7 +32,6 @@ impl HandlerContext<BrpContext> {
     }
 
     /// Extract brp method parameters from tool definition
-    #[allow(clippy::too_many_lines)]
     pub fn extract_params_from_definition(&self) -> Result<Option<serde_json::Value>, McpError> {
         // Get the tool definition
         let tool_def = self.tool_def()?;

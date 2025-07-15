@@ -39,14 +39,14 @@ All tests that launch apps must validate the shutdown method matches the expecte
 ### Expected Shutdown Methods
 - **clean_shutdown**: Apps with `BrpExtrasPlugin` (extras_plugin, test_extras_plugin_app)
   - Message: "Successfully initiated graceful shutdown for '...' via bevy_brp_extras on port ..."
-  - Method field: `"clean_shutdown"`
+  - shutdown_method field: `"clean_shutdown"`
 - **process_kill**: Apps without `BrpExtrasPlugin` (no_extras_plugin)
   - Message: "Terminated process '...' (PID: ...) using kill. Consider adding bevy_brp_extras for clean shutdown."
-  - Method field: `"process_kill"`
+  - shutdown_method field: `"process_kill"`
 - **N/A**: Tests with no app launch (discovery)
 
 ### Validation Rules
-- Parse shutdown response `data.method` field
+- Parse shutdown response `data.shutdown_method` field
 - Compare against `expected_shutdown_method` from test config
 - Report mismatch as FAILED test with detailed explanation
 - Include both expected and actual methods in test results
@@ -168,7 +168,7 @@ Configuration: Port [PORT], App [APP_NAME]
     - `clean_shutdown`: Apps with BrpExtrasPlugin (extras_plugin, test_extras_plugin_app)
     - `process_kill`: Apps without BrpExtrasPlugin (no_extras_plugin)
     - `N/A`: Tests with no app launch (discovery)
-  - Parse the shutdown response `data.method` field to get actual method
+  - Parse the shutdown response `data.shutdown_method` field to get actual method
   - **FAILURE EXAMPLE**: If expected `clean_shutdown` but got `process_kill`, this indicates BrpExtrasPlugin configuration issue
 
 </SubAgentPrompt>
