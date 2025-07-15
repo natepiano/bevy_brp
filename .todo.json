@@ -1,0 +1,142 @@
+[
+  {
+    "id": "1",
+    "content": "Remove passthrough logic from ResponseFormatter::format_success() method",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run `cargo build` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Delete is_passthrough_formatter() and format_passthrough_response() methods",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run `cargo build` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Delete ResponseFormatterFactory and ResponseFormatterBuilder structs and their implementations",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run `cargo build` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Replace build_formatter_factory() in ResponseSpecification with inline FormatterConfig creation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run `cargo build` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Update usage sites in handlers to create FormatterConfig inline and call ResponseFormatter::new()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Run `cargo build` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Remove factory-related exports from response/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run `cargo build` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Run `cargo +nightly fmt`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run `cargo nextest run`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
