@@ -1,202 +1,153 @@
 [
   {
-    "id": "setup1",
-    "content": "Stay on plan - STOP and ask user if deviation needed",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "setup2",
-    "content": "Track technical debt in TECH_DEBT.md (create if needed)",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Created TECH_DEBT.md file with initial structure"
-  },
-  {
-    "id": "setup3",
-    "content": "Document context overflow details in TECH_DEBT.md",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added context overflow documentation to TECH_DEBT.md"
-  },
-  {
-    "id": "impl1",
-    "content": "Create PortParameter enum with Required/NotUsed variants in tool_definition.rs",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Added PortParameter enum and updated port_parameter() method"
-  },
-  {
-    "id": "build1",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Found trait implementation errors in BrpToolDef and LocalToolDef - need to implement port_parameter()"
-  },
-  {
-    "id": "impl2",
-    "content": "Replace needs_port_parameter() method with port_parameter() in ToolDefinition trait",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Already completed in impl1 task"
-  },
-  {
-    "id": "build2",
-    "content": "Run cargo build and fix errors following WarningRules",
+    "id": "1",
+    "content": "Add ParamType import to handler_context.rs",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "impl3",
-    "content": "Update BrpToolDef to implement port_parameter() returning PortParameter::Required",
-    "status": "completed",
+    "id": "2",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Updated BrpToolDef to implement port_parameter() method"
+    "notes": ""
   },
   {
-    "id": "build3",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "completed",
+    "id": "3",
+    "content": "Add other necessary imports to handler_context.rs (json, PARAM_ENTITY, PARAM_PORT, etc.)",
+    "status": "pending",
     "priority": "medium",
-    "notes": "BrpToolDef fixed, LocalToolDef still needs implementation"
+    "notes": ""
   },
   {
-    "id": "impl4",
-    "content": "Add port_parameter field to LocalToolDef struct",
-    "status": "completed",
+    "id": "4",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Added port_parameter field and updated port_parameter() method"
+    "notes": ""
   },
   {
-    "id": "build4",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "completed",
+    "id": "5",
+    "content": "Move extract_params_from_definition function from handler.rs to HandlerContext impl in handler_context.rs",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Found 16 LocalToolDef instances missing port_parameter field"
+    "notes": ""
   },
   {
-    "id": "clippy1",
+    "id": "6",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Remove special entity ID handling - replace ctx.get_entity_id()? with self.extract_required_u64(param.name(), param.description())?",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Update handler.rs - remove old extract_params_from_definition function",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Update handler.rs - remove ParamType import",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Update handler.rs call site from extract_params_from_definition(&handler_context)? to handler_context.extract_params_from_definition()?",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "clippy_fix1",
-    "content": "Fix all clippy issues following WarningRules",
+    "id": "16",
+    "content": "Fix all clippy issues following warning rules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "impl5",
-    "content": "Update LocalToolDef to implement port_parameter() returning field value",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Already completed in impl4 task"
-  },
-  {
-    "id": "build5",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Skipped - same errors as build4"
-  },
-  {
-    "id": "impl6",
-    "content": "Update to_tool() implementation to use port_parameter() == PortParameter::Required",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Already completed in impl1 task"
-  },
-  {
-    "id": "build6",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "completed",
-    "priority": "medium",
-    "notes": "Skipped - same errors as build4"
-  },
-  {
-    "id": "impl7",
-    "content": "Update all LocalToolDef instances in definitions.rs to specify port_parameter explicitly",
-    "status": "in_progress",
-    "priority": "medium",
-    "notes": "FILE CORRUPTION: sed command corrupted definitions.rs file structure. Starting revert from git and manual fix. Need to add port_parameter field to 16 LocalToolDef instances."
-  },
-  {
-    "id": "build7",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "impl8",
-    "content": "Update BrpToolDef create_handler to conditionally extract port based on port_parameter",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "build8",
-    "content": "Run cargo build and fix errors following WarningRules",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy2",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "clippy_fix2",
-    "content": "Fix all clippy issues following WarningRules",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "val1",
+    "id": "17",
     "content": "Run cargo +nightly fmt",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "val2",
+    "id": "18",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "val3",
+    "id": "19",
     "content": "STOP if test failures - review with user",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "review1",
+    "id": "20",
     "content": "Subagent: STOP and return control",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "review2",
-    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "id": "21",
+    "content": "Main: Task new subagent for code review (read-only)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
-    "id": "review3",
+    "id": "22",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "medium",
