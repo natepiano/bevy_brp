@@ -5,17 +5,29 @@
 
 use serde_json::Value;
 
-use super::FormatterContext;
 use crate::response::{FieldPlacement, ResponseField};
+use crate::service::HandlerContext;
+
+/// Trait for contexts that can provide request parameters
+pub trait RequestParameterProvider {
+    fn get_request_parameter(&self, field: &str) -> Option<&Value>;
+}
+
+/// Implementation for `HandlerContext`
+impl<T> RequestParameterProvider for HandlerContext<T> {
+    fn get_request_parameter(&self, field: &str) -> Option<&Value> {
+        self.request.arguments.as_ref()?.get(field)
+    }
+}
 
 /// Function type for extracting field values from response data and context.
 ///
 /// Takes:
 /// - `&Value` - The response data (usually from BRP)
-/// - `&FormatterContext` - Context including request parameters
+/// - `&dyn RequestParameterProvider` - Context that can provide request parameters
 ///
 /// Returns: `Value` - The extracted field value
-pub type FieldExtractor = Box<dyn Fn(&Value, &FormatterContext) -> Value + Send + Sync>;
+pub type FieldExtractor = Box<dyn Fn(&Value, &dyn RequestParameterProvider) -> Value + Send + Sync>;
 
 /// Create a field accessor for already-extracted request parameters.
 ///
@@ -33,20 +45,14 @@ pub fn create_request_field_accessor(field: &'static str) -> FieldExtractor {
             "entity" => {
                 // Extract entity ID from request parameters
                 context
-                    .params
-                    .as_ref()
-                    .and_then(|params| {
-                        // Look for entity field in params
-                        params.get("entity").cloned()
-                    })
+                    .get_request_parameter("entity")
+                    .cloned()
                     .unwrap_or(Value::Null)
             }
 
             // For all other fields, perform a generic lookup in the params
             _ => context
-                .params
-                .as_ref()
-                .and_then(|params| params.get(field))
+                .get_request_parameter(field)
                 .cloned()
                 .unwrap_or(Value::Null),
         }

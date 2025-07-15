@@ -68,34 +68,26 @@ fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[
     }
 }
 
-/// Context for processing responses
-struct ResponseContext<'a> {
-    formatter_factory: &'a ResponseFormatterFactory,
-    formatter_context: FormatterContext,
-    method:            &'a str,
-}
-
 /// Process a successful BRP response
 fn process_success_response(
     data: Option<Value>,
     enhanced_result: &EnhancedBrpResult,
-    context: ResponseContext<'_>,
+    formatter_factory: ResponseFormatterFactory,
     handler_context: &HandlerContext<BrpContext>,
 ) -> CallToolResult {
     let mut response_data = data.unwrap_or(Value::Null);
 
-    // Debug info is now logged via tracing during execution
+    let method = handler_context.brp_method();
 
     // Only add format corrections for methods that support format discovery
-    if FORMAT_DISCOVERY_METHODS.contains(&context.method) {
+    if FORMAT_DISCOVERY_METHODS.contains(&method) {
         // Add format corrections only (not debug info, as it will be handled separately)
         add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
     }
 
     // Create new FormatterContext with format_corrected status only for supported methods
     let new_formatter_context = FormatterContext {
-        params:           context.formatter_context.params.clone(),
-        format_corrected: if FORMAT_DISCOVERY_METHODS.contains(&context.method) {
+        format_corrected: if FORMAT_DISCOVERY_METHODS.contains(&method) {
             Some(enhanced_result.format_corrected.clone())
         } else {
             None
@@ -103,7 +95,7 @@ fn process_success_response(
     };
 
     // Create new formatter with updated context
-    let updated_formatter = context.formatter_factory.create(new_formatter_context);
+    let updated_formatter = formatter_factory.create(new_formatter_context);
 
     // Use format_success to include call_info
     updated_formatter.format_success(&response_data, handler_context)
@@ -114,7 +106,6 @@ fn process_error_response(
     mut error_info: BrpError,
     enhanced_result: &EnhancedBrpResult,
     handler_context: &HandlerContext<BrpContext>,
-    method: &str,
 ) -> CallToolResult {
     let original_error_message = error_info.message.clone();
 
@@ -145,7 +136,7 @@ fn process_error_response(
     }
 
     // Only add format corrections for methods that support format discovery
-    if FORMAT_DISCOVERY_METHODS.contains(&method)
+    if FORMAT_DISCOVERY_METHODS.contains(&handler_context.brp_method())
         && (!enhanced_result.format_corrections.is_empty() || has_enhanced)
     {
         let mut data_obj = error_info.data.unwrap_or_else(|| json!({}));
@@ -189,7 +180,7 @@ fn process_error_response(
 /// Unified handler for all BRP methods (both static and dynamic)
 pub async fn handle_brp_method_tool_call(
     handler_context: HandlerContext<BrpContext>,
-    formatter_factory: &ResponseFormatterFactory,
+    formatter_factory: ResponseFormatterFactory,
 ) -> Result<CallToolResult, McpError> {
     // Log raw MCP request at the earliest possible point
     debug!("MCP ENTRY - Tool: {}", handler_context.request.name);
@@ -214,32 +205,18 @@ pub async fn handle_brp_method_tool_call(
     .await
     .map_err(|err| error::report_to_mcp_error(&err))?;
 
-    // Create formatter and metadata
-    let formatter_context = FormatterContext {
-        params,
-        format_corrected: None, // Initial context doesn't have format correction status yet
-    };
-
     // Process response using ResponseFormatter, including format corrections if present
     match &enhanced_result.result {
-        BrpResult::Success(data) => {
-            let context = ResponseContext {
-                formatter_factory,
-                formatter_context,
-                method: method_name,
-            };
-            Ok(process_success_response(
-                data.clone(),
-                &enhanced_result,
-                context,
-                &handler_context,
-            ))
-        }
+        BrpResult::Success(data) => Ok(process_success_response(
+            data.clone(),
+            &enhanced_result,
+            formatter_factory,
+            &handler_context,
+        )),
         BrpResult::Error(error_info) => Ok(process_error_response(
             error_info.clone(),
             &enhanced_result,
             &handler_context,
-            method_name,
         )),
     }
 }

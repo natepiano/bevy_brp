@@ -43,8 +43,6 @@ use crate::service::{HandlerContext, HasCallInfo};
 /// Context passed to formatter factory
 #[derive(Clone)]
 pub struct FormatterContext {
-    /// Parameters with defaults applied (e.g., port always present)
-    pub params:           Option<Value>,
     pub format_corrected: Option<FormatCorrectionStatus>,
 }
 
@@ -323,12 +321,16 @@ impl ResponseFormatter {
 
         let call_info = handler_context.call_info();
         let mut builder = ResponseBuilder::success(call_info);
-        let template_values = self.initialize_template_values();
+        let template_values = Self::initialize_template_values(handler_context);
         let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
 
         self.add_format_corrections(&mut builder, data)?;
-        let template_values =
-            self.add_configured_fields(&mut builder, &clean_data, template_values)?;
+        let template_values = self.add_configured_fields(
+            &mut builder,
+            &clean_data,
+            template_values,
+            handler_context,
+        )?;
         self.apply_template_if_provided(&mut builder, &clean_data, &template_values);
         self.override_message_for_format_correction(&mut builder);
         builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
@@ -343,9 +345,11 @@ impl ResponseFormatter {
     }
 
     /// Initialize template values with original parameters
-    fn initialize_template_values(&self) -> serde_json::Map<String, Value> {
+    fn initialize_template_values<T>(
+        handler_context: &HandlerContext<T>,
+    ) -> serde_json::Map<String, Value> {
         let mut template_values = serde_json::Map::new();
-        if let Some(Value::Object(params)) = &self.context.params {
+        if let Some(params) = &handler_context.request.arguments {
             template_values.extend(params.clone());
         }
         template_values
@@ -401,14 +405,15 @@ impl ResponseFormatter {
     }
 
     /// Add configured fields and collect their values for template substitution
-    fn add_configured_fields(
+    fn add_configured_fields<T>(
         &self,
         builder: &mut ResponseBuilder,
         clean_data: &Value,
         mut template_values: serde_json::Map<String, Value>,
+        handler_context: &HandlerContext<T>,
     ) -> Result<serde_json::Map<String, Value>> {
         for (field_name, extractor, placement) in &self.config.success_fields {
-            let value = extractor(clean_data, &self.context);
+            let value = extractor(clean_data, handler_context);
 
             if field_name == JSON_FIELD_METADATA && matches!(placement, FieldPlacement::Metadata) {
                 if let Value::Object(data_map) = &value {

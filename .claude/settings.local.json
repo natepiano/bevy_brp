@@ -62,7 +62,8 @@
       "Bash(cat:*)",
       "mcp__brp__brp_get_trace_log_path",
       "mcp__brp__brp_set_tracing_level",
-      "Bash(ps:*)"
+      "Bash(ps:*)",
+      "WebFetch(domain:status.anthropic.com)"
     ],
     "deny": []
   }

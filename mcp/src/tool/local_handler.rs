@@ -55,11 +55,6 @@ fn create_formatter_from_def(
     let formatter_factory = tool_def.formatter().build_formatter_factory();
 
     let formatter_context = FormatterContext {
-        params:           handler_context
-            .request
-            .arguments
-            .clone()
-            .map(serde_json::Value::Object),
         format_corrected: None,
     };
 

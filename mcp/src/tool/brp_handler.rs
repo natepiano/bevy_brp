@@ -32,5 +32,5 @@ pub async fn brp_method_tool_call(
     // Build the formatter factory from the response specification
     let formatter_factory = tool_def.formatter().build_formatter_factory();
 
-    handle_brp_method_tool_call(handler_context.clone(), &formatter_factory).await
+    handle_brp_method_tool_call(handler_context.clone(), formatter_factory).await
 }
