@@ -11,7 +11,7 @@ path = "src/bin/test_duplicate_app.rs"
 
 [[example]]
 name = "extras_plugin_duplicate"
-path = "examples/extras_plugin.rs"
+path = "examples/extras_plugin_duplicate.rs"
 
 [dependencies]
 bevy = { version = "0.16.1", default-features = false, features = [
