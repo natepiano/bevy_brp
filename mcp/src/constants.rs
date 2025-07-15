@@ -38,7 +38,6 @@ pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
 
 /// Parameter name constants for BRP tool inputs
 pub const PARAM_APP_NAME: &str = "app_name";
-pub const PARAM_ENTITY: &str = "entity";
 pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_EXAMPLE_NAME: &str = "example_name";
 pub const PARAM_METHOD: &str = "method";

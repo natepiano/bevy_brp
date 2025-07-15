@@ -10,12 +10,11 @@ use super::format_discovery::{
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::constants::{
     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
-    JSON_FIELD_ORIGINAL_ERROR, PARAM_ENTITY, PARAM_PORT,
+    JSON_FIELD_ORIGINAL_ERROR,
 };
-use crate::error::{self, Error};
+use crate::error;
 use crate::response::{self, FormatterContext, ResponseFormatterFactory};
 use crate::service::{BrpContext, HandlerContext};
-use crate::tool::ParamType;
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -201,7 +200,7 @@ pub async fn handle_brp_method_tool_call(
     );
 
     // Extract parameters for the call based on the tool definition
-    let params = extract_params_from_definition(&handler_context)?;
+    let params = handler_context.extract_params_from_definition()?;
 
     // Get the method directly from the typed context - no Options!
     let method_name = handler_context.brp_method();
@@ -243,175 +242,4 @@ pub async fn handle_brp_method_tool_call(
             method_name,
         )),
     }
-}
-
-/// Extract parameters from tool definition instead of using category
-#[allow(clippy::too_many_lines)]
-fn extract_params_from_definition(
-    ctx: &HandlerContext<BrpContext>,
-) -> Result<Option<serde_json::Value>, McpError> {
-    // Get the tool definition
-    let tool_def = ctx.tool_def()?;
-
-    // Build params from parameter definitions
-    let mut params_obj = serde_json::Map::new();
-    let mut has_params = false;
-
-    for param in tool_def.parameters() {
-        // Extract parameter value based on type
-        let value = match param.param_type() {
-            ParamType::Number => {
-                if param.required() {
-                    // Special handling for entity parameter
-                    if param.name() == PARAM_ENTITY {
-                        Some(json!(ctx.get_entity_id()?))
-                    } else {
-                        Some(json!(
-                            ctx.extract_required_u64(param.name(), param.description())?
-                        ))
-                    }
-                } else {
-                    ctx.extract_optional_named_field(param.name())
-                        .and_then(serde_json::Value::as_u64)
-                        .map(|v| json!(v))
-                }
-            }
-            ParamType::String => {
-                if param.required() {
-                    Some(json!(ctx.extract_required_string(
-                        param.name(),
-                        param.description()
-                    )?))
-                } else {
-                    ctx.extract_optional_named_field(param.name())
-                        .and_then(|v| v.as_str())
-                        .map(|s| json!(s))
-                }
-            }
-            ParamType::Boolean => {
-                if param.required() {
-                    // For required boolean, we need to check if it exists and is a bool
-                    let value = ctx
-                        .extract_optional_named_field(param.name())
-                        .and_then(serde_json::Value::as_bool)
-                        .ok_or_else(|| {
-                            crate::error::report_to_mcp_error(
-                                &error_stack::Report::new(crate::error::Error::InvalidArgument(
-                                    format!("Missing {} parameter", param.description()),
-                                ))
-                                .attach_printable(format!("Field name: {}", param.name()))
-                                .attach_printable("Expected: boolean value"),
-                            )
-                        })?;
-                    Some(json!(value))
-                } else {
-                    ctx.extract_optional_named_field(param.name())
-                        .and_then(serde_json::Value::as_bool)
-                        .map(|v| json!(v))
-                }
-            }
-            ParamType::StringArray => {
-                if param.required() {
-                    let array =
-                        ctx.extract_optional_string_array(param.name())
-                            .ok_or_else(|| {
-                                crate::error::report_to_mcp_error(
-                                    &error_stack::Report::new(
-                                        crate::error::Error::InvalidArgument(format!(
-                                            "Missing {} parameter",
-                                            param.description()
-                                        )),
-                                    )
-                                    .attach_printable(format!("Field name: {}", param.name()))
-                                    .attach_printable("Expected: array of strings"),
-                                )
-                            })?;
-                    Some(json!(array))
-                } else {
-                    ctx.extract_optional_string_array(param.name())
-                        .map(|v| json!(v))
-                }
-            }
-            ParamType::NumberArray => {
-                if param.required() {
-                    let array = ctx
-                        .extract_optional_named_field(param.name())
-                        .and_then(|v| v.as_array())
-                        .and_then(|arr| {
-                            arr.iter()
-                                .map(serde_json::Value::as_u64)
-                                .collect::<Option<Vec<_>>>()
-                        })
-                        .ok_or_else(|| {
-                            crate::error::report_to_mcp_error(
-                                &error_stack::Report::new(crate::error::Error::InvalidArgument(
-                                    format!("Missing {} parameter", param.description()),
-                                ))
-                                .attach_printable(format!("Field name: {}", param.name()))
-                                .attach_printable("Expected: array of numbers"),
-                            )
-                        })?;
-                    Some(json!(array))
-                } else {
-                    ctx.extract_optional_named_field(param.name())
-                        .and_then(|v| v.as_array())
-                        .and_then(|arr| {
-                            arr.iter()
-                                .map(serde_json::Value::as_u64)
-                                .collect::<Option<Vec<_>>>()
-                        })
-                        .map(|v| json!(v))
-                }
-            }
-            ParamType::Any => {
-                if param.required() {
-                    let value =
-                        ctx.extract_optional_named_field(param.name())
-                            .ok_or_else(|| {
-                                crate::error::report_to_mcp_error(
-                                    &error_stack::Report::new(Error::InvalidArgument(format!(
-                                        "Missing {} parameter",
-                                        param.description()
-                                    )))
-                                    .attach_printable(format!("Field name: {}", param.name()))
-                                    .attach_printable("Expected: JSON value"),
-                                )
-                            })?;
-                    Some(value.clone())
-                } else {
-                    ctx.extract_optional_named_field(param.name()).cloned()
-                }
-            }
-        };
-
-        // Add to params if value exists
-        if let Some(val) = value {
-            params_obj.insert(param.name().to_string(), val);
-            has_params = true;
-        }
-    }
-
-    // Special case: For passthrough tools (tools that had Passthrough category),
-    // we need to pass all arguments except port
-    // We can detect these by checking if they have no parameters defined
-    if tool_def.parameters().is_empty() && ctx.request.arguments.is_some() {
-        // This is a passthrough tool - pass all arguments except port
-        if let Some(args) = &ctx.request.arguments {
-            let mut passthrough_args = args.clone();
-            passthrough_args.remove(PARAM_PORT);
-
-            if !passthrough_args.is_empty() {
-                return Ok(Some(Value::Object(passthrough_args)));
-            }
-        }
-    }
-
-    // Return params
-    let params = if has_params {
-        Some(Value::Object(params_obj))
-    } else {
-        None
-    };
-
-    Ok(params)
 }
