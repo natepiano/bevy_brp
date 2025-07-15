@@ -1,0 +1,233 @@
+[
+  {
+    "id": "meta_1",
+    "content": "Stay on plan - STOP and ask user if deviation needed",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "meta_2",
+    "content": "Track technical debt in TECH_DEBT.md (create if needed)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "meta_3",
+    "content": "Document context overflow details in TECH_DEBT.md",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_1",
+    "content": "Create LocalContextWithPort struct in service/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_2",
+    "content": "Run cargo build and fix errors for LocalContextWithPort",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_3",
+    "content": "Add CallInfo::LocalWithPort variant in response/builder.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_4",
+    "content": "Run cargo build and fix errors for CallInfo::LocalWithPort",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_5",
+    "content": "Add port() and call_info() methods to HandlerContext<LocalContextWithPort>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_6",
+    "content": "Run cargo build and fix errors for HandlerContext<LocalContextWithPort> methods",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_fix_1",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_7",
+    "content": "Update LocalToolDef::create_handler() to branch on PortParameter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_8",
+    "content": "Run cargo build and fix errors for LocalToolDef branching logic",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_9",
+    "content": "Update brp_status to use HandlerContext<LocalContextWithPort>::port()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_10",
+    "content": "Run cargo build and fix errors for brp_status update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_11",
+    "content": "Update brp_shutdown to use HandlerContext<LocalContextWithPort>::port()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_12",
+    "content": "Run cargo build and fix errors for brp_shutdown update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_2",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_fix_2",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_13",
+    "content": "Update brp_launch_bevy_app to use HandlerContext<LocalContextWithPort>::port()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_14",
+    "content": "Run cargo build and fix errors for brp_launch_bevy_app update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_15",
+    "content": "Update brp_launch_bevy_example to use HandlerContext<LocalContextWithPort>::port()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_16",
+    "content": "Run cargo build and fix errors for brp_launch_bevy_example update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_17",
+    "content": "Update watch tools (bevy_get_watch, bevy_list_watch) to use type-safe port access",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "impl_18",
+    "content": "Run cargo build and fix errors for watch tools update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_3",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_fix_3",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "validation_1",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "validation_2",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "validation_3",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_1",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_2",
+    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_3",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
