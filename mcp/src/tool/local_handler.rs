@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
-use super::handlers;
 use crate::response::{FormatterContext, ResponseBuilder, ResponseFormatterFactory};
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::ToolHandler;
@@ -52,8 +51,8 @@ fn create_formatter_from_def(
 ) -> Result<(ResponseFormatterFactory, FormatterContext), McpError> {
     let tool_def = handler_context.tool_def()?;
 
-    // Use the shared function to build the formatter factory
-    let formatter_factory = handlers::build_formatter_factory_from_spec(tool_def.formatter());
+    // Build the formatter factory from the response specification
+    let formatter_factory = tool_def.formatter().build_formatter_factory();
 
     let formatter_context = FormatterContext {
         params:           handler_context

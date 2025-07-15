@@ -160,3 +160,25 @@ pub struct ResponseSpecification {
     /// Fields to include in the response
     pub response_fields:  Vec<ResponseField>,
 }
+
+impl ResponseSpecification {
+    /// Build a formatter factory from this response specification
+    pub fn build_formatter_factory(&self) -> super::ResponseFormatterFactory {
+        // Create the formatter factory for structured responses
+        let mut formatter_builder = super::ResponseFormatterFactory::standard();
+
+        // Set the template if provided
+        if !self.message_template.is_empty() {
+            formatter_builder = formatter_builder.with_template(self.message_template);
+        }
+
+        // Add response fields
+        for field in &self.response_fields {
+            let (extractor, placement) = super::convert_response_field(field);
+            formatter_builder =
+                formatter_builder.with_response_field_placed(field.name(), extractor, placement);
+        }
+
+        formatter_builder.build()
+    }
+}
