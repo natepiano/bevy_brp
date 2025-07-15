@@ -1,139 +1,272 @@
 [
   {
     "id": "1",
-    "content": "Remove passthrough logic from ResponseFormatter::format_success() method",
+    "content": "Stay on plan - STOP and ask user if deviation needed",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "2",
-    "content": "Run `cargo build` and fix errors following WarningRules",
+    "content": "Track technical debt in TECH_DEBT.md (create if needed)",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "3",
-    "content": "Delete is_passthrough_formatter() and format_passthrough_response() methods",
+    "content": "Document context overflow details in TECH_DEBT.md",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "4",
-    "content": "Run `cargo build` and fix errors following WarningRules",
+    "content": "Move format correction logic from ResponseFormatter to process_success_response() in BRP handler",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "5",
-    "content": "Delete ResponseFormatterFactory and ResponseFormatterBuilder structs and their implementations",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "6",
-    "content": "Run `cargo build` and fix errors following WarningRules",
+    "content": "Add format correction fields directly to response data in BRP handler",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "7",
-    "content": "Replace build_formatter_factory() in ResponseSpecification with inline FormatterConfig creation",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "8",
-    "content": "Run `cargo build` and fix errors following WarningRules",
+    "content": "Remove FormatterContext creation from BRP handler",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "9",
-    "content": "Update usage sites in handlers to create FormatterConfig inline and call ResponseFormatter::new()",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "10",
-    "content": "Run `cargo build` and fix errors following WarningRules",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "11",
-    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
-    "status": "pending",
-    "priority": "medium",
-    "notes": ""
-  },
-  {
-    "id": "12",
     "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
+    "id": "12",
+    "content": "Remove FormatterContext from ResponseFormatter constructor",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
     "id": "13",
-    "content": "Remove factory-related exports from response/mod.rs",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "14",
-    "content": "Run `cargo build` and fix errors following WarningRules",
+    "content": "Remove add_format_corrections() method from ResponseFormatter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "15",
-    "content": "Run `cargo +nightly fmt`",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "16",
-    "content": "Run `cargo nextest run`",
+    "content": "Remove override_message_for_format_correction() method from ResponseFormatter",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "17",
-    "content": "STOP if test failures - review with user",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "18",
-    "content": "Subagent: STOP and return control",
+    "content": "Update ResponseFormatter to work without context",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "19",
-    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "content": "Run cargo build and fix errors following WarningRules",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "20",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Remove FormatterContext creation from local handler",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Update local handler ResponseFormatter usage to not pass context",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Remove FormatterContext struct definition entirely",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Remove format correction imports from ResponseFormatter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "Update all affected imports and exports in mod.rs files",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "33",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "34",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "35",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "36",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "37",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "38",
+    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "39",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "medium",
