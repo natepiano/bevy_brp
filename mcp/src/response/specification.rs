@@ -171,7 +171,7 @@ impl ResponseSpecification {
 
         // Add response fields
         for field in &self.response_fields {
-            let (extractor, placement) = super::convert_response_field(field);
+            let (extractor, placement) = super::create_response_field_extractor(field);
             success_fields.push((field.name().to_string(), extractor, placement));
         }
 

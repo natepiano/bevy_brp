@@ -39,7 +39,7 @@ pub type FieldExtractor = Box<dyn Fn(&Value, &dyn RequestParameterProvider) -> V
 ///
 /// This function creates extractors that reference fields from the `ExtractedParams`,
 /// which were already validated during the parameter extraction phase.
-pub fn create_request_field_accessor(field: &'static str) -> FieldExtractor {
+pub fn create_rquest_field_extractor(field: &'static str) -> FieldExtractor {
     Box::new(move |_data, context| {
         match field {
             "entity" => {
@@ -64,13 +64,13 @@ pub fn create_request_field_accessor(field: &'static str) -> FieldExtractor {
 /// This creates the actual closure that will extract data based on the
 /// extraction strategy defined by the `ResponseField` variant, and returns
 /// the placement information for where the field should be put in the response.
-pub fn convert_response_field(field: &ResponseField) -> (FieldExtractor, FieldPlacement) {
+pub fn create_response_field_extractor(field: &ResponseField) -> (FieldExtractor, FieldPlacement) {
     match field {
         ResponseField::FromRequest {
             parameter_field_name: field,
             placement,
             ..
-        } => (create_request_field_accessor(field), placement.clone()),
+        } => (create_rquest_field_extractor(field), placement.clone()),
         ResponseField::FromResponse {
             response_extractor: extractor,
             placement,

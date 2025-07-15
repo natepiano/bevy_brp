@@ -18,18 +18,18 @@ use crate::error::{Error, Result};
 pub struct LargeResponseConfig {
     /// Prefix for generated filenames (e.g., "`brp_response`_", "`log_list`_")
     pub file_prefix: String,
-    /// Optional custom token limit (defaults to `DEFAULT_MAX_RESPONSE_TOKENS`)
-    pub max_tokens:  Option<usize>,
-    /// Optional custom temp directory (defaults to `std::env::temp_dir()`)
-    pub temp_dir:    Option<PathBuf>,
+    /// Token limit for responses
+    pub max_tokens:  usize,
+    /// Directory for temporary files
+    pub temp_dir:    PathBuf,
 }
 
 impl Default for LargeResponseConfig {
     fn default() -> Self {
         Self {
             file_prefix: "mcp_response_".to_string(),
-            max_tokens:  None,
-            temp_dir:    None,
+            max_tokens:  DEFAULT_MAX_RESPONSE_TOKENS,
+            temp_dir:    std::env::temp_dir(),
         }
     }
 }
@@ -44,9 +44,8 @@ pub fn handle_large_response(
         .change_context(Error::General("Failed to serialize response".to_string()))?;
 
     let estimated_tokens = response_json.len() / CHARS_PER_TOKEN;
-    let max_tokens = config.max_tokens.unwrap_or(DEFAULT_MAX_RESPONSE_TOKENS);
 
-    if estimated_tokens > max_tokens {
+    if estimated_tokens > config.max_tokens {
         // Generate timestamp for unique filename
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -59,8 +58,7 @@ pub fn handle_large_response(
             config.file_prefix, sanitized_identifier, timestamp
         );
 
-        let temp_dir = config.temp_dir.unwrap_or_else(std::env::temp_dir);
-        let filepath = temp_dir.join(&filename);
+        let filepath = config.temp_dir.join(&filename);
 
         // Save response to file
         fs::write(&filepath, &response_json).change_context(Error::FileOperation(format!(
