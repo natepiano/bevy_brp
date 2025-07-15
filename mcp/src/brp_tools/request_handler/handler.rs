@@ -9,7 +9,7 @@ use super::format_discovery::{
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::constants::{
-    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_METADATA,
+    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
     JSON_FIELD_ORIGINAL_ERROR,
 };
 use crate::error;
@@ -41,32 +41,6 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
-/// Add only format corrections to response data (not debug info)
-fn add_format_corrections_only(response_data: &mut Value, format_corrections: &[FormatCorrection]) {
-    let corrections_value = if format_corrections.is_empty() {
-        json!([])
-    } else {
-        json!(
-            format_corrections
-                .iter()
-                .map(format_correction_to_json)
-                .collect::<Vec<_>>()
-        )
-    };
-
-    // If response_data is an object, add fields
-    if let Value::Object(map) = response_data {
-        map.insert(JSON_FIELD_FORMAT_CORRECTIONS.to_string(), corrections_value);
-        // Note: format_corrected is now added directly to response data
-    } else {
-        // If not an object, wrap it
-        let wrapped = json!({
-            JSON_FIELD_METADATA: response_data.clone(),
-            JSON_FIELD_FORMAT_CORRECTIONS: corrections_value,
-        });
-        *response_data = wrapped;
-    }
-}
 
 /// Process a successful BRP response
 fn process_success_response(
@@ -75,27 +49,8 @@ fn process_success_response(
     formatter_config: FormatterConfig,
     handler_context: &HandlerContext<BrpContext>,
 ) -> CallToolResult {
-    let mut response_data = data.unwrap_or(Value::Null);
+    let response_data = data.unwrap_or(Value::Null);
 
-    let method = handler_context.brp_method();
-
-    // Only add format corrections for methods that support format discovery
-    if FORMAT_DISCOVERY_METHODS.contains(&method) {
-        // Add format corrections only (not debug info, as it will be handled separately)
-        add_format_corrections_only(&mut response_data, &enhanced_result.format_corrections);
-
-        // Add format_corrected status directly to response data
-        if let Value::Object(ref mut map) = response_data {
-            if let Ok(format_corrected_value) =
-                serde_json::to_value(&enhanced_result.format_corrected)
-            {
-                map.insert(
-                    JSON_FIELD_FORMAT_CORRECTED.to_string(),
-                    format_corrected_value,
-                );
-            }
-        }
-    }
 
     // Create formatter with appropriate message template
     let final_formatter_config =
@@ -112,8 +67,13 @@ fn process_success_response(
     // Create new formatter
     let updated_formatter = ResponseFormatter::new(final_formatter_config);
 
-    // Use format_success to include call_info
-    updated_formatter.format_success(&response_data, handler_context)
+    // Use format_success_with_corrections to include call_info and format corrections
+    updated_formatter.format_success_with_corrections_brp(
+        &response_data,
+        handler_context,
+        Some(&enhanced_result.format_corrections),
+        Some(&enhanced_result.format_corrected),
+    )
 }
 
 /// Process an error BRP response - routes ALL errors through enhanced `format_error_default`
@@ -176,6 +136,19 @@ fn process_error_response(
                     JSON_FIELD_FORMAT_CORRECTIONS.to_string(),
                     json!(corrections),
                 );
+                
+                // Add rich metadata from first correction to error metadata for better UX
+                if let Some(first_correction) = enhanced_result.format_corrections.first() {
+                    if let Some(ops) = &first_correction.supported_operations {
+                        map.insert("supported_operations".to_string(), json!(ops));
+                    }
+                    if let Some(paths) = &first_correction.mutation_paths {
+                        map.insert("mutation_paths".to_string(), json!(paths));
+                    }
+                    if let Some(cat) = &first_correction.type_category {
+                        map.insert("type_category".to_string(), json!(cat));
+                    }
+                }
             }
 
             // Add format_corrected field to indicate whether format correction occurred
