@@ -3,8 +3,8 @@ use std::str::FromStr;
 use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
-use crate::service::{HandlerContext, LocalContext};
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
+use crate::service::{HandlerContext, LocalContext};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
 
 /// Result from setting the tracing level

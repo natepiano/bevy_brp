@@ -1,6 +1,4 @@
 use std::fs::File;
-// use std::os::unix::io::AsRawFd;
-use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Stdio;
 
@@ -25,29 +23,6 @@ pub fn launch_detached_process(
             .attach_printable(format!("Process: {process_name}, Operation: {operation}"));
         report_to_mcp_error(&error_report)
     })?;
-
-    // Set FD_CLOEXEC on log file descriptors to prevent interference between concurrent spawns
-    // let log_fd = log_file.as_raw_fd();
-    // let stderr_fd = log_file_for_stderr.as_raw_fd();
-
-    // tracing::debug!(
-    //     "Setting up file descriptors for {process_name}: stdout_fd={log_fd},
-    // stderr_fd={stderr_fd}" );
-
-    // unsafe {
-    //     if libc::fcntl(log_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
-    //         tracing::warn!(
-    //             "Failed to set FD_CLOEXEC on stdout log file descriptor for {process_name}"
-    //         );
-    //     }
-    //     if libc::fcntl(stderr_fd, libc::F_SETFD, libc::FD_CLOEXEC) == -1 {
-    //         tracing::warn!(
-    //             "Failed to set FD_CLOEXEC on stderr log file descriptor for {process_name}"
-    //         );
-    //     }
-    // }
-
-    // tracing::debug!("FD_CLOEXEC flags set successfully for {process_name}");
 
     // Create a new command from the provided one
     let mut new_cmd = std::process::Command::new(cmd.get_program());
@@ -75,16 +50,6 @@ pub fn launch_detached_process(
         .stdout(Stdio::from(log_file))
         .stderr(Stdio::from(log_file_for_stderr));
 
-    // UNIX-specific: Create a new process group to detach from parent
-    #[cfg(unix)]
-    unsafe {
-        new_cmd.pre_exec(|| {
-            // Create new session for full process detachment
-            libc::setsid();
-            Ok(())
-        });
-    }
-
     // Spawn the process
     tracing::debug!("Preparing to spawn process: {process_name}");
     tracing::debug!("Command: {:?}", new_cmd);
@@ -97,8 +62,6 @@ pub fn launch_detached_process(
 
             tracing::debug!("Process spawned successfully: {process_name} (PID: {pid})");
 
-            // The process is now detached and will continue running
-            // independently even after this program exits
             Ok(pid)
         }
         Err(e) => {

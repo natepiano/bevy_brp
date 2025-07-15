@@ -2,7 +2,6 @@ mod brp_handler;
 mod brp_tool_def;
 mod constants;
 mod definitions;
-mod handlers;
 mod local_handler;
 mod local_tool_def;
 mod mcp_tool_schema;

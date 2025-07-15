@@ -67,8 +67,7 @@ impl BufferedWatchLogger {
     ) -> Result<(), String> {
         if matches!(
             crate::log_tools::get_current_tracing_level(),
-            crate::log_tools::TracingLevel::Debug
-                | crate::log_tools::TracingLevel::Trace
+            crate::log_tools::TracingLevel::Debug | crate::log_tools::TracingLevel::Trace
         ) {
             self.write_update(update_type, data).await
         } else {

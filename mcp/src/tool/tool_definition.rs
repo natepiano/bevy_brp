@@ -6,11 +6,11 @@ use rmcp::model::{CallToolRequestParam, Tool};
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use super::mcp_tool_schema::McpToolSchemaBuilder;
 use super::parameters::{ParamType, ParameterDefinition};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
-use super::mcp_tool_schema::McpToolSchemaBuilder;
 use crate::tool::ToolHandler;
 
 /// Specifies whether a tool requires a port parameter
