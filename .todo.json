@@ -1,0 +1,198 @@
+[
+  {
+    "id": "1",
+    "content": "Stage and commit current refactoring changes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Add extract_typed_param helper method to HandlerContext",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Add extract_optional_number_array helper method to HandlerContext",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Refactor ParamType::Number case to use extract_typed_param helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Refactor ParamType::String case to use extract_typed_param helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Refactor ParamType::Boolean case to use extract_typed_param helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Refactor ParamType::StringArray case to use extract_typed_param helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Refactor ParamType::NumberArray case to use extract_typed_param helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Refactor ParamType::Any case to use extract_typed_param helper",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
