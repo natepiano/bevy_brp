@@ -9,8 +9,7 @@ use super::format_discovery::{
 };
 use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
 use crate::constants::{
-    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
-    JSON_FIELD_ORIGINAL_ERROR,
+    JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_ORIGINAL_ERROR,
 };
 use crate::error;
 use crate::response::{self, FormatterConfig, ResponseFormatter};
@@ -41,7 +40,6 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
-
 /// Process a successful BRP response
 fn process_success_response(
     data: Option<Value>,
@@ -50,7 +48,6 @@ fn process_success_response(
     handler_context: &HandlerContext<BrpContext>,
 ) -> CallToolResult {
     let response_data = data.unwrap_or(Value::Null);
-
 
     // Create formatter with appropriate message template
     let final_formatter_config =
@@ -136,7 +133,7 @@ fn process_error_response(
                     JSON_FIELD_FORMAT_CORRECTIONS.to_string(),
                     json!(corrections),
                 );
-                
+
                 // Add rich metadata from first correction to error metadata for better UX
                 if let Some(first_correction) = enhanced_result.format_corrections.first() {
                     if let Some(ops) = &first_correction.supported_operations {
@@ -188,7 +185,7 @@ pub async fn handle_brp_method_tool_call(
     let enhanced_result = execute_brp_method_with_format_discovery(
         method_name,
         params.clone(),
-        handler_context.extract_port()?,
+        handler_context.port(),
     )
     .await
     .map_err(|err| error::report_to_mcp_error(&err))?;

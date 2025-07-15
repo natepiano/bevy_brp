@@ -23,6 +23,10 @@ impl HandlerContext<BrpContext> {
         &self.handler_data.method
     }
 
+    pub fn port(&self) -> u16 {
+        self.handler_data.port
+    }
+
     pub fn call_info(&self) -> CallInfo {
         CallInfo::brp(
             self.request.name.to_string(),
