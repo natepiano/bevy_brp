@@ -25,6 +25,7 @@ This file contains an array of test configurations with the following structure:
 - `test_file`: Test file name in the tests/ directory
 - `port`: Port number for the test (or "N/A")
 - `app_name`: App/example to launch (or "N/A")
+- `log_file_prefix`: Expected log file prefix for verification (or "N/A")
 - `launch_instruction`: How to launch the app
 - `shutdown_instruction`: How to shutdown the app
 - `test_objective`: What the test validates
@@ -56,14 +57,15 @@ All tests that launch apps must validate the shutdown method matches the expecte
 <SubAgentPrompt>
 
 You are executing BRP test: [TEST_NAME]
-Configuration: Port [PORT], App [APP_NAME]
+Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
 
 **Your Task:**
 1. [LAUNCH_INSTRUCTION]
    - **CRITICAL**: You MUST pass `port: [PORT]` parameter to the launch tool
    - **REQUIRED**: Log the exact port parameter you used in the Port Usage Report section
-2. **LOG VERIFICATION** (if port != "N/A"): Immediately after app launch, verify log file exists:
-   - Use `mcp__brp__brp_list_logs` to find the most recent log file containing "port[PORT]"
+2. **LOG VERIFICATION** (if log_file_prefix != "N/A"): Immediately after app launch, verify log file exists:
+   - Use `mcp__brp__brp_list_logs` (no parameters) to get all log files
+   - Search the results for a log file whose filename starts with "[LOG_FILE_PREFIX]"
    - Confirm log file exists and was created within the last 2 minutes
    - Report log verification status in Port Usage Report section
    - **CRITICAL**: If log verification fails, mark as FAILED test and stop immediately
@@ -89,6 +91,7 @@ Configuration: Port [PORT], App [APP_NAME]
 - Test File: [TEST_FILE]
 - Port: [PORT]
 - App: [APP_NAME]
+- Log File Prefix: [LOG_FILE_PREFIX]
 - Objective: [TEST_OBJECTIVE]
 - Expected Shutdown Method: [EXPECTED_SHUTDOWN_METHOD]
 
@@ -97,11 +100,12 @@ Configuration: Port [PORT], App [APP_NAME]
   1. Include the `port` parameter with value [PORT]
   2. Log the exact port parameter passed in your Port Usage Report
   3. Example: mcp__brp__brp_launch_bevy_example with parameters: app_name="extras_plugin", port=[PORT]
-- **LOG VERIFICATION**: Immediately after app launch (if port != "N/A"), you MUST:
-  1. Use `mcp__brp__brp_list_logs` to find log file containing "port[PORT]"
-  2. Verify log file exists and was created within last 2 minutes
-  3. Report verification status in Port Usage Report section
-  4. **STOP and mark as FAILED** if log verification fails
+- **LOG VERIFICATION**: Immediately after app launch (if log_file_prefix != "N/A"), you MUST:
+  1. Use `mcp__brp__brp_list_logs` (no parameters) to get all log files
+  2. Search the results for a log file whose filename starts with "[LOG_FILE_PREFIX]"
+  3. Verify log file exists and was created within last 2 minutes
+  4. Report verification status in Port Usage Report section
+  5. **STOP and mark as FAILED** if log verification fails
 - **BRP OPERATIONS**: All subsequent BRP operations MUST use port [PORT]
 - **VERIFICATION**: If any operation uses a different port than [PORT], mark as FAILED
 
@@ -134,7 +138,7 @@ Configuration: Port [PORT], App [APP_NAME]
 ## Port Usage Report
 - **Configured Port**: [PORT]
 - **Launch Command Port**: [actual port passed to launch tool or "Not passed" or "N/A" if no app launch]
-- **Log Verification**: [PASSED/FAILED/N/A - log file exists with correct port | explanation if failed | "N/A" if no app launch]
+- **Log Verification**: [PASSED/FAILED/N/A - log file exists with correct prefix | explanation if failed | "N/A" if no app launch]
 - **BRP Operations Port**: [port used for all BRP operations or "N/A" if no BRP operations]
 - **Port Match Verification**: [PASSED/FAILED - all ports match | explanation if mismatch | "N/A" if no app launch]
 
@@ -225,6 +229,7 @@ Configuration: Port [PORT], App [APP_NAME]
   - [TEST_FILE] = `test_file` field
   - [PORT] = `port` field
   - [APP_NAME] = `app_name` field
+  - [LOG_FILE_PREFIX] = `log_file_prefix` field
   - [LAUNCH_INSTRUCTION] = `launch_instruction` field
   - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
   - [TEST_OBJECTIVE] = `test_objective` field
@@ -314,6 +319,7 @@ After the Task completes, simply present the test results as returned by the sub
   - [TEST_FILE] = `test_file` field
   - [PORT] = `port` field
   - [APP_NAME] = `app_name` field
+  - [LOG_FILE_PREFIX] = `log_file_prefix` field
   - [LAUNCH_INSTRUCTION] = `launch_instruction` field
   - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
   - [TEST_OBJECTIVE] = `test_objective` field
