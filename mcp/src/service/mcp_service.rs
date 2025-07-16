@@ -11,7 +11,7 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
-use crate::tool::{self, ToolDefinition};
+use crate::tool::{self, UnifiedToolDef};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -24,7 +24,7 @@ pub struct McpService {
     /// for scanning and launching operations.
     roots:     Arc<Mutex<Vec<PathBuf>>>,
     /// Tool definitions `HashMap` for O(1) lookup by name
-    tool_defs: HashMap<String, Box<dyn ToolDefinition>>,
+    tool_defs: HashMap<String, UnifiedToolDef>,
     /// Pre-converted MCP tools for list operations
     tools:     Vec<Tool>,
 }
@@ -34,9 +34,9 @@ impl McpService {
         let all_defs = tool::get_all_tool_definitions();
         let tool_defs = all_defs
             .iter()
-            .map(|def| (def.name().to_string(), def.clone_box()))
+            .map(|def| (def.name().to_string(), def.clone()))
             .collect();
-        let mut tools: Vec<_> = all_defs.iter().map(|def| def.to_tool()).collect();
+        let mut tools: Vec<_> = all_defs.iter().map(UnifiedToolDef::to_tool).collect();
         tools.sort_by_key(|tool| tool.name.clone());
 
         Self {
@@ -47,8 +47,8 @@ impl McpService {
     }
 
     /// Get tool definition by name with O(1) lookup
-    pub fn get_tool_def(&self, name: &str) -> Option<&dyn ToolDefinition> {
-        self.tool_defs.get(name).map(std::convert::AsRef::as_ref)
+    pub fn get_tool_def(&self, name: &str) -> Option<&UnifiedToolDef> {
+        self.tool_defs.get(name)
     }
 
     /// List all MCP tools using pre-converted and sorted tools
@@ -148,7 +148,7 @@ impl Clone for McpService {
             tool_defs: self
                 .tool_defs
                 .iter()
-                .map(|(k, v)| (k.clone(), v.clone_box()))
+                .map(|(k, v)| (k.clone(), v.clone()))
                 .collect(),
             tools:     self.tools.clone(),
         }

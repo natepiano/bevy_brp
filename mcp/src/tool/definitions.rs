@@ -28,7 +28,6 @@ use super::constants::{
     TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
 use super::parameters::{BrpParameter, LocalParameter, LocalParameterName, UnifiedParameter};
-use super::tool_definition::ToolDefinition;
 use super::unified_tool_def::UnifiedToolDef;
 use crate::app_tools::brp_launch_bevy_example;
 use crate::app_tools::brp_list_bevy_apps::ListBevyApps;
@@ -62,10 +61,10 @@ use crate::tool::constants::{
 
 /// Get all tool definitions for registration with the MCP service
 #[allow(clippy::too_many_lines)]
-pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
+pub fn get_all_tool_definitions() -> Vec<UnifiedToolDef> {
     vec![
         // UnifiedToolDef/bevy_destroy
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_DESTROY,
             description:     DESC_BEVY_DESTROY,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_DESTROY),
@@ -81,9 +80,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:            FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_get
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_GET,
             description:     DESC_BEVY_GET,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET),
@@ -112,9 +111,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_get_resource
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_GET_RESOURCE,
             description:     DESC_BEVY_GET_RESOURCE,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET_RESOURCE),
@@ -125,9 +124,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Retrieved resource: {resource}",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_insert
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_INSERT,
             description:     DESC_BEVY_INSERT,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT),
@@ -156,9 +155,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_insert_resource
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_INSERT_RESOURCE,
             description:     DESC_BEVY_INSERT_RESOURCE,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT_RESOURCE),
@@ -179,9 +178,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:            FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_list
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_LIST,
             description:     DESC_BEVY_LIST,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_LIST),
@@ -200,9 +199,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_list_resources
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_LIST_RESOURCES,
             description:     DESC_BEVY_LIST_RESOURCES,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_LIST_RESOURCES),
@@ -218,9 +217,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_mutate_component
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_MUTATE_COMPONENT,
             description:     DESC_BEVY_MUTATE_COMPONENT,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_COMPONENT),
@@ -248,9 +247,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:            FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_mutate_resource
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_MUTATE_RESOURCE,
             description:     DESC_BEVY_MUTATE_RESOURCE,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_RESOURCE),
@@ -274,9 +273,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:            FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_query
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_QUERY,
             description:     DESC_BEVY_QUERY,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_QUERY),
@@ -301,9 +300,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_registry_schema
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_REGISTRY_SCHEMA,
             description:     DESC_BEVY_REGISTRY_SCHEMA,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REGISTRY_SCHEMA),
@@ -317,9 +316,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Retrieved schema information",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_remove
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_REMOVE,
             description:     DESC_BEVY_REMOVE,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE),
@@ -348,9 +347,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_remove_resource
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_REMOVE_RESOURCE,
             description:     DESC_BEVY_REMOVE_RESOURCE,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE_RESOURCE),
@@ -365,9 +364,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:            FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_reparent
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_REPARENT,
             description:     DESC_BEVY_REPARENT,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REPARENT),
@@ -390,9 +389,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_rpc_discover
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_RPC_DISCOVER,
             description:     DESC_BEVY_RPC_DISCOVER,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_RPC_DISCOVER),
@@ -401,10 +400,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Retrieved BRP method discovery information",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_spawn
         // todo: (later) make this match curl
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_SPAWN,
             description:     DESC_BEVY_SPAWN,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_SPAWN),
@@ -420,11 +419,11 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:           FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/brp_execute
         // this is the one brp tool that uses dynamic method handling
         // as the user can dynamically pass in the method
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BRP_EXECUTE,
             description:     DESC_BRP_EXECUTE,
             handler:         HandlerFn::brp_dynamic(BrpMethodHandler),
@@ -436,9 +435,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Method executed successfully",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
-        }),
+        },
         // UnifiedToolDef/brp_extras_discover_format
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
             handler:         HandlerFn::brp_static(
@@ -453,9 +452,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Format discovery completed",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
-        }),
+        },
         // UnifiedToolDef/brp_extras_screenshot
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_SCREENSHOT,
             description:     DESC_BRP_EXTRAS_SCREENSHOT,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SCREENSHOT),
@@ -470,9 +469,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     placement:            FieldPlacement::Metadata,
                 }],
             },
-        }),
+        },
         // UnifiedToolDef/brp_extras_send_keys
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_SEND_KEYS,
             description:     DESC_BRP_EXTRAS_SEND_KEYS,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SEND_KEYS),
@@ -495,9 +494,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/brp_extras_set_debug_mode
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
             handler:         HandlerFn::brp_static(
@@ -520,14 +519,14 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // BevyGetWatch and BevyListWatch are unusual in that
         // ultimately we do call bevy/get+watch and bevy/list+watch
         // but we need the local tool in order to set up the watch to stream
         // the results and log them to a file
 
         // UnifiedToolDef/bevy_get_watch
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_GET_WATCH,
             description:     DESC_BEVY_GET_WATCH,
             handler:         HandlerFn::local_with_port(BevyGetWatch),
@@ -563,9 +562,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/bevy_list_watch
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_BEVY_LIST_WATCH,
             description:     DESC_BEVY_LIST_WATCH,
             handler:         HandlerFn::local_with_port(BevyListWatch),
@@ -594,9 +593,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/cleanup_logs
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_CLEANUP_LOGS,
             description:     DESC_CLEANUP_LOGS,
             handler:         HandlerFn::local(CleanupLogs),
@@ -637,9 +636,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/get_trace_log_path
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_GET_TRACE_LOG_PATH,
             description:     DESC_GET_TRACE_LOG_PATH,
             handler:         HandlerFn::local(GetTraceLogPath),
@@ -664,9 +663,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/launch_bevy_app
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LAUNCH_BEVY_APP,
             description:     DESC_LAUNCH_BEVY_APP,
             handler:         HandlerFn::local_with_port(
@@ -693,9 +692,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Launched Bevy app `{app_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
-        }),
+        },
         // UnifiedToolDef/launch_bevy_example
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LAUNCH_BEVY_EXAMPLE,
             description:     DESC_LAUNCH_BEVY_EXAMPLE,
             handler:         HandlerFn::local_with_port(
@@ -722,9 +721,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Launched Bevy example `{example_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
-        }),
+        },
         // UnifiedToolDef/list_bevy_apps
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LIST_BEVY_APPS,
             description:     DESC_LIST_BEVY_APPS,
             handler:         HandlerFn::local(ListBevyApps),
@@ -744,9 +743,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/list_bevy_examples
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LIST_BEVY_EXAMPLES,
             description:     DESC_LIST_BEVY_EXAMPLES,
             handler:         HandlerFn::local(ListBevyExamples),
@@ -766,9 +765,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/list_brp_apps
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LIST_BRP_APPS,
             description:     DESC_LIST_BRP_APPS,
             handler:         HandlerFn::local(ListBrpApps),
@@ -788,9 +787,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/brp_list_active_watches
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LIST_ACTIVE_WATCHES,
             description:     DESC_LIST_ACTIVE_WATCHES,
             handler:         HandlerFn::local(BrpListActiveWatches),
@@ -810,9 +809,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/brp_stop_watch
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_STOP_WATCH,
             description:     DESC_STOP_WATCH,
             handler:         HandlerFn::local(BrpStopWatch),
@@ -825,9 +824,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 message_template: "Successfully stopped watch",
                 response_fields:  vec![],
             },
-        }),
+        },
         // LocalToolDef/list_logs
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_LIST_LOGS,
             description:     DESC_LIST_LOGS,
             handler:         HandlerFn::local(ListLogs),
@@ -863,9 +862,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/read_log
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_READ_LOG,
             description:     DESC_READ_LOG,
             handler:         HandlerFn::local(ReadLog),
@@ -931,9 +930,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // UnifiedToolDef/set_tracing_level
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_SET_TRACING_LEVEL,
             description:     DESC_SET_TRACING_LEVEL,
             handler:         HandlerFn::local(SetTracingLevel),
@@ -957,9 +956,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // LocalToolDef/status
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_STATUS,
             description:     DESC_STATUS,
             handler:         HandlerFn::local_with_port(Status),
@@ -993,9 +992,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
         // LocalToolDef/shutdown
-        Box::new(UnifiedToolDef {
+        UnifiedToolDef {
             name:            TOOL_SHUTDOWN,
             description:     DESC_SHUTDOWN,
             handler:         HandlerFn::local_with_port(Shutdown),
@@ -1026,6 +1025,6 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     },
                 ],
             },
-        }),
+        },
     ]
 }

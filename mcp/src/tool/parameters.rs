@@ -197,6 +197,15 @@ pub enum UnifiedParameter {
     Local(LocalParameter),
 }
 
+/// Specifies whether a tool requires a port parameter
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PortParameter {
+    /// Tool requires a port parameter
+    Required,
+    /// Tool does not use a port parameter
+    NotUsed,
+}
+
 /// Implement common methods for any Parameter<N> where N can convert to &str
 impl<N> Parameter<N>
 where

@@ -6,15 +6,17 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use super::parameters::{ParameterDefinition, UnifiedParameter};
-use super::tool_definition::{PortParameter, ToolDefinition};
+use super::mcp_tool_schema::McpToolSchemaBuilder;
+use super::parameters::{ParamType, ParameterDefinition, PortParameter, UnifiedParameter};
 use super::types::BrpMethodSource;
 use super::unified_handler::UnifiedToolHandler;
 use super::{HandlerFn, ToolHandler};
+use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
 
 /// Unified tool definition that can handle both BRP and Local tools
+#[derive(Clone)]
 pub struct UnifiedToolDef {
     /// Tool name
     pub name:            &'static str,
@@ -28,34 +30,30 @@ pub struct UnifiedToolDef {
     pub response_format: ResponseSpecification,
 }
 
-impl ToolDefinition for UnifiedToolDef {
-    fn name(&self) -> &'static str {
+impl UnifiedToolDef {
+    pub const fn name(&self) -> &'static str {
         self.name
     }
 
-    fn description(&self) -> &'static str {
-        self.description
-    }
-
-    fn formatter(&self) -> &ResponseSpecification {
+    pub const fn formatter(&self) -> &ResponseSpecification {
         &self.response_format
     }
 
-    fn parameters(&self) -> Vec<&dyn ParameterDefinition> {
+    pub fn parameters(&self) -> Vec<&dyn ParameterDefinition> {
         self.parameters
             .iter()
             .map(|p| p as &dyn ParameterDefinition)
             .collect()
     }
 
-    fn port_parameter(&self) -> PortParameter {
+    pub const fn port_parameter(&self) -> PortParameter {
         match &self.handler {
             HandlerFn::Local(_) => PortParameter::NotUsed,
             HandlerFn::LocalWithPort(_) | HandlerFn::Brp { .. } => PortParameter::Required,
         }
     }
 
-    fn needs_method_parameter(&self) -> bool {
+    pub const fn needs_method_parameter(&self) -> bool {
         match &self.handler {
             HandlerFn::Brp { method_source, .. } => {
                 matches!(method_source, BrpMethodSource::Dynamic)
@@ -64,7 +62,7 @@ impl ToolDefinition for UnifiedToolDef {
         }
     }
 
-    fn create_handler(
+    pub fn create_handler(
         &self,
         service: Arc<McpService>,
         request: CallToolRequestParam,
@@ -116,13 +114,59 @@ impl ToolDefinition for UnifiedToolDef {
         }
     }
 
-    fn clone_box(&self) -> Box<dyn ToolDefinition> {
-        Box::new(Self {
-            name:            self.name,
-            description:     self.description,
-            handler:         self.handler.clone(),
-            parameters:      self.parameters.clone(),
-            response_format: self.response_format.clone(),
-        })
+    /// Convert to MCP Tool for registration
+    pub fn to_tool(&self) -> rmcp::model::Tool {
+        let mut builder = McpToolSchemaBuilder::new();
+
+        // Add tool-specific parameters
+        for param in self.parameters() {
+            builder = match param.param_type() {
+                ParamType::String => {
+                    builder.add_string_property(param.name(), param.description(), param.required())
+                }
+                ParamType::Number => {
+                    builder.add_number_property(param.name(), param.description(), param.required())
+                }
+                ParamType::Boolean => builder.add_boolean_property(
+                    param.name(),
+                    param.description(),
+                    param.required(),
+                ),
+                ParamType::StringArray => builder.add_string_array_property(
+                    param.name(),
+                    param.description(),
+                    param.required(),
+                ),
+                ParamType::NumberArray => builder.add_number_array_property(
+                    param.name(),
+                    param.description(),
+                    param.required(),
+                ),
+                ParamType::Any => {
+                    builder.add_any_property(param.name(), param.description(), param.required())
+                }
+            };
+        }
+
+        // Add method parameter if needed (for dynamic BRP tools)
+        if self.needs_method_parameter() {
+            builder = builder.add_string_property(
+                PARAM_METHOD,
+                "The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')",
+                true,
+            );
+        }
+
+        // Add port parameter if needed
+        if self.port_parameter() == PortParameter::Required {
+            builder =
+                builder.add_number_property(PARAM_PORT, "The BRP port (default: 15702)", false);
+        }
+
+        rmcp::model::Tool {
+            name:         self.name.into(),
+            description:  self.description.into(),
+            input_schema: builder.build(),
+        }
     }
 }
