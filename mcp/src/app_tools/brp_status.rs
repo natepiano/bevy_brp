@@ -5,7 +5,7 @@ use sysinfo::System;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::PARAM_APP_NAME;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalToolFunctionWithPort};
+use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalToolFnWithPort};
 
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,7 +34,7 @@ impl HandlerResult for StatusResult {
 
 pub struct Status;
 
-impl LocalToolFunctionWithPort for Status {
+impl LocalToolFnWithPort for Status {
     fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
         let app_name = match ctx.extract_required_string(PARAM_APP_NAME, "app name") {
             Ok(name) => name.to_string(),

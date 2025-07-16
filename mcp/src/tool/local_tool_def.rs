@@ -6,12 +6,13 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use super::local_handler::LocalToolHandler;
 use super::parameters::{LocalParameter, ParameterDefinition};
 use super::tool_definition::{PortParameter, ToolDefinition};
+use super::unified_handler::UnifiedToolHandler;
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
-use crate::tool::{LocalHandler, ToolHandler};
+use crate::tool::types::ToolContext;
+use crate::tool::{HandlerFn, ToolHandler};
 
 /// Definition for local tools that execute within the MCP server
 pub struct LocalToolDef {
@@ -20,7 +21,7 @@ pub struct LocalToolDef {
     /// Tool description
     pub description: &'static str,
     /// Handler function
-    pub handler:     LocalHandler,
+    pub handler:     HandlerFn,
     /// Type-safe local parameters
     pub parameters:  Vec<LocalParameter>,
     /// Response formatting specification
@@ -49,8 +50,8 @@ impl ToolDefinition for LocalToolDef {
 
     fn port_parameter(&self) -> PortParameter {
         match &self.handler {
-            LocalHandler::Basic(_) => PortParameter::NotUsed,
-            LocalHandler::WithPort(_) => PortParameter::Required,
+            HandlerFn::Local(_) => PortParameter::NotUsed,
+            HandlerFn::LocalWithPort(_) | HandlerFn::Brp(_) => PortParameter::Required,
         }
     }
 
@@ -71,15 +72,22 @@ impl ToolDefinition for LocalToolDef {
 
         // Extract port only if handler needs it
         let port = match &self.handler {
-            LocalHandler::Basic(_) => None,
-            LocalHandler::WithPort(_) => Some(base_ctx.extract_port()?),
+            HandlerFn::Local(_) => None,
+            HandlerFn::LocalWithPort(_) => Some(base_ctx.extract_port()?),
+            HandlerFn::Brp(_) => {
+                return Err(McpError::invalid_params(
+                    "BRP handler cannot be used in LocalToolDef",
+                    None,
+                ));
+            }
         };
 
         // Use the handler directly - no conversion needed
         let local_handler_context = base_ctx.into_local(port);
-        Ok(Box::new(LocalToolHandler::new(
-            local_handler_context,
+        let tool_context = ToolContext::Local(local_handler_context);
+        Ok(Box::new(UnifiedToolHandler::new(
             self.handler.clone(),
+            tool_context,
         )))
     }
 

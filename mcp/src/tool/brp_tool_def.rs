@@ -7,11 +7,14 @@ use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
 use super::ToolHandler;
-use super::brp_handler::BrpToolHandler;
 use super::parameters::{BrpParameter, ParameterDefinition};
 use super::tool_definition::{PortParameter, ToolDefinition};
+use super::unified_handler::UnifiedToolHandler;
+use crate::brp_tools::request_handler::BrpMethodHandler;
 use crate::response::ResponseSpecification;
-use crate::service::McpService;
+use crate::service::{BaseContext, HandlerContext, McpService};
+use crate::tool::HandlerFn;
+use crate::tool::types::ToolContext;
 
 /// Source for BRP method name resolution
 #[derive(Debug, Clone)]
@@ -71,9 +74,7 @@ impl ToolDefinition for BrpToolDef {
         context: RequestContext<RoleServer>,
     ) -> Result<Box<dyn ToolHandler + Send>, McpError> {
         // Create base context - the ONLY way to start
-        let base_ctx = crate::service::HandlerContext::<crate::service::BaseContext>::new(
-            service, request, context,
-        );
+        let base_ctx = HandlerContext::<BaseContext>::new(service, request, context);
 
         // Extract what we need
         let port = base_ctx.extract_port()?;
@@ -85,7 +86,11 @@ impl ToolDefinition for BrpToolDef {
         // Transition to BrpContext
         let brp_handler_context = base_ctx.into_brp(method, port);
 
-        Ok(Box::new(BrpToolHandler::new(brp_handler_context)))
+        // Create handler
+        let handler = HandlerFn::brp(BrpMethodHandler);
+        let tool_context = ToolContext::Brp(brp_handler_context);
+
+        Ok(Box::new(UnifiedToolHandler::new(handler, tool_context)))
     }
 
     fn clone_box(&self) -> Box<dyn ToolDefinition> {

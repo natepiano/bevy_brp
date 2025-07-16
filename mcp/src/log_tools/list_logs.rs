@@ -5,7 +5,7 @@ use super::support::LogFileEntry;
 use crate::constants::PARAM_APP_NAME;
 use crate::log_tools::support;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from listing log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl HandlerResult for ListLogResult {
 /// Handler for the `brp_list_logs` tool using the `LocalFn` approach
 pub struct ListLogs;
 
-impl LocalToolFunction for ListLogs {
+impl LocalToolFn for ListLogs {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract optional app name filter
         let app_name_filter = ctx.extract_optional_string(PARAM_APP_NAME, "");

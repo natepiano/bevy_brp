@@ -55,7 +55,7 @@ use crate::log_tools::set_tracing_level::SetTracingLevel;
 use crate::response::{
     FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
 };
-use crate::tool::LocalHandler;
+use crate::tool::HandlerFn;
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,
 };
@@ -501,7 +501,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_BEVY_GET_WATCH,
             description: DESC_BEVY_GET_WATCH,
-            handler:     LocalHandler::with_port(BevyGetWatch),
+            handler:     HandlerFn::local_with_port(BevyGetWatch),
             parameters:  vec![
                 LocalParameter::number(
                     LocalParameterName::Entity,
@@ -539,7 +539,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_BEVY_LIST_WATCH,
             description: DESC_BEVY_LIST_WATCH,
-            handler:     LocalHandler::with_port(BevyListWatch),
+            handler:     HandlerFn::local_with_port(BevyListWatch),
             parameters:  vec![LocalParameter::number(
                 LocalParameterName::Entity,
                 "The entity ID to watch for component list changes",
@@ -570,7 +570,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_CLEANUP_LOGS,
             description: DESC_CLEANUP_LOGS,
-            handler:     LocalHandler::basic(CleanupLogs),
+            handler:     HandlerFn::local(CleanupLogs),
             parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::AppName,
@@ -613,7 +613,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_GET_TRACE_LOG_PATH,
             description: DESC_GET_TRACE_LOG_PATH,
-            handler:     LocalHandler::basic(GetTraceLogPath),
+            handler:     HandlerFn::local(GetTraceLogPath),
             parameters:  vec![],
             formatter:   ResponseSpecification {
                 message_template: "Trace log found",
@@ -640,7 +640,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LAUNCH_BEVY_APP,
             description: DESC_LAUNCH_BEVY_APP,
-            handler:     LocalHandler::with_port(
+            handler:     HandlerFn::local_with_port(
                 crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
             ),
             parameters:  vec![
@@ -669,7 +669,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LAUNCH_BEVY_EXAMPLE,
             description: DESC_LAUNCH_BEVY_EXAMPLE,
-            handler:     LocalHandler::with_port(
+            handler:     HandlerFn::local_with_port(
                 brp_launch_bevy_example::create_launch_bevy_example_handler(),
             ),
             parameters:  vec![
@@ -698,7 +698,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LIST_BEVY_APPS,
             description: DESC_LIST_BEVY_APPS,
-            handler:     LocalHandler::basic(ListBevyApps),
+            handler:     HandlerFn::local(ListBevyApps),
             parameters:  vec![],
             formatter:   ResponseSpecification {
                 message_template: "Found {count} Bevy apps",
@@ -720,7 +720,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LIST_BEVY_EXAMPLES,
             description: DESC_LIST_BEVY_EXAMPLES,
-            handler:     LocalHandler::basic(ListBevyExamples),
+            handler:     HandlerFn::local(ListBevyExamples),
             parameters:  vec![],
             formatter:   ResponseSpecification {
                 message_template: "Found {count} Bevy examples",
@@ -742,7 +742,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LIST_BRP_APPS,
             description: DESC_LIST_BRP_APPS,
-            handler:     LocalHandler::basic(ListBrpApps),
+            handler:     HandlerFn::local(ListBrpApps),
             parameters:  vec![],
             formatter:   ResponseSpecification {
                 message_template: "Found {count} BRP-enabled apps",
@@ -764,7 +764,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LIST_ACTIVE_WATCHES,
             description: DESC_LIST_ACTIVE_WATCHES,
-            handler:     LocalHandler::basic(BrpListActiveWatches),
+            handler:     HandlerFn::local(BrpListActiveWatches),
             parameters:  vec![],
             formatter:   ResponseSpecification {
                 message_template: "Found {count} active watches",
@@ -786,7 +786,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_STOP_WATCH,
             description: DESC_STOP_WATCH,
-            handler:     LocalHandler::basic(BrpStopWatch),
+            handler:     HandlerFn::local(BrpStopWatch),
             parameters:  vec![LocalParameter::number(
                 LocalParameterName::WatchId,
                 "The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch",
@@ -801,7 +801,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_LIST_LOGS,
             description: DESC_LIST_LOGS,
-            handler:     LocalHandler::basic(ListLogs),
+            handler:     HandlerFn::local(ListLogs),
             parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::AppName,
@@ -839,7 +839,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_READ_LOG,
             description: DESC_READ_LOG,
-            handler:     LocalHandler::basic(ReadLog),
+            handler:     HandlerFn::local(ReadLog),
             parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::Filename,
@@ -907,7 +907,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_SET_TRACING_LEVEL,
             description: DESC_SET_TRACING_LEVEL,
-            handler:     LocalHandler::basic(SetTracingLevel),
+            handler:     HandlerFn::local(SetTracingLevel),
             parameters:  vec![LocalParameter::string(
                 LocalParameterName::Level,
                 "Tracing level to set (error, warn, info, debug, trace)",
@@ -933,7 +933,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_STATUS,
             description: DESC_STATUS,
-            handler:     LocalHandler::with_port(Status),
+            handler:     HandlerFn::local_with_port(Status),
             parameters:  vec![LocalParameter::string(
                 LocalParameterName::AppName,
                 "Name of the process to check for",
@@ -969,7 +969,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         Box::new(LocalToolDef {
             name:        TOOL_SHUTDOWN,
             description: DESC_SHUTDOWN,
-            handler:     LocalHandler::with_port(Shutdown),
+            handler:     HandlerFn::local_with_port(Shutdown),
             parameters:  vec![LocalParameter::string(
                 LocalParameterName::AppName,
                 "Name of the Bevy app to shutdown",

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::support::{self, LogFileEntry};
 use crate::constants::PARAM_APP_NAME;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from cleaning up log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,7 +30,7 @@ impl HandlerResult for CleanupLogsResult {
 
 pub struct CleanupLogs;
 
-impl LocalToolFunction for CleanupLogs {
+impl LocalToolFn for CleanupLogs {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
         let app_name_filter = ctx.extract_optional_string(PARAM_APP_NAME, "");

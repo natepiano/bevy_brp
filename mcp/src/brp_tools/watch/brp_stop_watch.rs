@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::manager::WATCH_MANAGER;
 use crate::constants::JSON_FIELD_WATCH_ID;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,7 +25,7 @@ impl HandlerResult for StopWatchResult {
 
 pub struct BrpStopWatch;
 
-impl LocalToolFunction for BrpStopWatch {
+impl LocalToolFn for BrpStopWatch {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before async block
         let watch_id = match ctx.extract_required_u32(JSON_FIELD_WATCH_ID, "watch ID") {

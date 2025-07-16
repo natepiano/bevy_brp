@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ impl HandlerResult for ListBevyExamplesResult {
 
 pub struct ListBevyExamples;
 
-impl LocalToolFunction for ListBevyExamples {
+impl LocalToolFn for ListBevyExamples {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Clone context to owned data for async move closure
         let owned_ctx = ctx.clone();

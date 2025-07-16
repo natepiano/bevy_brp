@@ -274,16 +274,19 @@ impl ResponseFormatter {
             self.config.large_response_config.clone(),
         ) {
             Ok(processed_response) => {
-                // Return the processed response (either original or with result field saved to file)
+                // Return the processed response (either original or with result field saved to
+                // file)
                 processed_response.to_call_tool_result()
             }
             Err(e) => {
                 tracing::warn!("Error handling large response: {:?}", e);
                 // Error handling the large response, return error response
-                ResponseBuilder::error(crate::response::CallInfo::local("large_response_error".to_string()))
-                    .message("Error processing large response")
-                    .build()
-                    .to_call_tool_result()
+                ResponseBuilder::error(crate::response::CallInfo::local(
+                    "large_response_error".to_string(),
+                ))
+                .message("Error processing large response")
+                .build()
+                .to_call_tool_result()
             }
         }
     }

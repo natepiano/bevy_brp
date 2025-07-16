@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ impl HandlerResult for GetTraceLogPathResult {
 /// Handler for the `brp_get_trace_log_path` tool using the `LocalFn` approach
 pub struct GetTraceLogPath;
 
-impl LocalToolFunction for GetTraceLogPath {
+impl LocalToolFn for GetTraceLogPath {
     fn call(&self, _ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         Box::pin(async move {
             // Get the trace log path

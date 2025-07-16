@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +39,7 @@ impl HandlerResult for ReadLogResult {
 
 pub struct ReadLog;
 
-impl LocalToolFunction for ReadLog {
+impl LocalToolFn for ReadLog {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
         let filename = match ctx.extract_required_string("filename", "log filename") {

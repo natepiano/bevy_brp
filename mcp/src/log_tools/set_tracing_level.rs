@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from setting the tracing level
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ impl HandlerResult for SetTracingLevelResult {
 
 pub struct SetTracingLevel;
 
-impl LocalToolFunction for SetTracingLevel {
+impl LocalToolFn for SetTracingLevel {
     fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
         // Extract the required level parameter before the async block
         let level_str = match ctx.extract_required_string("level", "tracing level") {

@@ -14,6 +14,24 @@ use crate::constants::{
 use crate::error;
 use crate::response::{self, FormatterConfig, ResponseFormatter};
 use crate::service::{BrpContext, HandlerContext};
+use crate::tool::{BrpHandlerResponse, BrpToolFn};
+
+/// BRP method handler struct that implements `BrpToolFn`
+pub struct BrpMethodHandler;
+
+impl BrpToolFn for BrpMethodHandler {
+    fn call(&self, ctx: &HandlerContext<BrpContext>) -> BrpHandlerResponse<'_> {
+        let tool_def = match ctx.tool_def() {
+            Ok(def) => def,
+            Err(e) => return Box::pin(async move { Err(e) }),
+        };
+
+        let formatter_config = tool_def.formatter().build_formatter_config();
+        let ctx = ctx.clone();
+
+        Box::pin(async move { handle_brp_method_tool_call(ctx, formatter_config).await })
+    }
+}
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {

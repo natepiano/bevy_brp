@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunctionWithPort};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFnWithPort};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -139,7 +139,7 @@ impl<T: FromLaunchParams> GenericLaunchHandler<T> {
     }
 }
 
-impl<T: FromLaunchParams> LocalToolFunctionWithPort for GenericLaunchHandler<T> {
+impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
     fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
         // Extract parameters
         let params = match extract_launch_params(

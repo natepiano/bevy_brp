@@ -63,8 +63,9 @@ pub fn handle_large_response(
             let filepath = config.temp_dir.join(&filename);
 
             // Save only the result field to file
-            let result_json = serde_json::to_string_pretty(result_field)
-                .change_context(Error::General("Failed to serialize result field".to_string()))?;
+            let result_json = serde_json::to_string_pretty(result_field).change_context(
+                Error::General("Failed to serialize result field".to_string()),
+            )?;
 
             fs::write(&filepath, &result_json).change_context(Error::FileOperation(format!(
                 "Failed to write result to {}",
