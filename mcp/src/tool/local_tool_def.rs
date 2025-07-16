@@ -10,8 +10,8 @@ use super::local_handler::LocalToolHandler;
 use super::parameters::{LocalParameter, ParameterDefinition};
 use super::tool_definition::{PortParameter, ToolDefinition};
 use crate::response::ResponseSpecification;
-use crate::service::{LocalHandler, McpService};
-use crate::tool::ToolHandler;
+use crate::service::McpService;
+use crate::tool::{LocalHandler, ToolHandler};
 
 /// Definition for local tools that execute within the MCP server
 pub struct LocalToolDef {
@@ -48,8 +48,6 @@ impl ToolDefinition for LocalToolDef {
     }
 
     fn port_parameter(&self) -> PortParameter {
-        use crate::service::LocalHandler;
-
         match &self.handler {
             LocalHandler::Basic(_) => PortParameter::NotUsed,
             LocalHandler::WithPort(_) => PortParameter::Required,
@@ -78,8 +76,11 @@ impl ToolDefinition for LocalToolDef {
         };
 
         // Use the handler directly - no conversion needed
-        let local_handler_context = base_ctx.into_local(self.handler.clone(), port);
-        Ok(Box::new(LocalToolHandler::new(local_handler_context)))
+        let local_handler_context = base_ctx.into_local(port);
+        Ok(Box::new(LocalToolHandler::new(
+            local_handler_context,
+            self.handler.clone(),
+        )))
     }
 
     fn clone_box(&self) -> Box<dyn ToolDefinition> {

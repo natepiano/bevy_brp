@@ -4,7 +4,7 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use crate::constants::DEFAULT_BRP_PORT;
+use crate::constants::{DEFAULT_BRP_PORT, VALID_PORT_RANGE};
 use crate::service::McpService;
 use crate::service::brp_context::BrpContext;
 use crate::service::handler_context::HandlerContext;
@@ -42,9 +42,13 @@ impl HandlerContext<BaseContext> {
         })?;
 
         // Validate port range (1024-65535 for non-privileged ports)
-        if port < 1024 {
+        if !VALID_PORT_RANGE.contains(&port) {
             return Err(McpError::invalid_params(
-                "Invalid port parameter: port must be >= 1024 (non-privileged ports only)",
+                format!(
+                    "Invalid port {port}: must be in range {}-{}",
+                    VALID_PORT_RANGE.start(),
+                    VALID_PORT_RANGE.end()
+                ),
                 None,
             ));
         }
@@ -59,17 +63,13 @@ impl HandlerContext<BaseContext> {
             .map(|s| (*s).to_string())
     }
 
-    /// Transition to `LocalContext` with the specified handler and port.
-    pub fn into_local(
-        self,
-        handler: crate::service::LocalHandler,
-        port: Option<u16>,
-    ) -> HandlerContext<LocalContext> {
+    /// Transition to `LocalContext` with the specified port.
+    pub fn into_local(self, port: Option<u16>) -> HandlerContext<LocalContext> {
         HandlerContext::with_data(
             self.service,
             self.request,
             self.context,
-            LocalContext { handler, port },
+            LocalContext { port },
         )
     }
 

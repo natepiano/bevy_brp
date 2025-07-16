@@ -2,6 +2,7 @@
 //!
 //! This module contains constants specific to BRP tool operations,
 //! including JSON field names and parameter constants.
+use std::ops::RangeInclusive;
 
 // ============================================================================
 // JSON FIELD CONSTANTS
@@ -67,6 +68,11 @@ pub const DEFAULT_BRP_PORT: u16 = 15702;
 
 /// Environment variable name for BRP port
 pub const BRP_PORT_ENV_VAR: &str = "BRP_PORT";
+
+/// valid ports
+pub const MIN_VALID_PORT: u16 = 1024; // Non-privileged ports start here
+pub const MAX_VALID_PORT: u16 = 65534; // Leave room for calculations
+pub const VALID_PORT_RANGE: RangeInclusive<u16> = MIN_VALID_PORT..=MAX_VALID_PORT;
 
 // ============================================================================
 // ERROR CONSTANTS

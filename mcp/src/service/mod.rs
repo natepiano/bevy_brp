@@ -7,5 +7,5 @@ mod mcp_service;
 pub use base_context::BaseContext;
 pub use brp_context::BrpContext;
 pub use handler_context::{HandlerContext, HasCallInfo};
-pub use local_context::{LocalContext, LocalHandler};
+pub use local_context::LocalContext;
 pub use mcp_service::McpService;

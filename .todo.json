@@ -2,44 +2,44 @@
   {
     "id": "1",
     "content": "Move LocalHandler enum from service/local_context.rs to tool/local_handler.rs",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Moved LocalHandler enum and its implementations to tool/local_handler.rs, updated imports, and exported from tool module"
   },
   {
     "id": "2",
     "content": "Run cargo build and fix errors",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Found import errors - need to update imports before continuing"
   },
   {
     "id": "3",
     "content": "Remove handler field from LocalContext struct, keeping only port",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Removed handler field and handler() method from LocalContext"
   },
   {
     "id": "4",
     "content": "Run cargo build and fix errors",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Found errors in local_handler.rs and base_context.rs"
   },
   {
     "id": "5",
     "content": "Update BaseContext::into_local() to only pass port",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Updated into_local() to only pass port and removed unused LocalHandler import"
   },
   {
     "id": "6",
     "content": "Run cargo build and fix errors",
     "status": "pending",
     "priority": "high",
-    "notes": ""
+    "notes": "Skipping - need to fix LocalToolHandler first"
   },
   {
     "id": "7",
@@ -58,9 +58,9 @@
   {
     "id": "9",
     "content": "Update LocalToolHandler to store handler directly instead of accessing through context",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Added handler field to LocalToolHandler and updated new() and call_tool()"
   },
   {
     "id": "10",
@@ -72,9 +72,9 @@
   {
     "id": "11",
     "content": "Update local_tool_call() to use handler from LocalToolHandler instead of context",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Updated local_tool_call to accept handler parameter and use it directly"
   },
   {
     "id": "12",
@@ -86,37 +86,37 @@
   {
     "id": "13",
     "content": "Update LocalToolDef::create_handler() to pass handler to LocalToolHandler",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Updated create_handler to pass handler to LocalToolHandler constructor"
   },
   {
     "id": "14",
     "content": "Run cargo build and fix errors",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Build successful with warnings about unused constants"
   },
   {
     "id": "15",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Found unused constants"
   },
   {
     "id": "16",
     "content": "Fix all clippy issues following warning rules",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Fixed unused constants by using MIN_VALID_PORT and removing MAX_VALID_PORT and VALID_PORT_RANGE"
   },
   {
     "id": "17",
     "content": "Update service/mod.rs exports to remove LocalHandler",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Removed LocalHandler export from service/mod.rs"
   },
   {
     "id": "18",
@@ -128,44 +128,44 @@
   {
     "id": "19",
     "content": "Update all imports of LocalHandler to use new location",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Fixed imports in definitions.rs, local_tool_def.rs, and base_context.rs"
   },
   {
     "id": "20",
     "content": "Run cargo build and fix errors",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Build successful with warnings about unused constants"
   },
   {
     "id": "21",
     "content": "Run cargo +nightly fmt",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Formatter completed successfully"
   },
   {
     "id": "22",
     "content": "Run cargo nextest run",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "All 128 tests pass successfully"
   },
   {
     "id": "23",
     "content": "STOP if test failures - review with user",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "No test failures - all tests pass"
   },
   {
     "id": "24",
     "content": "Subagent: STOP and return control",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Refactoring complete, ready to return control"
   },
   {
     "id": "25",

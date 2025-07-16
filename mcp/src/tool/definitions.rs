@@ -55,7 +55,7 @@ use crate::log_tools::set_tracing_level::SetTracingLevel;
 use crate::response::{
     FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
 };
-use crate::service::LocalHandler;
+use crate::tool::LocalHandler;
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,
 };

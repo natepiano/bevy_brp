@@ -1,36 +1,80 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use crate::response::{FormatterConfig, ResponseBuilder, ResponseFormatter};
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::ToolHandler;
+use crate::tool::{HandlerResponse, LocalToolFunction, LocalToolFunctionWithPort, ToolHandler};
+
+/// Enum to hold either basic handler or handler with port
+#[derive(Clone)]
+pub enum LocalHandler {
+    Basic(Arc<dyn LocalToolFunction>),
+    WithPort(Arc<dyn LocalToolFunctionWithPort>),
+}
+
+impl LocalHandler {
+    /// Dispatch method that calls the appropriate handler based on type
+    pub fn call_handler<'a>(
+        &'a self,
+        ctx: &'a HandlerContext<LocalContext>,
+    ) -> HandlerResponse<'a> {
+        match self {
+            Self::Basic(handler) => handler.call(ctx),
+            Self::WithPort(handler) => {
+                let port = ctx.port().ok_or_else(|| {
+                    McpError::invalid_params("WithPort handler called without port parameter", None)
+                });
+
+                match port {
+                    Ok(p) => handler.call(ctx, p),
+                    Err(e) => Box::pin(async move { Err(e) }),
+                }
+            }
+        }
+    }
+}
+
+impl LocalHandler {
+    /// Create a Basic handler with automatic Arc wrapping
+    pub fn basic<T: LocalToolFunction + 'static>(handler: T) -> Self {
+        Self::Basic(Arc::new(handler))
+    }
+
+    /// Create a `WithPort` handler with automatic Arc wrapping
+    pub fn with_port<T: LocalToolFunctionWithPort + 'static>(handler: T) -> Self {
+        Self::WithPort(Arc::new(handler))
+    }
+}
 
 pub struct LocalToolHandler {
     context: HandlerContext<LocalContext>,
+    handler: LocalHandler,
 }
 
 impl LocalToolHandler {
-    pub const fn new(context: HandlerContext<LocalContext>) -> Self {
-        Self { context }
+    pub const fn new(context: HandlerContext<LocalContext>, handler: LocalHandler) -> Self {
+        Self { context, handler }
     }
 }
 
 #[async_trait]
 impl ToolHandler for LocalToolHandler {
     async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError> {
-        local_tool_call(&self.context).await
+        local_tool_call(&self.context, &self.handler).await
     }
 }
 
 /// Generate a `LocalFn` handler using function pointer approach
 async fn local_tool_call(
     handler_context: &HandlerContext<LocalContext>,
+    handler: &LocalHandler,
 ) -> Result<CallToolResult, McpError> {
     let formatter_config = create_formatter_from_def(handler_context)?;
 
-    let result = handler_context
-        .handler()
+    let result = handler
         .call_handler(handler_context)
         .await
         .map(|typed_result| typed_result.to_json());

@@ -17,6 +17,7 @@ pub use constants::{
     BRP_METHOD_SPAWN,
 };
 pub use definitions::get_all_tool_definitions;
+pub use local_handler::LocalHandler;
 pub use parameters::ParamType;
 pub use tool_definition::ToolDefinition;
 pub use types::{
