@@ -1,18 +1,10 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use crate::service::{BrpContext, HandlerContext, LocalContext};
-
-/// Trait for individual tool handler implementations
-/// `#[async_trait]` allows us to use `ToolHandler` in `Box<dyn ToolHandler>` situations
-#[async_trait]
-pub trait ToolHandlerTrait {
-    async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError>;
-}
 
 /// Type alias for the response from local handlers
 ///

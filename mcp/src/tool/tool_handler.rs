@@ -1,8 +1,6 @@
-use async_trait::async_trait;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
-use super::ToolHandlerTrait;
 use super::handler_fn::HandlerFn;
 use super::types::ToolContext;
 
@@ -18,9 +16,8 @@ impl ToolHandler {
     }
 }
 
-#[async_trait]
-impl ToolHandlerTrait for ToolHandler {
-    async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError> {
+impl ToolHandler {
+    pub async fn call_tool(self) -> Result<CallToolResult, McpError> {
         self.handler.call_handler(&self.context).await
     }
 }

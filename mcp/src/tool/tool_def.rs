@@ -6,11 +6,11 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
+use super::HandlerFn;
 use super::mcp_tool_schema::McpToolSchemaBuilder;
 use super::parameters::{ParamType, ParameterDefinition, PortParameter, UnifiedParameter};
 use super::tool_handler::ToolHandler;
 use super::types::BrpMethodSource;
-use super::{HandlerFn, ToolHandlerTrait};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
@@ -67,7 +67,7 @@ impl ToolDef {
         service: Arc<McpService>,
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
-    ) -> Result<Box<dyn ToolHandlerTrait + Send>, McpError> {
+    ) -> Result<ToolHandler, McpError> {
         use crate::service::{BaseContext, HandlerContext};
         use crate::tool::types::ToolContext;
 
@@ -79,20 +79,14 @@ impl ToolDef {
                 // Local tool - no port needed
                 let local_handler_context = base_ctx.into_local(None);
                 let tool_context = ToolContext::Local(local_handler_context);
-                Ok(Box::new(ToolHandler::new(
-                    self.handler.clone(),
-                    tool_context,
-                )))
+                Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
             HandlerFn::LocalWithPort(_) => {
                 // Local tool with port
                 let port = base_ctx.extract_port()?;
                 let local_handler_context = base_ctx.into_local(Some(port));
                 let tool_context = ToolContext::Local(local_handler_context);
-                Ok(Box::new(ToolHandler::new(
-                    self.handler.clone(),
-                    tool_context,
-                )))
+                Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
             HandlerFn::Brp { method_source, .. } => {
                 // BRP tool
@@ -106,10 +100,7 @@ impl ToolDef {
                 let brp_handler_context = base_ctx.into_brp(method, port);
                 let tool_context = ToolContext::Brp(brp_handler_context);
 
-                Ok(Box::new(ToolHandler::new(
-                    self.handler.clone(),
-                    tool_context,
-                )))
+                Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
         }
     }
