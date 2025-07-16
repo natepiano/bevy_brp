@@ -17,10 +17,10 @@ use crate::service::McpService;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
-pub struct UnifiedToolDef {
+pub struct ToolDef {
     /// Tool name
     pub name:            &'static str,
-    /// Tool description  
+    /// Tool description
     pub description:     &'static str,
     /// Handler function with method source information
     pub handler:         HandlerFn,
@@ -30,7 +30,7 @@ pub struct UnifiedToolDef {
     pub response_format: ResponseSpecification,
 }
 
-impl UnifiedToolDef {
+impl ToolDef {
     pub const fn name(&self) -> &'static str {
         self.name
     }

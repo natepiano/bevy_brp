@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::mcp_service::McpService;
 use crate::response::CallInfo;
-use crate::tool::UnifiedToolDef;
+use crate::tool::ToolDef;
 
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
@@ -49,7 +49,7 @@ impl<T> HandlerContext<T> {
     /// # Errors
     ///
     /// Returns an error if the tool definition is not found.
-    pub fn tool_def(&self) -> Result<&UnifiedToolDef, McpError> {
+    pub fn tool_def(&self) -> Result<&ToolDef, McpError> {
         self.service
             .get_tool_def(&self.request.name)
             .ok_or_else(|| {
