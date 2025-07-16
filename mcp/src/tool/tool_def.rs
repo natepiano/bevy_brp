@@ -8,8 +8,8 @@ use rmcp::{Error as McpError, RoleServer};
 
 use super::mcp_tool_schema::McpToolSchemaBuilder;
 use super::parameters::{ParamType, ParameterDefinition, PortParameter, UnifiedParameter};
+use super::tool_handler::UnifiedToolHandler;
 use super::types::BrpMethodSource;
-use super::unified_handler::UnifiedToolHandler;
 use super::{HandlerFn, ToolHandler};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;

@@ -1,11 +1,11 @@
 mod constants;
 mod definitions;
-mod local_handler;
+mod handler_fn;
 mod mcp_tool_schema;
 mod parameters;
 mod tool_def;
+mod tool_handler;
 mod types;
-mod unified_handler;
 
 /// constants used in the wild
 pub use constants::{
@@ -15,7 +15,7 @@ pub use constants::{
     BRP_METHOD_SPAWN,
 };
 pub use definitions::get_all_tool_definitions;
-pub use local_handler::HandlerFn;
+pub use handler_fn::HandlerFn;
 pub use parameters::ParamType;
 pub use tool_def::ToolDef;
 pub use types::{

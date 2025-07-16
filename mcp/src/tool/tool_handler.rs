@@ -3,7 +3,7 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use super::ToolHandler;
-use super::local_handler::HandlerFn;
+use super::handler_fn::HandlerFn;
 use super::types::ToolContext;
 
 /// Unified tool handler that works with any `HandlerFn` variant
