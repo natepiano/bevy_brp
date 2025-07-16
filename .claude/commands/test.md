@@ -60,6 +60,8 @@ Configuration: Port [PORT], App [APP_NAME]
 
 **Your Task:**
 1. [LAUNCH_INSTRUCTION]
+   - **CRITICAL**: You MUST pass `port: [PORT]` parameter to the launch tool
+   - **REQUIRED**: Log the exact port parameter you used in the Port Usage Report section
 2. Execute test procedures from file: [TEST_FILE]
 3. [SHUTDOWN_INSTRUCTION]
 4. Report results using the exact format below
@@ -83,6 +85,14 @@ Configuration: Port [PORT], App [APP_NAME]
 - App: [APP_NAME]
 - Objective: [TEST_OBJECTIVE]
 - Expected Shutdown Method: [EXPECTED_SHUTDOWN_METHOD]
+
+**PORT TRACKING REQUIREMENTS:**
+- **LAUNCH COMMAND**: When calling mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app, you MUST:
+  1. Include the `port` parameter with value [PORT]
+  2. Log the exact port parameter passed in your Port Usage Report
+  3. Example: mcp__brp__brp_launch_bevy_example with parameters: app_name="extras_plugin", port=[PORT]
+- **BRP OPERATIONS**: All subsequent BRP operations MUST use port [PORT]
+- **VERIFICATION**: If any operation uses a different port than [PORT], mark as FAILED
 
 **CRITICAL ERROR HANDLING:**
 - **ALWAYS use the specified port [PORT] for ALL BRP operations**
@@ -109,6 +119,12 @@ Configuration: Port [PORT], App [APP_NAME]
 - Port: [PORT]
 - App: [APP_NAME]
 - Launch Status: [Launched Successfully/Failed to Launch/N/A]
+
+## Port Usage Report
+- **Configured Port**: [PORT]
+- **Launch Command Port**: [actual port passed to launch tool or "Not passed" or "N/A" if no app launch]
+- **BRP Operations Port**: [port used for all BRP operations or "N/A" if no BRP operations]
+- **Port Match Verification**: [PASSED/FAILED - all ports match | explanation if mismatch | "N/A" if no app launch]
 
 ## Test Results
 ### ✅ PASSED

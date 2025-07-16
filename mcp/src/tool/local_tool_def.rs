@@ -71,8 +71,11 @@ impl ToolDefinition for LocalToolDef {
         // Create base context - the ONLY way to start
         let base_ctx = HandlerContext::<BaseContext>::new(service, request, context);
 
-        // Always extract port (even if not used, to keep LocalContext simple)
-        let port = base_ctx.extract_port()?;
+        // Extract port only if handler needs it
+        let port = match &self.handler {
+            LocalHandler::Basic(_) => None,
+            LocalHandler::WithPort(_) => Some(base_ctx.extract_port()?),
+        };
 
         // Use the handler directly - no conversion needed
         let local_handler_context = base_ctx.into_local(self.handler.clone(), port);

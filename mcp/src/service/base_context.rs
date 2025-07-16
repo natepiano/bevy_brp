@@ -63,7 +63,7 @@ impl HandlerContext<BaseContext> {
     pub fn into_local(
         self,
         handler: crate::service::LocalHandler,
-        port: u16,
+        port: Option<u16>,
     ) -> HandlerContext<LocalContext> {
         HandlerContext::with_data(
             self.service,

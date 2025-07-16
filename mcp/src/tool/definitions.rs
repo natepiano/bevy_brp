@@ -1,6 +1,4 @@
 //! Tool definitions for BRP and local MCP tools.
-//!
-//! This is a new version that uses the `BrpToolDef` and `LocalToolDef` structures.
 
 use super::brp_tool_def::{BrpMethodSource, BrpToolDef};
 use super::constants::{
