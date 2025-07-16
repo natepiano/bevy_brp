@@ -87,7 +87,7 @@ impl ToolDefinition for BrpToolDef {
         let brp_handler_context = base_ctx.into_brp(method, port);
 
         // Create handler
-        let handler = HandlerFn::brp(BrpMethodHandler);
+        let handler = HandlerFn::brp(BrpMethodHandler, self.method_source.clone());
         let tool_context = ToolContext::Brp(brp_handler_context);
 
         Ok(Box::new(UnifiedToolHandler::new(handler, tool_context)))

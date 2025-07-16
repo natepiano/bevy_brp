@@ -51,7 +51,7 @@ impl ToolDefinition for LocalToolDef {
     fn port_parameter(&self) -> PortParameter {
         match &self.handler {
             HandlerFn::Local(_) => PortParameter::NotUsed,
-            HandlerFn::LocalWithPort(_) | HandlerFn::Brp(_) => PortParameter::Required,
+            HandlerFn::LocalWithPort(_) | HandlerFn::Brp { .. } => PortParameter::Required,
         }
     }
 
@@ -74,7 +74,7 @@ impl ToolDefinition for LocalToolDef {
         let port = match &self.handler {
             HandlerFn::Local(_) => None,
             HandlerFn::LocalWithPort(_) => Some(base_ctx.extract_port()?),
-            HandlerFn::Brp(_) => {
+            HandlerFn::Brp { .. } => {
                 return Err(McpError::invalid_params(
                     "BRP handler cannot be used in LocalToolDef",
                     None,

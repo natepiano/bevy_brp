@@ -188,6 +188,15 @@ pub type BrpParameter = Parameter<BrpParameterName>;
 /// only usable on `LocalToolDef`
 pub type LocalParameter = Parameter<LocalParameterName>;
 
+/// Unified parameter enum that can hold either BRP or Local parameters
+#[derive(Clone)]
+pub enum UnifiedParameter {
+    /// BRP parameter
+    Brp(BrpParameter),
+    /// Local parameter
+    Local(LocalParameter),
+}
+
 /// Implement common methods for any Parameter<N> where N can convert to &str
 impl<N> Parameter<N>
 where
@@ -552,5 +561,35 @@ impl ParameterDefinition for LocalParameter {
 
     fn param_type(&self) -> &ParamType {
         self.param_type()
+    }
+}
+
+impl ParameterDefinition for UnifiedParameter {
+    fn name(&self) -> &str {
+        match self {
+            Self::Brp(param) => param.name(),
+            Self::Local(param) => param.name(),
+        }
+    }
+
+    fn required(&self) -> bool {
+        match self {
+            Self::Brp(param) => param.required(),
+            Self::Local(param) => param.required(),
+        }
+    }
+
+    fn description(&self) -> &'static str {
+        match self {
+            Self::Brp(param) => param.description(),
+            Self::Local(param) => param.description(),
+        }
+    }
+
+    fn param_type(&self) -> &ParamType {
+        match self {
+            Self::Brp(param) => param.param_type(),
+            Self::Local(param) => param.param_type(),
+        }
     }
 }

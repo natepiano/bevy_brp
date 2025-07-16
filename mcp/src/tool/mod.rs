@@ -8,6 +8,7 @@ mod parameters;
 mod tool_definition;
 mod types;
 mod unified_handler;
+mod unified_tool_def;
 
 /// constants used in the wild
 pub use constants::{
@@ -18,9 +19,10 @@ pub use constants::{
 };
 pub use definitions::get_all_tool_definitions;
 pub use local_handler::HandlerFn;
-pub use parameters::ParamType;
+pub use parameters::{ParamType, UnifiedParameter};
 pub use tool_definition::ToolDefinition;
 pub use types::{
     BrpHandlerResponse, BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn,
     LocalToolFnWithPort, ToolHandler,
 };
+pub use unified_tool_def::UnifiedToolDef;
