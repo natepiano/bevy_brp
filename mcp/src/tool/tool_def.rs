@@ -8,9 +8,9 @@ use rmcp::{Error as McpError, RoleServer};
 
 use super::mcp_tool_schema::McpToolSchemaBuilder;
 use super::parameters::{ParamType, ParameterDefinition, PortParameter, UnifiedParameter};
-use super::tool_handler::UnifiedToolHandler;
+use super::tool_handler::ToolHandler;
 use super::types::BrpMethodSource;
-use super::{HandlerFn, ToolHandler};
+use super::{HandlerFn, ToolHandlerTrait};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
 use crate::service::McpService;
@@ -67,7 +67,7 @@ impl ToolDef {
         service: Arc<McpService>,
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
-    ) -> Result<Box<dyn ToolHandler + Send>, McpError> {
+    ) -> Result<Box<dyn ToolHandlerTrait + Send>, McpError> {
         use crate::service::{BaseContext, HandlerContext};
         use crate::tool::types::ToolContext;
 
@@ -79,7 +79,7 @@ impl ToolDef {
                 // Local tool - no port needed
                 let local_handler_context = base_ctx.into_local(None);
                 let tool_context = ToolContext::Local(local_handler_context);
-                Ok(Box::new(UnifiedToolHandler::new(
+                Ok(Box::new(ToolHandler::new(
                     self.handler.clone(),
                     tool_context,
                 )))
@@ -89,7 +89,7 @@ impl ToolDef {
                 let port = base_ctx.extract_port()?;
                 let local_handler_context = base_ctx.into_local(Some(port));
                 let tool_context = ToolContext::Local(local_handler_context);
-                Ok(Box::new(UnifiedToolHandler::new(
+                Ok(Box::new(ToolHandler::new(
                     self.handler.clone(),
                     tool_context,
                 )))
@@ -106,7 +106,7 @@ impl ToolDef {
                 let brp_handler_context = base_ctx.into_brp(method, port);
                 let tool_context = ToolContext::Brp(brp_handler_context);
 
-                Ok(Box::new(UnifiedToolHandler::new(
+                Ok(Box::new(ToolHandler::new(
                     self.handler.clone(),
                     tool_context,
                 )))

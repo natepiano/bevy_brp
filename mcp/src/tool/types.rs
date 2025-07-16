@@ -10,7 +10,7 @@ use crate::service::{BrpContext, HandlerContext, LocalContext};
 /// Trait for individual tool handler implementations
 /// `#[async_trait]` allows us to use `ToolHandler` in `Box<dyn ToolHandler>` situations
 #[async_trait]
-pub trait ToolHandler {
+pub trait ToolHandlerTrait {
     async fn call_tool(self: Box<Self>) -> Result<CallToolResult, McpError>;
 }
 

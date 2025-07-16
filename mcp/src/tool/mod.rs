@@ -20,5 +20,5 @@ pub use parameters::ParamType;
 pub use tool_def::ToolDef;
 pub use types::{
     BrpHandlerResponse, BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn,
-    LocalToolFnWithPort, ToolHandler,
+    LocalToolFnWithPort, ToolHandlerTrait,
 };
