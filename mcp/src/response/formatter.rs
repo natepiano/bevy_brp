@@ -28,7 +28,7 @@ use serde_json::{Value, json};
 
 use super::builder::{CallInfo, JsonResponse, ResponseBuilder};
 use super::field_extractor::FieldExtractor;
-use super::large_response::{LargeResponseConfig, handle_large_response};
+use super::large_response::{self, LargeResponseConfig};
 use super::specification::FieldPlacement;
 // Import format discovery types for convenience
 use crate::brp_tools::request_handler::{
@@ -267,41 +267,23 @@ impl ResponseFormatter {
 
     /// Handle large response processing if configured
     fn handle_large_response(&self, response: JsonResponse, method: &str) -> CallToolResult {
-        // We need to check the size of the actual JSON that will be sent to MCP
-        // This is what to_call_tool_result() will serialize
-        let final_json = response.to_json_fallback();
-        let response_value = serde_json::from_str::<Value>(&final_json).unwrap_or(Value::Null);
-
-        // Check if response is too large
-        match handle_large_response(
-            &response_value,
+        // Check if response is too large and handle result field extraction
+        match large_response::handle_large_response(
+            response,
             method,
             self.config.large_response_config.clone(),
         ) {
-            Ok(Some(fallback_response)) => {
-                // Response was too large and saved to file
-                let call_info = response.call_info;
-                ResponseBuilder::success(call_info.clone())
-                    .message(
-                        fallback_response["message"]
-                            .as_str()
-                            .unwrap_or("Response saved to file"),
-                    )
-                    .add_field("filepath", &fallback_response["filepath"])
-                    .unwrap_or_else(|_| ResponseBuilder::success(call_info.clone()))
-                    .add_field("instructions", &fallback_response["instructions"])
-                    .unwrap_or_else(|_| ResponseBuilder::success(call_info))
-                    .build()
-                    .to_call_tool_result()
-            }
-            Ok(None) => {
-                // Response is small enough, return as-is
-                response.to_call_tool_result()
+            Ok(processed_response) => {
+                // Return the processed response (either original or with result field saved to file)
+                processed_response.to_call_tool_result()
             }
             Err(e) => {
                 tracing::warn!("Error handling large response: {:?}", e);
-                // Error handling large response, return original
-                response.to_call_tool_result()
+                // Error handling the large response, return error response
+                ResponseBuilder::error(crate::response::CallInfo::local("large_response_error".to_string()))
+                    .message("Error processing large response")
+                    .build()
+                    .to_call_tool_result()
             }
         }
     }
