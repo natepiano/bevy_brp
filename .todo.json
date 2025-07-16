@@ -1,9 +1,9 @@
 [
-  {"id": "21", "content": "Update tool definitions in definitions.rs to use UnifiedToolDef (next 10 tools)", "status": "in_progress", "priority": "high", "notes": ""},
-  {"id": "22", "content": "Run cargo build and fix errors following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "23", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "high", "notes": ""},
+  {"id": "21", "content": "Update tool definitions in definitions.rs to use UnifiedToolDef (next 10 tools)", "status": "completed", "priority": "high", "notes": "Completed. Converted 10 more tools: bevy_registry_schema, bevy_remove, bevy_remove_resource, bevy_reparent, bevy_rpc_discover, bevy_spawn, brp_execute, brp_extras_discover_format, brp_extras_screenshot, brp_extras_send_keys."},
+  {"id": "22", "content": "Run cargo build and fix errors following WarningRules", "status": "completed", "priority": "high", "notes": "Build successful. Fixed unused import warnings. One warning remains for unused Local variant which will be resolved when remaining LocalToolDef tools are converted."},
+  {"id": "23", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "high", "notes": "Blocked by dead_code warning for unused Local variant. Must complete remaining tool conversions first."},
   {"id": "24", "content": "Fix all clippy issues following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "25", "content": "Update tool definitions in definitions.rs to use UnifiedToolDef (remaining tools)", "status": "pending", "priority": "high", "notes": ""},
+  {"id": "25", "content": "Update tool definitions in definitions.rs to use UnifiedToolDef (remaining tools)", "status": "in_progress", "priority": "high", "notes": "Progress: Converted 5 more tools: brp_extras_set_debug_mode, bevy_get_watch, bevy_list_watch, cleanup_logs, get_trace_log_path. Used UnifiedParameter::Local variant successfully. Many tools still remain to convert."},
   {"id": "26", "content": "Run cargo build and fix errors following WarningRules", "status": "pending", "priority": "high", "notes": ""},
   {"id": "27", "content": "Remove old LocalToolDef and BrpToolDef types", "status": "pending", "priority": "high", "notes": ""},
   {"id": "28", "content": "Run cargo build and fix errors following WarningRules", "status": "pending", "priority": "high", "notes": ""},

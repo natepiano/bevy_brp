@@ -1,8 +1,6 @@
-mod brp_tool_def;
 mod constants;
 mod definitions;
 mod local_handler;
-mod local_tool_def;
 mod mcp_tool_schema;
 mod parameters;
 mod tool_definition;
@@ -19,10 +17,9 @@ pub use constants::{
 };
 pub use definitions::get_all_tool_definitions;
 pub use local_handler::HandlerFn;
-pub use parameters::{ParamType, UnifiedParameter};
+pub use parameters::ParamType;
 pub use tool_definition::ToolDefinition;
 pub use types::{
     BrpHandlerResponse, BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn,
     LocalToolFnWithPort, ToolHandler,
 };
-pub use unified_tool_def::UnifiedToolDef;

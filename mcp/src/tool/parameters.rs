@@ -181,11 +181,11 @@ pub struct Parameter<N> {
 }
 
 /// Type alias for BRP tool parameters
-/// only usable on `BrpToolDef`
+/// only usable on `UnifiedToolDef` with BRP handlers
 pub type BrpParameter = Parameter<BrpParameterName>;
 
 /// Type alias for local tool parameters
-/// only usable on `LocalToolDef`
+/// only usable on `UnifiedToolDef` with local handlers
 pub type LocalParameter = Parameter<LocalParameterName>;
 
 /// Unified parameter enum that can hold either BRP or Local parameters

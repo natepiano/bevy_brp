@@ -6,9 +6,9 @@ use rmcp::model::CallToolRequestParam;
 use rmcp::service::RequestContext;
 use rmcp::{Error as McpError, RoleServer};
 
-use super::brp_tool_def::BrpMethodSource;
 use super::parameters::{ParameterDefinition, UnifiedParameter};
 use super::tool_definition::{PortParameter, ToolDefinition};
+use super::types::BrpMethodSource;
 use super::unified_handler::UnifiedToolHandler;
 use super::{HandlerFn, ToolHandler};
 use crate::response::ResponseSpecification;
@@ -17,13 +17,13 @@ use crate::service::McpService;
 /// Unified tool definition that can handle both BRP and Local tools
 pub struct UnifiedToolDef {
     /// Tool name
-    pub name: &'static str,
+    pub name:            &'static str,
     /// Tool description  
-    pub description: &'static str,
+    pub description:     &'static str,
     /// Handler function with method source information
-    pub handler: HandlerFn,
+    pub handler:         HandlerFn,
     /// Type-safe parameters (unified)
-    pub parameters: Vec<UnifiedParameter>,
+    pub parameters:      Vec<UnifiedParameter>,
     /// Response formatting specification
     pub response_format: ResponseSpecification,
 }
@@ -118,10 +118,10 @@ impl ToolDefinition for UnifiedToolDef {
 
     fn clone_box(&self) -> Box<dyn ToolDefinition> {
         Box::new(Self {
-            name: self.name,
-            description: self.description,
-            handler: self.handler.clone(),
-            parameters: self.parameters.clone(),
+            name:            self.name,
+            description:     self.description,
+            handler:         self.handler.clone(),
+            parameters:      self.parameters.clone(),
             response_format: self.response_format.clone(),
         })
     }

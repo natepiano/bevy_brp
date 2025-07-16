@@ -1,6 +1,6 @@
 //! Tool definitions for BRP and local MCP tools.
 
-use super::brp_tool_def::{BrpMethodSource, BrpToolDef};
+use super::HandlerFn;
 use super::constants::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
     BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
@@ -27,18 +27,16 @@ use super::constants::{
     TOOL_LIST_BEVY_APPS, TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS, TOOL_LIST_LOGS,
     TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
-use super::local_tool_def::LocalToolDef;
 use super::parameters::{BrpParameter, LocalParameter, LocalParameterName, UnifiedParameter};
 use super::tool_definition::ToolDefinition;
 use super::unified_tool_def::UnifiedToolDef;
-use super::HandlerFn;
-use crate::brp_tools::request_handler::BrpMethodHandler;
 use crate::app_tools::brp_launch_bevy_example;
 use crate::app_tools::brp_list_bevy_apps::ListBevyApps;
 use crate::app_tools::brp_list_bevy_examples::ListBevyExamples;
 use crate::app_tools::brp_list_brp_apps::ListBrpApps;
 use crate::app_tools::brp_shutdown::Shutdown;
 use crate::app_tools::brp_status::Status;
+use crate::brp_tools::request_handler::BrpMethodHandler;
 use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
 use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
@@ -71,7 +69,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             name:            TOOL_BEVY_DESTROY,
             description:     DESC_BEVY_DESTROY,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_DESTROY),
-            parameters:      vec![UnifiedParameter::Brp(BrpParameter::entity("The entity ID to destroy", true))],
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::entity(
+                "The entity ID to destroy",
+                true,
+            ))],
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
                 response_fields:  vec![ResponseField::FromRequest {
@@ -87,7 +88,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             description:     DESC_BEVY_GET,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET),
             parameters:      vec![
-                UnifiedParameter::Brp(BrpParameter::entity("The entity ID to get component data from", true)),
+                UnifiedParameter::Brp(BrpParameter::entity(
+                    "The entity ID to get component data from",
+                    true,
+                )),
                 UnifiedParameter::Brp(BrpParameter::components(
                     "Array of component types to retrieve. Each component must be a fully-qualified type name",
                     true,
@@ -128,7 +132,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             description:     DESC_BEVY_INSERT,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT),
             parameters:      vec![
-                UnifiedParameter::Brp(BrpParameter::entity("The entity ID to insert components into", true)),
+                UnifiedParameter::Brp(BrpParameter::entity(
+                    "The entity ID to insert components into",
+                    true,
+                )),
                 UnifiedParameter::Brp(BrpParameter::components(
                     "Object containing component data to insert. Keys are component types, values are component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
                     true,
@@ -218,8 +225,13 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             description:     DESC_BEVY_MUTATE_COMPONENT,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_COMPONENT),
             parameters:      vec![
-                UnifiedParameter::Brp(BrpParameter::entity("The entity ID containing the component to mutate", true)),
-                UnifiedParameter::Brp(BrpParameter::component("The fully-qualified type name of the component to mutate")),
+                UnifiedParameter::Brp(BrpParameter::entity(
+                    "The entity ID containing the component to mutate",
+                    true,
+                )),
+                UnifiedParameter::Brp(BrpParameter::component(
+                    "The fully-qualified type name of the component to mutate",
+                )),
                 UnifiedParameter::Brp(BrpParameter::path(
                     "The path to the field within the component (e.g., 'translation.x')",
                 )),
@@ -243,7 +255,9 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             description:     DESC_BEVY_MUTATE_RESOURCE,
             handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_RESOURCE),
             parameters:      vec![
-                UnifiedParameter::Brp(BrpParameter::resource("The fully-qualified type name of the resource to mutate")),
+                UnifiedParameter::Brp(BrpParameter::resource(
+                    "The fully-qualified type name of the resource to mutate",
+                )),
                 UnifiedParameter::Brp(BrpParameter::path(
                     "The path to the field within the resource (e.g., 'settings.volume')",
                 )),
@@ -288,30 +302,36 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // BrpToolDef/bevy_registry_schema
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/bevy_registry_schema
+        Box::new(UnifiedToolDef {
             name:            TOOL_BEVY_REGISTRY_SCHEMA,
             description:     DESC_BEVY_REGISTRY_SCHEMA,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_REGISTRY_SCHEMA),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REGISTRY_SCHEMA),
             parameters:      vec![
-                BrpParameter::with_crates(),
-                BrpParameter::without_crates(),
-                BrpParameter::with_types(),
-                BrpParameter::without_types(),
+                UnifiedParameter::Brp(BrpParameter::with_crates()),
+                UnifiedParameter::Brp(BrpParameter::without_crates()),
+                UnifiedParameter::Brp(BrpParameter::with_types()),
+                UnifiedParameter::Brp(BrpParameter::without_types()),
             ],
             response_format: ResponseSpecification {
                 message_template: "Retrieved schema information",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
         }),
-        // BrpToolDef/bevy_remove
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/bevy_remove
+        Box::new(UnifiedToolDef {
             name:            TOOL_BEVY_REMOVE,
             description:     DESC_BEVY_REMOVE,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_REMOVE),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE),
             parameters:      vec![
-                BrpParameter::entity("The entity ID to remove components from", true),
-                BrpParameter::components("Array of component type names to remove", true),
+                UnifiedParameter::Brp(BrpParameter::entity(
+                    "The entity ID to remove components from",
+                    true,
+                )),
+                UnifiedParameter::Brp(BrpParameter::components(
+                    "Array of component type names to remove",
+                    true,
+                )),
             ],
             response_format: ResponseSpecification {
                 message_template: "Successfully removed components from entity {entity}",
@@ -329,14 +349,14 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // BrpToolDef/bevy_remove_resource
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/bevy_remove_resource
+        Box::new(UnifiedToolDef {
             name:            TOOL_BEVY_REMOVE_RESOURCE,
             description:     DESC_BEVY_REMOVE_RESOURCE,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_REMOVE_RESOURCE),
-            parameters:      vec![BrpParameter::resource(
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE_RESOURCE),
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::resource(
                 "The fully-qualified type name of the resource to remove",
-            )],
+            ))],
             response_format: ResponseSpecification {
                 message_template: "Successfully removed resource",
                 response_fields:  vec![ResponseField::FromRequest {
@@ -346,14 +366,14 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 }],
             },
         }),
-        // BrpToolDef/bevy_reparent
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/bevy_reparent
+        Box::new(UnifiedToolDef {
             name:            TOOL_BEVY_REPARENT,
             description:     DESC_BEVY_REPARENT,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_REPARENT),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REPARENT),
             parameters:      vec![
-                BrpParameter::entities("Array of entity IDs to reparent"),
-                BrpParameter::parent(),
+                UnifiedParameter::Brp(BrpParameter::entities("Array of entity IDs to reparent")),
+                UnifiedParameter::Brp(BrpParameter::parent()),
             ],
             response_format: ResponseSpecification {
                 message_template: "Successfully reparented entities",
@@ -371,27 +391,27 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // BrpToolDef/bevy_rpc_discover
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/bevy_rpc_discover
+        Box::new(UnifiedToolDef {
             name:            TOOL_BEVY_RPC_DISCOVER,
             description:     DESC_BEVY_RPC_DISCOVER,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_RPC_DISCOVER),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_RPC_DISCOVER),
             parameters:      vec![],
             response_format: ResponseSpecification {
                 message_template: "Retrieved BRP method discovery information",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
         }),
-        // BrpToolDef/bevy_spawn
+        // UnifiedToolDef/bevy_spawn
         // todo: (later) make this match curl
-        Box::new(BrpToolDef {
+        Box::new(UnifiedToolDef {
             name:            TOOL_BEVY_SPAWN,
             description:     DESC_BEVY_SPAWN,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_SPAWN),
-            parameters:      vec![BrpParameter::components(
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_SPAWN),
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::components(
                 "Object containing component data to spawn with. Keys are component types, values are component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
                 false,
-            )],
+            ))],
             response_format: ResponseSpecification {
                 message_template: "Successfully spawned entity",
                 response_fields:  vec![ResponseField::FromResponse {
@@ -401,46 +421,47 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 }],
             },
         }),
-        // BrpToolDef/brp_execute
-        // this is the one brp tool that uses BrpMethodSource::Dynamic
+        // UnifiedToolDef/brp_execute
+        // this is the one brp tool that uses dynamic method handling
         // as the user can dynamically pass in the method
-        // we use this enum to make sure we don't accidentally create
-        // a method param on any other BrpToolDef as it's a special case
-        Box::new(BrpToolDef {
+        Box::new(UnifiedToolDef {
             name:            TOOL_BRP_EXECUTE,
             description:     DESC_BRP_EXECUTE,
-            method_source:   BrpMethodSource::Dynamic,
-            parameters:      vec![BrpParameter::params(
+            handler:         HandlerFn::brp_dynamic(BrpMethodHandler),
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::params(
                 "Optional parameters for the method, as a JSON object or array",
                 false,
-            )],
+            ))],
             response_format: ResponseSpecification {
                 message_template: "Method executed successfully",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
         }),
-        // BrpToolDef/brp_extras_discover_format
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/brp_extras_discover_format
+        Box::new(UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_EXTRAS_DISCOVER_FORMAT),
-            parameters:      vec![BrpParameter::types(
+            handler:         HandlerFn::brp_static(
+                BrpMethodHandler,
+                BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
+            ),
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::types(
                 "Array of fully-qualified component type names to discover formats for",
                 true,
-            )],
+            ))],
             response_format: ResponseSpecification {
                 message_template: "Format discovery completed",
                 response_fields:  vec![ResponseField::DirectToResult],
             },
         }),
-        // BrpToolDef/brp_extras_screenshot
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/brp_extras_screenshot
+        Box::new(UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_SCREENSHOT,
             description:     DESC_BRP_EXTRAS_SCREENSHOT,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_EXTRAS_SCREENSHOT),
-            parameters:      vec![BrpParameter::path(
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SCREENSHOT),
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::path(
                 "File path where the screenshot should be saved",
-            )],
+            ))],
             response_format: ResponseSpecification {
                 message_template: "Successfully captured screenshot",
                 response_fields:  vec![ResponseField::FromRequest {
@@ -450,12 +471,15 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 }],
             },
         }),
-        // BrpToolDef/brp_extras_send_keys
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/brp_extras_send_keys
+        Box::new(UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_SEND_KEYS,
             description:     DESC_BRP_EXTRAS_SEND_KEYS,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_EXTRAS_SEND_KEYS),
-            parameters:      vec![BrpParameter::keys(), BrpParameter::duration_ms()],
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SEND_KEYS),
+            parameters:      vec![
+                UnifiedParameter::Brp(BrpParameter::keys()),
+                UnifiedParameter::Brp(BrpParameter::duration_ms()),
+            ],
             response_format: ResponseSpecification {
                 message_template: "Successfully sent keyboard input",
                 response_fields:  vec![
@@ -472,12 +496,15 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // BrpToolDef/brp_extras_set_debug_mode
-        Box::new(BrpToolDef {
+        // UnifiedToolDef/brp_extras_set_debug_mode
+        Box::new(UnifiedToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-            method_source:   BrpMethodSource::Static(BRP_METHOD_EXTRAS_SET_DEBUG_MODE),
-            parameters:      vec![BrpParameter::enabled()],
+            handler:         HandlerFn::brp_static(
+                BrpMethodHandler,
+                BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
+            ),
+            parameters:      vec![UnifiedParameter::Brp(BrpParameter::enabled())],
             response_format: ResponseSpecification {
                 message_template: "Debug mode updated successfully",
                 response_fields:  vec![
@@ -499,24 +526,24 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         // but we need the local tool in order to set up the watch to stream
         // the results and log them to a file
 
-        // LocalToolDef/bevy_get_watch
-        Box::new(LocalToolDef {
-            name:        TOOL_BEVY_GET_WATCH,
-            description: DESC_BEVY_GET_WATCH,
-            handler:     HandlerFn::local_with_port(BevyGetWatch),
-            parameters:  vec![
-                LocalParameter::number(
+        // UnifiedToolDef/bevy_get_watch
+        Box::new(UnifiedToolDef {
+            name:            TOOL_BEVY_GET_WATCH,
+            description:     DESC_BEVY_GET_WATCH,
+            handler:         HandlerFn::local_with_port(BevyGetWatch),
+            parameters:      vec![
+                UnifiedParameter::Local(LocalParameter::number(
                     LocalParameterName::Entity,
                     "The entity ID to watch for component changes",
                     true,
-                ),
-                LocalParameter::string_array(
+                )),
+                UnifiedParameter::Local(LocalParameter::string_array(
                     LocalParameterName::Components,
                     "Required array of component types to watch. Must contain at least one component. Without this, the watch will not detect any changes.",
                     true,
-                ),
+                )),
             ],
-            formatter:   ResponseSpecification {
+            response_format: ResponseSpecification {
                 message_template: "Started entity watch for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -537,17 +564,17 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/bevy_list_watch
-        Box::new(LocalToolDef {
-            name:        TOOL_BEVY_LIST_WATCH,
-            description: DESC_BEVY_LIST_WATCH,
-            handler:     HandlerFn::local_with_port(BevyListWatch),
-            parameters:  vec![LocalParameter::number(
+        // UnifiedToolDef/bevy_list_watch
+        Box::new(UnifiedToolDef {
+            name:            TOOL_BEVY_LIST_WATCH,
+            description:     DESC_BEVY_LIST_WATCH,
+            handler:         HandlerFn::local_with_port(BevyListWatch),
+            parameters:      vec![UnifiedParameter::Local(LocalParameter::number(
                 LocalParameterName::Entity,
                 "The entity ID to watch for component list changes",
                 true,
-            )],
-            formatter:   ResponseSpecification {
+            ))],
+            response_format: ResponseSpecification {
                 message_template: "Started list watch for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -568,24 +595,24 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/cleanup_logs
-        Box::new(LocalToolDef {
-            name:        TOOL_CLEANUP_LOGS,
-            description: DESC_CLEANUP_LOGS,
-            handler:     HandlerFn::local(CleanupLogs),
-            parameters:  vec![
-                LocalParameter::string(
+        // UnifiedToolDef/cleanup_logs
+        Box::new(UnifiedToolDef {
+            name:            TOOL_CLEANUP_LOGS,
+            description:     DESC_CLEANUP_LOGS,
+            handler:         HandlerFn::local(CleanupLogs),
+            parameters:      vec![
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::AppName,
                     "Optional filter to delete logs for a specific app only",
                     false,
-                ),
-                LocalParameter::number(
+                )),
+                UnifiedParameter::Local(LocalParameter::number(
                     LocalParameterName::OlderThanSeconds,
                     "Optional filter to delete logs older than N seconds",
                     false,
-                ),
+                )),
             ],
-            formatter:   ResponseSpecification {
+            response_format: ResponseSpecification {
                 message_template: "Deleted {deleted_count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -611,13 +638,13 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/get_trace_log_path
-        Box::new(LocalToolDef {
-            name:        TOOL_GET_TRACE_LOG_PATH,
-            description: DESC_GET_TRACE_LOG_PATH,
-            handler:     HandlerFn::local(GetTraceLogPath),
-            parameters:  vec![],
-            formatter:   ResponseSpecification {
+        // UnifiedToolDef/get_trace_log_path
+        Box::new(UnifiedToolDef {
+            name:            TOOL_GET_TRACE_LOG_PATH,
+            description:     DESC_GET_TRACE_LOG_PATH,
+            handler:         HandlerFn::local(GetTraceLogPath),
+            parameters:      vec![],
+            response_format: ResponseSpecification {
                 message_template: "Trace log found",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -638,71 +665,71 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/launch_bevy_app
-        Box::new(LocalToolDef {
-            name:        TOOL_LAUNCH_BEVY_APP,
-            description: DESC_LAUNCH_BEVY_APP,
-            handler:     HandlerFn::local_with_port(
+        // UnifiedToolDef/launch_bevy_app
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LAUNCH_BEVY_APP,
+            description:     DESC_LAUNCH_BEVY_APP,
+            handler:         HandlerFn::local_with_port(
                 crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
             ),
-            parameters:  vec![
-                LocalParameter::string(
+            parameters:      vec![
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::AppName,
                     "Name of the Bevy app to launch",
                     true,
-                ),
-                LocalParameter::string(
+                )),
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::Profile,
                     "Build profile to use (debug or release)",
                     false,
-                ),
-                LocalParameter::string(
+                )),
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::Path,
                     "Path to use when multiple apps with the same name exist",
                     false,
-                ),
+                )),
             ],
-            formatter:   ResponseSpecification {
+            response_format: ResponseSpecification {
                 message_template: "Launched Bevy app `{app_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         }),
-        // LocalToolDef/launch_bevy_example
-        Box::new(LocalToolDef {
-            name:        TOOL_LAUNCH_BEVY_EXAMPLE,
-            description: DESC_LAUNCH_BEVY_EXAMPLE,
-            handler:     HandlerFn::local_with_port(
+        // UnifiedToolDef/launch_bevy_example
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LAUNCH_BEVY_EXAMPLE,
+            description:     DESC_LAUNCH_BEVY_EXAMPLE,
+            handler:         HandlerFn::local_with_port(
                 brp_launch_bevy_example::create_launch_bevy_example_handler(),
             ),
-            parameters:  vec![
-                LocalParameter::string(
+            parameters:      vec![
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::ExampleName,
                     "Name of the Bevy example to launch",
                     true,
-                ),
-                LocalParameter::string(
+                )),
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::Profile,
                     "Build profile to use (debug or release)",
                     false,
-                ),
-                LocalParameter::string(
+                )),
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::Path,
                     "Path to use when multiple examples with the same name exist",
                     false,
-                ),
+                )),
             ],
-            formatter:   ResponseSpecification {
+            response_format: ResponseSpecification {
                 message_template: "Launched Bevy example `{example_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         }),
-        // LocalToolDef/list_bevy_apps
-        Box::new(LocalToolDef {
-            name:        TOOL_LIST_BEVY_APPS,
-            description: DESC_LIST_BEVY_APPS,
-            handler:     HandlerFn::local(ListBevyApps),
-            parameters:  vec![],
-            formatter:   ResponseSpecification {
+        // UnifiedToolDef/list_bevy_apps
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LIST_BEVY_APPS,
+            description:     DESC_LIST_BEVY_APPS,
+            handler:         HandlerFn::local(ListBevyApps),
+            parameters:      vec![],
+            response_format: ResponseSpecification {
                 message_template: "Found {count} Bevy apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -718,13 +745,13 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/list_bevy_examples
-        Box::new(LocalToolDef {
-            name:        TOOL_LIST_BEVY_EXAMPLES,
-            description: DESC_LIST_BEVY_EXAMPLES,
-            handler:     HandlerFn::local(ListBevyExamples),
-            parameters:  vec![],
-            formatter:   ResponseSpecification {
+        // UnifiedToolDef/list_bevy_examples
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LIST_BEVY_EXAMPLES,
+            description:     DESC_LIST_BEVY_EXAMPLES,
+            handler:         HandlerFn::local(ListBevyExamples),
+            parameters:      vec![],
+            response_format: ResponseSpecification {
                 message_template: "Found {count} Bevy examples",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -740,13 +767,13 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/list_brp_apps
-        Box::new(LocalToolDef {
-            name:        TOOL_LIST_BRP_APPS,
-            description: DESC_LIST_BRP_APPS,
-            handler:     HandlerFn::local(ListBrpApps),
-            parameters:  vec![],
-            formatter:   ResponseSpecification {
+        // UnifiedToolDef/list_brp_apps
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LIST_BRP_APPS,
+            description:     DESC_LIST_BRP_APPS,
+            handler:         HandlerFn::local(ListBrpApps),
+            parameters:      vec![],
+            response_format: ResponseSpecification {
                 message_template: "Found {count} BRP-enabled apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -762,13 +789,13 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/brp_list_active_watches
-        Box::new(LocalToolDef {
-            name:        TOOL_LIST_ACTIVE_WATCHES,
-            description: DESC_LIST_ACTIVE_WATCHES,
-            handler:     HandlerFn::local(BrpListActiveWatches),
-            parameters:  vec![],
-            formatter:   ResponseSpecification {
+        // UnifiedToolDef/brp_list_active_watches
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LIST_ACTIVE_WATCHES,
+            description:     DESC_LIST_ACTIVE_WATCHES,
+            handler:         HandlerFn::local(BrpListActiveWatches),
+            parameters:      vec![],
+            response_format: ResponseSpecification {
                 message_template: "Found {count} active watches",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -784,39 +811,39 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/brp_stop_watch
-        Box::new(LocalToolDef {
-            name:        TOOL_STOP_WATCH,
-            description: DESC_STOP_WATCH,
-            handler:     HandlerFn::local(BrpStopWatch),
-            parameters:  vec![LocalParameter::number(
+        // UnifiedToolDef/brp_stop_watch
+        Box::new(UnifiedToolDef {
+            name:            TOOL_STOP_WATCH,
+            description:     DESC_STOP_WATCH,
+            handler:         HandlerFn::local(BrpStopWatch),
+            parameters:      vec![UnifiedParameter::Local(LocalParameter::number(
                 LocalParameterName::WatchId,
                 "The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch",
                 true,
-            )],
-            formatter:   ResponseSpecification {
+            ))],
+            response_format: ResponseSpecification {
                 message_template: "Successfully stopped watch",
                 response_fields:  vec![],
             },
         }),
         // LocalToolDef/list_logs
-        Box::new(LocalToolDef {
-            name:        TOOL_LIST_LOGS,
-            description: DESC_LIST_LOGS,
-            handler:     HandlerFn::local(ListLogs),
-            parameters:  vec![
-                LocalParameter::string(
+        Box::new(UnifiedToolDef {
+            name:            TOOL_LIST_LOGS,
+            description:     DESC_LIST_LOGS,
+            handler:         HandlerFn::local(ListLogs),
+            parameters:      vec![
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::AppName,
                     "Optional filter to list logs for a specific app only",
                     false,
-                ),
-                LocalParameter::boolean(
+                )),
+                UnifiedParameter::Local(LocalParameter::boolean(
                     LocalParameterName::Verbose,
                     "Include full details (path, timestamps, size in bytes). Default is false for minimal output",
                     false,
-                ),
+                )),
             ],
-            formatter:   ResponseSpecification {
+            response_format: ResponseSpecification {
                 message_template: "Found {count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -837,29 +864,29 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/read_log
-        Box::new(LocalToolDef {
-            name:        TOOL_READ_LOG,
-            description: DESC_READ_LOG,
-            handler:     HandlerFn::local(ReadLog),
-            parameters:  vec![
-                LocalParameter::string(
+        // UnifiedToolDef/read_log
+        Box::new(UnifiedToolDef {
+            name:            TOOL_READ_LOG,
+            description:     DESC_READ_LOG,
+            handler:         HandlerFn::local(ReadLog),
+            parameters:      vec![
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::Filename,
                     "The log filename (e.g., bevy_brp_mcp_myapp_1234567890.log)",
                     true,
-                ),
-                LocalParameter::string(
+                )),
+                UnifiedParameter::Local(LocalParameter::string(
                     LocalParameterName::Keyword,
                     "Optional keyword to filter lines (case-insensitive)",
                     false,
-                ),
-                LocalParameter::number(
+                )),
+                UnifiedParameter::Local(LocalParameter::number(
                     LocalParameterName::TailLines,
                     "Optional number of lines to read from the end of file",
                     false,
-                ),
+                )),
             ],
-            formatter:   ResponseSpecification {
+            response_format: ResponseSpecification {
                 message_template: "Successfully read log file: {filename}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -905,17 +932,17 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                 ],
             },
         }),
-        // LocalToolDef/set_tracing_level
-        Box::new(LocalToolDef {
-            name:        TOOL_SET_TRACING_LEVEL,
-            description: DESC_SET_TRACING_LEVEL,
-            handler:     HandlerFn::local(SetTracingLevel),
-            parameters:  vec![LocalParameter::string(
+        // UnifiedToolDef/set_tracing_level
+        Box::new(UnifiedToolDef {
+            name:            TOOL_SET_TRACING_LEVEL,
+            description:     DESC_SET_TRACING_LEVEL,
+            handler:         HandlerFn::local(SetTracingLevel),
+            parameters:      vec![UnifiedParameter::Local(LocalParameter::string(
                 LocalParameterName::Level,
                 "Tracing level to set (error, warn, info, debug, trace)",
                 true,
-            )],
-            formatter:   ResponseSpecification {
+            ))],
+            response_format: ResponseSpecification {
                 message_template: "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -932,16 +959,16 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             },
         }),
         // LocalToolDef/status
-        Box::new(LocalToolDef {
-            name:        TOOL_STATUS,
-            description: DESC_STATUS,
-            handler:     HandlerFn::local_with_port(Status),
-            parameters:  vec![LocalParameter::string(
+        Box::new(UnifiedToolDef {
+            name:            TOOL_STATUS,
+            description:     DESC_STATUS,
+            handler:         HandlerFn::local_with_port(Status),
+            parameters:      vec![UnifiedParameter::Local(LocalParameter::string(
                 LocalParameterName::AppName,
                 "Name of the process to check for",
                 true,
-            )],
-            formatter:   ResponseSpecification {
+            ))],
+            response_format: ResponseSpecification {
                 message_template: "Status check for `{app_name}` on port {port}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -968,16 +995,16 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
             },
         }),
         // LocalToolDef/shutdown
-        Box::new(LocalToolDef {
-            name:        TOOL_SHUTDOWN,
-            description: DESC_SHUTDOWN,
-            handler:     HandlerFn::local_with_port(Shutdown),
-            parameters:  vec![LocalParameter::string(
+        Box::new(UnifiedToolDef {
+            name:            TOOL_SHUTDOWN,
+            description:     DESC_SHUTDOWN,
+            handler:         HandlerFn::local_with_port(Shutdown),
+            parameters:      vec![UnifiedParameter::Local(LocalParameter::string(
                 LocalParameterName::AppName,
                 "Name of the Bevy app to shutdown",
                 true,
-            )],
-            formatter:   ResponseSpecification {
+            ))],
+            response_format: ResponseSpecification {
                 message_template: "{shutdown_message}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
