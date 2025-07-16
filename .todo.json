@@ -1,7 +1,7 @@
 [
   {
     "id": "1",
-    "content": "Create ToolContext enum to wrap HandlerContext variants",
+    "content": "Create BrpMethodHandler struct in brp_tools/request_handler/mod.rs",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -15,7 +15,7 @@
   },
   {
     "id": "3",
-    "content": "Create BrpToolFunction trait in tool/types.rs",
+    "content": "Implement BrpToolFn trait for BrpMethodHandler",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -29,7 +29,7 @@
   },
   {
     "id": "5",
-    "content": "Extend Handler enum with Brp variant",
+    "content": "Update HandlerFn::call_handler to accept ToolContext instead of HandlerContext<LocalContext>",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -57,7 +57,7 @@
   },
   {
     "id": "9",
-    "content": "Create unified ToolHandler struct with handler and context fields",
+    "content": "Update HandlerFn match arms to pass correct context type to each handler",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -71,7 +71,7 @@
   },
   {
     "id": "11",
-    "content": "Implement call_tool method with match on handler and context variants",
+    "content": "Create unified ToolHandler struct with handler and context fields",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -85,7 +85,7 @@
   },
   {
     "id": "13",
-    "content": "Update LocalToolDef::create_handler to use unified ToolHandler",
+    "content": "Implement ToolHandler trait for unified ToolHandler",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -113,7 +113,7 @@
   },
   {
     "id": "17",
-    "content": "Update BrpToolDef::create_handler to use unified ToolHandler",
+    "content": "Update LocalToolDef::create_handler to use unified ToolHandler",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -127,7 +127,7 @@
   },
   {
     "id": "19",
-    "content": "Remove old LocalToolHandler and BrpToolHandler structs",
+    "content": "Update BrpToolDef::create_handler to use unified ToolHandler",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -141,7 +141,7 @@
   },
   {
     "id": "21",
-    "content": "Update imports and exports to use unified ToolHandler",
+    "content": "Move HandlerFn and unified ToolHandler to proper location (tool/mod.rs or tool/handler.rs)",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -169,41 +169,69 @@
   },
   {
     "id": "25",
-    "content": "Run cargo +nightly fmt",
+    "content": "Remove old LocalToolHandler and BrpToolHandler structs",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "26",
-    "content": "Run cargo nextest run",
+    "content": "Run cargo build and fix errors",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "27",
-    "content": "STOP if test failures - review with user",
+    "content": "Update imports and exports to use unified ToolHandler",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "28",
-    "content": "Subagent: STOP and return control",
+    "content": "Run cargo build and fix errors",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "29",
-    "content": "Main: Task new subagent for code review (read-only)",
+    "content": "Run cargo +nightly fmt",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "30",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "33",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "34",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "high",
