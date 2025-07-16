@@ -23,24 +23,11 @@ pub struct HandlerContext<T = ()> {
     pub(super) handler_data: T,
 }
 
-impl HandlerContext {
-    pub const fn new(
-        service: Arc<McpService>,
-        request: CallToolRequestParam,
-        context: RequestContext<RoleServer>,
-    ) -> Self {
-        Self {
-            service,
-            request,
-            context,
-            handler_data: (),
-        }
-    }
-}
+// Note: Generic HandlerContext::new() removed - use HandlerContext<BaseContext>::new() instead
 
 impl<T> HandlerContext<T> {
     /// Create a new `HandlerContext` with specific handler data
-    pub const fn with_data(
+    pub(crate) const fn with_data(
         service: Arc<McpService>,
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
@@ -206,41 +193,7 @@ impl<T> HandlerContext<T> {
         if path.is_empty() { None } else { Some(path) }
     }
 
-    /// Extract method parameter for `brp_execute` tool
-    pub fn extract_method_param(&self) -> Result<String, McpError> {
-        use crate::constants::PARAM_METHOD;
-        self.extract_required_string(PARAM_METHOD, "BRP method")
-            .map(std::string::ToString::to_string)
-    }
-
-    /// Extract port parameter with default value
-    pub fn extract_port(&self) -> Result<u16, McpError> {
-        use crate::constants::{DEFAULT_BRP_PORT, PARAM_PORT};
-        use crate::error::{Error as ServiceError, report_to_mcp_error};
-
-        let port_u64 = self.extract_optional_number(PARAM_PORT, u64::from(DEFAULT_BRP_PORT));
-
-        let port = u16::try_from(port_u64).map_err(|_| {
-            report_to_mcp_error(
-                &error_stack::Report::new(ServiceError::InvalidArgument(
-                    "Invalid port parameter".to_string(),
-                ))
-                .attach_printable("Value too large for u16"),
-            )
-        })?;
-
-        // Validate port range (1024-65535 for non-privileged ports)
-        if port < 1024 {
-            return Err(report_to_mcp_error(
-                &error_stack::Report::new(ServiceError::InvalidArgument(
-                    "Invalid port parameter".to_string(),
-                ))
-                .attach_printable("Port must be >= 1024 (non-privileged ports only)"),
-            ));
-        }
-
-        Ok(port)
-    }
+    // Note: extract_method_param() and extract_port() moved to HandlerContext<BaseContext>
 
     /// Generic helper for extracting typed parameters with unified required/optional logic
     ///

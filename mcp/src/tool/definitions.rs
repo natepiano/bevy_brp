@@ -2,8 +2,6 @@
 //!
 //! This is a new version that uses the `BrpToolDef` and `LocalToolDef` structures.
 
-use std::sync::Arc;
-
 use super::brp_tool_def::{BrpMethodSource, BrpToolDef};
 use super::constants::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
@@ -33,7 +31,7 @@ use super::constants::{
 };
 use super::local_tool_def::LocalToolDef;
 use super::parameters::{BrpParameter, LocalParameter, LocalParameterName};
-use super::tool_definition::{PortParameter, ToolDefinition};
+use super::tool_definition::ToolDefinition;
 use crate::app_tools::brp_launch_bevy_example;
 use crate::app_tools::brp_list_bevy_apps::ListBevyApps;
 use crate::app_tools::brp_list_bevy_examples::ListBevyExamples;
@@ -59,6 +57,7 @@ use crate::log_tools::set_tracing_level::SetTracingLevel;
 use crate::response::{
     FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
 };
+use crate::service::LocalHandler;
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,
 };
@@ -502,10 +501,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
 
         // LocalToolDef/bevy_get_watch
         Box::new(LocalToolDef {
-            name:           TOOL_BEVY_GET_WATCH,
-            description:    DESC_BEVY_GET_WATCH,
-            handler:        Arc::new(BevyGetWatch),
-            parameters:     vec![
+            name:        TOOL_BEVY_GET_WATCH,
+            description: DESC_BEVY_GET_WATCH,
+            handler:     LocalHandler::with_port(BevyGetWatch),
+            parameters:  vec![
                 LocalParameter::number(
                     LocalParameterName::Entity,
                     "The entity ID to watch for component changes",
@@ -517,8 +516,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     true,
                 ),
             ],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Started entity watch for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -541,16 +539,15 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/bevy_list_watch
         Box::new(LocalToolDef {
-            name:           TOOL_BEVY_LIST_WATCH,
-            description:    DESC_BEVY_LIST_WATCH,
-            handler:        Arc::new(BevyListWatch),
-            parameters:     vec![LocalParameter::number(
+            name:        TOOL_BEVY_LIST_WATCH,
+            description: DESC_BEVY_LIST_WATCH,
+            handler:     LocalHandler::with_port(BevyListWatch),
+            parameters:  vec![LocalParameter::number(
                 LocalParameterName::Entity,
                 "The entity ID to watch for component list changes",
                 true,
             )],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Started list watch for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -573,10 +570,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/cleanup_logs
         Box::new(LocalToolDef {
-            name:           TOOL_CLEANUP_LOGS,
-            description:    DESC_CLEANUP_LOGS,
-            handler:        Arc::new(CleanupLogs),
-            parameters:     vec![
+            name:        TOOL_CLEANUP_LOGS,
+            description: DESC_CLEANUP_LOGS,
+            handler:     LocalHandler::basic(CleanupLogs),
+            parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::AppName,
                     "Optional filter to delete logs for a specific app only",
@@ -588,8 +585,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     false,
                 ),
             ],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Deleted {deleted_count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -617,12 +613,11 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/get_trace_log_path
         Box::new(LocalToolDef {
-            name:           TOOL_GET_TRACE_LOG_PATH,
-            description:    DESC_GET_TRACE_LOG_PATH,
-            handler:        Arc::new(GetTraceLogPath),
-            parameters:     vec![],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            name:        TOOL_GET_TRACE_LOG_PATH,
+            description: DESC_GET_TRACE_LOG_PATH,
+            handler:     LocalHandler::basic(GetTraceLogPath),
+            parameters:  vec![],
+            formatter:   ResponseSpecification {
                 message_template: "Trace log found",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -645,12 +640,12 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/launch_bevy_app
         Box::new(LocalToolDef {
-            name:           TOOL_LAUNCH_BEVY_APP,
-            description:    DESC_LAUNCH_BEVY_APP,
-            handler:        Arc::new(
+            name:        TOOL_LAUNCH_BEVY_APP,
+            description: DESC_LAUNCH_BEVY_APP,
+            handler:     LocalHandler::with_port(
                 crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
             ),
-            parameters:     vec![
+            parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::AppName,
                     "Name of the Bevy app to launch",
@@ -667,18 +662,19 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     false,
                 ),
             ],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Launched Bevy app `{app_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         }),
         // LocalToolDef/launch_bevy_example
         Box::new(LocalToolDef {
-            name:           TOOL_LAUNCH_BEVY_EXAMPLE,
-            description:    DESC_LAUNCH_BEVY_EXAMPLE,
-            handler:        Arc::new(brp_launch_bevy_example::create_launch_bevy_example_handler()),
-            parameters:     vec![
+            name:        TOOL_LAUNCH_BEVY_EXAMPLE,
+            description: DESC_LAUNCH_BEVY_EXAMPLE,
+            handler:     LocalHandler::with_port(
+                brp_launch_bevy_example::create_launch_bevy_example_handler(),
+            ),
+            parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::ExampleName,
                     "Name of the Bevy example to launch",
@@ -695,20 +691,18 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     false,
                 ),
             ],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Launched Bevy example `{example_name}`",
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         }),
         // LocalToolDef/list_bevy_apps
         Box::new(LocalToolDef {
-            name:           TOOL_LIST_BEVY_APPS,
-            description:    DESC_LIST_BEVY_APPS,
-            handler:        Arc::new(ListBevyApps),
-            parameters:     vec![],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            name:        TOOL_LIST_BEVY_APPS,
+            description: DESC_LIST_BEVY_APPS,
+            handler:     LocalHandler::basic(ListBevyApps),
+            parameters:  vec![],
+            formatter:   ResponseSpecification {
                 message_template: "Found {count} Bevy apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -726,12 +720,11 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/list_bevy_examples
         Box::new(LocalToolDef {
-            name:           TOOL_LIST_BEVY_EXAMPLES,
-            description:    DESC_LIST_BEVY_EXAMPLES,
-            handler:        Arc::new(ListBevyExamples),
-            parameters:     vec![],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            name:        TOOL_LIST_BEVY_EXAMPLES,
+            description: DESC_LIST_BEVY_EXAMPLES,
+            handler:     LocalHandler::basic(ListBevyExamples),
+            parameters:  vec![],
+            formatter:   ResponseSpecification {
                 message_template: "Found {count} Bevy examples",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -749,12 +742,11 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/list_brp_apps
         Box::new(LocalToolDef {
-            name:           TOOL_LIST_BRP_APPS,
-            description:    DESC_LIST_BRP_APPS,
-            handler:        Arc::new(ListBrpApps),
-            parameters:     vec![],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            name:        TOOL_LIST_BRP_APPS,
+            description: DESC_LIST_BRP_APPS,
+            handler:     LocalHandler::basic(ListBrpApps),
+            parameters:  vec![],
+            formatter:   ResponseSpecification {
                 message_template: "Found {count} BRP-enabled apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -772,12 +764,11 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/brp_list_active_watches
         Box::new(LocalToolDef {
-            name:           TOOL_LIST_ACTIVE_WATCHES,
-            description:    DESC_LIST_ACTIVE_WATCHES,
-            handler:        Arc::new(BrpListActiveWatches),
-            parameters:     vec![],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            name:        TOOL_LIST_ACTIVE_WATCHES,
+            description: DESC_LIST_ACTIVE_WATCHES,
+            handler:     LocalHandler::basic(BrpListActiveWatches),
+            parameters:  vec![],
+            formatter:   ResponseSpecification {
                 message_template: "Found {count} active watches",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -795,26 +786,25 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/brp_stop_watch
         Box::new(LocalToolDef {
-            name:           TOOL_STOP_WATCH,
-            description:    DESC_STOP_WATCH,
-            handler:        Arc::new(BrpStopWatch),
-            parameters:     vec![LocalParameter::number(
+            name:        TOOL_STOP_WATCH,
+            description: DESC_STOP_WATCH,
+            handler:     LocalHandler::basic(BrpStopWatch),
+            parameters:  vec![LocalParameter::number(
                 LocalParameterName::WatchId,
                 "The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch",
                 true,
             )],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Successfully stopped watch",
                 response_fields:  vec![],
             },
         }),
         // LocalToolDef/list_logs
         Box::new(LocalToolDef {
-            name:           TOOL_LIST_LOGS,
-            description:    DESC_LIST_LOGS,
-            handler:        Arc::new(ListLogs),
-            parameters:     vec![
+            name:        TOOL_LIST_LOGS,
+            description: DESC_LIST_LOGS,
+            handler:     LocalHandler::basic(ListLogs),
+            parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::AppName,
                     "Optional filter to list logs for a specific app only",
@@ -826,8 +816,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     false,
                 ),
             ],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Found {count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -850,10 +839,10 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/read_log
         Box::new(LocalToolDef {
-            name:           TOOL_READ_LOG,
-            description:    DESC_READ_LOG,
-            handler:        Arc::new(ReadLog),
-            parameters:     vec![
+            name:        TOOL_READ_LOG,
+            description: DESC_READ_LOG,
+            handler:     LocalHandler::basic(ReadLog),
+            parameters:  vec![
                 LocalParameter::string(
                     LocalParameterName::Filename,
                     "The log filename (e.g., bevy_brp_mcp_myapp_1234567890.log)",
@@ -870,8 +859,7 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
                     false,
                 ),
             ],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Successfully read log file: {filename}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -919,16 +907,15 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/set_tracing_level
         Box::new(LocalToolDef {
-            name:           TOOL_SET_TRACING_LEVEL,
-            description:    DESC_SET_TRACING_LEVEL,
-            handler:        Arc::new(SetTracingLevel),
-            parameters:     vec![LocalParameter::string(
+            name:        TOOL_SET_TRACING_LEVEL,
+            description: DESC_SET_TRACING_LEVEL,
+            handler:     LocalHandler::basic(SetTracingLevel),
+            parameters:  vec![LocalParameter::string(
                 LocalParameterName::Level,
                 "Tracing level to set (error, warn, info, debug, trace)",
                 true,
             )],
-            port_parameter: PortParameter::NotUsed,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -946,16 +933,15 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/status
         Box::new(LocalToolDef {
-            name:           TOOL_STATUS,
-            description:    DESC_STATUS,
-            handler:        Arc::new(Status),
-            parameters:     vec![LocalParameter::string(
+            name:        TOOL_STATUS,
+            description: DESC_STATUS,
+            handler:     LocalHandler::with_port(Status),
+            parameters:  vec![LocalParameter::string(
                 LocalParameterName::AppName,
                 "Name of the process to check for",
                 true,
             )],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "Status check for `{app_name}` on port {port}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -983,16 +969,15 @@ pub fn get_all_tool_definitions() -> Vec<Box<dyn ToolDefinition>> {
         }),
         // LocalToolDef/shutdown
         Box::new(LocalToolDef {
-            name:           TOOL_SHUTDOWN,
-            description:    DESC_SHUTDOWN,
-            handler:        Arc::new(Shutdown),
-            parameters:     vec![LocalParameter::string(
+            name:        TOOL_SHUTDOWN,
+            description: DESC_SHUTDOWN,
+            handler:     LocalHandler::with_port(Shutdown),
+            parameters:  vec![LocalParameter::string(
                 LocalParameterName::AppName,
                 "Name of the Bevy app to shutdown",
                 true,
             )],
-            port_parameter: PortParameter::Required,
-            formatter:      ResponseSpecification {
+            formatter:   ResponseSpecification {
                 message_template: "{shutdown_message}",
                 response_fields:  vec![
                     ResponseField::FromResponse {

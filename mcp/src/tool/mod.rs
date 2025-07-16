@@ -19,4 +19,6 @@ pub use constants::{
 pub use definitions::get_all_tool_definitions;
 pub use parameters::ParamType;
 pub use tool_definition::ToolDefinition;
-pub use types::{HandlerResponse, HandlerResult, LocalToolFunction, ToolHandler};
+pub use types::{
+    HandlerResponse, HandlerResult, LocalToolFunction, LocalToolFunctionWithPort, ToolHandler,
+};

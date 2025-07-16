@@ -23,7 +23,7 @@ impl HandlerContext<BrpContext> {
         &self.handler_data.method
     }
 
-    pub fn port(&self) -> u16 {
+    pub const fn port(&self) -> u16 {
         self.handler_data.port
     }
 

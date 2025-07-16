@@ -4,7 +4,7 @@
     "test_file": ".claude/commands/tests/extras.md",
     "port": 20102,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20102",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20102 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown via the brp_extras_shutdown method (part of test)",
     "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods",
     "expected_shutdown_method": "clean_shutdown"
@@ -14,7 +14,7 @@
     "test_file": ".claude/commands/tests/data_operations.md",
     "port": 20103,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20103",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20103 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test spawn, insert, get, remove, mutate operations",
     "expected_shutdown_method": "clean_shutdown"
@@ -34,7 +34,7 @@
     "test_file": ".claude/commands/tests/format_discovery.md",
     "port": 20105,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20105",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20105 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test Tier 2 direct format discovery with bevy_brp_extras",
     "expected_shutdown_method": "clean_shutdown"
@@ -44,7 +44,7 @@
     "test_file": ".claude/commands/tests/introspection.md",
     "port": 20106,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20106",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20106 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test rpc_discover, registry_schema, list operations",
     "expected_shutdown_method": "clean_shutdown"
@@ -54,7 +54,7 @@
     "test_file": ".claude/commands/tests/large_response.md",
     "port": 20107,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20107",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20107 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test registry_schema file output for large responses",
     "expected_shutdown_method": "clean_shutdown"
@@ -74,7 +74,7 @@
     "test_file": ".claude/commands/tests/corrections.md",
     "port": 20108,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20108",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20108 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test spawn, insert, mutate for serialization on components and corrections of format",
     "expected_shutdown_method": "clean_shutdown"
@@ -84,7 +84,7 @@
     "test_file": ".claude/commands/tests/watch_commands.md",
     "port": 20109,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20109",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20109 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test get_watch, list_watch, active_watches, stop_watch",
     "expected_shutdown_method": "clean_shutdown"
@@ -94,7 +94,7 @@
     "test_file": ".claude/commands/tests/path_disambiguation.md",
     "port": 20110,
     "app_name": "various",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools as instructed on port 20110 (may use multiple apps for testing)",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools with port: 20110 parameter as instructed (may use multiple apps for testing)",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
     "test_objective": "Test path parameter handling for duplicate names",
     "expected_shutdown_method": "clean_shutdown"
@@ -104,7 +104,7 @@
     "test_file": ".claude/commands/tests/apps.md",
     "port": 20111,
     "app_name": "test_extras_plugin_app",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_app tool to launch test_extras_plugin_app application on port 20111",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_app tool with port: 20111 parameter to launch test_extras_plugin_app application",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app",
     "expected_shutdown_method": "clean_shutdown"
@@ -114,7 +114,7 @@
     "test_file": ".claude/commands/tests/resource.md",
     "port": 20112,
     "app_name": "extras_plugin",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch extras_plugin example on port 20112",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20112 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test insert_resource with/without Serialize/Deserialize traits",
     "expected_shutdown_method": "clean_shutdown"

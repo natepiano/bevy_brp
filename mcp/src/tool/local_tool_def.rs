@@ -10,23 +10,21 @@ use super::local_handler::LocalToolHandler;
 use super::parameters::{LocalParameter, ParameterDefinition};
 use super::tool_definition::{PortParameter, ToolDefinition};
 use crate::response::ResponseSpecification;
-use crate::service::{HandlerContext, LocalContext, McpService};
-use crate::tool::{LocalToolFunction, ToolHandler};
+use crate::service::{LocalHandler, McpService};
+use crate::tool::ToolHandler;
 
 /// Definition for local tools that execute within the MCP server
 pub struct LocalToolDef {
     /// Tool name
-    pub name:           &'static str,
+    pub name:        &'static str,
     /// Tool description
-    pub description:    &'static str,
+    pub description: &'static str,
     /// Handler function
-    pub handler:        Arc<dyn LocalToolFunction>,
+    pub handler:     LocalHandler,
     /// Type-safe local parameters
-    pub parameters:     Vec<LocalParameter>,
+    pub parameters:  Vec<LocalParameter>,
     /// Response formatting specification
-    pub formatter:      ResponseSpecification,
-    /// Port parameter requirement
-    pub port_parameter: PortParameter,
+    pub formatter:   ResponseSpecification,
 }
 
 impl ToolDefinition for LocalToolDef {
@@ -50,7 +48,12 @@ impl ToolDefinition for LocalToolDef {
     }
 
     fn port_parameter(&self) -> PortParameter {
-        self.port_parameter
+        use crate::service::LocalHandler;
+
+        match &self.handler {
+            LocalHandler::Basic(_) => PortParameter::NotUsed,
+            LocalHandler::WithPort(_) => PortParameter::Required,
+        }
     }
 
     fn needs_method_parameter(&self) -> bool {
@@ -63,26 +66,26 @@ impl ToolDefinition for LocalToolDef {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<Box<dyn ToolHandler + Send>, McpError> {
-        // Create LocalContext
-        let local_context = LocalContext {
-            handler: Arc::clone(&self.handler),
-        };
+        use crate::service::{BaseContext, HandlerContext};
 
-        // Create a new HandlerContext with LocalContext
-        let local_handler_context =
-            HandlerContext::with_data(service, request, context, local_context);
+        // Create base context - the ONLY way to start
+        let base_ctx = HandlerContext::<BaseContext>::new(service, request, context);
 
+        // Always extract port (even if not used, to keep LocalContext simple)
+        let port = base_ctx.extract_port()?;
+
+        // Use the handler directly - no conversion needed
+        let local_handler_context = base_ctx.into_local(self.handler.clone(), port);
         Ok(Box::new(LocalToolHandler::new(local_handler_context)))
     }
 
     fn clone_box(&self) -> Box<dyn ToolDefinition> {
         Box::new(Self {
-            name:           self.name,
-            description:    self.description,
-            handler:        self.handler.clone(),
-            parameters:     self.parameters.clone(),
-            formatter:      self.formatter.clone(),
-            port_parameter: self.port_parameter,
+            name:        self.name,
+            description: self.description,
+            handler:     self.handler.clone(),
+            parameters:  self.parameters.clone(),
+            formatter:   self.formatter.clone(),
         })
     }
 }

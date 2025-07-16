@@ -532,6 +532,7 @@ fn substitute_template(template: &str, params: Option<&Value>) -> String {
 
 impl ResponseFormatter {
     /// Add format corrections to the response builder - with internal method check
+    #[allow(clippy::too_many_lines)]
     fn add_format_corrections<T>(
         builder: &mut ResponseBuilder,
         handler_context: &HandlerContext<T>,
@@ -545,7 +546,7 @@ impl ResponseFormatter {
         );
         tracing::debug!(
             "format_corrections: {:?}",
-            format_corrections.map(|c| c.len())
+            format_corrections.map(<[_]>::len)
         );
         tracing::debug!("format_corrected: {:?}", format_corrected);
         tracing::debug!("brp_method_name: {:?}", brp_method_name);
@@ -627,7 +628,7 @@ impl ResponseFormatter {
                                 tracing::debug!("Adding supported_operations: {:?}", ops);
                                 *builder = builder.clone().add_field_to(
                                     "supported_operations",
-                                    &json!(ops),
+                                    json!(ops),
                                     crate::response::FieldPlacement::Metadata,
                                 )?;
                             }
@@ -635,7 +636,7 @@ impl ResponseFormatter {
                                 tracing::debug!("Adding mutation_paths: {:?}", paths);
                                 *builder = builder.clone().add_field_to(
                                     "mutation_paths",
-                                    &json!(paths),
+                                    json!(paths),
                                     crate::response::FieldPlacement::Metadata,
                                 )?;
                             }
@@ -643,7 +644,7 @@ impl ResponseFormatter {
                                 tracing::debug!("Adding type_category: {:?}", cat);
                                 *builder = builder.clone().add_field_to(
                                     "type_category",
-                                    &json!(cat),
+                                    json!(cat),
                                     crate::response::FieldPlacement::Metadata,
                                 )?;
                             }

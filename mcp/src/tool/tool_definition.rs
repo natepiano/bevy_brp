@@ -86,8 +86,6 @@ pub trait ToolDefinition: Send + Sync {
         }
 
         // Add port parameter if needed
-        // can't be created any other way as neither LocalParameterName or BrpParameterName
-        // has a Port variant
         if self.port_parameter() == PortParameter::Required {
             builder =
                 builder.add_number_property(PARAM_PORT, "The BRP port (default: 15702)", false);

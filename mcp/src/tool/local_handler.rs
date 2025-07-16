@@ -27,15 +27,21 @@ impl ToolHandler for LocalToolHandler {
 async fn local_tool_call(
     handler_context: &HandlerContext<LocalContext>,
 ) -> Result<CallToolResult, McpError> {
-    let handler = handler_context.handler().as_ref();
-
     let formatter_config = create_formatter_from_def(handler_context)?;
 
-    // Handler returns typed result, we ALWAYS pass it through format_handler_result
-    let result = handler
-        .call(handler_context)
-        .await
-        .map(|typed_result| typed_result.to_json());
+    let result = match handler_context.handler() {
+        crate::service::LocalHandler::Basic(handler) => handler
+            .call(handler_context)
+            .await
+            .map(|typed_result| typed_result.to_json()),
+        crate::service::LocalHandler::WithPort(handler) => {
+            let port = handler_context.port();
+            handler
+                .call(handler_context, port)
+                .await
+                .map(|typed_result| typed_result.to_json())
+        }
+    };
 
     format_tool_call_result(result, handler_context, formatter_config)
 }

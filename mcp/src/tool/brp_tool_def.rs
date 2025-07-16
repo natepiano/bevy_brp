@@ -11,7 +11,7 @@ use super::brp_handler::BrpToolHandler;
 use super::parameters::{BrpParameter, ParameterDefinition};
 use super::tool_definition::{PortParameter, ToolDefinition};
 use crate::response::ResponseSpecification;
-use crate::service::{BrpContext, HandlerContext, McpService};
+use crate::service::McpService;
 
 /// Source for BRP method name resolution
 #[derive(Debug, Clone)]
@@ -57,7 +57,7 @@ impl ToolDefinition for BrpToolDef {
     }
 
     fn port_parameter(&self) -> PortParameter {
-        PortParameter::Required
+        PortParameter::Required // All BRP tools require a port
     }
 
     fn needs_method_parameter(&self) -> bool {
@@ -70,28 +70,20 @@ impl ToolDefinition for BrpToolDef {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<Box<dyn ToolHandler + Send>, McpError> {
-        // Create base handler context
-        let base_ctx = HandlerContext::new(service, request, context);
+        // Create base context - the ONLY way to start
+        let base_ctx = crate::service::HandlerContext::<crate::service::BaseContext>::new(
+            service, request, context,
+        );
 
-        // Extract port from the arguments
+        // Extract what we need
         let port = base_ctx.extract_port()?;
-
-        // Extract method based on method_source
         let method = match &self.method_source {
             BrpMethodSource::Static(method_name) => (*method_name).to_string(),
             BrpMethodSource::Dynamic => base_ctx.extract_method_param()?,
         };
 
-        // Create BrpContext with the method and port
-        let brp_context = BrpContext { method, port };
-
-        // Create a new HandlerContext with BrpContext
-        let brp_handler_context = HandlerContext::with_data(
-            base_ctx.service,
-            base_ctx.request,
-            base_ctx.context,
-            brp_context,
-        );
+        // Transition to BrpContext
+        let brp_handler_context = base_ctx.into_brp(method, port);
 
         Ok(Box::new(BrpToolHandler::new(brp_handler_context)))
     }

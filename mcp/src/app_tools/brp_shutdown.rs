@@ -7,7 +7,9 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_APP_NAME};
 use crate::error::{Error, Result};
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{
+    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalToolFunctionWithPort,
+};
 
 /// Result from shutting down a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,14 +119,10 @@ fn handle_kill_process_fallback(
 
 pub struct Shutdown;
 
-impl LocalToolFunction for Shutdown {
-    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl LocalToolFunctionWithPort for Shutdown {
+    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
         let app_name = match ctx.extract_required_string(PARAM_APP_NAME, "app name") {
             Ok(name) => name.to_string(),
-            Err(e) => return Box::pin(async move { Err(e) }),
-        };
-        let port = match ctx.extract_port() {
-            Ok(p) => p,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 

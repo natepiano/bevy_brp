@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
 use crate::service::{HandlerContext, LocalContext};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunction};
+use crate::tool::{HandlerResponse, HandlerResult, LocalToolFunctionWithPort};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -101,11 +101,11 @@ pub fn extract_launch_params<T>(
     target_param_name: &str,
     target_type_name: &str,
     default_profile: &str,
+    port: u16,
 ) -> Result<LaunchParams, McpError> {
     let target_name = ctx.extract_required_string(target_param_name, target_type_name)?;
     let profile = ctx.extract_optional_string(PARAM_PROFILE, default_profile);
     let path = ctx.extract_optional_path();
-    let port = ctx.extract_port()?;
 
     Ok(LaunchParams {
         target_name: target_name.to_string(),
@@ -139,14 +139,15 @@ impl<T: FromLaunchParams> GenericLaunchHandler<T> {
     }
 }
 
-impl<T: FromLaunchParams> LocalToolFunction for GenericLaunchHandler<T> {
-    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+impl<T: FromLaunchParams> LocalToolFunctionWithPort for GenericLaunchHandler<T> {
+    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
         // Extract parameters
         let params = match extract_launch_params(
             ctx,
             self.target_param_name,
             self.target_type_name,
             self.default_profile,
+            port,
         ) {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
