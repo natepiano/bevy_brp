@@ -62,15 +62,21 @@ Configuration: Port [PORT], App [APP_NAME]
 1. [LAUNCH_INSTRUCTION]
    - **CRITICAL**: You MUST pass `port: [PORT]` parameter to the launch tool
    - **REQUIRED**: Log the exact port parameter you used in the Port Usage Report section
-2. Execute test procedures from file: [TEST_FILE]
-3. [SHUTDOWN_INSTRUCTION]
-4. Report results using the exact format below
+2. **LOG VERIFICATION** (if port != "N/A"): Immediately after app launch, verify log file exists:
+   - Use `mcp__brp__brp_list_logs` to find the most recent log file containing "port[PORT]"
+   - Confirm log file exists and was created within the last 2 minutes
+   - Report log verification status in Port Usage Report section
+   - **CRITICAL**: If log verification fails, mark as FAILED test and stop immediately
+3. Execute test procedures from file: [TEST_FILE]
+4. [SHUTDOWN_INSTRUCTION]
+5. Report results using the exact format below
 
 **FAILURE HANDLING PROTOCOL:**
 - **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing. Failures include:
   - Tool returns an error or exception
   - Tool succeeds but response doesn't match test expectations
   - Behavior doesn't match expected test outcomes
+  - **Log verification fails** - log file doesn't exist or doesn't contain expected port
 - **CAPTURE EVERYTHING**: For every failed test step, include the complete tool response in your results
 - **NO CONTINUATION**: Do not attempt any further test steps after the first failure
 
@@ -91,6 +97,11 @@ Configuration: Port [PORT], App [APP_NAME]
   1. Include the `port` parameter with value [PORT]
   2. Log the exact port parameter passed in your Port Usage Report
   3. Example: mcp__brp__brp_launch_bevy_example with parameters: app_name="extras_plugin", port=[PORT]
+- **LOG VERIFICATION**: Immediately after app launch (if port != "N/A"), you MUST:
+  1. Use `mcp__brp__brp_list_logs` to find log file containing "port[PORT]"
+  2. Verify log file exists and was created within last 2 minutes
+  3. Report verification status in Port Usage Report section
+  4. **STOP and mark as FAILED** if log verification fails
 - **BRP OPERATIONS**: All subsequent BRP operations MUST use port [PORT]
 - **VERIFICATION**: If any operation uses a different port than [PORT], mark as FAILED
 
@@ -123,6 +134,7 @@ Configuration: Port [PORT], App [APP_NAME]
 ## Port Usage Report
 - **Configured Port**: [PORT]
 - **Launch Command Port**: [actual port passed to launch tool or "Not passed" or "N/A" if no app launch]
+- **Log Verification**: [PASSED/FAILED/N/A - log file exists with correct port | explanation if failed | "N/A" if no app launch]
 - **BRP Operations Port**: [port used for all BRP operations or "N/A" if no BRP operations]
 - **Port Match Verification**: [PASSED/FAILED - all ports match | explanation if mismatch | "N/A" if no app launch]
 

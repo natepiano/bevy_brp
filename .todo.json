@@ -1,45 +1,45 @@
 [
   {
     "id": "1",
-    "content": "Move LocalHandler enum from service/local_context.rs to tool/local_handler.rs",
-    "status": "completed",
+    "content": "Create ToolContext enum to wrap HandlerContext variants",
+    "status": "pending",
     "priority": "high",
-    "notes": "Moved LocalHandler enum and its implementations to tool/local_handler.rs, updated imports, and exported from tool module"
+    "notes": ""
   },
   {
     "id": "2",
     "content": "Run cargo build and fix errors",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Found import errors - need to update imports before continuing"
+    "notes": ""
   },
   {
     "id": "3",
-    "content": "Remove handler field from LocalContext struct, keeping only port",
-    "status": "completed",
+    "content": "Create BrpToolFunction trait in tool/types.rs",
+    "status": "pending",
     "priority": "high",
-    "notes": "Removed handler field and handler() method from LocalContext"
+    "notes": ""
   },
   {
     "id": "4",
     "content": "Run cargo build and fix errors",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Found errors in local_handler.rs and base_context.rs"
+    "notes": ""
   },
   {
     "id": "5",
-    "content": "Update BaseContext::into_local() to only pass port",
-    "status": "completed",
+    "content": "Extend Handler enum with Brp variant",
+    "status": "pending",
     "priority": "high",
-    "notes": "Updated into_local() to only pass port and removed unused LocalHandler import"
+    "notes": ""
   },
   {
     "id": "6",
     "content": "Run cargo build and fix errors",
     "status": "pending",
     "priority": "high",
-    "notes": "Skipping - need to fix LocalToolHandler first"
+    "notes": ""
   },
   {
     "id": "7",
@@ -57,10 +57,10 @@
   },
   {
     "id": "9",
-    "content": "Update LocalToolHandler to store handler directly instead of accessing through context",
-    "status": "completed",
+    "content": "Create unified ToolHandler struct with handler and context fields",
+    "status": "pending",
     "priority": "high",
-    "notes": "Added handler field to LocalToolHandler and updated new() and call_tool()"
+    "notes": ""
   },
   {
     "id": "10",
@@ -71,10 +71,10 @@
   },
   {
     "id": "11",
-    "content": "Update local_tool_call() to use handler from LocalToolHandler instead of context",
-    "status": "completed",
+    "content": "Implement call_tool method with match on handler and context variants",
+    "status": "pending",
     "priority": "high",
-    "notes": "Updated local_tool_call to accept handler parameter and use it directly"
+    "notes": ""
   },
   {
     "id": "12",
@@ -85,38 +85,38 @@
   },
   {
     "id": "13",
-    "content": "Update LocalToolDef::create_handler() to pass handler to LocalToolHandler",
-    "status": "completed",
+    "content": "Update LocalToolDef::create_handler to use unified ToolHandler",
+    "status": "pending",
     "priority": "high",
-    "notes": "Updated create_handler to pass handler to LocalToolHandler constructor"
+    "notes": ""
   },
   {
     "id": "14",
     "content": "Run cargo build and fix errors",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful with warnings about unused constants"
+    "notes": ""
   },
   {
     "id": "15",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Found unused constants"
+    "notes": ""
   },
   {
     "id": "16",
     "content": "Fix all clippy issues following warning rules",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Fixed unused constants by using MIN_VALID_PORT and removing MAX_VALID_PORT and VALID_PORT_RANGE"
+    "notes": ""
   },
   {
     "id": "17",
-    "content": "Update service/mod.rs exports to remove LocalHandler",
-    "status": "completed",
+    "content": "Update BrpToolDef::create_handler to use unified ToolHandler",
+    "status": "pending",
     "priority": "high",
-    "notes": "Removed LocalHandler export from service/mod.rs"
+    "notes": ""
   },
   {
     "id": "18",
@@ -127,55 +127,83 @@
   },
   {
     "id": "19",
-    "content": "Update all imports of LocalHandler to use new location",
-    "status": "completed",
+    "content": "Remove old LocalToolHandler and BrpToolHandler structs",
+    "status": "pending",
     "priority": "high",
-    "notes": "Fixed imports in definitions.rs, local_tool_def.rs, and base_context.rs"
+    "notes": ""
   },
   {
     "id": "20",
     "content": "Run cargo build and fix errors",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful with warnings about unused constants"
+    "notes": ""
   },
   {
     "id": "21",
-    "content": "Run cargo +nightly fmt",
-    "status": "completed",
+    "content": "Update imports and exports to use unified ToolHandler",
+    "status": "pending",
     "priority": "high",
-    "notes": "Formatter completed successfully"
+    "notes": ""
   },
   {
     "id": "22",
-    "content": "Run cargo nextest run",
-    "status": "completed",
+    "content": "Run cargo build and fix errors",
+    "status": "pending",
     "priority": "high",
-    "notes": "All 128 tests pass successfully"
+    "notes": ""
   },
   {
     "id": "23",
-    "content": "STOP if test failures - review with user",
-    "status": "completed",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
     "priority": "high",
-    "notes": "No test failures - all tests pass"
+    "notes": ""
   },
   {
     "id": "24",
-    "content": "Subagent: STOP and return control",
-    "status": "completed",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
     "priority": "high",
-    "notes": "Refactoring complete, ready to return control"
+    "notes": ""
   },
   {
     "id": "25",
-    "content": "Main: Task new subagent for code review (read-only)",
+    "content": "Run cargo +nightly fmt",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "26",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "30",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "high",
