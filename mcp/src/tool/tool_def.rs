@@ -46,13 +46,15 @@ impl ToolDef {
     pub const fn port_parameter(&self) -> PortParameter {
         match &self.handler {
             HandlerFn::Local(_) => PortParameter::NotUsed,
-            HandlerFn::LocalWithPort(_) | HandlerFn::Brp { .. } => PortParameter::Required,
+            HandlerFn::LocalWithPort(_) | HandlerFn::Brp { .. } | HandlerFn::BrpV2 { .. } => {
+                PortParameter::Required
+            }
         }
     }
 
     pub const fn needs_method_parameter(&self) -> bool {
         match &self.handler {
-            HandlerFn::Brp { method_source, .. } => {
+            HandlerFn::Brp { method_source, .. } | HandlerFn::BrpV2 { method_source, .. } => {
                 matches!(method_source, BrpMethodSource::Dynamic)
             }
             _ => false, // Local tools never need method parameters
@@ -84,7 +86,7 @@ impl ToolDef {
                 let tool_context = ToolContext::Local(local_handler_context);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
-            HandlerFn::Brp { method_source, .. } => {
+            HandlerFn::Brp { method_source, .. } | HandlerFn::BrpV2 { method_source, .. } => {
                 // BRP tool
                 let port = base_ctx.extract_port()?;
                 let method = match method_source {

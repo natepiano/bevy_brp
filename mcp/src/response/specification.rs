@@ -45,6 +45,11 @@ pub enum ResponseField {
     /// This variant is specifically for Raw-to-Structured migrations where the
     /// entire BRP response becomes the result field content.
     DirectToResult,
+    /// Pass the "data" field from the response directly to the result field.
+    ///
+    /// This variant is for V2 BRP handlers that return BrpMethodResult with
+    /// a "data" field containing the actual BRP response.
+    DirectToResultV2,
     /// Pass all fields from the BRP response directly to the metadata field.
     ///
     /// This variant takes all top-level fields from the response and places them
@@ -69,12 +74,19 @@ pub enum ResponseField {
 pub enum ResponseExtractorType {
     /// Extract a specific field from the response data structure
     Field(&'static str),
+    /// Extract a specific field from within the "data" field (for V2 handlers)
+    FieldV2(&'static str),
     /// Extract count field from response data
     Count,
     /// Count items (entities, components, resources, etc.) in an array
     ItemCount,
+    /// Count items in an array that's in the "data" field (for V2 handlers)
+    ItemCountV2,
     /// Extract total component count from nested query results
     QueryComponentCount,
+    /// Extract total component count from nested query results in the "data" field (for V2
+    /// handlers)
+    QueryComponentCountV2,
     /// Split content field into numbered lines
     SplitContentIntoLines,
 }
@@ -87,6 +99,13 @@ impl ResponseExtractorType {
                 .get(field_name)
                 .cloned()
                 .unwrap_or(serde_json::Value::Null),
+            Self::FieldV2(field_name) => {
+                // Extract field from within the "data" field (for V2 handlers)
+                data.get("data")
+                    .and_then(|d| d.get(field_name))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null)
+            }
             Self::Count => {
                 // Extract count field as a number, return Null if not found or not a number
                 data.as_object()
@@ -101,6 +120,14 @@ impl ResponseExtractorType {
                 let count = data.as_array().map_or(0, std::vec::Vec::len);
                 serde_json::Value::Number(serde_json::Number::from(count))
             }
+            Self::ItemCountV2 => {
+                // Count items in an array that's in the "data" field (for V2 handlers)
+                let count = data
+                    .get("data")
+                    .and_then(|d| d.as_array())
+                    .map_or(0, std::vec::Vec::len);
+                serde_json::Value::Number(serde_json::Number::from(count))
+            }
             Self::QueryComponentCount => {
                 // Extract total component count from nested query results
                 let total = data.as_array().map_or(0, |entities| {
@@ -110,6 +137,21 @@ impl ResponseExtractorType {
                         .map(serde_json::Map::len)
                         .sum::<usize>()
                 });
+                serde_json::Value::Number(serde_json::Number::from(total))
+            }
+            Self::QueryComponentCountV2 => {
+                // Extract total component count from nested query results in the "data" field (for
+                // V2 handlers)
+                let total = data
+                    .get("data")
+                    .and_then(|d| d.as_array())
+                    .map_or(0, |entities| {
+                        entities
+                            .iter()
+                            .filter_map(|e| e.as_object())
+                            .map(serde_json::Map::len)
+                            .sum::<usize>()
+                    });
                 serde_json::Value::Number(serde_json::Number::from(total))
             }
             Self::SplitContentIntoLines => {
@@ -144,7 +186,7 @@ impl ResponseField {
                 response_field_name: name,
                 ..
             } => name,
-            Self::DirectToResult => JSON_FIELD_RESULT,
+            Self::DirectToResult | Self::DirectToResultV2 => JSON_FIELD_RESULT,
             Self::DirectToMetadata => JSON_FIELD_METADATA,
         }
     }

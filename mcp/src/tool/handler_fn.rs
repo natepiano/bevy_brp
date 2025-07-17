@@ -3,7 +3,8 @@ use std::sync::Arc;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
-use super::types::{BrpMethodSource, BrpToolFn};
+use super::format_v2;
+use super::types::{BrpMethodSource, BrpToolFn, BrpToolFnV2};
 use crate::response::{FormatterConfig, ResponseBuilder, ResponseFormatter};
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::types::ToolContext;
@@ -16,6 +17,10 @@ pub enum HandlerFn {
     LocalWithPort(Arc<dyn LocalToolFnWithPort>),
     Brp {
         handler:       Arc<dyn super::types::BrpToolFn>,
+        method_source: BrpMethodSource,
+    },
+    BrpV2 {
+        handler:       Arc<dyn super::types::BrpToolFnV2>,
         method_source: BrpMethodSource,
     },
 }
@@ -38,7 +43,7 @@ impl HandlerFn {
                         .call(local_ctx)
                         .await
                         .map(|typed_result| typed_result.to_json());
-                    format_tool_call_result(result, local_ctx, formatter_config)
+                    format_v2::format_tool_call_result_v2(result, local_ctx, formatter_config)
                 })
             }
             (Self::LocalWithPort(handler), ToolContext::Local(local_ctx)) => {
@@ -59,6 +64,20 @@ impl HandlerFn {
                         .await
                         .map(|typed_result| typed_result.to_json());
                     format_tool_call_result(result, local_ctx, formatter_config)
+                })
+            }
+            (Self::BrpV2 { handler, .. }, ToolContext::Brp(brp_ctx)) => {
+                let formatter_config = brp_ctx.tool_def().formatter().build_formatter_config();
+
+                Box::pin(async move {
+                    // Call V2 handler, get HandlerResult
+                    let result = handler.call(brp_ctx).await;
+
+                    // Convert to JSON and format like local handlers
+                    let json_result = result.map(|typed_result| typed_result.to_json());
+
+                    // Use enhanced format_tool_call_result from separate file
+                    format_v2::format_tool_call_result_v2(json_result, brp_ctx, formatter_config)
                 })
             }
             _ => Box::pin(async move {
@@ -93,6 +112,22 @@ impl HandlerFn {
     /// Create a BRP handler with dynamic method (from parameter)
     pub fn brp_dynamic<T: BrpToolFn + 'static>(handler: T) -> Self {
         Self::Brp {
+            handler:       Arc::new(handler),
+            method_source: BrpMethodSource::Dynamic,
+        }
+    }
+
+    /// Create a BRP V2 handler with static method
+    pub fn brp_v2_static<T: BrpToolFnV2 + 'static>(handler: T, method: &'static str) -> Self {
+        Self::BrpV2 {
+            handler:       Arc::new(handler),
+            method_source: BrpMethodSource::Static(method),
+        }
+    }
+
+    /// Create a BRP V2 handler with dynamic method (from parameter)
+    pub fn brp_v2_dynamic<T: BrpToolFnV2 + 'static>(handler: T) -> Self {
+        Self::BrpV2 {
             handler:       Arc::new(handler),
             method_source: BrpMethodSource::Dynamic,
         }

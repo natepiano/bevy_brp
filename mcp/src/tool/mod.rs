@@ -1,5 +1,6 @@
 mod constants;
 mod definitions;
+mod format_v2;
 mod handler_fn;
 mod mcp_tool_schema;
 mod parameters;
@@ -18,5 +19,6 @@ pub use handler_fn::HandlerFn;
 pub use parameters::ParamType;
 pub use tool_def::ToolDef;
 pub use types::{
-    BrpHandlerResponse, BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn, LocalToolFnWithPort,
+    BrpHandlerResponse, BrpToolFn, BrpToolFnV2, HandlerResponse, HandlerResult, LocalToolFn,
+    LocalToolFnWithPort,
 };

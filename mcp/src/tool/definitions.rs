@@ -35,7 +35,7 @@ use crate::app_tools::brp_list_bevy_examples::ListBevyExamples;
 use crate::app_tools::brp_list_brp_apps::ListBrpApps;
 use crate::app_tools::brp_shutdown::Shutdown;
 use crate::app_tools::brp_status::Status;
-use crate::brp_tools::request_handler::BrpMethodHandler;
+use crate::brp_tools::request_handler::{BrpMethodHandler, BrpMethodHandlerV2};
 use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
 use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
@@ -67,7 +67,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_DESTROY,
             description:     DESC_BEVY_DESTROY,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_DESTROY),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_DESTROY),
             parameters:      vec![Parameter::entity("The entity ID to destroy", true)],
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
@@ -174,7 +174,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_LIST,
             description:     DESC_BEVY_LIST,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_LIST),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_LIST),
             parameters:      vec![Parameter::entity(
                 "Optional entity ID to list components for",
                 false,

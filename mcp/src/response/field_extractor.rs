@@ -75,6 +75,13 @@ pub fn create_response_field_extractor(field: &ResponseField) -> (FieldExtractor
             Box::new(|data, _context| data.clone()),
             FieldPlacement::Result,
         ),
+        ResponseField::DirectToResultV2 => (
+            Box::new(|data, _context| {
+                // Extract the "data" field for V2 BRP handlers
+                data.get("data").cloned().unwrap_or(Value::Null)
+            }),
+            FieldPlacement::Result,
+        ),
         ResponseField::DirectToMetadata => (
             Box::new(|data, _context| data.clone()),
             FieldPlacement::Metadata,
