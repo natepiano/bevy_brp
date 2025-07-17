@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use rmcp::model::{
     CallToolRequestParam, CallToolResult, ListToolsResult, PaginatedRequestParam,
@@ -134,12 +133,10 @@ impl ServerHandler for McpService {
         request: CallToolRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, McpError> {
-        let service_arc = Arc::new(self.clone());
-
         // Fetch roots and get paths
         let roots = self.fetch_roots_and_get_paths(context.peer.clone()).await?;
 
-        let tool_def = service_arc.get_tool_def(&request.name).ok_or_else(|| {
+        let tool_def = self.get_tool_def(&request.name).ok_or_else(|| {
             crate::error::report_to_mcp_error(
                 &error_stack::Report::new(crate::error::Error::InvalidArgument(format!(
                     "unknown tool: {}",
