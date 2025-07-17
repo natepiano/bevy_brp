@@ -13,8 +13,9 @@ use tracing::{debug, warn};
 
 use super::BrpJsonRpcBuilder;
 use crate::constants::{
-    BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_METHOD_NOT_FOUND,
-    PARAM_PARAMS,
+    BRP_DEFAULT_HOST, BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
+    BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,
+    JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_PARAMS,
 };
 use crate::error::{Error, Result};
 use crate::tool::BRP_EXTRAS_PREFIX;
@@ -45,11 +46,6 @@ impl BrpError {
     /// the second section I think is less correct but it will take some time to validate that
     /// moving to an "error codes only" approach doesn't have other issues
     pub const fn is_format_error(&self) -> bool {
-        use crate::constants::{
-            BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
-            JSON_RPC_ERROR_INTERNAL_ERROR, JSON_RPC_ERROR_INVALID_PARAMS,
-        };
-
         // Common format error codes that indicate type issues
         matches!(
             self.code,
