@@ -2,6 +2,34 @@ use crate::constants::{
     JSON_FIELD_CONTENT, JSON_FIELD_COUNT, JSON_FIELD_METADATA, JSON_FIELD_RESULT,
 };
 
+/// Extract a nested field from JSON data using dot notation
+///
+/// Supports paths like "result.entity" or "data.components.count"
+/// Empty string means use the data as-is (root level access)
+fn extract_nested_field(data: &serde_json::Value, field_path: &str) -> serde_json::Value {
+    // Empty path means use the data as-is
+    if field_path.is_empty() {
+        return data.clone();
+    }
+
+    // Split the path by dots and traverse each part
+    let path_parts: Vec<&str> = field_path.split('.').collect();
+
+    let mut current_value = data;
+
+    // Navigate through each part of the path
+    for part in path_parts {
+        if let Some(next_value) = current_value.get(part) {
+            current_value = next_value;
+        } else {
+            // If any part of the path is not found, return null
+            return serde_json::Value::Null;
+        }
+    }
+
+    current_value.clone()
+}
+
 /// Specifies where a response field should be placed in the output JSON
 #[derive(Clone, Debug)]
 pub enum FieldPlacement {
@@ -45,11 +73,6 @@ pub enum ResponseField {
     /// This variant is specifically for Raw-to-Structured migrations where the
     /// entire BRP response becomes the result field content.
     DirectToResult,
-    /// Pass the "data" field from the response directly to the result field.
-    ///
-    /// This variant is for V2 BRP handlers that return BrpMethodResult with
-    /// a "data" field containing the actual BRP response.
-    DirectToResultV2,
     /// Pass all fields from the BRP response directly to the metadata field.
     ///
     /// This variant takes all top-level fields from the response and places them
@@ -73,20 +96,22 @@ pub enum ResponseField {
 #[derive(Clone, Debug)]
 pub enum ResponseExtractorType {
     /// Extract a specific field from the response data structure
+    /// Supports dot notation for nested fields (e.g., "result.entity")
     Field(&'static str),
-    /// Extract a specific field from within the "data" field (for V2 handlers)
-    FieldV2(&'static str),
     /// Extract count field from response data
     Count,
     /// Count items (entities, components, resources, etc.) in an array
-    ItemCount,
-    /// Count items in an array that's in the "data" field (for V2 handlers)
-    ItemCountV2,
+    /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
+    ItemCount(&'static str),
+    /// Count items in an array at the specified field path
+    /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
+    ArrayCount(&'static str),
+    /// Count keys in an object at the specified field path
+    /// Supports dot notation for nested field access (e.g., "result.components")
+    KeyCount(&'static str),
     /// Extract total component count from nested query results
-    QueryComponentCount,
-    /// Extract total component count from nested query results in the "data" field (for V2
-    /// handlers)
-    QueryComponentCountV2,
+    /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
+    QueryComponentCount(&'static str),
     /// Split content field into numbered lines
     SplitContentIntoLines,
 }
@@ -95,16 +120,9 @@ impl ResponseExtractorType {
     /// Extract data based on the extraction strategy
     pub fn extract(&self, data: &serde_json::Value) -> serde_json::Value {
         match self {
-            Self::Field(field_name) => data
-                .get(field_name)
-                .cloned()
-                .unwrap_or(serde_json::Value::Null),
-            Self::FieldV2(field_name) => {
-                // Extract field from within the "data" field (for V2 handlers)
-                data.get("data")
-                    .and_then(|d| d.get(field_name))
-                    .cloned()
-                    .unwrap_or(serde_json::Value::Null)
+            Self::Field(field_path) => {
+                // Support dot notation for nested field access
+                extract_nested_field(data, field_path)
             }
             Self::Count => {
                 // Extract count field as a number, return Null if not found or not a number
@@ -115,43 +133,35 @@ impl ResponseExtractorType {
                         serde_json::Value::Number(serde_json::Number::from(count))
                     })
             }
-            Self::ItemCount => {
-                // Count items in an array response
-                let count = data.as_array().map_or(0, std::vec::Vec::len);
+            Self::ItemCount(field_path) => {
+                // Extract the specified field and count items in the array
+                let field_data = extract_nested_field(data, field_path);
+                let count = field_data.as_array().map_or(0, std::vec::Vec::len);
                 serde_json::Value::Number(serde_json::Number::from(count))
             }
-            Self::ItemCountV2 => {
-                // Count items in an array that's in the "data" field (for V2 handlers)
-                let count = data
-                    .get("data")
-                    .and_then(|d| d.as_array())
-                    .map_or(0, std::vec::Vec::len);
+            Self::ArrayCount(field_path) => {
+                // Extract the specified field and count items in the array
+                let field_data = extract_nested_field(data, field_path);
+                let count = field_data.as_array().map_or(0, std::vec::Vec::len);
                 serde_json::Value::Number(serde_json::Number::from(count))
             }
-            Self::QueryComponentCount => {
-                // Extract total component count from nested query results
-                let total = data.as_array().map_or(0, |entities| {
+            Self::KeyCount(field_path) => {
+                // Extract the specified field and count keys in the object
+                let field_data = extract_nested_field(data, field_path);
+                let count = field_data.as_object().map_or(0, |obj| obj.len());
+                serde_json::Value::Number(serde_json::Number::from(count))
+            }
+            Self::QueryComponentCount(field_path) => {
+                // Extract the specified field and get total component count from nested query
+                // results
+                let field_data = extract_nested_field(data, field_path);
+                let total = field_data.as_array().map_or(0, |entities| {
                     entities
                         .iter()
                         .filter_map(|e| e.as_object())
                         .map(serde_json::Map::len)
                         .sum::<usize>()
                 });
-                serde_json::Value::Number(serde_json::Number::from(total))
-            }
-            Self::QueryComponentCountV2 => {
-                // Extract total component count from nested query results in the "data" field (for
-                // V2 handlers)
-                let total = data
-                    .get("data")
-                    .and_then(|d| d.as_array())
-                    .map_or(0, |entities| {
-                        entities
-                            .iter()
-                            .filter_map(|e| e.as_object())
-                            .map(serde_json::Map::len)
-                            .sum::<usize>()
-                    });
                 serde_json::Value::Number(serde_json::Number::from(total))
             }
             Self::SplitContentIntoLines => {
@@ -186,7 +196,7 @@ impl ResponseField {
                 response_field_name: name,
                 ..
             } => name,
-            Self::DirectToResult | Self::DirectToResultV2 => JSON_FIELD_RESULT,
+            Self::DirectToResult => JSON_FIELD_RESULT,
             Self::DirectToMetadata => JSON_FIELD_METADATA,
         }
     }

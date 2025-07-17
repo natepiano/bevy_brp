@@ -44,8 +44,8 @@ use crate::constants::{
     JSON_FIELD_APP_NAME, JSON_FIELD_APPS, JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS,
     JSON_FIELD_COUNT, JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_ENTITY_COUNT,
     JSON_FIELD_LOG_PATH, JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PID, JSON_FIELD_RESOURCE,
-    JSON_FIELD_SHUTDOWN_METHOD, PARAM_APP_NAME, PARAM_ENTITIES, PARAM_PARENT, PARAM_PATH,
-    PARAM_RESOURCE,
+    JSON_FIELD_RESULT, JSON_FIELD_SHUTDOWN_METHOD, PARAM_APP_NAME, PARAM_ENTITIES, PARAM_PARENT,
+    PARAM_PATH, PARAM_RESOURCE,
 };
 use crate::log_tools::cleanup_logs::CleanupLogs;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
@@ -82,7 +82,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_GET,
             description:     DESC_BEVY_GET,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_GET),
             parameters:      vec![
                 Parameter::entity("The entity ID to get component data from", true),
                 Parameter::components(
@@ -91,7 +91,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ),
             ],
             response_format: ResponseSpecification {
-                message_template: "Retrieved component data from entity {entity}",
+                message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
                         response_field_name:  JSON_FIELD_ENTITY,
@@ -100,8 +100,18 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COMPONENTS,
-                        response_extractor:  ResponseExtractorType::Field(JSON_FIELD_COMPONENTS),
+                        response_extractor:  ResponseExtractorType::Field("result"),
                         placement:           FieldPlacement::Result,
+                    },
+                    ResponseField::FromResponse {
+                        response_field_name: "component_count",
+                        response_extractor:  ResponseExtractorType::KeyCount("result.components"),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                    ResponseField::FromResponse {
+                        response_field_name: "error_count",
+                        response_extractor:  ResponseExtractorType::KeyCount("result.errors"),
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -182,10 +192,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Listed {count} components",
                 response_fields:  vec![
-                    ResponseField::DirectToResult,
+                    ResponseField::FromResponse {
+                        response_field_name: JSON_FIELD_RESULT,
+                        response_extractor:  ResponseExtractorType::Field("result"),
+                        placement:           FieldPlacement::Result,
+                    },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        response_extractor:  ResponseExtractorType::ItemCount,
+                        response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -203,7 +217,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::DirectToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
-                        response_extractor:  ResponseExtractorType::ItemCount,
+                        response_extractor:  ResponseExtractorType::ItemCount(""),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -270,12 +284,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::DirectToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_ENTITY_COUNT,
-                        response_extractor:  ResponseExtractorType::ItemCount,
+                        response_extractor:  ResponseExtractorType::ItemCount(""),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COMPONENT_COUNT,
-                        response_extractor:  ResponseExtractorType::QueryComponentCount,
+                        response_extractor:  ResponseExtractorType::QueryComponentCount(""),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],

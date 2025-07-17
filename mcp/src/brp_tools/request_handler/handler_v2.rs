@@ -67,17 +67,17 @@ fn convert_to_brp_method_result(
 ) -> BrpMethodResult {
     match enhanced_result.result {
         BrpResult::Success(data) => BrpMethodResult {
-            status: None, // No status field for success
-            message: None,
-            code: None,
-            error_data: None,
-            result: data, // Direct BRP response data
+            status:             None, // No status field for success
+            message:            None,
+            code:               None,
+            error_data:         None,
+            result:             data, // Direct BRP response data
             format_corrections: enhanced_result
                 .format_corrections
                 .iter()
                 .map(format_correction_to_json)
                 .collect(),
-            format_corrected: Some(enhanced_result.format_corrected),
+            format_corrected:   Some(enhanced_result.format_corrected),
         },
         BrpResult::Error(ref err) => {
             // Process error enhancements (reuse logic from current handler)

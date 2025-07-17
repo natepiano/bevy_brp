@@ -39,7 +39,7 @@ pub type FieldExtractor = Box<dyn Fn(&Value, &dyn RequestParameterProvider) -> V
 ///
 /// This function creates extractors that reference fields from the `ExtractedParams`,
 /// which were already validated during the parameter extraction phase.
-pub fn create_rquest_field_extractor(field: &'static str) -> FieldExtractor {
+pub fn create_request_field_extractor(field: &'static str) -> FieldExtractor {
     Box::new(move |_data, context| {
         context
             .get_request_parameter(field)
@@ -59,7 +59,7 @@ pub fn create_response_field_extractor(field: &ResponseField) -> (FieldExtractor
             parameter_field_name: field,
             placement,
             ..
-        } => (create_rquest_field_extractor(field), placement.clone()),
+        } => (create_request_field_extractor(field), placement.clone()),
         ResponseField::FromResponse {
             response_extractor: extractor,
             placement,
@@ -73,13 +73,6 @@ pub fn create_response_field_extractor(field: &ResponseField) -> (FieldExtractor
         }
         ResponseField::DirectToResult => (
             Box::new(|data, _context| data.clone()),
-            FieldPlacement::Result,
-        ),
-        ResponseField::DirectToResultV2 => (
-            Box::new(|data, _context| {
-                // Extract the "data" field for V2 BRP handlers
-                data.get("data").cloned().unwrap_or(Value::Null)
-            }),
             FieldPlacement::Result,
         ),
         ResponseField::DirectToMetadata => (
