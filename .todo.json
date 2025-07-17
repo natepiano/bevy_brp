@@ -1,20 +1,185 @@
 [
-  {"id": "21", "content": "Update tool definitions in definitions.rs to use UnifiedToolDef (next 10 tools)", "status": "completed", "priority": "high", "notes": "Completed. Converted 10 more tools: bevy_registry_schema, bevy_remove, bevy_remove_resource, bevy_reparent, bevy_rpc_discover, bevy_spawn, brp_execute, brp_extras_discover_format, brp_extras_screenshot, brp_extras_send_keys."},
-  {"id": "22", "content": "Run cargo build and fix errors following WarningRules", "status": "completed", "priority": "high", "notes": "Build successful. Fixed unused import warnings. One warning remains for unused Local variant which will be resolved when remaining LocalToolDef tools are converted."},
-  {"id": "23", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "high", "notes": "Blocked by dead_code warning for unused Local variant. Must complete remaining tool conversions first."},
-  {"id": "24", "content": "Fix all clippy issues following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "25", "content": "Update tool definitions in definitions.rs to use UnifiedToolDef (remaining tools)", "status": "in_progress", "priority": "high", "notes": "Progress: Converted 5 more tools: brp_extras_set_debug_mode, bevy_get_watch, bevy_list_watch, cleanup_logs, get_trace_log_path. Used UnifiedParameter::Local variant successfully. Many tools still remain to convert."},
-  {"id": "26", "content": "Run cargo build and fix errors following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "27", "content": "Remove old LocalToolDef and BrpToolDef types", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "28", "content": "Run cargo build and fix errors following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "29", "content": "Update imports and exports throughout codebase", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "30", "content": "Run cargo build and fix errors following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "31", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "32", "content": "Fix all clippy issues following WarningRules", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "33", "content": "Run cargo +nightly fmt", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "34", "content": "Run cargo nextest run", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "35", "content": "STOP if test failures - review with user", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "36", "content": "Subagent: STOP and return control", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "37", "content": "Main: Task new subagent for code review (read-only)", "status": "pending", "priority": "high", "notes": ""},
-  {"id": "38", "content": "Review suggestions with user", "status": "pending", "priority": "high", "notes": ""}
+  {
+    "id": "1",
+    "content": "Create unified ParameterName enum with alphabetically sorted entries",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Replace Parameter<N> generic with simple Parameter struct using ParameterName",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Remove BrpParameter and LocalParameter type aliases",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Update Parameter constructor methods to use unified ParameterName",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Update ToolDef.parameters field from Vec<UnifiedParameter> to Vec<Parameter>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Remove UnifiedParameter enum and its ParameterDefinition implementation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Update tool definitions - replace UnifiedParameter::Brp/Local with Parameter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Update mod.rs exports to remove UnifiedParameter",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Run cargo build and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
 ]
+EOF < /dev/null
