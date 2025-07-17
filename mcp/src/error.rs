@@ -52,6 +52,9 @@ pub enum Error {
     #[error("Log operation failed: {0}")]
     LogOperation(String),
 
+    #[error("MCP client communication failed: {0}")]
+    McpClientCommunication(String),
+
     #[error("{0}")]
     General(String),
 }
@@ -191,6 +194,7 @@ impl From<Error> for McpError {
             | Error::WatchOperation(msg)
             | Error::ProcessManagement(msg)
             | Error::LogOperation(msg)
+            | Error::McpClientCommunication(msg)
             | Error::General(msg) => Self::internal_error(msg, None),
         }
     }

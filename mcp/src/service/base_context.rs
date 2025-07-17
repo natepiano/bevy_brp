@@ -1,14 +1,13 @@
-use std::sync::Arc;
+use std::path::PathBuf;
 
+use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 
 use crate::constants::{DEFAULT_BRP_PORT, VALID_PORT_RANGE};
-use crate::service::McpService;
 use crate::service::brp_context::BrpContext;
 use crate::service::handler_context::HandlerContext;
 use crate::service::local_context::LocalContext;
+use crate::tool::ToolDef;
 
 /// The base context type that is the only one that can be constructed directly.
 /// This is the entry point for all handler context creation and is the only
@@ -18,14 +17,14 @@ pub struct BaseContext;
 impl HandlerContext<BaseContext> {
     /// This is the only way to create a `HandlerContext`
     pub const fn new(
-        service: Arc<McpService>,
+        tool_def: ToolDef,
         request: CallToolRequestParam,
-        context: RequestContext<RoleServer>,
+        roots: Vec<PathBuf>,
     ) -> Self {
         Self {
-            service,
+            tool_def,
             request,
-            context,
+            roots,
             handler_data: BaseContext,
         }
     }
@@ -66,9 +65,9 @@ impl HandlerContext<BaseContext> {
     /// Transition to `LocalContext` with the specified port.
     pub fn into_local(self, port: Option<u16>) -> HandlerContext<LocalContext> {
         HandlerContext::with_data(
-            self.service,
+            self.tool_def,
             self.request,
-            self.context,
+            self.roots,
             LocalContext { port },
         )
     }
@@ -76,9 +75,9 @@ impl HandlerContext<BaseContext> {
     /// Transition to `BrpContext` with the specified method and port.
     pub fn into_brp(self, method: String, port: u16) -> HandlerContext<BrpContext> {
         HandlerContext::with_data(
-            self.service,
+            self.tool_def,
             self.request,
-            self.context,
+            self.roots,
             BrpContext { method, port },
         )
     }

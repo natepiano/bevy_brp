@@ -156,10 +156,8 @@ impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
         let ctx_clone = ctx.clone();
         Box::pin(async move {
             // Get search paths
-            let search_paths = ctx_clone
-                .service
-                .fetch_roots_and_get_paths(ctx_clone.context.peer.clone())
-                .await?;
+
+            let search_paths = ctx_clone.roots;
 
             // Create config from params
             let config = T::from_params(&params);

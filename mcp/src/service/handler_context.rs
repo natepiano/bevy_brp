@@ -1,11 +1,9 @@
-use std::sync::Arc;
+use std::path::PathBuf;
 
+use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 use serde_json::Value;
 
-use super::mcp_service::McpService;
 use crate::response::CallInfo;
 use crate::tool::ToolDef;
 
@@ -17,9 +15,9 @@ pub trait HasCallInfo {
 /// Context passed to all handlers containing service, request, and MCP context
 #[derive(Clone)]
 pub struct HandlerContext<T = ()> {
-    pub service:             Arc<McpService>,
+    pub(super) tool_def:     ToolDef,
     pub request:             CallToolRequestParam,
-    pub context:             RequestContext<RoleServer>,
+    pub roots:               Vec<PathBuf>,
     pub(super) handler_data: T,
 }
 
@@ -28,15 +26,15 @@ pub struct HandlerContext<T = ()> {
 impl<T> HandlerContext<T> {
     /// Create a new `HandlerContext` with specific handler data
     pub(crate) const fn with_data(
-        service: Arc<McpService>,
+        tool_def: ToolDef,
         request: CallToolRequestParam,
-        context: RequestContext<RoleServer>,
+        roots: Vec<PathBuf>,
         handler_data: T,
     ) -> Self {
         Self {
-            service,
+            tool_def,
             request,
-            context,
+            roots,
             handler_data,
         }
     }
@@ -48,18 +46,8 @@ impl<T> HandlerContext<T> {
     ///
     /// # Errors
     /// Returns an error if the tool definition is not found.
-    pub fn tool_def(&self) -> Result<&ToolDef, McpError> {
-        self.service
-            .get_tool_def(&self.request.name)
-            .ok_or_else(|| {
-                crate::error::report_to_mcp_error(
-                    &error_stack::Report::new(crate::error::Error::InvalidArgument(format!(
-                        "unknown tool: {}",
-                        self.request.name
-                    )))
-                    .attach_printable("Tool not found"),
-                )
-            })
+    pub const fn tool_def(&self) -> &ToolDef {
+        &self.tool_def
     }
 
     // Common parameter extraction methods (used by both BRP and local handlers)

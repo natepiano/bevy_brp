@@ -37,14 +37,11 @@ impl HandlerContext<BrpContext> {
 
     /// Extract brp method parameters from tool definition
     pub fn extract_params_from_definition(&self) -> Result<Option<serde_json::Value>, McpError> {
-        // Get the tool definition
-        let tool_def = self.tool_def()?;
-
         // Build params from parameter definitions
         let mut params_obj = serde_json::Map::new();
         let mut has_params = false;
 
-        for param in tool_def.parameters() {
+        for param in self.tool_def.parameters() {
             // Extract parameter value based on type
             let value = match param.param_type() {
                 ParamType::Number => self

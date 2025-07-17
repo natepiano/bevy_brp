@@ -31,10 +31,7 @@ impl HandlerFn {
         match (self, ctx) {
             (Self::Brp { handler, .. }, ToolContext::Brp(brp_ctx)) => handler.call(brp_ctx),
             (Self::Local(handler), ToolContext::Local(local_ctx)) => {
-                let formatter_config = match create_formatter_from_def(local_ctx) {
-                    Ok(config) => config,
-                    Err(e) => return Box::pin(async move { Err(e) }),
-                };
+                let formatter_config = create_formatter_from_def(local_ctx);
 
                 Box::pin(async move {
                     let result = handler
@@ -45,10 +42,7 @@ impl HandlerFn {
                 })
             }
             (Self::LocalWithPort(handler), ToolContext::Local(local_ctx)) => {
-                let formatter_config = match create_formatter_from_def(local_ctx) {
-                    Ok(config) => config,
-                    Err(e) => return Box::pin(async move { Err(e) }),
-                };
+                let formatter_config = create_formatter_from_def(local_ctx);
 
                 let Some(port) = local_ctx.port() else {
                     return Box::pin(async move {
@@ -106,15 +100,12 @@ impl HandlerFn {
 }
 
 /// Create formatter config from tool definition
-fn create_formatter_from_def(
-    handler_context: &HandlerContext<LocalContext>,
-) -> Result<FormatterConfig, McpError> {
-    let tool_def = handler_context.tool_def()?;
-
+fn create_formatter_from_def(handler_context: &HandlerContext<LocalContext>) -> FormatterConfig {
     // Build the formatter config from the response specification
-    let formatter_config = tool_def.formatter().build_formatter_config();
-
-    Ok(formatter_config)
+    handler_context
+        .tool_def()
+        .formatter()
+        .build_formatter_config()
 }
 
 /// Format the result of a local tool handler that returns `Result<Value, McpError>` using

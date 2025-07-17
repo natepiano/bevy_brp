@@ -1,10 +1,9 @@
 //! Unified tool definition that can handle both BRP and Local tools
 
-use std::sync::Arc;
+use std::path::PathBuf;
 
+use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
-use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, RoleServer};
 
 use super::HandlerFn;
 use super::mcp_tool_schema::McpToolSchemaBuilder;
@@ -12,7 +11,6 @@ use super::parameters::{ParamType, Parameter, ParameterDefinition, PortParameter
 use super::types::{BrpMethodSource, ToolHandler};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
-use crate::service::McpService;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
@@ -63,15 +61,14 @@ impl ToolDef {
 
     pub fn create_handler(
         &self,
-        service: Arc<McpService>,
         request: CallToolRequestParam,
-        context: RequestContext<RoleServer>,
+        roots: Vec<PathBuf>,
     ) -> Result<ToolHandler, McpError> {
         use crate::service::{BaseContext, HandlerContext};
         use crate::tool::types::ToolContext;
 
         // Create base context - the ONLY way to start
-        let base_ctx = HandlerContext::<BaseContext>::new(service, request, context);
+        let base_ctx = HandlerContext::<BaseContext>::new(self.clone(), request, roots);
 
         match &self.handler {
             HandlerFn::Local(_) => {

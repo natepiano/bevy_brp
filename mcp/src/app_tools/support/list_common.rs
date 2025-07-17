@@ -20,10 +20,7 @@ where
     F: FnOnce(Vec<PathBuf>) -> Fut,
     Fut: Future<Output = Result<T, McpError>>,
 {
-    let search_paths = handler_context
-        .service
-        .fetch_roots_and_get_paths(handler_context.context.peer.clone())
-        .await?;
+    let search_paths = handler_context.roots.clone();
     handler(search_paths).await
 }
 

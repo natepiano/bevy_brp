@@ -41,21 +41,10 @@ pub type FieldExtractor = Box<dyn Fn(&Value, &dyn RequestParameterProvider) -> V
 /// which were already validated during the parameter extraction phase.
 pub fn create_rquest_field_extractor(field: &'static str) -> FieldExtractor {
     Box::new(move |_data, context| {
-        match field {
-            "entity" => {
-                // Extract entity ID from request parameters
-                context
-                    .get_request_parameter("entity")
-                    .cloned()
-                    .unwrap_or(Value::Null)
-            }
-
-            // For all other fields, perform a generic lookup in the params
-            _ => context
-                .get_request_parameter(field)
-                .cloned()
-                .unwrap_or(Value::Null),
-        }
+        context
+            .get_request_parameter(field)
+            .cloned()
+            .unwrap_or(Value::Null)
     })
 }
 
