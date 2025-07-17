@@ -35,7 +35,7 @@ use crate::app_tools::brp_list_bevy_examples::ListBevyExamples;
 use crate::app_tools::brp_list_brp_apps::ListBrpApps;
 use crate::app_tools::brp_shutdown::Shutdown;
 use crate::app_tools::brp_status::Status;
-use crate::brp_tools::request_handler::{BrpMethodHandler, BrpMethodHandlerV2};
+use crate::brp_tools::request_handler::BrpMethodHandlerV2;
 use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
 use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
@@ -154,6 +154,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                         parameter_field_name: JSON_FIELD_COMPONENTS,
                         placement:            FieldPlacement::Result,
                     },
+                    ResponseField::FormatCorrection,
                 ],
             },
         },
@@ -176,11 +177,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             ],
             response_format: ResponseSpecification {
                 message_template: "Successfully inserted/updated resource: {resource}",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_RESOURCE,
-                    parameter_field_name: PARAM_RESOURCE,
-                    placement:            FieldPlacement::Metadata,
-                }],
+                response_fields:  vec![
+                    ResponseField::FromRequest {
+                        response_field_name:  JSON_FIELD_RESOURCE,
+                        parameter_field_name: PARAM_RESOURCE,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                    ResponseField::FormatCorrection,
+                ],
             },
         },
         // UnifiedToolDef/bevy_list
@@ -193,11 +197,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 false,
             )],
             response_format: ResponseSpecification {
-                message_template: "Listed {count} components",
+                message_template: "Listed {component_count} components",
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_COUNT,
+                        response_field_name: "component_count",
                         response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -208,15 +212,18 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_LIST_RESOURCES,
             description:     DESC_BEVY_LIST_RESOURCES,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_LIST_RESOURCES),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_LIST_RESOURCES,
+            ),
             parameters:      vec![],
             response_format: ResponseSpecification {
-                message_template: "Listed {count} resources",
+                message_template: "Listed {resource_count} resources",
                 response_fields:  vec![
-                    ResponseField::DirectToResult,
+                    ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_COUNT,
-                        response_extractor:  ResponseExtractorType::ItemCount(""),
+                        response_field_name: "resource_count",
+                        response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -226,32 +233,41 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_MUTATE_COMPONENT,
             description:     DESC_BEVY_MUTATE_COMPONENT,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_COMPONENT),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_MUTATE_COMPONENT,
+            ),
             parameters:      vec![
                 Parameter::entity("The entity ID containing the component to mutate", true),
-                Parameter::component("The fully-qualified type name of the component to mutate"),
-                Parameter::path(
-                    "The path to the field within the component (e.g., 'translation.x')",
-                ),
                 Parameter::value(
                     "The new value for the field. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
                     true,
                 ),
+                Parameter::component("The fully-qualified type name of the component to mutate"),
+                Parameter::path(
+                    "The path to the field within the component (e.g., 'translation.x')",
+                ),
             ],
             response_format: ResponseSpecification {
                 message_template: "Successfully mutated component on entity {entity}",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_ENTITY,
-                    parameter_field_name: JSON_FIELD_ENTITY,
-                    placement:            FieldPlacement::Metadata,
-                }],
+                response_fields:  vec![
+                    ResponseField::FromRequest {
+                        response_field_name:  JSON_FIELD_ENTITY,
+                        parameter_field_name: JSON_FIELD_ENTITY,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                    ResponseField::FormatCorrection,
+                ],
             },
         },
         // UnifiedToolDef/bevy_mutate_resource
         ToolDef {
             name:            TOOL_BEVY_MUTATE_RESOURCE,
             description:     DESC_BEVY_MUTATE_RESOURCE,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_RESOURCE),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_MUTATE_RESOURCE,
+            ),
             parameters:      vec![
                 Parameter::resource("The fully-qualified type name of the resource to mutate"),
                 Parameter::path(
@@ -264,31 +280,34 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             ],
             response_format: ResponseSpecification {
                 message_template: "Successfully mutated resource: `{resource}`",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  JSON_FIELD_RESOURCE,
-                    parameter_field_name: PARAM_RESOURCE,
-                    placement:            FieldPlacement::Metadata,
-                }],
+                response_fields:  vec![
+                    ResponseField::FromRequest {
+                        response_field_name:  JSON_FIELD_RESOURCE,
+                        parameter_field_name: PARAM_RESOURCE,
+                        placement:            FieldPlacement::Metadata,
+                    },
+                    ResponseField::FormatCorrection,
+                ],
             },
         },
         // UnifiedToolDef/bevy_query
         ToolDef {
             name:            TOOL_BEVY_QUERY,
             description:     DESC_BEVY_QUERY,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_QUERY),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_QUERY),
             parameters:      vec![Parameter::data(), Parameter::filter(), Parameter::strict()],
             response_format: ResponseSpecification {
                 message_template: "Query completed successfully",
                 response_fields:  vec![
-                    ResponseField::DirectToResult,
+                    ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_ENTITY_COUNT,
-                        response_extractor:  ResponseExtractorType::ItemCount(""),
+                        response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COMPONENT_COUNT,
-                        response_extractor:  ResponseExtractorType::QueryComponentCount(""),
+                        response_extractor:  ResponseExtractorType::QueryComponentCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -298,7 +317,10 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REGISTRY_SCHEMA,
             description:     DESC_BEVY_REGISTRY_SCHEMA,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REGISTRY_SCHEMA),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_REGISTRY_SCHEMA,
+            ),
             parameters:      vec![
                 Parameter::with_crates(),
                 Parameter::without_crates(),
@@ -307,14 +329,21 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             ],
             response_format: ResponseSpecification {
                 message_template: "Retrieved schema information",
-                response_fields:  vec![ResponseField::DirectToResult],
+                response_fields:  vec![
+                    ResponseField::BrpRawResultToResult,
+                    ResponseField::FromResponse {
+                        response_field_name: "type_count",
+                        response_extractor:  ResponseExtractorType::KeyCount("result"),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                ],
             },
         },
         // UnifiedToolDef/bevy_remove
         ToolDef {
             name:            TOOL_BEVY_REMOVE,
             description:     DESC_BEVY_REMOVE,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_REMOVE),
             parameters:      vec![
                 Parameter::entity("The entity ID to remove components from", true),
                 Parameter::components("Array of component type names to remove", true),
@@ -339,7 +368,10 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REMOVE_RESOURCE,
             description:     DESC_BEVY_REMOVE_RESOURCE,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE_RESOURCE),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_REMOVE_RESOURCE,
+            ),
             parameters:      vec![Parameter::resource(
                 "The fully-qualified type name of the resource to remove",
             )],
@@ -356,7 +388,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REPARENT,
             description:     DESC_BEVY_REPARENT,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REPARENT),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_REPARENT),
             parameters:      vec![
                 Parameter::entities("Array of entity IDs to reparent"),
                 Parameter::parent(),
@@ -381,11 +413,18 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_RPC_DISCOVER,
             description:     DESC_BEVY_RPC_DISCOVER,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_RPC_DISCOVER),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_RPC_DISCOVER),
             parameters:      vec![],
             response_format: ResponseSpecification {
-                message_template: "Retrieved BRP method discovery information",
-                response_fields:  vec![ResponseField::DirectToResult],
+                message_template: "Retrieved BRP method discovery information for {method_count} methods",
+                response_fields:  vec![
+                    ResponseField::BrpRawResultToResult,
+                    ResponseField::FromResponse {
+                        response_field_name: "method_count",
+                        response_extractor:  ResponseExtractorType::ArrayCount("result.methods"),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                ],
             },
         },
         // UnifiedToolDef/bevy_spawn
@@ -393,18 +432,21 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_SPAWN,
             description:     DESC_BEVY_SPAWN,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_SPAWN),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_SPAWN),
             parameters:      vec![Parameter::components(
                 "Object containing component data to spawn with. Keys are component types, values are component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
                 false,
             )],
             response_format: ResponseSpecification {
                 message_template: "Successfully spawned entity",
-                response_fields:  vec![ResponseField::FromResponse {
-                    response_field_name: JSON_FIELD_ENTITY,
-                    response_extractor:  ResponseExtractorType::Field(JSON_FIELD_ENTITY),
-                    placement:           FieldPlacement::Metadata,
-                }],
+                response_fields:  vec![
+                    ResponseField::FromResponse {
+                        response_field_name: JSON_FIELD_ENTITY,
+                        response_extractor:  ResponseExtractorType::Field("result.entity"),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                    ResponseField::FormatCorrection,
+                ],
             },
         },
         // UnifiedToolDef/brp_execute
@@ -427,8 +469,8 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
-            handler:         HandlerFn::brp_static(
-                BrpMethodHandler,
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
                 BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
             ),
             parameters:      vec![Parameter::types(
@@ -437,14 +479,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             )],
             response_format: ResponseSpecification {
                 message_template: "Format discovery completed",
-                response_fields:  vec![ResponseField::DirectToResult],
+                response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         // UnifiedToolDef/brp_extras_screenshot
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SCREENSHOT,
             description:     DESC_BRP_EXTRAS_SCREENSHOT,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SCREENSHOT),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_EXTRAS_SCREENSHOT,
+            ),
             parameters:      vec![Parameter::path(
                 "File path where the screenshot should be saved",
             )],
@@ -461,19 +506,22 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SEND_KEYS,
             description:     DESC_BRP_EXTRAS_SEND_KEYS,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SEND_KEYS),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_EXTRAS_SEND_KEYS,
+            ),
             parameters:      vec![Parameter::keys(), Parameter::duration_ms()],
             response_format: ResponseSpecification {
                 message_template: "Successfully sent keyboard input",
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: "keys_sent",
-                        response_extractor:  ResponseExtractorType::Field("keys_sent"),
+                        response_extractor:  ResponseExtractorType::Field("result.keys_sent"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "duration_ms",
-                        response_extractor:  ResponseExtractorType::Field("duration_ms"),
+                        response_extractor:  ResponseExtractorType::Field("result.duration_ms"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -483,8 +531,8 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-            handler:         HandlerFn::brp_static(
-                BrpMethodHandler,
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
                 BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
             ),
             parameters:      vec![Parameter::enabled()],
@@ -493,12 +541,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: "debug_enabled",
-                        response_extractor:  ResponseExtractorType::Field("debug_enabled"),
+                        response_extractor:  ResponseExtractorType::Field("result.debug_enabled"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "details",
-                        response_extractor:  ResponseExtractorType::Field("message"),
+                        response_extractor:  ResponseExtractorType::Field("result.message"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],

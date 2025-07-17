@@ -37,9 +37,6 @@ pub type HandlerResponse<'a> =
     Pin<Box<dyn Future<Output = Result<Box<dyn HandlerResult>, McpError>> + Send + 'a>>;
 
 /// Type alias for BRP handler responses
-pub type BrpHandlerResponse<'a> =
-    Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>>;
-
 /// Result type that all local handlers must return
 pub trait HandlerResult: Send + Sync {
     /// Serialize this result to a JSON value (required due to dyn compatibility)
@@ -56,12 +53,6 @@ pub trait LocalToolFn: Send + Sync {
 pub trait LocalToolFnWithPort: Send + Sync {
     /// Handle the request and return a typed result
     fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_>;
-}
-
-/// Trait for BRP handlers using function pointer approach
-pub trait BrpToolFn: Send + Sync {
-    /// Handle the BRP request and return a result
-    fn call(&self, ctx: &HandlerContext<BrpContext>) -> BrpHandlerResponse<'_>;
 }
 
 /// Trait for BRP handlers that return `HandlerResponse` (unified with local handlers)

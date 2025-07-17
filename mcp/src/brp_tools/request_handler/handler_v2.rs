@@ -1,7 +1,8 @@
 use serde_json::{Value, json};
 
 use super::format_discovery::{
-    EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
+    EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus,
+    execute_brp_method_with_format_discovery,
 };
 use super::types::BrpMethodResult;
 use crate::brp_tools::support::brp_client::BrpResult;
@@ -66,23 +67,45 @@ fn convert_to_brp_method_result(
     ctx: &HandlerContext<BrpContext>,
 ) -> BrpMethodResult {
     match enhanced_result.result {
-        BrpResult::Success(data) => BrpMethodResult {
-            status:             None, // No status field for success
-            message:            None,
-            code:               None,
-            error_data:         None,
-            result:             data, // Direct BRP response data
-            format_corrections: enhanced_result
-                .format_corrections
-                .iter()
-                .map(format_correction_to_json)
-                .collect(),
-            format_corrected:   Some(enhanced_result.format_corrected),
-        },
+        BrpResult::Success(data) => {
+            // Check if format correction was applied and modify message accordingly
+            let success_message =
+                if enhanced_result.format_corrected == FormatCorrectionStatus::Succeeded {
+                    Some("Request succeeded with format correction applied".to_string())
+                } else {
+                    None // Let formatter use the tool definition's message_template
+                };
+
+            BrpMethodResult {
+                status:             None, // No status field for success
+                message:            success_message,
+                code:               None,
+                error_data:         None,
+                result:             data, // Direct BRP response data
+                format_corrections: enhanced_result
+                    .format_corrections
+                    .iter()
+                    .map(format_correction_to_json)
+                    .collect(),
+                format_corrected:   Some(enhanced_result.format_corrected),
+            }
+        }
         BrpResult::Error(ref err) => {
             // Process error enhancements (reuse logic from current handler)
             let enhanced_message = enhance_error_message(err, &enhanced_result, ctx);
-            let error_data = enhance_error_data(err.data.clone(), &enhanced_result, ctx);
+            let mut error_data = enhance_error_data(err.data.clone(), &enhanced_result, ctx);
+
+            // If message was enhanced, preserve the original error message
+            if enhanced_message != err.message {
+                let mut data_obj = error_data.unwrap_or_else(|| serde_json::json!({}));
+                if let Value::Object(map) = &mut data_obj {
+                    map.insert(
+                        "original_error".to_string(),
+                        Value::String(err.message.clone()),
+                    );
+                }
+                error_data = Some(data_obj);
+            }
 
             BrpMethodResult {
                 status: Some("error".to_string()),
@@ -128,49 +151,13 @@ fn enhance_error_message(
 }
 
 /// Enhance error data with format corrections
-fn enhance_error_data(
+const fn enhance_error_data(
     original_data: Option<Value>,
-    enhanced_result: &EnhancedBrpResult,
-    ctx: &HandlerContext<BrpContext>,
+    _enhanced_result: &EnhancedBrpResult,
+    _ctx: &HandlerContext<BrpContext>,
 ) -> Option<Value> {
-    use super::format_discovery::FORMAT_DISCOVERY_METHODS;
-    use crate::constants::JSON_FIELD_FORMAT_CORRECTIONS;
-
-    // Only add format corrections for methods that support format discovery
-    if !FORMAT_DISCOVERY_METHODS.contains(&ctx.brp_method())
-        || enhanced_result.format_corrections.is_empty()
-    {
-        return original_data;
-    }
-
-    let mut data_obj = original_data.unwrap_or_else(|| serde_json::json!({}));
-
-    if let Value::Object(map) = &mut data_obj {
-        // Add format corrections as JSON (manually convert like the current handler)
-        let corrections: Vec<Value> = enhanced_result
-            .format_corrections
-            .iter()
-            .map(format_correction_to_json)
-            .collect();
-
-        map.insert(
-            JSON_FIELD_FORMAT_CORRECTIONS.to_string(),
-            Value::Array(corrections),
-        );
-
-        // Add rich metadata from first correction
-        if let Some(first_correction) = enhanced_result.format_corrections.first() {
-            if let Some(ops) = &first_correction.supported_operations {
-                map.insert("supported_operations".to_string(), serde_json::json!(ops));
-            }
-        }
-
-        // Add format corrected status
-        map.insert(
-            "format_corrected".to_string(),
-            serde_json::to_value(&enhanced_result.format_corrected).unwrap_or(Value::Null),
-        );
-    }
-
-    Some(data_obj)
+    // V2 handler no longer duplicates format correction data in error_data
+    // Format corrections are handled through ResponseField::FormatCorrection extractor
+    // which extracts from the main BrpMethodResult.format_corrections field
+    original_data
 }

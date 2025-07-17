@@ -68,11 +68,6 @@ pub enum ResponseField {
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
-    /// Pass the entire BRP response data directly to the result field.
-    ///
-    /// This variant is specifically for Raw-to-Structured migrations where the
-    /// entire BRP response becomes the result field content.
-    DirectToResult,
     /// Pass all fields from the BRP response directly to the metadata field.
     ///
     /// This variant takes all top-level fields from the response and places them
@@ -95,6 +90,12 @@ pub enum ResponseField {
     /// This is a convenience variant for V2 BRP tools that need to extract the raw BRP response
     /// from the "result" field and place it in the JSON response result field.
     BrpRawResultToResult,
+    /// Extract format correction metadata from V2 handler responses
+    ///
+    /// This variant extracts all format correction fields (`format_corrected`,
+    /// `format_corrections`, etc.) from V2 `BrpMethodResult` and places them in metadata. Only
+    /// used for V2 tools that support format correction.
+    FormatCorrection,
 }
 
 /// Extraction strategies for response data only.
@@ -105,9 +106,6 @@ pub enum ResponseExtractorType {
     Field(&'static str),
     /// Extract count field from response data
     Count,
-    /// Count items (entities, components, resources, etc.) in an array
-    /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
-    ItemCount(&'static str),
     /// Count items in an array at the specified field path
     /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
     ArrayCount(&'static str),
@@ -138,12 +136,6 @@ impl ResponseExtractorType {
                         serde_json::Value::Number(serde_json::Number::from(count))
                     })
             }
-            Self::ItemCount(field_path) => {
-                // Extract the specified field and count items in the array
-                let field_data = extract_nested_field(data, field_path);
-                let count = field_data.as_array().map_or(0, std::vec::Vec::len);
-                serde_json::Value::Number(serde_json::Number::from(count))
-            }
             Self::ArrayCount(field_path) => {
                 // Extract the specified field and count items in the array
                 let field_data = extract_nested_field(data, field_path);
@@ -153,7 +145,7 @@ impl ResponseExtractorType {
             Self::KeyCount(field_path) => {
                 // Extract the specified field and count keys in the object
                 let field_data = extract_nested_field(data, field_path);
-                let count = field_data.as_object().map_or(0, |obj| obj.len());
+                let count = field_data.as_object().map_or(0, serde_json::Map::len);
                 serde_json::Value::Number(serde_json::Number::from(count))
             }
             Self::QueryComponentCount(field_path) => {
@@ -201,9 +193,9 @@ impl ResponseField {
                 response_field_name: name,
                 ..
             } => name,
-            Self::DirectToResult => JSON_FIELD_RESULT,
             Self::DirectToMetadata => JSON_FIELD_METADATA,
             Self::BrpRawResultToResult => JSON_FIELD_RESULT,
+            Self::FormatCorrection => "metadata",
         }
     }
 }

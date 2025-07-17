@@ -25,7 +25,7 @@ pub enum ParamType {
     Any,
     /// A boolean parameter
     Boolean,
-    /// Dynamic parameters for brp_execute - the value becomes the BRP method parameters directly
+    /// Dynamic parameters for `brp_execute` - the value becomes the BRP method parameters directly
     DynamicParams,
     /// A numeric parameter (typically entity IDs or ports)
     Number,

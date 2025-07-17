@@ -4,7 +4,7 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use super::format_v2;
-use super::types::{BrpMethodSource, BrpToolFn, BrpToolFnV2};
+use super::types::{BrpMethodSource, BrpToolFnV2};
 use crate::response::{FormatterConfig, ResponseBuilder, ResponseFormatter};
 use crate::service::{HandlerContext, LocalContext};
 use crate::tool::types::ToolContext;
@@ -15,10 +15,6 @@ use crate::tool::{LocalToolFn, LocalToolFnWithPort};
 pub enum HandlerFn {
     Local(Arc<dyn LocalToolFn>),
     LocalWithPort(Arc<dyn LocalToolFnWithPort>),
-    Brp {
-        handler:       Arc<dyn super::types::BrpToolFn>,
-        method_source: BrpMethodSource,
-    },
     BrpV2 {
         handler:       Arc<dyn super::types::BrpToolFnV2>,
         method_source: BrpMethodSource,
@@ -34,7 +30,6 @@ impl HandlerFn {
         Box<dyn std::future::Future<Output = Result<CallToolResult, McpError>> + Send + 'a>,
     > {
         match (self, ctx) {
-            (Self::Brp { handler, .. }, ToolContext::Brp(brp_ctx)) => handler.call(brp_ctx),
             (Self::Local(handler), ToolContext::Local(local_ctx)) => {
                 let formatter_config = create_formatter_from_def(local_ctx);
 
@@ -99,22 +94,6 @@ impl HandlerFn {
     /// Create a `WithPort` handler with automatic Arc wrapping
     pub fn local_with_port<T: LocalToolFnWithPort + 'static>(handler: T) -> Self {
         Self::LocalWithPort(Arc::new(handler))
-    }
-
-    /// Create a BRP handler with static method
-    pub fn brp_static<T: BrpToolFn + 'static>(handler: T, method: &'static str) -> Self {
-        Self::Brp {
-            handler:       Arc::new(handler),
-            method_source: BrpMethodSource::Static(method),
-        }
-    }
-
-    /// Create a BRP handler with dynamic method (from parameter)
-    pub fn brp_dynamic<T: BrpToolFn + 'static>(handler: T) -> Self {
-        Self::Brp {
-            handler:       Arc::new(handler),
-            method_source: BrpMethodSource::Dynamic,
-        }
     }
 
     /// Create a BRP V2 handler with static method

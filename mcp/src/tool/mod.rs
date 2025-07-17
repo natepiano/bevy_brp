@@ -18,7 +18,4 @@ pub use definitions::get_all_tool_definitions;
 pub use handler_fn::HandlerFn;
 pub use parameters::ParamType;
 pub use tool_def::ToolDef;
-pub use types::{
-    BrpHandlerResponse, BrpToolFn, BrpToolFnV2, HandlerResponse, HandlerResult, LocalToolFn,
-    LocalToolFnWithPort,
-};
+pub use types::{BrpToolFnV2, HandlerResponse, HandlerResult, LocalToolFn, LocalToolFnWithPort};

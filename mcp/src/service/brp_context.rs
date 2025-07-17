@@ -109,7 +109,8 @@ impl HandlerContext<BrpContext> {
                     |v| Some(v.clone()),
                 )?,
                 ParamType::DynamicParams => {
-                    // For dynamic params, extract the value and return it directly as BRP parameters
+                    // For dynamic params, extract the value and return it directly as BRP
+                    // parameters
                     let dynamic_value = self.extract_typed_param(
                         param.name(),
                         param.description(),

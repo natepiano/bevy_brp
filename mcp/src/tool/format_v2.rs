@@ -1,6 +1,7 @@
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
+use crate::brp_tools::request_handler::{FormatCorrection, FormatCorrectionStatus};
 use crate::response::{FormatterConfig, ResponseBuilder, ResponseFormatter};
 use crate::service::{HandlerContext, HasCallInfo};
 
@@ -54,11 +55,98 @@ where
                 // Handle success response
                 let formatter = ResponseFormatter::new(formatter_config);
 
-                // For V2, the entire value contains the structured result with data field
-                // The formatter will extract fields based on ResponseSpecification
-                Ok(formatter.format_success(&value, handler_context))
+                // Check if this is a BRP result with format correction information
+                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
+
+                // For V2, the entire value contains the structured result
+                // Use format_success_with_corrections to handle format correction messaging
+                Ok(formatter.format_success_with_corrections(
+                    &value,
+                    handler_context,
+                    format_corrections.as_deref(),
+                    format_corrected.as_ref(),
+                ))
             }
         }
         Err(e) => Err(e),
     }
+}
+
+/// Extract format correction information from V2 BRP result JSON
+fn extract_format_correction_info(
+    value: &serde_json::Value,
+) -> (
+    Option<Vec<FormatCorrection>>,
+    Option<FormatCorrectionStatus>,
+) {
+    let format_corrected = value
+        .get("format_corrected")
+        .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+    let format_corrections = value
+        .get("format_corrections")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|correction_json| {
+                    // Convert JSON back to FormatCorrection struct
+                    let component = correction_json
+                        .get("component")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    let original_format = correction_json
+                        .get("original_format")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
+
+                    let corrected_format = correction_json
+                        .get("corrected_format")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
+
+                    let hint = correction_json
+                        .get("hint")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    let supported_operations = correction_json
+                        .get("supported_operations")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        });
+
+                    let mutation_paths = correction_json
+                        .get("mutation_paths")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        });
+
+                    let type_category = correction_json
+                        .get("type_category")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+
+                    Some(FormatCorrection {
+                        component,
+                        original_format,
+                        corrected_format,
+                        hint,
+                        supported_operations,
+                        mutation_paths,
+                        type_category,
+                    })
+                })
+                .collect()
+        });
+
+    (format_corrections, format_corrected)
 }
