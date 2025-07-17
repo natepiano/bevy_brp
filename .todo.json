@@ -1,0 +1,198 @@
+[
+  {
+    "id": "1",
+    "content": "Create BrpToolFnV2 trait in tool/types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build and fix errors for BrpToolFnV2",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Create BrpMethodResult struct in brp_tools/request_handler/types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run cargo build and fix errors for BrpMethodResult",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Add BrpV2 variant to HandlerFn enum in tool/handler_fn.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run cargo build and fix errors for HandlerFn variant",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Create format_tool_call_result_v2 in tool/format_v2.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Run cargo build and fix errors for format_v2",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Add format_v2 module to tool/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo build and fix errors for module addition",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Create BrpMethodHandlerV2 in brp_tools/request_handler/handler_v2.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run cargo build and fix errors for BrpMethodHandlerV2",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Update HandlerFn::call_handler to handle BrpV2 case",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Run cargo build and fix errors for call_handler update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Add handler_v2 and types modules to brp_tools/request_handler/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Run cargo build and fix errors for module additions",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
