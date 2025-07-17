@@ -8,7 +8,7 @@ use rmcp::{Error as McpError, RoleServer};
 
 use super::HandlerFn;
 use super::mcp_tool_schema::McpToolSchemaBuilder;
-use super::parameters::{ParamType, ParameterDefinition, PortParameter, UnifiedParameter};
+use super::parameters::{ParamType, Parameter, ParameterDefinition, PortParameter};
 use super::types::{BrpMethodSource, ToolHandler};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
 use crate::response::ResponseSpecification;
@@ -23,8 +23,8 @@ pub struct ToolDef {
     pub description:     &'static str,
     /// Handler function with method source information
     pub handler:         HandlerFn,
-    /// Type-safe parameters (unified)
-    pub parameters:      Vec<UnifiedParameter>,
+    /// Type-safe parameters
+    pub parameters:      Vec<Parameter>,
     /// Response formatting specification
     pub response_format: ResponseSpecification,
 }

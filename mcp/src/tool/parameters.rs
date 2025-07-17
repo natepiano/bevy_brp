@@ -35,104 +35,66 @@ pub enum ParamType {
     StringArray,
 }
 
-/// Parameter names for BRP tools (excludes port parameter)
+/// Unified parameter names combining all BRP and local tool parameters
+/// Entries are alphabetically sorted for easy maintenance
 /// serialized into parameter names provided to the rcmp mcp tool framework
 #[derive(Display, EnumString, Clone, Copy, strum::IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
-pub enum BrpParameterName {
-    /// Entity ID parameter
-    Entity,
-    /// Components parameter for operations
-    Components,
-    /// Resource type name parameter
-    Resource,
-    /// Path for field mutations
-    Path,
-    /// Value for mutations and inserts
-    Value,
-    /// Strict mode flag for queries
-    Strict,
-    /// Component type for mutations
-    Component,
-    /// Data parameter for queries
-    Data,
-    /// Filter parameter for queries
-    Filter,
-    /// Parameters for dynamic method execution
-    Params,
-    /// Parent entity for reparenting
-    Parent,
-    /// Multiple entities for batch operations
-    Entities,
-    /// Types parameter for discovery
-    Types,
-    /// Include specific crates in schema
-    WithCrates,
-    /// Exclude specific crates from schema
-    WithoutCrates,
-    /// Include specific reflect types
-    WithTypes,
-    /// Exclude specific reflect types
-    WithoutTypes,
-    /// Boolean enabled flag
-    Enabled,
-    /// Keys array for input simulation
-    Keys,
-    /// Duration in milliseconds
-    DurationMs,
-    /// Watch ID for stopping watches
-    WatchId,
-    /// Log filename
-    Filename,
-    /// Keyword for filtering
-    Keyword,
-    /// Number of lines to tail
-    TailLines,
-    /// Age threshold in seconds
-    OlderThanSeconds,
-    /// Tracing level
-    Level,
-    /// Verbose output flag
-    Verbose,
-}
-
-/// Parameter names for local tools (includes all parameters)
-/// serialized into parameter names provided to the rcmp mcp tool framework
-#[derive(Display, EnumString, Clone, Copy, strum::IntoStaticStr)]
-#[strum(serialize_all = "snake_case")]
-pub enum LocalParameterName {
-    /// Entity ID parameter
-    Entity,
-    /// Components parameter for operations
-    Components,
-    /// Resource type name parameter
-    Resource,
-    /// Path for field mutations or file paths
-    Path,
-    /// Value for mutations and inserts
-    Value,
-    /// Method name for dynamic execution
-    Method,
-    /// Build profile (debug/release)
-    Profile,
+pub enum ParameterName {
     /// Application name
     AppName,
-    /// Example name
-    ExampleName,
     /// Component type for mutations
     Component,
+    /// Components parameter for operations
+    Components,
     /// Data parameter for queries
     Data,
+    /// Duration in milliseconds
+    DurationMs,
+    /// Boolean enabled flag
+    Enabled,
+    /// Multiple entities for batch operations
+    Entities,
+    /// Entity ID parameter
+    Entity,
+    /// Example name
+    ExampleName,
+    /// Log filename
+    Filename,
     /// Filter parameter for queries
     Filter,
+    /// Keys array for input simulation
+    Keys,
+    /// Keyword for filtering
+    Keyword,
+    /// Tracing level
+    Level,
+    /// Method name for dynamic execution
+    Method,
+    /// Age threshold in seconds
+    OlderThanSeconds,
     /// Parameters for dynamic method execution
     Params,
     /// Parent entity for reparenting
     Parent,
-    /// Multiple entities for batch operations
-    Entities,
+    /// Path for field mutations or file paths
+    Path,
+    /// Build profile (debug/release)
+    Profile,
+    /// Resource type name parameter
+    Resource,
+    /// Strict mode flag for queries
+    Strict,
+    /// Number of lines to tail
+    TailLines,
     /// Types parameter for discovery
     Types,
+    /// Value for mutations and inserts
+    Value,
+    /// Verbose output flag
+    Verbose,
+    /// Watch ID for stopping watches
+    WatchId,
     /// Include specific crates in schema
     WithCrates,
     /// Exclude specific crates from schema
@@ -141,60 +103,19 @@ pub enum LocalParameterName {
     WithTypes,
     /// Exclude specific reflect types
     WithoutTypes,
-    /// Boolean enabled flag
-    Enabled,
-    /// Keys array for input simulation
-    Keys,
-    /// Duration in milliseconds
-    DurationMs,
-    /// Watch ID for stopping watches
-    WatchId,
-    /// Log filename
-    Filename,
-    /// Keyword for filtering
-    Keyword,
-    /// Number of lines to tail
-    TailLines,
-    /// Age threshold in seconds
-    OlderThanSeconds,
-    /// Tracing level
-    Level,
-    /// Verbose output flag
-    Verbose,
-    /// Strict mode flag for queries
-    Strict,
 }
 
-/// Generic parameter definition that works for both BRP and Local tools
-/// allows a common parameter pattern but ensures that each type can only work
-/// with the parameters defined for it
+/// Simple parameter definition using the unified `ParameterName` enum
 #[derive(Clone)]
-pub struct Parameter<N> {
+pub struct Parameter {
     /// Parameter name as enum variant
-    name:        N,
+    name:        ParameterName,
     /// Description of the parameter
     description: &'static str,
     /// Whether this parameter is required
     required:    bool,
     /// Type of the parameter
     param_type:  ParamType,
-}
-
-/// Type alias for BRP tool parameters
-/// only usable on `UnifiedToolDef` with BRP handlers
-pub type BrpParameter = Parameter<BrpParameterName>;
-
-/// Type alias for local tool parameters
-/// only usable on `UnifiedToolDef` with local handlers
-pub type LocalParameter = Parameter<LocalParameterName>;
-
-/// Unified parameter enum that can hold either BRP or Local parameters
-#[derive(Clone)]
-pub enum UnifiedParameter {
-    /// BRP parameter
-    Brp(BrpParameter),
-    /// Local parameter
-    Local(LocalParameter),
 }
 
 /// Specifies whether a tool requires a port parameter
@@ -206,11 +127,8 @@ pub enum PortParameter {
     NotUsed,
 }
 
-/// Implement common methods for any Parameter<N> where N can convert to &str
-impl<N> Parameter<N>
-where
-    N: Into<&'static str> + Copy,
-{
+/// Implementation for the simple Parameter struct
+impl Parameter {
     /// Get parameter name as string
     pub fn name(&self) -> &str {
         self.name.into()
@@ -232,14 +150,12 @@ where
     }
 }
 
-/// BRP-specific constructors
-/// if a description param is provided, it's because
-/// these parameters are used in multiple tools and can have different descriptions
-impl BrpParameter {
+/// Parameter constructor methods using the unified `ParameterName` enum
+impl Parameter {
     /// Entity ID parameter with custom description
     pub const fn entity(description: &'static str, required: bool) -> Self {
         Self {
-            name: BrpParameterName::Entity,
+            name: ParameterName::Entity,
             description,
             required,
             param_type: ParamType::Number,
@@ -249,7 +165,7 @@ impl BrpParameter {
     /// Resource name parameter
     pub const fn resource(description: &'static str) -> Self {
         Self {
-            name: BrpParameterName::Resource,
+            name: ParameterName::Resource,
             description,
             required: true,
             param_type: ParamType::String,
@@ -259,7 +175,7 @@ impl BrpParameter {
     /// Components parameter
     pub const fn components(description: &'static str, required: bool) -> Self {
         Self {
-            name: BrpParameterName::Components,
+            name: ParameterName::Components,
             description,
             required,
             param_type: ParamType::Any,
@@ -269,7 +185,7 @@ impl BrpParameter {
     /// Path parameter for mutations
     pub const fn path(description: &'static str) -> Self {
         Self {
-            name: BrpParameterName::Path,
+            name: ParameterName::Path,
             description,
             required: true,
             param_type: ParamType::String,
@@ -279,7 +195,7 @@ impl BrpParameter {
     /// Value parameter
     pub const fn value(description: &'static str, required: bool) -> Self {
         Self {
-            name: BrpParameterName::Value,
+            name: ParameterName::Value,
             description,
             required,
             param_type: ParamType::Any,
@@ -287,11 +203,7 @@ impl BrpParameter {
     }
 
     /// Boolean parameter helper
-    pub const fn boolean(
-        name: BrpParameterName,
-        description: &'static str,
-        required: bool,
-    ) -> Self {
+    pub const fn boolean(name: ParameterName, description: &'static str, required: bool) -> Self {
         Self {
             name,
             description,
@@ -301,7 +213,7 @@ impl BrpParameter {
     }
 
     /// Generic string parameter
-    pub const fn string(name: BrpParameterName, description: &'static str, required: bool) -> Self {
+    pub const fn string(name: ParameterName, description: &'static str, required: bool) -> Self {
         Self {
             name,
             description,
@@ -312,7 +224,7 @@ impl BrpParameter {
 
     /// String array parameter
     pub const fn string_array(
-        name: BrpParameterName,
+        name: ParameterName,
         description: &'static str,
         required: bool,
     ) -> Self {
@@ -326,7 +238,7 @@ impl BrpParameter {
 
     /// Number array parameter
     pub const fn number_array(
-        name: BrpParameterName,
+        name: ParameterName,
         description: &'static str,
         required: bool,
     ) -> Self {
@@ -339,7 +251,7 @@ impl BrpParameter {
     }
 
     /// Generic number parameter
-    pub const fn number(name: BrpParameterName, description: &'static str, required: bool) -> Self {
+    pub const fn number(name: ParameterName, description: &'static str, required: bool) -> Self {
         Self {
             name,
             description,
@@ -349,7 +261,7 @@ impl BrpParameter {
     }
 
     /// Any type parameter
-    pub const fn any(name: BrpParameterName, description: &'static str, required: bool) -> Self {
+    pub const fn any(name: ParameterName, description: &'static str, required: bool) -> Self {
         Self {
             name,
             description,
@@ -361,7 +273,7 @@ impl BrpParameter {
     /// Strict parameter
     pub const fn strict() -> Self {
         Self::boolean(
-            BrpParameterName::Strict,
+            ParameterName::Strict,
             "If true, returns error on unknown component types (default: false)",
             false,
         )
@@ -369,13 +281,13 @@ impl BrpParameter {
 
     /// Component parameter for mutations
     pub const fn component(description: &'static str) -> Self {
-        Self::string(BrpParameterName::Component, description, true)
+        Self::string(ParameterName::Component, description, true)
     }
 
     /// Data parameter for queries
     pub const fn data() -> Self {
         Self::any(
-            BrpParameterName::Data,
+            ParameterName::Data,
             "Object specifying what component data to retrieve. Properties: components (array), option (array), has (array)",
             true,
         )
@@ -384,7 +296,7 @@ impl BrpParameter {
     /// Filter parameter for queries
     pub const fn filter() -> Self {
         Self::any(
-            BrpParameterName::Filter,
+            ParameterName::Filter,
             "Object specifying which entities to query. Properties: with (array), without (array)",
             false,
         )
@@ -392,13 +304,13 @@ impl BrpParameter {
 
     /// Entities parameter for batch operations
     pub const fn entities(description: &'static str) -> Self {
-        Self::number_array(BrpParameterName::Entities, description, true)
+        Self::number_array(ParameterName::Entities, description, true)
     }
 
     /// Parent parameter for reparenting
     pub const fn parent() -> Self {
         Self::number(
-            BrpParameterName::Parent,
+            ParameterName::Parent,
             "The new parent entity ID (omit to remove parent)",
             false,
         )
@@ -407,7 +319,7 @@ impl BrpParameter {
     /// `With_crates` parameter for schema filtering
     pub const fn with_crates() -> Self {
         Self::string_array(
-            BrpParameterName::WithCrates,
+            ParameterName::WithCrates,
             "Include only types from these crates (e.g., [\"bevy_transform\", \"my_game\"])",
             false,
         )
@@ -416,7 +328,7 @@ impl BrpParameter {
     /// `Without_crates` parameter for schema filtering
     pub const fn without_crates() -> Self {
         Self::string_array(
-            BrpParameterName::WithoutCrates,
+            ParameterName::WithoutCrates,
             "Exclude types from these crates (e.g., [\"bevy_render\", \"bevy_pbr\"])",
             false,
         )
@@ -425,7 +337,7 @@ impl BrpParameter {
     /// `With_types` parameter for schema filtering
     pub const fn with_types() -> Self {
         Self::string_array(
-            BrpParameterName::WithTypes,
+            ParameterName::WithTypes,
             "Include only types with these reflect traits (e.g., [\"Component\", \"Resource\"])",
             false,
         )
@@ -434,7 +346,7 @@ impl BrpParameter {
     /// `Without_types` parameter for schema filtering
     pub const fn without_types() -> Self {
         Self::string_array(
-            BrpParameterName::WithoutTypes,
+            ParameterName::WithoutTypes,
             "Exclude types with these reflect traits (e.g., [\"RenderResource\"])",
             false,
         )
@@ -443,7 +355,7 @@ impl BrpParameter {
     /// Enabled parameter for boolean operations
     pub const fn enabled() -> Self {
         Self::boolean(
-            BrpParameterName::Enabled,
+            ParameterName::Enabled,
             "Enable or disable debug mode for bevy_brp_extras plugin",
             true,
         )
@@ -451,17 +363,13 @@ impl BrpParameter {
 
     /// Keys parameter for input simulation
     pub const fn keys() -> Self {
-        Self::string_array(
-            BrpParameterName::Keys,
-            "Array of key code names to send",
-            true,
-        )
+        Self::string_array(ParameterName::Keys, "Array of key code names to send", true)
     }
 
     /// `Duration_ms` parameter for timing
     pub const fn duration_ms() -> Self {
         Self::number(
-            BrpParameterName::DurationMs,
+            ParameterName::DurationMs,
             "Duration in milliseconds to hold the keys before releasing (default: 100ms, max: 60000ms/1)",
             false,
         )
@@ -469,16 +377,16 @@ impl BrpParameter {
 
     /// Types parameter for discovery operations
     pub const fn types(description: &'static str, required: bool) -> Self {
-        Self::string_array(BrpParameterName::Types, description, required)
+        Self::string_array(ParameterName::Types, description, required)
     }
 
     /// Params parameter for dynamic execution
     pub const fn params(description: &'static str, required: bool) -> Self {
-        Self::any(BrpParameterName::Params, description, required)
+        Self::any(ParameterName::Params, description, required)
     }
 }
 
-impl ParameterDefinition for BrpParameter {
+impl ParameterDefinition for Parameter {
     fn name(&self) -> &str {
         self.name()
     }
@@ -493,112 +401,5 @@ impl ParameterDefinition for BrpParameter {
 
     fn param_type(&self) -> &ParamType {
         self.param_type()
-    }
-}
-
-// Local-specific constructors
-impl LocalParameter {
-    /// Generic string parameter
-    pub const fn string(
-        name: LocalParameterName,
-        description: &'static str,
-        required: bool,
-    ) -> Self {
-        Self {
-            name,
-            description,
-            required,
-            param_type: ParamType::String,
-        }
-    }
-
-    /// Generic number parameter
-    pub const fn number(
-        name: LocalParameterName,
-        description: &'static str,
-        required: bool,
-    ) -> Self {
-        Self {
-            name,
-            description,
-            required,
-            param_type: ParamType::Number,
-        }
-    }
-
-    /// Boolean parameter helper
-    pub const fn boolean(
-        name: LocalParameterName,
-        description: &'static str,
-        required: bool,
-    ) -> Self {
-        Self {
-            name,
-            description,
-            required,
-            param_type: ParamType::Boolean,
-        }
-    }
-
-    /// String array parameter
-    pub const fn string_array(
-        name: LocalParameterName,
-        description: &'static str,
-        required: bool,
-    ) -> Self {
-        Self {
-            name,
-            description,
-            required,
-            param_type: ParamType::StringArray,
-        }
-    }
-}
-
-impl ParameterDefinition for LocalParameter {
-    fn name(&self) -> &str {
-        self.name()
-    }
-
-    fn required(&self) -> bool {
-        self.required()
-    }
-
-    fn description(&self) -> &'static str {
-        self.description()
-    }
-
-    fn param_type(&self) -> &ParamType {
-        self.param_type()
-    }
-}
-
-impl ParameterDefinition for UnifiedParameter {
-    fn name(&self) -> &str {
-        match self {
-            Self::Brp(param) => param.name(),
-            Self::Local(param) => param.name(),
-        }
-    }
-
-    fn required(&self) -> bool {
-        match self {
-            Self::Brp(param) => param.required(),
-            Self::Local(param) => param.required(),
-        }
-    }
-
-    fn description(&self) -> &'static str {
-        match self {
-            Self::Brp(param) => param.description(),
-            Self::Local(param) => param.description(),
-        }
-    }
-
-    fn param_type(&self) -> &ParamType {
-        match self {
-            Self::Brp(param) => param.param_type(),
-            Self::Local(param) => param.param_type(),
-        }
     }
 }
