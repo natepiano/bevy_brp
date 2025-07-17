@@ -5,9 +5,9 @@ mod formatter;
 mod large_response;
 mod specification;
 
-pub use builder::{CallInfo, ResponseBuilder};
+pub use builder::CallInfo;
 pub use field_extractor::create_response_field_extractor;
-pub use formatter::{FormatterConfig, ResponseFormatter};
+pub use formatter::{FormatterConfig, format_tool_call_result};
 pub use specification::{
     FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
 };

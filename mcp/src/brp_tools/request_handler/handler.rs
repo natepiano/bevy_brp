@@ -1,220 +1,163 @@
-// use rmcp::Error as McpError;
-// use rmcp::model::CallToolResult;
-// use serde_json::{Value, json};
-// use tracing::{debug, trace};
+use serde_json::{Value, json};
 
-// use super::format_discovery::{
-//     EnhancedBrpResult, FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus,
-//     execute_brp_method_with_format_discovery,
-// };
-// use crate::brp_tools::support::brp_client::{BrpError, BrpResult};
-// use crate::constants::{
-//     JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS, JSON_FIELD_ORIGINAL_ERROR,
-// };
-// use crate::error;
-// use crate::response::{self, FormatterConfig, ResponseFormatter};
-// use crate::service::{BrpContext, HandlerContext};
-// use crate::tool::BrpHandlerResponse;
+use super::format_discovery::{
+    EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus,
+    execute_brp_method_with_format_discovery,
+};
+use super::types::BrpMethodResult;
+use crate::brp_tools::support::brp_client::BrpResult;
+use crate::error;
+use crate::service::{BrpContext, HandlerContext};
+use crate::tool::{BrpToolFn, HandlerResponse, HandlerResult};
 
-// BRP method handler struct that implements `BrpToolFn`
-// pub struct BrpMethodHandler;
+/// BRP method handler V2 that implements `BrpToolFnV2` and returns `HandlerResponse`
+pub struct BrpMethodHandlerV2;
 
-// impl BrpToolFn for BrpMethodHandler {
-//     fn call(&self, ctx: &HandlerContext<BrpContext>) -> BrpHandlerResponse<'_> {
-//         let formatter_config = ctx.tool_def().formatter().build_formatter_config();
-//         let ctx = ctx.clone();
+/// Convert a `FormatCorrection` to JSON representation with metadata
+fn format_correction_to_json(correction: &FormatCorrection) -> Value {
+    let mut correction_json = json!({
+        "component": correction.component,
+        "original_format": correction.original_format,
+        "corrected_format": correction.corrected_format,
+        "hint": correction.hint
+    });
 
-//         Box::pin(async move { handle_brp_method_tool_call(ctx, formatter_config).await })
-//     }
-// }
+    // Add rich metadata fields if available
+    if let Some(obj) = correction_json.as_object_mut() {
+        if let Some(ops) = &correction.supported_operations {
+            obj.insert("supported_operations".to_string(), json!(ops));
+        }
+        if let Some(paths) = &correction.mutation_paths {
+            obj.insert("mutation_paths".to_string(), json!(paths));
+        }
+        if let Some(cat) = &correction.type_category {
+            obj.insert("type_category".to_string(), json!(cat));
+        }
+    }
 
-// Convert a `FormatCorrection` to JSON representation with metadata
-// fn format_correction_to_json(correction: &FormatCorrection) -> Value {
-//     let mut correction_json = json!({
-//         "component": correction.component,
-//         "original_format": correction.original_format,
-//         "corrected_format": correction.corrected_format,
-//         "hint": correction.hint
-//     });
+    correction_json
+}
 
-//     // Add rich metadata fields if available
-//     if let Some(obj) = correction_json.as_object_mut() {
-//         if let Some(ops) = &correction.supported_operations {
-//             obj.insert("supported_operations".to_string(), json!(ops));
-//         }
-//         if let Some(paths) = &correction.mutation_paths {
-//             obj.insert("mutation_paths".to_string(), json!(paths));
-//         }
-//         if let Some(cat) = &correction.type_category {
-//             obj.insert("type_category".to_string(), json!(cat));
-//         }
-//     }
+impl BrpToolFn for BrpMethodHandlerV2 {
+    fn call(&self, ctx: &HandlerContext<BrpContext>) -> HandlerResponse<'_> {
+        let ctx = ctx.clone();
 
-//     correction_json
-// }
+        Box::pin(async move {
+            // Extract parameters for the call based on the tool definition
+            let params = ctx.extract_params_from_definition()?;
+            let method_name = ctx.brp_method();
 
-// Process a successful BRP response
-// fn process_success_response(
-//     data: Option<Value>,
-//     enhanced_result: &EnhancedBrpResult,
-//     formatter_config: FormatterConfig,
-//     handler_context: &HandlerContext<BrpContext>,
-// ) -> CallToolResult {
-//     let response_data = data.unwrap_or(Value::Null);
+            // Execute with format discovery (reuse existing function)
+            let enhanced_result =
+                execute_brp_method_with_format_discovery(method_name, params, ctx.port())
+                    .await
+                    .map_err(|err| error::report_to_mcp_error(&err))?;
 
-//     // Create formatter with appropriate message template
-//     let final_formatter_config =
-//         if enhanced_result.format_corrected == FormatCorrectionStatus::Succeeded {
-//             // Clone and modify the config for format correction success
-//             let mut modified_config = formatter_config;
-//             modified_config.success_template =
-//                 Some("Request succeeded with format correction applied".to_string());
-//             modified_config
-//         } else {
-//             formatter_config
-//         };
+            // Convert to BrpMethodResult
+            let result = convert_to_brp_method_result(enhanced_result, &ctx);
 
-//     // Create new formatter
-//     let updated_formatter = ResponseFormatter::new(final_formatter_config);
+            Ok(Box::new(result) as Box<dyn HandlerResult>)
+        })
+    }
+}
 
-//     // Use format_success_with_corrections to include call_info and format corrections
-//     updated_formatter.format_success_with_corrections_brp(
-//         &response_data,
-//         handler_context,
-//         Some(&enhanced_result.format_corrections),
-//         Some(&enhanced_result.format_corrected),
-//     )
-// }
+/// Convert `EnhancedBrpResult` to `BrpMethodResult`
+fn convert_to_brp_method_result(
+    enhanced_result: EnhancedBrpResult,
+    ctx: &HandlerContext<BrpContext>,
+) -> BrpMethodResult {
+    match enhanced_result.result {
+        BrpResult::Success(data) => {
+            // Check if format correction was applied and modify message accordingly
+            let success_message =
+                if enhanced_result.format_corrected == FormatCorrectionStatus::Succeeded {
+                    Some("Request succeeded with format correction applied".to_string())
+                } else {
+                    None // Let formatter use the tool definition's message_template
+                };
 
-// Process an error BRP response - routes ALL errors through enhanced `format_error_default`
-// fn process_error_response(
-//     mut error_info: BrpError,
-//     enhanced_result: &EnhancedBrpResult,
-//     handler_context: &HandlerContext<BrpContext>,
-// ) -> CallToolResult {
-//     let original_error_message = error_info.message.clone();
+            BrpMethodResult {
+                status:             None, // No status field for success
+                message:            success_message,
+                code:               None,
+                error_data:         None,
+                result:             data, // Direct BRP response data
+                format_corrections: enhanced_result
+                    .format_corrections
+                    .iter()
+                    .map(format_correction_to_json)
+                    .collect(),
+                format_corrected:   Some(enhanced_result.format_corrected),
+            }
+        }
+        BrpResult::Error(ref err) => {
+            // Process error enhancements (reuse logic from current handler)
+            let enhanced_message = enhance_error_message(err, &enhanced_result, ctx);
+            let mut error_data = enhance_error_data(err.data.clone(), &enhanced_result, ctx);
 
-//     // First, check if the enhanced result has a different error message (from educational
-// guidance)     let enhanced_message = if let BrpResult::Error(enhanced_error) =
-// &enhanced_result.result {         if enhanced_error.message == error_info.message {
-//             None
-//         } else {
-//             Some(enhanced_error.message.clone())
-//         }
-//     } else {
-//         None
-//     };
+            // If message was enhanced, preserve the original error message
+            if enhanced_message != err.message {
+                let mut data_obj = error_data.unwrap_or_else(|| serde_json::json!({}));
+                if let Value::Object(map) = &mut data_obj {
+                    map.insert(
+                        "original_error".to_string(),
+                        Value::String(err.message.clone()),
+                    );
+                }
+                error_data = Some(data_obj);
+            }
 
-//     // If no enhanced message from result, check format corrections as fallback
-//     let enhanced_message = enhanced_message.or_else(|| {
-//         enhanced_result
-//             .format_corrections
-//             .iter()
-//             .find(|correction| correction.hint.contains("cannot be used with BRP"))
-//             .map(|correction| correction.hint.clone())
-//     });
+            BrpMethodResult {
+                status: Some("error".to_string()),
+                message: Some(enhanced_message),
+                code: Some(err.code),
+                error_data,
+                result: None,
+                format_corrections: enhanced_result
+                    .format_corrections
+                    .iter()
+                    .map(format_correction_to_json)
+                    .collect(),
+                format_corrected: Some(enhanced_result.format_corrected),
+            }
+        }
+    }
+}
 
-//     // Use enhanced message if available, otherwise keep original
-//     let has_enhanced = enhanced_message.is_some();
-//     if let Some(enhanced_msg) = enhanced_message {
-//         error_info.message = enhanced_msg;
-//     }
+/// Enhance error message with format discovery insights
+fn enhance_error_message(
+    err: &crate::brp_tools::support::brp_client::BrpError,
+    enhanced_result: &EnhancedBrpResult,
+    _ctx: &HandlerContext<BrpContext>,
+) -> String {
+    // Check if the enhanced result has a different error message
+    if let BrpResult::Error(enhanced_error) = &enhanced_result.result {
+        if enhanced_error.message != err.message {
+            return enhanced_error.message.clone();
+        }
+    }
 
-//     // Only add format corrections for methods that support format discovery
-//     if FORMAT_DISCOVERY_METHODS.contains(&handler_context.brp_method())
-//         && (!enhanced_result.format_corrections.is_empty() || has_enhanced)
-//     {
-//         let mut data_obj = error_info.data.unwrap_or_else(|| json!({}));
+    // Check format corrections for educational hints
+    if let Some(correction) = enhanced_result
+        .format_corrections
+        .iter()
+        .find(|c| c.hint.contains("cannot be used with BRP"))
+    {
+        return correction.hint.clone();
+    }
 
-//         if let Value::Object(map) = &mut data_obj {
-//             // Store original error message if we replaced it with enhanced message
-//             if has_enhanced {
-//                 map.insert(
-//                     JSON_FIELD_ORIGINAL_ERROR.to_string(),
-//                     json!(original_error_message),
-//                 );
-//             }
+    // Use original message
+    err.message.clone()
+}
 
-//             // Add format corrections
-//             if !enhanced_result.format_corrections.is_empty() {
-//                 let corrections = enhanced_result
-//                     .format_corrections
-//                     .iter()
-//                     .map(format_correction_to_json)
-//                     .collect::<Vec<_>>();
-//                 map.insert(
-//                     JSON_FIELD_FORMAT_CORRECTIONS.to_string(),
-//                     json!(corrections),
-//                 );
-
-//                 // Add rich metadata from first correction to error metadata for better UX
-//                 if let Some(first_correction) = enhanced_result.format_corrections.first() {
-//                     if let Some(ops) = &first_correction.supported_operations {
-//                         map.insert("supported_operations".to_string(), json!(ops));
-//                     }
-//                     if let Some(paths) = &first_correction.mutation_paths {
-//                         map.insert("mutation_paths".to_string(), json!(paths));
-//                     }
-//                     if let Some(cat) = &first_correction.type_category {
-//                         map.insert("type_category".to_string(), json!(cat));
-//                     }
-//                 }
-//             }
-
-//             // Add format_corrected field to indicate whether format correction occurred
-//             map.insert(
-//                 JSON_FIELD_FORMAT_CORRECTED.to_string(),
-//                 json!(enhanced_result.format_corrected),
-//             );
-//         }
-
-//         error_info.data = Some(data_obj);
-//     }
-
-//     // Route ALL errors through the enhanced format_error_default
-//     response::format_error_default(error_info, handler_context)
-// }
-
-// Unified handler for all BRP methods (both static and dynamic)
-// pub async fn handle_brp_method_tool_call(
-//     handler_context: HandlerContext<BrpContext>,
-//     formatter_config: FormatterConfig,
-// ) -> Result<CallToolResult, McpError> {
-//     // Log raw MCP request at the earliest possible point
-//     debug!("MCP ENTRY - Tool: {}", handler_context.request.name);
-//     trace!(
-//         "MCP ENTRY - Raw arguments: {}",
-//         serde_json::to_string(&handler_context.request.arguments)
-//             .unwrap_or_else(|_| "SERIALIZATION_ERROR".to_string())
-//     );
-
-//     // Extract parameters for the call based on the tool definition
-//     let params = handler_context.extract_params_from_definition()?;
-
-//     // Get the method directly from the typed context - no Options!
-//     let method_name = handler_context.brp_method();
-
-//     // Call BRP using format discovery
-//     let enhanced_result = execute_brp_method_with_format_discovery(
-//         method_name,
-//         params.clone(),
-//         handler_context.port(),
-//     )
-//     .await
-//     .map_err(|err| error::report_to_mcp_error(&err))?;
-
-//     // Process response using ResponseFormatter, including format corrections if present
-//     match &enhanced_result.result {
-//         BrpResult::Success(data) => Ok(process_success_response(
-//             data.clone(),
-//             &enhanced_result,
-//             formatter_config,
-//             &handler_context,
-//         )),
-//         BrpResult::Error(error_info) => Ok(process_error_response(
-//             error_info.clone(),
-//             &enhanced_result,
-//             &handler_context,
-//         )),
-//     }
-// }
+/// Enhance error data with format corrections
+const fn enhance_error_data(
+    original_data: Option<Value>,
+    _enhanced_result: &EnhancedBrpResult,
+    _ctx: &HandlerContext<BrpContext>,
+) -> Option<Value> {
+    // V2 handler no longer duplicates format correction data in error_data
+    // Format corrections are handled through ResponseField::FormatCorrection extractor
+    // which extracts from the main BrpMethodResult.format_corrections field
+    original_data
+}

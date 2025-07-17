@@ -56,7 +56,7 @@ pub trait LocalToolFnWithPort: Send + Sync {
 }
 
 /// Trait for BRP handlers that return `HandlerResponse` (unified with local handlers)
-pub trait BrpToolFnV2: Send + Sync {
+pub trait BrpToolFn: Send + Sync {
     fn call(&self, ctx: &HandlerContext<BrpContext>) -> HandlerResponse<'_>;
 }
 

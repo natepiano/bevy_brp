@@ -10,8 +10,6 @@
 //! - Supports auto-injection of debug information
 //! - Provides error handling for serialization issues
 //!
-//! **Use when:** You need to build responses with multiple fields or complex data structures.
-//!
 //! ## `ResponseFormatter` API (`ResponseFormatter`)
 //!
 //! A configurable formatter that handles BRP-specific concerns:
@@ -19,10 +17,8 @@
 //! - Template-based message formatting with parameter substitution
 //! - Format correction status handling
 //! - Configurable field extraction from response data
-//!
-//! **Use when:** You need BRP-specific features like large response handling or template
-//! formatting.
 
+use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
@@ -40,143 +36,6 @@ use crate::constants::{
 };
 use crate::error::Result;
 use crate::service::{HandlerContext, HasCallInfo};
-
-// Generic default error formatter - works with any `HandlerContext` that has `call_info`
-// pub fn format_error_default<T>(
-//     error: BrpError,
-//     handler_context: &HandlerContext<T>,
-// ) -> CallToolResult
-// where
-//     HandlerContext<T>: HasCallInfo,
-// {
-//     // Extract rich guidance from format_corrections if present
-//     let rich_guidance = extract_rich_guidance_from_error(&error);
-
-//     let call_info = handler_context.call_info();
-//     build_enhanced_error_response(&error, call_info, rich_guidance).map_or_else(
-//         |_| {
-//             let fallback = ResponseBuilder::error(handler_context.call_info())
-//                 .message("Failed to build error response")
-//                 .build();
-//             fallback.to_call_tool_result()
-//         },
-//         |response| response.to_call_tool_result(),
-//     )
-// }
-
-// Extract rich guidance fields from `format_corrections` in error data
-// fn extract_rich_guidance_from_error(error: &BrpError) -> Option<RichGuidance> {
-//     let error_data = error.data.as_ref()?;
-//     let format_corrections = error_data.get("format_corrections")?.as_array()?;
-
-//     if format_corrections.is_empty() {
-//         return None;
-//     }
-
-//     // Use the first correction as primary guidance
-//     let correction = &format_corrections[0];
-
-//     // Extract examples from corrected_format
-//     let examples = correction
-//         .get("corrected_format")
-//         .and_then(|cf| cf.get("examples"))
-//         .and_then(|e| e.as_array())
-//         .cloned()
-//         .or_else(|| {
-//             // Try to extract examples from the correction itself
-//             correction
-//                 .get("examples")
-//                 .and_then(|e| e.as_array())
-//                 .cloned()
-//         });
-
-//     // Extract hint from format corrections
-//     let hint = correction
-//         .get("corrected_format")
-//         .and_then(|cf| cf.get("hint"))
-//         .and_then(|h| h.as_str())
-//         .map(std::string::ToString::to_string)
-//         .or_else(|| {
-//             // Try to extract hint from the correction itself
-//             correction
-//                 .get("hint")
-//                 .and_then(|h| h.as_str())
-//                 .map(std::string::ToString::to_string)
-//         });
-
-//     // Extract valid_values
-//     let valid_values = correction
-//         .get("corrected_format")
-//         .and_then(|cf| cf.get("valid_values"))
-//         .and_then(|vv| vv.as_array())
-//         .cloned()
-//         .or_else(|| {
-//             // Try to extract valid_values from the correction itself
-//             correction
-//                 .get("valid_values")
-//                 .and_then(|vv| vv.as_array())
-//                 .cloned()
-//         });
-
-//     // Only return guidance if we have at least one rich field
-//     if examples.is_some() || hint.is_some() || valid_values.is_some() {
-//         Some(RichGuidance {
-//             examples,
-//             hint,
-//             valid_values,
-//         })
-//     } else {
-//         None
-//     }
-// }
-
-// Rich guidance extracted from format corrections
-// #[derive(Debug, Clone)]
-// struct RichGuidance {
-//     examples:     Option<Vec<Value>>,
-//     hint:         Option<String>,
-//     valid_values: Option<Vec<Value>>,
-// }
-
-// Build an enhanced error response with `call_info` from `HandlerContext`
-// fn build_enhanced_error_response(
-//     error: &BrpError,
-//     call_info: CallInfo,
-//     rich_guidance: Option<RichGuidance>,
-// ) -> Result<JsonResponse> {
-//     let mut builder = ResponseBuilder::error(call_info)
-//         .message(&error.message)
-//         .add_field(JSON_FIELD_ERROR_CODE, error.code)?;
-
-//     // Add rich guidance fields if available (flat structure, not nested)
-//     if let Some(guidance) = rich_guidance {
-//         if let Some(examples) = guidance.examples {
-//             builder = builder.add_field("examples", &examples)?;
-//         }
-//         if let Some(hint) = guidance.hint {
-//             builder = builder.add_field("hint", &hint)?;
-//         }
-//         if let Some(valid_values) = guidance.valid_values {
-//             builder = builder.add_field("valid_values", &valid_values)?;
-//         }
-//     }
-
-//     // Include remaining error data (excluding format_corrections to avoid duplication)
-//     if let Some(data) = &error.data {
-//         if let Some(data_obj) = data.as_object() {
-//             for (key, value) in data_obj {
-//                 // Skip format_corrections since we've extracted guidance from it
-//                 // Also skip metadata to avoid duplication
-//                 // Also skip status to avoid redundancy with top-level status
-//                 if key != "format_corrections" && key != "metadata" && key != "status" {
-//                     builder = builder.add_field(key, value)?;
-//                 }
-//             }
-//         }
-//     }
-
-//     Ok(builder.build())
-// }
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
@@ -196,19 +55,6 @@ pub struct FormatterConfig {
 impl ResponseFormatter {
     pub const fn new(config: FormatterConfig) -> Self {
         Self { config }
-    }
-
-    /// Generic format for successful responses - works with any `HandlerContext` that has
-    /// `call_info`
-    pub fn format_success<T>(
-        &self,
-        data: &Value,
-        handler_context: &HandlerContext<T>,
-    ) -> CallToolResult
-    where
-        HandlerContext<T>: HasCallInfo,
-    {
-        self.format_success_with_corrections(data, handler_context, None, None)
     }
 
     pub fn format_success_with_corrections<T>(
@@ -238,31 +84,6 @@ impl ResponseFormatter {
             |response| self.handle_large_response(response, &handler_context.request.name),
         )
     }
-
-    // pub fn format_success_with_corrections_brp(
-    //     &self,
-    //     data: &Value,
-    //     handler_context: &HandlerContext<crate::service::BrpContext>,
-    //     format_corrections: Option<&[FormatCorrection]>,
-    //     format_corrected: Option<&FormatCorrectionStatus>,
-    // ) -> CallToolResult {
-    //     // First build the response with BRP method name
-    //     let response_result = self.build_success_response_with_corrections_brp(
-    //         data,
-    //         handler_context,
-    //         format_corrections,
-    //         format_corrected,
-    //     );
-    //     response_result.map_or_else(
-    //         |_| {
-    //             let fallback = ResponseBuilder::error(handler_context.call_info())
-    //                 .message("Failed to build success response")
-    //                 .build();
-    //             fallback.to_call_tool_result()
-    //         },
-    //         |response| self.handle_large_response(response, &handler_context.request.name),
-    //     )
-    // }
 
     /// Handle large response processing if configured
     fn handle_large_response(&self, response: JsonResponse, method: &str) -> CallToolResult {
@@ -340,53 +161,6 @@ impl ResponseFormatter {
         );
         Ok(response)
     }
-
-    // fn build_success_response_with_corrections_brp(
-    //     &self,
-    //     data: &Value,
-    //     handler_context: &HandlerContext<crate::service::BrpContext>,
-    //     format_corrections: Option<&[FormatCorrection]>,
-    //     format_corrected: Option<&FormatCorrectionStatus>,
-    // ) -> Result<JsonResponse> {
-    //     let type_name = "BrpContext";
-    //     tracing::debug!(
-    //         "build_success_response<{}>: response_fields count = {}",
-    //         type_name,
-    //         self.config.success_fields.len()
-    //     );
-
-    //     let call_info = handler_context.call_info();
-    //     let mut builder = ResponseBuilder::success(call_info);
-    //     let template_values = Self::initialize_template_values(handler_context);
-    //     let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
-
-    //     // Get BRP method name for format discovery check
-    //     let brp_method_name = handler_context.brp_method();
-    //     Self::add_format_corrections(
-    //         &mut builder,
-    //         handler_context,
-    //         format_corrections,
-    //         format_corrected,
-    //         Some(brp_method_name),
-    //     )?;
-    //     let template_values = self.add_configured_fields(
-    //         &mut builder,
-    //         &clean_data,
-    //         template_values,
-    //         handler_context,
-    //     )?;
-    //     self.apply_template_if_provided(&mut builder, &clean_data, &template_values);
-    //     Self::override_message_for_format_correction(&mut builder, format_corrected);
-    //     builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
-
-    //     let response = builder.build();
-    //     tracing::trace!(
-    //         "build_success_response<{}>: final response = {:?}",
-    //         type_name,
-    //         response
-    //     );
-    //     Ok(response)
-    // }
 
     /// Initialize template values with original parameters
     fn initialize_template_values<T>(
@@ -661,6 +435,156 @@ impl ResponseFormatter {
                 .message("Request succeeded with format correction applied");
         }
     }
+}
+
+/// Universal formatter that handles both local and BRP results uniformly
+///
+/// This function serves as the primary formatting entry point for all handler types.
+/// It automatically detects error vs success responses and applies appropriate formatting,
+/// including format correction handling for BRP results.
+pub fn format_tool_call_result<T>(
+    result: std::result::Result<serde_json::Value, McpError>,
+    handler_context: &HandlerContext<T>,
+    formatter_config: FormatterConfig,
+) -> std::result::Result<CallToolResult, McpError>
+where
+    HandlerContext<T>: HasCallInfo,
+{
+    match result {
+        Ok(value) => {
+            // Check if this is an error response
+            let is_error = value
+                .get("status")
+                .and_then(|s| s.as_str())
+                .is_some_and(|s| s == "error");
+
+            if is_error {
+                // Handle error response
+                let message = value
+                    .get("message")
+                    .and_then(|m| m.as_str())
+                    .unwrap_or("Unknown error");
+
+                let error_response =
+                    ResponseBuilder::error(handler_context.call_info()).message(message);
+
+                // Add error fields as metadata
+                let error_response = if let serde_json::Value::Object(map) = &value {
+                    map.iter()
+                        .filter(|(key, val)| {
+                            let k = key.as_str();
+                            k != "status" && k != "message" && !val.is_null()
+                        })
+                        .try_fold(error_response, |builder, (key, val)| {
+                            builder.add_field(key, val)
+                        })
+                        .unwrap_or_else(|_| {
+                            // If adding fields failed, just return the basic error response
+                            ResponseBuilder::error(handler_context.call_info()).message(message)
+                        })
+                } else {
+                    error_response
+                };
+
+                Ok(error_response.build().to_call_tool_result())
+            } else {
+                // Handle success response
+                let formatter = ResponseFormatter::new(formatter_config);
+
+                // Check if this is a BRP result with format correction information
+                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
+
+                // For V2, the entire value contains the structured result
+                // Use format_success_with_corrections to handle format correction messaging
+                Ok(formatter.format_success_with_corrections(
+                    &value,
+                    handler_context,
+                    format_corrections.as_deref(),
+                    format_corrected.as_ref(),
+                ))
+            }
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Extract format correction information from V2 BRP result JSON
+fn extract_format_correction_info(
+    value: &serde_json::Value,
+) -> (
+    Option<Vec<FormatCorrection>>,
+    Option<FormatCorrectionStatus>,
+) {
+    let format_corrected = value
+        .get("format_corrected")
+        .and_then(|v| serde_json::from_value(v.clone()).ok());
+
+    let format_corrections = value
+        .get("format_corrections")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|correction_json| {
+                    // Convert JSON back to FormatCorrection struct
+                    let component = correction_json
+                        .get("component")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    let original_format = correction_json
+                        .get("original_format")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
+
+                    let corrected_format = correction_json
+                        .get("corrected_format")
+                        .cloned()
+                        .unwrap_or(serde_json::Value::Null);
+
+                    let hint = correction_json
+                        .get("hint")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    let supported_operations = correction_json
+                        .get("supported_operations")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        });
+
+                    let mutation_paths = correction_json
+                        .get("mutation_paths")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        });
+
+                    let type_category = correction_json
+                        .get("type_category")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+
+                    FormatCorrection {
+                        component,
+                        original_format,
+                        corrected_format,
+                        hint,
+                        supported_operations,
+                        mutation_paths,
+                        type_category,
+                    }
+                })
+                .collect()
+        });
+
+    (format_corrections, format_corrected)
 }
 
 #[cfg(test)]
