@@ -4,7 +4,6 @@ mod handler_fn;
 mod mcp_tool_schema;
 mod parameters;
 mod tool_def;
-mod tool_handler;
 mod types;
 
 /// constants used in the wild

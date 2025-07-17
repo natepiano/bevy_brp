@@ -4,7 +4,26 @@ use std::pin::Pin;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
+use super::HandlerFn;
 use crate::service::{BrpContext, HandlerContext, LocalContext};
+
+/// Unified tool handler that works with any `HandlerFn` variant
+pub struct ToolHandler {
+    handler: HandlerFn,
+    context: ToolContext,
+}
+
+impl ToolHandler {
+    pub const fn new(handler: HandlerFn, context: ToolContext) -> Self {
+        Self { handler, context }
+    }
+}
+
+impl ToolHandler {
+    pub async fn call_tool(self) -> Result<CallToolResult, McpError> {
+        self.handler.call_handler(&self.context).await
+    }
+}
 
 /// Type alias for the response from local handlers
 ///
