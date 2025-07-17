@@ -1,198 +1,206 @@
 [
   {
     "id": "1",
-    "content": "Create BrpToolFnV2 trait in tool/types.rs",
-    "status": "completed",
+    "content": "Update Field extractor to support dot notation paths",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Added BrpToolFnV2 trait after BrpToolFn in tool/types.rs"
+    "notes": ""
   },
   {
     "id": "2",
-    "content": "Run cargo build and fix errors for BrpToolFnV2",
-    "status": "completed",
+    "content": "Run cargo build and fix Field extractor errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Build successful, only expected warning about unused trait"
+    "notes": ""
   },
   {
     "id": "3",
-    "content": "Create BrpMethodResult struct in brp_tools/request_handler/types.rs",
-    "status": "completed",
+    "content": "Update ItemCount to take field path parameter",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Created types.rs with BrpMethodResult struct implementing HandlerResult"
+    "notes": ""
   },
   {
     "id": "4",
-    "content": "Run cargo build and fix errors for BrpMethodResult",
-    "status": "completed",
+    "content": "Run cargo build and fix ItemCount errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Build successful - types.rs compiles cleanly"
+    "notes": ""
   },
   {
     "id": "5",
-    "content": "Add BrpV2 variant to HandlerFn enum in tool/handler_fn.rs",
-    "status": "completed",
+    "content": "Update QueryComponentCount to take field path parameter",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Added BrpV2 variant and constructor methods (brp_v2_static, brp_v2_dynamic)"
+    "notes": ""
   },
   {
     "id": "6",
-    "content": "Run cargo build and fix errors for HandlerFn variant",
-    "status": "completed",
+    "content": "Run cargo build and fix QueryComponentCount errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Fixed match statements in tool_def.rs, build successful"
+    "notes": ""
   },
   {
     "id": "7",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Clippy found dead code warnings and missing backticks in docs"
+    "notes": ""
   },
   {
     "id": "8",
     "content": "Fix all clippy issues following warning rules",
-    "status": "completed",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Fixed doc backticks - dead code warnings expected until V2 is used"
+    "notes": ""
   },
   {
     "id": "9",
-    "content": "Create format_tool_call_result_v2 in tool/format_v2.rs",
-    "status": "completed",
+    "content": "Update BrpMethodHandlerV2 to always put response in result field",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Created format_v2.rs with V2 formatter handling both local and BRP results"
+    "notes": ""
   },
   {
     "id": "10",
-    "content": "Run cargo build and fix errors for format_v2",
-    "status": "completed",
+    "content": "Run cargo build and fix BrpMethodHandlerV2 errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Build successful - format_v2.rs compiles cleanly"
+    "notes": ""
   },
   {
     "id": "11",
-    "content": "Add format_v2 module to tool/mod.rs",
-    "status": "completed",
+    "content": "Update bevy_list V2 to use Field(\"result\") instead of DirectToResultV2",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Added format_v2 module declaration to tool/mod.rs"
+    "notes": ""
   },
   {
     "id": "12",
-    "content": "Run cargo build and fix errors for module addition",
-    "status": "completed",
+    "content": "Run cargo build and fix bevy_list errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Fixed import errors and simplified V2 formatter, build successful"
+    "notes": ""
   },
   {
     "id": "13",
-    "content": "Create BrpMethodHandlerV2 in brp_tools/request_handler/handler_v2.rs",
-    "status": "completed",
+    "content": "Update bevy_list V2 to use ItemCount(\"result\") instead of ItemCountV2",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Created BrpMethodHandlerV2 implementing BrpToolFnV2 trait"
+    "notes": ""
   },
   {
     "id": "14",
-    "content": "Run cargo build and fix errors for BrpMethodHandlerV2",
-    "status": "completed",
+    "content": "Run cargo build and fix count extractor errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Build successful - handler_v2.rs compiles cleanly"
+    "notes": ""
   },
   {
     "id": "15",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Only dead code warnings for V2 - expected until we use it"
+    "notes": ""
   },
   {
     "id": "16",
     "content": "Fix all clippy issues following warning rules",
-    "status": "completed",
+    "status": "pending",
     "priority": "medium",
-    "notes": "No fixes needed - dead code warnings are expected for V2"
+    "notes": ""
   },
   {
     "id": "17",
-    "content": "Update HandlerFn::call_handler to handle BrpV2 case",
-    "status": "completed",
+    "content": "Remove DirectToResultV2 variant from ResponseField enum",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Added BrpV2 case using format_tool_call_result_v2"
+    "notes": ""
   },
   {
     "id": "18",
-    "content": "Run cargo build and fix errors for call_handler update",
-    "status": "completed",
+    "content": "Remove ItemCountV2 variant from ResponseExtractorType enum",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Build successful - V2 code is now connected"
+    "notes": ""
   },
   {
     "id": "19",
-    "content": "Add handler_v2 and types modules to brp_tools/request_handler/mod.rs",
-    "status": "completed",
+    "content": "Remove QueryComponentCountV2 variant from ResponseExtractorType enum",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Added modules and public exports for V2 types"
+    "notes": ""
   },
   {
     "id": "20",
-    "content": "Run cargo build and fix errors for module additions",
-    "status": "completed",
+    "content": "Remove FieldV2 variant from ResponseExtractorType enum",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Fixed all import and serialization errors - build successful"
+    "notes": ""
   },
   {
     "id": "21",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "content": "Run cargo build and fix V2 removal errors",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Fixed doc and borrow issues - unused code expected for V2"
+    "notes": ""
   },
   {
     "id": "22",
-    "content": "Fix all clippy issues following warning rules",
-    "status": "completed",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Fixed clippy issues - unused V2 code will be used when tools migrate"
+    "notes": ""
   },
   {
     "id": "23",
-    "content": "Run cargo +nightly fmt",
-    "status": "completed",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
     "priority": "medium",
-    "notes": "Code formatted successfully"
+    "notes": ""
   },
   {
     "id": "24",
-    "content": "Run cargo nextest run",
-    "status": "completed",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
     "priority": "medium",
-    "notes": "All 128 tests passed successfully"
+    "notes": ""
   },
   {
     "id": "25",
-    "content": "STOP if test failures - review with user",
-    "status": "completed",
+    "content": "Run cargo nextest run",
+    "status": "pending",
     "priority": "medium",
-    "notes": "No test failures - all tests passed"
+    "notes": ""
   },
   {
     "id": "26",
-    "content": "Subagent: STOP and return control",
-    "status": "completed",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
     "priority": "medium",
-    "notes": "V2 implementation complete and tested - ready for migration"
+    "notes": ""
   },
   {
     "id": "27",
-    "content": "Main: Task new subagent for code review (read-only)",
+    "content": "Subagent: STOP and return control",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   },
   {
     "id": "28",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "29",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "medium",
     "notes": ""
   }
 ]
+EOF < /dev/null
