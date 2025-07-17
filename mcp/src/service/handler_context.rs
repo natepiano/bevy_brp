@@ -47,7 +47,6 @@ impl<T> HandlerContext<T> {
     /// Get tool definition by looking up the request name in the service's tool registry
     ///
     /// # Errors
-    ///
     /// Returns an error if the tool definition is not found.
     pub fn tool_def(&self) -> Result<&ToolDef, McpError> {
         self.service
