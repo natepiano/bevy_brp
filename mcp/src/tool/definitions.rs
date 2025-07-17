@@ -44,8 +44,8 @@ use crate::constants::{
     JSON_FIELD_APP_NAME, JSON_FIELD_APPS, JSON_FIELD_COMPONENT_COUNT, JSON_FIELD_COMPONENTS,
     JSON_FIELD_COUNT, JSON_FIELD_ENTITIES, JSON_FIELD_ENTITY, JSON_FIELD_ENTITY_COUNT,
     JSON_FIELD_LOG_PATH, JSON_FIELD_PARENT, JSON_FIELD_PATH, JSON_FIELD_PID, JSON_FIELD_RESOURCE,
-    JSON_FIELD_RESULT, JSON_FIELD_SHUTDOWN_METHOD, PARAM_APP_NAME, PARAM_ENTITIES, PARAM_PARENT,
-    PARAM_PATH, PARAM_RESOURCE,
+    JSON_FIELD_SHUTDOWN_METHOD, PARAM_APP_NAME, PARAM_ENTITIES, PARAM_PARENT, PARAM_PATH,
+    PARAM_RESOURCE,
 };
 use crate::log_tools::cleanup_logs::CleanupLogs;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
@@ -120,20 +120,20 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_GET_RESOURCE,
             description:     DESC_BEVY_GET_RESOURCE,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET_RESOURCE),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_GET_RESOURCE),
             parameters:      vec![Parameter::resource(
                 "The fully-qualified type name of the resource to get",
             )],
             response_format: ResponseSpecification {
                 message_template: "Retrieved resource: {resource}",
-                response_fields:  vec![ResponseField::DirectToResult],
+                response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         // UnifiedToolDef/bevy_insert
         ToolDef {
             name:            TOOL_BEVY_INSERT,
             description:     DESC_BEVY_INSERT,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT),
+            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_INSERT),
             parameters:      vec![
                 Parameter::entity("The entity ID to insert components into", true),
                 Parameter::components(
@@ -161,7 +161,10 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_INSERT_RESOURCE,
             description:     DESC_BEVY_INSERT_RESOURCE,
-            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT_RESOURCE),
+            handler:         HandlerFn::brp_v2_static(
+                BrpMethodHandlerV2,
+                BRP_METHOD_INSERT_RESOURCE,
+            ),
             parameters:      vec![
                 Parameter::resource(
                     "The fully-qualified type name of the resource to insert or update",
@@ -192,11 +195,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Listed {count} components",
                 response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: JSON_FIELD_RESULT,
-                        response_extractor:  ResponseExtractorType::Field("result"),
-                        placement:           FieldPlacement::Result,
-                    },
+                    ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: JSON_FIELD_COUNT,
                         response_extractor:  ResponseExtractorType::ArrayCount("result"),
@@ -414,14 +413,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXECUTE,
             description:     DESC_BRP_EXECUTE,
-            handler:         HandlerFn::brp_dynamic(BrpMethodHandler),
-            parameters:      vec![Parameter::params(
+            handler:         HandlerFn::brp_v2_dynamic(BrpMethodHandlerV2),
+            parameters:      vec![Parameter::dynamic_params(
                 "Optional parameters for the method, as a JSON object or array",
                 false,
             )],
             response_format: ResponseSpecification {
                 message_template: "Method executed successfully",
-                response_fields:  vec![ResponseField::DirectToResult],
+                response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         // UnifiedToolDef/brp_extras_discover_format

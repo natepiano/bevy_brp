@@ -5,7 +5,7 @@
 
 use serde_json::Value;
 
-use crate::response::{FieldPlacement, ResponseField};
+use crate::response::{FieldPlacement, ResponseField, ResponseExtractorType};
 use crate::service::HandlerContext;
 
 /// Trait for contexts that can provide request parameters
@@ -99,5 +99,12 @@ pub fn create_response_field_extractor(field: &ResponseField) -> (FieldExtractor
                 placement,
             )
         }
+        ResponseField::BrpRawResultToResult => (
+            Box::new(|data, _context| {
+                // Extract raw BRP response data from "result" field for V2 handlers
+                ResponseExtractorType::Field("result").extract(data)
+            }),
+            FieldPlacement::Result,
+        ),
     }
 }

@@ -134,6 +134,9 @@ impl ToolDef {
                 ParamType::Any => {
                     builder.add_any_property(param.name(), param.description(), param.required())
                 }
+                ParamType::DynamicParams => {
+                    builder.add_any_property(param.name(), param.description(), param.required())
+                }
             };
         }
 

@@ -90,6 +90,11 @@ pub enum ResponseField {
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
+    /// Extract the raw BRP response data from the "result" field to the result field (V2 handlers)
+    ///
+    /// This is a convenience variant for V2 BRP tools that need to extract the raw BRP response
+    /// from the "result" field and place it in the JSON response result field.
+    BrpRawResultToResult,
 }
 
 /// Extraction strategies for response data only.
@@ -198,6 +203,7 @@ impl ResponseField {
             } => name,
             Self::DirectToResult => JSON_FIELD_RESULT,
             Self::DirectToMetadata => JSON_FIELD_METADATA,
+            Self::BrpRawResultToResult => JSON_FIELD_RESULT,
         }
     }
 }

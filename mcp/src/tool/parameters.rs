@@ -25,6 +25,8 @@ pub enum ParamType {
     Any,
     /// A boolean parameter
     Boolean,
+    /// Dynamic parameters for brp_execute - the value becomes the BRP method parameters directly
+    DynamicParams,
     /// A numeric parameter (typically entity IDs or ports)
     Number,
     /// An array of numbers
@@ -381,8 +383,13 @@ impl Parameter {
     }
 
     /// Params parameter for dynamic execution
-    pub const fn params(description: &'static str, required: bool) -> Self {
-        Self::any(ParameterName::Params, description, required)
+    pub const fn dynamic_params(description: &'static str, required: bool) -> Self {
+        Self {
+            name: ParameterName::Params,
+            description,
+            required,
+            param_type: ParamType::DynamicParams,
+        }
     }
 }
 
