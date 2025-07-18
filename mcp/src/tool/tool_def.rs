@@ -6,6 +6,7 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 
 use super::HandlerFn;
+use super::annotations::BrpToolAnnotations;
 use super::mcp_tool_schema::McpToolSchemaBuilder;
 use super::parameters::{ParamType, Parameter, ParameterDefinition, PortParameter};
 use super::types::{BrpMethodSource, ToolHandler};
@@ -19,6 +20,8 @@ pub struct ToolDef {
     pub name:            &'static str,
     /// Tool description
     pub description:     &'static str,
+    /// Tool annotations
+    pub annotations:     BrpToolAnnotations,
     /// Handler function with method source information
     pub handler:         HandlerFn,
     /// Type-safe parameters
@@ -157,11 +160,35 @@ impl ToolDef {
                 builder.add_number_property(PARAM_PORT, "The BRP port (default: 15702)", false);
         }
 
+        // Enhance title with category prefix and optional method name
+        let enhanced_annotations = {
+            let mut enhanced = self.annotations.clone();
+            
+            // Start with category prefix
+            let category_prefix = enhanced.category.as_ref();
+            let base_title = &enhanced.title;
+            
+            // Add method name for BRP tools
+            let full_title = match &self.handler {
+                HandlerFn::Brp { method_source: BrpMethodSource::Static(method), .. } => {
+                    format!("{category_prefix}: {base_title} ({method})")
+                }
+                HandlerFn::Brp { method_source: BrpMethodSource::Dynamic, .. } |
+                HandlerFn::Local(_) |
+                HandlerFn::LocalWithPort(_) => {
+                    format!("{category_prefix}: {base_title}")
+                }
+            };
+            
+            enhanced.title = full_title;
+            enhanced
+        };
+
         rmcp::model::Tool {
             name:         self.name.into(),
             description:  Some(self.description.into()),
             input_schema: builder.build(),
-            annotations:  None,
+            annotations:  Some(enhanced_annotations.into()),
         }
     }
 }

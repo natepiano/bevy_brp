@@ -2,7 +2,7 @@ Watches entity component changes with file logging. Useful for monitoring values
 
 Parameters:
 - entity (required): Entity ID to watch
-- components (required array): Component types to watch (min 1)
+- types (required array): Component types to watch (min 1)
 - port (optional): BRP port (default: 15702)
 
 Returns:

@@ -19,7 +19,7 @@ impl LocalToolFnWithPort for BevyGetWatch {
             },
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let components = match ctx.extract_required(ParameterName::Components) {
+        let components = match ctx.extract_required(ParameterName::Types) {
             Ok(value) => match value.into_string_array() {
                 Ok(arr) => Some(arr),
                 Err(e) => return Box::pin(async move { Err(e) }),

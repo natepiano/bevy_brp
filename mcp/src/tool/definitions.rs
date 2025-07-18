@@ -1,6 +1,7 @@
 //! Tool definitions for BRP and local MCP tools.
 
 use super::HandlerFn;
+use super::annotations::{BrpToolAnnotations, EnvironmentImpact, ToolCategory};
 use super::constants::{
     BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
     BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
@@ -65,6 +66,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_DESTROY,
             description:     DESC_BEVY_DESTROY,
+            annotations:     BrpToolAnnotations::new(
+                "Destroy Bevy Entity",
+                ToolCategory::Entity,
+                EnvironmentImpact::DestructiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_DESTROY),
             parameters:      vec![Parameter::entity("The entity ID to destroy", true)],
             response_format: ResponseSpecification {
@@ -80,6 +86,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_GET,
             description:     DESC_BEVY_GET,
+            annotations:     BrpToolAnnotations::new(
+                "Get Component Data",
+                ToolCategory::Component,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_GET),
             parameters:      vec![
                 Parameter::entity("The entity ID to get component data from", true),
@@ -118,6 +129,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_GET_RESOURCE,
             description:     DESC_BEVY_GET_RESOURCE,
+            annotations:     BrpToolAnnotations::new(
+                "Get Resource Data",
+                ToolCategory::Resource,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_GET_RESOURCE),
             parameters:      vec![Parameter::resource(
                 "The fully-qualified type name of the resource to get",
@@ -131,6 +147,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_INSERT,
             description:     DESC_BEVY_INSERT,
+            annotations:     BrpToolAnnotations::new(
+                "Insert Components",
+                ToolCategory::Component,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_INSERT),
             parameters:      vec![
                 Parameter::entity("The entity ID to insert components into", true),
@@ -160,6 +181,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_INSERT_RESOURCE,
             description:     DESC_BEVY_INSERT_RESOURCE,
+            annotations:     BrpToolAnnotations::new(
+                "Insert Resource",
+                ToolCategory::Resource,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_INSERT_RESOURCE,
@@ -189,6 +215,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_LIST,
             description:     DESC_BEVY_LIST,
+            annotations:     BrpToolAnnotations::new(
+                "List Components",
+                ToolCategory::Component,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_LIST),
             parameters:      vec![Parameter::entity(
                 "Optional entity ID to list components for",
@@ -210,6 +241,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_LIST_RESOURCES,
             description:     DESC_BEVY_LIST_RESOURCES,
+            annotations:     BrpToolAnnotations::new(
+                "List Resources",
+                ToolCategory::Resource,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_LIST_RESOURCES,
@@ -231,6 +267,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_MUTATE_COMPONENT,
             description:     DESC_BEVY_MUTATE_COMPONENT,
+            annotations:     BrpToolAnnotations::new(
+                "Mutate Component",
+                ToolCategory::Component,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_MUTATE_COMPONENT,
@@ -262,6 +303,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_MUTATE_RESOURCE,
             description:     DESC_BEVY_MUTATE_RESOURCE,
+            annotations:     BrpToolAnnotations::new(
+                "Mutate Resource",
+                ToolCategory::Resource,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_MUTATE_RESOURCE,
@@ -292,6 +338,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_QUERY,
             description:     DESC_BEVY_QUERY,
+            annotations:     BrpToolAnnotations::new(
+                "Query Entities/Components",
+                ToolCategory::Component,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_QUERY),
             parameters:      vec![Parameter::data(), Parameter::filter(), Parameter::strict()],
             response_format: ResponseSpecification {
@@ -315,6 +366,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REGISTRY_SCHEMA,
             description:     DESC_BEVY_REGISTRY_SCHEMA,
+            annotations:     BrpToolAnnotations::new(
+                "Get Type Schemas",
+                ToolCategory::Discovery,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_REGISTRY_SCHEMA,
@@ -341,6 +397,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REMOVE,
             description:     DESC_BEVY_REMOVE,
+            annotations:     BrpToolAnnotations::new(
+                "Remove Components",
+                ToolCategory::Component,
+                EnvironmentImpact::DestructiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_REMOVE),
             parameters:      vec![
                 Parameter::entity("The entity ID to remove components from", true),
@@ -366,6 +427,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REMOVE_RESOURCE,
             description:     DESC_BEVY_REMOVE_RESOURCE,
+            annotations:     BrpToolAnnotations::new(
+                "Remove Resource",
+                ToolCategory::Resource,
+                EnvironmentImpact::DestructiveIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_REMOVE_RESOURCE,
@@ -386,6 +452,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_REPARENT,
             description:     DESC_BEVY_REPARENT,
+            annotations:     BrpToolAnnotations::new(
+                "Reparent Entities",
+                ToolCategory::Entity,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_REPARENT),
             parameters:      vec![
                 Parameter::entities("Array of entity IDs to reparent"),
@@ -411,6 +482,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_RPC_DISCOVER,
             description:     DESC_BEVY_RPC_DISCOVER,
+            annotations:     BrpToolAnnotations::new(
+                "Discover BRP Methods",
+                ToolCategory::Discovery,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_RPC_DISCOVER),
             parameters:      vec![],
             response_format: ResponseSpecification {
@@ -430,6 +506,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_SPAWN,
             description:     DESC_BEVY_SPAWN,
+            annotations:     BrpToolAnnotations::new(
+                "Spawn Entity",
+                ToolCategory::Entity,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_SPAWN),
             parameters:      vec![Parameter::components(
                 "Object containing component data to spawn with. Keys are component types, values are component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
@@ -453,6 +534,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXECUTE,
             description:     DESC_BRP_EXECUTE,
+            annotations:     BrpToolAnnotations::new(
+                "Execute BRP Method",
+                ToolCategory::DynamicBrp,
+                EnvironmentImpact::DestructiveNonIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_dynamic(BrpMethodHandlerV2),
             parameters:      vec![Parameter::dynamic_params(
                 "Optional parameters for the method, as a JSON object or array",
@@ -467,6 +553,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
+            annotations:     BrpToolAnnotations::new(
+                "Discover Component Format",
+                ToolCategory::Extras,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
@@ -484,6 +575,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SCREENSHOT,
             description:     DESC_BRP_EXTRAS_SCREENSHOT,
+            annotations:     BrpToolAnnotations::new(
+                "Take Screenshot",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_EXTRAS_SCREENSHOT,
@@ -504,6 +600,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SEND_KEYS,
             description:     DESC_BRP_EXTRAS_SEND_KEYS,
+            annotations:     BrpToolAnnotations::new(
+                "Send Keys",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_EXTRAS_SEND_KEYS,
@@ -529,6 +630,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
+            annotations:     BrpToolAnnotations::new(
+                "Set Debug Mode",
+                ToolCategory::Extras,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::brp_v2_static(
                 BrpMethodHandlerV2,
                 BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
@@ -559,6 +665,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_GET_WATCH,
             description:     DESC_BEVY_GET_WATCH,
+            annotations:     BrpToolAnnotations::new(
+                "Watch Component Changes",
+                ToolCategory::WatchMonitoring,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             handler:         HandlerFn::local_with_port(BevyGetWatch),
             parameters:      vec![
                 Parameter::number(
@@ -566,8 +677,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     "The entity ID to watch for component changes",
                     true,
                 ),
-                Parameter::string_array(
-                    ParameterName::Components,
+                Parameter::types(
                     "Required array of component types to watch. Must contain at least one component. Without this, the watch will not detect any changes.",
                     true,
                 ),
@@ -597,6 +707,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_BEVY_LIST_WATCH,
             description:     DESC_BEVY_LIST_WATCH,
+            annotations:     BrpToolAnnotations::new(
+                "Watch Component List",
+                ToolCategory::WatchMonitoring,
+                EnvironmentImpact::AdditiveNonIdempotent,
+            ),
             handler:         HandlerFn::local_with_port(BevyListWatch),
             parameters:      vec![Parameter::number(
                 ParameterName::Entity,
@@ -628,6 +743,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_CLEANUP_LOGS,
             description:     DESC_CLEANUP_LOGS,
+            annotations:     BrpToolAnnotations::new(
+                "Cleanup Log Files",
+                ToolCategory::Logging,
+                EnvironmentImpact::DestructiveNonIdempotent,
+            ),
             handler:         HandlerFn::local(CleanupLogs),
             parameters:      vec![
                 Parameter::string(
@@ -671,6 +791,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_GET_TRACE_LOG_PATH,
             description:     DESC_GET_TRACE_LOG_PATH,
+            annotations:     BrpToolAnnotations::new(
+                "Get Trace Log Path",
+                ToolCategory::Logging,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(GetTraceLogPath),
             parameters:      vec![],
             response_format: ResponseSpecification {
@@ -698,6 +823,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LAUNCH_BEVY_APP,
             description:     DESC_LAUNCH_BEVY_APP,
+            annotations:     BrpToolAnnotations::new(
+                "Launch Bevy App",
+                ToolCategory::App,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local_with_port(
                 crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
             ),
@@ -727,6 +857,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LAUNCH_BEVY_EXAMPLE,
             description:     DESC_LAUNCH_BEVY_EXAMPLE,
+            annotations:     BrpToolAnnotations::new(
+                "Launch Bevy Example",
+                ToolCategory::App,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local_with_port(
                 brp_launch_bevy_example::create_launch_bevy_example_handler(),
             ),
@@ -756,6 +891,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LIST_BEVY_APPS,
             description:     DESC_LIST_BEVY_APPS,
+            annotations:     BrpToolAnnotations::new(
+                "List Bevy Apps",
+                ToolCategory::App,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(ListBevyApps),
             parameters:      vec![],
             response_format: ResponseSpecification {
@@ -778,6 +918,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LIST_BEVY_EXAMPLES,
             description:     DESC_LIST_BEVY_EXAMPLES,
+            annotations:     BrpToolAnnotations::new(
+                "List Bevy Examples",
+                ToolCategory::App,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(ListBevyExamples),
             parameters:      vec![],
             response_format: ResponseSpecification {
@@ -800,6 +945,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LIST_BRP_APPS,
             description:     DESC_LIST_BRP_APPS,
+            annotations:     BrpToolAnnotations::new(
+                "List Bevy BRP-enabled Apps",
+                ToolCategory::App,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(ListBrpApps),
             parameters:      vec![],
             response_format: ResponseSpecification {
@@ -822,6 +972,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LIST_ACTIVE_WATCHES,
             description:     DESC_LIST_ACTIVE_WATCHES,
+            annotations:     BrpToolAnnotations::new(
+                "List Active Watches",
+                ToolCategory::WatchMonitoring,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(BrpListActiveWatches),
             parameters:      vec![],
             response_format: ResponseSpecification {
@@ -844,6 +999,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_STOP_WATCH,
             description:     DESC_STOP_WATCH,
+            annotations:     BrpToolAnnotations::new(
+                "Stop Watch",
+                ToolCategory::WatchMonitoring,
+                EnvironmentImpact::DestructiveIdempotent,
+            ),
             handler:         HandlerFn::local(BrpStopWatch),
             parameters:      vec![Parameter::number(
                 ParameterName::WatchId,
@@ -859,6 +1019,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_LIST_LOGS,
             description:     DESC_LIST_LOGS,
+            annotations:     BrpToolAnnotations::new(
+                "List Log Files",
+                ToolCategory::Logging,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(ListLogs),
             parameters:      vec![
                 Parameter::string(
@@ -897,6 +1062,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_READ_LOG,
             description:     DESC_READ_LOG,
+            annotations:     BrpToolAnnotations::new(
+                "Read Log File",
+                ToolCategory::Logging,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local(ReadLog),
             parameters:      vec![
                 Parameter::string(
@@ -965,6 +1135,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_SET_TRACING_LEVEL,
             description:     DESC_SET_TRACING_LEVEL,
+            annotations:     BrpToolAnnotations::new(
+                "Set Tracing Level",
+                ToolCategory::Logging,
+                EnvironmentImpact::DestructiveNonIdempotent,
+            ),
             handler:         HandlerFn::local(SetTracingLevel),
             parameters:      vec![Parameter::string(
                 ParameterName::Level,
@@ -991,6 +1166,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_STATUS,
             description:     DESC_STATUS,
+            annotations:     BrpToolAnnotations::new(
+                "Check App Status",
+                ToolCategory::App,
+                EnvironmentImpact::ReadOnly,
+            ),
             handler:         HandlerFn::local_with_port(Status),
             parameters:      vec![Parameter::string(
                 ParameterName::AppName,
@@ -1027,6 +1207,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         ToolDef {
             name:            TOOL_SHUTDOWN,
             description:     DESC_SHUTDOWN,
+            annotations:     BrpToolAnnotations::new(
+                "Shutdown Bevy App",
+                ToolCategory::App,
+                EnvironmentImpact::DestructiveNonIdempotent,
+            ),
             handler:         HandlerFn::local_with_port(Shutdown),
             parameters:      vec![Parameter::string(
                 ParameterName::AppName,

@@ -30,7 +30,13 @@ impl McpService {
             .map(|def| (def.name().to_string(), def.clone()))
             .collect();
         let mut tools: Vec<_> = all_defs.iter().map(ToolDef::to_tool).collect();
-        tools.sort_by_key(|tool| tool.name.clone());
+        tools.sort_by_key(|tool| {
+            tool.annotations
+                .as_ref()
+                .and_then(|ann| ann.title.as_ref())
+                .map_or(tool.name.as_ref(), String::as_str)
+                .to_string()
+        });
 
         Self { tool_defs, tools }
     }

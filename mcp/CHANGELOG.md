@@ -20,10 +20,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trace logging integration for watch operations controlled by tracing level
 - Timeout status tracking in `brp_list_active_watches` output
 - Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output
+- Tool annotations: All tools now display semantic annotations (read-only vs destructive) with human-readable titles
+- Enhanced BRP tool titles: BRP tools automatically show their method names (e.g., "List Components (bevy/list)")
 
 ### Changed
+- Migrated to rmcp 0.3.0 for improved MCP server functionality
 - Improved error messages when duplicate app/example names are found across workspaces
-- `brp_list_logs` returns minimal output by default to reduce token limit errors
+- All tools will return a pointer to a file in the local temp directory if the response is too large to return to coding agent. Hard coded using heuristics to fit within claude code limits.
+- `brp_list_logs` returns minimal output by default to reduce token limit errors, allows verbose mode for detailed logs
+- `bevy_get_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
 
 ## [0.1.4] - Initial Release
 
