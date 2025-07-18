@@ -1,5 +1,7 @@
 //! Parameter definitions for our MCP tools
 
+use rmcp::Error as McpError;
+use serde_json::Value;
 use strum::{Display, EnumString};
 
 /// Common interface for parameter definitions
@@ -35,6 +37,143 @@ pub enum ParamType {
     String,
     /// An array of strings
     StringArray,
+}
+
+/// Extracted parameter values with their types
+#[derive(Debug, Clone)]
+pub enum ExtractedValue {
+    /// String value
+    String(String),
+    /// Numeric value (u64)
+    Number(u64),
+    /// Boolean value
+    Boolean(bool),
+    /// Array of strings
+    StringArray(Vec<String>),
+    /// Array of numbers
+    NumberArray(Vec<u64>),
+    /// Any JSON value
+    Any(Value),
+}
+
+impl ExtractedValue {
+    /// Convert to string, returning error if wrong type
+    pub fn into_string(self) -> Result<String, McpError> {
+        match self {
+            Self::String(s) => Ok(s),
+            _ => Err(McpError::invalid_params("Expected string value", None)),
+        }
+    }
+
+    /// Convert to u64, returning error if wrong type
+    pub fn into_u64(self) -> Result<u64, McpError> {
+        match self {
+            Self::Number(n) => Ok(n),
+            _ => Err(McpError::invalid_params("Expected number value", None)),
+        }
+    }
+
+    /// Convert to u32, returning error if wrong type or out of range
+    pub fn into_u32(self) -> Result<u32, McpError> {
+        match self {
+            Self::Number(n) => u32::try_from(n)
+                .map_err(|_| McpError::invalid_params("Number value too large for u32", None)),
+            _ => Err(McpError::invalid_params("Expected number value", None)),
+        }
+    }
+
+    /// Convert to bool, returning error if wrong type
+    pub fn into_bool(self) -> Result<bool, McpError> {
+        match self {
+            Self::Boolean(b) => Ok(b),
+            _ => Err(McpError::invalid_params("Expected boolean value", None)),
+        }
+    }
+
+    /// Convert to string array, returning error if wrong type
+    pub fn into_string_array(self) -> Result<Vec<String>, McpError> {
+        match self {
+            Self::StringArray(arr) => Ok(arr),
+            _ => Err(McpError::invalid_params(
+                "Expected string array value",
+                None,
+            )),
+        }
+    }
+
+    /// Convert to number array, returning error if wrong type
+    pub fn into_number_array(self) -> Result<Vec<u64>, McpError> {
+        match self {
+            Self::NumberArray(arr) => Ok(arr),
+            _ => Err(McpError::invalid_params(
+                "Expected number array value",
+                None,
+            )),
+        }
+    }
+
+    /// Convert to any JSON value, returning error if wrong type
+    pub fn into_any(self) -> Result<Value, McpError> {
+        match self {
+            Self::Any(v) => Ok(v),
+            _ => Err(McpError::invalid_params("Expected any JSON value", None)),
+        }
+    }
+}
+
+// Implement Into<ExtractedValue> for common types to support defaults
+impl From<String> for ExtractedValue {
+    fn from(s: String) -> Self {
+        Self::String(s)
+    }
+}
+
+impl From<&str> for ExtractedValue {
+    fn from(s: &str) -> Self {
+        Self::String(s.to_string())
+    }
+}
+
+impl From<u64> for ExtractedValue {
+    fn from(n: u64) -> Self {
+        Self::Number(n)
+    }
+}
+
+impl From<u32> for ExtractedValue {
+    fn from(n: u32) -> Self {
+        Self::Number(u64::from(n))
+    }
+}
+
+impl From<u16> for ExtractedValue {
+    fn from(n: u16) -> Self {
+        Self::Number(u64::from(n))
+    }
+}
+
+impl From<bool> for ExtractedValue {
+    fn from(b: bool) -> Self {
+        Self::Boolean(b)
+    }
+}
+
+impl From<Vec<String>> for ExtractedValue {
+    fn from(arr: Vec<String>) -> Self {
+        Self::StringArray(arr)
+    }
+}
+
+impl From<Vec<u64>> for ExtractedValue {
+    fn from(arr: Vec<u64>) -> Self {
+        Self::NumberArray(arr)
+    }
+}
+
+impl From<Value> for ExtractedValue {
+    fn from(v: Value) -> Self {
+        Self::Any(v)
+    }
 }
 
 /// Unified parameter names combining all BRP and local tool parameters
@@ -105,6 +244,54 @@ pub enum ParameterName {
     WithTypes,
     /// Exclude specific reflect types
     WithoutTypes,
+}
+
+impl ParameterName {
+    /// Get the expected parameter type for this parameter
+    pub const fn param_type(self) -> ParamType {
+        match self {
+            // String parameters
+            Self::AppName
+            | Self::Component
+            | Self::ExampleName
+            | Self::Filename
+            | Self::Keyword
+            | Self::Level
+            | Self::Method
+            | Self::Path
+            | Self::Profile
+            | Self::Resource => ParamType::String,
+
+            // Number parameters
+            Self::DurationMs
+            | Self::Entity
+            | Self::OlderThanSeconds
+            | Self::Parent
+            | Self::TailLines
+            | Self::WatchId => ParamType::Number,
+
+            // Boolean parameters
+            Self::Enabled | Self::Strict | Self::Verbose => ParamType::Boolean,
+
+            // String array parameters
+            Self::Components
+            | Self::Keys
+            | Self::Types
+            | Self::WithCrates
+            | Self::WithoutCrates
+            | Self::WithTypes
+            | Self::WithoutTypes => ParamType::StringArray,
+
+            // Number array parameters
+            Self::Entities => ParamType::NumberArray,
+
+            // Any type parameters
+            Self::Data | Self::Filter | Self::Value => ParamType::Any,
+
+            // Special case
+            Self::Params => ParamType::DynamicParams,
+        }
+    }
 }
 
 /// Simple parameter definition using the unified `ParameterName` enum

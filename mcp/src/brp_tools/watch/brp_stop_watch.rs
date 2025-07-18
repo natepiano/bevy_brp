@@ -4,8 +4,9 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::constants::PARAM_WATCH_ID;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{
+    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+};
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,8 +28,11 @@ pub struct BrpStopWatch;
 impl LocalToolFn for BrpStopWatch {
     fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         // Extract parameters before async block
-        let watch_id = match ctx.extract_required_u32(PARAM_WATCH_ID, "watch ID") {
-            Ok(id) => id,
+        let watch_id = match ctx.extract_required(ParameterName::WatchId) {
+            Ok(value) => match value.into_u32() {
+                Ok(id) => id,
+                Err(e) => return Box::pin(async move { Err(e) }),
+            },
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 

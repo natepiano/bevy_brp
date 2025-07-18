@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{
+    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+};
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,17 +43,30 @@ pub struct ReadLog;
 impl LocalToolFn for ReadLog {
     fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
-        let filename = match ctx.extract_required_string("filename", "log filename") {
-            Ok(f) => f.to_string(),
+        let filename = match ctx.extract_required(ParameterName::Filename) {
+            Ok(value) => match value.into_string() {
+                Ok(s) => s,
+                Err(e) => return Box::pin(async move { Err(e) }),
+            },
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let keyword = ctx.extract_optional_string("keyword", "");
-        let Ok(tail_lines) = usize::try_from(ctx.extract_optional_number("tail_lines", 0)) else {
-            return Box::pin(async move {
-                Err(report_to_mcp_error(&error_stack::Report::new(
-                    Error::invalid("tail_lines", "value too large"),
-                )))
-            });
+        let keyword = ctx
+            .extract_with_default(ParameterName::Keyword, "")
+            .into_string()
+            .unwrap_or_default();
+        let tail_lines = match ctx
+            .extract_with_default(ParameterName::TailLines, 0u64)
+            .into_u64()
+        {
+            Ok(n) => match usize::try_from(n) {
+                Ok(n) => n,
+                Err(_) => {
+                    return Box::pin(async move {
+                        Err(McpError::invalid_params("tail_lines value too large", None))
+                    });
+                }
+            },
+            Err(e) => return Box::pin(async move { Err(e) }),
         };
 
         Box::pin(async move {

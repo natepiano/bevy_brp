@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::constants::PARAM_APP_NAME;
 use crate::tool::{
     BRP_METHOD_LIST, HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort,
-    NoMethod,
+    NoMethod, ParameterName,
 };
 
 /// Result from checking status of a Bevy app
@@ -38,8 +37,11 @@ pub struct Status;
 
 impl LocalToolFnWithPort for Status {
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
-        let app_name = match ctx.extract_required_string(PARAM_APP_NAME, "app name") {
-            Ok(name) => name.to_string(),
+        let app_name = match ctx.extract_required(ParameterName::AppName) {
+            Ok(value) => match value.into_string() {
+                Ok(s) => s,
+                Err(e) => return Box::pin(async move { Err(e) }),
+            },
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 

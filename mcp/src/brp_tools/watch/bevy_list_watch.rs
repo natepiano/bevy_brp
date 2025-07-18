@@ -3,17 +3,20 @@
 use rmcp::Error as McpError;
 
 use super::types::WatchStartResult;
-use crate::constants::PARAM_ENTITY;
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
+    ParameterName,
 };
 
 pub struct BevyListWatch;
 
 impl LocalToolFnWithPort for BevyListWatch {
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
-        let entity_id = match ctx.extract_required_u64(PARAM_ENTITY, "entity ID") {
-            Ok(id) => id,
+        let entity_id = match ctx.extract_required(ParameterName::Entity) {
+            Ok(value) => match value.into_u64() {
+                Ok(id) => id,
+                Err(e) => return Box::pin(async move { Err(e) }),
+            },
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 

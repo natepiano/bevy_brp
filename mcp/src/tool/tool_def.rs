@@ -199,10 +199,11 @@ fn extract_port_directly(request: &CallToolRequestParam) -> Result<u16, McpError
 /// Extract method parameter directly from request arguments
 /// Used during context creation, then discarded
 fn extract_method_directly(request: &CallToolRequestParam) -> Result<String, McpError> {
+    use crate::constants::PARAM_METHOD;
     request
         .arguments
         .as_ref()
-        .and_then(|args| args.get("method"))
+        .and_then(|args| args.get(PARAM_METHOD))
         .and_then(|v| v.as_str())
         .ok_or_else(|| McpError::invalid_params("Missing method parameter", None))
         .map(std::string::ToString::to_string)

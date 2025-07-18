@@ -4,11 +4,11 @@ use sysinfo::{Signal, System};
 use tracing::debug;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
-use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_APP_NAME};
+use crate::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::error::{Error, Result};
 use crate::tool::{
     BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HandlerResult, HasPort,
-    LocalToolFnWithPort, NoMethod,
+    LocalToolFnWithPort, NoMethod, ParameterName,
 };
 
 /// Result from shutting down a Bevy app
@@ -121,8 +121,11 @@ pub struct Shutdown;
 
 impl LocalToolFnWithPort for Shutdown {
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
-        let app_name = match ctx.extract_required_string(PARAM_APP_NAME, "app name") {
-            Ok(name) => name.to_string(),
+        let app_name = match ctx.extract_required(ParameterName::AppName) {
+            Ok(value) => match value.into_string() {
+                Ok(s) => s,
+                Err(e) => return Box::pin(async move { Err(e) }),
+            },
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 

@@ -86,7 +86,8 @@ impl HandlerResult for LaunchResult {
 }
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
-use crate::constants::{BRP_PORT_ENV_VAR, PARAM_PROFILE};
+use crate::constants::BRP_PORT_ENV_VAR;
+use crate::tool::ParameterName;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -105,7 +106,10 @@ pub fn extract_launch_params<Port, Method>(
     port: u16,
 ) -> Result<LaunchParams, McpError> {
     let target_name = ctx.extract_required_string(target_param_name, target_type_name)?;
-    let profile = ctx.extract_optional_string(PARAM_PROFILE, default_profile);
+    let profile = ctx
+        .extract_with_default(ParameterName::Profile, default_profile)
+        .into_string()
+        .unwrap_or_else(|_| default_profile.to_string());
     let path = ctx.extract_optional_path();
 
     Ok(LaunchParams {

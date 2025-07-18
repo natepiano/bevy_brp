@@ -35,16 +35,9 @@ pub const RESPONSE_SHUTDOWN_METHOD: &str = "shutdown_method";
 // ============================================================================
 
 /// Parameter name constants for BRP tool inputs
-pub const PARAM_APP_NAME: &str = "app_name";
-pub const PARAM_COMPONENTS: &str = "components";
-pub const PARAM_ENTITY: &str = "entity";
-pub const PARAM_EXAMPLE_NAME: &str = "example_name";
 pub const PARAM_METHOD: &str = "method";
 pub const PARAM_PARAMS: &str = "params";
-pub const PARAM_PATH: &str = "path";
 pub const PARAM_PORT: &str = "port";
-pub const PARAM_PROFILE: &str = "profile";
-pub const PARAM_WATCH_ID: &str = "watch_id";
 
 // ============================================================================
 // NETWORK CONSTANTS
@@ -107,7 +100,9 @@ pub const JSONRPC_FIELD_ID: &str = "id";
 pub const JSONRPC_FIELD_METHOD: &str = "method";
 pub const JSONRPC_FIELD_PARAMS: &str = "params";
 
-// ---- large response token calculation constants ----
+// ============================================================================
+// LARGE RESPONSE TOKEN CALCULATION CONSTANTS
+// ============================================================================
 
 /// Estimated characters per token for response size calculation
 pub const CHARS_PER_TOKEN: usize = 4;
