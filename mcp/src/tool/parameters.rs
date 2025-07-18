@@ -274,8 +274,7 @@ impl ParameterName {
             Self::Enabled | Self::Strict | Self::Verbose => ParamType::Boolean,
 
             // String array parameters
-            Self::Components
-            | Self::Keys
+            Self::Keys
             | Self::Types
             | Self::WithCrates
             | Self::WithoutCrates
@@ -286,7 +285,7 @@ impl ParameterName {
             Self::Entities => ParamType::NumberArray,
 
             // Any type parameters
-            Self::Data | Self::Filter | Self::Value => ParamType::Any,
+            Self::Components | Self::Data | Self::Filter | Self::Value => ParamType::Any,
 
             // Special case
             Self::Params => ParamType::DynamicParams,
