@@ -1,210 +1,210 @@
 [
   {
     "id": "1",
-    "content": "Create mcp/src/extraction.rs with JsonFieldProvider trait",
+    "content": "Extend FieldType enum with Count and LineSplit variants",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "2",
-    "content": "Run cargo build and fix errors for extraction.rs",
+    "content": "Run cargo build and fix errors for FieldType extension",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "3",
-    "content": "Add FieldSpec trait to extraction.rs",
+    "content": "Update JsonFieldProvider trait with get_root() method and default dot notation support",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "4",
-    "content": "Run cargo build and fix errors for FieldSpec trait",
+    "content": "Run cargo build and fix errors for JsonFieldProvider updates",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "5",
-    "content": "Move ExtractedValue enum from tool/parameters.rs to extraction.rs",
+    "content": "Implement JsonFieldProvider for existing types with get_root()",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "6",
-    "content": "Run cargo build and fix errors for ExtractedValue move",
+    "content": "Run cargo build and fix errors for JsonFieldProvider implementations",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "7",
-    "content": "Create FieldType enum in extraction.rs (rename from ParamType)",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "8",
-    "content": "Run cargo build and fix errors for FieldType enum",
+    "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "9",
-    "content": "Implement extract_field() generic function in extraction.rs",
+    "content": "Enhance extract_field() to handle Count and LineSplit FieldTypes",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "10",
-    "content": "Run cargo build and fix errors for extract_field function",
+    "content": "Run cargo build and fix errors for extract_field() enhancements",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "11",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "content": "Create ResponseFieldSpec struct for response field extraction",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "12",
-    "content": "Fix all clippy issues following WarningRules",
+    "content": "Run cargo build and fix errors for ResponseFieldSpec",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "13",
-    "content": "Update tool/parameters.rs to remove ExtractedValue and ParamType",
+    "content": "Implement FieldSpec for ResponseFieldSpec",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "14",
-    "content": "Run cargo build and fix errors for parameters.rs cleanup",
+    "content": "Run cargo build and fix errors for ResponseFieldSpec FieldSpec impl",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "15",
-    "content": "Implement FieldSpec for ParameterName in tool/parameters.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "16",
-    "content": "Run cargo build and fix errors for ParameterName FieldSpec impl",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "17",
-    "content": "Update tool/handler_context.rs to use extract_field from extraction module",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "18",
-    "content": "Run cargo build and fix errors for handler_context.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "19",
-    "content": "Implement JsonFieldProvider for request arguments in handler_context.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "20",
-    "content": "Run cargo build and fix errors for JsonFieldProvider impl",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "21",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "22",
+    "id": "16",
     "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
+    "id": "17",
+    "content": "Create simplified ResponseField enum",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Run cargo build and fix errors for ResponseField enum",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Replace FieldExtractor usage in field_extractor.rs with direct extraction",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Run cargo build and fix errors for field_extractor.rs updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Update formatter.rs to use direct extraction instead of closures",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Run cargo build and fix errors for formatter.rs updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
     "id": "23",
-    "content": "Create response/fields.rs with ResponseFieldName enum",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "24",
-    "content": "Run cargo build and fix errors for fields.rs",
+    "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "25",
-    "content": "Implement FieldSpec for ResponseFieldName",
+    "content": "Update ResponseField usage in response/specification.rs",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "26",
-    "content": "Run cargo build and fix errors for ResponseFieldName FieldSpec impl",
+    "content": "Run cargo build and fix errors for specification.rs updates",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "27",
-    "content": "Update response/specification.rs to use ResponseFieldName",
+    "content": "Remove ResponseExtractorType enum and related code",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "28",
-    "content": "Run cargo build and fix errors for specification.rs",
+    "content": "Run cargo build and fix errors after ResponseExtractorType removal",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "29",
-    "content": "Replace ResponseExtractorType with new field-based approach",
+    "content": "Remove FieldExtractor type and create_response_field_extractor function",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "30",
-    "content": "Run cargo build and fix errors for ResponseExtractorType replacement",
+    "content": "Run cargo build and fix errors after FieldExtractor removal",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -225,97 +225,41 @@
   },
   {
     "id": "33",
-    "content": "Update field_extractor.rs to remove FieldExtractor type",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "34",
-    "content": "Run cargo build and fix errors for field_extractor.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "35",
-    "content": "Update formatter.rs to use new extraction system",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "36",
-    "content": "Run cargo build and fix errors for formatter.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "37",
-    "content": "Update builder.rs to use type-safe field names",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "38",
-    "content": "Run cargo build and fix errors for builder.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "39",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "40",
-    "content": "Fix all clippy issues following WarningRules",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "41",
     "content": "Run cargo +nightly fmt",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "42",
+    "id": "34",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "43",
+    "id": "35",
     "content": "STOP if test failures - review with user",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "44",
+    "id": "36",
     "content": "Subagent: STOP and return control",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "45",
+    "id": "37",
     "content": "Main: Task new subagent for code review (read-only)",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "46",
+    "id": "38",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "high",
