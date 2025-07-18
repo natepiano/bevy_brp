@@ -6,7 +6,7 @@ use rmcp::model::{
     ServerCapabilities, Tool,
 };
 use rmcp::service::RequestContext;
-use rmcp::{Error as McpError, Peer, RoleServer, ServerHandler};
+use rmcp::{ErrorData as McpError, Peer, RoleServer, ServerHandler};
 
 use crate::error::{Error as ServiceError, report_to_mcp_error};
 use crate::tool::{self, ToolDef};
@@ -122,7 +122,7 @@ impl ServerHandler for McpService {
 
     async fn list_tools(
         &self,
-        _request: PaginatedRequestParam,
+        _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, McpError> {
         Ok(self.list_mcp_tools())

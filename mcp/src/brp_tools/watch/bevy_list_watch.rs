@@ -1,6 +1,6 @@
 //! Start watching an entity for component list changes
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 
 use super::types::WatchStartResult;
 use crate::tool::{

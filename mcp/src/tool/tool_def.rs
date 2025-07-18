@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 
 use super::HandlerFn;
@@ -159,8 +159,9 @@ impl ToolDef {
 
         rmcp::model::Tool {
             name:         self.name.into(),
-            description:  self.description.into(),
+            description:  Some(self.description.into()),
             input_schema: builder.build(),
+            annotations:  None,
         }
     }
 }

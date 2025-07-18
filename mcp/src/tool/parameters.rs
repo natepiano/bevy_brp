@@ -1,6 +1,6 @@
 //! Parameter definitions for our MCP tools
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use serde_json::Value;
 use strum::{Display, EnumString};
 

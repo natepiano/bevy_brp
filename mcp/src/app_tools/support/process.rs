@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 use std::process::Stdio;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 
 use crate::error::{Error, report_to_mcp_error};
 

@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::future::Future;
 use std::path::PathBuf;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;

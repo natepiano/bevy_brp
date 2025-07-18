@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use chrono;
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};

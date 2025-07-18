@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::HandlerFn;

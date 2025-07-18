@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};

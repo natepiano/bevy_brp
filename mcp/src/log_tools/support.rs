@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use error_stack::Report;
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 
 use crate::error::{Error, report_to_mcp_error};
 

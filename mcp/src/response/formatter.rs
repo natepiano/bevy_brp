@@ -18,7 +18,7 @@
 //! - Format correction status handling
 //! - Configurable field extraction from response data
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 

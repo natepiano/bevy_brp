@@ -1,6 +1,6 @@
 //! Stop an active watch
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;

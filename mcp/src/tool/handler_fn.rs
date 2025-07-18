@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;

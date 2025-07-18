@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support;

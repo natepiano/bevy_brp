@@ -1,7 +1,7 @@
 use std::fs;
 use std::time::{Duration, SystemTime};
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};

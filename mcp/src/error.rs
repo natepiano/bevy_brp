@@ -1,4 +1,4 @@
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use thiserror::Error;
 
 // Error message prefixes

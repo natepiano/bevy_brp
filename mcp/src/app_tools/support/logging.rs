@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use error_stack::Report;
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 
 use crate::error::{Error, report_to_mcp_error};
 

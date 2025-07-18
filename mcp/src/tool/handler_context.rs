@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rmcp::Error as McpError;
+use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::{Value, json};
 
