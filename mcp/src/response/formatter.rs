@@ -31,8 +31,7 @@ use crate::brp_tools::request_handler::{
     FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus,
 };
 use crate::constants::{
-    JSON_FIELD_DEBUG_INFO, JSON_FIELD_FORMAT_CORRECTED, JSON_FIELD_FORMAT_CORRECTIONS,
-    JSON_FIELD_METADATA,
+    RESPONSE_DEBUG_INFO, RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS, RESPONSE_METADATA,
 };
 use crate::error::Result;
 use crate::tool::{HandlerContext, HasCallInfo};
@@ -176,14 +175,14 @@ impl ResponseFormatter {
         let mut brp_extras_debug_info = None;
 
         if let Value::Object(data_map) = data {
-            if let Some(debug_info) = data_map.get(JSON_FIELD_DEBUG_INFO) {
+            if let Some(debug_info) = data_map.get(RESPONSE_DEBUG_INFO) {
                 if !debug_info.is_null() && (debug_info.is_array() || debug_info.is_string()) {
                     brp_extras_debug_info = Some(debug_info.clone());
                 }
             }
 
             if let Value::Object(clean_map) = &mut clean_data {
-                clean_map.remove(JSON_FIELD_DEBUG_INFO);
+                clean_map.remove(RESPONSE_DEBUG_INFO);
             }
         }
 
@@ -201,7 +200,7 @@ impl ResponseFormatter {
         for (field_name, extractor, placement) in &self.config.success_fields {
             let value = extractor(clean_data, handler_context);
 
-            if field_name == JSON_FIELD_METADATA && matches!(placement, FieldPlacement::Metadata) {
+            if field_name == RESPONSE_METADATA && matches!(placement, FieldPlacement::Metadata) {
                 if let Value::Object(data_map) = &value {
                     for (key, val) in data_map {
                         *builder = builder.clone().add_field(key, val)?;
@@ -330,7 +329,7 @@ impl ResponseFormatter {
             })?;
             *builder = builder
                 .clone()
-                .add_field(JSON_FIELD_FORMAT_CORRECTED, &format_corrected_value)?;
+                .add_field(RESPONSE_FORMAT_CORRECTED, &format_corrected_value)?;
         }
 
         // Add format corrections array if provided and not empty
@@ -367,7 +366,7 @@ impl ResponseFormatter {
 
                 *builder = builder
                     .clone()
-                    .add_field(JSON_FIELD_FORMAT_CORRECTIONS, &corrections_value)?;
+                    .add_field(RESPONSE_FORMAT_CORRECTIONS, &corrections_value)?;
 
                 // Add rich metadata from first correction to metadata field when format correction
                 // succeeds

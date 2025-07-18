@@ -9,27 +9,26 @@ use std::ops::RangeInclusive;
 // ============================================================================
 
 /// JSON field name constants for BRP responses
-pub const JSON_FIELD_APP_NAME: &str = "app_name";
-pub const JSON_FIELD_APPS: &str = "apps";
-pub const JSON_FIELD_COMPONENT_COUNT: &str = "component_count";
-pub const JSON_FIELD_COMPONENTS: &str = "components";
-pub const JSON_FIELD_CONTENT: &str = "content";
-pub const JSON_FIELD_COUNT: &str = "count";
-pub const JSON_FIELD_DEBUG_INFO: &str = "debug_info";
-pub const JSON_FIELD_ENTITY: &str = "entity";
-pub const JSON_FIELD_ENTITIES: &str = "entities";
-pub const JSON_FIELD_ENTITY_COUNT: &str = "entity_count";
-pub const JSON_FIELD_FORMAT_CORRECTIONS: &str = "format_corrections";
-pub const JSON_FIELD_FORMAT_CORRECTED: &str = "format_corrected";
-pub const JSON_FIELD_LOG_PATH: &str = "log_path";
-pub const JSON_FIELD_METADATA: &str = "metadata";
-pub const JSON_FIELD_PARENT: &str = "parent";
-pub const JSON_FIELD_PATH: &str = "path";
-pub const JSON_FIELD_PID: &str = "pid";
-pub const JSON_FIELD_RESULT: &str = "result";
-pub const JSON_FIELD_RESOURCE: &str = "resource";
-pub const JSON_FIELD_SHUTDOWN_METHOD: &str = "shutdown_method";
-pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
+pub const RESPONSE_APP_NAME: &str = "app_name";
+pub const RESPONSE_APPS: &str = "apps";
+pub const RESPONSE_COMPONENT_COUNT: &str = "component_count";
+pub const RESPONSE_COMPONENTS: &str = "components";
+pub const RESPONSE_CONTENT: &str = "content";
+pub const RESPONSE_COUNT: &str = "count";
+pub const RESPONSE_DEBUG_INFO: &str = "debug_info";
+pub const RESPONSE_ENTITY: &str = "entity";
+pub const RESPONSE_ENTITIES: &str = "entities";
+pub const RESPONSE_ENTITY_COUNT: &str = "entity_count";
+pub const RESPONSE_FORMAT_CORRECTIONS: &str = "format_corrections";
+pub const RESPONSE_FORMAT_CORRECTED: &str = "format_corrected";
+pub const RESPONSE_LOG_PATH: &str = "log_path";
+pub const RESPONSE_METADATA: &str = "metadata";
+pub const RESPONSE_PARENT: &str = "parent";
+pub const RESPONSE_PATH: &str = "path";
+pub const RESPONSE_PID: &str = "pid";
+pub const RESPONSE_RESULT: &str = "result";
+pub const RESPONSE_RESOURCE: &str = "resource";
+pub const RESPONSE_SHUTDOWN_METHOD: &str = "shutdown_method";
 
 // ============================================================================
 // TOOL PARAMETER CONSTANTS
@@ -37,6 +36,8 @@ pub const JSON_FIELD_WATCH_ID: &str = "watch_id";
 
 /// Parameter name constants for BRP tool inputs
 pub const PARAM_APP_NAME: &str = "app_name";
+pub const PARAM_COMPONENTS: &str = "components";
+pub const PARAM_ENTITY: &str = "entity";
 pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_EXAMPLE_NAME: &str = "example_name";
 pub const PARAM_METHOD: &str = "method";
@@ -46,6 +47,7 @@ pub const PARAM_PATH: &str = "path";
 pub const PARAM_PORT: &str = "port";
 pub const PARAM_PROFILE: &str = "profile";
 pub const PARAM_RESOURCE: &str = "resource";
+pub const PARAM_WATCH_ID: &str = "watch_id";
 
 // ============================================================================
 // NETWORK CONSTANTS

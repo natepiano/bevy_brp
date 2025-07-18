@@ -1,6 +1,4 @@
-use crate::constants::{
-    JSON_FIELD_CONTENT, JSON_FIELD_COUNT, JSON_FIELD_METADATA, JSON_FIELD_RESULT,
-};
+use crate::constants::{RESPONSE_CONTENT, RESPONSE_COUNT, RESPONSE_METADATA, RESPONSE_RESULT};
 
 /// Extract a nested field from JSON data using dot notation
 ///
@@ -130,7 +128,7 @@ impl ResponseExtractorType {
             Self::Count => {
                 // Extract count field as a number, return Null if not found or not a number
                 data.as_object()
-                    .and_then(|obj| obj.get(JSON_FIELD_COUNT))
+                    .and_then(|obj| obj.get(RESPONSE_COUNT))
                     .and_then(serde_json::Value::as_u64)
                     .map_or(serde_json::Value::Null, |count| {
                         serde_json::Value::Number(serde_json::Number::from(count))
@@ -163,7 +161,7 @@ impl ResponseExtractorType {
             }
             Self::SplitContentIntoLines => {
                 // Extract content field and split into array of lines
-                data.get(JSON_FIELD_CONTENT)
+                data.get(RESPONSE_CONTENT)
                     .and_then(|content| content.as_str())
                     .map_or(serde_json::Value::Array(vec![]), |content_str| {
                         let lines: Vec<serde_json::Value> = content_str
@@ -193,8 +191,8 @@ impl ResponseField {
                 response_field_name: name,
                 ..
             } => name,
-            Self::DirectToMetadata => JSON_FIELD_METADATA,
-            Self::BrpRawResultToResult => JSON_FIELD_RESULT,
+            Self::DirectToMetadata => RESPONSE_METADATA,
+            Self::BrpRawResultToResult => RESPONSE_RESULT,
             Self::FormatCorrection => "metadata",
         }
     }

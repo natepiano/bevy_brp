@@ -3,7 +3,7 @@
 use rmcp::Error as McpError;
 
 use super::types::WatchStartResult;
-use crate::constants::{JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITY};
+use crate::constants::{PARAM_COMPONENTS, PARAM_ENTITY};
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
 };
@@ -12,11 +12,11 @@ pub struct BevyGetWatch;
 
 impl LocalToolFnWithPort for BevyGetWatch {
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
-        let entity_id = match ctx.extract_required_u64(JSON_FIELD_ENTITY, "entity ID") {
+        let entity_id = match ctx.extract_required_u64(PARAM_ENTITY, "entity ID") {
             Ok(id) => id,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
-        let components = ctx.extract_optional_string_array(JSON_FIELD_COMPONENTS);
+        let components = ctx.extract_optional_string_array(PARAM_COMPONENTS);
 
         let port = ctx.port();
         Box::pin(async move {
