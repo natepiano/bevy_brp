@@ -38,15 +38,12 @@ pub const RESPONSE_SHUTDOWN_METHOD: &str = "shutdown_method";
 pub const PARAM_APP_NAME: &str = "app_name";
 pub const PARAM_COMPONENTS: &str = "components";
 pub const PARAM_ENTITY: &str = "entity";
-pub const PARAM_ENTITIES: &str = "entities";
 pub const PARAM_EXAMPLE_NAME: &str = "example_name";
 pub const PARAM_METHOD: &str = "method";
 pub const PARAM_PARAMS: &str = "params";
-pub const PARAM_PARENT: &str = "parent";
 pub const PARAM_PATH: &str = "path";
 pub const PARAM_PORT: &str = "port";
 pub const PARAM_PROFILE: &str = "profile";
-pub const PARAM_RESOURCE: &str = "resource";
 pub const PARAM_WATCH_ID: &str = "watch_id";
 
 // ============================================================================

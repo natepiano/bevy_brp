@@ -41,11 +41,9 @@ use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
 use crate::brp_tools::watch::brp_stop_watch::BrpStopWatch;
 use crate::constants::{
-    PARAM_APP_NAME, PARAM_COMPONENTS, PARAM_ENTITIES, PARAM_ENTITY, PARAM_PARENT, PARAM_PATH,
-    PARAM_RESOURCE, RESPONSE_APP_NAME, RESPONSE_APPS, RESPONSE_COMPONENT_COUNT,
-    RESPONSE_COMPONENTS, RESPONSE_COUNT, RESPONSE_ENTITIES, RESPONSE_ENTITY, RESPONSE_ENTITY_COUNT,
-    RESPONSE_LOG_PATH, RESPONSE_PARENT, RESPONSE_PATH, RESPONSE_PID, RESPONSE_RESOURCE,
-    RESPONSE_SHUTDOWN_METHOD,
+    RESPONSE_APP_NAME, RESPONSE_APPS, RESPONSE_COMPONENT_COUNT, RESPONSE_COMPONENTS,
+    RESPONSE_COUNT, RESPONSE_ENTITIES, RESPONSE_ENTITY, RESPONSE_ENTITY_COUNT, RESPONSE_LOG_PATH,
+    RESPONSE_PARENT, RESPONSE_PATH, RESPONSE_PID, RESPONSE_RESOURCE, RESPONSE_SHUTDOWN_METHOD,
 };
 use crate::log_tools::cleanup_logs::CleanupLogs;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
@@ -72,9 +70,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
                 response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  RESPONSE_ENTITY,
-                    parameter_field_name: RESPONSE_ENTITY,
-                    placement:            FieldPlacement::Metadata,
+                    response_field_name: RESPONSE_ENTITY,
+                    parameter_name:      ParameterName::Entity,
+                    placement:           FieldPlacement::Metadata,
                 }],
             },
         },
@@ -94,9 +92,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITY,
-                        parameter_field_name: PARAM_ENTITY,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITY,
+                        parameter_name:      ParameterName::Entity,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: RESPONSE_COMPONENTS,
@@ -145,14 +143,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully inserted components into entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITY,
-                        parameter_field_name: RESPONSE_ENTITY,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITY,
+                        parameter_name:      ParameterName::Entity,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_COMPONENTS,
-                        parameter_field_name: PARAM_COMPONENTS,
-                        placement:            FieldPlacement::Result,
+                        response_field_name: RESPONSE_COMPONENTS,
+                        parameter_name:      ParameterName::Components,
+                        placement:           FieldPlacement::Result,
                     },
                     ResponseField::FormatCorrection,
                 ],
@@ -179,9 +177,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully inserted/updated resource: {resource}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_RESOURCE,
-                        parameter_field_name: PARAM_RESOURCE,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_RESOURCE,
+                        parameter_name:      ParameterName::Resource,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FormatCorrection,
                 ],
@@ -252,9 +250,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully mutated component on entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITY,
-                        parameter_field_name: PARAM_ENTITY,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITY,
+                        parameter_name:      ParameterName::Entity,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FormatCorrection,
                 ],
@@ -282,9 +280,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully mutated resource: `{resource}`",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_RESOURCE,
-                        parameter_field_name: PARAM_RESOURCE,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_RESOURCE,
+                        parameter_name:      ParameterName::Resource,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FormatCorrection,
                 ],
@@ -352,14 +350,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully removed components from entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITY,
-                        parameter_field_name: PARAM_ENTITY,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITY,
+                        parameter_name:      ParameterName::Entity,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_COMPONENTS,
-                        parameter_field_name: PARAM_COMPONENTS,
-                        placement:            FieldPlacement::Result,
+                        response_field_name: RESPONSE_COMPONENTS,
+                        parameter_name:      ParameterName::Components,
+                        placement:           FieldPlacement::Result,
                     },
                 ],
             },
@@ -378,9 +376,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Successfully removed resource",
                 response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  RESPONSE_RESOURCE,
-                    parameter_field_name: PARAM_RESOURCE,
-                    placement:            FieldPlacement::Metadata,
+                    response_field_name: RESPONSE_RESOURCE,
+                    parameter_name:      ParameterName::Resource,
+                    placement:           FieldPlacement::Metadata,
                 }],
             },
         },
@@ -397,14 +395,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully reparented entities",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITIES,
-                        parameter_field_name: PARAM_ENTITIES,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITIES,
+                        parameter_name:      ParameterName::Entities,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_PARENT,
-                        parameter_field_name: PARAM_PARENT,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_PARENT,
+                        parameter_name:      ParameterName::Parent,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -496,9 +494,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Successfully captured screenshot",
                 response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name:  RESPONSE_PATH,
-                    parameter_field_name: PARAM_PATH,
-                    placement:            FieldPlacement::Metadata,
+                    response_field_name: RESPONSE_PATH,
+                    parameter_name:      ParameterName::Path,
+                    placement:           FieldPlacement::Metadata,
                 }],
             },
         },
@@ -588,9 +586,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITY,
-                        parameter_field_name: "entity",
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITY,
+                        parameter_name:      ParameterName::Entity,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -619,9 +617,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_ENTITY,
-                        parameter_field_name: "entity",
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_ENTITY,
+                        parameter_name:      ParameterName::Entity,
+                        placement:           FieldPlacement::Metadata,
                     },
                 ],
             },
@@ -1003,9 +1001,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Status check for `{app_name}` on port {port}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name:  RESPONSE_APP_NAME,
-                        parameter_field_name: PARAM_APP_NAME,
-                        placement:            FieldPlacement::Metadata,
+                        response_field_name: RESPONSE_APP_NAME,
+                        parameter_name:      ParameterName::AppName,
+                        placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: "app_running",

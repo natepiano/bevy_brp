@@ -57,10 +57,13 @@ pub fn create_request_field_extractor(field: &'static str) -> FieldExtractor {
 pub fn create_response_field_extractor(field: &ResponseField) -> (FieldExtractor, FieldPlacement) {
     match field {
         ResponseField::FromRequest {
-            parameter_field_name: field,
+            parameter_name,
             placement,
             ..
-        } => (create_request_field_extractor(field), placement.clone()),
+        } => (
+            create_request_field_extractor(parameter_name.into()),
+            placement.clone(),
+        ),
         ResponseField::FromResponse {
             response_extractor: extractor,
             placement,

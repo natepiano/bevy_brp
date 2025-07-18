@@ -1,4 +1,5 @@
 use crate::constants::{RESPONSE_CONTENT, RESPONSE_COUNT, RESPONSE_METADATA, RESPONSE_RESULT};
+use crate::tool::ParameterName;
 
 /// Extract a nested field from JSON data using dot notation
 ///
@@ -48,11 +49,11 @@ pub enum ResponseField {
     /// the parameter extraction phase, with explicit control over where the field is placed.
     FromRequest {
         /// Name of the field to be output in the response
-        response_field_name:  &'static str,
-        /// Field name in the tool call request parameters
-        parameter_field_name: &'static str,
+        response_field_name: &'static str,
+        /// Parameter name from the tool call request parameters
+        parameter_name:      ParameterName,
         /// Where to place this field in the response
-        placement:            FieldPlacement,
+        placement:           FieldPlacement,
     },
     /// Extract a field from response data with explicit placement.
     ///
