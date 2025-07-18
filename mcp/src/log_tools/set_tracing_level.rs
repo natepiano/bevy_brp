@@ -4,7 +4,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::{HandlerContext, NoMethod, NoPort};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from setting the tracing level
@@ -25,7 +25,7 @@ impl HandlerResult for SetTracingLevelResult {
 pub struct SetTracingLevel;
 
 impl LocalToolFn for SetTracingLevel {
-    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         // Extract the required level parameter before the async block
         let level_str = match ctx.extract_required_string("level", "tracing level") {
             Ok(s) => s.to_string(),

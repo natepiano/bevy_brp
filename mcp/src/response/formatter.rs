@@ -57,15 +57,15 @@ impl ResponseFormatter {
         Self { config }
     }
 
-    pub fn format_success_with_corrections<T>(
+    pub fn format_success_with_corrections<Port, Method>(
         &self,
         data: &Value,
-        handler_context: &HandlerContext<T>,
+        handler_context: &HandlerContext<Port, Method>,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
     ) -> CallToolResult
     where
-        HandlerContext<T>: HasCallInfo,
+        HandlerContext<Port, Method>: HasCallInfo,
     {
         // First build the response
         let response_result = self.build_success_response_with_corrections(
@@ -111,20 +111,17 @@ impl ResponseFormatter {
         }
     }
 
-    fn build_success_response_with_corrections<T>(
+    fn build_success_response_with_corrections<Port, Method>(
         &self,
         data: &Value,
-        handler_context: &HandlerContext<T>,
+        handler_context: &HandlerContext<Port, Method>,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
     ) -> Result<JsonResponse>
     where
-        HandlerContext<T>: HasCallInfo,
+        HandlerContext<Port, Method>: HasCallInfo,
     {
-        let type_name = std::any::type_name::<T>()
-            .split("::")
-            .last()
-            .unwrap_or("Unknown");
+        let type_name = "HandlerContext";
         tracing::debug!(
             "build_success_response<{}>: response_fields count = {}",
             type_name,
@@ -163,8 +160,8 @@ impl ResponseFormatter {
     }
 
     /// Initialize template values with original parameters
-    fn initialize_template_values<T>(
-        handler_context: &HandlerContext<T>,
+    fn initialize_template_values<Port, Method>(
+        handler_context: &HandlerContext<Port, Method>,
     ) -> serde_json::Map<String, Value> {
         let mut template_values = serde_json::Map::new();
         if let Some(params) = &handler_context.request.arguments {
@@ -194,12 +191,12 @@ impl ResponseFormatter {
     }
 
     /// Add configured fields and collect their values for template substitution
-    fn add_configured_fields<T>(
+    fn add_configured_fields<Port, Method>(
         &self,
         builder: &mut ResponseBuilder,
         clean_data: &Value,
         mut template_values: serde_json::Map<String, Value>,
-        handler_context: &HandlerContext<T>,
+        handler_context: &HandlerContext<Port, Method>,
     ) -> Result<serde_json::Map<String, Value>> {
         for (field_name, extractor, placement) in &self.config.success_fields {
             let value = extractor(clean_data, handler_context);
@@ -291,9 +288,9 @@ fn substitute_template(template: &str, params: Option<&Value>) -> String {
 impl ResponseFormatter {
     /// Add format corrections to the response builder - with internal method check
     #[allow(clippy::too_many_lines)]
-    fn add_format_corrections<T>(
+    fn add_format_corrections<Port, Method>(
         builder: &mut ResponseBuilder,
-        handler_context: &HandlerContext<T>,
+        handler_context: &HandlerContext<Port, Method>,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
         brp_method_name: Option<&str>,
@@ -442,13 +439,13 @@ impl ResponseFormatter {
 /// This function serves as the primary formatting entry point for all handler types.
 /// It automatically detects error vs success responses and applies appropriate formatting,
 /// including format correction handling for BRP results.
-pub fn format_tool_call_result<T>(
+pub fn format_tool_call_result<Port, Method>(
     result: std::result::Result<serde_json::Value, McpError>,
-    handler_context: &HandlerContext<T>,
+    handler_context: &HandlerContext<Port, Method>,
     formatter_config: FormatterConfig,
 ) -> std::result::Result<CallToolResult, McpError>
 where
-    HandlerContext<T>: HasCallInfo,
+    HandlerContext<Port, Method>: HasCallInfo,
 {
     match result {
         Ok(value) => {

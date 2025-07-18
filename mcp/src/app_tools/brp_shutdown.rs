@@ -6,7 +6,7 @@ use tracing::debug;
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_APP_NAME};
 use crate::error::{Error, Result};
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::{HandlerContext, HasPort, NoMethod};
 use crate::tool::{
     BRP_METHOD_EXTRAS_SHUTDOWN, HandlerResponse, HandlerResult, LocalToolFnWithPort,
 };
@@ -120,12 +120,13 @@ fn handle_kill_process_fallback(
 pub struct Shutdown;
 
 impl LocalToolFnWithPort for Shutdown {
-    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
         let app_name = match ctx.extract_required_string(PARAM_APP_NAME, "app name") {
             Ok(name) => name.to_string(),
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
+        let port = ctx.port();
         Box::pin(async move {
             handle_impl(&app_name, port)
                 .await

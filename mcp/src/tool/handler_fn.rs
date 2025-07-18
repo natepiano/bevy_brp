@@ -18,6 +18,9 @@ impl HasFormatterConfig for ToolContext {
     fn formatter_config(&self) -> FormatterConfig {
         match self {
             Self::Local(local_ctx) => create_formatter_from_def(local_ctx),
+            Self::LocalWithPort(local_with_port_ctx) => {
+                create_formatter_from_def(local_with_port_ctx)
+            }
             Self::Brp(brp_ctx) => create_formatter_from_def(brp_ctx),
         }
     }
@@ -54,22 +57,13 @@ impl HandlerFn {
                     .map(|typed_result| typed_result.to_json());
                 format_tool_call_result(result, local_ctx, formatter_config)
             }),
-            (Self::LocalWithPort(handler), ToolContext::Local(local_ctx)) => {
-                let Some(port) = local_ctx.port() else {
-                    return Box::pin(async move {
-                        Err(McpError::invalid_params(
-                            "WithPort handler called without port parameter",
-                            None,
-                        ))
-                    });
-                };
-
+            (Self::LocalWithPort(handler), ToolContext::LocalWithPort(local_with_port_ctx)) => {
                 Box::pin(async move {
                     let result = handler
-                        .call(local_ctx, port)
+                        .call(local_with_port_ctx)
                         .await
                         .map(|typed_result| typed_result.to_json());
-                    format_tool_call_result(result, local_ctx, formatter_config)
+                    format_tool_call_result(result, local_with_port_ctx, formatter_config)
                 })
             }
             (Self::Brp { handler, .. }, ToolContext::Brp(brp_ctx)) => {
@@ -123,7 +117,9 @@ impl HandlerFn {
 }
 
 /// Create formatter config from tool definition (generic for all context types)
-fn create_formatter_from_def<T>(handler_context: &HandlerContext<T>) -> FormatterConfig {
+fn create_formatter_from_def<Port, Method>(
+    handler_context: &HandlerContext<Port, Method>,
+) -> FormatterConfig {
     // Build the formatter config from the response specification
     handler_context
         .tool_def()

@@ -5,7 +5,7 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use super::HandlerFn;
-use crate::service::{BrpContext, HandlerContext, LocalContext};
+use crate::service::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
 
 /// Unified tool handler that works with any `HandlerFn` variant
 pub struct ToolHandler {
@@ -46,25 +46,26 @@ pub trait HandlerResult: Send + Sync {
 /// Trait for local handlers using function pointer approach
 pub trait LocalToolFn: Send + Sync {
     /// Handle the request and return a typed result
-    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_>;
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_>;
 }
 
-/// Trait for local handlers using function pointer approach
+/// Trait for local handlers with port - no separate port parameter needed
 pub trait LocalToolFnWithPort: Send + Sync {
-    /// Handle the request and return a typed result
-    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_>;
+    /// Handle the request and return a typed result - handlers call `ctx.port()` directly
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_>;
 }
 
 /// Trait for BRP handlers that return `HandlerResponse` (unified with local handlers)
 pub trait BrpToolFn: Send + Sync {
-    fn call(&self, ctx: &HandlerContext<BrpContext>) -> HandlerResponse<'_>;
+    fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<'_>;
 }
 
-/// Unified context that wraps both Local and BRP handler contexts
+/// Unified context that wraps Local, `LocalWithPort`, and BRP handler contexts
 #[derive(Clone)]
 pub enum ToolContext {
-    Local(HandlerContext<LocalContext>),
-    Brp(HandlerContext<BrpContext>),
+    Local(HandlerContext<NoPort, NoMethod>),          // For Local
+    LocalWithPort(HandlerContext<HasPort, NoMethod>), // For LocalWithPort
+    Brp(HandlerContext<HasPort, HasMethod>),          // For Brp
 }
 
 /// BRP method source specification for tool handlers

@@ -4,18 +4,19 @@ use rmcp::Error as McpError;
 
 use super::types::WatchStartResult;
 use crate::constants::JSON_FIELD_ENTITY;
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::{HandlerContext, HasPort, NoMethod};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFnWithPort};
 
 pub struct BevyListWatch;
 
 impl LocalToolFnWithPort for BevyListWatch {
-    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
         let entity_id = match ctx.extract_required_u64(JSON_FIELD_ENTITY, "entity ID") {
             Ok(id) => id,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
+        let port = ctx.port();
         Box::pin(async move {
             handle_impl(entity_id, port)
                 .await

@@ -9,16 +9,18 @@ use rmcp::Error as McpError;
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::HandlerContext;
 
 /// Typed handler wrapper for binary listing operations that fetches search paths
-pub async fn handle_list_binaries<F, Fut, T>(
-    handler_context: &HandlerContext<LocalContext>,
+pub async fn handle_list_binaries<F, Fut, T, Port, Method>(
+    handler_context: &HandlerContext<Port, Method>,
     handler: F,
 ) -> Result<T, McpError>
 where
-    F: FnOnce(Vec<PathBuf>) -> Fut,
-    Fut: Future<Output = Result<T, McpError>>,
+    F: FnOnce(Vec<PathBuf>) -> Fut + Send,
+    Fut: Future<Output = Result<T, McpError>> + Send,
+    Port: Send + Sync,
+    Method: Send + Sync,
 {
     let search_paths = handler_context.roots.clone();
     handler(search_paths).await

@@ -7,7 +7,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::{HandlerContext, HasPort, NoMethod};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFnWithPort};
 
 /// Marker type for App launch configuration
@@ -96,8 +96,8 @@ pub struct LaunchParams {
 }
 
 /// Extract common launch parameters from an MCP request
-pub fn extract_launch_params<T>(
-    ctx: &HandlerContext<T>,
+pub fn extract_launch_params<Port, Method>(
+    ctx: &HandlerContext<Port, Method>,
     target_param_name: &str,
     target_type_name: &str,
     default_profile: &str,
@@ -140,14 +140,14 @@ impl<T: FromLaunchParams> GenericLaunchHandler<T> {
 }
 
 impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
-    fn call(&self, ctx: &HandlerContext<LocalContext>, port: u16) -> HandlerResponse<'_> {
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
         // Extract parameters
         let params = match extract_launch_params(
             ctx,
             self.target_param_name,
             self.target_type_name,
             self.default_profile,
-            port,
+            ctx.port(),
         ) {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),

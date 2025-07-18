@@ -14,7 +14,7 @@ pub trait RequestParameterProvider {
 }
 
 /// Implementation for `HandlerContext`
-impl<T> RequestParameterProvider for HandlerContext<T> {
+impl<Port, Method> RequestParameterProvider for HandlerContext<Port, Method> {
     fn get_request_parameter(&self, field: &str) -> Option<&Value> {
         self.request.arguments.as_ref()?.get(field)
     }

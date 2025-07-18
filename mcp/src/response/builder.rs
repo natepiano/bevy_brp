@@ -31,10 +31,17 @@ pub enum ResponseStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CallInfo {
-    /// Local tool execution (no BRP involved)
+    /// Local tool execution (no BRP involved, no port)
     Local {
         /// The MCP tool name (e.g., "`brp_status`")
         mcp_tool: String,
+    },
+    /// Local tool with port (no BRP involved, but uses port)
+    LocalWithPort {
+        /// The MCP tool name (e.g., "`brp_launch_bevy_app`")
+        mcp_tool: String,
+        /// The port number
+        port:     u16,
     },
     /// BRP tool execution (calls Bevy Remote Protocol)
     Brp {
@@ -51,6 +58,11 @@ impl CallInfo {
     /// Create `CallInfo` for a local tool
     pub const fn local(mcp_tool: String) -> Self {
         Self::Local { mcp_tool }
+    }
+
+    /// Create `CallInfo` for a local tool with port
+    pub const fn local_with_port(mcp_tool: String, port: u16) -> Self {
+        Self::LocalWithPort { mcp_tool, port }
     }
 
     /// Create `CallInfo` for a BRP tool

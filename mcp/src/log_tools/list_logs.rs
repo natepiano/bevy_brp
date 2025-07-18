@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::constants::PARAM_APP_NAME;
 use crate::log_tools::support;
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::{HandlerContext, NoMethod, NoPort};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Result from listing log files
@@ -28,7 +28,7 @@ impl HandlerResult for ListLogResult {
 pub struct ListLogs;
 
 impl LocalToolFn for ListLogs {
-    fn call(&self, ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         // Extract optional app name filter
         let app_name_filter = ctx.extract_optional_string(PARAM_APP_NAME, "");
 

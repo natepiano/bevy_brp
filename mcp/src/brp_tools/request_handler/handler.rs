@@ -7,7 +7,7 @@ use super::format_discovery::{
 use super::types::BrpMethodResult;
 use crate::brp_tools::support::brp_client::BrpResult;
 use crate::error;
-use crate::service::{BrpContext, HandlerContext};
+use crate::service::{HandlerContext, HasMethod, HasPort};
 use crate::tool::{BrpToolFn, HandlerResponse, HandlerResult};
 
 /// BRP method handler V2 that implements `BrpToolFnV2` and returns `HandlerResponse`
@@ -39,7 +39,7 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 }
 
 impl BrpToolFn for BrpMethodHandlerV2 {
-    fn call(&self, ctx: &HandlerContext<BrpContext>) -> HandlerResponse<'_> {
+    fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<'_> {
         let ctx = ctx.clone();
 
         Box::pin(async move {
@@ -62,9 +62,9 @@ impl BrpToolFn for BrpMethodHandlerV2 {
 }
 
 /// Convert `EnhancedBrpResult` to `BrpMethodResult`
-fn convert_to_brp_method_result(
+fn convert_to_brp_method_result<Port, Method>(
     enhanced_result: EnhancedBrpResult,
-    ctx: &HandlerContext<BrpContext>,
+    ctx: &HandlerContext<Port, Method>,
 ) -> BrpMethodResult {
     match enhanced_result.result {
         BrpResult::Success(data) => {
@@ -125,10 +125,10 @@ fn convert_to_brp_method_result(
 }
 
 /// Enhance error message with format discovery insights
-fn enhance_error_message(
+fn enhance_error_message<Port, Method>(
     err: &crate::brp_tools::support::brp_client::BrpError,
     enhanced_result: &EnhancedBrpResult,
-    _ctx: &HandlerContext<BrpContext>,
+    _ctx: &HandlerContext<Port, Method>,
 ) -> String {
     // Check if the enhanced result has a different error message
     if let BrpResult::Error(enhanced_error) = &enhanced_result.result {
@@ -151,10 +151,10 @@ fn enhance_error_message(
 }
 
 /// Enhance error data with format corrections
-const fn enhance_error_data(
+const fn enhance_error_data<Port, Method>(
     original_data: Option<Value>,
     _enhanced_result: &EnhancedBrpResult,
-    _ctx: &HandlerContext<BrpContext>,
+    _ctx: &HandlerContext<Port, Method>,
 ) -> Option<Value> {
     // V2 handler no longer duplicates format correction data in error_data
     // Format corrections are handled through ResponseField::FormatCorrection extractor

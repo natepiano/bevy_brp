@@ -2,10 +2,31 @@ use std::path::PathBuf;
 
 use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::response::CallInfo;
-use crate::tool::ToolDef;
+use crate::tool::{ParamType, ToolDef};
+
+/// Capability types that hold data for compile-time access control
+/// Capability type indicating no port is available
+#[derive(Clone)]
+pub struct NoPort;
+
+/// Capability type indicating a port is available with stored data
+#[derive(Clone)]
+pub struct HasPort {
+    pub port: u16,
+}
+
+/// Capability type indicating no method is available  
+#[derive(Clone)]
+pub struct NoMethod;
+
+/// Capability type indicating a method is available with stored data
+#[derive(Clone)]
+pub struct HasMethod {
+    pub method: String,
+}
 
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
@@ -14,34 +35,38 @@ pub trait HasCallInfo {
 
 /// Context passed to all handlers containing service, request, and MCP context
 #[derive(Clone)]
-pub struct HandlerContext<T = ()> {
-    pub(super) tool_def:     ToolDef,
-    pub request:             CallToolRequestParam,
-    pub roots:               Vec<PathBuf>,
-    pub(super) handler_data: T,
+pub struct HandlerContext<Port = NoPort, Method = NoMethod> {
+    pub(super) tool_def: ToolDef,
+    pub request:         CallToolRequestParam,
+    pub roots:           Vec<PathBuf>,
+    // Store capability types directly - they contain the actual data
+    port_capability:     Port,
+    method_capability:   Method,
 }
 
-// Note: Generic HandlerContext::new() removed - use HandlerContext<BaseContext>::new() instead
+// Note: HandlerContext now uses capability-based types directly via HandlerContext::with_data()
 
-impl<T> HandlerContext<T> {
-    /// Create a new `HandlerContext` with specific handler data
+impl<Port, Method> HandlerContext<Port, Method> {
+    /// Create a new `HandlerContext` with specific capabilities
     pub(crate) const fn with_data(
         tool_def: ToolDef,
         request: CallToolRequestParam,
         roots: Vec<PathBuf>,
-        handler_data: T,
+        port_capability: Port,
+        method_capability: Method,
     ) -> Self {
         Self {
             tool_def,
             request,
             roots,
-            handler_data,
+            port_capability,
+            method_capability,
         }
     }
 }
 
 // Common methods available for all HandlerContext types
-impl<T> HandlerContext<T> {
+impl<Port, Method> HandlerContext<Port, Method> {
     /// Get tool definition by looking up the request name in the service's tool registry
     ///
     /// # Errors
@@ -180,7 +205,7 @@ impl<T> HandlerContext<T> {
         if path.is_empty() { None } else { Some(path) }
     }
 
-    // Note: extract_method_param() and extract_port() moved to HandlerContext<BaseContext>
+    // Note: extract_method_param() and extract_port() now available on all HandlerContext types
 
     /// Generic helper for extracting typed parameters with unified required/optional logic
     ///
@@ -233,6 +258,150 @@ impl<T> HandlerContext<T> {
                     |extracted| Ok(Some(extracted)),
                 )
             },
+        )
+    }
+}
+
+// Capability-based method access - Port access only available when Port = HasPort
+impl<Method> HandlerContext<HasPort, Method> {
+    /// Get the port number - only available when port capability is present
+    pub const fn port(&self) -> u16 {
+        self.port_capability.port // Direct access to data in HasPort
+    }
+}
+
+// Capability-based method access - Method access only available when Method = HasMethod
+impl<Port> HandlerContext<Port, HasMethod> {
+    /// Get the BRP method name - only available when method capability is present
+    pub fn brp_method(&self) -> &str {
+        &self.method_capability.method // Direct access to data in HasMethod
+    }
+
+    /// Extract brp method parameters from tool definition
+    pub fn extract_params_from_definition(&self) -> Result<Option<Value>, McpError> {
+        // Build params from parameter definitions
+        let mut params_obj = serde_json::Map::new();
+        let mut has_params = false;
+
+        for param in self.tool_def.parameters() {
+            // Extract parameter value based on type
+            let value = match param.param_type() {
+                ParamType::Number => self
+                    .extract_typed_param(
+                        param.name(),
+                        param.description(),
+                        param.required(),
+                        Value::as_u64,
+                    )?
+                    .map(|v| json!(v)),
+                ParamType::String => self
+                    .extract_typed_param(
+                        param.name(),
+                        param.description(),
+                        param.required(),
+                        |v| v.as_str().map(std::string::ToString::to_string),
+                    )?
+                    .map(|s| json!(s)),
+                ParamType::Boolean => self
+                    .extract_typed_param(
+                        param.name(),
+                        param.description(),
+                        param.required(),
+                        Value::as_bool,
+                    )?
+                    .map(|b| json!(b)),
+                ParamType::StringArray => self
+                    .extract_typed_param(
+                        param.name(),
+                        param.description(),
+                        param.required(),
+                        |v| {
+                            v.as_array().and_then(|arr| {
+                                arr.iter()
+                                    .map(|item| item.as_str())
+                                    .collect::<Option<Vec<_>>>()
+                                    .map(|strings| {
+                                        strings
+                                            .into_iter()
+                                            .map(String::from)
+                                            .collect::<Vec<String>>()
+                                    })
+                            })
+                        },
+                    )?
+                    .map(|array| json!(array)),
+                ParamType::NumberArray => self
+                    .extract_typed_param(
+                        param.name(),
+                        param.description(),
+                        param.required(),
+                        |v| {
+                            v.as_array().and_then(|arr| {
+                                arr.iter().map(Value::as_u64).collect::<Option<Vec<_>>>()
+                            })
+                        },
+                    )?
+                    .map(|array| json!(array)),
+                ParamType::Any => self.extract_typed_param(
+                    param.name(),
+                    param.description(),
+                    param.required(),
+                    |v| Some(v.clone()),
+                )?,
+                ParamType::DynamicParams => {
+                    // For dynamic params, extract the value and return it directly as BRP
+                    // parameters
+                    let dynamic_value = self.extract_typed_param(
+                        param.name(),
+                        param.description(),
+                        param.required(),
+                        |v| Some(v.clone()),
+                    )?;
+                    return Ok(dynamic_value);
+                }
+            };
+
+            // Add to params if value exists
+            if let Some(val) = value {
+                params_obj.insert(param.name().to_string(), val);
+                has_params = true;
+            }
+        }
+
+        // Return params
+        let params = if has_params {
+            Some(Value::Object(params_obj))
+        } else {
+            None
+        };
+
+        Ok(params)
+    }
+}
+
+// HasCallInfo implementations for each capability combination
+
+// Local tools (no port, no method)
+impl HasCallInfo for HandlerContext<NoPort, NoMethod> {
+    fn call_info(&self) -> CallInfo {
+        CallInfo::local(self.request.name.to_string())
+    }
+}
+
+// Local tools with port (has port, no method)
+impl HasCallInfo for HandlerContext<HasPort, NoMethod> {
+    fn call_info(&self) -> CallInfo {
+        CallInfo::local_with_port(self.request.name.to_string(), self.port())
+    }
+}
+
+// BRP tools (has port and method)
+impl HasCallInfo for HandlerContext<HasPort, HasMethod> {
+    fn call_info(&self) -> CallInfo {
+        CallInfo::brp(
+            self.request.name.to_string(),
+            self.brp_method().to_string(),
+            self.port(),
         )
     }
 }

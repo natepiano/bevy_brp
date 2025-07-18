@@ -4,7 +4,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::service::{HandlerContext, LocalContext};
+use crate::service::{HandlerContext, NoMethod, NoPort};
 use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
 
 /// Individual watch information
@@ -44,7 +44,7 @@ impl HandlerResult for ListActiveWatchesResult {
 pub struct BrpListActiveWatches;
 
 impl LocalToolFn for BrpListActiveWatches {
-    fn call(&self, _ctx: &HandlerContext<LocalContext>) -> HandlerResponse<'_> {
+    fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         Box::pin(async move {
             handle_impl()
                 .await

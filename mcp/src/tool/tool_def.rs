@@ -64,38 +64,45 @@ impl ToolDef {
         request: CallToolRequestParam,
         roots: Vec<PathBuf>,
     ) -> Result<ToolHandler, McpError> {
-        use crate::service::{BaseContext, HandlerContext};
+        use crate::service::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
         use crate::tool::types::ToolContext;
 
-        // Create base context - the ONLY way to start
-        let base_ctx = HandlerContext::<BaseContext>::new(self.clone(), request, roots);
-
+        // Direct context creation - pure capability-based approach
         match &self.handler {
             HandlerFn::Local(_) => {
-                // Local tool - no port needed
-                let local_handler_context = base_ctx.into_local(None);
-                let tool_context = ToolContext::Local(local_handler_context);
+                // Create HandlerContext<NoPort, NoMethod>
+                let ctx = HandlerContext::with_data(self.clone(), request, roots, NoPort, NoMethod);
+                let tool_context = ToolContext::Local(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
             HandlerFn::LocalWithPort(_) => {
-                // Local tool with port
-                let port = base_ctx.extract_port()?;
-                let local_handler_context = base_ctx.into_local(Some(port));
-                let tool_context = ToolContext::Local(local_handler_context);
+                // Extract port and create HandlerContext<HasPort, NoMethod>
+                let port = extract_port_directly(&request)?;
+                let ctx = HandlerContext::with_data(
+                    self.clone(),
+                    request,
+                    roots,
+                    HasPort { port },
+                    NoMethod,
+                );
+                let tool_context = ToolContext::LocalWithPort(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
             HandlerFn::Brp { method_source, .. } => {
-                // BRP tool
-                let port = base_ctx.extract_port()?;
+                // Extract port and method, create HandlerContext<HasPort, HasMethod>
+                let port = extract_port_directly(&request)?;
                 let method = match method_source {
                     BrpMethodSource::Static(method_name) => (*method_name).to_string(),
-                    BrpMethodSource::Dynamic => base_ctx.extract_method_param()?,
+                    BrpMethodSource::Dynamic => extract_method_directly(&request)?,
                 };
-
-                // Transition to BrpContext
-                let brp_handler_context = base_ctx.into_brp(method, port);
-                let tool_context = ToolContext::Brp(brp_handler_context);
-
+                let ctx = HandlerContext::with_data(
+                    self.clone(),
+                    request,
+                    roots,
+                    HasPort { port },
+                    HasMethod { method },
+                );
+                let tool_context = ToolContext::Brp(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
         }
@@ -156,4 +163,47 @@ impl ToolDef {
             input_schema: builder.build(),
         }
     }
+}
+
+/// Extract port parameter directly from request arguments\
+/// Used during context creation, then discarded
+fn extract_port_directly(request: &CallToolRequestParam) -> Result<u16, McpError> {
+    use crate::constants::{DEFAULT_BRP_PORT, PARAM_PORT, VALID_PORT_RANGE};
+
+    let port_u64 = request
+        .arguments
+        .as_ref()
+        .and_then(|args| args.get(PARAM_PORT))
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or_else(|| u64::from(DEFAULT_BRP_PORT));
+
+    let port = u16::try_from(port_u64).map_err(|_| {
+        McpError::invalid_params("Invalid port parameter: value too large for u16", None)
+    })?;
+
+    // Validate port range (1024-65535 for non-privileged ports)
+    if !VALID_PORT_RANGE.contains(&port) {
+        return Err(McpError::invalid_params(
+            format!(
+                "Invalid port {port}: must be in range {}-{}",
+                VALID_PORT_RANGE.start(),
+                VALID_PORT_RANGE.end()
+            ),
+            None,
+        ));
+    }
+
+    Ok(port)
+}
+
+/// Extract method parameter directly from request arguments
+/// Used during context creation, then discarded
+fn extract_method_directly(request: &CallToolRequestParam) -> Result<String, McpError> {
+    request
+        .arguments
+        .as_ref()
+        .and_then(|args| args.get("method"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| McpError::invalid_params("Missing method parameter", None))
+        .map(std::string::ToString::to_string)
 }
