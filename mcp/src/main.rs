@@ -8,17 +8,17 @@
 
 use std::error::Error;
 
+use mcp_service::McpService;
 use rmcp::ServiceExt;
 use rmcp::transport::stdio;
-use service::McpService;
 
 mod app_tools;
 mod brp_tools;
 mod constants;
 mod error;
 mod log_tools;
+mod mcp_service;
 mod response;
-mod service;
 mod tool;
 
 #[tokio::main]

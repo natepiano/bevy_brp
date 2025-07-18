@@ -5,7 +5,7 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
 use super::HandlerFn;
-use crate::service::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
+use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
 
 /// Unified tool handler that works with any `HandlerFn` variant
 pub struct ToolHandler {

@@ -6,7 +6,7 @@
 use serde_json::Value;
 
 use crate::response::{FieldPlacement, ResponseExtractorType, ResponseField};
-use crate::service::HandlerContext;
+use crate::tool::HandlerContext;
 
 /// Trait for contexts that can provide request parameters
 pub trait RequestParameterProvider {

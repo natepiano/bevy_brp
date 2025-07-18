@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::constants::JSON_FIELD_WATCH_ID;
-use crate::service::{HandlerContext, NoMethod, NoPort};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]

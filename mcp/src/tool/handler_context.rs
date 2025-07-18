@@ -4,8 +4,9 @@ use rmcp::Error as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::{Value, json};
 
+use super::parameters::ParamType;
 use crate::response::CallInfo;
-use crate::tool::{ParamType, ToolDef};
+use crate::tool::ToolDef;
 
 /// Capability types that hold data for compile-time access control
 /// Capability type indicating no port is available
@@ -18,7 +19,7 @@ pub struct HasPort {
     pub port: u16,
 }
 
-/// Capability type indicating no method is available  
+/// Capability type indicating no method is available
 #[derive(Clone)]
 pub struct NoMethod;
 

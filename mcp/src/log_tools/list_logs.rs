@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::constants::PARAM_APP_NAME;
 use crate::log_tools::support;
-use crate::service::{HandlerContext, NoMethod, NoPort};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
 
 /// Result from listing log files
 #[derive(Debug, Clone, Serialize, Deserialize)]

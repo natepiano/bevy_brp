@@ -7,8 +7,7 @@ use super::format_discovery::{
 use super::types::BrpMethodResult;
 use crate::brp_tools::support::brp_client::BrpResult;
 use crate::error;
-use crate::service::{HandlerContext, HasMethod, HasPort};
-use crate::tool::{BrpToolFn, HandlerResponse, HandlerResult};
+use crate::tool::{BrpToolFn, HandlerContext, HandlerResponse, HandlerResult, HasMethod, HasPort};
 
 /// BRP method handler V2 that implements `BrpToolFnV2` and returns `HandlerResponse`
 pub struct BrpMethodHandlerV2;

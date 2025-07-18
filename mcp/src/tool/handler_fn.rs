@@ -3,9 +3,9 @@ use std::sync::Arc;
 use rmcp::Error as McpError;
 use rmcp::model::CallToolResult;
 
+use super::handler_context::HandlerContext;
 use super::types::{BrpMethodSource, BrpToolFn};
 use crate::response::{FormatterConfig, format_tool_call_result};
-use crate::service::HandlerContext;
 use crate::tool::types::ToolContext;
 use crate::tool::{LocalToolFn, LocalToolFnWithPort};
 

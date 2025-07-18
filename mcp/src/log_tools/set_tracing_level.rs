@@ -4,8 +4,7 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
-use crate::service::{HandlerContext, NoMethod, NoPort};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
 
 /// Result from setting the tracing level
 #[derive(Debug, Clone, Serialize, Deserialize)]

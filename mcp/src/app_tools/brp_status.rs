@@ -4,8 +4,10 @@ use sysinfo::System;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::PARAM_APP_NAME;
-use crate::service::{HandlerContext, HasPort, NoMethod};
-use crate::tool::{BRP_METHOD_LIST, HandlerResponse, HandlerResult, LocalToolFnWithPort};
+use crate::tool::{
+    BRP_METHOD_LIST, HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort,
+    NoMethod,
+};
 
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]

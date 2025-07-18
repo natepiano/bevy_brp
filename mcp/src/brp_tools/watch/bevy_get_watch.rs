@@ -4,8 +4,9 @@ use rmcp::Error as McpError;
 
 use super::types::WatchStartResult;
 use crate::constants::{JSON_FIELD_COMPONENTS, JSON_FIELD_ENTITY};
-use crate::service::{HandlerContext, HasPort, NoMethod};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFnWithPort};
+use crate::tool::{
+    HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
+};
 
 pub struct BevyGetWatch;
 

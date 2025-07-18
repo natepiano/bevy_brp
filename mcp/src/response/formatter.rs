@@ -35,7 +35,7 @@ use crate::constants::{
     JSON_FIELD_METADATA,
 };
 use crate::error::Result;
-use crate::service::{HandlerContext, HasCallInfo};
+use crate::tool::{HandlerContext, HasCallInfo};
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {

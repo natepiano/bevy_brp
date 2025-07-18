@@ -9,7 +9,7 @@ use rmcp::Error as McpError;
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
-use crate::service::HandlerContext;
+use crate::tool::HandlerContext;
 
 /// Typed handler wrapper for binary listing operations that fetches search paths
 pub async fn handle_list_binaries<F, Fut, T, Port, Method>(

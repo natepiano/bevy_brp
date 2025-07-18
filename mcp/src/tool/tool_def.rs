@@ -64,7 +64,7 @@ impl ToolDef {
         request: CallToolRequestParam,
         roots: Vec<PathBuf>,
     ) -> Result<ToolHandler, McpError> {
-        use crate::service::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
+        use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
         use crate::tool::types::ToolContext;
 
         // Direct context creation - pure capability-based approach

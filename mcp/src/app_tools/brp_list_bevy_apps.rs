@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use super::support::BevyAppsStrategy;
-use crate::service::{HandlerContext, NoMethod, NoPort};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
 
 /// Result from listing Bevy apps
 #[derive(Debug, Clone, Serialize, Deserialize)]

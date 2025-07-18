@@ -1,5 +1,6 @@
 mod constants;
 mod definitions;
+mod handler_context;
 mod handler_fn;
 mod mcp_tool_schema;
 mod parameters;
@@ -14,7 +15,7 @@ pub use constants::{
     BRP_METHOD_SPAWN,
 };
 pub use definitions::get_all_tool_definitions;
+pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMethod, NoPort};
 pub use handler_fn::HandlerFn;
-pub use parameters::ParamType;
 pub use tool_def::ToolDef;
 pub use types::{BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn, LocalToolFnWithPort};

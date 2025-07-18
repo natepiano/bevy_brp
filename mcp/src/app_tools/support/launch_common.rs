@@ -7,8 +7,9 @@ use rmcp::Error as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
-use crate::service::{HandlerContext, HasPort, NoMethod};
-use crate::tool::{HandlerResponse, HandlerResult, LocalToolFnWithPort};
+use crate::tool::{
+    HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
+};
 
 /// Marker type for App launch configuration
 pub struct App;
