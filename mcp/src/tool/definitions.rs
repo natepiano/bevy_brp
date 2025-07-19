@@ -57,7 +57,6 @@ use crate::tool::constants::{
 #[allow(clippy::too_many_lines)]
 pub fn get_all_tool_definitions() -> Vec<ToolDef> {
     vec![
-        // UnifiedToolDef/bevy_destroy
         ToolDef {
             name:            TOOL_BEVY_DESTROY,
             description:     DESC_BEVY_DESTROY,
@@ -77,7 +76,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 }],
             },
         },
-        // UnifiedToolDef/bevy_get
         ToolDef {
             name:            TOOL_BEVY_GET,
             description:     DESC_BEVY_GET,
@@ -120,7 +118,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_get_resource
         ToolDef {
             name:            TOOL_BEVY_GET_RESOURCE,
             description:     DESC_BEVY_GET_RESOURCE,
@@ -138,7 +135,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
-        // UnifiedToolDef/bevy_insert
         ToolDef {
             name:            TOOL_BEVY_INSERT,
             description:     DESC_BEVY_INSERT,
@@ -172,7 +168,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_insert_resource
         ToolDef {
             name:            TOOL_BEVY_INSERT_RESOURCE,
             description:     DESC_BEVY_INSERT_RESOURCE,
@@ -206,7 +201,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_list
         ToolDef {
             name:            TOOL_BEVY_LIST,
             description:     DESC_BEVY_LIST,
@@ -232,7 +226,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_list_resources
         ToolDef {
             name:            TOOL_BEVY_LIST_RESOURCES,
             description:     DESC_BEVY_LIST_RESOURCES,
@@ -258,7 +251,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_mutate_component
         ToolDef {
             name:            TOOL_BEVY_MUTATE_COMPONENT,
             description:     DESC_BEVY_MUTATE_COMPONENT,
@@ -294,7 +286,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_mutate_resource
         ToolDef {
             name:            TOOL_BEVY_MUTATE_RESOURCE,
             description:     DESC_BEVY_MUTATE_RESOURCE,
@@ -329,7 +320,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_query
         ToolDef {
             name:            TOOL_BEVY_QUERY,
             description:     DESC_BEVY_QUERY,
@@ -357,7 +347,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_registry_schema
         ToolDef {
             name:            TOOL_BEVY_REGISTRY_SCHEMA,
             description:     DESC_BEVY_REGISTRY_SCHEMA,
@@ -388,7 +377,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_remove
         ToolDef {
             name:            TOOL_BEVY_REMOVE,
             description:     DESC_BEVY_REMOVE,
@@ -418,7 +406,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_remove_resource
         ToolDef {
             name:            TOOL_BEVY_REMOVE_RESOURCE,
             description:     DESC_BEVY_REMOVE_RESOURCE,
@@ -443,7 +430,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 }],
             },
         },
-        // UnifiedToolDef/bevy_reparent
         ToolDef {
             name:            TOOL_BEVY_REPARENT,
             description:     DESC_BEVY_REPARENT,
@@ -473,7 +459,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_rpc_discover
         ToolDef {
             name:            TOOL_BEVY_RPC_DISCOVER,
             description:     DESC_BEVY_RPC_DISCOVER,
@@ -496,7 +481,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_spawn
         // todo: (later) make this match curl
         ToolDef {
             name:            TOOL_BEVY_SPAWN,
@@ -523,7 +507,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/brp_execute
         // this is the one brp tool that uses dynamic method handling
         // as the user can dynamically pass in the method
         ToolDef {
@@ -544,7 +527,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
-        // UnifiedToolDef/brp_extras_discover_format
         ToolDef {
             name:            TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
             description:     DESC_BRP_EXTRAS_DISCOVER_FORMAT,
@@ -566,7 +548,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
-        // UnifiedToolDef/brp_extras_screenshot
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SCREENSHOT,
             description:     DESC_BRP_EXTRAS_SCREENSHOT,
@@ -591,7 +572,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 }],
             },
         },
-        // UnifiedToolDef/brp_extras_send_keys
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SEND_KEYS,
             description:     DESC_BRP_EXTRAS_SEND_KEYS,
@@ -621,7 +601,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/brp_extras_set_debug_mode
         ToolDef {
             name:            TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
             description:     DESC_BRP_EXTRAS_SET_DEBUG_MODE,
@@ -655,8 +634,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // ultimately we do call bevy/get+watch and bevy/list+watch
         // but we need the local tool in order to set up the watch to stream
         // the results and log them to a file
-
-        // UnifiedToolDef/bevy_get_watch
         ToolDef {
             name:            TOOL_BEVY_GET_WATCH,
             description:     DESC_BEVY_GET_WATCH,
@@ -698,7 +675,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/bevy_list_watch
         ToolDef {
             name:            TOOL_BEVY_LIST_WATCH,
             description:     DESC_BEVY_LIST_WATCH,
@@ -734,7 +710,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/cleanup_logs
         ToolDef {
             name:            TOOL_CLEANUP_LOGS,
             description:     DESC_CLEANUP_LOGS,
@@ -782,7 +757,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/get_trace_log_path
         ToolDef {
             name:            TOOL_GET_TRACE_LOG_PATH,
             description:     DESC_GET_TRACE_LOG_PATH,
@@ -814,7 +788,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/launch_bevy_app
         ToolDef {
             name:            TOOL_LAUNCH_BEVY_APP,
             description:     DESC_LAUNCH_BEVY_APP,
@@ -848,7 +821,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         },
-        // UnifiedToolDef/launch_bevy_example
         ToolDef {
             name:            TOOL_LAUNCH_BEVY_EXAMPLE,
             description:     DESC_LAUNCH_BEVY_EXAMPLE,
@@ -882,7 +854,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![ResponseField::DirectToMetadata],
             },
         },
-        // UnifiedToolDef/list_bevy_apps
         ToolDef {
             name:            TOOL_LIST_BEVY_APPS,
             description:     DESC_LIST_BEVY_APPS,
@@ -909,7 +880,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/list_bevy_examples
         ToolDef {
             name:            TOOL_LIST_BEVY_EXAMPLES,
             description:     DESC_LIST_BEVY_EXAMPLES,
@@ -936,7 +906,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/list_brp_apps
         ToolDef {
             name:            TOOL_LIST_BRP_APPS,
             description:     DESC_LIST_BRP_APPS,
@@ -963,7 +932,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/brp_list_active_watches
         ToolDef {
             name:            TOOL_LIST_ACTIVE_WATCHES,
             description:     DESC_LIST_ACTIVE_WATCHES,
@@ -990,7 +958,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/brp_stop_watch
         ToolDef {
             name:            TOOL_STOP_WATCH,
             description:     DESC_STOP_WATCH,
@@ -1010,7 +977,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![],
             },
         },
-        // LocalToolDef/list_logs
         ToolDef {
             name:            TOOL_LIST_LOGS,
             description:     DESC_LIST_LOGS,
@@ -1053,7 +1019,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/read_log
         ToolDef {
             name:            TOOL_READ_LOG,
             description:     DESC_READ_LOG,
@@ -1126,7 +1091,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // UnifiedToolDef/set_tracing_level
         ToolDef {
             name:            TOOL_SET_TRACING_LEVEL,
             description:     DESC_SET_TRACING_LEVEL,
@@ -1157,7 +1121,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // LocalToolDef/status
         ToolDef {
             name:            TOOL_STATUS,
             description:     DESC_STATUS,
@@ -1198,7 +1161,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ],
             },
         },
-        // LocalToolDef/shutdown
         ToolDef {
             name:            TOOL_SHUTDOWN,
             description:     DESC_SHUTDOWN,

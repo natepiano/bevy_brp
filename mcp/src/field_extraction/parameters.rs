@@ -2,7 +2,7 @@
 
 use strum::{Display, EnumString};
 
-use crate::extraction::{FieldSpec, FieldType};
+use super::extraction::{FieldSpec, ParameterFieldType};
 
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance
@@ -76,7 +76,7 @@ pub enum ParameterName {
 
 impl ParameterName {
     /// Get the expected parameter type for this parameter
-    pub const fn param_type(self) -> FieldType {
+    pub const fn param_type(self) -> ParameterFieldType {
         match self {
             // String parameters
             Self::AppName
@@ -88,7 +88,7 @@ impl ParameterName {
             | Self::Method
             | Self::Path
             | Self::Profile
-            | Self::Resource => FieldType::String,
+            | Self::Resource => ParameterFieldType::String,
 
             // Number parameters
             Self::DurationMs
@@ -96,10 +96,10 @@ impl ParameterName {
             | Self::OlderThanSeconds
             | Self::Parent
             | Self::TailLines
-            | Self::WatchId => FieldType::Number,
+            | Self::WatchId => ParameterFieldType::Number,
 
             // Boolean parameters
-            Self::Enabled | Self::Strict | Self::Verbose => FieldType::Boolean,
+            Self::Enabled | Self::Strict | Self::Verbose => ParameterFieldType::Boolean,
 
             // String array parameters
             Self::Keys
@@ -107,16 +107,16 @@ impl ParameterName {
             | Self::WithCrates
             | Self::WithoutCrates
             | Self::WithTypes
-            | Self::WithoutTypes => FieldType::StringArray,
+            | Self::WithoutTypes => ParameterFieldType::StringArray,
 
             // Number array parameters
-            Self::Entities => FieldType::NumberArray,
+            Self::Entities => ParameterFieldType::NumberArray,
 
             // Any type parameters
-            Self::Components | Self::Data | Self::Filter | Self::Value => FieldType::Any,
+            Self::Components | Self::Data | Self::Filter | Self::Value => ParameterFieldType::Any,
 
             // Special case
-            Self::Params => FieldType::DynamicParams,
+            Self::Params => ParameterFieldType::DynamicParams,
         }
     }
 }
@@ -131,7 +131,7 @@ pub struct Parameter {
     /// Whether this parameter is required
     required:    bool,
     /// Type of the parameter
-    param_type:  FieldType,
+    param_type:  ParameterFieldType,
 }
 
 /// Specifies whether a tool requires a port parameter
@@ -161,7 +161,7 @@ impl Parameter {
     }
 
     /// Get parameter type
-    pub const fn param_type(&self) -> &FieldType {
+    pub const fn param_type(&self) -> &ParameterFieldType {
         &self.param_type
     }
 }
@@ -174,7 +174,7 @@ impl Parameter {
             name: ParameterName::Entity,
             description,
             required,
-            param_type: FieldType::Number,
+            param_type: ParameterFieldType::Number,
         }
     }
 
@@ -184,7 +184,7 @@ impl Parameter {
             name: ParameterName::Resource,
             description,
             required: true,
-            param_type: FieldType::String,
+            param_type: ParameterFieldType::String,
         }
     }
 
@@ -194,7 +194,7 @@ impl Parameter {
             name: ParameterName::Components,
             description,
             required,
-            param_type: FieldType::Any,
+            param_type: ParameterFieldType::Any,
         }
     }
 
@@ -204,7 +204,7 @@ impl Parameter {
             name: ParameterName::Path,
             description,
             required: true,
-            param_type: FieldType::String,
+            param_type: ParameterFieldType::String,
         }
     }
 
@@ -214,7 +214,7 @@ impl Parameter {
             name: ParameterName::Value,
             description,
             required,
-            param_type: FieldType::Any,
+            param_type: ParameterFieldType::Any,
         }
     }
 
@@ -224,7 +224,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: FieldType::Boolean,
+            param_type: ParameterFieldType::Boolean,
         }
     }
 
@@ -234,7 +234,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: FieldType::String,
+            param_type: ParameterFieldType::String,
         }
     }
 
@@ -248,7 +248,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: FieldType::StringArray,
+            param_type: ParameterFieldType::StringArray,
         }
     }
 
@@ -262,7 +262,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: FieldType::NumberArray,
+            param_type: ParameterFieldType::NumberArray,
         }
     }
 
@@ -272,7 +272,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: FieldType::Number,
+            param_type: ParameterFieldType::Number,
         }
     }
 
@@ -282,7 +282,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: FieldType::Any,
+            param_type: ParameterFieldType::Any,
         }
     }
 
@@ -402,18 +402,18 @@ impl Parameter {
             name: ParameterName::Params,
             description,
             required,
-            param_type: FieldType::DynamicParams,
+            param_type: ParameterFieldType::DynamicParams,
         }
     }
 }
 
 // Implement FieldSpec for ParameterName to enable new extraction system
-impl FieldSpec for ParameterName {
+impl FieldSpec<ParameterFieldType> for ParameterName {
     fn field_name(&self) -> &str {
         self.into() // strum converts to snake_case
     }
 
-    fn field_type(&self) -> FieldType {
+    fn field_type(&self) -> ParameterFieldType {
         // Now that ParamType is gone, just return the field type directly
         self.param_type()
     }
