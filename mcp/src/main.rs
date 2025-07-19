@@ -17,6 +17,7 @@ mod brp_tools;
 mod constants;
 mod error;
 mod extraction;
+mod field_extraction;
 mod log_tools;
 mod mcp_service;
 mod response;

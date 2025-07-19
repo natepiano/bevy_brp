@@ -206,7 +206,7 @@ impl From<Value> for ExtractedValue {
     }
 }
 
-/// Parameter field types (no Count or LineSplit).
+/// Parameter field types (no Count or `LineSplit`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParameterFieldType {
     /// A string field
@@ -225,7 +225,7 @@ pub enum ParameterFieldType {
     DynamicParams,
 }
 
-/// Response field types (includes Count and LineSplit).
+/// Response field types (includes Count and `LineSplit`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResponseFieldType {
     /// A string field
@@ -277,8 +277,8 @@ fn extract_number_array(value: &Value) -> Option<ExtractedValue> {
     })
 }
 
-fn extract_any(value: &Value) -> Option<ExtractedValue> {
-    Some(ExtractedValue::Any(value.clone()))
+fn extract_any(value: &Value) -> ExtractedValue {
+    ExtractedValue::Any(value.clone())
 }
 
 fn extract_count(value: &Value) -> Option<ExtractedValue> {
@@ -300,28 +300,28 @@ fn extract_line_split(value: &Value) -> Option<ExtractedValue> {
 
 impl ParameterFieldType {
     /// Extract a value based on the parameter field type.
-    pub(crate) fn extract(&self, value: &Value) -> Option<ExtractedValue> {
+    pub(crate) fn extract(self, value: &Value) -> Option<ExtractedValue> {
         match self {
             Self::String => extract_string(value),
             Self::Number => extract_number(value),
             Self::Boolean => extract_boolean(value),
             Self::StringArray => extract_string_array(value),
             Self::NumberArray => extract_number_array(value),
-            Self::Any | Self::DynamicParams => extract_any(value),
+            Self::Any | Self::DynamicParams => Some(extract_any(value)),
         }
     }
 }
 
 impl ResponseFieldType {
     /// Extract a value based on the response field type.
-    pub(crate) fn extract(&self, value: &Value) -> Option<ExtractedValue> {
+    pub(crate) fn extract(self, value: &Value) -> Option<ExtractedValue> {
         match self {
             Self::String => extract_string(value),
             Self::Number => extract_number(value),
             Self::Boolean => extract_boolean(value),
             Self::StringArray => extract_string_array(value),
             Self::NumberArray => extract_number_array(value),
-            Self::Any => extract_any(value),
+            Self::Any => Some(extract_any(value)),
             Self::Count => extract_count(value),
             Self::LineSplit => extract_line_split(value),
         }
@@ -344,7 +344,7 @@ where
 /// Extract a response field value from a provider based on field specification.
 ///
 /// This function provides type-safe extraction for responses, allowing
-/// all field types including Count and LineSplit.
+/// all field types including Count and `LineSplit`.
 pub fn extract_response_field<P, F>(provider: &P, field: F) -> Option<ExtractedValue>
 where
     P: JsonFieldProvider,
