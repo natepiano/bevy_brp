@@ -4,8 +4,9 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::{Value, json};
 
-use super::parameters::ParameterName;
-use crate::extraction::{ExtractedValue, FieldType, JsonFieldProvider, extract_field};
+use crate::field_extraction::{
+    ExtractedValue, JsonFieldProvider, ParameterFieldType, ParameterName, extract_parameter_field,
+};
 use crate::response::CallInfo;
 use crate::tool::ToolDef;
 
@@ -142,7 +143,7 @@ impl<Port, Method> HandlerContext<Port, Method> {
         };
 
         // Use the new unified extraction system
-        extract_field(&provider, name)
+        extract_parameter_field(&provider, name)
     }
 
     /// Extract a required parameter, returning error if missing or invalid
@@ -219,21 +220,18 @@ impl<Port> HandlerContext<Port, HasMethod> {
 
             // Convert ExtractedValue to JSON
             let json_value = if let Some(extracted) = extracted_value {
-                match param.param_type() {
-                    FieldType::Number => Some(json!(extracted.into_u64()?)),
-                    FieldType::String => Some(json!(extracted.into_string()?)),
-                    FieldType::Boolean => Some(json!(extracted.into_bool()?)),
-                    FieldType::StringArray => Some(json!(extracted.into_string_array()?)),
-                    FieldType::NumberArray => Some(json!(extracted.into_number_array()?)),
-                    FieldType::Any => Some(json!(extracted.into_any()?)),
-                    FieldType::DynamicParams => {
+                match param_name.param_type() {
+                    ParameterFieldType::Number => Some(json!(extracted.into_u64()?)),
+                    ParameterFieldType::String => Some(json!(extracted.into_string()?)),
+                    ParameterFieldType::Boolean => Some(json!(extracted.into_bool()?)),
+                    ParameterFieldType::StringArray => Some(json!(extracted.into_string_array()?)),
+                    ParameterFieldType::NumberArray => Some(json!(extracted.into_number_array()?)),
+                    ParameterFieldType::Any => Some(json!(extracted.into_any()?)),
+                    ParameterFieldType::DynamicParams => {
                         // For dynamic params, return the value directly
                         return Ok(Some(extracted.into_any()?));
-                    }
-                    FieldType::Count | FieldType::LineSplit => {
-                        // These are response-only field types, not used for parameters
-                        unreachable!("Count and LineSplit are response-only field types")
-                    }
+                    } /* Note: Count and LineSplit are not available in ParameterFieldType - type
+                       * safety achieved! */
                 }
             } else {
                 None

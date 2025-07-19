@@ -28,7 +28,6 @@ use super::constants::{
     TOOL_LIST_BEVY_APPS, TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS, TOOL_LIST_LOGS,
     TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
-use super::parameters::{Parameter, ParameterName};
 use super::tool_def::ToolDef;
 use crate::app_tools::brp_launch_bevy_example;
 use crate::app_tools::brp_list_bevy_apps::ListBevyApps;
@@ -41,13 +40,14 @@ use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
 use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
 use crate::brp_tools::watch::brp_stop_watch::BrpStopWatch;
+use crate::field_extraction::{Parameter, ParameterName, ResponseFieldName};
 use crate::log_tools::cleanup_logs::CleanupLogs;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
 use crate::log_tools::read_log::ReadLog;
 use crate::log_tools::set_tracing_level::SetTracingLevel;
 use crate::response::{
-    FieldPlacement, ResponseExtractorType, ResponseField, ResponseFieldName, ResponseSpecification,
+    FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
 };
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,

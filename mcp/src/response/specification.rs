@@ -1,6 +1,23 @@
-use super::fields::ResponseFieldName;
-use crate::extraction::{FieldType, JsonFieldProvider, ResponseFieldSpec, extract_field};
-use crate::tool::ParameterName;
+use crate::field_extraction::{
+    ExtractedValue, FieldSpec, JsonFieldProvider, ParameterName, ResponseFieldName,
+    ResponseFieldType, extract_response_field,
+};
+
+/// Bridge struct for response field extraction using the new type-safe system
+pub struct ResponseFieldSpec {
+    pub field_name: String,
+    pub field_type: ResponseFieldType,
+}
+
+impl FieldSpec<ResponseFieldType> for ResponseFieldSpec {
+    fn field_name(&self) -> &str {
+        &self.field_name
+    }
+
+    fn field_type(&self) -> ResponseFieldType {
+        self.field_type
+    }
+}
 
 /// Implement `JsonFieldProvider` for `serde_json::Value` to enable field extraction
 impl JsonFieldProvider for serde_json::Value {
@@ -134,11 +151,11 @@ impl ResponseExtractorType {
                 // Use unified extraction with Any type for generic field access
                 let spec = ResponseFieldSpec {
                     field_name: (*field_path).to_string(),
-                    field_type: FieldType::Any,
+                    field_type: ResponseFieldType::Any,
                 };
-                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
                     match extracted {
-                        crate::extraction::ExtractedValue::Any(v) => v,
+                        ExtractedValue::Any(v) => v,
                         _ => serde_json::Value::Null,
                     }
                 })
@@ -150,11 +167,11 @@ impl ResponseExtractorType {
                         ResponseFieldName::Count,
                     )
                     .to_string(),
-                    field_type: FieldType::Number,
+                    field_type: ResponseFieldType::Number,
                 };
-                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
                     match extracted {
-                        crate::extraction::ExtractedValue::Number(n) => {
+                        ExtractedValue::Number(n) => {
                             serde_json::Value::Number(serde_json::Number::from(n))
                         }
                         _ => serde_json::Value::Null,
@@ -165,11 +182,11 @@ impl ResponseExtractorType {
                 // Use unified extraction with Count type
                 let spec = ResponseFieldSpec {
                     field_name: (*field_path).to_string(),
-                    field_type: FieldType::Count,
+                    field_type: ResponseFieldType::Count,
                 };
-                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
                     match extracted {
-                        crate::extraction::ExtractedValue::Number(n) => {
+                        ExtractedValue::Number(n) => {
                             serde_json::Value::Number(serde_json::Number::from(n))
                         }
                         _ => serde_json::Value::Null,
@@ -180,11 +197,11 @@ impl ResponseExtractorType {
                 // Use unified extraction with Count type (works for objects too)
                 let spec = ResponseFieldSpec {
                     field_name: (*field_path).to_string(),
-                    field_type: FieldType::Count,
+                    field_type: ResponseFieldType::Count,
                 };
-                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
                     match extracted {
-                        crate::extraction::ExtractedValue::Number(n) => {
+                        ExtractedValue::Number(n) => {
                             serde_json::Value::Number(serde_json::Number::from(n))
                         }
                         _ => serde_json::Value::Null,
@@ -211,12 +228,12 @@ impl ResponseExtractorType {
                         ResponseFieldName::Content,
                     )
                     .to_string(),
-                    field_type: FieldType::LineSplit,
+                    field_type: ResponseFieldType::LineSplit,
                 };
-                extract_field(data, spec).map_or_else(
+                extract_response_field(data, spec).map_or_else(
                     || serde_json::Value::Array(vec![]),
                     |extracted| match extracted {
-                        crate::extraction::ExtractedValue::StringArray(lines) => {
+                        ExtractedValue::StringArray(lines) => {
                             let json_lines: Vec<serde_json::Value> =
                                 lines.into_iter().map(serde_json::Value::String).collect();
                             serde_json::Value::Array(json_lines)

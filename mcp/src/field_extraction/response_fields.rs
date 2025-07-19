@@ -126,17 +126,17 @@ impl ResponseFieldName {
             | Self::TempDirectory => ResponseFieldType::String,
             // Multi-line content fields - use LineSplit
             Self::Content => ResponseFieldType::LineSplit,
-            // Count fields - use special Count type for counting arrays/objects
+            // Count fields - most return regular Number, except specific ones that need Count type
             Self::ComponentCount
-            | Self::Count
             | Self::EntityCount
             | Self::ErrorCount
             | Self::ResourceCount
             | Self::TypeCount
             | Self::MethodCount
             | Self::DeletedCount => ResponseFieldType::Count,
-            // Regular number fields
-            Self::Entity
+            // Regular number fields (including basic Count field for compatibility)
+            Self::Count
+            | Self::Entity
             | Self::Parent
             | Self::Pid
             | Self::DurationMs
@@ -213,12 +213,24 @@ mod tests {
     #[test]
     fn test_field_types() {
         // Test string fields
-        assert_eq!(ResponseFieldName::AppName.field_type(), ResponseFieldType::String);
-        assert_eq!(ResponseFieldName::LogPath.field_type(), ResponseFieldType::String);
+        assert_eq!(
+            ResponseFieldName::AppName.field_type(),
+            ResponseFieldType::String
+        );
+        assert_eq!(
+            ResponseFieldName::LogPath.field_type(),
+            ResponseFieldType::String
+        );
 
         // Test number fields
-        assert_eq!(ResponseFieldName::Count.field_type(), ResponseFieldType::Number);
-        assert_eq!(ResponseFieldName::Entity.field_type(), ResponseFieldType::Number);
+        assert_eq!(
+            ResponseFieldName::Count.field_type(),
+            ResponseFieldType::Number
+        );
+        assert_eq!(
+            ResponseFieldName::Entity.field_type(),
+            ResponseFieldType::Number
+        );
 
         // Test boolean fields
         assert_eq!(
@@ -227,6 +239,9 @@ mod tests {
         );
 
         // Test any fields
-        assert_eq!(ResponseFieldName::Components.field_type(), ResponseFieldType::Any);
+        assert_eq!(
+            ResponseFieldName::Components.field_type(),
+            ResponseFieldType::Any
+        );
     }
 }

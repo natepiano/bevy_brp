@@ -87,7 +87,7 @@ impl HandlerResult for LaunchResult {
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
 use crate::constants::BRP_PORT_ENV_VAR;
-use crate::tool::ParameterName;
+use crate::field_extraction::ParameterName;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {

@@ -8,10 +8,9 @@ use rmcp::model::CallToolRequestParam;
 use super::HandlerFn;
 use super::annotations::BrpToolAnnotations;
 use super::mcp_tool_schema::McpToolSchemaBuilder;
-use super::parameters::{Parameter, PortParameter};
 use super::types::{BrpMethodSource, ToolHandler};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
-use crate::extraction::FieldType;
+use crate::field_extraction::{Parameter, ParameterFieldType, PortParameter};
 use crate::response::ResponseSpecification;
 
 /// Unified tool definition that can handle both BRP and Local tools
@@ -116,34 +115,31 @@ impl ToolDef {
         // Add tool-specific parameters
         for param in self.parameters() {
             builder = match param.param_type() {
-                FieldType::String => {
+                ParameterFieldType::String => {
                     builder.add_string_property(param.name(), param.description(), param.required())
                 }
-                FieldType::Number => {
+                ParameterFieldType::Number => {
                     builder.add_number_property(param.name(), param.description(), param.required())
                 }
-                FieldType::Boolean => builder.add_boolean_property(
+                ParameterFieldType::Boolean => builder.add_boolean_property(
                     param.name(),
                     param.description(),
                     param.required(),
                 ),
-                FieldType::StringArray => builder.add_string_array_property(
+                ParameterFieldType::StringArray => builder.add_string_array_property(
                     param.name(),
                     param.description(),
                     param.required(),
                 ),
-                FieldType::NumberArray => builder.add_number_array_property(
+                ParameterFieldType::NumberArray => builder.add_number_array_property(
                     param.name(),
                     param.description(),
                     param.required(),
                 ),
-                FieldType::Any | FieldType::DynamicParams => {
+                ParameterFieldType::Any | ParameterFieldType::DynamicParams => {
                     builder.add_any_property(param.name(), param.description(), param.required())
-                }
-                FieldType::Count | FieldType::LineSplit => {
-                    // These are response-only field types, not used for parameters
-                    unreachable!("Count and LineSplit are response-only field types")
-                }
+                } /* Note: Count and LineSplit are not available in ParameterFieldType - type
+                   * safety achieved! */
             };
         }
 
