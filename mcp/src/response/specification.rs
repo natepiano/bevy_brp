@@ -1,5 +1,13 @@
-use crate::constants::{RESPONSE_CONTENT, RESPONSE_COUNT, RESPONSE_METADATA, RESPONSE_RESULT};
+use super::fields::ResponseFieldName;
+use crate::extraction::{FieldType, JsonFieldProvider, ResponseFieldSpec, extract_field};
 use crate::tool::ParameterName;
+
+/// Implement `JsonFieldProvider` for `serde_json::Value` to enable field extraction
+impl JsonFieldProvider for serde_json::Value {
+    fn get_root(&self) -> serde_json::Value {
+        self.clone()
+    }
+}
 
 /// Extract a nested field from JSON data using dot notation
 ///
@@ -49,7 +57,7 @@ pub enum ResponseField {
     /// the parameter extraction phase, with explicit control over where the field is placed.
     FromRequest {
         /// Name of the field to be output in the response
-        response_field_name: &'static str,
+        response_field_name: ResponseFieldName,
         /// Parameter name from the tool call request parameters
         parameter_name:      ParameterName,
         /// Where to place this field in the response
@@ -61,7 +69,7 @@ pub enum ResponseField {
     /// with explicit control over where the field is placed.
     FromResponse {
         /// Name of the field in the response
-        response_field_name: &'static str,
+        response_field_name: ResponseFieldName,
         /// Extractor type for response data
         response_extractor:  ResponseExtractorType,
         /// Where to place this field in the response
@@ -78,7 +86,7 @@ pub enum ResponseField {
     /// Use this for optional fields that should not appear in the response when missing.
     FromResponseNullableWithPlacement {
         /// Name of the field in the response
-        response_field_name: &'static str,
+        response_field_name: ResponseFieldName,
         /// Extractor type for response data
         response_extractor:  ResponseExtractorType,
         /// Where to place this field in the response
@@ -123,33 +131,69 @@ impl ResponseExtractorType {
     pub fn extract(&self, data: &serde_json::Value) -> serde_json::Value {
         match self {
             Self::Field(field_path) => {
-                // Support dot notation for nested field access
-                extract_nested_field(data, field_path)
+                // Use unified extraction with Any type for generic field access
+                let spec = ResponseFieldSpec {
+                    field_name: (*field_path).to_string(),
+                    field_type: FieldType::Any,
+                };
+                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                    match extracted {
+                        crate::extraction::ExtractedValue::Any(v) => v,
+                        _ => serde_json::Value::Null,
+                    }
+                })
             }
             Self::Count => {
-                // Extract count field as a number, return Null if not found or not a number
-                data.as_object()
-                    .and_then(|obj| obj.get(RESPONSE_COUNT))
-                    .and_then(serde_json::Value::as_u64)
-                    .map_or(serde_json::Value::Null, |count| {
-                        serde_json::Value::Number(serde_json::Number::from(count))
-                    })
+                // Extract count field as a number
+                let spec = ResponseFieldSpec {
+                    field_name: <ResponseFieldName as Into<&'static str>>::into(
+                        ResponseFieldName::Count,
+                    )
+                    .to_string(),
+                    field_type: FieldType::Number,
+                };
+                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                    match extracted {
+                        crate::extraction::ExtractedValue::Number(n) => {
+                            serde_json::Value::Number(serde_json::Number::from(n))
+                        }
+                        _ => serde_json::Value::Null,
+                    }
+                })
             }
             Self::ArrayCount(field_path) => {
-                // Extract the specified field and count items in the array
-                let field_data = extract_nested_field(data, field_path);
-                let count = field_data.as_array().map_or(0, std::vec::Vec::len);
-                serde_json::Value::Number(serde_json::Number::from(count))
+                // Use unified extraction with Count type
+                let spec = ResponseFieldSpec {
+                    field_name: (*field_path).to_string(),
+                    field_type: FieldType::Count,
+                };
+                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                    match extracted {
+                        crate::extraction::ExtractedValue::Number(n) => {
+                            serde_json::Value::Number(serde_json::Number::from(n))
+                        }
+                        _ => serde_json::Value::Null,
+                    }
+                })
             }
             Self::KeyCount(field_path) => {
-                // Extract the specified field and count keys in the object
-                let field_data = extract_nested_field(data, field_path);
-                let count = field_data.as_object().map_or(0, serde_json::Map::len);
-                serde_json::Value::Number(serde_json::Number::from(count))
+                // Use unified extraction with Count type (works for objects too)
+                let spec = ResponseFieldSpec {
+                    field_name: (*field_path).to_string(),
+                    field_type: FieldType::Count,
+                };
+                extract_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
+                    match extracted {
+                        crate::extraction::ExtractedValue::Number(n) => {
+                            serde_json::Value::Number(serde_json::Number::from(n))
+                        }
+                        _ => serde_json::Value::Null,
+                    }
+                })
             }
             Self::QueryComponentCount(field_path) => {
-                // Extract the specified field and get total component count from nested query
-                // results
+                // This is a special case that needs custom logic
+                // Extract the field first, then count components
                 let field_data = extract_nested_field(data, field_path);
                 let total = field_data.as_array().map_or(0, |entities| {
                     entities
@@ -161,16 +205,25 @@ impl ResponseExtractorType {
                 serde_json::Value::Number(serde_json::Number::from(total))
             }
             Self::SplitContentIntoLines => {
-                // Extract content field and split into array of lines
-                data.get(RESPONSE_CONTENT)
-                    .and_then(|content| content.as_str())
-                    .map_or(serde_json::Value::Array(vec![]), |content_str| {
-                        let lines: Vec<serde_json::Value> = content_str
-                            .lines()
-                            .map(|line| serde_json::Value::String(line.to_string()))
-                            .collect();
-                        serde_json::Value::Array(lines)
-                    })
+                // Use unified extraction with LineSplit type
+                let spec = ResponseFieldSpec {
+                    field_name: <ResponseFieldName as Into<&'static str>>::into(
+                        ResponseFieldName::Content,
+                    )
+                    .to_string(),
+                    field_type: FieldType::LineSplit,
+                };
+                extract_field(data, spec).map_or_else(
+                    || serde_json::Value::Array(vec![]),
+                    |extracted| match extracted {
+                        crate::extraction::ExtractedValue::StringArray(lines) => {
+                            let json_lines: Vec<serde_json::Value> =
+                                lines.into_iter().map(serde_json::Value::String).collect();
+                            serde_json::Value::Array(json_lines)
+                        }
+                        _ => serde_json::Value::Array(vec![]),
+                    },
+                )
             }
         }
     }
@@ -178,7 +231,7 @@ impl ResponseExtractorType {
 
 impl ResponseField {
     /// Get the field name for this response field specification.
-    pub const fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         match self {
             Self::FromRequest {
                 response_field_name: name,
@@ -191,10 +244,9 @@ impl ResponseField {
             | Self::FromResponseNullableWithPlacement {
                 response_field_name: name,
                 ..
-            } => name,
-            Self::DirectToMetadata => RESPONSE_METADATA,
-            Self::BrpRawResultToResult => RESPONSE_RESULT,
-            Self::FormatCorrection => "metadata",
+            } => name.into(),
+            Self::DirectToMetadata | Self::FormatCorrection => ResponseFieldName::Metadata.into(),
+            Self::BrpRawResultToResult => ResponseFieldName::Result.into(),
         }
     }
 }
@@ -215,15 +267,6 @@ impl ResponseSpecification {
     pub fn build_formatter_config(&self) -> super::FormatterConfig {
         use super::large_response::LargeResponseConfig;
 
-        // Create the formatter config for structured responses
-        let mut success_fields = Vec::new();
-
-        // Add response fields
-        for field in &self.response_fields {
-            let (extractor, placement) = super::create_response_field_extractor(field);
-            success_fields.push((field.name().to_string(), extractor, placement));
-        }
-
         // Set the template if provided
         let success_template = if self.message_template.is_empty() {
             None
@@ -233,7 +276,7 @@ impl ResponseSpecification {
 
         super::FormatterConfig {
             success_template,
-            success_fields,
+            success_fields: self.response_fields.clone(),
             large_response_config: LargeResponseConfig {
                 file_prefix: "brp_response_".to_string(),
                 ..Default::default()

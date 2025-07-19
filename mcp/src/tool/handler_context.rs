@@ -4,9 +4,23 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::{Value, json};
 
-use super::parameters::{ExtractedValue, ParamType, ParameterName};
+use super::parameters::ParameterName;
+use crate::extraction::{ExtractedValue, FieldType, JsonFieldProvider, extract_field};
 use crate::response::CallInfo;
 use crate::tool::ToolDef;
+
+/// Wrapper for request arguments to implement `JsonFieldProvider`
+struct RequestArguments<'a> {
+    args: &'a Option<serde_json::Map<String, Value>>,
+}
+
+impl JsonFieldProvider for RequestArguments<'_> {
+    fn get_root(&self) -> Value {
+        self.args
+            .as_ref()
+            .map_or(Value::Null, |map| Value::Object(map.clone()))
+    }
+}
 
 /// Capability types that hold data for compile-time access control
 /// Capability type indicating no port is available
@@ -122,30 +136,13 @@ impl<Port, Method> HandlerContext<Port, Method> {
 
     /// Extract a parameter using its built-in type information
     pub fn extract(&self, name: ParameterName) -> Option<ExtractedValue> {
-        let field_name: &str = name.into(); // strum converts to snake_case
-        let param_type = name.param_type(); // get the built-in type
+        // Create provider wrapper for request arguments
+        let provider = RequestArguments {
+            args: &self.request.arguments,
+        };
 
-        // If field doesn't exist, return None (optional parameter behavior)
-        let value = self.extract_optional_named_field(field_name)?;
-
-        // Extract based on the parameter's type
-        match param_type {
-            ParamType::String => value
-                .as_str()
-                .map(|s| ExtractedValue::String(s.to_string())),
-            ParamType::Number => value.as_u64().map(ExtractedValue::Number),
-            ParamType::Boolean => value.as_bool().map(ExtractedValue::Boolean),
-            ParamType::StringArray => value.as_array().and_then(|arr| {
-                let strings: Option<Vec<String>> =
-                    arr.iter().map(|v| v.as_str().map(String::from)).collect();
-                strings.map(ExtractedValue::StringArray)
-            }),
-            ParamType::NumberArray => value.as_array().and_then(|arr| {
-                let numbers: Option<Vec<u64>> = arr.iter().map(serde_json::Value::as_u64).collect();
-                numbers.map(ExtractedValue::NumberArray)
-            }),
-            ParamType::Any | ParamType::DynamicParams => Some(ExtractedValue::Any(value.clone())),
-        }
+        // Use the new unified extraction system
+        extract_field(&provider, name)
     }
 
     /// Extract a required parameter, returning error if missing or invalid
@@ -223,15 +220,19 @@ impl<Port> HandlerContext<Port, HasMethod> {
             // Convert ExtractedValue to JSON
             let json_value = if let Some(extracted) = extracted_value {
                 match param.param_type() {
-                    ParamType::Number => Some(json!(extracted.into_u64()?)),
-                    ParamType::String => Some(json!(extracted.into_string()?)),
-                    ParamType::Boolean => Some(json!(extracted.into_bool()?)),
-                    ParamType::StringArray => Some(json!(extracted.into_string_array()?)),
-                    ParamType::NumberArray => Some(json!(extracted.into_number_array()?)),
-                    ParamType::Any => Some(json!(extracted.into_any()?)),
-                    ParamType::DynamicParams => {
+                    FieldType::Number => Some(json!(extracted.into_u64()?)),
+                    FieldType::String => Some(json!(extracted.into_string()?)),
+                    FieldType::Boolean => Some(json!(extracted.into_bool()?)),
+                    FieldType::StringArray => Some(json!(extracted.into_string_array()?)),
+                    FieldType::NumberArray => Some(json!(extracted.into_number_array()?)),
+                    FieldType::Any => Some(json!(extracted.into_any()?)),
+                    FieldType::DynamicParams => {
                         // For dynamic params, return the value directly
                         return Ok(Some(extracted.into_any()?));
+                    }
+                    FieldType::Count | FieldType::LineSplit => {
+                        // These are response-only field types, not used for parameters
+                        unreachable!("Count and LineSplit are response-only field types")
                     }
                 }
             } else {

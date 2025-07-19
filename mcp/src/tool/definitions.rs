@@ -41,18 +41,13 @@ use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
 use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
 use crate::brp_tools::watch::brp_stop_watch::BrpStopWatch;
-use crate::constants::{
-    RESPONSE_APP_NAME, RESPONSE_APPS, RESPONSE_COMPONENT_COUNT, RESPONSE_COMPONENTS,
-    RESPONSE_COUNT, RESPONSE_ENTITIES, RESPONSE_ENTITY, RESPONSE_ENTITY_COUNT, RESPONSE_LOG_PATH,
-    RESPONSE_PARENT, RESPONSE_PATH, RESPONSE_PID, RESPONSE_RESOURCE, RESPONSE_SHUTDOWN_METHOD,
-};
 use crate::log_tools::cleanup_logs::CleanupLogs;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
 use crate::log_tools::read_log::ReadLog;
 use crate::log_tools::set_tracing_level::SetTracingLevel;
 use crate::response::{
-    FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
+    FieldPlacement, ResponseExtractorType, ResponseField, ResponseFieldName, ResponseSpecification,
 };
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,
@@ -76,7 +71,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
                 response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name: RESPONSE_ENTITY,
+                    response_field_name: ResponseFieldName::Entity,
                     parameter_name:      ParameterName::Entity,
                     placement:           FieldPlacement::Metadata,
                 }],
@@ -103,22 +98,22 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         parameter_name:      ParameterName::Entity,
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COMPONENTS,
+                        response_field_name: ResponseFieldName::Components,
                         response_extractor:  ResponseExtractorType::Field("result"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "component_count",
+                        response_field_name: ResponseFieldName::ComponentCount,
                         response_extractor:  ResponseExtractorType::KeyCount("result.components"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "error_count",
+                        response_field_name: ResponseFieldName::ErrorCount,
                         response_extractor:  ResponseExtractorType::KeyCount("result.errors"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -164,12 +159,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully inserted components into entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         parameter_name:      ParameterName::Entity,
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_COMPONENTS,
+                        response_field_name: ResponseFieldName::Components,
                         parameter_name:      ParameterName::Components,
                         placement:           FieldPlacement::Result,
                     },
@@ -203,7 +198,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully inserted/updated resource: {resource}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_RESOURCE,
+                        response_field_name: ResponseFieldName::Resource,
                         parameter_name:      ParameterName::Resource,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -230,7 +225,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: "component_count",
+                        response_field_name: ResponseFieldName::ComponentCount,
                         response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -256,7 +251,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: "resource_count",
+                        response_field_name: ResponseFieldName::ResourceCount,
                         response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -291,7 +286,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully mutated component on entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         parameter_name:      ParameterName::Entity,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -326,7 +321,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully mutated resource: `{resource}`",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_RESOURCE,
+                        response_field_name: ResponseFieldName::Resource,
                         parameter_name:      ParameterName::Resource,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -350,12 +345,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_ENTITY_COUNT,
+                        response_field_name: ResponseFieldName::EntityCount,
                         response_extractor:  ResponseExtractorType::ArrayCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COMPONENT_COUNT,
+                        response_field_name: ResponseFieldName::ComponentCount,
                         response_extractor:  ResponseExtractorType::QueryComponentCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -386,7 +381,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: "type_count",
+                        response_field_name: ResponseFieldName::TypeCount,
                         response_extractor:  ResponseExtractorType::KeyCount("result"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -411,12 +406,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully removed components from entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         parameter_name:      ParameterName::Entity,
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_COMPONENTS,
+                        response_field_name: ResponseFieldName::Components,
                         parameter_name:      ParameterName::Components,
                         placement:           FieldPlacement::Result,
                     },
@@ -442,7 +437,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Successfully removed resource",
                 response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name: RESPONSE_RESOURCE,
+                    response_field_name: ResponseFieldName::Resource,
                     parameter_name:      ParameterName::Resource,
                     placement:           FieldPlacement::Metadata,
                 }],
@@ -466,12 +461,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully reparented entities",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITIES,
+                        response_field_name: ResponseFieldName::Entities,
                         parameter_name:      ParameterName::Entities,
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_PARENT,
+                        response_field_name: ResponseFieldName::Parent,
                         parameter_name:      ParameterName::Parent,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -494,7 +489,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
-                        response_field_name: "method_count",
+                        response_field_name: ResponseFieldName::MethodCount,
                         response_extractor:  ResponseExtractorType::ArrayCount("result.methods"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -520,7 +515,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully spawned entity",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         response_extractor:  ResponseExtractorType::Field("result.entity"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -590,7 +585,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             response_format: ResponseSpecification {
                 message_template: "Successfully captured screenshot",
                 response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name: RESPONSE_PATH,
+                    response_field_name: ResponseFieldName::Path,
                     parameter_name:      ParameterName::Path,
                     placement:           FieldPlacement::Metadata,
                 }],
@@ -614,12 +609,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully sent keyboard input",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "keys_sent",
+                        response_field_name: ResponseFieldName::KeysSent,
                         response_extractor:  ResponseExtractorType::Field("result.keys_sent"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "duration_ms",
+                        response_field_name: ResponseFieldName::DurationMs,
                         response_extractor:  ResponseExtractorType::Field("result.duration_ms"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -644,12 +639,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Debug mode updated successfully",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "debug_enabled",
+                        response_field_name: ResponseFieldName::DebugEnabled,
                         response_extractor:  ResponseExtractorType::Field("result.debug_enabled"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "details",
+                        response_field_name: ResponseFieldName::Details,
                         response_extractor:  ResponseExtractorType::Field("result.message"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -686,17 +681,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Started entity watch for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "watch_id",
+                        response_field_name: ResponseFieldName::WatchId,
                         response_extractor:  ResponseExtractorType::Field("watch_id"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_LOG_PATH,
+                        response_field_name: ResponseFieldName::LogPath,
                         response_extractor:  ResponseExtractorType::Field("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         parameter_name:      ParameterName::Entity,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -722,17 +717,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Started list watch for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "watch_id",
+                        response_field_name: ResponseFieldName::WatchId,
                         response_extractor:  ResponseExtractorType::Field("watch_id"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_LOG_PATH,
+                        response_field_name: ResponseFieldName::LogPath,
                         response_extractor:  ResponseExtractorType::Field("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_ENTITY,
+                        response_field_name: ResponseFieldName::Entity,
                         parameter_name:      ParameterName::Entity,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -765,22 +760,22 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Deleted {deleted_count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "deleted_count",
+                        response_field_name: ResponseFieldName::DeletedCount,
                         response_extractor:  ResponseExtractorType::Field("deleted_count"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "deleted_files",
+                        response_field_name: ResponseFieldName::DeletedFiles,
                         response_extractor:  ResponseExtractorType::Field("deleted_files"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "app_name_filter",
+                        response_field_name: ResponseFieldName::AppNameFilter,
                         response_extractor:  ResponseExtractorType::Field("app_name_filter"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "older_than_seconds",
+                        response_field_name: ResponseFieldName::OlderThanSeconds,
                         response_extractor:  ResponseExtractorType::Field("older_than_seconds"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -802,17 +797,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Trace log found",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_LOG_PATH,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_LOG_PATH),
+                        response_field_name: ResponseFieldName::LogPath,
+                        response_extractor:  ResponseExtractorType::Field("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "exists",
+                        response_field_name: ResponseFieldName::Exists,
                         response_extractor:  ResponseExtractorType::Field("exists"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "file_size_bytes",
+                        response_field_name: ResponseFieldName::FileSizeBytes,
                         response_extractor:  ResponseExtractorType::Field("file_size_bytes"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -902,12 +897,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Found {count} Bevy apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_APPS,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_APPS),
+                        response_field_name: ResponseFieldName::Apps,
+                        response_extractor:  ResponseExtractorType::Field("apps"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COUNT,
+                        response_field_name: ResponseFieldName::Count,
                         response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -929,12 +924,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Found {count} Bevy examples",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "examples",
+                        response_field_name: ResponseFieldName::Examples,
                         response_extractor:  ResponseExtractorType::Field("examples"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COUNT,
+                        response_field_name: ResponseFieldName::Count,
                         response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -956,12 +951,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Found {count} BRP-enabled apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_APPS,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_APPS),
+                        response_field_name: ResponseFieldName::Apps,
+                        response_extractor:  ResponseExtractorType::Field("apps"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COUNT,
+                        response_field_name: ResponseFieldName::Count,
                         response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -983,13 +978,13 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Found {count} active watches",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "watches",
+                        response_field_name: ResponseFieldName::Watches,
                         response_extractor:  ResponseExtractorType::Field("watches"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COUNT,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_COUNT),
+                        response_field_name: ResponseFieldName::Count,
+                        response_extractor:  ResponseExtractorType::Field("count"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1041,17 +1036,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Found {count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "logs",
+                        response_field_name: ResponseFieldName::Logs,
                         response_extractor:  ResponseExtractorType::Field("logs"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "temp_directory",
+                        response_field_name: ResponseFieldName::TempDirectory,
                         response_extractor:  ResponseExtractorType::Field("temp_directory"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_COUNT,
+                        response_field_name: ResponseFieldName::Count,
                         response_extractor:  ResponseExtractorType::Count,
                         placement:           FieldPlacement::Metadata,
                     },
@@ -1089,42 +1084,42 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully read log file: {filename}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "filename",
+                        response_field_name: ResponseFieldName::Filename,
                         response_extractor:  ResponseExtractorType::Field("filename"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "file_path",
+                        response_field_name: ResponseFieldName::FilePath,
                         response_extractor:  ResponseExtractorType::Field("file_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "size_bytes",
+                        response_field_name: ResponseFieldName::SizeBytes,
                         response_extractor:  ResponseExtractorType::Field("size_bytes"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "size_human",
+                        response_field_name: ResponseFieldName::SizeHuman,
                         response_extractor:  ResponseExtractorType::Field("size_human"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "lines_read",
+                        response_field_name: ResponseFieldName::LinesRead,
                         response_extractor:  ResponseExtractorType::Field("lines_read"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "content",
+                        response_field_name: ResponseFieldName::Content,
                         response_extractor:  ResponseExtractorType::SplitContentIntoLines,
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "filtered_by_keyword",
+                        response_field_name: ResponseFieldName::FilteredByKeyword,
                         response_extractor:  ResponseExtractorType::Field("filtered_by_keyword"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "tail_mode",
+                        response_field_name: ResponseFieldName::TailMode,
                         response_extractor:  ResponseExtractorType::Field("tail_mode"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -1150,12 +1145,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Tracing level set to '{level}' - diagnostic information will be logged to temp directory",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: "tracing_level",
+                        response_field_name: ResponseFieldName::TracingLevel,
                         response_extractor:  ResponseExtractorType::Field("level"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "log_file",
+                        response_field_name: ResponseFieldName::LogFile,
                         response_extractor:  ResponseExtractorType::Field("log_file"),
                         placement:           FieldPlacement::Metadata,
                     },
@@ -1181,23 +1176,23 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Status check for `{app_name}` on port {port}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
-                        response_field_name: RESPONSE_APP_NAME,
+                        response_field_name: ResponseFieldName::AppName,
                         parameter_name:      ParameterName::AppName,
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "app_running",
+                        response_field_name: ResponseFieldName::AppRunning,
                         response_extractor:  ResponseExtractorType::Field("app_running"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: "brp_responsive",
+                        response_field_name: ResponseFieldName::BrpResponsive,
                         response_extractor:  ResponseExtractorType::Field("brp_responsive"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_PID,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_PID),
+                        response_field_name: ResponseFieldName::Pid,
+                        response_extractor:  ResponseExtractorType::Field("pid"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1222,18 +1217,18 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "{shutdown_message}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_SHUTDOWN_METHOD,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_SHUTDOWN_METHOD),
+                        response_field_name: ResponseFieldName::ShutdownMethod,
+                        response_extractor:  ResponseExtractorType::Field("shutdown_method"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
-                        response_field_name: RESPONSE_APP_NAME,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_APP_NAME),
+                        response_field_name: ResponseFieldName::AppName,
+                        response_extractor:  ResponseExtractorType::Field("app_name"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponseNullableWithPlacement {
-                        response_field_name: RESPONSE_PID,
-                        response_extractor:  ResponseExtractorType::Field(RESPONSE_PID),
+                        response_field_name: ResponseFieldName::Pid,
+                        response_extractor:  ResponseExtractorType::Field("pid"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],

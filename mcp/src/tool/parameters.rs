@@ -1,180 +1,10 @@
 //! Parameter definitions for our MCP tools
 
-use rmcp::ErrorData as McpError;
-use serde_json::Value;
 use strum::{Display, EnumString};
 
-/// Common interface for parameter definitions
-/// Parameter names are generated automatically by strum's Display trait
-pub trait ParameterDefinition {
-    /// Get the parameter name as string
-    fn name(&self) -> &str;
+use crate::extraction::{FieldSpec, FieldType};
 
-    /// Check if the parameter is required
-    fn required(&self) -> bool;
-
-    /// Get the parameter description
-    fn description(&self) -> &'static str;
-
-    /// Get the parameter type (we need to import `ParamType`)
-    fn param_type(&self) -> &ParamType;
-}
-
-/// Types of parameters that can be defined
-#[derive(Clone)]
-pub enum ParamType {
-    /// Any JSON value (object, array, etc.)
-    Any,
-    /// A boolean parameter
-    Boolean,
-    /// Dynamic parameters for `brp_execute` - the value becomes the BRP method parameters directly
-    DynamicParams,
-    /// A numeric parameter (typically entity IDs or ports)
-    Number,
-    /// An array of numbers
-    NumberArray,
-    /// A string parameter
-    String,
-    /// An array of strings
-    StringArray,
-}
-
-/// Extracted parameter values with their types
-#[derive(Debug, Clone)]
-pub enum ExtractedValue {
-    /// String value
-    String(String),
-    /// Numeric value (u64)
-    Number(u64),
-    /// Boolean value
-    Boolean(bool),
-    /// Array of strings
-    StringArray(Vec<String>),
-    /// Array of numbers
-    NumberArray(Vec<u64>),
-    /// Any JSON value
-    Any(Value),
-}
-
-impl ExtractedValue {
-    /// Convert to string, returning error if wrong type
-    pub fn into_string(self) -> Result<String, McpError> {
-        match self {
-            Self::String(s) => Ok(s),
-            _ => Err(McpError::invalid_params("Expected string value", None)),
-        }
-    }
-
-    /// Convert to u64, returning error if wrong type
-    pub fn into_u64(self) -> Result<u64, McpError> {
-        match self {
-            Self::Number(n) => Ok(n),
-            _ => Err(McpError::invalid_params("Expected number value", None)),
-        }
-    }
-
-    /// Convert to u32, returning error if wrong type or out of range
-    pub fn into_u32(self) -> Result<u32, McpError> {
-        match self {
-            Self::Number(n) => u32::try_from(n)
-                .map_err(|_| McpError::invalid_params("Number value too large for u32", None)),
-            _ => Err(McpError::invalid_params("Expected number value", None)),
-        }
-    }
-
-    /// Convert to bool, returning error if wrong type
-    pub fn into_bool(self) -> Result<bool, McpError> {
-        match self {
-            Self::Boolean(b) => Ok(b),
-            _ => Err(McpError::invalid_params("Expected boolean value", None)),
-        }
-    }
-
-    /// Convert to string array, returning error if wrong type
-    pub fn into_string_array(self) -> Result<Vec<String>, McpError> {
-        match self {
-            Self::StringArray(arr) => Ok(arr),
-            _ => Err(McpError::invalid_params(
-                "Expected string array value",
-                None,
-            )),
-        }
-    }
-
-    /// Convert to number array, returning error if wrong type
-    pub fn into_number_array(self) -> Result<Vec<u64>, McpError> {
-        match self {
-            Self::NumberArray(arr) => Ok(arr),
-            _ => Err(McpError::invalid_params(
-                "Expected number array value",
-                None,
-            )),
-        }
-    }
-
-    /// Convert to any JSON value, returning error if wrong type
-    pub fn into_any(self) -> Result<Value, McpError> {
-        match self {
-            Self::Any(v) => Ok(v),
-            _ => Err(McpError::invalid_params("Expected any JSON value", None)),
-        }
-    }
-}
-
-// Implement Into<ExtractedValue> for common types to support defaults
-impl From<String> for ExtractedValue {
-    fn from(s: String) -> Self {
-        Self::String(s)
-    }
-}
-
-impl From<&str> for ExtractedValue {
-    fn from(s: &str) -> Self {
-        Self::String(s.to_string())
-    }
-}
-
-impl From<u64> for ExtractedValue {
-    fn from(n: u64) -> Self {
-        Self::Number(n)
-    }
-}
-
-impl From<u32> for ExtractedValue {
-    fn from(n: u32) -> Self {
-        Self::Number(u64::from(n))
-    }
-}
-
-impl From<u16> for ExtractedValue {
-    fn from(n: u16) -> Self {
-        Self::Number(u64::from(n))
-    }
-}
-
-impl From<bool> for ExtractedValue {
-    fn from(b: bool) -> Self {
-        Self::Boolean(b)
-    }
-}
-
-impl From<Vec<String>> for ExtractedValue {
-    fn from(arr: Vec<String>) -> Self {
-        Self::StringArray(arr)
-    }
-}
-
-impl From<Vec<u64>> for ExtractedValue {
-    fn from(arr: Vec<u64>) -> Self {
-        Self::NumberArray(arr)
-    }
-}
-
-impl From<Value> for ExtractedValue {
-    fn from(v: Value) -> Self {
-        Self::Any(v)
-    }
-}
+// ExtractedValue has been moved to extraction.rs
 
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance
@@ -248,7 +78,7 @@ pub enum ParameterName {
 
 impl ParameterName {
     /// Get the expected parameter type for this parameter
-    pub const fn param_type(self) -> ParamType {
+    pub const fn param_type(self) -> FieldType {
         match self {
             // String parameters
             Self::AppName
@@ -260,7 +90,7 @@ impl ParameterName {
             | Self::Method
             | Self::Path
             | Self::Profile
-            | Self::Resource => ParamType::String,
+            | Self::Resource => FieldType::String,
 
             // Number parameters
             Self::DurationMs
@@ -268,10 +98,10 @@ impl ParameterName {
             | Self::OlderThanSeconds
             | Self::Parent
             | Self::TailLines
-            | Self::WatchId => ParamType::Number,
+            | Self::WatchId => FieldType::Number,
 
             // Boolean parameters
-            Self::Enabled | Self::Strict | Self::Verbose => ParamType::Boolean,
+            Self::Enabled | Self::Strict | Self::Verbose => FieldType::Boolean,
 
             // String array parameters
             Self::Keys
@@ -279,16 +109,16 @@ impl ParameterName {
             | Self::WithCrates
             | Self::WithoutCrates
             | Self::WithTypes
-            | Self::WithoutTypes => ParamType::StringArray,
+            | Self::WithoutTypes => FieldType::StringArray,
 
             // Number array parameters
-            Self::Entities => ParamType::NumberArray,
+            Self::Entities => FieldType::NumberArray,
 
             // Any type parameters
-            Self::Components | Self::Data | Self::Filter | Self::Value => ParamType::Any,
+            Self::Components | Self::Data | Self::Filter | Self::Value => FieldType::Any,
 
             // Special case
-            Self::Params => ParamType::DynamicParams,
+            Self::Params => FieldType::DynamicParams,
         }
     }
 }
@@ -303,7 +133,7 @@ pub struct Parameter {
     /// Whether this parameter is required
     required:    bool,
     /// Type of the parameter
-    param_type:  ParamType,
+    param_type:  FieldType,
 }
 
 /// Specifies whether a tool requires a port parameter
@@ -333,7 +163,7 @@ impl Parameter {
     }
 
     /// Get parameter type
-    pub const fn param_type(&self) -> &ParamType {
+    pub const fn param_type(&self) -> &FieldType {
         &self.param_type
     }
 }
@@ -346,7 +176,7 @@ impl Parameter {
             name: ParameterName::Entity,
             description,
             required,
-            param_type: ParamType::Number,
+            param_type: FieldType::Number,
         }
     }
 
@@ -356,7 +186,7 @@ impl Parameter {
             name: ParameterName::Resource,
             description,
             required: true,
-            param_type: ParamType::String,
+            param_type: FieldType::String,
         }
     }
 
@@ -366,7 +196,7 @@ impl Parameter {
             name: ParameterName::Components,
             description,
             required,
-            param_type: ParamType::Any,
+            param_type: FieldType::Any,
         }
     }
 
@@ -376,7 +206,7 @@ impl Parameter {
             name: ParameterName::Path,
             description,
             required: true,
-            param_type: ParamType::String,
+            param_type: FieldType::String,
         }
     }
 
@@ -386,7 +216,7 @@ impl Parameter {
             name: ParameterName::Value,
             description,
             required,
-            param_type: ParamType::Any,
+            param_type: FieldType::Any,
         }
     }
 
@@ -396,7 +226,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: ParamType::Boolean,
+            param_type: FieldType::Boolean,
         }
     }
 
@@ -406,7 +236,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: ParamType::String,
+            param_type: FieldType::String,
         }
     }
 
@@ -420,7 +250,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: ParamType::StringArray,
+            param_type: FieldType::StringArray,
         }
     }
 
@@ -434,7 +264,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: ParamType::NumberArray,
+            param_type: FieldType::NumberArray,
         }
     }
 
@@ -444,7 +274,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: ParamType::Number,
+            param_type: FieldType::Number,
         }
     }
 
@@ -454,7 +284,7 @@ impl Parameter {
             name,
             description,
             required,
-            param_type: ParamType::Any,
+            param_type: FieldType::Any,
         }
     }
 
@@ -574,25 +404,19 @@ impl Parameter {
             name: ParameterName::Params,
             description,
             required,
-            param_type: ParamType::DynamicParams,
+            param_type: FieldType::DynamicParams,
         }
     }
 }
 
-impl ParameterDefinition for Parameter {
-    fn name(&self) -> &str {
-        self.name()
+// Implement FieldSpec for ParameterName to enable new extraction system
+impl FieldSpec for ParameterName {
+    fn field_name(&self) -> &str {
+        self.into() // strum converts to snake_case
     }
 
-    fn required(&self) -> bool {
-        self.required()
-    }
-
-    fn description(&self) -> &'static str {
-        self.description()
-    }
-
-    fn param_type(&self) -> &ParamType {
+    fn field_type(&self) -> FieldType {
+        // Now that ParamType is gone, just return the field type directly
         self.param_type()
     }
 }

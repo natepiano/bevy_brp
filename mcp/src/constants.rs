@@ -9,26 +9,10 @@ use std::ops::RangeInclusive;
 // ============================================================================
 
 /// JSON field name constants for BRP responses
-pub const RESPONSE_APP_NAME: &str = "app_name";
-pub const RESPONSE_APPS: &str = "apps";
-pub const RESPONSE_COMPONENT_COUNT: &str = "component_count";
-pub const RESPONSE_COMPONENTS: &str = "components";
-pub const RESPONSE_CONTENT: &str = "content";
-pub const RESPONSE_COUNT: &str = "count";
 pub const RESPONSE_DEBUG_INFO: &str = "debug_info";
-pub const RESPONSE_ENTITY: &str = "entity";
-pub const RESPONSE_ENTITIES: &str = "entities";
-pub const RESPONSE_ENTITY_COUNT: &str = "entity_count";
 pub const RESPONSE_FORMAT_CORRECTIONS: &str = "format_corrections";
 pub const RESPONSE_FORMAT_CORRECTED: &str = "format_corrected";
-pub const RESPONSE_LOG_PATH: &str = "log_path";
 pub const RESPONSE_METADATA: &str = "metadata";
-pub const RESPONSE_PARENT: &str = "parent";
-pub const RESPONSE_PATH: &str = "path";
-pub const RESPONSE_PID: &str = "pid";
-pub const RESPONSE_RESULT: &str = "result";
-pub const RESPONSE_RESOURCE: &str = "resource";
-pub const RESPONSE_SHUTDOWN_METHOD: &str = "shutdown_method";
 
 // ============================================================================
 // TOOL PARAMETER CONSTANTS

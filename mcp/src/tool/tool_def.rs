@@ -8,9 +8,10 @@ use rmcp::model::CallToolRequestParam;
 use super::HandlerFn;
 use super::annotations::BrpToolAnnotations;
 use super::mcp_tool_schema::McpToolSchemaBuilder;
-use super::parameters::{ParamType, Parameter, ParameterDefinition, PortParameter};
+use super::parameters::{Parameter, PortParameter};
 use super::types::{BrpMethodSource, ToolHandler};
 use crate::constants::{PARAM_METHOD, PARAM_PORT};
+use crate::extraction::FieldType;
 use crate::response::ResponseSpecification;
 
 /// Unified tool definition that can handle both BRP and Local tools
@@ -39,11 +40,8 @@ impl ToolDef {
         &self.response_format
     }
 
-    pub fn parameters(&self) -> Vec<&dyn ParameterDefinition> {
-        self.parameters
-            .iter()
-            .map(|p| p as &dyn ParameterDefinition)
-            .collect()
+    pub fn parameters(&self) -> &[Parameter] {
+        &self.parameters
     }
 
     pub const fn port_parameter(&self) -> PortParameter {
@@ -118,29 +116,33 @@ impl ToolDef {
         // Add tool-specific parameters
         for param in self.parameters() {
             builder = match param.param_type() {
-                ParamType::String => {
+                FieldType::String => {
                     builder.add_string_property(param.name(), param.description(), param.required())
                 }
-                ParamType::Number => {
+                FieldType::Number => {
                     builder.add_number_property(param.name(), param.description(), param.required())
                 }
-                ParamType::Boolean => builder.add_boolean_property(
+                FieldType::Boolean => builder.add_boolean_property(
                     param.name(),
                     param.description(),
                     param.required(),
                 ),
-                ParamType::StringArray => builder.add_string_array_property(
+                FieldType::StringArray => builder.add_string_array_property(
                     param.name(),
                     param.description(),
                     param.required(),
                 ),
-                ParamType::NumberArray => builder.add_number_array_property(
+                FieldType::NumberArray => builder.add_number_array_property(
                     param.name(),
                     param.description(),
                     param.required(),
                 ),
-                ParamType::Any | ParamType::DynamicParams => {
+                FieldType::Any | FieldType::DynamicParams => {
                     builder.add_any_property(param.name(), param.description(), param.required())
+                }
+                FieldType::Count | FieldType::LineSplit => {
+                    // These are response-only field types, not used for parameters
+                    unreachable!("Count and LineSplit are response-only field types")
                 }
             };
         }
@@ -163,23 +165,29 @@ impl ToolDef {
         // Enhance title with category prefix and optional method name
         let enhanced_annotations = {
             let mut enhanced = self.annotations.clone();
-            
+
             // Start with category prefix
             let category_prefix = enhanced.category.as_ref();
             let base_title = &enhanced.title;
-            
+
             // Add method name for BRP tools
             let full_title = match &self.handler {
-                HandlerFn::Brp { method_source: BrpMethodSource::Static(method), .. } => {
+                HandlerFn::Brp {
+                    method_source: BrpMethodSource::Static(method),
+                    ..
+                } => {
                     format!("{category_prefix}: {base_title} ({method})")
                 }
-                HandlerFn::Brp { method_source: BrpMethodSource::Dynamic, .. } |
-                HandlerFn::Local(_) |
-                HandlerFn::LocalWithPort(_) => {
+                HandlerFn::Brp {
+                    method_source: BrpMethodSource::Dynamic,
+                    ..
+                }
+                | HandlerFn::Local(_)
+                | HandlerFn::LocalWithPort(_) => {
                     format!("{category_prefix}: {base_title}")
                 }
             };
-            
+
             enhanced.title = full_title;
             enhanced
         };

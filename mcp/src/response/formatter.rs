@@ -23,9 +23,8 @@ use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
 use super::builder::{JsonResponse, ResponseBuilder};
-use super::field_extractor::FieldExtractor;
 use super::large_response::{self, LargeResponseConfig};
-use super::specification::FieldPlacement;
+use super::specification::{FieldPlacement, ResponseExtractorType, ResponseField};
 // Import format discovery types for convenience
 use crate::brp_tools::request_handler::{
     FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus,
@@ -46,7 +45,7 @@ pub struct FormatterConfig {
     /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
     pub success_template:      Option<String>,
     /// Additional fields to add to success responses
-    pub success_fields:        Vec<(String, FieldExtractor, FieldPlacement)>,
+    pub success_fields:        Vec<ResponseField>,
     /// Configuration for large response handling
     pub large_response_config: LargeResponseConfig,
 }
@@ -54,6 +53,65 @@ pub struct FormatterConfig {
 impl ResponseFormatter {
     pub const fn new(config: FormatterConfig) -> Self {
         Self { config }
+    }
+
+    /// Extract field value based on `ResponseField` specification
+    fn extract_field_value<Port, Method>(
+        field: &ResponseField,
+        data: &Value,
+        handler_context: &HandlerContext<Port, Method>,
+    ) -> (Value, FieldPlacement) {
+        match field {
+            ResponseField::FromRequest {
+                parameter_name,
+                placement,
+                ..
+            } => {
+                // Extract from request parameters
+                let value = handler_context
+                    .extract_optional_named_field(parameter_name.into())
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                (value, placement.clone())
+            }
+            ResponseField::FromResponse {
+                response_extractor,
+                placement,
+                ..
+            } => {
+                // Use ResponseExtractorType's extract method
+                let value = response_extractor.extract(data);
+                (value, placement.clone())
+            }
+            ResponseField::DirectToMetadata => {
+                // Return the entire data object
+                (data.clone(), FieldPlacement::Metadata)
+            }
+            ResponseField::FromResponseNullableWithPlacement {
+                response_extractor,
+                placement,
+                ..
+            } => {
+                // Extract and mark null fields for skipping
+                let value = response_extractor.extract(data);
+                let result_value = if value.is_null() {
+                    Value::String("__SKIP_NULL_FIELD__".to_string())
+                } else {
+                    value
+                };
+                (result_value, placement.clone())
+            }
+            ResponseField::BrpRawResultToResult => {
+                // Extract raw result field
+                let value = ResponseExtractorType::Field("result").extract(data);
+                (value, FieldPlacement::Result)
+            }
+            ResponseField::FormatCorrection => {
+                // Extract format correction fields
+                let value = Self::extract_format_correction_fields(data);
+                (value, FieldPlacement::Metadata)
+            }
+        }
     }
 
     pub fn format_success_with_corrections<Port, Method>(
@@ -197,8 +255,9 @@ impl ResponseFormatter {
         mut template_values: serde_json::Map<String, Value>,
         handler_context: &HandlerContext<Port, Method>,
     ) -> Result<serde_json::Map<String, Value>> {
-        for (field_name, extractor, placement) in &self.config.success_fields {
-            let value = extractor(clean_data, handler_context);
+        for field in &self.config.success_fields {
+            let field_name = field.name();
+            let (value, placement) = Self::extract_field_value(field, clean_data, handler_context);
 
             if field_name == RESPONSE_METADATA && matches!(placement, FieldPlacement::Metadata) {
                 if let Value::Object(data_map) = &value {
@@ -215,6 +274,118 @@ impl ResponseFormatter {
             template_values.insert(field_name.to_string(), value);
         }
         Ok(template_values)
+    }
+
+    /// Extract all format correction related fields from V2 `BrpMethodResult`
+    fn extract_format_correction_fields(data: &Value) -> Value {
+        let mut format_data = serde_json::Map::new();
+
+        // Extract format_corrected status
+        if let Some(format_corrected) = data.get("format_corrected") {
+            if !format_corrected.is_null() {
+                format_data.insert("format_corrected".to_string(), format_corrected.clone());
+            }
+        }
+
+        // Extract original_error if present (when error message was enhanced)
+        if let Some(error_data) = data.get("error_data") {
+            if let Some(original_error) = error_data.get("original_error") {
+                if !original_error.is_null() {
+                    format_data.insert("original_error".to_string(), original_error.clone());
+                }
+            }
+        }
+
+        // Extract format_corrections array
+        if let Some(format_corrections) = data.get("format_corrections") {
+            if !format_corrections.is_null() {
+                format_data.insert("format_corrections".to_string(), format_corrections.clone());
+            }
+        }
+
+        // Extract metadata from first correction if available
+        if let Some(corrections_array) = data.get("format_corrections").and_then(|c| c.as_array()) {
+            if let Some(first_correction) = corrections_array.first() {
+                if let Some(obj) = first_correction.as_object() {
+                    Self::extract_correction_metadata(&mut format_data, obj);
+                }
+            }
+        }
+
+        serde_json::Value::Object(format_data)
+    }
+
+    /// Extract metadata fields from a format correction object
+    fn extract_correction_metadata(
+        format_data: &mut serde_json::Map<String, Value>,
+        correction: &serde_json::Map<String, Value>,
+    ) {
+        // Extract common format correction metadata
+        for field in [
+            "hint",
+            "mutation_paths",
+            "supported_operations",
+            "type_category",
+        ] {
+            if let Some(value) = correction.get(field) {
+                if !value.is_null() {
+                    format_data.insert(field.to_string(), value.clone());
+                }
+            }
+        }
+
+        // Extract rich guidance from corrected_format if available
+        if let Some(corrected_format) = correction.get("corrected_format") {
+            if let Some(corrected_obj) = corrected_format.as_object() {
+                Self::extract_rich_guidance(format_data, corrected_obj);
+            }
+        }
+
+        // Also check for examples and valid_values at correction level
+        if !format_data.contains_key("examples") {
+            if let Some(examples) = correction.get("examples") {
+                if !examples.is_null() {
+                    format_data.insert("examples".to_string(), examples.clone());
+                }
+            }
+        }
+
+        if !format_data.contains_key("valid_values") {
+            if let Some(valid_values) = correction.get("valid_values") {
+                if !valid_values.is_null() {
+                    format_data.insert("valid_values".to_string(), valid_values.clone());
+                }
+            }
+        }
+    }
+
+    /// Extract rich guidance fields from `corrected_format` object
+    fn extract_rich_guidance(
+        format_data: &mut serde_json::Map<String, Value>,
+        corrected_format: &serde_json::Map<String, Value>,
+    ) {
+        // Extract examples from corrected_format
+        if let Some(examples) = corrected_format.get("examples") {
+            if !examples.is_null() {
+                format_data.insert("examples".to_string(), examples.clone());
+            }
+        }
+
+        // Extract valid_values from corrected_format
+        if let Some(valid_values) = corrected_format.get("valid_values") {
+            if !valid_values.is_null() {
+                format_data.insert("valid_values".to_string(), valid_values.clone());
+            }
+        }
+
+        // Also check for hint in corrected_format as fallback
+        if !format_data.contains_key("hint") {
+            if let Some(hint) = corrected_format.get("hint") {
+                if !hint.is_null() {
+                    format_data.insert("hint".to_string(), hint.clone());
+                }
+            }
+        }
     }
 
     /// Apply template substitution if template is provided

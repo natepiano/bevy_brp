@@ -90,9 +90,8 @@ impl From<BrpToolAnnotations> for ToolAnnotations {
                 // So we mark additive tools as "destructive" even though they're safe
                 (Some(false), Some(true), Some(true))
             }
-            EnvironmentImpact::DestructiveNonIdempotent | EnvironmentImpact::AdditiveNonIdempotent => {
-                (Some(false), Some(true), Some(false))
-            }
+            EnvironmentImpact::DestructiveNonIdempotent
+            | EnvironmentImpact::AdditiveNonIdempotent => (Some(false), Some(true), Some(false)),
         };
 
         let open_world = match brp.domain_of_interaction {
