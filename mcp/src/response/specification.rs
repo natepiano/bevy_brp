@@ -1,6 +1,5 @@
 use crate::field_extraction::{
-    ExtractedValue, FieldSpec, JsonFieldProvider, ParameterName, ResponseFieldName,
-    ResponseFieldType, extract_response_field,
+    FieldSpec, JsonFieldProvider, ParameterName, ResponseFieldName, ResponseFieldType,
 };
 
 /// Bridge struct for response field extraction using the new type-safe system
@@ -59,8 +58,9 @@ pub enum ResponseField {
     FromResponse {
         /// Name of the field in the response
         response_field_name: ResponseFieldName,
-        /// Extractor type for response data
-        response_extractor:  ResponseExtractorType,
+        /// Optional source path for extraction (if different from field name)
+        /// Supports dot notation for nested fields (e.g., "result.entity")
+        source_path:         Option<&'static str>,
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
@@ -76,8 +76,9 @@ pub enum ResponseField {
     FromResponseNullableWithPlacement {
         /// Name of the field in the response
         response_field_name: ResponseFieldName,
-        /// Extractor type for response data
-        response_extractor:  ResponseExtractorType,
+        /// Optional source path for extraction (if different from field name)
+        /// Supports dot notation for nested fields (e.g., "result.entity")
+        source_path:         Option<&'static str>,
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
@@ -92,111 +93,6 @@ pub enum ResponseField {
     /// `format_corrections`, etc.) from V2 `BrpMethodResult` and places them in metadata. Only
     /// used for V2 tools that support format correction.
     FormatCorrection,
-}
-
-/// Extraction strategies for response data only.
-#[derive(Clone, Debug)]
-pub enum ResponseExtractorType {
-    /// Extract a specific field from the response data structure
-    /// Supports dot notation for nested fields (e.g., "result.entity")
-    Field(&'static str),
-    /// Extract count field from response data
-    Count,
-    /// Count items in an array at the specified field path
-    /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
-    ArrayCount(&'static str),
-    /// Count keys in an object at the specified field path
-    /// Supports dot notation for nested field access (e.g., "result.components")
-    KeyCount(&'static str),
-    /// Extract total component count from nested query results
-    /// Supports dot notation for nested field access (e.g., "result" or "data.entities")
-    QueryComponentCount(&'static str),
-    /// Split content field into numbered lines
-    SplitContentIntoLines,
-}
-
-impl ResponseExtractorType {
-    /// Extract data based on the extraction strategy
-    pub fn extract(&self, data: &serde_json::Value) -> serde_json::Value {
-        /// Helper function to convert ExtractedValue to JSON Value
-        fn extracted_to_json(extracted: ExtractedValue) -> serde_json::Value {
-            match extracted {
-                ExtractedValue::String(s) => serde_json::Value::String(s),
-                ExtractedValue::Number(n) => serde_json::Value::Number(serde_json::Number::from(n)),
-                ExtractedValue::Boolean(b) => serde_json::Value::Bool(b),
-                ExtractedValue::StringArray(arr) => {
-                    let json_values: Vec<serde_json::Value> =
-                        arr.into_iter().map(serde_json::Value::String).collect();
-                    serde_json::Value::Array(json_values)
-                }
-                ExtractedValue::NumberArray(arr) => {
-                    let json_values: Vec<serde_json::Value> = arr
-                        .into_iter()
-                        .map(|n| serde_json::Value::Number(serde_json::Number::from(n)))
-                        .collect();
-                    serde_json::Value::Array(json_values)
-                }
-                ExtractedValue::Any(v) => v,
-            }
-        }
-
-        match self {
-            Self::Field(field_path) => {
-                let spec = ResponseFieldSpec {
-                    field_name: (*field_path).to_string(),
-                    field_type: ResponseFieldType::Any,
-                };
-                extract_response_field(data, spec)
-                    .map_or(serde_json::Value::Null, extracted_to_json)
-            }
-            Self::Count => {
-                let spec = ResponseFieldSpec {
-                    field_name: <ResponseFieldName as Into<&'static str>>::into(
-                        ResponseFieldName::Count,
-                    )
-                    .to_string(),
-                    field_type: ResponseFieldType::Number,
-                };
-                extract_response_field(data, spec)
-                    .map_or(serde_json::Value::Null, extracted_to_json)
-            }
-            Self::ArrayCount(field_path) => {
-                let spec = ResponseFieldSpec {
-                    field_name: (*field_path).to_string(),
-                    field_type: ResponseFieldType::Count,
-                };
-                extract_response_field(data, spec)
-                    .map_or(serde_json::Value::Null, extracted_to_json)
-            }
-            Self::KeyCount(field_path) => {
-                let spec = ResponseFieldSpec {
-                    field_name: (*field_path).to_string(),
-                    field_type: ResponseFieldType::Count,
-                };
-                extract_response_field(data, spec)
-                    .map_or(serde_json::Value::Null, extracted_to_json)
-            }
-            Self::QueryComponentCount(field_path) => {
-                let spec = ResponseFieldSpec {
-                    field_name: (*field_path).to_string(),
-                    field_type: ResponseFieldType::QueryComponentCount,
-                };
-                extract_response_field(data, spec)
-                    .map_or(serde_json::Value::Null, extracted_to_json)
-            }
-            Self::SplitContentIntoLines => {
-                let spec = ResponseFieldSpec {
-                    field_name: <ResponseFieldName as Into<&'static str>>::into(
-                        ResponseFieldName::Content,
-                    )
-                    .to_string(),
-                    field_type: ResponseFieldType::LineSplit,
-                };
-                extract_response_field(data, spec)
-                    .map_or(serde_json::Value::Array(vec![]), extracted_to_json)
-            }
-        }
-    }
 }
 
 impl ResponseField {

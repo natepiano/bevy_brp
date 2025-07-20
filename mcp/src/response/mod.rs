@@ -6,6 +6,4 @@ mod specification;
 
 pub use builder::CallInfo;
 pub use formatter::{FormatterConfig, format_tool_call_result};
-pub use specification::{
-    FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
-};
+pub use specification::{FieldPlacement, ResponseField, ResponseSpecification};

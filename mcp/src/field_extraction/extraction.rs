@@ -206,6 +206,25 @@ impl From<Value> for ExtractedValue {
     }
 }
 
+impl From<ExtractedValue> for serde_json::Value {
+    fn from(extracted: ExtractedValue) -> Self {
+        match extracted {
+            ExtractedValue::String(s) => Self::String(s),
+            ExtractedValue::Number(n) => Self::Number(serde_json::Number::from(n)),
+            ExtractedValue::Boolean(b) => Self::Bool(b),
+            ExtractedValue::StringArray(arr) => {
+                Self::Array(arr.into_iter().map(Self::String).collect())
+            }
+            ExtractedValue::NumberArray(arr) => Self::Array(
+                arr.into_iter()
+                    .map(|n| Self::Number(serde_json::Number::from(n)))
+                    .collect(),
+            ),
+            ExtractedValue::Any(v) => v,
+        }
+    }
+}
+
 /// Parameter field types (no Count or `LineSplit`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParameterFieldType {
@@ -300,7 +319,7 @@ fn extract_line_split(value: &Value) -> Option<ExtractedValue> {
     })
 }
 
-fn extract_query_component_count(value: &Value) -> Option<ExtractedValue> {
+fn extract_query_component_count(value: &Value) -> ExtractedValue {
     // Count total components across query results
     // Expects an array of entities where each entity is an object with components
     let total = value.as_array().map_or(0, |entities| {
@@ -310,7 +329,7 @@ fn extract_query_component_count(value: &Value) -> Option<ExtractedValue> {
             .map(serde_json::Map::len)
             .sum::<usize>()
     });
-    Some(ExtractedValue::Number(total as u64))
+    ExtractedValue::Number(total as u64)
 }
 
 impl ParameterFieldType {
@@ -339,7 +358,7 @@ impl ResponseFieldType {
             Self::Any => Some(extract_any(value)),
             Self::Count => extract_count(value),
             Self::LineSplit => extract_line_split(value),
-            Self::QueryComponentCount => extract_query_component_count(value),
+            Self::QueryComponentCount => Some(extract_query_component_count(value)),
         }
     }
 }

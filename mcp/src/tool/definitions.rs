@@ -46,9 +46,7 @@ use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
 use crate::log_tools::read_log::ReadLog;
 use crate::log_tools::set_tracing_level::SetTracingLevel;
-use crate::response::{
-    FieldPlacement, ResponseExtractorType, ResponseField, ResponseSpecification,
-};
+use crate::response::{FieldPlacement, ResponseField, ResponseSpecification};
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,
 };
@@ -102,17 +100,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Components,
-                        response_extractor:  ResponseExtractorType::Field("result"),
+                        source_path:         Some("result"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::ComponentCount,
-                        response_extractor:  ResponseExtractorType::KeyCount("result.components"),
+                        source_path:         Some("result.components"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::ErrorCount,
-                        response_extractor:  ResponseExtractorType::KeyCount("result.errors"),
+                        source_path:         Some("result.errors"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -220,7 +218,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::ComponentCount,
-                        response_extractor:  ResponseExtractorType::ArrayCount("result"),
+                        source_path:         Some("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -245,7 +243,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::ResourceCount,
-                        response_extractor:  ResponseExtractorType::ArrayCount("result"),
+                        source_path:         Some("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -336,12 +334,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::EntityCount,
-                        response_extractor:  ResponseExtractorType::ArrayCount("result"),
+                        source_path:         Some("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::ComponentCount,
-                        response_extractor:  ResponseExtractorType::QueryComponentCount("result"),
+                        source_path:         Some("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -371,7 +369,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::TypeCount,
-                        response_extractor:  ResponseExtractorType::KeyCount("result"),
+                        source_path:         Some("result"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -475,7 +473,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::BrpRawResultToResult,
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::MethodCount,
-                        response_extractor:  ResponseExtractorType::ArrayCount("result.methods"),
+                        source_path:         Some("result.methods"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -500,7 +498,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Entity,
-                        response_extractor:  ResponseExtractorType::Field("result.entity"),
+                        source_path:         Some("result.entity"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FormatCorrection,
@@ -590,12 +588,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::KeysSent,
-                        response_extractor:  ResponseExtractorType::Field("result.keys_sent"),
+                        source_path:         Some("result.keys_sent"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::DurationMs,
-                        response_extractor:  ResponseExtractorType::Field("result.duration_ms"),
+                        source_path:         Some("result.duration_ms"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -619,12 +617,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::DebugEnabled,
-                        response_extractor:  ResponseExtractorType::Field("result.debug_enabled"),
+                        source_path:         Some("result.debug_enabled"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Details,
-                        response_extractor:  ResponseExtractorType::Field("result.message"),
+                        source_path:         Some("result.message"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -659,12 +657,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::WatchId,
-                        response_extractor:  ResponseExtractorType::Field("watch_id"),
+                        source_path:         Some("watch_id"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::LogPath,
-                        response_extractor:  ResponseExtractorType::Field("log_path"),
+                        source_path:         Some("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
@@ -694,12 +692,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::WatchId,
-                        response_extractor:  ResponseExtractorType::Field("watch_id"),
+                        source_path:         Some("watch_id"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::LogPath,
-                        response_extractor:  ResponseExtractorType::Field("log_path"),
+                        source_path:         Some("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromRequest {
@@ -736,22 +734,22 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::DeletedCount,
-                        response_extractor:  ResponseExtractorType::Field("deleted_count"),
+                        source_path:         Some("deleted_count"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::DeletedFiles,
-                        response_extractor:  ResponseExtractorType::Field("deleted_files"),
+                        source_path:         Some("deleted_files"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::AppNameFilter,
-                        response_extractor:  ResponseExtractorType::Field("app_name_filter"),
+                        source_path:         Some("app_name_filter"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::OlderThanSeconds,
-                        response_extractor:  ResponseExtractorType::Field("older_than_seconds"),
+                        source_path:         Some("older_than_seconds"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -772,17 +770,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::LogPath,
-                        response_extractor:  ResponseExtractorType::Field("log_path"),
+                        source_path:         Some("log_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Exists,
-                        response_extractor:  ResponseExtractorType::Field("exists"),
+                        source_path:         Some("exists"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::FileSizeBytes,
-                        response_extractor:  ResponseExtractorType::Field("file_size_bytes"),
+                        source_path:         Some("file_size_bytes"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -869,12 +867,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Apps,
-                        response_extractor:  ResponseExtractorType::Field("apps"),
+                        source_path:         Some("apps"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        response_extractor:  ResponseExtractorType::Count,
+                        source_path:         None,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -895,12 +893,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Examples,
-                        response_extractor:  ResponseExtractorType::Field("examples"),
+                        source_path:         Some("examples"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        response_extractor:  ResponseExtractorType::Count,
+                        source_path:         None,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -921,12 +919,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Apps,
-                        response_extractor:  ResponseExtractorType::Field("apps"),
+                        source_path:         Some("apps"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        response_extractor:  ResponseExtractorType::Count,
+                        source_path:         None,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -947,12 +945,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Watches,
-                        response_extractor:  ResponseExtractorType::Field("watches"),
+                        source_path:         Some("watches"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        response_extractor:  ResponseExtractorType::Field("count"),
+                        source_path:         Some("count"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1003,17 +1001,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Logs,
-                        response_extractor:  ResponseExtractorType::Field("logs"),
+                        source_path:         Some("logs"),
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::TempDirectory,
-                        response_extractor:  ResponseExtractorType::Field("temp_directory"),
+                        source_path:         Some("temp_directory"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        response_extractor:  ResponseExtractorType::Count,
+                        source_path:         None,
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1050,42 +1048,42 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Filename,
-                        response_extractor:  ResponseExtractorType::Field("filename"),
+                        source_path:         Some("filename"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::FilePath,
-                        response_extractor:  ResponseExtractorType::Field("file_path"),
+                        source_path:         Some("file_path"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::SizeBytes,
-                        response_extractor:  ResponseExtractorType::Field("size_bytes"),
+                        source_path:         Some("size_bytes"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::SizeHuman,
-                        response_extractor:  ResponseExtractorType::Field("size_human"),
+                        source_path:         Some("size_human"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::LinesRead,
-                        response_extractor:  ResponseExtractorType::Field("lines_read"),
+                        source_path:         Some("lines_read"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Content,
-                        response_extractor:  ResponseExtractorType::SplitContentIntoLines,
+                        source_path:         None,
                         placement:           FieldPlacement::Result,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::FilteredByKeyword,
-                        response_extractor:  ResponseExtractorType::Field("filtered_by_keyword"),
+                        source_path:         Some("filtered_by_keyword"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::TailMode,
-                        response_extractor:  ResponseExtractorType::Field("tail_mode"),
+                        source_path:         Some("tail_mode"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1110,12 +1108,12 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::TracingLevel,
-                        response_extractor:  ResponseExtractorType::Field("level"),
+                        source_path:         Some("level"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::LogFile,
-                        response_extractor:  ResponseExtractorType::Field("log_file"),
+                        source_path:         Some("log_file"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1145,17 +1143,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::AppRunning,
-                        response_extractor:  ResponseExtractorType::Field("app_running"),
+                        source_path:         Some("app_running"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::BrpResponsive,
-                        response_extractor:  ResponseExtractorType::Field("brp_responsive"),
+                        source_path:         Some("brp_responsive"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Pid,
-                        response_extractor:  ResponseExtractorType::Field("pid"),
+                        source_path:         Some("pid"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1180,17 +1178,17 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::ShutdownMethod,
-                        response_extractor:  ResponseExtractorType::Field("shutdown_method"),
+                        source_path:         Some("shutdown_method"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::AppName,
-                        response_extractor:  ResponseExtractorType::Field("app_name"),
+                        source_path:         Some("app_name"),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponseNullableWithPlacement {
                         response_field_name: ResponseFieldName::Pid,
-                        response_extractor:  ResponseExtractorType::Field("pid"),
+                        source_path:         Some("pid"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],

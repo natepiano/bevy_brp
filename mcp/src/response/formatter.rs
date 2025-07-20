@@ -24,7 +24,7 @@ use serde_json::{Value, json};
 
 use super::builder::{JsonResponse, ResponseBuilder};
 use super::large_response::{self, LargeResponseConfig};
-use super::specification::{FieldPlacement, ResponseExtractorType, ResponseField};
+use super::specification::{FieldPlacement, ResponseField, ResponseFieldSpec};
 // Import format discovery types for convenience
 use crate::brp_tools::request_handler::{
     FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus,
@@ -33,6 +33,7 @@ use crate::constants::{
     RESPONSE_DEBUG_INFO, RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS, RESPONSE_METADATA,
 };
 use crate::error::Result;
+use crate::field_extraction::{ResponseFieldType, extract_response_field};
 use crate::tool::{HandlerContext, HasCallInfo};
 
 /// A configurable formatter that can handle various BRP response formatting needs
@@ -75,12 +76,18 @@ impl ResponseFormatter {
                 (value, placement.clone())
             }
             ResponseField::FromResponse {
-                response_extractor,
+                response_field_name,
+                source_path,
                 placement,
-                ..
             } => {
-                // Use ResponseExtractorType's extract method
-                let value = response_extractor.extract(data);
+                // Use unified extraction with source path override
+                let field_name = source_path.unwrap_or_else(|| response_field_name.into());
+                let spec = ResponseFieldSpec {
+                    field_name: field_name.to_string(),
+                    field_type: response_field_name.field_type(),
+                };
+                let value = extract_response_field(data, spec)
+                    .map_or(Value::Null, std::convert::Into::into);
                 (value, placement.clone())
             }
             ResponseField::DirectToMetadata => {
@@ -88,12 +95,19 @@ impl ResponseFormatter {
                 (data.clone(), FieldPlacement::Metadata)
             }
             ResponseField::FromResponseNullableWithPlacement {
-                response_extractor,
+                response_field_name,
+                source_path,
                 placement,
-                ..
             } => {
-                // Extract and mark null fields for skipping
-                let value = response_extractor.extract(data);
+                // Use unified extraction with source path override
+                let field_name = source_path.unwrap_or_else(|| response_field_name.into());
+                let spec = ResponseFieldSpec {
+                    field_name: field_name.to_string(),
+                    field_type: response_field_name.field_type(),
+                };
+                let value = extract_response_field(data, spec)
+                    .map_or(Value::Null, std::convert::Into::into);
+
                 let result_value = if value.is_null() {
                     Value::String("__SKIP_NULL_FIELD__".to_string())
                 } else {
@@ -102,8 +116,13 @@ impl ResponseFormatter {
                 (result_value, placement.clone())
             }
             ResponseField::BrpRawResultToResult => {
-                // Extract raw result field
-                let value = ResponseExtractorType::Field("result").extract(data);
+                // Extract raw result field using unified extraction
+                let spec = ResponseFieldSpec {
+                    field_name: "result".to_string(),
+                    field_type: ResponseFieldType::Any,
+                };
+                let value = extract_response_field(data, spec)
+                    .map_or(Value::Null, std::convert::Into::into);
                 (value, FieldPlacement::Result)
             }
             ResponseField::FormatCorrection => {
