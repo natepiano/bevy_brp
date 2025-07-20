@@ -3,9 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::response::ToolError;
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ToolResult,
+    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ToolError,
+    ToolResult,
 };
 
 /// Individual watch information

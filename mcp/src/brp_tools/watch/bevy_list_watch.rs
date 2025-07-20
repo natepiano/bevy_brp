@@ -1,10 +1,9 @@
 //! Start watching an entity for component list changes
 
 use super::types::WatchStartResult;
-use crate::response::ToolError;
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
-    ParameterName, ToolResult,
+    ParameterName, ToolError, ToolResult,
 };
 
 pub struct BevyListWatch;

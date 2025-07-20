@@ -3,13 +3,13 @@ use std::pin::Pin;
 
 use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::HandlerFn;
 use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
 use crate::field_extraction::ResponseFieldName;
-use crate::response::{ResponseStatus, ToolError};
+use crate::response::ResponseStatus;
 
 /// Unified tool handler that works with any `HandlerFn` variant
 pub struct ToolHandler {
@@ -26,6 +26,23 @@ impl ToolHandler {
 impl ToolHandler {
     pub async fn call_tool(self) -> Result<CallToolResult, McpError> {
         self.handler.call_handler(&self.context).await
+    }
+}
+
+/// Standard error type for tool responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolError {
+    pub message: String,
+    #[serde(flatten)]
+    pub details: Option<serde_json::Value>,
+}
+
+impl ToolError {
+    pub fn new(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            details: None,
+        }
     }
 }
 

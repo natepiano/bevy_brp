@@ -7,10 +7,9 @@ use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
-use crate::response::ToolError;
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
-    ToolResult,
+    ToolError, ToolResult,
 };
 
 /// Marker type for App launch configuration

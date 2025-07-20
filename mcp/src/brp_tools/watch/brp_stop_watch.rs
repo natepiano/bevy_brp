@@ -3,10 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::response::ToolError;
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
-    ToolResult,
+    ToolError, ToolResult,
 };
 
 /// Result from stopping a watch operation
