@@ -11,7 +11,7 @@ use crate::tool::{
 
 /// Result from cleaning up log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupLogsResult {
+pub struct DeleteLogsResult {
     /// Number of files deleted
     pub deleted_count:      usize,
     /// List of deleted filenames
@@ -22,15 +22,15 @@ pub struct CleanupLogsResult {
     pub older_than_seconds: Option<u32>,
 }
 
-impl HandlerResult for CleanupLogsResult {
+impl HandlerResult for DeleteLogsResult {
     fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
     }
 }
 
-pub struct CleanupLogs;
+pub struct DeleteLogs;
 
-impl LocalToolFn for CleanupLogs {
+impl LocalToolFn for DeleteLogs {
     fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         // Extract parameters before the async block
         let app_name_filter = ctx
@@ -55,10 +55,10 @@ impl LocalToolFn for CleanupLogs {
 fn handle_impl(
     app_name_filter: &str,
     older_than_seconds: u32,
-) -> Result<CleanupLogsResult, McpError> {
-    let (deleted_count, deleted_files) = cleanup_log_files(app_name_filter, older_than_seconds)?;
+) -> Result<DeleteLogsResult, McpError> {
+    let (deleted_count, deleted_files) = delete_log_files(app_name_filter, older_than_seconds)?;
 
-    Ok(CleanupLogsResult {
+    Ok(DeleteLogsResult {
         deleted_count,
         deleted_files,
         app_name_filter: if app_name_filter.is_empty() {
@@ -74,7 +74,7 @@ fn handle_impl(
     })
 }
 
-fn cleanup_log_files(
+fn delete_log_files(
     app_name_filter: &str,
     older_than_seconds: u32,
 ) -> Result<(usize, Vec<String>), McpError> {

@@ -1,7 +1,7 @@
 // Log tools module
 
-pub mod cleanup_logs;
 pub mod constants;
+pub mod delete_logs;
 pub mod get_trace_log_path;
 mod lazy_file_writer;
 pub mod list_logs;

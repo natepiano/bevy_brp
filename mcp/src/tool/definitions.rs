@@ -15,7 +15,7 @@ use super::constants::{
     DESC_BEVY_REGISTRY_SCHEMA, DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_REPARENT,
     DESC_BEVY_RPC_DISCOVER, DESC_BEVY_SPAWN, DESC_BRP_EXECUTE, DESC_BRP_EXTRAS_DISCOVER_FORMAT,
     DESC_BRP_EXTRAS_SCREENSHOT, DESC_BRP_EXTRAS_SEND_KEYS, DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-    DESC_CLEANUP_LOGS, DESC_GET_TRACE_LOG_PATH, DESC_LAUNCH_BEVY_APP, DESC_LAUNCH_BEVY_EXAMPLE,
+    DESC_DELETE_LOGS, DESC_GET_TRACE_LOG_PATH, DESC_LAUNCH_BEVY_APP, DESC_LAUNCH_BEVY_EXAMPLE,
     DESC_LIST_BEVY_APPS, DESC_LIST_BEVY_EXAMPLES, DESC_LIST_BRP_APPS, DESC_LIST_LOGS,
     DESC_READ_LOG, DESC_SET_TRACING_LEVEL, DESC_SHUTDOWN, DESC_STATUS, TOOL_BEVY_DESTROY,
     TOOL_BEVY_GET, TOOL_BEVY_GET_RESOURCE, TOOL_BEVY_GET_WATCH, TOOL_BEVY_INSERT,
@@ -24,7 +24,7 @@ use super::constants::{
     TOOL_BEVY_REGISTRY_SCHEMA, TOOL_BEVY_REMOVE, TOOL_BEVY_REMOVE_RESOURCE, TOOL_BEVY_REPARENT,
     TOOL_BEVY_RPC_DISCOVER, TOOL_BEVY_SPAWN, TOOL_BRP_EXECUTE, TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
     TOOL_BRP_EXTRAS_SCREENSHOT, TOOL_BRP_EXTRAS_SEND_KEYS, TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
-    TOOL_CLEANUP_LOGS, TOOL_GET_TRACE_LOG_PATH, TOOL_LAUNCH_BEVY_APP, TOOL_LAUNCH_BEVY_EXAMPLE,
+    TOOL_DELETE_LOGS, TOOL_GET_TRACE_LOG_PATH, TOOL_LAUNCH_BEVY_APP, TOOL_LAUNCH_BEVY_EXAMPLE,
     TOOL_LIST_BEVY_APPS, TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS, TOOL_LIST_LOGS,
     TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
@@ -41,7 +41,7 @@ use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
 use crate::brp_tools::watch::brp_stop_watch::BrpStopWatch;
 use crate::field_extraction::{Parameter, ParameterName, ResponseFieldName};
-use crate::log_tools::cleanup_logs::CleanupLogs;
+use crate::log_tools::delete_logs::DeleteLogs;
 use crate::log_tools::get_trace_log_path::GetTraceLogPath;
 use crate::log_tools::list_logs::ListLogs;
 use crate::log_tools::read_log::ReadLog;
@@ -709,14 +709,14 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:            TOOL_CLEANUP_LOGS,
-            description:     DESC_CLEANUP_LOGS,
+            name:            TOOL_DELETE_LOGS,
+            description:     DESC_DELETE_LOGS,
             annotations:     BrpToolAnnotations::new(
-                "Cleanup Log Files",
+                "Delete Log Files",
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:         HandlerFn::local(CleanupLogs),
+            handler:         HandlerFn::local(DeleteLogs),
             parameters:      vec![
                 Parameter::string(
                     ParameterName::AppName,
@@ -872,7 +872,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        source_path:         None,
+                        source_path:         Some("apps"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -898,7 +898,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        source_path:         None,
+                        source_path:         Some("examples"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -924,7 +924,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        source_path:         None,
+                        source_path:         Some("apps"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -950,7 +950,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        source_path:         Some("count"),
+                        source_path:         Some("watches"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1011,7 +1011,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::Count,
-                        source_path:         None,
+                        source_path:         Some("logs"),
                         placement:           FieldPlacement::Metadata,
                     },
                 ],
@@ -1174,13 +1174,13 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 true,
             )],
             response_format: ResponseSpecification {
-                message_template: "{shutdown_message}",
+                message_template: "{message}",
                 response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ShutdownMethod,
-                        source_path:         Some("shutdown_method"),
-                        placement:           FieldPlacement::Metadata,
-                    },
+                    // ResponseField::FromResponse {
+                    //     response_field_name: ResponseFieldName::ShutdownMethod,
+                    //     source_path:         Some("shutdown_method"),
+                    //     placement:           FieldPlacement::Metadata,
+                    // },
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::AppName,
                         source_path:         Some("app_name"),

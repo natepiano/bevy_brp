@@ -14,8 +14,6 @@ pub struct ListLogResult {
     pub logs:           Vec<LogFileInfo>,
     /// Path to the temp directory containing logs
     pub temp_directory: String,
-    /// Total count of log files
-    pub count:          usize,
 }
 
 impl HandlerResult for ListLogResult {
@@ -43,12 +41,10 @@ impl LocalToolFn for ListLogs {
 
         Box::pin(async move {
             let logs = list_log_files(&app_name_filter, verbose)?;
-            let count = logs.len();
 
             let result = ListLogResult {
                 logs,
                 temp_directory: support::get_log_directory().display().to_string(),
-                count,
             };
 
             Ok(Box::new(result) as Box<dyn HandlerResult>)

@@ -30,8 +30,6 @@ pub struct ListActiveWatchesResult {
     pub message: String,
     /// List of active watches
     pub watches: Vec<WatchInfo>,
-    /// Total count of watches
-    pub count:   usize,
 }
 
 impl HandlerResult for ListActiveWatchesResult {
@@ -76,6 +74,5 @@ async fn handle_impl() -> std::result::Result<ListActiveWatchesResult, McpError>
         status: "success".to_string(),
         message: format!("Found {count} active watches"),
         watches,
-        count,
     })
 }

@@ -15,18 +15,16 @@ use crate::tool::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShutdownResultData {
     /// Status of the shutdown operation
-    pub status:           String,
+    pub status:          String,
     /// Shutdown method used
-    pub shutdown_method:  String,
+    pub shutdown_method: String,
     /// App name that was shut down
-    pub app_name:         String,
-    /// Port that was checked
-    pub port:             u16,
+    pub app_name:        String,
     /// Process ID if terminated via kill
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pid:              Option<u32>,
+    pub pid:             Option<u32>,
     /// Detailed shutdown message for display
-    pub shutdown_message: String,
+    pub message:         String,
 }
 
 impl HandlerResult for ShutdownResultData {
@@ -38,11 +36,9 @@ impl HandlerResult for ShutdownResultData {
 /// Result of a shutdown operation
 enum ShutdownResult {
     /// Graceful shutdown via `bevy_brp_extras` succeeded
-    CleanShutdown,
-    /// Process was killed using system signal
+    CleanShutdown { pid: u32 },
+    /// Process was killed using system signal - typically when extras plugin is not available
     ProcessKilled { pid: u32 },
-    /// Process was not running when shutdown was attempted (may have crashed)
-    AlreadyShutdown,
     /// Process was not running
     NotRunning,
     /// An error occurred during shutdown
@@ -50,23 +46,34 @@ enum ShutdownResult {
 }
 
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
-async fn shutdown_app(app_name: &str, port: u16) -> (ShutdownResult, Vec<String>) {
+async fn shutdown_app(app_name: &str, port: u16) -> ShutdownResult {
     debug!("Starting shutdown process for app '{app_name}' on port {port}");
     // First, check if the process is actually running
     if !is_process_running(app_name) {
         debug!("Process '{app_name}' not found in system process list");
-        return (ShutdownResult::AlreadyShutdown, Vec::new());
+        return ShutdownResult::NotRunning;
     }
 
     debug!("Process '{app_name}' found, attempting graceful shutdown");
 
     // Process is running, try graceful shutdown via bevy_brp_extras
+    // Extraction shouldn't return 0 with the udpated data extras but it's possible we could be
+    // running against an older version
     match try_graceful_shutdown(port).await {
-        Ok((true, _)) => {
+        Ok(Some(result)) => {
             debug!("Graceful shutdown succeeded");
-            (ShutdownResult::CleanShutdown, Vec::new())
+            // Extract PID from the BRP response
+            let pid = result
+                .get("pid")
+                .and_then(serde_json::Value::as_u64)
+                .and_then(|p| u32::try_from(p).ok())
+                .unwrap_or_else(|| {
+                    debug!("Warning: PID not found in BRP extras shutdown response");
+                    0
+                });
+            ShutdownResult::CleanShutdown { pid }
         }
-        Ok((false, _)) => {
+        Ok(None) => {
             debug!("Graceful shutdown failed, falling back to process kill");
             // BRP responded but bevy_brp_extras not available - fall back to kill
             handle_kill_process_fallback(app_name, None)
@@ -80,14 +87,11 @@ async fn shutdown_app(app_name: &str, port: u16) -> (ShutdownResult, Vec<String>
 }
 
 /// Handle the fallback to kill process when graceful shutdown fails
-fn handle_kill_process_fallback(
-    app_name: &str,
-    brp_error: Option<String>,
-) -> (ShutdownResult, Vec<String>) {
+fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> ShutdownResult {
     match kill_process(app_name) {
         Ok(Some(pid)) => {
             debug!("Successfully killed process {app_name} with PID {pid}");
-            (ShutdownResult::ProcessKilled { pid }, Vec::new())
+            ShutdownResult::ProcessKilled { pid }
         }
         Ok(None) => {
             if brp_error.is_some() {
@@ -95,7 +99,7 @@ fn handle_kill_process_fallback(
             } else {
                 debug!("Process '{app_name}' not found when attempting to kill");
             }
-            (ShutdownResult::NotRunning, Vec::new())
+            ShutdownResult::NotRunning
         }
         Err(kill_err) => {
             if brp_error.is_some() {
@@ -107,12 +111,9 @@ fn handle_kill_process_fallback(
                 || format!("{kill_err:?}"),
                 |brp_err| format!("BRP failed: {brp_err}, Kill failed: {kill_err:?}"),
             );
-            (
-                ShutdownResult::Error {
-                    message: error_message,
-                },
-                Vec::new(),
-            )
+            ShutdownResult::Error {
+                message: error_message,
+            }
         }
     }
 }
@@ -143,21 +144,20 @@ async fn handle_impl(
     port: u16,
 ) -> std::result::Result<ShutdownResultData, McpError> {
     // Shutdown the app
-    let (result, _debug_info) = shutdown_app(app_name, port).await;
+    let result = shutdown_app(app_name, port).await;
 
     // Build and return typed response
     let shutdown_result = match result {
-        ShutdownResult::CleanShutdown => {
+        ShutdownResult::CleanShutdown { pid } => {
             let message = format!(
-                "Successfully initiated graceful shutdown for '{app_name}' via bevy_brp_extras on port {port}"
+                "Successfully initiated graceful shutdown for '{app_name}' (PID: {pid}) via bevy_brp_extras"
             );
             ShutdownResultData {
                 status: "success".to_string(),
                 shutdown_method: "clean_shutdown".to_string(),
                 app_name: app_name.to_string(),
-                port,
-                pid: None,
-                shutdown_message: message,
+                pid: Some(pid),
+                message,
             }
         }
         ShutdownResult::ProcessKilled { pid } => {
@@ -168,22 +168,8 @@ async fn handle_impl(
                 status: "success".to_string(),
                 shutdown_method: "process_kill".to_string(),
                 app_name: app_name.to_string(),
-                port,
                 pid: Some(pid),
-                shutdown_message: message,
-            }
-        }
-        ShutdownResult::AlreadyShutdown => {
-            let message = format!(
-                "Process '{app_name}' is not running - may have already shutdown or crashed. No action needed."
-            );
-            ShutdownResultData {
-                status: "error".to_string(),
-                shutdown_method: "already_shutdown".to_string(),
-                app_name: app_name.to_string(),
-                port,
-                pid: None,
-                shutdown_message: message,
+                message,
             }
         }
         ShutdownResult::NotRunning => {
@@ -192,18 +178,16 @@ async fn handle_impl(
                 status: "error".to_string(),
                 shutdown_method: "none".to_string(),
                 app_name: app_name.to_string(),
-                port,
                 pid: None,
-                shutdown_message: message,
+                message,
             }
         }
         ShutdownResult::Error { message } => ShutdownResultData {
             status: "error".to_string(),
             shutdown_method: "process_kill_failed".to_string(),
             app_name: app_name.to_string(),
-            port,
             pid: None,
-            shutdown_message: message,
+            message,
         },
     };
 
@@ -211,13 +195,13 @@ async fn handle_impl(
 }
 
 /// Try to gracefully shutdown via `bevy_brp_extras`
-async fn try_graceful_shutdown(port: u16) -> Result<(bool, Vec<String>)> {
+async fn try_graceful_shutdown(port: u16) -> Result<Option<serde_json::Value>> {
     debug!("Starting graceful shutdown attempt on port {port}");
     match execute_brp_method(BRP_METHOD_EXTRAS_SHUTDOWN, None, port).await {
         Ok(BrpResult::Success(result)) => {
             // Graceful shutdown succeeded
             debug!("BRP extras shutdown successful: {result:?}");
-            Ok((true, Vec::new()))
+            Ok(result)
         }
         Ok(BrpResult::Error(brp_error)) => {
             // Check if this is a method not found error (bevy_brp_extras not available)
@@ -233,7 +217,7 @@ async fn try_graceful_shutdown(port: u16) -> Result<(bool, Vec<String>)> {
                     brp_error.code, brp_error.message
                 );
             }
-            Ok((false, Vec::new()))
+            Ok(None)
         }
         Err(e) => {
             // BRP communication failed entirely

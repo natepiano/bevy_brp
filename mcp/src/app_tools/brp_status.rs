@@ -15,8 +15,6 @@ pub struct StatusResult {
     pub status:         String,
     /// App name that was checked
     pub app_name:       String,
-    /// Port that was checked
-    pub port:           u16,
     /// Whether the app process is running
     pub app_running:    bool,
     /// Whether BRP is responsive
@@ -175,7 +173,6 @@ async fn check_brp_for_app(
     Ok(StatusResult {
         status: status.to_string(),
         app_name: app_name.to_string(),
-        port,
         app_running,
         brp_responsive,
         pid,

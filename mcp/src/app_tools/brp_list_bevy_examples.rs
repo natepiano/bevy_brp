@@ -10,8 +10,6 @@ use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, N
 pub struct ListBevyExamplesResult {
     /// List of Bevy examples found
     pub examples: Vec<serde_json::Value>,
-    /// Total count of examples
-    pub count:    usize,
 }
 
 impl HandlerResult for ListBevyExamplesResult {
@@ -45,10 +43,7 @@ where
     support::handle_list_binaries(handler_context, |search_paths| async move {
         let items = support::collect_all_items(&search_paths, &BevyExamplesStrategy);
 
-        Ok(ListBevyExamplesResult {
-            count:    items.len(),
-            examples: items,
-        })
+        Ok(ListBevyExamplesResult { examples: items })
     })
     .await
 }

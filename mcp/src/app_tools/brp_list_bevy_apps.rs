@@ -9,9 +9,7 @@ use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, N
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListBevyAppsResult {
     /// List of Bevy apps found
-    pub apps:  Vec<serde_json::Value>,
-    /// Total count of apps
-    pub count: usize,
+    pub apps: Vec<serde_json::Value>,
 }
 
 impl HandlerResult for ListBevyAppsResult {
@@ -45,10 +43,7 @@ where
     support::handle_list_binaries(handler_context, |search_paths| async move {
         let items = support::collect_all_items(&search_paths, &BevyAppsStrategy);
 
-        Ok(ListBevyAppsResult {
-            count: items.len(),
-            apps:  items,
-        })
+        Ok(ListBevyAppsResult { apps: items })
     })
     .await
 }

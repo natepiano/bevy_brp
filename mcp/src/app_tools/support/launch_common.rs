@@ -55,8 +55,6 @@ pub struct LaunchResult {
     pub target_name:        Option<String>,
     /// Process ID of the launched target
     pub pid:                Option<u32>,
-    /// Port used for launch
-    pub port:               Option<u16>,
     /// Working directory used for launch
     pub working_directory:  Option<String>,
     /// Build profile used (debug/release)
@@ -401,7 +399,6 @@ fn create_error_launch_result<T: LaunchConfigTrait>(
         message,
         target_name: Some(config.target_name().to_string()),
         pid: None,
-        port: Some(config.port()),
         working_directory: None,
         profile: None,
         log_file: None,
@@ -621,7 +618,6 @@ impl LaunchConfigTrait for LaunchConfig<App> {
             message: format!("Successfully launched '{}' (PID: {pid})", self.target_name),
             target_name: Some(self.target_name.clone()),
             pid: Some(pid),
-            port: Some(self.port),
             working_directory: Some(working_directory.display().to_string()),
             profile: Some(self.profile.clone()),
             log_file: Some(log_file.display().to_string()),
@@ -699,7 +695,6 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
             message: format!("Successfully launched '{}' (PID: {pid})", self.target_name),
             target_name: Some(self.target_name.clone()),
             pid: Some(pid),
-            port: Some(self.port),
             working_directory: Some(working_directory.display().to_string()),
             profile: Some(self.profile.clone()),
             log_file: Some(log_file.display().to_string()),

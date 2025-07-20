@@ -126,17 +126,17 @@ impl ResponseFieldName {
             | Self::TempDirectory => ResponseFieldType::String,
             // Multi-line content fields - use LineSplit
             Self::Content => ResponseFieldType::LineSplit,
-            // Count fields - most return regular Number, except specific ones that need Count type
-            Self::ComponentCount
+            // Count fields - use Count type to automatically count arrays/objects
+            Self::Count
+            | Self::ComponentCount
             | Self::EntityCount
             | Self::ErrorCount
             | Self::ResourceCount
             | Self::TypeCount
             | Self::MethodCount
             | Self::DeletedCount => ResponseFieldType::Count,
-            // Regular number fields (including basic Count field for compatibility)
-            Self::Count
-            | Self::Entity
+            // Regular number fields
+            Self::Entity
             | Self::Parent
             | Self::Pid
             | Self::DurationMs
@@ -222,10 +222,10 @@ mod tests {
             ResponseFieldType::String
         );
 
-        // Test number fields
+        // Test count fields
         assert_eq!(
             ResponseFieldName::Count.field_type(),
-            ResponseFieldType::Number
+            ResponseFieldType::Count
         );
         assert_eq!(
             ResponseFieldName::Entity.field_type(),

@@ -151,6 +151,6 @@ define_tool_constants!(app, status);
 // Generate tool constants for log management tools
 define_tool_constants!(log, list_logs);
 define_tool_constants!(log, read_log);
-define_tool_constants!(log, cleanup_logs);
+define_tool_constants!(log, delete_logs);
 define_tool_constants!(log, get_trace_log_path);
 define_tool_constants!(log, set_tracing_level);
