@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional `verbose` parameter to `brp_list_logs` (default: false) for minimal output
 - Tool annotations: All tools now display semantic annotations (read-only vs destructive) with human-readable titles
 - Enhanced BRP tool titles: BRP tools automatically show their method names (e.g., "List Components (bevy/list)")
+- Tool call returns a CallInfo object with the tool name, the brp method used if it was a brp tool call, and the port used if the tool required specifying a port.
 
 ### Changed
 - Migrated to rmcp 0.3.0 for improved MCP server functionality
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All tools will return a pointer to a file in the local temp directory if the response is too large to return to coding agent. Hard coded using heuristics to fit within claude code limits.
 - `brp_list_logs` returns minimal output by default to reduce token limit errors, allows verbose mode for detailed logs
 - `bevy_get_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
+- Substantial tool call response changes. If you have any prompts that depend on the response returned from a tool call, please review the response carefully.
 
 ## [0.1.4] - Initial Release
 
