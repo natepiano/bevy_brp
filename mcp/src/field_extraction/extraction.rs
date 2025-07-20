@@ -244,6 +244,8 @@ pub enum ResponseFieldType {
     Count,
     /// String split into lines
     LineSplit,
+    /// Count total components across query results (entities with their components)
+    QueryComponentCount,
 }
 
 // Private extraction helper functions used by both field type enums
@@ -298,6 +300,19 @@ fn extract_line_split(value: &Value) -> Option<ExtractedValue> {
     })
 }
 
+fn extract_query_component_count(value: &Value) -> Option<ExtractedValue> {
+    // Count total components across query results
+    // Expects an array of entities where each entity is an object with components
+    let total = value.as_array().map_or(0, |entities| {
+        entities
+            .iter()
+            .filter_map(|e| e.as_object())
+            .map(serde_json::Map::len)
+            .sum::<usize>()
+    });
+    Some(ExtractedValue::Number(total as u64))
+}
+
 impl ParameterFieldType {
     /// Extract a value based on the parameter field type.
     pub(crate) fn extract(self, value: &Value) -> Option<ExtractedValue> {
@@ -324,6 +339,7 @@ impl ResponseFieldType {
             Self::Any => Some(extract_any(value)),
             Self::Count => extract_count(value),
             Self::LineSplit => extract_line_split(value),
+            Self::QueryComponentCount => extract_query_component_count(value),
         }
     }
 }

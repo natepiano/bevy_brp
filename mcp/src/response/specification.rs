@@ -26,34 +26,6 @@ impl JsonFieldProvider for serde_json::Value {
     }
 }
 
-/// Extract a nested field from JSON data using dot notation
-///
-/// Supports paths like "result.entity" or "data.components.count"
-/// Empty string means use the data as-is (root level access)
-fn extract_nested_field(data: &serde_json::Value, field_path: &str) -> serde_json::Value {
-    // Empty path means use the data as-is
-    if field_path.is_empty() {
-        return data.clone();
-    }
-
-    // Split the path by dots and traverse each part
-    let path_parts: Vec<&str> = field_path.split('.').collect();
-
-    let mut current_value = data;
-
-    // Navigate through each part of the path
-    for part in path_parts {
-        if let Some(next_value) = current_value.get(part) {
-            current_value = next_value;
-        } else {
-            // If any part of the path is not found, return null
-            return serde_json::Value::Null;
-        }
-    }
-
-    current_value.clone()
-}
-
 /// Specifies where a response field should be placed in the output JSON
 #[derive(Clone, Debug)]
 pub enum FieldPlacement {
@@ -146,22 +118,38 @@ pub enum ResponseExtractorType {
 impl ResponseExtractorType {
     /// Extract data based on the extraction strategy
     pub fn extract(&self, data: &serde_json::Value) -> serde_json::Value {
+        /// Helper function to convert ExtractedValue to JSON Value
+        fn extracted_to_json(extracted: ExtractedValue) -> serde_json::Value {
+            match extracted {
+                ExtractedValue::String(s) => serde_json::Value::String(s),
+                ExtractedValue::Number(n) => serde_json::Value::Number(serde_json::Number::from(n)),
+                ExtractedValue::Boolean(b) => serde_json::Value::Bool(b),
+                ExtractedValue::StringArray(arr) => {
+                    let json_values: Vec<serde_json::Value> =
+                        arr.into_iter().map(serde_json::Value::String).collect();
+                    serde_json::Value::Array(json_values)
+                }
+                ExtractedValue::NumberArray(arr) => {
+                    let json_values: Vec<serde_json::Value> = arr
+                        .into_iter()
+                        .map(|n| serde_json::Value::Number(serde_json::Number::from(n)))
+                        .collect();
+                    serde_json::Value::Array(json_values)
+                }
+                ExtractedValue::Any(v) => v,
+            }
+        }
+
         match self {
             Self::Field(field_path) => {
-                // Use unified extraction with Any type for generic field access
                 let spec = ResponseFieldSpec {
                     field_name: (*field_path).to_string(),
                     field_type: ResponseFieldType::Any,
                 };
-                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
-                    match extracted {
-                        ExtractedValue::Any(v) => v,
-                        _ => serde_json::Value::Null,
-                    }
-                })
+                extract_response_field(data, spec)
+                    .map_or(serde_json::Value::Null, extracted_to_json)
             }
             Self::Count => {
-                // Extract count field as a number
                 let spec = ResponseFieldSpec {
                     field_name: <ResponseFieldName as Into<&'static str>>::into(
                         ResponseFieldName::Count,
@@ -169,60 +157,34 @@ impl ResponseExtractorType {
                     .to_string(),
                     field_type: ResponseFieldType::Number,
                 };
-                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
-                    match extracted {
-                        ExtractedValue::Number(n) => {
-                            serde_json::Value::Number(serde_json::Number::from(n))
-                        }
-                        _ => serde_json::Value::Null,
-                    }
-                })
+                extract_response_field(data, spec)
+                    .map_or(serde_json::Value::Null, extracted_to_json)
             }
             Self::ArrayCount(field_path) => {
-                // Use unified extraction with Count type
                 let spec = ResponseFieldSpec {
                     field_name: (*field_path).to_string(),
                     field_type: ResponseFieldType::Count,
                 };
-                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
-                    match extracted {
-                        ExtractedValue::Number(n) => {
-                            serde_json::Value::Number(serde_json::Number::from(n))
-                        }
-                        _ => serde_json::Value::Null,
-                    }
-                })
+                extract_response_field(data, spec)
+                    .map_or(serde_json::Value::Null, extracted_to_json)
             }
             Self::KeyCount(field_path) => {
-                // Use unified extraction with Count type (works for objects too)
                 let spec = ResponseFieldSpec {
                     field_name: (*field_path).to_string(),
                     field_type: ResponseFieldType::Count,
                 };
-                extract_response_field(data, spec).map_or(serde_json::Value::Null, |extracted| {
-                    match extracted {
-                        ExtractedValue::Number(n) => {
-                            serde_json::Value::Number(serde_json::Number::from(n))
-                        }
-                        _ => serde_json::Value::Null,
-                    }
-                })
+                extract_response_field(data, spec)
+                    .map_or(serde_json::Value::Null, extracted_to_json)
             }
             Self::QueryComponentCount(field_path) => {
-                // This is a special case that needs custom logic
-                // Extract the field first, then count components
-                let field_data = extract_nested_field(data, field_path);
-                let total = field_data.as_array().map_or(0, |entities| {
-                    entities
-                        .iter()
-                        .filter_map(|e| e.as_object())
-                        .map(serde_json::Map::len)
-                        .sum::<usize>()
-                });
-                serde_json::Value::Number(serde_json::Number::from(total))
+                let spec = ResponseFieldSpec {
+                    field_name: (*field_path).to_string(),
+                    field_type: ResponseFieldType::QueryComponentCount,
+                };
+                extract_response_field(data, spec)
+                    .map_or(serde_json::Value::Null, extracted_to_json)
             }
             Self::SplitContentIntoLines => {
-                // Use unified extraction with LineSplit type
                 let spec = ResponseFieldSpec {
                     field_name: <ResponseFieldName as Into<&'static str>>::into(
                         ResponseFieldName::Content,
@@ -230,17 +192,8 @@ impl ResponseExtractorType {
                     .to_string(),
                     field_type: ResponseFieldType::LineSplit,
                 };
-                extract_response_field(data, spec).map_or_else(
-                    || serde_json::Value::Array(vec![]),
-                    |extracted| match extracted {
-                        ExtractedValue::StringArray(lines) => {
-                            let json_lines: Vec<serde_json::Value> =
-                                lines.into_iter().map(serde_json::Value::String).collect();
-                            serde_json::Value::Array(json_lines)
-                        }
-                        _ => serde_json::Value::Array(vec![]),
-                    },
-                )
+                extract_response_field(data, spec)
+                    .map_or(serde_json::Value::Array(vec![]), extracted_to_json)
             }
         }
     }
