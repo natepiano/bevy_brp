@@ -8,8 +8,14 @@ use super::extraction::{FieldSpec, ResponseFieldType};
 pub enum ResponseFieldName {
     /// `app_name` - Application name
     AppName,
+    /// `app_name_filter` - Application name filter
+    AppNameFilter,
+    /// `app_running` - Whether app is running
+    AppRunning,
     /// `apps` - List of applications
     Apps,
+    /// `brp_responsive` - Whether BRP is responsive
+    BrpResponsive,
     /// `component_count` - Number of components
     ComponentCount,
     /// `components` - Component data
@@ -18,94 +24,88 @@ pub enum ResponseFieldName {
     Content,
     /// `count` - General count field
     Count,
+    /// `debug_enabled` - Whether debug is enabled
+    DebugEnabled,
     /// `debug_info` - Debug information
     DebugInfo,
-    /// `entity` - Entity ID
-    Entity,
+    /// `deleted_count` - Number of deleted items
+    DeletedCount,
+    /// `deleted_files` - List of deleted files
+    DeletedFiles,
+    /// `details` - Additional details
+    Details,
+    /// `duration_ms` - Duration in milliseconds
+    DurationMs,
     /// `entities` - List of entities
     Entities,
+    /// `entity` - Entity ID
+    Entity,
     /// `entity_count` - Number of entities
     EntityCount,
-    /// `format_corrections` - Format correction information
-    FormatCorrections,
+    /// `error_count` - Number of errors
+    ErrorCount,
+    /// `examples` - List of examples
+    Examples,
+    /// `exists` - Whether something exists
+    Exists,
+    /// `file_path` - File path
+    FilePath,
+    /// `file_size_bytes` - File size in bytes
+    FileSizeBytes,
+    /// `filename` - File name
+    Filename,
+    /// `filtered_by_keyword` - Whether filtered by keyword
+    FilteredByKeyword,
     /// `format_corrected` - Whether format was corrected
     FormatCorrected,
+    /// `format_corrections` - Format correction information
+    FormatCorrections,
+    /// `keys_sent` - Keys that were sent
+    KeysSent,
+    /// `lines_read` - Number of lines read
+    LinesRead,
+    /// `log_file` - Log file path
+    LogFile,
     /// `log_path` - Path to log file
     LogPath,
+    /// `logs` - List of logs
+    Logs,
     /// `metadata` - Metadata field
     Metadata,
+    /// `method_count` - Number of methods
+    MethodCount,
+    /// `older_than_seconds` - Age filter in seconds
+    OlderThanSeconds,
     /// `parent` - Parent entity
     Parent,
     /// `path` - File or directory path
     Path,
     /// `pid` - Process ID
     Pid,
-    /// `result` - General result field
-    Result,
     /// `resource` - Resource data
     Resource,
-    /// `shutdown_method` - Method used for shutdown
-    ShutdownMethod,
-    /// `error_count` - Number of errors
-    ErrorCount,
     /// `resource_count` - Number of resources
     ResourceCount,
-    /// `type_count` - Number of types
-    TypeCount,
-    /// `method_count` - Number of methods
-    MethodCount,
-    /// `keys_sent` - Keys that were sent
-    KeysSent,
-    /// `duration_ms` - Duration in milliseconds
-    DurationMs,
-    /// `debug_enabled` - Whether debug is enabled
-    DebugEnabled,
-    /// `details` - Additional details
-    Details,
-    /// `watch_id` - Watch identifier
-    WatchId,
-    /// `deleted_count` - Number of deleted items
-    DeletedCount,
-    /// `deleted_files` - List of deleted files
-    DeletedFiles,
-    /// `app_name_filter` - Application name filter
-    AppNameFilter,
-    /// `older_than_seconds` - Age filter in seconds
-    OlderThanSeconds,
-    /// `exists` - Whether something exists
-    Exists,
-    /// `file_size_bytes` - File size in bytes
-    FileSizeBytes,
-    /// `examples` - List of examples
-    Examples,
-    /// `watches` - List of watches
-    Watches,
-    /// `logs` - List of logs
-    Logs,
-    /// `temp_directory` - Temporary directory path
-    TempDirectory,
-    /// `filename` - File name
-    Filename,
-    /// `file_path` - File path
-    FilePath,
+    /// `result` - General result field
+    Result,
+    /// `shutdown_method` - Method used for shutdown
+    ShutdownMethod,
     /// `size_bytes` - Size in bytes
     SizeBytes,
     /// `size_human` - Human-readable size
     SizeHuman,
-    /// `lines_read` - Number of lines read
-    LinesRead,
-    /// `filtered_by_keyword` - Whether filtered by keyword
-    FilteredByKeyword,
     /// `tail_mode` - Whether in tail mode
     TailMode,
+    /// `temp_directory` - Temporary directory path
+    TempDirectory,
     /// `tracing_level` - Current tracing level
     TracingLevel,
-    /// `log_file` - Log file path
-    LogFile,
-    /// `app_running` - Whether app is running
-    AppRunning,
-    /// `brp_responsive` - Whether BRP is responsive
-    BrpResponsive,
+    /// `type_count` - Number of types
+    TypeCount,
+    /// `watch_id` - Watch identifier
+    WatchId,
+    /// `watches` - List of watches
+    Watches,
 }
 
 impl ResponseFieldName {
