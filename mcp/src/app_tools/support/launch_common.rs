@@ -7,8 +7,10 @@ use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
+use crate::response::ToolError;
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
+    ToolResult,
 };
 
 /// Marker type for App launch configuration
@@ -47,10 +49,6 @@ impl<T> LaunchConfig<T> {
 /// Unified result type for launching Bevy apps and examples
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LaunchResult {
-    /// Status of the launch operation
-    pub status:             String,
-    /// Status message
-    pub message:            String,
     /// Name of the target that was launched (app or example)
     pub target_name:        Option<String>,
     /// Process ID of the launched target
@@ -159,16 +157,15 @@ impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
         let ctx_clone = ctx.clone();
         Box::pin(async move {
             // Get search paths
-
             let search_paths = ctx_clone.roots;
 
             // Create config from params
             let config = T::from_params(&params);
 
             // Launch the target
-            let result = launch_target(&config, &search_paths)?;
-
-            Ok(Box::new(result) as Box<dyn HandlerResult>)
+            let result = launch_target(&config, &search_paths);
+            let tool_result = ToolResult(result);
+            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
         })
     }
 }
@@ -329,7 +326,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
     log_file_for_redirect: std::fs::File,
     target: &super::cargo_detector::BevyTarget,
     launch_start: std::time::Instant,
-) -> Result<LaunchResult, McpError> {
+) -> Result<LaunchResult, ToolError> {
     use super::process;
 
     // Launch the process
@@ -339,7 +336,8 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
         log_file_for_redirect,
         config.target_name(),
         "launch",
-    )?;
+    )
+    .map_err(|e| ToolError::new(e.message))?;
 
     // Calculate launch duration
     let launch_end = std::time::Instant::now();
@@ -388,35 +386,26 @@ fn prepare_launch_environment<T: LaunchConfigTrait>(
     ))
 }
 
-/// Create an error `LaunchResult` with common fields populated
-fn create_error_launch_result<T: LaunchConfigTrait>(
+/// Create error details for `ToolError` with common fields populated
+fn create_error_details<T: LaunchConfigTrait>(
     config: &T,
-    message: String,
     duplicate_paths: Option<Vec<String>>,
-) -> LaunchResult {
-    LaunchResult {
-        status: "error".to_string(),
-        message,
-        target_name: Some(config.target_name().to_string()),
-        pid: None,
-        working_directory: None,
-        profile: None,
-        log_file: None,
-        binary_path: None,
-        launch_duration_ms: None,
-        launch_timestamp: None,
-        workspace: None,
-        package_name: None,
-        duplicate_paths,
-        note: None,
-    }
+) -> serde_json::Value {
+    serde_json::json!({
+        "target_name": config.target_name(),
+        "target_type": T::TARGET_TYPE,
+        "profile": config.profile(),
+        "path": config.path(),
+        "port": config.port(),
+        "duplicate_paths": duplicate_paths
+    })
 }
 
 /// Find and validate a Bevy target based on configuration
 fn find_and_validate_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
-) -> Result<super::cargo_detector::BevyTarget, Box<LaunchResult>> {
+) -> Result<super::cargo_detector::BevyTarget, Box<ToolError>> {
     use super::cargo_detector::TargetType;
     use super::scanning;
 
@@ -462,11 +451,9 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
             } = &err
             {
                 // Use the original error message and paths
-                return Err(Box::new(create_error_launch_result(
-                    config,
-                    message.clone(),
-                    Some(available_paths.clone()),
-                )));
+                let mut error = ToolError::new(message.clone());
+                error.details = Some(create_error_details(config, Some(available_paths.clone())));
+                return Err(Box::new(error));
             }
 
             // For any other error when duplicates exist, return disambiguation error with paths
@@ -491,29 +478,23 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     }
                 );
 
-                return Err(Box::new(create_error_launch_result(
-                    config,
-                    message,
-                    duplicate_paths,
-                )));
+                let mut error = ToolError::new(message);
+                error.details = Some(create_error_details(config, duplicate_paths));
+                return Err(Box::new(error));
             }
 
             // For non-duplicate errors, return standard error
-            return Err(Box::new(create_error_launch_result(
-                config,
-                err.to_string(),
-                None,
-            )));
+            let mut error = ToolError::new(err.to_string());
+            error.details = Some(create_error_details(config, None));
+            return Err(Box::new(error));
         }
     };
 
     // Validate the target
     if let Err(e) = config.validate_target(&target) {
-        return Err(Box::new(create_error_launch_result(
-            config,
-            e.message.to_string(),
-            None,
-        )));
+        let mut error = ToolError::new(e.message.to_string());
+        error.details = Some(create_error_details(config, None));
+        return Err(Box::new(error));
     }
 
     Ok(target)
@@ -523,7 +504,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
 pub fn launch_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
-) -> Result<LaunchResult, McpError> {
+) -> Result<LaunchResult, ToolError> {
     use std::time::Instant;
 
     use tracing::debug;
@@ -536,12 +517,19 @@ pub fn launch_target<T: LaunchConfigTrait>(
     // Find and validate the target
     let target = match find_and_validate_target(config, search_paths) {
         Ok(target) => target,
-        Err(launch_result) => return Ok(*launch_result),
+        Err(launch_result) => {
+            // Convert error LaunchResult to ToolError
+            let mut error = ToolError::new(launch_result.message.clone());
+            if let Ok(details) = serde_json::to_value(&*launch_result) {
+                error.details = Some(details);
+            }
+            return Err(error);
+        }
     };
 
     // Prepare launch environment
     let (cmd, manifest_dir, log_file_path, log_file_for_redirect) =
-        prepare_launch_environment(config, &target)?;
+        prepare_launch_environment(config, &target).map_err(|e| ToolError::new(e.message))?;
 
     // Execute and build result
     execute_and_build_result(
@@ -553,6 +541,7 @@ pub fn launch_target<T: LaunchConfigTrait>(
         &target,
         launch_start,
     )
+    .map_err(|e| ToolError::new(e.message))
 }
 
 impl FromLaunchParams for LaunchConfig<App> {
@@ -614,8 +603,6 @@ impl LaunchConfigTrait for LaunchConfig<App> {
             .map(String::from);
 
         LaunchResult {
-            status: "success".to_string(),
-            message: format!("Successfully launched '{}' (PID: {pid})", self.target_name),
             target_name: Some(self.target_name.clone()),
             pid: Some(pid),
             working_directory: Some(working_directory.display().to_string()),
@@ -691,8 +678,6 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
             .map(String::from);
 
         LaunchResult {
-            status: "success".to_string(),
-            message: format!("Successfully launched '{}' (PID: {pid})", self.target_name),
             target_name: Some(self.target_name.clone()),
             pid: Some(pid),
             working_directory: Some(working_directory.display().to_string()),

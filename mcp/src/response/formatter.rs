@@ -609,6 +609,7 @@ impl ResponseFormatter {
     }
 
     /// Override message if format correction occurred
+    /// todo: this seems messy to apply an override message here in the formatter
     fn override_message_for_format_correction(
         builder: &mut ResponseBuilder,
         format_corrected: Option<&FormatCorrectionStatus>,

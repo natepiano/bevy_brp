@@ -1,10 +1,12 @@
 //! List all active watches
 
-use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
+use crate::response::ToolError;
+use crate::tool::{
+    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ToolResult,
+};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,10 +26,6 @@ pub struct WatchInfo {
 /// Result from listing active watches
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListActiveWatchesResult {
-    /// Status of the operation
-    pub status:  String,
-    /// Status message
-    pub message: String,
     /// List of active watches
     pub watches: Vec<WatchInfo>,
 }
@@ -43,14 +41,14 @@ pub struct BrpListActiveWatches;
 impl LocalToolFn for BrpListActiveWatches {
     fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
         Box::pin(async move {
-            handle_impl()
-                .await
-                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+            let result = handle_impl().await;
+            let tool_result = ToolResult(result);
+            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
         })
     }
 }
 
-async fn handle_impl() -> std::result::Result<ListActiveWatchesResult, McpError> {
+async fn handle_impl() -> std::result::Result<ListActiveWatchesResult, ToolError> {
     // Get active watches from manager and release lock immediately
     let active_watches = {
         let manager = WATCH_MANAGER.lock().await;
@@ -69,10 +67,5 @@ async fn handle_impl() -> std::result::Result<ListActiveWatchesResult, McpError>
         })
         .collect();
 
-    let count = watches.len();
-    Ok(ListActiveWatchesResult {
-        status: "success".to_string(),
-        message: format!("Found {count} active watches"),
-        watches,
-    })
+    Ok(ListActiveWatchesResult { watches })
 }

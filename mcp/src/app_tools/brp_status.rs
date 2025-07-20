@@ -1,18 +1,16 @@
-use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::response::ToolError;
 use crate::tool::{
     BRP_METHOD_LIST, HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort,
-    NoMethod, ParameterName,
+    NoMethod, ParameterName, ToolResult,
 };
 
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatusResult {
-    /// Status of the check operation
-    pub status:         String,
     /// App name that was checked
     pub app_name:       String,
     /// Whether the app process is running
@@ -21,8 +19,6 @@ pub struct StatusResult {
     pub brp_responsive: bool,
     /// Process ID if running
     pub pid:            Option<u32>,
-    /// Status message
-    pub message:        String,
 }
 
 impl HandlerResult for StatusResult {
@@ -45,14 +41,14 @@ impl LocalToolFnWithPort for Status {
 
         let port = ctx.port();
         Box::pin(async move {
-            handle_impl(&app_name, port)
-                .await
-                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+            let result = handle_impl(&app_name, port).await;
+            let tool_result = ToolResult(result);
+            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
         })
     }
 }
 
-async fn handle_impl(app_name: &str, port: u16) -> std::result::Result<StatusResult, McpError> {
+async fn handle_impl(app_name: &str, port: u16) -> std::result::Result<StatusResult, ToolError> {
     check_brp_for_app(app_name, port).await
 }
 
@@ -113,7 +109,7 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
 async fn check_brp_for_app(
     app_name: &str,
     port: u16,
-) -> std::result::Result<StatusResult, McpError> {
+) -> std::result::Result<StatusResult, ToolError> {
     // Check if a process with this name is running using sysinfo
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -128,60 +124,41 @@ async fn check_brp_for_app(
     let brp_responsive = check_brp_on_port(port).await?;
 
     // Build response based on findings
-    let (status, message, app_running, pid) = match (running_process, brp_responsive) {
+    match (running_process, brp_responsive) {
         (Some(process), true) => {
+            // SUCCESS CASE: Process running with BRP enabled
             let pid = process.pid().as_u32();
-            (
-                "running_with_brp",
-                format!(
-                    "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
-                ),
-                true,
-                Some(pid),
-            )
+            Ok(StatusResult {
+                app_name:       app_name.to_string(),
+                app_running:    true,
+                brp_responsive: true,
+                pid:            Some(pid),
+            })
         }
         (Some(process), false) => {
+            // ERROR: Process running but BRP not responding
             let pid = process.pid().as_u32();
-            (
-                "running_no_brp",
-                format!(
-                    "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
-                ),
-                true,
-                Some(pid),
-            )
+            Err(ToolError::new(format!(
+                "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
+            )))
         }
         (None, true) => {
-            // BRP is responding but our specific process isn't found
-            (
-                "brp_found_process_not_detected",
-                format!(
-                    "BRP is responding on port {port} but process '{app_name}' not detected. Another process may be using BRP."
-                ),
-                false,
-                None,
-            )
+            // ERROR: BRP responding but process not detected
+            Err(ToolError::new(format!(
+                "BRP is responding on port {port} but process '{app_name}' not detected. Another process may be using BRP."
+            )))
         }
-        (None, false) => (
-            "not_running",
-            format!("Process '{app_name}' is not currently running"),
-            false,
-            None,
-        ),
-    };
-
-    Ok(StatusResult {
-        status: status.to_string(),
-        app_name: app_name.to_string(),
-        app_running,
-        brp_responsive,
-        pid,
-        message,
-    })
+        (None, false) => {
+            // ERROR: Process not running
+            Err(ToolError::new(format!(
+                "Process '{app_name}' is not currently running"
+            )))
+        }
+    }
 }
 
 /// Check if BRP is responding on the given port
-async fn check_brp_on_port(port: u16) -> std::result::Result<bool, McpError> {
+async fn check_brp_on_port(port: u16) -> std::result::Result<bool, ToolError> {
     // Try a simple BRP request to check connectivity using bevy/list
     match execute_brp_method(BRP_METHOD_LIST, None, port).await {
         Ok(BrpResult::Success(_)) => {

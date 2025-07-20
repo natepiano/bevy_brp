@@ -9,14 +9,10 @@ use crate::tool::HandlerResult;
 /// Result from starting a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WatchStartResult {
-    /// Status of the operation
-    pub status:   String,
-    /// Status message
-    pub message:  String,
-    /// Watch ID if successful
-    pub watch_id: Option<u32>,
-    /// Log path if successful
-    pub log_path: Option<String>,
+    /// Watch ID
+    pub watch_id: u32,
+    /// Log path
+    pub log_path: String,
 }
 
 impl HandlerResult for WatchStartResult {

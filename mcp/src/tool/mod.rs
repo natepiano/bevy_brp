@@ -18,7 +18,9 @@ pub use definitions::get_all_tool_definitions;
 pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMethod, NoPort};
 pub use handler_fn::HandlerFn;
 pub use tool_def::ToolDef;
-pub use types::{BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn, LocalToolFnWithPort};
+pub use types::{
+    BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn, LocalToolFnWithPort, ToolResult,
+};
 
 // Re-export from field_extraction for compatibility during migration
 pub use crate::field_extraction::ParameterName;

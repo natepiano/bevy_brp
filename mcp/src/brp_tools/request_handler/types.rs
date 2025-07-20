@@ -7,18 +7,6 @@ use crate::tool::HandlerResult;
 /// Result type for BRP method calls that follows local handler patterns
 #[derive(Serialize)]
 pub struct BrpMethodResult {
-    // For errors, this will be "error"
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub status: Option<String>,
-
-    // Error fields (only present for errors)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message:    Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub code:       Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_data: Option<Value>,
-
     // Success data - the actual BRP response data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,

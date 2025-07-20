@@ -1,20 +1,19 @@
 //! Stop an active watch
 
-use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
+use crate::response::ToolError;
 use crate::tool::{
     HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+    ToolResult,
 };
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StopWatchResult {
-    /// Status of the operation
-    pub status:  String,
-    /// Status message
-    pub message: String,
+    /// Watch ID that was stopped
+    pub watch_id: u32,
 }
 
 impl HandlerResult for StopWatchResult {
@@ -37,14 +36,14 @@ impl LocalToolFn for BrpStopWatch {
         };
 
         Box::pin(async move {
-            handle_impl(watch_id)
-                .await
-                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+            let result = handle_impl(watch_id).await;
+            let tool_result = ToolResult(result);
+            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
         })
     }
 }
 
-async fn handle_impl(watch_id: u32) -> std::result::Result<StopWatchResult, McpError> {
+async fn handle_impl(watch_id: u32) -> std::result::Result<StopWatchResult, ToolError> {
     // Stop the watch and release lock immediately
     let result = {
         let mut manager = WATCH_MANAGER.lock().await;
@@ -53,13 +52,9 @@ async fn handle_impl(watch_id: u32) -> std::result::Result<StopWatchResult, McpE
 
     // Convert result to our typed response
     match result {
-        Ok(()) => Ok(StopWatchResult {
-            status:  "success".to_string(),
-            message: format!("Successfully stopped watch {watch_id}"),
-        }),
-        Err(e) => Ok(StopWatchResult {
-            status:  "error".to_string(),
-            message: format!("Failed to stop watch {watch_id}: {e}"),
-        }),
+        Ok(()) => Ok(StopWatchResult { watch_id }),
+        Err(e) => Err(ToolError::new(format!(
+            "Failed to stop watch {watch_id}: {e}"
+        ))),
     }
 }

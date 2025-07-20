@@ -3,9 +3,13 @@ use std::pin::Pin;
 
 use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
+use serde::Serialize;
+use serde_json::{Value, json};
 
 use super::HandlerFn;
 use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
+use crate::field_extraction::ResponseFieldName;
+use crate::response::{ResponseStatus, ToolError};
 
 /// Unified tool handler that works with any `HandlerFn` variant
 pub struct ToolHandler {
@@ -41,6 +45,33 @@ pub type HandlerResponse<'a> =
 pub trait HandlerResult: Send + Sync {
     /// Serialize this result to a JSON value (required due to dyn compatibility)
     fn to_json(&self) -> serde_json::Value;
+}
+
+/// Wrapper that converts Result<T, `ToolError`> to JSON with status field
+pub struct ToolResult<T>(pub Result<T, ToolError>);
+
+impl<T: Serialize + Send + Sync> HandlerResult for ToolResult<T> {
+    fn to_json(&self) -> serde_json::Value {
+        match &self.0 {
+            Ok(data) => {
+                let mut json = serde_json::to_value(data).unwrap_or_else(|_| json!({}));
+                if let Value::Object(map) = &mut json {
+                    map.insert(
+                        ResponseFieldName::Status.to_string(),
+                        json!(ResponseStatus::Success),
+                    );
+                }
+                json
+            }
+            Err(error) => {
+                json!({
+                    ResponseFieldName::Status.to_string(): ResponseStatus::Error,
+                    ResponseFieldName::Message.to_string(): error.message,
+                    "error_details": error.details
+                })
+            }
+        }
+    }
 }
 
 /// Trait for local handlers using function pointer approach

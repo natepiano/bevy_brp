@@ -653,7 +653,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ),
             ],
             response_format: ResponseSpecification {
-                message_template: "Started entity watch for entity {entity}",
+                message_template: "Started entity watch {watch_id} for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::WatchId,
@@ -688,7 +688,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 true,
             )],
             response_format: ResponseSpecification {
-                message_template: "Started list watch for entity {entity}",
+                message_template: "Started list watch {watch_id} for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::WatchId,
@@ -815,8 +815,15 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ),
             ],
             response_format: ResponseSpecification {
-                message_template: "Launched Bevy app `{app_name}`",
-                response_fields:  vec![ResponseField::DirectToMetadata],
+                message_template: "Successfully launched bevy app '{target_name}' (PID: {pid})",
+                response_fields:  vec![
+                    ResponseField::FromResponse {
+                        response_field_name: ResponseFieldName::Pid,
+                        source_path:         ResponseFieldName::Pid.into(),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                    ResponseField::DirectToMetadata,
+                ],
             },
         },
         ToolDef {
@@ -848,8 +855,15 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ),
             ],
             response_format: ResponseSpecification {
-                message_template: "Launched Bevy example `{example_name}`",
-                response_fields:  vec![ResponseField::DirectToMetadata],
+                message_template: "Successfully launched example '{target_name}' (PID: {pid})",
+                response_fields:  vec![
+                    ResponseField::FromResponse {
+                        response_field_name: ResponseFieldName::Pid,
+                        source_path:         ResponseFieldName::Pid.into(),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                    ResponseField::DirectToMetadata,
+                ],
             },
         },
         ToolDef {
@@ -972,7 +986,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             )],
             response_format: ResponseSpecification {
                 message_template: "Successfully stopped watch",
-                response_fields:  vec![],
+                response_fields:  vec![ResponseField::FromResponse {
+                    response_field_name: ResponseFieldName::WatchId,
+                    source_path:         ResponseFieldName::WatchId.into(),
+                    placement:           FieldPlacement::Metadata,
+                }],
             },
         },
         ToolDef {
@@ -1134,7 +1152,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 true,
             )],
             response_format: ResponseSpecification {
-                message_template: "Status check for `{app_name}` on port {port}",
+                message_template: "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
                         response_field_name: ResponseFieldName::AppName,

@@ -1,13 +1,15 @@
 use serde_json::{Value, json};
 
 use super::format_discovery::{
-    EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus,
-    execute_brp_method_with_format_discovery,
+    EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
 use super::types::BrpMethodResult;
 use crate::brp_tools::support::brp_client::BrpResult;
 use crate::error;
-use crate::tool::{BrpToolFn, HandlerContext, HandlerResponse, HandlerResult, HasMethod, HasPort};
+use crate::response::ToolError;
+use crate::tool::{
+    BrpToolFn, HandlerContext, HandlerResponse, HandlerResult, HasMethod, HasPort, ToolResult,
+};
 
 /// BRP method handler V2 that implements `BrpToolFnV2` and returns `HandlerResponse`
 pub struct BrpMethodHandlerV2;
@@ -54,8 +56,8 @@ impl BrpToolFn for BrpMethodHandlerV2 {
 
             // Convert to BrpMethodResult
             let result = convert_to_brp_method_result(enhanced_result, &ctx);
-
-            Ok(Box::new(result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult(result);
+            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
         })
     }
 }
@@ -64,22 +66,10 @@ impl BrpToolFn for BrpMethodHandlerV2 {
 fn convert_to_brp_method_result<Port, Method>(
     enhanced_result: EnhancedBrpResult,
     ctx: &HandlerContext<Port, Method>,
-) -> BrpMethodResult {
+) -> Result<BrpMethodResult, ToolError> {
     match enhanced_result.result {
         BrpResult::Success(data) => {
-            // Check if format correction was applied and modify message accordingly
-            let success_message =
-                if enhanced_result.format_corrected == FormatCorrectionStatus::Succeeded {
-                    Some("Request succeeded with format correction applied".to_string())
-                } else {
-                    None // Let formatter use the tool definition's message_template
-                };
-
-            BrpMethodResult {
-                status:             None, // No status field for success
-                message:            success_message,
-                code:               None,
-                error_data:         None,
+            Ok(BrpMethodResult {
                 result:             data, // Direct BRP response data
                 format_corrections: enhanced_result
                     .format_corrections
@@ -87,7 +77,7 @@ fn convert_to_brp_method_result<Port, Method>(
                     .map(format_correction_to_json)
                     .collect(),
                 format_corrected:   Some(enhanced_result.format_corrected),
-            }
+            })
         }
         BrpResult::Error(ref err) => {
             // Process error enhancements (reuse logic from current handler)
@@ -106,19 +96,20 @@ fn convert_to_brp_method_result<Port, Method>(
                 error_data = Some(data_obj);
             }
 
-            BrpMethodResult {
-                status: Some("error".to_string()),
-                message: Some(enhanced_message),
-                code: Some(err.code),
-                error_data,
-                result: None,
-                format_corrections: enhanced_result
+            // Build ToolError with all the error context including format corrections
+            let mut tool_error = ToolError::new(enhanced_message);
+            tool_error.details = Some(serde_json::json!({
+                "code": err.code,
+                "error_data": error_data,
+                "format_corrections": enhanced_result
                     .format_corrections
                     .iter()
                     .map(format_correction_to_json)
-                    .collect(),
-                format_corrected: Some(enhanced_result.format_corrected),
-            }
+                    .collect::<Vec<_>>(),
+                "format_corrected": enhanced_result.format_corrected
+            }));
+
+            Err(tool_error)
         }
     }
 }

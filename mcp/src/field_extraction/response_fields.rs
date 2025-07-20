@@ -68,6 +68,8 @@ pub enum ResponseFieldName {
     LogPath,
     /// `logs` - List of logs
     Logs,
+    /// `message` - Response message
+    Message,
     /// `metadata` - Metadata field
     Metadata,
     /// `method_count` - Number of methods
@@ -92,6 +94,8 @@ pub enum ResponseFieldName {
     SizeBytes,
     /// `size_human` - Human-readable size
     SizeHuman,
+    /// `status` - Response status (success/error)
+    Status,
     /// `tail_mode` - Whether in tail mode
     TailMode,
     /// `temp_directory` - Temporary directory path
@@ -120,7 +124,9 @@ impl ResponseFieldName {
             | Self::AppNameFilter
             | Self::Filename
             | Self::FilePath
+            | Self::Message
             | Self::SizeHuman
+            | Self::Status
             | Self::TracingLevel
             | Self::TracingLogFile
             | Self::TempDirectory => ResponseFieldType::String,

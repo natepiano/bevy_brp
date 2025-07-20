@@ -64,7 +64,7 @@ fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult, McpError> {
     let log_path_str = log_path.to_string_lossy().to_string();
 
     Ok(SetTracingLevelResult {
-        tracing_level: tracing_level.as_str().to_string(),
+        tracing_level:    tracing_level.as_str().to_string(),
         tracing_log_file: log_path_str,
     })
 }
