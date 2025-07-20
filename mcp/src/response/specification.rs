@@ -58,9 +58,9 @@ pub enum ResponseField {
     FromResponse {
         /// Name of the field in the response
         response_field_name: ResponseFieldName,
-        /// Optional source path for extraction (if different from field name)
+        /// Source path for extraction
         /// Supports dot notation for nested fields (e.g., "result.entity")
-        source_path:         Option<&'static str>,
+        source_path:         &'static str,
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
@@ -76,9 +76,9 @@ pub enum ResponseField {
     FromResponseNullableWithPlacement {
         /// Name of the field in the response
         response_field_name: ResponseFieldName,
-        /// Optional source path for extraction (if different from field name)
+        /// Source path for extraction
         /// Supports dot notation for nested fields (e.g., "result.entity")
-        source_path:         Option<&'static str>,
+        source_path:         &'static str,
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },

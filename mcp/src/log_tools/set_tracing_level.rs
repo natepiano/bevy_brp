@@ -12,9 +12,9 @@ use crate::tool::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetTracingLevelResult {
     /// The new tracing level that was set
-    pub level:    String,
+    pub tracing_level:    String,
     /// The log file where trace output is written
-    pub log_file: String,
+    pub tracing_log_file: String,
 }
 
 impl HandlerResult for SetTracingLevelResult {
@@ -64,7 +64,7 @@ fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult, McpError> {
     let log_path_str = log_path.to_string_lossy().to_string();
 
     Ok(SetTracingLevelResult {
-        level:    tracing_level.as_str().to_string(),
-        log_file: log_path_str,
+        tracing_level: tracing_level.as_str().to_string(),
+        tracing_log_file: log_path_str,
     })
 }

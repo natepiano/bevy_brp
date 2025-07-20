@@ -64,8 +64,6 @@ pub enum ResponseFieldName {
     KeysSent,
     /// `lines_read` - Number of lines read
     LinesRead,
-    /// `log_file` - Log file path
-    LogFile,
     /// `log_path` - Path to log file
     LogPath,
     /// `logs` - List of logs
@@ -100,6 +98,8 @@ pub enum ResponseFieldName {
     TempDirectory,
     /// `tracing_level` - Current tracing level
     TracingLevel,
+    /// `tracinglog_file` - Log file path
+    TracingLogFile,
     /// `type_count` - Number of types
     TypeCount,
     /// `watch_id` - Watch identifier
@@ -122,7 +122,7 @@ impl ResponseFieldName {
             | Self::FilePath
             | Self::SizeHuman
             | Self::TracingLevel
-            | Self::LogFile
+            | Self::TracingLogFile
             | Self::TempDirectory => ResponseFieldType::String,
             // Multi-line content fields - use LineSplit
             Self::Content => ResponseFieldType::LineSplit,

@@ -81,9 +81,8 @@ impl ResponseFormatter {
                 placement,
             } => {
                 // Use unified extraction with source path override
-                let field_name = source_path.unwrap_or_else(|| response_field_name.into());
                 let spec = ResponseFieldSpec {
-                    field_name: field_name.to_string(),
+                    field_name: (*source_path).to_string(),
                     field_type: response_field_name.field_type(),
                 };
                 let value = extract_response_field(data, spec)
@@ -100,9 +99,8 @@ impl ResponseFormatter {
                 placement,
             } => {
                 // Use unified extraction with source path override
-                let field_name = source_path.unwrap_or_else(|| response_field_name.into());
                 let spec = ResponseFieldSpec {
-                    field_name: field_name.to_string(),
+                    field_name: (*source_path).to_string(),
                     field_type: response_field_name.field_type(),
                 };
                 let value = extract_response_field(data, spec)
