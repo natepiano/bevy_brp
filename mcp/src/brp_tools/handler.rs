@@ -1,12 +1,26 @@
 use serde_json::{Value, json};
 
-use super::super::brp_client::{BrpError, BrpResult};
+use super::FormatCorrectionStatus;
+use super::brp_client::{BrpError, BrpResult};
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
-use super::types::BrpMethodResult;
 use crate::error::{Error, Result};
 use crate::tool::{BrpToolFn, HandlerContext, HandlerResponse, HasMethod, HasPort};
+
+/// Result type for BRP method calls that follows local handler patterns
+#[derive(Serialize)]
+pub struct BrpMethodResult {
+    // Success data - the actual BRP response data
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<Value>,
+
+    // BRP metadata - using existing field names
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub format_corrections: Vec<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub format_corrected:   Option<FormatCorrectionStatus>,
+}
 
 /// BRP method handler  that implements `BrpToolFn` and returns `HandlerResponse`
 pub struct BrpMethodHandler;

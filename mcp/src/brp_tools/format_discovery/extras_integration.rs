@@ -248,8 +248,8 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::brp_tools::request_handler::format_discovery::DiscoverySource;
-    use crate::brp_tools::request_handler::format_discovery::unified_types::TypeCategory;
+    use crate::brp_tools::format_discovery::DiscoverySource;
+    use crate::brp_tools::format_discovery::unified_types::TypeCategory;
 
     #[test]
     fn test_find_type_in_response_direct_object() {

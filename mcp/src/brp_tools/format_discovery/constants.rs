@@ -31,6 +31,18 @@ pub const FORMAT_DISCOVERY_METHODS: &[&str] = &[
     BRP_METHOD_MUTATE_RESOURCE,
 ];
 
+/// Field name for "name" property
+pub const FIELD_NAME: &str = "name";
+
+/// Field name for "value" property
+pub const FIELD_VALUE: &str = "value";
+
+/// Field name for "text" property
+pub const FIELD_TEXT: &str = "text";
+
+/// Field name for "label" property
+pub const FIELD_LABEL: &str = "label";
+
 /// Expected count of f32 values in a Transform sequence
 /// Transform contains: translation (Vec3), rotation (Quat), scale (Vec3) = 3 + 4 + 3 = 10 f32
 /// values However, the Transform component includes additional fields that bring the total to 12

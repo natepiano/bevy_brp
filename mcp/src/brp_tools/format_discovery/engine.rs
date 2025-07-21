@@ -41,12 +41,11 @@ use std::collections::HashMap;
 use serde_json::Value;
 use tracing::{debug, trace};
 
-use super::UnifiedTypeInfo;
 use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
-use crate::brp_tools::request_handler::format_discovery::recovery_engine;
+use super::{UnifiedTypeInfo, recovery_engine};
 use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
 use crate::error::Result;
