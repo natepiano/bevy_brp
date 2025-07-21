@@ -5,17 +5,20 @@ use sysinfo::{Signal, System};
 use tracing::debug;
 
 use crate::brp_tools::{BrpResult, execute_brp_method};
-use crate::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
+use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port};
 use crate::error::{Error, Result};
 use crate::tool::{
     BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort,
-    NoMethod, ParameterName,
+    NoMethod,
 };
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ShutdownParams {
     /// Name of the Bevy app to shutdown
     pub app_name: String,
+    /// The BRP port (default: 15702)
+    #[serde(default = "default_port")]
+    pub port:     u16,
 }
 
 /// Result from shutting down a Bevy app
@@ -125,17 +128,14 @@ impl LocalToolFnWithPort for Shutdown {
     type Output = ShutdownResultData;
 
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        let app_name = match ctx.extract_required(ParameterName::AppName) {
-            Ok(value) => match value.into_string() {
-                Ok(s) => s,
-                Err(e) => return Box::pin(async move { Err(e) }),
-            },
+        // Extract and validate parameters using the new typed system
+        let params: ShutdownParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let port = ctx.port();
         Box::pin(async move {
-            handle_impl(&app_name, port)
+            handle_impl(&params.app_name, params.port)
                 .await
                 .map_err(|e| Error::tool_call_failed(e.message).into())
         })

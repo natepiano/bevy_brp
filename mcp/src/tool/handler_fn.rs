@@ -5,8 +5,8 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use super::types::{
-    BrpMethodSource, BrpToolFn, ErasedBrpToolFn, ErasedLocalToolFn, ErasedLocalToolFnWithPort,
-    LocalToolFn, LocalToolFnWithPort, ToolContext,
+    BrpToolFn, ErasedBrpToolFn, ErasedLocalToolFn, ErasedLocalToolFnWithPort, LocalToolFn,
+    LocalToolFnWithPort, ToolContext,
 };
 use crate::response::FormatterConfig;
 
@@ -33,8 +33,8 @@ pub enum HandlerFn {
     Local(Arc<dyn ErasedLocalToolFn>),
     LocalWithPort(Arc<dyn ErasedLocalToolFnWithPort>),
     Brp {
-        handler:       Arc<dyn ErasedBrpToolFn>,
-        method_source: BrpMethodSource,
+        handler: Arc<dyn ErasedBrpToolFn>,
+        method:  &'static str,
     },
 }
 
@@ -81,19 +81,11 @@ impl HandlerFn {
         Self::LocalWithPort(Arc::new(handler))
     }
 
-    /// Create a BRP handler with static method
-    pub fn brp_static<T: BrpToolFn + 'static>(handler: T, method: &'static str) -> Self {
+    /// Create a BRP handler with method
+    pub fn brp<T: BrpToolFn + 'static>(handler: T, method: &'static str) -> Self {
         Self::Brp {
-            handler:       Arc::new(handler),
-            method_source: BrpMethodSource::Static(method),
-        }
-    }
-
-    /// Create a BRP handler with dynamic method (from parameter)
-    pub fn brp_dynamic<T: BrpToolFn + 'static>(handler: T) -> Self {
-        Self::Brp {
-            handler:       Arc::new(handler),
-            method_source: BrpMethodSource::Dynamic,
+            handler: Arc::new(handler),
+            method,
         }
     }
 }

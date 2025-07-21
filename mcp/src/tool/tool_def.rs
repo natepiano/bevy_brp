@@ -7,27 +7,25 @@ use rmcp::model::CallToolRequestParam;
 
 use super::HandlerFn;
 use super::annotations::BrpToolAnnotations;
-use super::mcp_tool_schema::McpToolSchemaBuilder;
-use super::types::{BrpMethodSource, ToolHandler};
-use crate::constants::{PARAM_METHOD, PARAM_PORT};
-use crate::field_extraction::{Parameter, ParameterFieldType, PortParameter};
+use super::mcp_tool_schema::ParameterBuilder;
+use super::types::ToolHandler;
 use crate::response::ResponseSpecification;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
 pub struct ToolDef {
     /// Tool name
-    pub name:            &'static str,
+    pub name:              &'static str,
     /// Tool description
-    pub description:     &'static str,
+    pub description:       &'static str,
     /// Tool annotations
-    pub annotations:     BrpToolAnnotations,
+    pub annotations:       BrpToolAnnotations,
     /// Handler function with method source information
-    pub handler:         HandlerFn,
-    /// Type-safe parameters
-    pub parameters:      Vec<Parameter>,
+    pub handler:           HandlerFn,
+    /// Function to build parameters for MCP registration
+    pub parameter_builder: Option<fn() -> ParameterBuilder>,
     /// Response formatting specification
-    pub response_format: ResponseSpecification,
+    pub response_format:   ResponseSpecification,
 }
 
 impl ToolDef {
@@ -37,26 +35,6 @@ impl ToolDef {
 
     pub const fn formatter(&self) -> &ResponseSpecification {
         &self.response_format
-    }
-
-    pub fn parameters(&self) -> &[Parameter] {
-        &self.parameters
-    }
-
-    pub const fn port_parameter(&self) -> PortParameter {
-        match &self.handler {
-            HandlerFn::Local(_) => PortParameter::NotUsed,
-            HandlerFn::LocalWithPort(_) | HandlerFn::Brp { .. } => PortParameter::Required,
-        }
-    }
-
-    pub const fn needs_method_parameter(&self) -> bool {
-        match &self.handler {
-            HandlerFn::Brp { method_source, .. } => {
-                matches!(method_source, BrpMethodSource::Dynamic)
-            }
-            _ => false, // Local tools never need method parameters
-        }
     }
 
     pub fn create_handler(
@@ -88,19 +66,17 @@ impl ToolDef {
                 let tool_context = ToolContext::LocalWithPort(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
-            HandlerFn::Brp { method_source, .. } => {
-                // Extract port and method, create HandlerContext<HasPort, HasMethod>
+            HandlerFn::Brp { method, .. } => {
+                // Extract port and use static method, create HandlerContext<HasPort, HasMethod>
                 let port = extract_port_directly(&request)?;
-                let method = match method_source {
-                    BrpMethodSource::Static(method_name) => (*method_name).to_string(),
-                    BrpMethodSource::Dynamic => extract_method_directly(&request)?,
-                };
                 let ctx = HandlerContext::with_data(
                     self.clone(),
                     request,
                     roots,
                     HasPort { port },
-                    HasMethod { method },
+                    HasMethod {
+                        method: (*method).to_string(),
+                    },
                 );
                 let tool_context = ToolContext::Brp(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
@@ -110,52 +86,10 @@ impl ToolDef {
 
     /// Convert to MCP Tool for registration
     pub fn to_tool(&self) -> rmcp::model::Tool {
-        let mut builder = McpToolSchemaBuilder::new();
-
-        // Add tool-specific parameters
-        for param in self.parameters() {
-            builder = match param.param_type() {
-                ParameterFieldType::String => {
-                    builder.add_string_property(param.name(), param.description(), param.required())
-                }
-                ParameterFieldType::Number => {
-                    builder.add_number_property(param.name(), param.description(), param.required())
-                }
-                ParameterFieldType::Boolean => builder.add_boolean_property(
-                    param.name(),
-                    param.description(),
-                    param.required(),
-                ),
-                ParameterFieldType::StringArray => builder.add_string_array_property(
-                    param.name(),
-                    param.description(),
-                    param.required(),
-                ),
-                ParameterFieldType::NumberArray => builder.add_number_array_property(
-                    param.name(),
-                    param.description(),
-                    param.required(),
-                ),
-                ParameterFieldType::Any | ParameterFieldType::DynamicParams => {
-                    builder.add_any_property(param.name(), param.description(), param.required())
-                }
-            };
-        }
-
-        // Add method parameter if needed (for dynamic BRP tools)
-        if self.needs_method_parameter() {
-            builder = builder.add_string_property(
-                PARAM_METHOD,
-                "The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')",
-                true,
-            );
-        }
-
-        // Add port parameter if needed
-        if self.port_parameter() == PortParameter::Required {
-            builder =
-                builder.add_number_property(PARAM_PORT, "The BRP port (default: 15702)", false);
-        }
+        // Build parameters using the provided builder function, or create empty builder
+        let builder = self
+            .parameter_builder
+            .map_or_else(ParameterBuilder::new, |builder_fn| builder_fn());
 
         // Enhance title with category prefix and optional method name
         let enhanced_annotations = {
@@ -167,18 +101,10 @@ impl ToolDef {
 
             // Add method name for BRP tools
             let full_title = match &self.handler {
-                HandlerFn::Brp {
-                    method_source: BrpMethodSource::Static(method),
-                    ..
-                } => {
+                HandlerFn::Brp { method, .. } => {
                     format!("{category_prefix}: {base_title} ({method})")
                 }
-                HandlerFn::Brp {
-                    method_source: BrpMethodSource::Dynamic,
-                    ..
-                }
-                | HandlerFn::Local(_)
-                | HandlerFn::LocalWithPort(_) => {
+                HandlerFn::Local(_) | HandlerFn::LocalWithPort(_) => {
                     format!("{category_prefix}: {base_title}")
                 }
             };
@@ -225,17 +151,4 @@ fn extract_port_directly(request: &CallToolRequestParam) -> Result<u16, McpError
     }
 
     Ok(port)
-}
-
-/// Extract method parameter directly from request arguments
-/// Used during context creation, then discarded
-fn extract_method_directly(request: &CallToolRequestParam) -> Result<String, McpError> {
-    use crate::constants::PARAM_METHOD;
-    request
-        .arguments
-        .as_ref()
-        .and_then(|args| args.get(PARAM_METHOD))
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| McpError::invalid_params("Missing method parameter", None))
-        .map(std::string::ToString::to_string)
 }

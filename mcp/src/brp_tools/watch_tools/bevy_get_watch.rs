@@ -4,18 +4,20 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::types::WatchStartResult;
+use crate::constants::default_port;
 use crate::error::{Error, Result};
-use crate::tool::{
-    HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ParameterName,
-};
+use crate::tool::{HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct GetWatchParams {
     /// The entity ID to watch for component changes
-    pub entity: u32,
+    pub entity: u64,
     /// Required array of component types to watch. Must contain at least one component. Without
     /// this, the watch will not detect any changes.
     pub types:  Vec<String>,
+    /// The BRP port (default: 15702)
+    #[serde(default = "default_port")]
+    pub port:   u16,
 }
 
 pub struct BevyGetWatch;
@@ -24,23 +26,13 @@ impl LocalToolFnWithPort for BevyGetWatch {
     type Output = WatchStartResult;
 
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        let entity_id = match ctx.extract_required(ParameterName::Entity) {
-            Ok(value) => match value.into_u64() {
-                Ok(id) => id,
-                Err(e) => return Box::pin(async move { Err(e) }),
-            },
-            Err(e) => return Box::pin(async move { Err(e) }),
-        };
-        let components = match ctx.extract_required(ParameterName::Types) {
-            Ok(value) => match value.into_string_array() {
-                Ok(arr) => Some(arr),
-                Err(e) => return Box::pin(async move { Err(e) }),
-            },
+        // Extract typed parameters
+        let params: GetWatchParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let port = ctx.port();
-        Box::pin(async move { handle_impl(entity_id, components, port).await })
+        Box::pin(async move { handle_impl(params.entity, Some(params.types), params.port).await })
     }
 }
 

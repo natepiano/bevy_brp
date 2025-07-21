@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct StopWatchParams {
-    /// The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch
+    /// The watch ID returned from `bevy_start_entity_watch` or `bevy_start_list_watch`
     pub watch_id: u32,
 }
 
@@ -26,16 +26,13 @@ impl LocalToolFn for BrpStopWatch {
     type Output = StopWatchResult;
 
     fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        // Extract parameters before async block
-        let watch_id = match ctx.extract_required(ParameterName::WatchId) {
-            Ok(value) => match value.into_u32() {
-                Ok(id) => id,
-                Err(e) => return Box::pin(async move { Err(e) }),
-            },
+        // Extract typed parameters
+        let params: StopWatchParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { handle_impl(watch_id).await })
+        Box::pin(async move { handle_impl(params.watch_id).await })
     }
 }
 

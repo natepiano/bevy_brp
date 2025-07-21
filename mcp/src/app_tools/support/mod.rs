@@ -8,5 +8,7 @@ mod process;
 mod scanning;
 
 pub use collection_strategy::{BevyAppsStrategy, BevyExamplesStrategy, BrpAppsStrategy};
-pub use launch_common::{App, Example, GenericLaunchHandler, LaunchConfig};
+pub use launch_common::{
+    App, Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams,
+};
 pub use list_common::{collect_all_items, handle_list_binaries};

@@ -4,16 +4,17 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::types::WatchStartResult;
+use crate::constants::default_port;
 use crate::error::Result;
-use crate::field_extraction::ExtractedValue;
-use crate::tool::{
-    HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ParameterName,
-};
+use crate::tool::{HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListWatchParams {
     /// The entity ID to watch for component list changes
-    pub entity: u32,
+    pub entity: u64,
+    /// The BRP port (default: 15702)
+    #[serde(default = "default_port")]
+    pub port:   u16,
 }
 
 pub struct BevyListWatch;
@@ -22,16 +23,13 @@ impl LocalToolFnWithPort for BevyListWatch {
     type Output = WatchStartResult;
 
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        let entity_id = match ctx
-            .extract_required(ParameterName::Entity)
-            .and_then(ExtractedValue::into_u64)
-        {
-            Ok(id) => id,
+        // Extract typed parameters
+        let params: ListWatchParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let port = ctx.port();
-        Box::pin(async move { handle_impl(entity_id, port).await })
+        Box::pin(async move { handle_impl(params.entity, params.port).await })
     }
 }
 

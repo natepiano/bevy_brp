@@ -10,9 +10,8 @@ mod response_fields;
 
 // Re-export core types and traits for public use
 pub use extraction::{
-    ExtractedValue, FieldSpec, JsonFieldProvider, ParameterFieldType, ResponseFieldType,
-    extract_parameter_field, extract_response_field,
+    FieldSpec, JsonFieldProvider, ParameterFieldType, ResponseFieldType, extract_response_field,
 };
 // Re-export field definitions
-pub use parameters::{Parameter, ParameterName, PortParameter};
+pub use parameters::ParameterName;
 pub use response_fields::ResponseFieldName;

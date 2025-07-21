@@ -7,7 +7,13 @@ use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
 use crate::error::{Error, Result};
-use crate::tool::{BrpToolFn, HandlerContext, HandlerResponse, HasMethod, HasPort};
+
+/// Trait for parameter structs that have a port field
+pub trait HasPortField {
+    fn port(&self) -> u16;
+}
+
+use crate::tool::{HandlerContext, HasMethod, HasPort};
 
 /// Result type for BRP method calls that follows local handler patterns
 #[derive(Serialize)]
@@ -22,9 +28,6 @@ pub struct BrpMethodResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format_corrected:   Option<FormatCorrectionStatus>,
 }
-
-/// BRP method handler  that implements `BrpToolFn` and returns `HandlerResponse`
-pub struct BrpMethodHandler;
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -51,29 +54,8 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
-impl BrpToolFn for BrpMethodHandler {
-    type Output = BrpMethodResult;
-
-    fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<Self::Output> {
-        let ctx = ctx.clone();
-
-        Box::pin(async move {
-            // Extract parameters for the call based on the tool definition
-            let params = ctx.extract_params_from_definition()?;
-            let method_name = ctx.brp_method();
-
-            // Execute with format discovery (reuse existing function)
-            let enhanced_result =
-                execute_brp_method_with_format_discovery(method_name, params, ctx.port()).await?;
-
-            // Convert to BrpMethodResult
-            convert_to_brp_method_result(enhanced_result, &ctx)
-        })
-    }
-}
-
 /// Convert `EnhancedBrpResult` to `BrpMethodResult`
-fn convert_to_brp_method_result<Port, Method>(
+pub fn convert_to_brp_method_result<Port, Method>(
     enhanced_result: EnhancedBrpResult,
     ctx: &HandlerContext<Port, Method>,
 ) -> Result<BrpMethodResult> {
@@ -158,4 +140,51 @@ const fn enhance_error_data<Port, Method>(
     // Format corrections are handled through ResponseField::FormatCorrection extractor
     // which extracts from the main BrpMethodResult.format_corrections field
     original_data
+}
+
+/// Shared implementation for all static BRP tools
+/// This function handles the common pattern of:
+/// 1. Extract typed parameters
+/// 2. Convert to JSON for BRP call
+/// 3. Use `ctx.brp_method()` for static method name
+/// 4. Use params.port for typed port parameter
+/// 5. Call shared BRP infrastructure
+/// 6. Convert result to `BrpMethodResult`
+pub fn execute_static_brp_call<T>(
+    ctx: &HandlerContext<HasPort, HasMethod>,
+) -> impl std::future::Future<Output = Result<BrpMethodResult>> + Send + 'static
+where
+    T: serde::de::DeserializeOwned + serde::Serialize + HasPortField + Send,
+{
+    let ctx = ctx.clone();
+
+    async move {
+        // Extract typed parameters
+        let params = ctx.extract_typed_params::<T>()?;
+        let port = params.port(); // Type-safe port access through trait
+        let mut params_json = serde_json::to_value(params)
+            .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
+        
+        // Filter out null values and port field - BRP expects parameters to be 
+        // omitted entirely rather than explicitly null, and port is MCP-specific
+        let brp_params = if let Value::Object(ref mut map) = params_json {
+            map.retain(|key, value| !value.is_null() && key != "port");
+            // If the object is empty after filtering, send None to BRP
+            if map.is_empty() {
+                None
+            } else {
+                Some(params_json)
+            }
+        } else {
+            Some(params_json)
+        };
+
+        // Use ctx.brp_method() to get method from ToolDef
+        let enhanced_result =
+            execute_brp_method_with_format_discovery(ctx.brp_method(), brp_params, port)
+                .await?;
+
+        // Convert result using existing conversion function
+        convert_to_brp_method_result(enhanced_result, &ctx)
+    }
 }

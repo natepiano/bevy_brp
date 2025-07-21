@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
 use crate::brp_tools::{BrpResult, execute_brp_method};
+use crate::constants::default_port;
 use crate::error::Error;
 use crate::tool::{
     BRP_METHOD_LIST, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod,
@@ -12,6 +13,9 @@ use crate::tool::{
 pub struct StatusParams {
     /// Name of the process to check for
     pub app_name: String,
+    /// The BRP port (default: 15702)
+    #[serde(default = "default_port")]
+    pub port:     u16,
 }
 
 /// Result from checking status of a Bevy app
@@ -36,11 +40,10 @@ impl LocalToolFnWithPort for Status {
         // Extract and validate parameters using the new typed system
         let params: StatusParams = match ctx.extract_typed_params() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e.into()) }),
+            Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        let port = ctx.port();
-        Box::pin(async move { handle_impl(&params.app_name, port).await })
+        Box::pin(async move { handle_impl(&params.app_name, params.port).await })
     }
 }
 

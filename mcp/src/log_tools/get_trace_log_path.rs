@@ -1,13 +1,7 @@
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
-
-#[derive(Deserialize, JsonSchema)]
-pub struct GetTraceLogPathParams {
-    // No parameters required
-}
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize)]

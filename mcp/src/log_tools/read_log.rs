@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadLogParams {
-    /// The log filename (e.g., bevy_brp_mcp_myapp_1234567890.log)
+    /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
     pub filename:   String,
     /// Optional keyword to filter lines (case-insensitive)
     pub keyword:    Option<String>,
@@ -47,35 +47,27 @@ impl LocalToolFn for ReadLog {
     type Output = ReadLogResult;
 
     fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        // Extract parameters before the async block
-        let filename = match ctx.extract_required(ParameterName::Filename) {
-            Ok(value) => match value.into_string() {
-                Ok(s) => s,
-                Err(e) => return Box::pin(async move { Err(e) }),
-            },
-            Err(e) => return Box::pin(async move { Err(e) }),
-        };
-        let keyword = ctx
-            .extract_with_default(ParameterName::Keyword, "")
-            .into_string()
-            .unwrap_or_default();
-        let tail_lines = match ctx
-            .extract_with_default(ParameterName::TailLines, 0u64)
-            .into_u64()
-        {
-            Ok(n) => match usize::try_from(n) {
-                Ok(n) => n,
-                Err(_) => {
-                    return Box::pin(async move {
-                        Err(Error::invalid("tail_lines", "tail_lines value too large").into())
-                    });
-                }
-            },
+        // Extract typed parameters
+        let params: ReadLogParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
         Box::pin(async move {
-            handle_impl(&filename, &keyword, tail_lines)
+            // Convert tail_lines if provided
+            let tail_lines = match params.tail_lines {
+                Some(lines) => match usize::try_from(lines) {
+                    Ok(n) => Some(n),
+                    Err(_) => {
+                        return Err(
+                            Error::invalid("tail_lines", "tail_lines value too large").into()
+                        );
+                    }
+                },
+                None => None,
+            };
+
+            handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
                 .map_err(|e| Error::tool_call_failed(e.message).into())
         })
     }
@@ -83,8 +75,8 @@ impl LocalToolFn for ReadLog {
 
 fn handle_impl(
     filename: &str,
-    keyword: &str,
-    tail_lines: usize,
+    keyword: Option<&str>,
+    tail_lines: Option<usize>,
 ) -> Result<ReadLogResult, McpError> {
     // Validate filename format for security
     if !support::is_valid_log_filename(filename) {
@@ -113,15 +105,15 @@ fn handle_impl(
         size_human: support::format_bytes(metadata.len()),
         lines_read: content.lines().count(),
         content,
-        filtered_by_keyword: !keyword.is_empty(),
-        tail_mode: tail_lines > 0,
+        filtered_by_keyword: keyword.is_some(),
+        tail_mode: tail_lines.is_some(),
     })
 }
 
 fn read_log_file(
     path: &Path,
-    keyword: &str,
-    tail_lines: usize,
+    keyword: Option<&str>,
+    tail_lines: Option<usize>,
 ) -> Result<(String, std::fs::Metadata), McpError> {
     // Get file metadata
     let metadata = std::fs::metadata(path).map_err(|e| {
@@ -155,15 +147,22 @@ fn read_log_file(
         })?;
 
         // Apply keyword filter if provided
-        if keyword.is_empty() || line.to_lowercase().contains(&keyword.to_lowercase()) {
+        let should_include =
+            keyword.is_none_or(|kw| line.to_lowercase().contains(&kw.to_lowercase()));
+
+        if should_include {
             lines.push(line);
         }
     }
 
     // Apply tail mode if requested
-    let final_lines = if tail_lines > 0 && tail_lines < lines.len() {
-        let skip_amount = lines.len() - tail_lines;
-        lines.into_iter().skip(skip_amount).collect()
+    let final_lines = if let Some(tail_count) = tail_lines {
+        if tail_count > 0 && tail_count < lines.len() {
+            let skip_amount = lines.len() - tail_count;
+            lines.into_iter().skip(skip_amount).collect()
+        } else {
+            lines
+        }
     } else {
         lines
     };

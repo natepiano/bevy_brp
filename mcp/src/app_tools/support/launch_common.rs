@@ -73,7 +73,6 @@ pub struct LaunchResult {
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
 use crate::constants::BRP_PORT_ENV_VAR;
-use crate::field_extraction::ParameterName;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -83,75 +82,38 @@ pub struct LaunchParams {
     pub port:        u16,
 }
 
-/// Extract common launch parameters from an MCP request
-pub fn extract_launch_params<Port, Method>(
-    ctx: &HandlerContext<Port, Method>,
-    target_param_name: &str,
-    target_type_name: &str,
-    default_profile: &str,
-    port: u16,
-) -> Result<LaunchParams> {
-    let target_name = ctx
-        .extract_required_string(target_param_name, target_type_name)
-        .map_err(|e| {
-            Error::invalid(
-                "parameter",
-                format!("Failed to extract {target_type_name}: {e}"),
-            )
-        })?;
-    let profile = ctx
-        .extract_with_default(ParameterName::Profile, default_profile)
-        .into_string()
-        .unwrap_or_else(|_| default_profile.to_string());
-    let path = ctx.extract_optional_path();
-
-    Ok(LaunchParams {
-        target_name: target_name.to_string(),
-        profile,
-        path,
-        port,
-    })
-}
-
 /// Generic launch handler that can work with any `LaunchConfig` type
-pub struct GenericLaunchHandler<T: FromLaunchParams> {
-    target_param_name: &'static str,
-    target_type_name:  &'static str,
-    default_profile:   &'static str,
-    _phantom:          PhantomData<T>,
+pub struct GenericLaunchHandler<T: FromLaunchParams, P: ToLaunchParams> {
+    default_profile: &'static str,
+    _phantom_config: PhantomData<T>,
+    _phantom_params: PhantomData<P>,
 }
 
-impl<T: FromLaunchParams> GenericLaunchHandler<T> {
+impl<T: FromLaunchParams, P: ToLaunchParams> GenericLaunchHandler<T, P> {
     /// Create a new generic launch handler
-    pub const fn new(
-        target_param_name: &'static str,
-        target_type_name: &'static str,
-        default_profile: &'static str,
-    ) -> Self {
+    pub const fn new(default_profile: &'static str) -> Self {
         Self {
-            target_param_name,
-            target_type_name,
             default_profile,
-            _phantom: PhantomData,
+            _phantom_config: PhantomData,
+            _phantom_params: PhantomData,
         }
     }
 }
 
-impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
+impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> LocalToolFnWithPort
+    for GenericLaunchHandler<T, P>
+{
     type Output = LaunchResult;
 
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        // Extract parameters
-        let params = match extract_launch_params(
-            ctx,
-            self.target_param_name,
-            self.target_type_name,
-            self.default_profile,
-            ctx.port(),
-        ) {
+        // Extract typed parameters
+        let typed_params: P = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
+
+        // Convert to LaunchParams
+        let params = typed_params.to_launch_params(self.default_profile);
 
         let ctx_clone = ctx.clone();
         Box::pin(async move {
@@ -165,6 +127,12 @@ impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
             launch_target(&config, &search_paths)
         })
     }
+}
+
+/// Trait for converting typed parameters to `LaunchParams`
+pub trait ToLaunchParams: Send + Sync {
+    /// Convert to `LaunchParams` with the given default profile
+    fn to_launch_params(&self, default_profile: &str) -> LaunchParams;
 }
 
 /// Trait for creating launch configs from params

@@ -19,7 +19,6 @@ pub const RESPONSE_METADATA: &str = "metadata";
 // ============================================================================
 
 /// Parameter name constants for BRP tool inputs
-pub const PARAM_METHOD: &str = "method";
 pub const PARAM_PARAMS: &str = "params";
 pub const PARAM_PORT: &str = "port";
 
@@ -47,6 +46,11 @@ pub const BRP_PORT_ENV_VAR: &str = "BRP_PORT";
 pub const MIN_VALID_PORT: u16 = 1024; // Non-privileged ports start here
 pub const MAX_VALID_PORT: u16 = 65534; // Leave room for calculations
 pub const VALID_PORT_RANGE: RangeInclusive<u16> = MIN_VALID_PORT..=MAX_VALID_PORT;
+
+/// Returns the default BRP port for serde default attribute
+pub const fn default_port() -> u16 {
+    DEFAULT_BRP_PORT
+}
 
 // ============================================================================
 // ERROR CONSTANTS

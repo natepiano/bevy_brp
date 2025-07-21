@@ -135,7 +135,7 @@ enum LevelResult {
 async fn execute_level_2_direct_discovery(
     type_names: &[String],
     method: &str,
-    type_infos: &HashMap<String, UnifiedTypeInfo>,
+    registry_type_info: &HashMap<String, UnifiedTypeInfo>,
     original_params: Option<&Value>,
     port: u16,
 ) -> LevelResult {
@@ -145,7 +145,7 @@ async fn execute_level_2_direct_discovery(
     );
 
     // Start with type infos from Level 1
-    let mut enhanced_type_infos = type_infos.clone();
+    let mut enhanced_type_info = registry_type_info.clone();
 
     // Attempt direct discovery for each type using bevy_brp_extras
     let mut corrections = Vec::new();
@@ -159,7 +159,7 @@ async fn execute_level_2_direct_discovery(
                 debug!("Level 2: Successfully discovered type information for '{type_name}'");
 
                 // Merge with existing type info from Level 1 if available
-                if let Some(existing_info) = type_infos.get(type_name) {
+                if let Some(existing_info) = registry_type_info.get(type_name) {
                     // Preserve registry information but enhance with discovery data
                     discovered_info.registry_status = existing_info.registry_status.clone();
                     if discovered_info.type_category == TypeCategory::Unknown
@@ -172,7 +172,7 @@ async fn execute_level_2_direct_discovery(
                 }
 
                 // Update the enhanced type infos
-                enhanced_type_infos.insert(type_name.clone(), discovered_info.clone());
+                enhanced_type_info.insert(type_name.clone(), discovered_info.clone());
 
                 // Check if this is a mutation method and we have mutation paths
                 if matches!(
@@ -226,9 +226,9 @@ async fn execute_level_2_direct_discovery(
     if corrections.is_empty() {
         debug!(
             "Level 2: Direct discovery complete, proceeding to Level 3 with {} type infos",
-            enhanced_type_infos.len()
+            enhanced_type_info.len()
         );
-        LevelResult::Continue(enhanced_type_infos)
+        LevelResult::Continue(enhanced_type_info)
     } else {
         debug!(
             "Level 2: Found {} corrections from direct discovery",

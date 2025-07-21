@@ -2,7 +2,8 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::constants::DEFAULT_PROFILE;
-use super::support::{Example, GenericLaunchHandler, LaunchConfig};
+use super::support::{Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams};
+use crate::constants::default_port;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct LaunchBevyExampleParams {
@@ -12,12 +13,29 @@ pub struct LaunchBevyExampleParams {
     pub profile:      Option<String>,
     /// Path to use when multiple examples with the same name exist
     pub path:         Option<String>,
+    /// The BRP port (default: 15702)
+    #[serde(default = "default_port")]
+    pub port:         u16,
+}
+
+impl ToLaunchParams for LaunchBevyExampleParams {
+    fn to_launch_params(&self, default_profile: &str) -> LaunchParams {
+        LaunchParams {
+            target_name: self.example_name.clone(),
+            profile:     self
+                .profile
+                .clone()
+                .unwrap_or_else(|| default_profile.to_string()),
+            path:        self.path.clone(),
+            port:        self.port,
+        }
+    }
 }
 
 /// Handler for launching Bevy examples
-pub type LaunchBevyExample = GenericLaunchHandler<LaunchConfig<Example>>;
+pub type LaunchBevyExample = GenericLaunchHandler<LaunchConfig<Example>, LaunchBevyExampleParams>;
 
 /// Create a new `LaunchBevyExample` handler instance
 pub const fn create_launch_bevy_example_handler() -> LaunchBevyExample {
-    GenericLaunchHandler::new("example_name", "example name", DEFAULT_PROFILE)
+    GenericLaunchHandler::new(DEFAULT_PROFILE)
 }

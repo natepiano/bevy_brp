@@ -332,20 +332,6 @@ fn extract_query_component_count(value: &Value) -> ExtractedValue {
     ExtractedValue::Number(total as u64)
 }
 
-impl ParameterFieldType {
-    /// Extract a value based on the parameter field type.
-    pub(crate) fn extract(self, value: &Value) -> Option<ExtractedValue> {
-        match self {
-            Self::String => extract_string(value),
-            Self::Number => extract_number(value),
-            Self::Boolean => extract_boolean(value),
-            Self::StringArray => extract_string_array(value),
-            Self::NumberArray => extract_number_array(value),
-            Self::Any | Self::DynamicParams => Some(extract_any(value)),
-        }
-    }
-}
-
 impl ResponseFieldType {
     /// Extract a value based on the response field type.
     pub(crate) fn extract(self, value: &Value) -> Option<ExtractedValue> {
@@ -361,19 +347,6 @@ impl ResponseFieldType {
             Self::QueryComponentCount => Some(extract_query_component_count(value)),
         }
     }
-}
-
-/// Extract a parameter field value from a provider based on field specification.
-///
-/// This function provides type-safe extraction for parameters, ensuring
-/// that only valid parameter field types can be used.
-pub fn extract_parameter_field<P, F>(provider: &P, field: F) -> Option<ExtractedValue>
-where
-    P: JsonFieldProvider,
-    F: FieldSpec<ParameterFieldType>,
-{
-    let value = provider.get_field(field.field_name())?;
-    field.field_type().extract(&value)
 }
 
 /// Extract a response field value from a provider based on field specification.

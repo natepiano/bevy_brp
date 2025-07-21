@@ -155,12 +155,3 @@ pub enum ToolContext {
     LocalWithPort(HandlerContext<HasPort, NoMethod>), // For LocalWithPort
     Brp(HandlerContext<HasPort, HasMethod>),          // For Brp
 }
-
-/// BRP method source specification for tool handlers
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BrpMethodSource {
-    /// Static method name known at compile time
-    Static(&'static str),
-    /// Dynamic method name extracted from request parameters
-    Dynamic,
-}

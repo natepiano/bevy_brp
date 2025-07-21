@@ -1,64 +1,12 @@
-//! Schema utilities for converting JsonSchema types to Parameter definitions
+//! Schema utilities for converting `JsonSchema` types to parameter definitions
 
 use std::collections::HashSet;
-use std::str::FromStr;
 
 use schemars::JsonSchema;
 use schemars::schema::{InstanceType, Schema, SingleOrVec};
 
-use crate::field_extraction::{Parameter, ParameterFieldType, ParameterName};
-
-/// Convert a JsonSchema-enabled struct to Parameter definitions
-pub fn schema_to_parameters<T: JsonSchema>() -> Vec<Parameter> {
-    let schema = schemars::schema_for!(T);
-
-    let object = match &schema.schema.object {
-        Some(obj) => obj,
-        None => return vec![],
-    };
-
-    let required_fields: HashSet<String> = object.required.iter().cloned().collect();
-
-    object
-        .properties
-        .iter()
-        .map(|(field_name, field_schema)| {
-            // Convert snake_case field name to ParameterName enum
-            let param_name = ParameterName::from_str(field_name)
-                .unwrap_or_else(|_| panic!("Unknown parameter name: {field_name}"));
-
-            // Check if field is required (not wrapped in Option<T>)
-            let required = required_fields.contains(field_name);
-
-            // Map JSON schema types to ParameterFieldType
-            let param_type = map_schema_type_to_parameter_type(field_schema);
-
-            // Extract description from schema (doc comments become descriptions)
-            // Note: For now we'll use a static string. In a real implementation,
-            // we'd need to handle the lifetime issue or change Parameter to own the string.
-            let description = "Parameter description from schema";
-
-            // Use the appropriate Parameter constructor based on the type
-            match param_type {
-                ParameterFieldType::String => Parameter::string(param_name, description, required),
-                ParameterFieldType::Number => Parameter::number(param_name, description, required),
-                ParameterFieldType::Boolean => {
-                    Parameter::boolean(param_name, description, required)
-                }
-                ParameterFieldType::StringArray => {
-                    Parameter::string_array(param_name, description, required)
-                }
-                ParameterFieldType::NumberArray => {
-                    Parameter::number_array(param_name, description, required)
-                }
-                ParameterFieldType::Any => Parameter::any(param_name, description, required),
-                ParameterFieldType::DynamicParams => {
-                    Parameter::any(param_name, description, required)
-                }
-            }
-        })
-        .collect()
-}
+use crate::field_extraction::ParameterFieldType;
+use crate::tool::mcp_tool_schema::ParameterBuilder;
 
 fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
     match schema {
@@ -70,7 +18,7 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
                     InstanceType::Boolean => ParameterFieldType::Boolean,
                     InstanceType::Array => {
                         // Determine array element type from items schema
-                        if let Some(array) = &obj.array {
+                        obj.array.as_ref().map_or(ParameterFieldType::Any, |array| {
                             match &array.items {
                                 Some(SingleOrVec::Single(item_schema)) => {
                                     if is_string_schema(item_schema) {
@@ -83,16 +31,31 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
                                 }
                                 _ => ParameterFieldType::Any,
                             }
-                        } else {
-                            ParameterFieldType::Any
-                        }
+                        })
                     }
                     _ => ParameterFieldType::Any,
+                },
+                Some(SingleOrVec::Vec(types)) => {
+                    // Handle Option<T> types which generate [T, null] schemas
+                    let non_null_types: Vec<_> = types.iter()
+                        .filter(|t| !matches!(t, InstanceType::Null))
+                        .collect();
+                    
+                    if non_null_types.len() == 1 {
+                        match non_null_types[0] {
+                            InstanceType::String => ParameterFieldType::String,
+                            InstanceType::Integer | InstanceType::Number => ParameterFieldType::Number,
+                            InstanceType::Boolean => ParameterFieldType::Boolean,
+                            _ => ParameterFieldType::Any,
+                        }
+                    } else {
+                        ParameterFieldType::Any
+                    }
                 },
                 _ => ParameterFieldType::Any,
             }
         }
-        _ => ParameterFieldType::Any,
+        Schema::Bool(_) => ParameterFieldType::Any,
     }
 }
 
@@ -116,4 +79,55 @@ fn is_number_schema(schema: &Schema) -> bool {
     } else {
         false
     }
+}
+
+/// Build parameters from a `JsonSchema` type directly into a `ParameterBuilder`
+pub fn parameters_from_schema<T: JsonSchema>() -> ParameterBuilder {
+    let schema = schemars::schema_for!(T);
+    let mut builder = ParameterBuilder::new();
+
+    let Some(object) = &schema.schema.object else {
+        return builder;
+    };
+
+    let required_fields: HashSet<String> = object.required.iter().cloned().collect();
+
+    for (field_name, field_schema) in &object.properties {
+        let required = required_fields.contains(field_name);
+        let param_type = map_schema_type_to_parameter_type(field_schema);
+
+        // Extract description from schema metadata if available
+        let description = if let Schema::Object(obj) = field_schema {
+            obj.metadata
+                .as_ref()
+                .and_then(|m| m.description.as_ref())
+                .map_or(field_name.as_str(), std::string::String::as_str)
+        } else {
+            field_name.as_str()
+        };
+
+        // Add to builder based on type
+        builder = match param_type {
+            ParameterFieldType::String => {
+                builder.add_string_property(field_name, description, required)
+            }
+            ParameterFieldType::Number => {
+                builder.add_number_property(field_name, description, required)
+            }
+            ParameterFieldType::Boolean => {
+                builder.add_boolean_property(field_name, description, required)
+            }
+            ParameterFieldType::StringArray => {
+                builder.add_string_array_property(field_name, description, required)
+            }
+            ParameterFieldType::NumberArray => {
+                builder.add_number_array_property(field_name, description, required)
+            }
+            ParameterFieldType::Any | ParameterFieldType::DynamicParams => {
+                builder.add_any_property(field_name, description, required)
+            }
+        };
+    }
+
+    builder
 }

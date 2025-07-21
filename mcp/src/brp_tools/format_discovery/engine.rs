@@ -102,7 +102,6 @@ async fn execute_level_1(
         BrpResult::Error(ref error) => {
             // Get type information only when needed for error handling
             let registry_type_info = get_registry_type_info(method, params.as_ref(), port).await;
-
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
             if matches!(method, BRP_METHOD_SPAWN | BRP_METHOD_INSERT)

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::error::Error;
 use crate::log_tools::support;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListLogsParams {
@@ -31,20 +31,14 @@ impl LocalToolFn for ListLogs {
     type Output = ListLogResult;
 
     fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        // Extract optional app name filter
-        let app_name_filter = ctx
-            .extract_with_default(ParameterName::AppName, "")
-            .into_string()
-            .unwrap_or_default();
-
-        // Extract verbose flag (default to false)
-        let verbose = ctx
-            .extract_with_default(ParameterName::Verbose, false)
-            .into_bool()
-            .unwrap_or(false);
+        // Extract typed parameters
+        let params: ListLogsParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
+            Err(e) => return Box::pin(async move { Err(e) }),
+        };
 
         Box::pin(async move {
-            match list_log_files(&app_name_filter, verbose) {
+            match list_log_files(params.app_name.as_deref(), params.verbose) {
                 Ok(logs) => Ok(ListLogResult {
                     logs,
                     temp_directory: support::get_log_directory().display().to_string(),
@@ -55,10 +49,14 @@ impl LocalToolFn for ListLogs {
     }
 }
 
-fn list_log_files(app_name_filter: &str, verbose: bool) -> Result<Vec<LogFileInfo>, McpError> {
+fn list_log_files(
+    app_name_filter: Option<&str>,
+    verbose: Option<bool>,
+) -> Result<Vec<LogFileInfo>, McpError> {
     // Use the iterator to get all log files with optional filter
     let filter = |entry: &LogFileEntry| -> bool {
-        app_name_filter.is_empty() || entry.app_name == app_name_filter
+        // Apply app name filter if provided
+        app_name_filter.map_or_else(|| true, |app_filter| entry.app_name == app_filter)
     };
 
     let mut log_entries = support::iterate_log_files(filter)?;
@@ -71,10 +69,11 @@ fn list_log_files(app_name_filter: &str, verbose: bool) -> Result<Vec<LogFileInf
     });
 
     // Convert to LogFileInfo structs
+    let use_verbose = verbose.unwrap_or(false);
     let log_infos: Vec<LogFileInfo> = log_entries
         .into_iter()
         .map(|entry| {
-            if verbose {
+            if use_verbose {
                 let size_bytes = entry.metadata.len();
                 let modified = entry.metadata.modified().ok().map(|t| {
                     chrono::DateTime::<chrono::Local>::from(t)
