@@ -1,3 +1,4 @@
+use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::FormatCorrectionStatus;
