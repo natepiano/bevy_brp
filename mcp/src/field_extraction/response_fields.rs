@@ -2,6 +2,16 @@ use strum::{Display, EnumString, IntoStaticStr};
 
 use super::extraction::{FieldSpec, ResponseFieldType};
 
+/// Enum representing core response field names that appear in all tool responses
+#[derive(Display, EnumString, IntoStaticStr, Debug, Clone, Copy, PartialEq, Eq)]
+#[strum(serialize_all = "snake_case")]
+pub enum CoreResponseField {
+    /// `status` - Response status (success/error)
+    Status,
+    /// `message` - Response message
+    Message,
+}
+
 /// Enum representing all possible response field names
 #[derive(Display, EnumString, IntoStaticStr, Debug, Clone, Copy, PartialEq, Eq)]
 #[strum(serialize_all = "snake_case")]
@@ -68,8 +78,6 @@ pub enum ResponseFieldName {
     LogPath,
     /// `logs` - List of logs
     Logs,
-    /// `message` - Response message
-    Message,
     /// `metadata` - Metadata field
     Metadata,
     /// `method_count` - Number of methods
@@ -94,8 +102,6 @@ pub enum ResponseFieldName {
     SizeBytes,
     /// `size_human` - Human-readable size
     SizeHuman,
-    /// `status` - Response status (success/error)
-    Status,
     /// `tail_mode` - Whether in tail mode
     TailMode,
     /// `temp_directory` - Temporary directory path
@@ -124,9 +130,7 @@ impl ResponseFieldName {
             | Self::AppNameFilter
             | Self::Filename
             | Self::FilePath
-            | Self::Message
             | Self::SizeHuman
-            | Self::Status
             | Self::TracingLevel
             | Self::TracingLogFile
             | Self::TempDirectory => ResponseFieldType::String,

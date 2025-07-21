@@ -8,8 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, report_to_mcp_error};
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
-    ToolError, ToolResult,
+    HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ToolError, ToolResult,
 };
 
 /// Marker type for App launch configuration
@@ -74,12 +73,6 @@ pub struct LaunchResult {
     pub note:               Option<String>,
 }
 
-impl HandlerResult for LaunchResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
 use crate::constants::BRP_PORT_ENV_VAR;
 use crate::field_extraction::ParameterName;
@@ -140,7 +133,9 @@ impl<T: FromLaunchParams> GenericLaunchHandler<T> {
 }
 
 impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = LaunchResult;
+
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract parameters
         let params = match extract_launch_params(
             ctx,
@@ -163,8 +158,8 @@ impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
 
             // Launch the target
             let result = launch_target(&config, &search_paths);
-            let tool_result = ToolResult(result);
-            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

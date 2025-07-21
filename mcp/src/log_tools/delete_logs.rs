@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
+    ToolResult,
 };
 
 /// Result from cleaning up log files
@@ -22,16 +23,11 @@ pub struct DeleteLogsResult {
     pub older_than_seconds: Option<u32>,
 }
 
-impl HandlerResult for DeleteLogsResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 pub struct DeleteLogs;
 
 impl LocalToolFn for DeleteLogs {
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = DeleteLogsResult;
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract parameters before the async block
         let app_name_filter = ctx
             .extract_with_default(ParameterName::AppName, "")
@@ -46,8 +42,9 @@ impl LocalToolFn for DeleteLogs {
         };
 
         Box::pin(async move {
-            handle_impl(&app_name_filter, older_than_seconds)
-                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+            let result = handle_impl(&app_name_filter, older_than_seconds);
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }
@@ -55,8 +52,9 @@ impl LocalToolFn for DeleteLogs {
 fn handle_impl(
     app_name_filter: &str,
     older_than_seconds: u32,
-) -> Result<DeleteLogsResult, McpError> {
-    let (deleted_count, deleted_files) = delete_log_files(app_name_filter, older_than_seconds)?;
+) -> Result<DeleteLogsResult, ToolError> {
+    let (deleted_count, deleted_files) = delete_log_files(app_name_filter, older_than_seconds)
+        .map_err(|e| ToolError::new(e.message))?;
 
     Ok(DeleteLogsResult {
         deleted_count,

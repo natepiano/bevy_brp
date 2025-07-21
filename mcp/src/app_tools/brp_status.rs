@@ -3,8 +3,8 @@ use sysinfo::System;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::tool::{
-    BRP_METHOD_LIST, HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort,
-    NoMethod, ParameterName, ToolError, ToolResult,
+    BRP_METHOD_LIST, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod,
+    ParameterName, ToolError, ToolResult,
 };
 
 /// Result from checking status of a Bevy app
@@ -20,16 +20,12 @@ pub struct StatusResult {
     pub pid:            Option<u32>,
 }
 
-impl HandlerResult for StatusResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 pub struct Status;
 
 impl LocalToolFnWithPort for Status {
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = StatusResult;
+
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
         let app_name = match ctx.extract_required(ParameterName::AppName) {
             Ok(value) => match value.into_string() {
                 Ok(s) => s,
@@ -41,8 +37,8 @@ impl LocalToolFnWithPort for Status {
         let port = ctx.port();
         Box::pin(async move {
             let result = handle_impl(&app_name, port).await;
-            let tool_result = ToolResult(result);
-            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

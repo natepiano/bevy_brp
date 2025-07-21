@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
-use crate::tool::{HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ToolResult};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,17 +14,13 @@ pub struct GetTraceLogPathResult {
     pub file_size_bytes: Option<u64>,
 }
 
-impl HandlerResult for GetTraceLogPathResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 /// Handler for the `brp_get_trace_log_path` tool using the `LocalFn` approach
 pub struct GetTraceLogPath;
 
 impl LocalToolFn for GetTraceLogPath {
-    fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = GetTraceLogPathResult;
+
+    fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         Box::pin(async move {
             // Get the trace log path
             let log_path = get_trace_log_path();
@@ -40,7 +36,8 @@ impl LocalToolFn for GetTraceLogPath {
                 file_size_bytes,
             };
 
-            Ok(Box::new(result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result: Ok(result) };
+            Ok(tool_result)
         })
     }
 }

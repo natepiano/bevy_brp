@@ -34,7 +34,7 @@ use crate::constants::{
 };
 use crate::error::Result;
 use crate::field_extraction::{ResponseFieldType, extract_response_field};
-use crate::tool::{HandlerContext, HasCallInfo};
+use crate::tool::{HandlerContext, HasCallInfo, ToolResult};
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
@@ -293,7 +293,7 @@ impl ResponseFormatter {
         Ok(template_values)
     }
 
-    /// Extract all format correction related fields from V2 `BrpMethodResult`
+    /// Extract all format correction related fields from `BrpMethodResult`
     fn extract_format_correction_fields(data: &Value) -> Value {
         let mut format_data = serde_json::Map::new();
 
@@ -622,74 +622,40 @@ impl ResponseFormatter {
     }
 }
 
-/// Universal formatter that handles both local and BRP results uniformly
-///
-/// This function serves as the primary formatting entry point for all handler types.
-/// It automatically detects error vs success responses and applies appropriate formatting,
-/// including format correction handling for BRP results.
-pub fn format_tool_call_result<Port, Method>(
-    result: std::result::Result<serde_json::Value, McpError>,
+/// Type-safe formatter that accepts `ToolResult` directly
+pub fn format_tool_result<T, Port, Method>(
+    tool_result: ToolResult<T>,
     handler_context: &HandlerContext<Port, Method>,
     formatter_config: FormatterConfig,
 ) -> std::result::Result<CallToolResult, McpError>
 where
+    T: serde::Serialize,
     HandlerContext<Port, Method>: HasCallInfo,
 {
-    match result {
-        Ok(value) => {
-            // Check if this is an error response
-            let is_error = value
-                .get("status")
-                .and_then(|s| s.as_str())
-                .is_some_and(|s| s == "error");
+    match tool_result.result {
+        Ok(data) => {
+            // Handle success - serialize data and format via ResponseFormatter
+            let value = serde_json::to_value(&data).map_err(|e| {
+                McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
+            })?;
 
-            if is_error {
-                // Handle error response
-                let message = value
-                    .get("message")
-                    .and_then(|m| m.as_str())
-                    .unwrap_or("Unknown error");
+            let formatter = ResponseFormatter::new(formatter_config);
 
-                let error_response =
-                    ResponseBuilder::error(handler_context.call_info()).message(message);
+            // Check if this is a BRP result with format correction information
+            let (format_corrections, format_corrected) = extract_format_correction_info(&value);
 
-                // Add error fields as metadata
-                let error_response = if let serde_json::Value::Object(map) = &value {
-                    map.iter()
-                        .filter(|(key, val)| {
-                            let k = key.as_str();
-                            k != "status" && k != "message" && !val.is_null()
-                        })
-                        .try_fold(error_response, |builder, (key, val)| {
-                            builder.add_field(key, val)
-                        })
-                        .unwrap_or_else(|_| {
-                            // If adding fields failed, just return the basic error response
-                            ResponseBuilder::error(handler_context.call_info()).message(message)
-                        })
-                } else {
-                    error_response
-                };
-
-                Ok(error_response.build().to_call_tool_result())
-            } else {
-                // Handle success response
-                let formatter = ResponseFormatter::new(formatter_config);
-
-                // Check if this is a BRP result with format correction information
-                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
-
-                // For V2, the entire value contains the structured result
-                // Use format_success_with_corrections to handle format correction messaging
-                Ok(formatter.format_success_with_corrections(
-                    &value,
-                    handler_context,
-                    format_corrections.as_deref(),
-                    format_corrected.as_ref(),
-                ))
-            }
+            Ok(formatter.format_success_with_corrections(
+                &value,
+                handler_context,
+                format_corrections.as_deref(),
+                format_corrected.as_ref(),
+            ))
         }
-        Err(e) => Err(e),
+        Err(tool_error) => Ok(ResponseBuilder::error(handler_context.call_info())
+            .message(&tool_error.message)
+            .add_optional_details(tool_error.details.as_ref())
+            .build()
+            .to_call_tool_result()),
     }
 }
 

@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ToolError,
-    ToolResult,
+    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ToolError, ToolResult,
 };
 
 /// Individual watch information
@@ -30,20 +29,16 @@ pub struct ListActiveWatchesResult {
     pub watches: Vec<WatchInfo>,
 }
 
-impl HandlerResult for ListActiveWatchesResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 pub struct BrpListActiveWatches;
 
 impl LocalToolFn for BrpListActiveWatches {
-    fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = ListActiveWatchesResult;
+
+    fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         Box::pin(async move {
             let result = handle_impl().await;
-            let tool_result = ToolResult(result);
-            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

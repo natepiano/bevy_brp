@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
+    ToolResult,
 };
 
 /// Result from setting the tracing level
@@ -17,16 +18,12 @@ pub struct SetTracingLevelResult {
     pub tracing_log_file: String,
 }
 
-impl HandlerResult for SetTracingLevelResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 pub struct SetTracingLevel;
 
 impl LocalToolFn for SetTracingLevel {
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = SetTracingLevelResult;
+
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract the required level parameter before the async block
         let level_str = match ctx.extract_required(ParameterName::Level) {
             Ok(value) => match value.into_string() {
@@ -37,7 +34,9 @@ impl LocalToolFn for SetTracingLevel {
         };
 
         Box::pin(async move {
-            handle_impl(&level_str).map(|result| Box::new(result) as Box<dyn HandlerResult>)
+            let result = handle_impl(&level_str).map_err(|e| ToolError::new(e.message));
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

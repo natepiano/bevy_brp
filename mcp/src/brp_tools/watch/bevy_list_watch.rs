@@ -2,14 +2,16 @@
 
 use super::types::WatchStartResult;
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, HasPort, LocalToolFnWithPort, NoMethod,
-    ParameterName, ToolError, ToolResult,
+    HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ParameterName,
+    ToolError, ToolResult,
 };
 
 pub struct BevyListWatch;
 
 impl LocalToolFnWithPort for BevyListWatch {
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = WatchStartResult;
+
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
         let entity_id = match ctx.extract_required(ParameterName::Entity) {
             Ok(value) => match value.into_u64() {
                 Ok(id) => id,
@@ -21,8 +23,8 @@ impl LocalToolFnWithPort for BevyListWatch {
         let port = ctx.port();
         Box::pin(async move {
             let result = handle_impl(entity_id, port).await;
-            let tool_result = ToolResult(result);
-            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

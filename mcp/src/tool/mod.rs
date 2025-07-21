@@ -19,8 +19,7 @@ pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMet
 pub use handler_fn::HandlerFn;
 pub use tool_def::ToolDef;
 pub use types::{
-    BrpToolFn, HandlerResponse, HandlerResult, LocalToolFn, LocalToolFnWithPort, ToolError,
-    ToolResult,
+    BrpToolFn, HandlerResponse, LocalToolFn, LocalToolFnWithPort, ToolError, ToolResult,
 };
 
 // Re-export from field_extraction for compatibility during migration

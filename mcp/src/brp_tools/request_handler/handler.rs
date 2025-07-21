@@ -7,12 +7,11 @@ use super::types::BrpMethodResult;
 use crate::brp_tools::support::brp_client::BrpResult;
 use crate::error;
 use crate::tool::{
-    BrpToolFn, HandlerContext, HandlerResponse, HandlerResult, HasMethod, HasPort, ToolError,
-    ToolResult,
+    BrpToolFn, HandlerContext, HandlerResponse, HasMethod, HasPort, ToolError, ToolResult,
 };
 
-/// BRP method handler V2 that implements `BrpToolFnV2` and returns `HandlerResponse`
-pub struct BrpMethodHandlerV2;
+/// BRP method handler  that implements `BrpToolFn` and returns `HandlerResponse`
+pub struct BrpMethodHandler;
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -39,8 +38,10 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
-impl BrpToolFn for BrpMethodHandlerV2 {
-    fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<'_> {
+impl BrpToolFn for BrpMethodHandler {
+    type Output = BrpMethodResult;
+
+    fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<Self::Output> {
         let ctx = ctx.clone();
 
         Box::pin(async move {
@@ -56,8 +57,8 @@ impl BrpToolFn for BrpMethodHandlerV2 {
 
             // Convert to BrpMethodResult
             let result = convert_to_brp_method_result(enhanced_result, &ctx);
-            let tool_result = ToolResult(result);
-            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }
@@ -146,7 +147,6 @@ const fn enhance_error_data<Port, Method>(
     _enhanced_result: &EnhancedBrpResult,
     _ctx: &HandlerContext<Port, Method>,
 ) -> Option<Value> {
-    // V2 handler no longer duplicates format correction data in error_data
     // Format corrections are handled through ResponseField::FormatCorrection extractor
     // which extracts from the main BrpMethodResult.format_corrections field
     original_data

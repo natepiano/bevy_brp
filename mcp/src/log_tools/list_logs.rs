@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::log_tools::support;
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
+    ToolResult,
 };
 
 /// Result from listing log files
@@ -16,17 +17,13 @@ pub struct ListLogResult {
     pub temp_directory: String,
 }
 
-impl HandlerResult for ListLogResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 /// Handler for the `brp_list_logs` tool using the `LocalFn` approach
 pub struct ListLogs;
 
 impl LocalToolFn for ListLogs {
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = ListLogResult;
+
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract optional app name filter
         let app_name_filter = ctx
             .extract_with_default(ParameterName::AppName, "")
@@ -40,14 +37,16 @@ impl LocalToolFn for ListLogs {
             .unwrap_or(false);
 
         Box::pin(async move {
-            let logs = list_log_files(&app_name_filter, verbose)?;
-
-            let result = ListLogResult {
-                logs,
-                temp_directory: support::get_log_directory().display().to_string(),
+            let result = match list_log_files(&app_name_filter, verbose) {
+                Ok(logs) => Ok(ListLogResult {
+                    logs,
+                    temp_directory: support::get_log_directory().display().to_string(),
+                }),
+                Err(e) => Err(ToolError::new(e.message)),
             };
 
-            Ok(Box::new(result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

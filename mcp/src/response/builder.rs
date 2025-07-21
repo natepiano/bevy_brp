@@ -157,6 +157,24 @@ impl ResponseBuilder {
         Ok(self)
     }
 
+    /// Add multiple fields from an optional JSON object to metadata
+    /// Useful for adding error details or other optional metadata
+    pub fn add_optional_details(self, details: Option<&serde_json::Value>) -> Self {
+        match details {
+            Some(Value::Object(map)) => {
+                map.iter()
+                    .filter(|(_, v)| !v.is_null())
+                    .fold(self, |builder, (key, value)| {
+                        builder.clone().add_field(key, value).unwrap_or_else(|_| {
+                            tracing::warn!("Failed to add detail field '{}'", key);
+                            builder // Keep the original builder if add_field fails
+                        })
+                    })
+            }
+            _ => self,
+        }
+    }
+
     /// Add a field to the specified location (metadata or result object)
     pub fn add_field_to(
         mut self,

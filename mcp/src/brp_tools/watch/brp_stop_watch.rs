@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
-    ToolError, ToolResult,
+    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
+    ToolResult,
 };
 
 /// Result from stopping a watch operation
@@ -15,16 +15,12 @@ pub struct StopWatchResult {
     pub watch_id: u32,
 }
 
-impl HandlerResult for StopWatchResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 pub struct BrpStopWatch;
 
 impl LocalToolFn for BrpStopWatch {
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = StopWatchResult;
+
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract parameters before async block
         let watch_id = match ctx.extract_required(ParameterName::WatchId) {
             Ok(value) => match value.into_u32() {
@@ -36,8 +32,8 @@ impl LocalToolFn for BrpStopWatch {
 
         Box::pin(async move {
             let result = handle_impl(watch_id).await;
-            let tool_result = ToolResult(result);
-            Ok(Box::new(tool_result) as Box<dyn HandlerResult>)
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

@@ -8,4 +8,4 @@ mod types;
 
 // Public exports
 pub use format_discovery::{FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus};
-pub use handler::BrpMethodHandlerV2;
+pub use handler::BrpMethodHandler;

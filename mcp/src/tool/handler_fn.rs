@@ -4,10 +4,11 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
-use super::types::{BrpMethodSource, BrpToolFn};
-use crate::response::{FormatterConfig, format_tool_call_result};
-use crate::tool::types::ToolContext;
-use crate::tool::{LocalToolFn, LocalToolFnWithPort};
+use super::types::{
+    BrpMethodSource, BrpToolFn, ErasedBrpToolFn, ErasedLocalToolFn, ErasedLocalToolFnWithPort,
+    LocalToolFn, LocalToolFnWithPort, ToolContext,
+};
+use crate::response::FormatterConfig;
 
 /// Trait for extracting formatter config from any tool context
 trait HasFormatterConfig {
@@ -29,10 +30,10 @@ impl HasFormatterConfig for ToolContext {
 /// Enum to hold either basic handler or handler with port
 #[derive(Clone)]
 pub enum HandlerFn {
-    Local(Arc<dyn LocalToolFn>),
-    LocalWithPort(Arc<dyn LocalToolFnWithPort>),
+    Local(Arc<dyn ErasedLocalToolFn>),
+    LocalWithPort(Arc<dyn ErasedLocalToolFnWithPort>),
     Brp {
-        handler:       Arc<dyn super::types::BrpToolFn>,
+        handler:       Arc<dyn ErasedBrpToolFn>,
         method_source: BrpMethodSource,
     },
 }
@@ -50,33 +51,14 @@ impl HandlerFn {
 
         // Now dispatch to the appropriate handler
         match (self, ctx) {
-            (Self::Local(handler), ToolContext::Local(local_ctx)) => Box::pin(async move {
-                let result = handler
-                    .call(local_ctx)
-                    .await
-                    .map(|typed_result| typed_result.to_json());
-                format_tool_call_result(result, local_ctx, formatter_config)
-            }),
+            (Self::Local(handler), ToolContext::Local(local_ctx)) => {
+                handler.call_erased(local_ctx, formatter_config)
+            }
             (Self::LocalWithPort(handler), ToolContext::LocalWithPort(local_with_port_ctx)) => {
-                Box::pin(async move {
-                    let result = handler
-                        .call(local_with_port_ctx)
-                        .await
-                        .map(|typed_result| typed_result.to_json());
-                    format_tool_call_result(result, local_with_port_ctx, formatter_config)
-                })
+                handler.call_erased(local_with_port_ctx, formatter_config)
             }
             (Self::Brp { handler, .. }, ToolContext::Brp(brp_ctx)) => {
-                Box::pin(async move {
-                    // Call V2 handler, get HandlerResult
-                    let result = handler.call(brp_ctx).await;
-
-                    // Convert to JSON and format like local handlers
-                    let json_result = result.map(|typed_result| typed_result.to_json());
-
-                    // Use enhanced format_tool_call_result
-                    format_tool_call_result(json_result, brp_ctx, formatter_config)
-                })
+                handler.call_erased(brp_ctx, formatter_config)
             }
             _ => Box::pin(async move {
                 Err(McpError::invalid_params(
@@ -99,16 +81,16 @@ impl HandlerFn {
         Self::LocalWithPort(Arc::new(handler))
     }
 
-    /// Create a BRP V2 handler with static method
-    pub fn brp_v2_static<T: BrpToolFn + 'static>(handler: T, method: &'static str) -> Self {
+    /// Create a BRP handler with static method
+    pub fn brp_static<T: BrpToolFn + 'static>(handler: T, method: &'static str) -> Self {
         Self::Brp {
             handler:       Arc::new(handler),
             method_source: BrpMethodSource::Static(method),
         }
     }
 
-    /// Create a BRP V2 handler with dynamic method (from parameter)
-    pub fn brp_v2_dynamic<T: BrpToolFn + 'static>(handler: T) -> Self {
+    /// Create a BRP handler with dynamic method (from parameter)
+    pub fn brp_dynamic<T: BrpToolFn + 'static>(handler: T) -> Self {
         Self::Brp {
             handler:       Arc::new(handler),
             method_source: BrpMethodSource::Dynamic,

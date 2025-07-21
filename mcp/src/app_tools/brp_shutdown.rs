@@ -7,8 +7,8 @@ use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
 use crate::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::error::{Error, Result};
 use crate::tool::{
-    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HandlerResult, HasPort,
-    LocalToolFnWithPort, NoMethod, ParameterName,
+    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort,
+    NoMethod, ParameterName, ToolError, ToolResult,
 };
 
 /// Result from shutting down a Bevy app
@@ -25,12 +25,6 @@ pub struct ShutdownResultData {
     pub pid:             Option<u32>,
     /// Detailed shutdown message for display
     pub message:         String,
-}
-
-impl HandlerResult for ShutdownResultData {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
 }
 
 /// Result of a shutdown operation
@@ -121,7 +115,9 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
 pub struct Shutdown;
 
 impl LocalToolFnWithPort for Shutdown {
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = ShutdownResultData;
+
+    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
         let app_name = match ctx.extract_required(ParameterName::AppName) {
             Ok(value) => match value.into_string() {
                 Ok(s) => s,
@@ -132,9 +128,11 @@ impl LocalToolFnWithPort for Shutdown {
 
         let port = ctx.port();
         Box::pin(async move {
-            handle_impl(&app_name, port)
+            let result = handle_impl(&app_name, port)
                 .await
-                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+                .map_err(|e| ToolError::new(e.message));
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
 use crate::tool::{
-    HandlerContext, HandlerResponse, HandlerResult, LocalToolFn, NoMethod, NoPort, ParameterName,
+    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
+    ToolResult,
 };
 
 /// Result from reading a log file
@@ -32,16 +33,12 @@ pub struct ReadLogResult {
     pub tail_mode:           bool,
 }
 
-impl HandlerResult for ReadLogResult {
-    fn to_json(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
-    }
-}
-
 pub struct ReadLog;
 
 impl LocalToolFn for ReadLog {
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<'_> {
+    type Output = ReadLogResult;
+
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract parameters before the async block
         let filename = match ctx.extract_required(ParameterName::Filename) {
             Ok(value) => match value.into_string() {
@@ -70,8 +67,10 @@ impl LocalToolFn for ReadLog {
         };
 
         Box::pin(async move {
-            handle_impl(&filename, &keyword, tail_lines)
-                .map(|result| Box::new(result) as Box<dyn HandlerResult>)
+            let result =
+                handle_impl(&filename, &keyword, tail_lines).map_err(|e| ToolError::new(e.message));
+            let tool_result = ToolResult { result };
+            Ok(tool_result)
         })
     }
 }

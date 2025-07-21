@@ -82,15 +82,15 @@ pub enum ResponseField {
         /// Where to place this field in the response
         placement:           FieldPlacement,
     },
-    /// Extract the raw BRP response data from the "result" field to the result field (V2 handlers)
+    /// Extract the raw BRP response data from the "result" field to the result field
     ///
-    /// This is a convenience variant for V2 BRP tools that need to extract the raw BRP response
+    /// This is a convenience variant for BRP tools that need to extract the raw BRP response
     /// from the "result" field and place it in the JSON response result field.
     BrpRawResultToResult,
-    /// Extract format correction metadata from V2 handler responses
+    /// Extract format correction metadata from handler responses
     ///
     /// This variant extracts all format correction fields (`format_corrected`,
-    /// `format_corrections`, etc.) from V2 `BrpMethodResult` and places them in metadata. Only
+    /// `format_corrections`, etc.) from `BrpMethodResult` and places them in metadata. Only
     /// used for V2 tools that support format correction.
     FormatCorrection,
 }

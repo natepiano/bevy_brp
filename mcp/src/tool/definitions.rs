@@ -35,7 +35,7 @@ use crate::app_tools::brp_list_bevy_examples::ListBevyExamples;
 use crate::app_tools::brp_list_brp_apps::ListBrpApps;
 use crate::app_tools::brp_shutdown::Shutdown;
 use crate::app_tools::brp_status::Status;
-use crate::brp_tools::request_handler::BrpMethodHandlerV2;
+use crate::brp_tools::request_handler::BrpMethodHandler;
 use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
 use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
 use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
@@ -63,7 +63,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Entity,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_DESTROY),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_DESTROY),
             parameters:      vec![Parameter::entity("The entity ID to destroy", true)],
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
@@ -82,7 +82,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_GET),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET),
             parameters:      vec![
                 Parameter::entity("The entity ID to get component data from", true),
                 Parameter::components(
@@ -124,7 +124,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_GET_RESOURCE),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_GET_RESOURCE),
             parameters:      vec![Parameter::resource(
                 "The fully-qualified type name of the resource to get",
             )],
@@ -141,7 +141,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_INSERT),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT),
             parameters:      vec![
                 Parameter::entity("The entity ID to insert components into", true),
                 Parameter::components(
@@ -174,10 +174,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_INSERT_RESOURCE,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_INSERT_RESOURCE),
             parameters:      vec![
                 Parameter::resource(
                     "The fully-qualified type name of the resource to insert or update",
@@ -207,7 +204,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_LIST),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_LIST),
             parameters:      vec![Parameter::entity(
                 "Optional entity ID to list components for",
                 false,
@@ -232,10 +229,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_LIST_RESOURCES,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_LIST_RESOURCES),
             parameters:      vec![],
             response_format: ResponseSpecification {
                 message_template: "Listed {resource_count} resources",
@@ -257,10 +251,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_MUTATE_COMPONENT,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_COMPONENT),
             parameters:      vec![
                 Parameter::entity("The entity ID containing the component to mutate", true),
                 Parameter::value(
@@ -292,10 +283,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_MUTATE_RESOURCE,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_MUTATE_RESOURCE),
             parameters:      vec![
                 Parameter::resource("The fully-qualified type name of the resource to mutate"),
                 Parameter::path(
@@ -326,7 +314,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_QUERY),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_QUERY),
             parameters:      vec![Parameter::data(), Parameter::filter(), Parameter::strict()],
             response_format: ResponseSpecification {
                 message_template: "Query completed successfully",
@@ -353,10 +341,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_REGISTRY_SCHEMA,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REGISTRY_SCHEMA),
             parameters:      vec![
                 Parameter::with_crates(),
                 Parameter::without_crates(),
@@ -383,7 +368,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_REMOVE),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE),
             parameters:      vec![
                 Parameter::entity("The entity ID to remove components from", true),
                 Parameter::components("Array of component type names to remove", true),
@@ -412,10 +397,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_REMOVE_RESOURCE,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REMOVE_RESOURCE),
             parameters:      vec![Parameter::resource(
                 "The fully-qualified type name of the resource to remove",
             )],
@@ -436,7 +418,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_REPARENT),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_REPARENT),
             parameters:      vec![
                 Parameter::entities("Array of entity IDs to reparent"),
                 Parameter::parent(),
@@ -465,7 +447,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_RPC_DISCOVER),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_RPC_DISCOVER),
             parameters:      vec![],
             response_format: ResponseSpecification {
                 message_template: "Retrieved BRP method discovery information for {method_count} methods",
@@ -488,7 +470,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(BrpMethodHandlerV2, BRP_METHOD_SPAWN),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_SPAWN),
             parameters:      vec![Parameter::components(
                 "Object containing component data to spawn with. Keys are component types, values are component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.",
                 false,
@@ -515,7 +497,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::DynamicBrp,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_dynamic(BrpMethodHandlerV2),
+            handler:         HandlerFn::brp_dynamic(BrpMethodHandler),
             parameters:      vec![Parameter::dynamic_params(
                 "Optional parameters for the method, as a JSON object or array",
                 false,
@@ -533,8 +515,8 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
+            handler:         HandlerFn::brp_static(
+                BrpMethodHandler,
                 BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
             ),
             parameters:      vec![Parameter::types(
@@ -554,10 +536,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_EXTRAS_SCREENSHOT,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SCREENSHOT),
             parameters:      vec![Parameter::path(
                 "File path where the screenshot should be saved",
             )],
@@ -578,10 +557,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
-                BRP_METHOD_EXTRAS_SEND_KEYS,
-            ),
+            handler:         HandlerFn::brp_static(BrpMethodHandler, BRP_METHOD_EXTRAS_SEND_KEYS),
             parameters:      vec![Parameter::keys(), Parameter::duration_ms()],
             response_format: ResponseSpecification {
                 message_template: "Successfully sent keyboard input",
@@ -607,8 +583,8 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp_v2_static(
-                BrpMethodHandlerV2,
+            handler:         HandlerFn::brp_static(
+                BrpMethodHandler,
                 BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
             ),
             parameters:      vec![Parameter::enabled()],
@@ -1202,6 +1178,11 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::AppName,
                         source_path:         ResponseFieldName::AppName.into(),
+                        placement:           FieldPlacement::Metadata,
+                    },
+                    ResponseField::FromResponse {
+                        response_field_name: ResponseFieldName::ShutdownMethod,
+                        source_path:         ResponseFieldName::ShutdownMethod.into(),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponseNullableWithPlacement {
