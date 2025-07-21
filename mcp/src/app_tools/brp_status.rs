@@ -4,10 +4,8 @@ use sysinfo::System;
 
 use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::error::Error;
-use crate::field_extraction::ExtractedValue;
 use crate::tool::{
     BRP_METHOD_LIST, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod,
-    ParameterName,
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -35,16 +33,14 @@ impl LocalToolFnWithPort for Status {
     type Output = StatusResult;
 
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        let app_name = match ctx
-            .extract_required(ParameterName::AppName)
-            .and_then(ExtractedValue::into_string)
-        {
-            Ok(s) => s,
-            Err(e) => return Box::pin(async move { Err(e) }),
+        // Extract and validate parameters using the new typed system
+        let params: StatusParams = match ctx.extract_typed_params() {
+            Ok(params) => params,
+            Err(e) => return Box::pin(async move { Err(e.into()) }),
         };
 
         let port = ctx.port();
-        Box::pin(async move { handle_impl(&app_name, port).await })
+        Box::pin(async move { handle_impl(&params.app_name, port).await })
     }
 }
 

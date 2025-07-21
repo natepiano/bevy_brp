@@ -13,7 +13,7 @@ mod support;
 
 pub use brp_launch_bevy_app::create_launch_bevy_app_handler;
 pub use brp_launch_bevy_example::create_launch_bevy_example_handler;
-pub use brp_list_bevy_apps::{ListBevyApps, ListBevyAppsParams};
+pub use brp_list_bevy_apps::ListBevyApps;
 pub use brp_list_bevy_examples::ListBevyExamples;
 pub use brp_list_brp_apps::ListBrpApps;
 pub use brp_shutdown::Shutdown;

@@ -28,7 +28,6 @@ use super::constants::{
     TOOL_LIST_BEVY_APPS, TOOL_LIST_BEVY_EXAMPLES, TOOL_LIST_BRP_APPS, TOOL_LIST_LOGS,
     TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
-use super::schema_utils::schema_to_parameters;
 use super::tool_def::ToolDef;
 use crate::app_tools::{self, ListBevyApps, ListBevyExamples, ListBrpApps, Shutdown, Status};
 use crate::brp_tools::{
@@ -839,7 +838,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         HandlerFn::local(ListBevyApps),
-            parameters:      schema_to_parameters::<app_tools::ListBevyAppsParams>(),
+            parameters:      vec![],
             response_format: ResponseSpecification {
                 message_template: "Found {count} Bevy apps",
                 response_fields:  vec![

@@ -18,8 +18,6 @@ pub use constants::{
 pub use definitions::get_all_tool_definitions;
 pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMethod, NoPort};
 pub use handler_fn::HandlerFn;
-// Export schema utilities for parameter generation
-pub use schema_utils::schema_to_parameters;
 pub use tool_def::ToolDef;
 pub use types::{BrpToolFn, HandlerResponse, LocalToolFn, LocalToolFnWithPort};
 
