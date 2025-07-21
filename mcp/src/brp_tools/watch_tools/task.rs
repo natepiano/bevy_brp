@@ -13,9 +13,9 @@ const MAX_CHUNK_SIZE: usize = 1024 * 1024;
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
 use super::super::{BrpJsonRpcBuilder, http_client};
+use super::logger::{self as watch_logger, BufferedWatchLogger};
+use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools;
-use crate::brp_tools::watch::logger::{self as watch_logger, BufferedWatchLogger};
-use crate::brp_tools::watch::manager::{WATCH_MANAGER, WatchInfo};
 use crate::error::{Error, Result};
 use crate::tool::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
 
