@@ -5,10 +5,8 @@ use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
-    ToolResult,
-};
+use crate::error::Error;
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
 
 /// Result from cleaning up log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,20 +39,16 @@ impl LocalToolFn for DeleteLogs {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move {
-            let result = handle_impl(&app_name_filter, older_than_seconds);
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
-        })
+        Box::pin(async move { handle_impl(&app_name_filter, older_than_seconds) })
     }
 }
 
 fn handle_impl(
     app_name_filter: &str,
     older_than_seconds: u32,
-) -> Result<DeleteLogsResult, ToolError> {
+) -> crate::error::Result<DeleteLogsResult> {
     let (deleted_count, deleted_files) = delete_log_files(app_name_filter, older_than_seconds)
-        .map_err(|e| ToolError::new(e.message))?;
+        .map_err(|e| Error::tool_call_failed(e.message))?;
 
     Ok(DeleteLogsResult {
         deleted_count,

@@ -20,10 +20,10 @@ use std::pin::Pin;
 
 use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
-use serde::{Deserialize, Serialize};
 
 use super::HandlerFn;
 use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
+use crate::error::Result;
 use crate::response::FormatterConfig;
 
 /// Unified tool handler that works with any `HandlerFn` variant
@@ -39,25 +39,8 @@ impl ToolHandler {
 }
 
 impl ToolHandler {
-    pub async fn call_tool(self) -> Result<CallToolResult, McpError> {
+    pub async fn call_tool(self) -> std::result::Result<CallToolResult, McpError> {
         self.handler.call_handler(&self.context).await
-    }
-}
-
-/// Standard error type for tool responses
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolError {
-    pub message: String,
-    #[serde(flatten)]
-    pub details: Option<serde_json::Value>,
-}
-
-impl ToolError {
-    pub fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            details: None,
-        }
     }
 }
 
@@ -66,18 +49,9 @@ impl ToolError {
 /// Breaking down the type:
 /// - `Pin<Box<...>>`: Heap-allocated Future that won't move in memory
 /// - `dyn Future`: Async function that can be awaited
-/// - `Output = Result<...>`: Can fail with `McpError` (protocol errors)
-/// - `ToolResult<T>`: Type-safe wrapper with concrete type T
+/// - `Output = crate::error::Result<T>`: Can fail with internal `Error` type
 /// - `+ Send + 'static`: Can be sent between threads, static lifetime
-pub type HandlerResponse<T> =
-    Pin<Box<dyn Future<Output = Result<ToolResult<T>, McpError>> + Send + 'static>>;
-
-/// Type safe result for a Tool call - supports setting up serialization
-/// of our "status": "success" or "error" in one place without duplication or
-/// requiring us to know what to do by convention
-pub struct ToolResult<T> {
-    pub result: Result<T, ToolError>,
-}
+pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'static>>;
 
 /// Trait for local handlers using function pointer approach
 pub trait LocalToolFn: Send + Sync {
@@ -112,7 +86,7 @@ pub trait ErasedLocalToolFn: Send + Sync {
         &'a self,
         ctx: &'a HandlerContext<NoPort, NoMethod>,
         formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
 
 pub trait ErasedLocalToolFnWithPort: Send + Sync {
@@ -120,7 +94,7 @@ pub trait ErasedLocalToolFnWithPort: Send + Sync {
         &'a self,
         ctx: &'a HandlerContext<HasPort, NoMethod>,
         formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
 
 pub trait ErasedBrpToolFn: Send + Sync {
@@ -128,7 +102,7 @@ pub trait ErasedBrpToolFn: Send + Sync {
         &'a self,
         ctx: &'a HandlerContext<HasPort, HasMethod>,
         formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
 
 /// Blanket implementations to convert typed handlers to erased ones
@@ -137,10 +111,11 @@ impl<T: LocalToolFn> ErasedLocalToolFn for T {
         &'a self,
         ctx: &'a HandlerContext<NoPort, NoMethod>,
         formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
+    {
         Box::pin(async move {
-            let tool_result = self.call(ctx).await?;
-            crate::response::format_tool_result(tool_result, ctx, formatter_config)
+            let result = self.call(ctx).await;
+            crate::response::format_tool_result(result, ctx, formatter_config)
         })
     }
 }
@@ -150,10 +125,11 @@ impl<T: LocalToolFnWithPort> ErasedLocalToolFnWithPort for T {
         &'a self,
         ctx: &'a HandlerContext<HasPort, NoMethod>,
         formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
+    {
         Box::pin(async move {
-            let tool_result = self.call(ctx).await?;
-            crate::response::format_tool_result(tool_result, ctx, formatter_config)
+            let result = self.call(ctx).await;
+            crate::response::format_tool_result(result, ctx, formatter_config)
         })
     }
 }
@@ -163,10 +139,11 @@ impl<T: BrpToolFn> ErasedBrpToolFn for T {
         &'a self,
         ctx: &'a HandlerContext<HasPort, HasMethod>,
         formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult, McpError>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
+    {
         Box::pin(async move {
-            let tool_result = self.call(ctx).await?;
-            crate::response::format_tool_result(tool_result, ctx, formatter_config)
+            let result = self.call(ctx).await;
+            crate::response::format_tool_result(result, ctx, formatter_config)
         })
     }
 }

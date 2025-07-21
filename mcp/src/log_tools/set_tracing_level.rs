@@ -1,13 +1,10 @@
 use std::str::FromStr;
 
-use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
-    ToolResult,
-};
+use crate::error::Error;
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
 
 /// Result from setting the tracing level
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,25 +30,20 @@ impl LocalToolFn for SetTracingLevel {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move {
-            let result = handle_impl(&level_str).map_err(|e| ToolError::new(e.message));
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
-        })
+        Box::pin(async move { handle_impl(&level_str) })
     }
 }
 
-fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult, McpError> {
+fn handle_impl(level_str: &str) -> crate::error::Result<SetTracingLevelResult> {
     // Parse the tracing level
     let tracing_level = match TracingLevel::from_str(level_str) {
         Ok(level) => level,
         Err(e) => {
-            return Err(McpError::invalid_request(
-                format!(
-                    "Invalid tracing level '{level_str}': {e}. Valid levels are: error, warn, info, debug, trace"
-                ),
-                None,
-            ));
+            return Err(Error::invalid(
+                "tracing level",
+                format!("{level_str}: {e}. Valid levels are: error, warn, info, debug, trace"),
+            )
+            .into());
         }
     };
 

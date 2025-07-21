@@ -3,8 +3,9 @@
 //! This module provides the unified extraction logic for both parameter
 //! and response field extraction with type safety.
 
-use rmcp::ErrorData as McpError;
 use serde_json::Value;
+
+use crate::error::Result;
 
 /// Trait for anything that provides JSON fields for extraction.
 ///
@@ -88,65 +89,64 @@ pub enum ExtractedValue {
 
 impl ExtractedValue {
     /// Convert to string, returning error if wrong type
-    pub fn into_string(self) -> Result<String, McpError> {
+    pub fn into_string(self) -> Result<String> {
         match self {
             Self::String(s) => Ok(s),
-            _ => Err(McpError::invalid_params("Expected string value", None)),
+            _ => Err(crate::error::Error::invalid("parameter", "Expected string value").into()),
         }
     }
 
     /// Convert to u64, returning error if wrong type
-    pub fn into_u64(self) -> Result<u64, McpError> {
+    pub fn into_u64(self) -> Result<u64> {
         match self {
             Self::Number(n) => Ok(n),
-            _ => Err(McpError::invalid_params("Expected number value", None)),
+            _ => Err(crate::error::Error::invalid("parameter", "Expected number value").into()),
         }
     }
 
     /// Convert to u32, returning error if wrong type or out of range
-    pub fn into_u32(self) -> Result<u32, McpError> {
+    pub fn into_u32(self) -> Result<u32> {
         match self {
-            Self::Number(n) => u32::try_from(n)
-                .map_err(|_| McpError::invalid_params("Number value too large for u32", None)),
-            _ => Err(McpError::invalid_params("Expected number value", None)),
+            Self::Number(n) => u32::try_from(n).map_err(|_| {
+                crate::error::Error::invalid("parameter", "Number value too large for u32").into()
+            }),
+            _ => Err(crate::error::Error::invalid("parameter", "Expected number value").into()),
         }
     }
 
     /// Convert to bool, returning error if wrong type
-    pub fn into_bool(self) -> Result<bool, McpError> {
+    pub fn into_bool(self) -> Result<bool> {
         match self {
             Self::Boolean(b) => Ok(b),
-            _ => Err(McpError::invalid_params("Expected boolean value", None)),
+            _ => Err(crate::error::Error::invalid("parameter", "Expected boolean value").into()),
         }
     }
 
     /// Convert to string array, returning error if wrong type
-    pub fn into_string_array(self) -> Result<Vec<String>, McpError> {
+    pub fn into_string_array(self) -> Result<Vec<String>> {
         match self {
             Self::StringArray(arr) => Ok(arr),
-            _ => Err(McpError::invalid_params(
-                "Expected string array value",
-                None,
-            )),
+            _ => {
+                Err(crate::error::Error::invalid("parameter", "Expected string array value").into())
+            }
         }
     }
 
     /// Convert to number array, returning error if wrong type
-    pub fn into_number_array(self) -> Result<Vec<u64>, McpError> {
+    pub fn into_number_array(self) -> Result<Vec<u64>> {
         match self {
             Self::NumberArray(arr) => Ok(arr),
-            _ => Err(McpError::invalid_params(
-                "Expected number array value",
-                None,
-            )),
+            _ => {
+                Err(crate::error::Error::invalid("parameter", "Expected number array value").into())
+            }
         }
     }
 
     /// Convert to any JSON value, returning error if wrong type
-    pub fn into_any(self) -> Result<Value, McpError> {
+    pub fn into_any(self) -> Result<Value> {
         match self {
             Self::Any(v) => Ok(v),
-            _ => Err(McpError::invalid_params("Expected any JSON value", None)),
+            _ => Err(crate::error::Error::invalid("parameter", "Expected any JSON value").into()),
         }
     }
 }

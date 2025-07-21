@@ -3,10 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
-    ToolResult,
-};
+use crate::error::Error;
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,15 +28,11 @@ impl LocalToolFn for BrpStopWatch {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move {
-            let result = handle_impl(watch_id).await;
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
-        })
+        Box::pin(async move { handle_impl(watch_id).await })
     }
 }
 
-async fn handle_impl(watch_id: u32) -> std::result::Result<StopWatchResult, ToolError> {
+async fn handle_impl(watch_id: u32) -> crate::error::Result<StopWatchResult> {
     // Stop the watch and release lock immediately
     let result = {
         let mut manager = WATCH_MANAGER.lock().await;
@@ -48,8 +42,8 @@ async fn handle_impl(watch_id: u32) -> std::result::Result<StopWatchResult, Tool
     // Convert result to our typed response
     match result {
         Ok(()) => Ok(StopWatchResult { watch_id }),
-        Err(e) => Err(ToolError::new(format!(
-            "Failed to stop watch {watch_id}: {e}"
-        ))),
+        Err(e) => {
+            Err(Error::tool_call_failed(format!("Failed to stop watch {watch_id}: {e}")).into())
+        }
     }
 }

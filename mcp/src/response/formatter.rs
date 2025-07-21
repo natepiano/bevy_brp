@@ -32,9 +32,9 @@ use crate::brp_tools::request_handler::{
 use crate::constants::{
     RESPONSE_DEBUG_INFO, RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS, RESPONSE_METADATA,
 };
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::field_extraction::{ResponseFieldType, extract_response_field};
-use crate::tool::{HandlerContext, HasCallInfo, ToolResult};
+use crate::tool::{HandlerContext, HasCallInfo};
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
@@ -622,9 +622,9 @@ impl ResponseFormatter {
     }
 }
 
-/// Type-safe formatter that accepts `ToolResult` directly
+/// Type-safe formatter that accepts our internal Result directly
 pub fn format_tool_result<T, Port, Method>(
-    tool_result: ToolResult<T>,
+    result: Result<T>,
     handler_context: &HandlerContext<Port, Method>,
     formatter_config: FormatterConfig,
 ) -> std::result::Result<CallToolResult, McpError>
@@ -632,7 +632,7 @@ where
     T: serde::Serialize,
     HandlerContext<Port, Method>: HasCallInfo,
 {
-    match tool_result.result {
+    match result {
         Ok(data) => {
             // Handle success - serialize data and format via ResponseFormatter
             let value = serde_json::to_value(&data).map_err(|e| {
@@ -651,11 +651,25 @@ where
                 format_corrected.as_ref(),
             ))
         }
-        Err(tool_error) => Ok(ResponseBuilder::error(handler_context.call_info())
-            .message(&tool_error.message)
-            .add_optional_details(tool_error.details.as_ref())
-            .build()
-            .to_call_tool_result()),
+        Err(report) => {
+            match report.current_context() {
+                Error::ToolCall { message, details } => {
+                    // Handle tool-specific errors (preserve current ToolError behavior)
+                    Ok(ResponseBuilder::error(handler_context.call_info())
+                        .message(message)
+                        .add_optional_details(details.as_ref())
+                        .build()
+                        .to_call_tool_result())
+                }
+                _ => {
+                    // Catchall for other internal errors that propagated up
+                    Ok(ResponseBuilder::error(handler_context.call_info())
+                        .message(format!("Internal error: {}", report.current_context()))
+                        .build()
+                        .to_call_tool_result())
+                }
+            }
+        }
     }
 }
 

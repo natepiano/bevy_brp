@@ -1,9 +1,9 @@
 //! Start watching an entity for component changes
 
 use super::types::WatchStartResult;
+use crate::error::{Error, Result};
 use crate::tool::{
     HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ParameterName,
-    ToolError, ToolResult,
 };
 
 pub struct BevyGetWatch;
@@ -28,11 +28,7 @@ impl LocalToolFnWithPort for BevyGetWatch {
         };
 
         let port = ctx.port();
-        Box::pin(async move {
-            let result = handle_impl(entity_id, components, port).await;
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
-        })
+        Box::pin(async move { handle_impl(entity_id, components, port).await })
     }
 }
 
@@ -40,7 +36,7 @@ async fn handle_impl(
     entity_id: u64,
     components: Option<Vec<String>>,
     port: u16,
-) -> Result<WatchStartResult, ToolError> {
+) -> Result<WatchStartResult> {
     // Start the watch task
     let result = super::start_entity_watch_task(entity_id, components, port)
         .await
@@ -51,6 +47,6 @@ async fn handle_impl(
             watch_id,
             log_path: log_path.to_string_lossy().to_string(),
         }),
-        Err(e) => Err(ToolError::new(e.to_string())),
+        Err(e) => Err(Error::tool_call_failed(e.to_string()).into()),
     }
 }

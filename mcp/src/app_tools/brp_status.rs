@@ -2,9 +2,11 @@ use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
 use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::error::Error;
+use crate::field_extraction::ExtractedValue;
 use crate::tool::{
     BRP_METHOD_LIST, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod,
-    ParameterName, ToolError, ToolResult,
+    ParameterName,
 };
 
 /// Result from checking status of a Bevy app
@@ -26,24 +28,20 @@ impl LocalToolFnWithPort for Status {
     type Output = StatusResult;
 
     fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        let app_name = match ctx.extract_required(ParameterName::AppName) {
-            Ok(value) => match value.into_string() {
-                Ok(s) => s,
-                Err(e) => return Box::pin(async move { Err(e) }),
-            },
+        let app_name = match ctx
+            .extract_required(ParameterName::AppName)
+            .and_then(ExtractedValue::into_string)
+        {
+            Ok(s) => s,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
         let port = ctx.port();
-        Box::pin(async move {
-            let result = handle_impl(&app_name, port).await;
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
-        })
+        Box::pin(async move { handle_impl(&app_name, port).await })
     }
 }
 
-async fn handle_impl(app_name: &str, port: u16) -> std::result::Result<StatusResult, ToolError> {
+async fn handle_impl(app_name: &str, port: u16) -> crate::error::Result<StatusResult> {
     check_brp_for_app(app_name, port).await
 }
 
@@ -101,10 +99,7 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
     false
 }
 
-async fn check_brp_for_app(
-    app_name: &str,
-    port: u16,
-) -> std::result::Result<StatusResult, ToolError> {
+async fn check_brp_for_app(app_name: &str, port: u16) -> crate::error::Result<StatusResult> {
     // Check if a process with this name is running using sysinfo
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -133,27 +128,28 @@ async fn check_brp_for_app(
         (Some(process), false) => {
             // ERROR: Process running but BRP not responding
             let pid = process.pid().as_u32();
-            Err(ToolError::new(format!(
+            Err(Error::tool_call_failed(format!(
                 "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
-            )))
+            )).into())
         }
         (None, true) => {
             // ERROR: BRP responding but process not detected
-            Err(ToolError::new(format!(
+            Err(Error::tool_call_failed(format!(
                 "BRP is responding on port {port} but process '{app_name}' not detected. Another process may be using BRP."
-            )))
+            )).into())
         }
         (None, false) => {
             // ERROR: Process not running
-            Err(ToolError::new(format!(
-                "Process '{app_name}' is not currently running"
-            )))
+            Err(
+                Error::tool_call_failed(format!("Process '{app_name}' is not currently running"))
+                    .into(),
+            )
         }
     }
 }
 
 /// Check if BRP is responding on the given port
-async fn check_brp_on_port(port: u16) -> std::result::Result<bool, ToolError> {
+async fn check_brp_on_port(port: u16) -> crate::error::Result<bool> {
     // Try a simple BRP request to check connectivity using bevy/list
     match execute_brp_method(BRP_METHOD_LIST, None, port).await {
         Ok(BrpResult::Success(_)) => {

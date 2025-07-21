@@ -3,9 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ToolError, ToolResult,
-};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,15 +33,11 @@ impl LocalToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
 
     fn call(&self, _ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
-        Box::pin(async move {
-            let result = handle_impl().await;
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
-        })
+        Box::pin(async move { handle_impl().await })
     }
 }
 
-async fn handle_impl() -> std::result::Result<ListActiveWatchesResult, ToolError> {
+async fn handle_impl() -> crate::error::Result<ListActiveWatchesResult> {
     // Get active watches from manager and release lock immediately
     let active_watches = {
         let manager = WATCH_MANAGER.lock().await;

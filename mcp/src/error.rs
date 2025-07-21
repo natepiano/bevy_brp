@@ -8,6 +8,9 @@ const MSG_INVALID_PREFIX: &str = "Invalid";
 const MSG_MISSING_PREFIX: &str = "Missing";
 const MSG_UNEXPECTED_PREFIX: &str = "Unexpected";
 
+/// Result type for the `bevy_brp_mcp` library
+pub type Result<T> = error_stack::Result<T, Error>;
+
 // Internal error types for detailed error categorization
 #[derive(Error, Debug, Clone)]
 pub enum Error {
@@ -55,12 +58,15 @@ pub enum Error {
     #[error("MCP client communication failed: {0}")]
     McpClientCommunication(String),
 
+    #[error("Tool call error: {message}")]
+    ToolCall {
+        message: String,
+        details: Option<serde_json::Value>,
+    },
+
     #[error("{0}")]
     General(String),
 }
-
-/// Result type for the `bevy_brp_mcp` library
-pub type Result<T> = error_stack::Result<T, Error>;
 
 impl Error {
     // Builder methods for common patterns
@@ -147,6 +153,25 @@ impl Error {
         ))
     }
 
+    /// Create a tool error with just a message
+    pub fn tool_call_failed(message: impl Into<String>) -> Self {
+        Self::ToolCall {
+            message: message.into(),
+            details: None,
+        }
+    }
+
+    /// Create a tool error with message and details
+    pub fn tool_call_failed_with_details(
+        message: impl Into<String>,
+        details: serde_json::Value,
+    ) -> Self {
+        Self::ToolCall {
+            message: message.into(),
+            details: Some(details),
+        }
+    }
+
     /// Categorize error based on content
     fn categorize_error(message: &str) -> Self {
         // Simple heuristic categorization
@@ -187,6 +212,10 @@ impl From<Error> for McpError {
                 // For path disambiguation, we want to preserve the detailed message
                 // as an invalid_params error since it's a parameter issue that can be resolved
                 Self::invalid_params(message, None)
+            }
+            Error::ToolCall { message, details } => {
+                // Tool errors are typically parameter/request issues
+                Self::invalid_params(message, details)
             }
             Error::MutexPoisoned(msg)
             | Error::FileOperation(msg)

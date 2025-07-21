@@ -5,10 +5,8 @@ use super::format_discovery::{
 };
 use super::types::BrpMethodResult;
 use crate::brp_tools::support::brp_client::BrpResult;
-use crate::error;
-use crate::tool::{
-    BrpToolFn, HandlerContext, HandlerResponse, HasMethod, HasPort, ToolError, ToolResult,
-};
+use crate::error::{Error, Result};
+use crate::tool::{BrpToolFn, HandlerContext, HandlerResponse, HasMethod, HasPort};
 
 /// BRP method handler  that implements `BrpToolFn` and returns `HandlerResponse`
 pub struct BrpMethodHandler;
@@ -51,14 +49,10 @@ impl BrpToolFn for BrpMethodHandler {
 
             // Execute with format discovery (reuse existing function)
             let enhanced_result =
-                execute_brp_method_with_format_discovery(method_name, params, ctx.port())
-                    .await
-                    .map_err(|err| error::report_to_mcp_error(&err))?;
+                execute_brp_method_with_format_discovery(method_name, params, ctx.port()).await?;
 
             // Convert to BrpMethodResult
-            let result = convert_to_brp_method_result(enhanced_result, &ctx);
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
+            convert_to_brp_method_result(enhanced_result, &ctx)
         })
     }
 }
@@ -67,7 +61,7 @@ impl BrpToolFn for BrpMethodHandler {
 fn convert_to_brp_method_result<Port, Method>(
     enhanced_result: EnhancedBrpResult,
     ctx: &HandlerContext<Port, Method>,
-) -> Result<BrpMethodResult, ToolError> {
+) -> Result<BrpMethodResult> {
     match enhanced_result.result {
         BrpResult::Success(data) => {
             Ok(BrpMethodResult {
@@ -97,9 +91,8 @@ fn convert_to_brp_method_result<Port, Method>(
                 error_data = Some(data_obj);
             }
 
-            // Build ToolError with all the error context including format corrections
-            let mut tool_error = ToolError::new(enhanced_message);
-            tool_error.details = Some(serde_json::json!({
+            // Build Error with all the error context including format corrections
+            let error_details = serde_json::json!({
                 "code": err.code,
                 "error_data": error_data,
                 "format_corrections": enhanced_result
@@ -108,9 +101,9 @@ fn convert_to_brp_method_result<Port, Method>(
                     .map(format_correction_to_json)
                     .collect::<Vec<_>>(),
                 "format_corrected": enhanced_result.format_corrected
-            }));
+            });
 
-            Err(tool_error)
+            Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())
         }
     }
 }

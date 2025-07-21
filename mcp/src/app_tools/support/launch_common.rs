@@ -3,13 +3,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use chrono;
-use rmcp::ErrorData as McpError;
+use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
-use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{
-    HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ToolError, ToolResult,
-};
+use crate::error::{Error, Result};
+use crate::tool::{HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -92,8 +90,15 @@ pub fn extract_launch_params<Port, Method>(
     target_type_name: &str,
     default_profile: &str,
     port: u16,
-) -> Result<LaunchParams, McpError> {
-    let target_name = ctx.extract_required_string(target_param_name, target_type_name)?;
+) -> Result<LaunchParams> {
+    let target_name = ctx
+        .extract_required_string(target_param_name, target_type_name)
+        .map_err(|e| {
+            Error::invalid(
+                "parameter",
+                format!("Failed to extract {target_type_name}: {e}"),
+            )
+        })?;
     let profile = ctx
         .extract_with_default(ParameterName::Profile, default_profile)
         .into_string()
@@ -157,9 +162,7 @@ impl<T: FromLaunchParams> LocalToolFnWithPort for GenericLaunchHandler<T> {
             let config = T::from_params(&params);
 
             // Launch the target
-            let result = launch_target(&config, &search_paths);
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
+            launch_target(&config, &search_paths)
         })
     }
 }
@@ -191,7 +194,7 @@ pub trait LaunchConfigTrait {
     fn build_command(&self, target: &super::cargo_detector::BevyTarget) -> Command;
 
     /// Validate the target before launch (e.g., check if binary exists)
-    fn validate_target(&self, target: &super::cargo_detector::BevyTarget) -> Result<(), McpError>;
+    fn validate_target(&self, target: &super::cargo_detector::BevyTarget) -> Result<()>;
 
     /// Get any extra log info specific to this target type
     fn extra_log_info(&self, target: &super::cargo_detector::BevyTarget) -> Option<String>;
@@ -209,33 +212,31 @@ pub trait LaunchConfigTrait {
 }
 
 /// Validates and extracts the manifest directory from a manifest path
-pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path, McpError> {
-    manifest_path.parent().ok_or_else(|| -> McpError {
-        report_to_mcp_error(
-            &error_stack::Report::new(Error::FileOrPathNotFound(
-                "Invalid manifest path".to_string(),
-            ))
-            .attach_printable("No parent directory found")
-            .attach_printable(format!("Path: {}", manifest_path.display())),
-        )
+pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
+    manifest_path.parent().ok_or_else(|| {
+        error_stack::Report::new(Error::FileOrPathNotFound(
+            "Invalid manifest path".to_string(),
+        ))
+        .attach_printable("No parent directory found")
+        .attach_printable(format!("Path: {}", manifest_path.display()))
     })
 }
 
 /// Validates that a binary exists at the given path
-pub fn validate_binary_exists(binary_path: &Path, profile: &str) -> Result<(), McpError> {
+pub fn validate_binary_exists(binary_path: &Path, profile: &str) -> Result<()> {
     if !binary_path.exists() {
-        return Err(report_to_mcp_error(
-            &error_stack::Report::new(Error::FileOrPathNotFound("Missing binary file".to_string()))
-                .attach_printable(format!("Binary path: {}", binary_path.display()))
-                .attach_printable(format!(
-                    "Please build the app with 'cargo build{}' first",
-                    if profile == "release" {
-                        " --release"
-                    } else {
-                        ""
-                    }
-                )),
-        ));
+        return Err(error_stack::Report::new(Error::FileOrPathNotFound(
+            "Missing binary file".to_string(),
+        ))
+        .attach_printable(format!("Binary path: {}", binary_path.display()))
+        .attach_printable(format!(
+            "Please build the app with 'cargo build{}' first",
+            if profile == "release" {
+                " --release"
+            } else {
+                ""
+            }
+        )));
     }
     Ok(())
 }
@@ -260,7 +261,7 @@ pub fn setup_launch_logging(
     manifest_dir: &Path,
     port: Option<u16>,
     extra_log_info: Option<&str>,
-) -> Result<(PathBuf, std::fs::File), McpError> {
+) -> Result<(PathBuf, std::fs::File)> {
     use super::logging;
 
     // Create log file
@@ -271,15 +272,20 @@ pub fn setup_launch_logging(
         command_or_binary,
         manifest_dir,
         port,
-    )?;
+    )
+    .map_err(|e| Error::tool_call_failed(format!("Failed to create log file: {e}")))?;
 
     // Add extra info to log file if provided
     if let Some(extra_info) = extra_log_info {
-        logging::append_to_log_file(&log_file_path, &format!("{extra_info}\n"))?;
+        logging::append_to_log_file(&log_file_path, &format!("{extra_info}\n"))
+            .map_err(|e| Error::tool_call_failed(format!("Failed to append to log file: {e}")))?;
     }
 
     // Open log file for stdout/stderr redirection
-    let log_file_for_redirect = logging::open_log_file_for_redirect(&log_file_path)?;
+    let log_file_for_redirect =
+        logging::open_log_file_for_redirect(&log_file_path).map_err(|e| {
+            Error::tool_call_failed(format!("Failed to open log file for redirect: {e}"))
+        })?;
 
     Ok((log_file_path, log_file_for_redirect))
 }
@@ -320,7 +326,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
     log_file_for_redirect: std::fs::File,
     target: &super::cargo_detector::BevyTarget,
     launch_start: std::time::Instant,
-) -> Result<LaunchResult, ToolError> {
+) -> crate::error::Result<LaunchResult> {
     use super::process;
 
     // Launch the process
@@ -331,7 +337,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
         config.target_name(),
         "launch",
     )
-    .map_err(|e| ToolError::new(e.message))?;
+    .map_err(|e| Error::tool_call_failed(e.message))?;
 
     // Calculate launch duration
     let launch_end = std::time::Instant::now();
@@ -354,7 +360,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
 fn prepare_launch_environment<T: LaunchConfigTrait>(
     config: &T,
     target: &super::cargo_detector::BevyTarget,
-) -> Result<(Command, PathBuf, PathBuf, std::fs::File), McpError> {
+) -> Result<(Command, PathBuf, PathBuf, std::fs::File)> {
     // Get manifest directory
     let manifest_dir = validate_manifest_directory(&target.manifest_path)?;
 
@@ -399,7 +405,7 @@ fn create_error_details<T: LaunchConfigTrait>(
 fn find_and_validate_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
-) -> Result<super::cargo_detector::BevyTarget, Box<ToolError>> {
+) -> Result<super::cargo_detector::BevyTarget> {
     use super::cargo_detector::TargetType;
     use super::scanning;
 
@@ -445,9 +451,12 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
             } = &err
             {
                 // Use the original error message and paths
-                let mut error = ToolError::new(message.clone());
-                error.details = Some(create_error_details(config, Some(available_paths.clone())));
-                return Err(Box::new(error));
+                return Err(error_stack::Report::new(
+                    Error::tool_call_failed_with_details(
+                        message.clone(),
+                        create_error_details(config, Some(available_paths.clone())),
+                    ),
+                ));
             }
 
             // For any other error when duplicates exist, return disambiguation error with paths
@@ -472,23 +481,29 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     }
                 );
 
-                let mut error = ToolError::new(message);
-                error.details = Some(create_error_details(config, duplicate_paths));
-                return Err(Box::new(error));
+                return Err(error_stack::Report::new(
+                    Error::tool_call_failed_with_details(
+                        message,
+                        create_error_details(config, duplicate_paths),
+                    ),
+                ));
             }
 
             // For non-duplicate errors, return standard error
-            let mut error = ToolError::new(err.to_string());
-            error.details = Some(create_error_details(config, None));
-            return Err(Box::new(error));
+            return Err(Report::new(Error::tool_call_failed_with_details(
+                err.to_string(),
+                create_error_details(config, None),
+            )));
         }
     };
 
     // Validate the target
     if let Err(e) = config.validate_target(&target) {
-        let mut error = ToolError::new(e.message.to_string());
-        error.details = Some(create_error_details(config, None));
-        return Err(Box::new(error));
+        let error_details = create_error_details(config, None);
+        return Err(Report::new(Error::tool_call_failed_with_details(
+            (*e.current_context()).to_string(),
+            error_details,
+        )));
     }
 
     Ok(target)
@@ -498,7 +513,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
 pub fn launch_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
-) -> Result<LaunchResult, ToolError> {
+) -> crate::error::Result<LaunchResult> {
     use std::time::Instant;
 
     use tracing::debug;
@@ -512,18 +527,19 @@ pub fn launch_target<T: LaunchConfigTrait>(
     let target = match find_and_validate_target(config, search_paths) {
         Ok(target) => target,
         Err(launch_result) => {
-            // Convert error LaunchResult to ToolError
-            let mut error = ToolError::new(launch_result.message.clone());
-            if let Ok(details) = serde_json::to_value(&*launch_result) {
-                error.details = Some(details);
-            }
-            return Err(error);
+            // Convert error to ToolError with details
+            let error_message = format!("{}", launch_result.current_context());
+            let details = serde_json::json!({
+                "error": error_message,
+                "error_chain": format!("{:?}", launch_result)
+            });
+            return Err(Error::tool_call_failed_with_details(error_message, details).into());
         }
     };
 
     // Prepare launch environment
     let (cmd, manifest_dir, log_file_path, log_file_for_redirect) =
-        prepare_launch_environment(config, &target).map_err(|e| ToolError::new(e.message))?;
+        prepare_launch_environment(config, &target)?;
 
     // Execute and build result
     execute_and_build_result(
@@ -535,7 +551,6 @@ pub fn launch_target<T: LaunchConfigTrait>(
         &target,
         launch_start,
     )
-    .map_err(|e| ToolError::new(e.message))
 }
 
 impl FromLaunchParams for LaunchConfig<App> {
@@ -572,7 +587,10 @@ impl LaunchConfigTrait for LaunchConfig<App> {
         build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
     }
 
-    fn validate_target(&self, target: &super::cargo_detector::BevyTarget) -> Result<(), McpError> {
+    fn validate_target(
+        &self,
+        target: &super::cargo_detector::BevyTarget,
+    ) -> crate::error::Result<()> {
         let binary_path = target.get_binary_path(self.profile());
         validate_binary_exists(&binary_path, self.profile())
     }
@@ -647,7 +665,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
         build_cargo_example_command(&self.target_name, self.profile(), Some(self.port))
     }
 
-    fn validate_target(&self, _target: &super::cargo_detector::BevyTarget) -> Result<(), McpError> {
+    fn validate_target(&self, _target: &super::cargo_detector::BevyTarget) -> Result<()> {
         // Examples don't need binary validation - cargo will build them if needed
         Ok(())
     }

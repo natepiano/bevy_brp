@@ -7,10 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
-    ToolResult,
-};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,7 +56,7 @@ impl LocalToolFn for ReadLog {
                 Ok(n) => n,
                 Err(_) => {
                     return Box::pin(async move {
-                        Err(McpError::invalid_params("tail_lines value too large", None))
+                        Err(Error::invalid("tail_lines", "tail_lines value too large").into())
                     });
                 }
             },
@@ -67,10 +64,8 @@ impl LocalToolFn for ReadLog {
         };
 
         Box::pin(async move {
-            let result =
-                handle_impl(&filename, &keyword, tail_lines).map_err(|e| ToolError::new(e.message));
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
+            handle_impl(&filename, &keyword, tail_lines)
+                .map_err(|e| Error::tool_call_failed(e.message).into())
         })
     }
 }

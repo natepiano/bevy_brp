@@ -3,9 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use super::support::BevyExamplesStrategy;
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ToolError, ToolResult,
-};
+use crate::error::Error;
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,11 +23,9 @@ impl LocalToolFn for ListBevyExamples {
         let owned_ctx = ctx.clone();
 
         Box::pin(async move {
-            let result = handle_impl(&owned_ctx)
+            handle_impl(&owned_ctx)
                 .await
-                .map_err(|e| ToolError::new(e.message));
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
+                .map_err(|e| Error::tool_call_failed(e.message).into())
         })
     }
 }

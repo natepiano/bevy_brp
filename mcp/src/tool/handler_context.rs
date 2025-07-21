@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 use serde_json::{Value, json};
 
@@ -103,19 +102,17 @@ impl<Port, Method> HandlerContext<Port, Method> {
         &self,
         field_name: &str,
         field_description: &str,
-    ) -> Result<&str, McpError> {
-        use crate::error::{Error as ServiceError, report_to_mcp_error};
+    ) -> crate::error::Result<&str> {
+        use crate::error::Error as ServiceError;
 
         self.extract_optional_named_field(field_name)
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                report_to_mcp_error(
-                    &error_stack::Report::new(ServiceError::InvalidArgument(format!(
-                        "Missing {field_description} parameter"
-                    )))
-                    .attach_printable(format!("Field name: {field_name}"))
-                    .attach_printable("Expected: string value"),
-                )
+                error_stack::Report::new(ServiceError::InvalidArgument(format!(
+                    "Missing {field_description} parameter"
+                )))
+                .attach_printable(format!("Field name: {field_name}"))
+                .attach_printable("Expected: string value")
             })
     }
 
@@ -147,19 +144,17 @@ impl<Port, Method> HandlerContext<Port, Method> {
     }
 
     /// Extract a required parameter, returning error if missing or invalid
-    pub fn extract_required(&self, name: ParameterName) -> Result<ExtractedValue, McpError> {
-        use crate::error::{Error as ServiceError, report_to_mcp_error};
+    pub fn extract_required(&self, name: ParameterName) -> crate::error::Result<ExtractedValue> {
+        use crate::error::Error as ServiceError;
 
         let field_name: &str = name.into();
 
         self.extract(name).ok_or_else(|| {
-            report_to_mcp_error(
-                &error_stack::Report::new(ServiceError::InvalidArgument(format!(
-                    "Missing required parameter '{field_name}'"
-                )))
-                .attach_printable(format!("Parameter name: {field_name}"))
-                .attach_printable("Required parameter not provided"),
-            )
+            error_stack::Report::new(ServiceError::InvalidArgument(format!(
+                "Missing required parameter '{field_name}'"
+            )))
+            .attach_printable(format!("Parameter name: {field_name}"))
+            .attach_printable("Required parameter not provided")
         })
     }
 
@@ -190,10 +185,10 @@ impl<Port> HandlerContext<Port, HasMethod> {
     }
 
     /// Extract brp method parameters from tool definition
-    pub fn extract_params_from_definition(&self) -> Result<Option<Value>, McpError> {
+    pub fn extract_params_from_definition(&self) -> crate::error::Result<Option<Value>> {
         use std::str::FromStr;
 
-        use crate::error::{Error as ServiceError, report_to_mcp_error};
+        use crate::error::Error as ServiceError;
 
         // Build params from parameter definitions
         let mut params_obj = serde_json::Map::new();
@@ -202,13 +197,11 @@ impl<Port> HandlerContext<Port, HasMethod> {
         for param in self.tool_def.parameters() {
             // Parse parameter name string to ParameterName enum for type-safe extraction
             let param_name = ParameterName::from_str(param.name()).map_err(|_| {
-                report_to_mcp_error(
-                    &error_stack::Report::new(ServiceError::InvalidArgument(format!(
-                        "Unknown parameter name: {}",
-                        param.name()
-                    )))
-                    .attach_printable("Parameter name not found in ParameterName enum"),
-                )
+                error_stack::Report::new(ServiceError::InvalidArgument(format!(
+                    "Unknown parameter name: {}",
+                    param.name()
+                )))
+                .attach_printable("Parameter name not found in ParameterName enum")
             })?;
 
             // Extract parameter value using unified API

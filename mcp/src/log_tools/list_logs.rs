@@ -2,11 +2,9 @@ use rmcp::ErrorData as McpError;
 use serde::{Deserialize, Serialize};
 
 use super::support::LogFileEntry;
+use crate::error::Error;
 use crate::log_tools::support;
-use crate::tool::{
-    HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName, ToolError,
-    ToolResult,
-};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
 
 /// Result from listing log files
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,16 +35,13 @@ impl LocalToolFn for ListLogs {
             .unwrap_or(false);
 
         Box::pin(async move {
-            let result = match list_log_files(&app_name_filter, verbose) {
+            match list_log_files(&app_name_filter, verbose) {
                 Ok(logs) => Ok(ListLogResult {
                     logs,
                     temp_directory: support::get_log_directory().display().to_string(),
                 }),
-                Err(e) => Err(ToolError::new(e.message)),
-            };
-
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
+                Err(e) => Err(Error::tool_call_failed(e.message).into()),
+            }
         })
     }
 }

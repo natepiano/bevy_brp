@@ -8,7 +8,7 @@ use crate::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::error::{Error, Result};
 use crate::tool::{
     BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort,
-    NoMethod, ParameterName, ToolError, ToolResult,
+    NoMethod, ParameterName,
 };
 
 /// Result from shutting down a Bevy app
@@ -128,11 +128,9 @@ impl LocalToolFnWithPort for Shutdown {
 
         let port = ctx.port();
         Box::pin(async move {
-            let result = handle_impl(&app_name, port)
+            handle_impl(&app_name, port)
                 .await
-                .map_err(|e| ToolError::new(e.message));
-            let tool_result = ToolResult { result };
-            Ok(tool_result)
+                .map_err(|e| Error::tool_call_failed(e.message).into())
         })
     }
 }
