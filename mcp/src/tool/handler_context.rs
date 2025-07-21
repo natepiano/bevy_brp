@@ -133,7 +133,7 @@ impl<Port, Method> HandlerContext<Port, Method> {
     // ============================================================================
 
     /// Extract a parameter using its built-in type information
-    pub fn extract(&self, name: ParameterName) -> Option<ExtractedValue> {
+    fn extract(&self, name: ParameterName) -> Option<ExtractedValue> {
         // Create provider wrapper for request arguments
         let provider = RequestArguments {
             args: &self.request.arguments,
