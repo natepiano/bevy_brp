@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use crate::brp_tools::support::brp_client::BrpError;
+use crate::brp_tools::BrpError;
 
 /// Standard error message templates for consistency across transformers
 pub mod messages {

@@ -6,7 +6,7 @@ use super::super::detection::ErrorPattern;
 use super::super::unified_types::{TransformationResult, TypeCategory, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
-use crate::brp_tools::support::brp_client::BrpError;
+use crate::brp_tools::BrpError;
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types

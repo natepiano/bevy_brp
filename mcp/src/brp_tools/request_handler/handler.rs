@@ -1,10 +1,10 @@
 use serde_json::{Value, json};
 
+use super::super::brp_client::{BrpError, BrpResult};
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
 use super::types::BrpMethodResult;
-use crate::brp_tools::support::brp_client::BrpResult;
 use crate::error::{Error, Result};
 use crate::tool::{BrpToolFn, HandlerContext, HandlerResponse, HasMethod, HasPort};
 
@@ -110,7 +110,7 @@ fn convert_to_brp_method_result<Port, Method>(
 
 /// Enhance error message with format discovery insights
 fn enhance_error_message<Port, Method>(
-    err: &crate::brp_tools::support::brp_client::BrpError,
+    err: &BrpError,
     enhanced_result: &EnhancedBrpResult,
     _ctx: &HandlerContext<Port, Method>,
 ) -> String {

@@ -29,23 +29,12 @@ use super::constants::{
     TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
 };
 use super::tool_def::ToolDef;
-use crate::app_tools::brp_launch_bevy_example;
-use crate::app_tools::brp_list_bevy_apps::ListBevyApps;
-use crate::app_tools::brp_list_bevy_examples::ListBevyExamples;
-use crate::app_tools::brp_list_brp_apps::ListBrpApps;
-use crate::app_tools::brp_shutdown::Shutdown;
-use crate::app_tools::brp_status::Status;
-use crate::brp_tools::request_handler::BrpMethodHandler;
-use crate::brp_tools::watch::bevy_get_watch::BevyGetWatch;
-use crate::brp_tools::watch::bevy_list_watch::BevyListWatch;
-use crate::brp_tools::watch::brp_list_active::BrpListActiveWatches;
-use crate::brp_tools::watch::brp_stop_watch::BrpStopWatch;
+use crate::app_tools::{self, ListBevyApps, ListBevyExamples, ListBrpApps, Shutdown, Status};
+use crate::brp_tools::{
+    BevyGetWatch, BevyListWatch, BrpListActiveWatches, BrpMethodHandler, BrpStopWatch,
+};
 use crate::field_extraction::{Parameter, ParameterName, ResponseFieldName};
-use crate::log_tools::delete_logs::DeleteLogs;
-use crate::log_tools::get_trace_log_path::GetTraceLogPath;
-use crate::log_tools::list_logs::ListLogs;
-use crate::log_tools::read_log::ReadLog;
-use crate::log_tools::set_tracing_level::SetTracingLevel;
+use crate::log_tools::{DeleteLogs, GetTraceLogPath, ListLogs, ReadLog, SetTracingLevel};
 use crate::response::{FieldPlacement, ResponseField, ResponseSpecification};
 use crate::tool::constants::{
     DESC_LIST_ACTIVE_WATCHES, DESC_STOP_WATCH, TOOL_LIST_ACTIVE_WATCHES, TOOL_STOP_WATCH,
@@ -770,9 +759,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::local_with_port(
-                crate::app_tools::brp_launch_bevy_app::create_launch_bevy_app_handler(),
-            ),
+            handler:         HandlerFn::local_with_port(app_tools::create_launch_bevy_app_handler()),
             parameters:      vec![
                 Parameter::string(
                     ParameterName::AppName,
@@ -811,7 +798,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         HandlerFn::local_with_port(
-                brp_launch_bevy_example::create_launch_bevy_example_handler(),
+                app_tools::create_launch_bevy_example_handler(),
             ),
             parameters:      vec![
                 Parameter::string(

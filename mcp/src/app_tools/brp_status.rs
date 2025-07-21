@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
-use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::error::Error;
 use crate::field_extraction::ExtractedValue;
 use crate::tool::{

@@ -9,7 +9,7 @@ use tracing::debug;
 use super::adapters::from_type_discovery_response_json;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
-use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::brp_tools::{BrpResult, execute_brp_method};
 
 /// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(

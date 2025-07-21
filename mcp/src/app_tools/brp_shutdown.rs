@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
-use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::JSON_RPC_ERROR_METHOD_NOT_FOUND;
 use crate::error::{Error, Result};
 use crate::tool::{

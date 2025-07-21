@@ -12,7 +12,8 @@ const MAX_CHUNK_SIZE: usize = 1024 * 1024;
 /// Maximum size for the total buffer when processing incomplete lines (10MB)
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
-use crate::brp_tools::support::{BrpJsonRpcBuilder, http_client};
+use super::super::{BrpJsonRpcBuilder, http_client};
+use crate::brp_tools;
 use crate::brp_tools::watch::logger::{self as watch_logger, BufferedWatchLogger};
 use crate::brp_tools::watch::manager::{WATCH_MANAGER, WatchInfo};
 use crate::error::{Error, Result};
@@ -444,7 +445,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
     let start_time = std::time::Instant::now();
 
     // Create HTTP client for streaming with no timeout
-    let url = crate::brp_tools::support::brp_client::build_brp_url(conn_params.port);
+    let url = brp_tools::build_brp_url(conn_params.port);
     let client = http_client::create_watch_client(Some(0)); // 0 = no timeout for watches
 
     // Build JSON-RPC request for watching

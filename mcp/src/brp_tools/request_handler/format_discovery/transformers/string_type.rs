@@ -6,10 +6,10 @@ use super::super::detection::ErrorPattern;
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
+use crate::brp_tools::BrpError;
 use crate::brp_tools::request_handler::constants::{
     FIELD_LABEL, FIELD_NAME, FIELD_TEXT, FIELD_VALUE,
 };
-use crate::brp_tools::support::brp_client::BrpError;
 
 /// Transformer for string types, especially the Name component
 /// Extracts strings from objects and arrays to convert to string format

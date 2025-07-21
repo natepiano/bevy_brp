@@ -19,7 +19,7 @@
 use std::collections::HashMap;
 
 use super::{CorrectionInfo, UnifiedTypeInfo};
-use crate::brp_tools::support::brp_client::BrpResult;
+use crate::brp_tools::BrpResult;
 
 /// Result of a BRP request attempt, determining whether to enter format recovery
 #[derive(Debug, Clone)]

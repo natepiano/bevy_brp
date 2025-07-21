@@ -10,7 +10,7 @@ use super::constants::{
     TUPLE_STRUCT_PATH_REGEX, TYPE_MISMATCH_REGEX, UNKNOWN_COMPONENT_REGEX,
     UNKNOWN_COMPONENT_TYPE_REGEX, VARIANT_TYPE_MISMATCH_REGEX,
 };
-use crate::brp_tools::support::brp_client::BrpError;
+use crate::brp_tools::BrpError;
 
 /// Known error patterns that can be deterministically handled
 #[derive(Debug, Clone, PartialEq, Eq)]

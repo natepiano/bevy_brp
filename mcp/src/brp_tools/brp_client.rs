@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, warn};
 
-use super::BrpJsonRpcBuilder;
+use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::constants::{
     BRP_DEFAULT_HOST, BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
     BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,

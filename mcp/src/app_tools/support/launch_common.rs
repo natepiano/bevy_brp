@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use chrono;
+use chrono::Utc;
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
@@ -343,7 +343,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
     let launch_end = std::time::Instant::now();
     let launch_duration_ms =
         u64::try_from(launch_end.duration_since(launch_start).as_millis()).unwrap_or(u64::MAX);
-    let launch_timestamp = chrono::Utc::now().to_rfc3339();
+    let launch_timestamp = Utc::now().to_rfc3339();
 
     // Build result
     Ok(config.to_launch_result(

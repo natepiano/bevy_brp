@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use super::detection::ErrorPattern;
 use super::unified_types::{TransformationResult, UnifiedTypeInfo};
-use crate::brp_tools::support::brp_client::BrpError;
+use crate::brp_tools::BrpError;
 
 // Import transformer implementations
 pub mod common;

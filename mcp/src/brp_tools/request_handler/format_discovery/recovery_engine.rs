@@ -17,8 +17,8 @@ use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
+use crate::brp_tools::brp_client::{self, BrpError, BrpResult};
 use crate::brp_tools::request_handler::format_discovery::extras_integration;
-use crate::brp_tools::support::brp_client::{self, BrpError, BrpResult};
 use crate::tool::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
     BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_SPAWN,

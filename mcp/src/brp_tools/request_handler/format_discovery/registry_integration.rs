@@ -9,7 +9,7 @@ use tracing::debug;
 
 use super::adapters::from_registry_schema;
 use super::unified_types::UnifiedTypeInfo;
-use crate::brp_tools::support::brp_client::{BrpResult, execute_brp_method};
+use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::tool::BRP_METHOD_REGISTRY_SCHEMA;
 
 /// Find type in registry response (handles various response formats)

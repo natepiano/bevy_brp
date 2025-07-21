@@ -8,7 +8,7 @@ use super::super::path_parser::{parse_generic_enum_field_access, parse_path_to_f
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
-use crate::brp_tools::support::brp_client::BrpError;
+use crate::brp_tools::BrpError;
 
 /// Transformer for tuple struct access patterns
 /// Handles field access to tuple index conversions and path corrections
