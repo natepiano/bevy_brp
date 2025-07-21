@@ -1,10 +1,16 @@
 use rmcp::ErrorData as McpError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support;
 use super::support::BrpAppsStrategy;
 use crate::error::Error;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ListBrpAppsParams {
+    // No parameters required
+}
 
 /// Result from listing BRP apps
 #[derive(Debug, Clone, Serialize, Deserialize)]

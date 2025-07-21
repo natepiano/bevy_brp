@@ -1,10 +1,22 @@
 //! Start watching an entity for component changes
 
+use schemars::JsonSchema;
+use serde::Deserialize;
+
 use super::types::WatchStartResult;
 use crate::error::{Error, Result};
 use crate::tool::{
     HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ParameterName,
 };
+
+#[derive(Deserialize, JsonSchema)]
+pub struct GetWatchParams {
+    /// The entity ID to watch for component changes
+    pub entity: u32,
+    /// Required array of component types to watch. Must contain at least one component. Without
+    /// this, the watch will not detect any changes.
+    pub types:  Vec<String>,
+}
 
 pub struct BevyGetWatch;
 

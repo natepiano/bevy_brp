@@ -1,9 +1,15 @@
 //! List all active watches
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ListActiveWatchesParams {
+    // No parameters required
+}
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]

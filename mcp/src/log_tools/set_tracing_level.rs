@@ -1,10 +1,17 @@
 use std::str::FromStr;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::error::Error;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct SetTracingLevelParams {
+    /// Tracing level to set (error, warn, info, debug, trace)
+    pub level: String,
+}
 
 /// Result from setting the tracing level
 #[derive(Debug, Clone, Serialize, Deserialize)]

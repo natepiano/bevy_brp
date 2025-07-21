@@ -1,10 +1,19 @@
 use rmcp::ErrorData as McpError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support::LogFileEntry;
 use crate::error::Error;
 use crate::log_tools::support;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ListLogsParams {
+    /// Optional filter to list logs for a specific app only
+    pub app_name: Option<String>,
+    /// Include full details (path, timestamps, size in bytes). Default is false for minimal output
+    pub verbose:  Option<bool>,
+}
 
 /// Result from listing log files
 #[derive(Debug, Clone, Serialize, Deserialize)]

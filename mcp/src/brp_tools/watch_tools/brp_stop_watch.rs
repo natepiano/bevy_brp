@@ -1,10 +1,17 @@
 //! Stop an active watch
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::error::Error;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct StopWatchParams {
+    /// The watch ID returned from bevy_start_entity_watch or bevy_start_list_watch
+    pub watch_id: u32,
+}
 
 /// Result from stopping a watch operation
 #[derive(Debug, Clone, Serialize, Deserialize)]

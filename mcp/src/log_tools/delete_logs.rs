@@ -2,11 +2,20 @@ use std::fs;
 use std::time::{Duration, SystemTime};
 
 use rmcp::ErrorData as McpError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
 use crate::error::Error;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct DeleteLogsParams {
+    /// Optional filter to delete logs for a specific app only
+    pub app_name:           Option<String>,
+    /// Optional filter to delete logs older than N seconds
+    pub older_than_seconds: Option<u32>,
+}
 
 /// Result from cleaning up log files
 #[derive(Debug, Clone, Serialize, Deserialize)]

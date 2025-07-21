@@ -3,11 +3,22 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use rmcp::ErrorData as McpError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort, ParameterName};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ReadLogParams {
+    /// The log filename (e.g., bevy_brp_mcp_myapp_1234567890.log)
+    pub filename:   String,
+    /// Optional keyword to filter lines (case-insensitive)
+    pub keyword:    Option<String>,
+    /// Optional number of lines to read from the end of file
+    pub tail_lines: Option<u32>,
+}
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize)]

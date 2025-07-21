@@ -1,10 +1,16 @@
 use rmcp::ErrorData as McpError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::Error;
 use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ListBevyExamplesParams {
+    // No parameters required
+}
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize)]

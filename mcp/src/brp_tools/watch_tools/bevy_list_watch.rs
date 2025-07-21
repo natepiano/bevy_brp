@@ -1,11 +1,20 @@
 //! Start watching an entity for component list changes
 
+use schemars::JsonSchema;
+use serde::Deserialize;
+
 use super::types::WatchStartResult;
 use crate::error::Result;
 use crate::field_extraction::ExtractedValue;
 use crate::tool::{
     HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod, ParameterName,
 };
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ListWatchParams {
+    /// The entity ID to watch for component list changes
+    pub entity: u32,
+}
 
 pub struct BevyListWatch;
 

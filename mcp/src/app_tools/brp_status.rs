@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
@@ -8,6 +9,12 @@ use crate::tool::{
     BRP_METHOD_LIST, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod,
     ParameterName,
 };
+
+#[derive(Deserialize, JsonSchema)]
+pub struct StatusParams {
+    /// Name of the process to check for
+    pub app_name: String,
+}
 
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]

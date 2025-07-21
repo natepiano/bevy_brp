@@ -166,6 +166,30 @@ impl<Port, Method> HandlerContext<Port, Method> {
     ) -> ExtractedValue {
         self.extract(name).unwrap_or_else(|| default.into())
     }
+
+    /// Extract typed parameters from request using serde deserialization
+    #[allow(dead_code)]
+    pub fn extract_typed_params<T>(&self) -> crate::error::Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        use crate::error::Error;
+
+        // Get request arguments as JSON Value
+        let args_value = self.request.arguments.as_ref().map_or_else(
+            || serde_json::Value::Object(serde_json::Map::new()),
+            |args| serde_json::Value::Object(args.clone()),
+        );
+
+        // Deserialize into target type
+        serde_json::from_value(args_value).map_err(|e| {
+            error_stack::Report::new(Error::InvalidArgument(format!(
+                "Failed to parse parameters: {e}"
+            )))
+            .attach_printable("Parameter validation failed")
+            .attach_printable(format!("Expected type: {}", std::any::type_name::<T>()))
+        })
+    }
 }
 
 // Capability-based method access - Port access only available when Port = HasPort

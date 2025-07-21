@@ -1,4 +1,5 @@
 use rmcp::ErrorData as McpError;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
@@ -10,6 +11,12 @@ use crate::tool::{
     BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort,
     NoMethod, ParameterName,
 };
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ShutdownParams {
+    /// Name of the Bevy app to shutdown
+    pub app_name: String,
+}
 
 /// Result from shutting down a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize)]
