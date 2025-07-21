@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use rmcp::model::CallToolRequestParam;
 use serde_json::Value;
 
+use crate::error::Error;
 use crate::response::CallInfo;
 use crate::tool::ToolDef;
 
@@ -84,13 +85,10 @@ impl<Port, Method> HandlerContext<Port, Method> {
     // Note: extract_method_param() and extract_port() now available on all HandlerContext types
 
     /// Extract typed parameters from request using serde deserialization
-    #[allow(dead_code)]
     pub fn extract_typed_params<T>(&self) -> crate::error::Result<T>
     where
         T: serde::de::DeserializeOwned,
     {
-        use crate::error::Error;
-
         // Get request arguments as JSON Value
         let args_value = self.request.arguments.as_ref().map_or_else(
             || serde_json::Value::Object(serde_json::Map::new()),

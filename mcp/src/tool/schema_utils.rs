@@ -5,8 +5,24 @@ use std::collections::HashSet;
 use schemars::JsonSchema;
 use schemars::schema::{InstanceType, Schema, SingleOrVec};
 
-use crate::field_extraction::ParameterFieldType;
 use crate::tool::mcp_tool_schema::ParameterBuilder;
+
+/// Parameter field types for schema generation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ParameterFieldType {
+    /// A string field
+    String,
+    /// A numeric field (typically u64)
+    Number,
+    /// A boolean field
+    Boolean,
+    /// An array of strings
+    StringArray,
+    /// An array of numbers
+    NumberArray,
+    /// Any JSON value (object, array, etc.)
+    Any,
+}
 
 fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
     match schema {
@@ -37,21 +53,24 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
                 },
                 Some(SingleOrVec::Vec(types)) => {
                     // Handle Option<T> types which generate [T, null] schemas
-                    let non_null_types: Vec<_> = types.iter()
+                    let non_null_types: Vec<_> = types
+                        .iter()
                         .filter(|t| !matches!(t, InstanceType::Null))
                         .collect();
-                    
+
                     if non_null_types.len() == 1 {
-                        match non_null_types[0] {
-                            InstanceType::String => ParameterFieldType::String,
-                            InstanceType::Integer | InstanceType::Number => ParameterFieldType::Number,
-                            InstanceType::Boolean => ParameterFieldType::Boolean,
+                        match non_null_types.first() {
+                            Some(&InstanceType::String) => ParameterFieldType::String,
+                            Some(&InstanceType::Integer | &InstanceType::Number) => {
+                                ParameterFieldType::Number
+                            }
+                            Some(&InstanceType::Boolean) => ParameterFieldType::Boolean,
                             _ => ParameterFieldType::Any,
                         }
                     } else {
                         ParameterFieldType::Any
                     }
-                },
+                }
                 _ => ParameterFieldType::Any,
             }
         }
@@ -123,9 +142,7 @@ pub fn parameters_from_schema<T: JsonSchema>() -> ParameterBuilder {
             ParameterFieldType::NumberArray => {
                 builder.add_number_array_property(field_name, description, required)
             }
-            ParameterFieldType::Any | ParameterFieldType::DynamicParams => {
-                builder.add_any_property(field_name, description, required)
-            }
+            ParameterFieldType::Any => builder.add_any_property(field_name, description, required),
         };
     }
 

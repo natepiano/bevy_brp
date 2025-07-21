@@ -4,7 +4,6 @@ use serde_json::Value;
 
 use crate::error::{Error, Result};
 use crate::response::FieldPlacement;
-use crate::response::types::ResponseStatus;
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +17,14 @@ pub struct JsonResponse {
     pub result:                Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brp_extras_debug_info: Option<Value>,
+}
+
+/// Response status types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ResponseStatus {
+    Success,
+    Error,
 }
 
 /// Call information for tracking tool execution

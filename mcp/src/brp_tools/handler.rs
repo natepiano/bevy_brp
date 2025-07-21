@@ -164,8 +164,8 @@ where
         let port = params.port(); // Type-safe port access through trait
         let mut params_json = serde_json::to_value(params)
             .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
-        
-        // Filter out null values and port field - BRP expects parameters to be 
+
+        // Filter out null values and port field - BRP expects parameters to be
         // omitted entirely rather than explicitly null, and port is MCP-specific
         let brp_params = if let Value::Object(ref mut map) = params_json {
             map.retain(|key, value| !value.is_null() && key != "port");
@@ -181,8 +181,7 @@ where
 
         // Use ctx.brp_method() to get method from ToolDef
         let enhanced_result =
-            execute_brp_method_with_format_discovery(ctx.brp_method(), brp_params, port)
-                .await?;
+            execute_brp_method_with_format_discovery(ctx.brp_method(), brp_params, port).await?;
 
         // Convert result using existing conversion function
         convert_to_brp_method_result(enhanced_result, &ctx)

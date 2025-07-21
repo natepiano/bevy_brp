@@ -1,6 +1,6 @@
-use crate::field_extraction::{
-    FieldSpec, JsonFieldProvider, ParameterName, ResponseFieldName, ResponseFieldType,
-};
+use super::ResponseFieldName;
+use super::extraction::{FieldSpec, JsonFieldProvider, ResponseFieldType};
+use crate::tool::ParameterName;
 
 /// Bridge struct for response field extraction using the new type-safe system
 pub struct ResponseFieldSpec {

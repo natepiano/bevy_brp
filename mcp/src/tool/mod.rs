@@ -4,6 +4,7 @@ mod definitions;
 mod handler_context;
 mod handler_fn;
 mod mcp_tool_schema;
+mod parameters;
 mod schema_utils;
 mod tool_def;
 mod types;
@@ -18,6 +19,6 @@ pub use constants::{
 pub use definitions::get_all_tool_definitions;
 pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMethod, NoPort};
 pub use handler_fn::HandlerFn;
-pub use schema_utils::parameters_from_schema;
+pub use parameters::ParameterName;
 pub use tool_def::ToolDef;
 pub use types::{BrpToolFn, HandlerResponse, LocalToolFn, LocalToolFnWithPort};

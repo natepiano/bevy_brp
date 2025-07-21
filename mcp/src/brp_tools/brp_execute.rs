@@ -1,3 +1,6 @@
+//! `brp_execute` allows for executing an arbitrary BRP method - generally this is used as a
+//! debugging tool for his MCP server but can also be used if (for example) a new brp method is
+//! added before it's been implemented in this server code.
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

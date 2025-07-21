@@ -2,8 +2,6 @@
 
 use strum::{Display, EnumString};
 
-use super::extraction::{FieldSpec, ParameterFieldType};
-
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance
 /// serialized into parameter names provided to the rcmp mcp tool framework
@@ -72,63 +70,4 @@ pub enum ParameterName {
     WithTypes,
     /// Exclude specific reflect types
     WithoutTypes,
-}
-
-impl ParameterName {
-    /// Get the expected parameter type for this parameter
-    pub const fn param_type(self) -> ParameterFieldType {
-        match self {
-            // String parameters
-            Self::AppName
-            | Self::Component
-            | Self::ExampleName
-            | Self::Filename
-            | Self::Keyword
-            | Self::Level
-            | Self::Method
-            | Self::Path
-            | Self::Profile
-            | Self::Resource => ParameterFieldType::String,
-
-            // Number parameters
-            Self::DurationMs
-            | Self::Entity
-            | Self::OlderThanSeconds
-            | Self::Parent
-            | Self::TailLines
-            | Self::WatchId => ParameterFieldType::Number,
-
-            // Boolean parameters
-            Self::Enabled | Self::Strict | Self::Verbose => ParameterFieldType::Boolean,
-
-            // String array parameters
-            Self::Keys
-            | Self::Types
-            | Self::WithCrates
-            | Self::WithoutCrates
-            | Self::WithTypes
-            | Self::WithoutTypes => ParameterFieldType::StringArray,
-
-            // Number array parameters
-            Self::Entities => ParameterFieldType::NumberArray,
-
-            // Any type parameters
-            Self::Components | Self::Data | Self::Filter | Self::Value => ParameterFieldType::Any,
-
-            // Special case
-            Self::Params => ParameterFieldType::DynamicParams,
-        }
-    }
-}
-
-// Implement FieldSpec for ParameterName to enable new extraction system
-impl FieldSpec<ParameterFieldType> for ParameterName {
-    fn field_name(&self) -> &str {
-        self.into() // strum converts to snake_case
-    }
-
-    fn field_type(&self) -> ParameterFieldType {
-        // Now that ParamType is gone, just return the field type directly
-        self.param_type()
-    }
 }

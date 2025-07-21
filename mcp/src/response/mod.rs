@@ -1,10 +1,11 @@
-// Internal modules
 mod builder;
+mod extraction;
 mod formatter;
 mod large_response;
+mod response_fields;
 mod specification;
-mod types;
 
 pub use builder::CallInfo;
 pub use formatter::{FormatterConfig, format_tool_result};
+pub use response_fields::ResponseFieldName;
 pub use specification::{FieldPlacement, ResponseField, ResponseSpecification};

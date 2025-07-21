@@ -23,6 +23,7 @@ use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
 use super::builder::{JsonResponse, ResponseBuilder};
+use super::extraction::{ResponseFieldType, extract_response_field};
 use super::large_response::{self, LargeResponseConfig};
 use super::specification::{FieldPlacement, ResponseField, ResponseFieldSpec};
 // Import format discovery types for convenience
@@ -31,7 +32,6 @@ use crate::constants::{
     RESPONSE_DEBUG_INFO, RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS, RESPONSE_METADATA,
 };
 use crate::error::{Error, Result};
-use crate::field_extraction::{ResponseFieldType, extract_response_field};
 use crate::tool::{HandlerContext, HasCallInfo};
 
 /// A configurable formatter that can handle various BRP response formatting needs

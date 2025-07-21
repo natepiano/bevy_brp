@@ -2,6 +2,8 @@
 //!
 //! This module provides functionality to automatically save large responses
 //! to temporary files when they exceed MCP token limits.
+//!
+//! At some point we should replace this with pagination.
 
 use std::fs;
 use std::path::PathBuf;

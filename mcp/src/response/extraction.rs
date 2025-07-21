@@ -225,26 +225,7 @@ impl From<ExtractedValue> for serde_json::Value {
     }
 }
 
-/// Parameter field types (no Count or `LineSplit`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ParameterFieldType {
-    /// A string field
-    String,
-    /// A numeric field (typically u64)
-    Number,
-    /// A boolean field
-    Boolean,
-    /// An array of strings
-    StringArray,
-    /// An array of numbers
-    NumberArray,
-    /// Any JSON value (object, array, etc.)
-    Any,
-    /// Dynamic parameters for BRP methods - the value becomes the method parameters directly
-    DynamicParams,
-}
-
-/// Response field types (includes Count and `LineSplit`).
+/// Response field types for extraction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResponseFieldType {
     /// A string field

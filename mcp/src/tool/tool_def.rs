@@ -15,17 +15,17 @@ use crate::response::ResponseSpecification;
 #[derive(Clone)]
 pub struct ToolDef {
     /// Tool name
-    pub name:              &'static str,
+    pub name:            &'static str,
     /// Tool description
-    pub description:       &'static str,
+    pub description:     &'static str,
     /// Tool annotations
-    pub annotations:       BrpToolAnnotations,
+    pub annotations:     BrpToolAnnotations,
     /// Handler function with method source information
-    pub handler:           HandlerFn,
+    pub handler:         HandlerFn,
     /// Function to build parameters for MCP registration
-    pub parameter_builder: Option<fn() -> ParameterBuilder>,
+    pub parameters:      Option<fn() -> ParameterBuilder>,
     /// Response formatting specification
-    pub response_format:   ResponseSpecification,
+    pub response_format: ResponseSpecification,
 }
 
 impl ToolDef {
@@ -88,7 +88,7 @@ impl ToolDef {
     pub fn to_tool(&self) -> rmcp::model::Tool {
         // Build parameters using the provided builder function, or create empty builder
         let builder = self
-            .parameter_builder
+            .parameters
             .map_or_else(ParameterBuilder::new, |builder_fn| builder_fn());
 
         // Enhance title with category prefix and optional method name
