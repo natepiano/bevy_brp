@@ -138,8 +138,7 @@ impl ToolDef {
                 ),
                 ParameterFieldType::Any | ParameterFieldType::DynamicParams => {
                     builder.add_any_property(param.name(), param.description(), param.required())
-                } /* Note: Count and LineSplit are not available in ParameterFieldType - type
-                   * safety achieved! */
+                }
             };
         }
 
