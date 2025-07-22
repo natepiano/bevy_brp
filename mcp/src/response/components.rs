@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 use super::extraction::{ResponseFieldType, extract_response_field};
+use super::template_substitution::substitute_template_with_priority;
 use super::{FieldPlacement, ResponseField};
 use crate::brp_tools::{FormatCorrection, FormatCorrectionStatus};
 use crate::constants::{RESPONSE_DEBUG_INFO, RESPONSE_METADATA};
@@ -41,29 +42,21 @@ impl ResponseComponents {
         // Extract debug info and clean data
         let (clean_data, debug_info) = Self::extract_debug_and_clean_data(data);
 
-        // Extract configured fields and template values
-        let (configured_fields, template_values) = Self::extract_configured_fields(
+        // Extract configured fields
+        let configured_fields = Self::extract_configured_fields(
             &clean_data,
             handler_context,
             &response_def.response_fields,
         );
 
         // Process final message
-        let final_message = if format_corrected == Some(FormatCorrectionStatus::Succeeded) {
-            "Request succeeded with format correction applied".to_string()
-        } else if !response_def.message_template.is_empty() {
-            let resolved_template_values = Self::resolve_template_placeholders(
-                response_def.message_template,
-                &template_values,
-                &clean_data,
-            );
-            substitute_template(
-                response_def.message_template,
-                Some(&Value::Object(resolved_template_values)),
-            )
-        } else {
-            String::new() // Default empty message
-        };
+        let final_message = Self::process_final_message(
+            response_def.message_template,
+            format_corrected.as_ref(),
+            &configured_fields,
+            handler_context,
+            &clean_data,
+        );
 
         Self {
             format_corrections,
@@ -173,28 +166,16 @@ impl ResponseComponents {
         (clean_data, brp_extras_debug_info)
     }
 
-    /// Extract configured fields and collect their values for template substitution.
+    /// Extract configured fields for JSON response structure.
     ///
-    /// **Important**: Template values start with request arguments, then response field values
-    /// are added. If a `ResponseField` has the same name as a request argument, the response
-    /// value will **overwrite** the request value. This is intentional behavior to ensure
-    /// templates show the final result state rather than original request parameters.
-    ///
-    /// Example collision:
-    /// - Request: `{"entity": 123}`
-    /// - `ResponseField` named "entity" extracts: `456`
-    /// - Final `template_values`: `{"entity": 456}` (request value overwritten)
+    /// Processes each `ResponseField` definition to extract values from request parameters
+    /// or response data and prepare them for placement in the JSON response structure
+    /// (metadata/result sections).
     fn extract_configured_fields(
         clean_data: &Value,
         handler_context: &HandlerContext,
         response_fields: &[ResponseField],
-    ) -> (Vec<ConfiguredField>, serde_json::Map<String, Value>) {
-        // Start with request arguments as base template values
-        let mut template_values = serde_json::Map::new();
-        if let Some(params) = &handler_context.request.arguments {
-            template_values.extend(params.clone());
-        }
-
+    ) -> Vec<ConfiguredField> {
         let mut configured_fields = Vec::new();
 
         for field in response_fields {
@@ -206,16 +187,13 @@ impl ResponseComponents {
 
             configured_fields.push(ConfiguredField {
                 name: field_name.to_string(),
-                value: value.clone(),
+                value,
                 placement,
                 is_metadata_object,
             });
-
-            // Add to template values - will overwrite request args with same name
-            template_values.insert(field_name.to_string(), value);
         }
 
-        (configured_fields, template_values)
+        configured_fields
     }
 
     /// Extract field value based on `ResponseField` specification
@@ -395,53 +373,25 @@ impl ResponseComponents {
         }
     }
 
-    /// Resolve template placeholders by checking both `template_values` and response data
-    fn resolve_template_placeholders(
-        template: &str,
-        template_values: &serde_json::Map<String, Value>,
+    /// Process final message based on format correction status and template
+    fn process_final_message(
+        message_template: &str,
+        format_corrected: Option<&FormatCorrectionStatus>,
+        configured_fields: &[ConfiguredField],
+        handler_context: &HandlerContext,
         clean_data: &Value,
-    ) -> serde_json::Map<String, Value> {
-        let mut final_template_values = template_values.clone();
-
-        let mut remaining = template;
-        while let Some(start) = remaining.find('{') {
-            if let Some(end) = remaining[start + 1..].find('}') {
-                let placeholder = &remaining[start + 1..start + 1 + end];
-
-                if !final_template_values.contains_key(placeholder) {
-                    if let Value::Object(data_map) = clean_data {
-                        if let Some(value) = data_map.get(placeholder) {
-                            final_template_values.insert(placeholder.to_string(), value.clone());
-                        }
-                    }
-                }
-
-                remaining = &remaining[start + 1 + end + 1..];
-            } else {
-                break;
-            }
-        }
-
-        final_template_values
-    }
-}
-
-/// Substitute placeholders in a template string with values from params
-pub fn substitute_template(template: &str, params: Option<&Value>) -> String {
-    let mut result = template.to_string();
-
-    if let Some(Value::Object(map)) = params {
-        for (key, value) in map {
-            let placeholder = format!("{{{key}}}");
-            let replacement = match value {
-                Value::String(s) => s.clone(),
-                Value::Number(n) => n.to_string(),
-                Value::Bool(b) => b.to_string(),
-                _ => value.to_string(),
-            };
-            result = result.replace(&placeholder, &replacement);
+    ) -> String {
+        if format_corrected == Some(&FormatCorrectionStatus::Succeeded) {
+            "Request succeeded with format correction applied".to_string()
+        } else if !message_template.is_empty() {
+            substitute_template_with_priority(
+                message_template,
+                configured_fields,
+                handler_context,
+                clean_data,
+            )
+        } else {
+            String::new() // Default empty message
         }
     }
-
-    result
 }

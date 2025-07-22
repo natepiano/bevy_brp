@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use error_stack::Report;
 use regex::Regex;
@@ -11,6 +12,10 @@ use crate::error::{Error, report_to_mcp_error};
 pub const LOG_PREFIX: &str = "bevy_brp_mcp_";
 pub const LOG_EXTENSION: &str = ".log";
 
+// Static regex for parsing app log filenames
+static APP_LOG_REGEX: LazyLock<Option<Regex>> =
+    LazyLock::new(|| Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)_\d+\.log$").ok());
+
 /// Validates if a filename follows the `bevy_brp_mcp` log naming convention
 pub fn is_valid_log_filename(filename: &str) -> bool {
     filename.starts_with(LOG_PREFIX) && filename.ends_with(LOG_EXTENSION)
@@ -19,17 +24,17 @@ pub fn is_valid_log_filename(filename: &str) -> bool {
 /// Parses app log filename with port pattern into app name and timestamp
 /// Returns `Some((app_name, timestamp_str))` if matches app log pattern, `None` otherwise
 ///
-/// Format: bevy_brp_mcp_{app_name}_port{number}_{timestamp}_{suffix}.log
-/// Extracts app_name as the part between "bevy_brp_mcp_" and "_port{number}"
+/// Format: `bevy_brp_mcp`_{`app_name`}_port{number}_{timestamp}_{suffix}.log
+/// Extracts `app_name` as the part between "`bevy_brp_mcp`_" and "_port{number}"
 pub fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
     if !is_valid_log_filename(filename) {
         return None;
     }
 
-    // Pattern: bevy_brp_mcp_{app_name}_port{digits}_{timestamp}_{suffix}.log
-    let re = Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)_\d+\.log$").unwrap();
+    // Use the static regex, returning None if regex compilation failed
+    let regex = APP_LOG_REGEX.as_ref()?;
 
-    if let Some(captures) = re.captures(filename) {
+    if let Some(captures) = regex.captures(filename) {
         let app_name = captures.get(1)?.as_str().to_string();
         let timestamp = captures.get(2)?.as_str().to_string();
         return Some((app_name, timestamp));
