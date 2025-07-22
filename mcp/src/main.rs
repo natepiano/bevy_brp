@@ -14,7 +14,6 @@ use rmcp::transport::stdio;
 
 mod app_tools;
 mod brp_tools;
-mod constants;
 mod error;
 mod log_tools;
 mod mcp_service;

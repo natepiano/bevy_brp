@@ -34,7 +34,7 @@ where
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance
 /// serialized into parameter names provided to the rcmp mcp tool framework
-#[derive(Display, EnumString, Clone, Copy, Debug, strum::IntoStaticStr)]
+#[derive(Display, EnumString, Clone, Copy, Debug, strum::AsRefStr, strum::IntoStaticStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum ParameterName {
     /// Application name
