@@ -55,18 +55,6 @@ pub trait JsonFieldProvider {
     }
 }
 
-/// Generic trait for field specifications.
-///
-/// This trait provides a uniform interface for both tool parameters
-/// and response fields to specify their names and expected types.
-pub trait FieldSpec<T> {
-    /// Get the field name as a string.
-    fn field_name(&self) -> &str;
-
-    /// Get the expected field type.
-    fn field_type(&self) -> T;
-}
-
 /// Extracted field values with their types.
 ///
 /// This enum represents the different types of values that can be
@@ -330,15 +318,18 @@ impl ResponseFieldType {
     }
 }
 
-/// Extract a response field value from a provider based on field specification.
+/// Extract a response field value from a provider.
 ///
 /// This function provides type-safe extraction for responses, allowing
 /// all field types including Count and `LineSplit`.
-pub fn extract_response_field<P, F>(provider: &P, field: F) -> Option<ExtractedValue>
+pub fn extract_response_field<P>(
+    provider: &P,
+    field_name: &str,
+    field_type: ResponseFieldType,
+) -> Option<ExtractedValue>
 where
     P: JsonFieldProvider,
-    F: FieldSpec<ResponseFieldType>,
 {
-    let value = provider.get_field(field.field_name())?;
-    field.field_type().extract(&value)
+    let value = provider.get_field(field_name)?;
+    field_type.extract(&value)
 }

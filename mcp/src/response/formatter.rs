@@ -25,7 +25,7 @@ use serde_json::{Value, json};
 use super::builder::{CallInfo, CallInfoProvider, JsonResponse, ResponseBuilder};
 use super::extraction::{ResponseFieldType, extract_response_field};
 use super::large_response::{self, LargeResponseConfig};
-use super::specification::{FieldPlacement, ResponseField, ResponseFieldSpec};
+use super::specification::{FieldPlacement, ResponseField};
 // Import format discovery types for convenience
 use crate::brp_tools::{FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus};
 use crate::constants::{
@@ -168,12 +168,9 @@ impl ResponseFormatter {
                 placement,
             } => {
                 // Use unified extraction with source path override
-                let spec = ResponseFieldSpec {
-                    field_name: (*source_path).to_string(),
-                    field_type: response_field_name.field_type(),
-                };
-                let value = extract_response_field(data, spec)
-                    .map_or(Value::Null, std::convert::Into::into);
+                let value =
+                    extract_response_field(data, source_path, response_field_name.field_type())
+                        .map_or(Value::Null, std::convert::Into::into);
                 (value, placement.clone())
             }
             ResponseField::DirectToMetadata => {
@@ -186,12 +183,9 @@ impl ResponseFormatter {
                 placement,
             } => {
                 // Use unified extraction with source path override
-                let spec = ResponseFieldSpec {
-                    field_name: (*source_path).to_string(),
-                    field_type: response_field_name.field_type(),
-                };
-                let value = extract_response_field(data, spec)
-                    .map_or(Value::Null, std::convert::Into::into);
+                let value =
+                    extract_response_field(data, source_path, response_field_name.field_type())
+                        .map_or(Value::Null, std::convert::Into::into);
 
                 let result_value = if value.is_null() {
                     Value::String("__SKIP_NULL_FIELD__".to_string())
@@ -202,11 +196,7 @@ impl ResponseFormatter {
             }
             ResponseField::BrpRawResultToResult => {
                 // Extract raw result field using unified extraction
-                let spec = ResponseFieldSpec {
-                    field_name: "result".to_string(),
-                    field_type: ResponseFieldType::Any,
-                };
-                let value = extract_response_field(data, spec)
+                let value = extract_response_field(data, "result", ResponseFieldType::Any)
                     .map_or(Value::Null, std::convert::Into::into);
                 (value, FieldPlacement::Result)
             }
@@ -424,8 +414,11 @@ impl ResponseFormatter {
         template_values: &serde_json::Map<String, Value>,
     ) {
         if !self.message_template.is_empty() {
-            let final_template_values =
-                Self::resolve_template_placeholders(&self.message_template, template_values, clean_data);
+            let final_template_values = Self::resolve_template_placeholders(
+                &self.message_template,
+                template_values,
+                clean_data,
+            );
             let template_params = Value::Object(final_template_values);
             let message = substitute_template(&self.message_template, Some(&template_params));
             *builder = builder.clone().message(message);

@@ -1,23 +1,7 @@
 use super::ResponseFieldName;
-use super::extraction::{FieldSpec, JsonFieldProvider, ResponseFieldType};
+use super::extraction::JsonFieldProvider;
 use super::large_response::LargeResponseConfig;
 use crate::tool::ParameterName;
-
-/// Bridge struct for response field extraction
-pub struct ResponseFieldSpec {
-    pub field_name: String,
-    pub field_type: ResponseFieldType,
-}
-
-impl FieldSpec<ResponseFieldType> for ResponseFieldSpec {
-    fn field_name(&self) -> &str {
-        &self.field_name
-    }
-
-    fn field_type(&self) -> ResponseFieldType {
-        self.field_type
-    }
-}
 
 /// Implement `JsonFieldProvider` for `serde_json::Value` to enable field extraction
 impl JsonFieldProvider for serde_json::Value {
@@ -133,8 +117,8 @@ impl ResponseSpecification {
     /// Build formatter configuration from this response specification
     pub fn build_response_formatter(&self) -> super::ResponseFormatter {
         super::ResponseFormatter {
-            message_template: self.message_template.to_string(),
-            success_fields: self.response_fields.clone(),
+            message_template:      self.message_template.to_string(),
+            success_fields:        self.response_fields.clone(),
             large_response_config: LargeResponseConfig {
                 file_prefix: "brp_response_".to_string(),
                 ..Default::default()

@@ -1,6 +1,6 @@
 use strum::{Display, EnumString, IntoStaticStr};
 
-use super::extraction::{FieldSpec, ResponseFieldType};
+use super::extraction::ResponseFieldType;
 
 /// Enum representing core response field names that appear in all tool responses
 #[derive(Display, EnumString, IntoStaticStr, Debug, Clone, Copy, PartialEq, Eq)]
@@ -179,15 +179,5 @@ impl ResponseFieldName {
             | Self::Resource
             | Self::Details => ResponseFieldType::Any,
         }
-    }
-}
-
-impl FieldSpec<ResponseFieldType> for ResponseFieldName {
-    fn field_name(&self) -> &str {
-        (*self).into()
-    }
-
-    fn field_type(&self) -> ResponseFieldType {
-        (*self).field_type()
     }
 }
