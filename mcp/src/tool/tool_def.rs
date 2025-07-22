@@ -4,10 +4,9 @@ use std::path::PathBuf;
 
 use rmcp::model::CallToolRequestParam;
 
-use super::HandlerFn;
 use super::annotations::BrpToolAnnotations;
 use super::mcp_tool_schema::ParameterBuilder;
-use super::types::ToolHandler;
+use super::types::{ErasedUnifiedToolFn, ToolHandler};
 use crate::response::ResponseSpecification;
 
 /// Unified tool definition that can handle both BRP and Local tools
@@ -19,8 +18,8 @@ pub struct ToolDef {
     pub description:     &'static str,
     /// Tool annotations
     pub annotations:     BrpToolAnnotations,
-    /// Handler function with method source information
-    pub handler:         HandlerFn,
+    /// Handler function
+    pub handler:         std::sync::Arc<dyn ErasedUnifiedToolFn>,
     /// Function to build parameters for MCP registration
     pub parameters:      Option<fn() -> ParameterBuilder>,
     /// Response formatting specification
@@ -42,23 +41,10 @@ impl ToolDef {
         roots: Vec<PathBuf>,
     ) -> ToolHandler {
         use super::handler_context::HandlerContext;
-        use crate::tool::types::ToolContext;
 
-        // Simplified context creation - all tools use same simple context
-        match &self.handler {
-            HandlerFn::Local(_) => {
-                // Create simple HandlerContext - all local tools use this unified context
-                let ctx = HandlerContext::new(self.clone(), request, roots);
-                let tool_context = ToolContext::Local(ctx);
-                ToolHandler::new(self.handler.clone(), tool_context)
-            }
-            HandlerFn::Brp(_) => {
-                // Create simple HandlerContext - BRP tools extract port/method themselves
-                let ctx = HandlerContext::new(self.clone(), request, roots);
-                let tool_context = ToolContext::Brp(ctx);
-                ToolHandler::new(self.handler.clone(), tool_context)
-            }
-        }
+        // Create simple HandlerContext - all tools use the same context
+        let ctx = HandlerContext::new(self.clone(), request, roots);
+        ToolHandler::new(self.handler.clone(), ctx)
     }
 
     /// Convert to MCP Tool for registration
@@ -76,17 +62,8 @@ impl ToolDef {
             let category_prefix = enhanced.category.as_ref();
             let base_title = &enhanced.title;
 
-            // Add method name for BRP tools
-            let full_title = match &self.handler {
-                HandlerFn::Brp(_) => {
-                    // Method is now compile-time via trait, use base title for now
-                    // TODO: Consider adding method to display if needed
-                    format!("{category_prefix}: {base_title}")
-                }
-                HandlerFn::Local(_) => {
-                    format!("{category_prefix}: {base_title}")
-                }
-            };
+            // All tools use the same title format now
+            let full_title = format!("{category_prefix}: {base_title}");
 
             enhanced.title = full_title;
             enhanced

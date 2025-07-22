@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::brp_tools::format_discovery::execute_brp_method_with_format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
 use crate::constants::default_port;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 pub struct ExecuteParams {
@@ -31,7 +31,7 @@ impl HasPortField for ExecuteParams {
 
 pub struct BrpExecute;
 
-impl LocalToolFn for BrpExecute {
+impl UnifiedToolFn for BrpExecute {
     type Output = BrpMethodResult;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {

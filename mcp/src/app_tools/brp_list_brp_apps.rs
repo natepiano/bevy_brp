@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BrpAppsStrategy;
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 /// Result from listing BRP apps
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,7 +15,7 @@ pub struct ListBrpAppsResult {
 
 pub struct ListBrpApps;
 
-impl LocalToolFn for ListBrpApps {
+impl UnifiedToolFn for ListBrpApps {
     type Output = ListBrpAppsResult;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {

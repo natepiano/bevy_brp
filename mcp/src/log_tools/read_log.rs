@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadLogParams {
@@ -43,7 +43,7 @@ pub struct ReadLogResult {
 
 pub struct ReadLog;
 
-impl LocalToolFn for ReadLog {
+impl UnifiedToolFn for ReadLog {
     type Output = ReadLogResult;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {

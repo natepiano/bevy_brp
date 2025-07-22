@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::constants::default_port;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListWatchParams {
@@ -22,7 +22,7 @@ pub struct ListWatchParams {
 
 pub struct BevyListWatch;
 
-impl LocalToolFn for BevyListWatch {
+impl UnifiedToolFn for BevyListWatch {
     type Output = WatchStartResult;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {

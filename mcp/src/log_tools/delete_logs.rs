@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct DeleteLogsParams {
@@ -32,7 +32,7 @@ pub struct DeleteLogsResult {
 
 pub struct DeleteLogs;
 
-impl LocalToolFn for DeleteLogs {
+impl UnifiedToolFn for DeleteLogs {
     type Output = DeleteLogsResult;
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract typed parameters

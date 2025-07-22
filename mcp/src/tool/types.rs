@@ -21,26 +21,66 @@ use std::pin::Pin;
 use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
-use super::HandlerFn;
 use super::handler_context::HandlerContext;
 use crate::error::Result;
 use crate::response::FormatterConfig;
 
-/// Unified tool handler that works with any `HandlerFn` variant
+/// Unified trait for all tool handlers (local and BRP)
+pub trait UnifiedToolFn: Send + Sync {
+    /// The concrete type returned by this handler
+    type Output: serde::Serialize + Send + Sync;
+
+    /// Handle the request and return a typed result
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output>;
+}
+
+/// Type-erased version for heterogeneous storage
+pub trait ErasedUnifiedToolFn: Send + Sync {
+    fn call_erased<'a>(
+        &'a self,
+        ctx: &'a HandlerContext,
+        formatter_config: FormatterConfig,
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
+}
+
+/// Blanket implementation to convert typed handlers to erased ones
+impl<T: UnifiedToolFn> ErasedUnifiedToolFn for T {
+    fn call_erased<'a>(
+        &'a self,
+        ctx: &'a HandlerContext,
+        formatter_config: FormatterConfig,
+    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
+    {
+        Box::pin(async move {
+            let result = self.call(ctx).await;
+            crate::response::format_tool_result(result, ctx, formatter_config)
+        })
+    }
+}
+
+/// Unified tool handler that works with any tool
 pub struct ToolHandler {
-    handler: HandlerFn,
-    context: ToolContext,
+    handler: std::sync::Arc<dyn ErasedUnifiedToolFn>,
+    context: HandlerContext,
 }
 
 impl ToolHandler {
-    pub const fn new(handler: HandlerFn, context: ToolContext) -> Self {
+    pub const fn new(
+        handler: std::sync::Arc<dyn ErasedUnifiedToolFn>,
+        context: HandlerContext,
+    ) -> Self {
         Self { handler, context }
     }
 }
 
 impl ToolHandler {
     pub async fn call_tool(self) -> std::result::Result<CallToolResult, McpError> {
-        self.handler.call_handler(&self.context).await
+        // Generate formatter config from tool definition
+        let formatter_config = self.context.tool_def().formatter().build_formatter_config();
+
+        self.handler
+            .call_erased(&self.context, formatter_config)
+            .await
     }
 }
 
@@ -53,80 +93,8 @@ impl ToolHandler {
 /// - `+ Send + 'static`: Can be sent between threads, static lifetime
 pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'static>>;
 
-/// Trait for local handlers - unified for all local tools regardless of port usage
-pub trait LocalToolFn: Send + Sync {
-    /// The concrete type returned by this handler
-    type Output: serde::Serialize + Send + Sync;
-
-    /// Handle the request and return a typed result
-    /// Tools that need port access get it directly from their parameter struct via `params.port`
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output>;
-}
-
-/// Trait for BRP handlers that return `HandlerResponse` (unified with local handlers)
-pub trait BrpToolFn: Send + Sync {
-    /// The concrete type returned by this handler
-    type Output: serde::Serialize + Send + Sync;
-
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output>;
-}
-
 /// Trait for BRP tools to provide their method string at compile time
 pub trait HasBrpMethod {
     /// Returns the BRP method string for this tool
     fn brp_method() -> &'static str;
-}
-
-/// Type-erased version for use in `HandlerFn` enum
-/// These traits return `CallToolResult` directly, avoiding double serialization
-pub trait ErasedLocalToolFn: Send + Sync {
-    fn call_erased<'a>(
-        &'a self,
-        ctx: &'a HandlerContext,
-        formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
-}
-
-pub trait ErasedBrpToolFn: Send + Sync {
-    fn call_erased<'a>(
-        &'a self,
-        ctx: &'a HandlerContext,
-        formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
-}
-
-/// Blanket implementations to convert typed handlers to erased ones
-impl<T: LocalToolFn> ErasedLocalToolFn for T {
-    fn call_erased<'a>(
-        &'a self,
-        ctx: &'a HandlerContext,
-        formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
-    {
-        Box::pin(async move {
-            let result = self.call(ctx).await;
-            crate::response::format_tool_result(result, ctx, formatter_config)
-        })
-    }
-}
-
-impl<T: BrpToolFn> ErasedBrpToolFn for T {
-    fn call_erased<'a>(
-        &'a self,
-        ctx: &'a HandlerContext,
-        formatter_config: FormatterConfig,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
-    {
-        Box::pin(async move {
-            let result = self.call(ctx).await;
-            crate::response::format_tool_result(result, ctx, formatter_config)
-        })
-    }
-}
-
-/// Unified context that wraps Local and BRP handler contexts
-#[derive(Clone)]
-pub enum ToolContext {
-    Local(HandlerContext), // For Local
-    Brp(HandlerContext),   // For Brp
 }

@@ -7,7 +7,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -100,7 +100,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams> GenericLaunchHandler<T, P> {
     }
 }
 
-impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> LocalToolFn
+impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> UnifiedToolFn
     for GenericLaunchHandler<T, P>
 {
     type Output = LaunchResult;

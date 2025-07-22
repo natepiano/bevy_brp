@@ -2,7 +2,6 @@ mod annotations;
 mod constants;
 mod definitions;
 mod handler_context;
-mod handler_fn;
 mod mcp_tool_schema;
 mod parameters;
 mod schema_utils;
@@ -21,7 +20,6 @@ pub use constants::{
 };
 pub use definitions::get_all_tool_definitions;
 pub use handler_context::{HandlerContext, HasCallInfo};
-pub use handler_fn::HandlerFn;
 pub use parameters::{ParameterName, deserialize_port};
 pub use tool_def::ToolDef;
-pub use types::{BrpToolFn, HandlerResponse, HasBrpMethod, LocalToolFn};
+pub use types::{HandlerResponse, HasBrpMethod, UnifiedToolFn};

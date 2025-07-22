@@ -2,7 +2,7 @@
 ///
 /// This macro generates:
 /// 1. A unit struct for the tool
-/// 2. Implementation of `BrpToolFn` trait that calls `execute_static_brp_call`
+/// 2. Implementation of `UnifiedToolFn` trait that calls `execute_static_brp_call`
 /// 3. Implementation of `HasPortField` trait for the params struct
 /// 4. Implementation of `HasBrpMethod` trait with the specified BRP method
 ///
@@ -12,7 +12,7 @@ macro_rules! define_brp_tool {
     ($tool_struct:ident, $params_struct:ident, $brp_method:expr) => {
         pub struct $tool_struct;
 
-        impl crate::tool::BrpToolFn for $tool_struct {
+        impl crate::tool::UnifiedToolFn for $tool_struct {
             type Output = crate::brp_tools::handler::BrpMethodResult;
 
             fn call(

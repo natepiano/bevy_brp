@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::error::Error;
 use crate::log_tools::support;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListLogsParams {
@@ -27,7 +27,7 @@ pub struct ListLogResult {
 /// Handler for the `brp_list_logs` tool using the `LocalFn` approach
 pub struct ListLogs;
 
-impl LocalToolFn for ListLogs {
+impl UnifiedToolFn for ListLogs {
     type Output = ListLogResult;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
