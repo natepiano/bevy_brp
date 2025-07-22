@@ -28,7 +28,7 @@ impl ToolFn for BrpStopWatch {
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
-        let params: StopWatchParams = match ctx.extract_typed_params() {
+        let params: StopWatchParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };

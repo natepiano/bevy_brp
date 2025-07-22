@@ -46,7 +46,7 @@ impl HandlerContext {
     // Note: extract_method_param() and extract_port() now available on all HandlerContext types
 
     /// Extract typed parameters from request using serde deserialization
-    pub fn extract_typed_params<T>(&self) -> crate::error::Result<T>
+    pub fn extract_parameter_values<T>(&self) -> crate::error::Result<T>
     where
         T: serde::de::DeserializeOwned,
     {

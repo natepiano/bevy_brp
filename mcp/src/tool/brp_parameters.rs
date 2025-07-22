@@ -1,7 +1,8 @@
 /// Parameter structs for BRP tools
 ///
-/// These are strongly-typed parameter structs used by the BRP tools.
+/// These are parameter structs used by the BRP tools.
 /// Each struct corresponds to a tool with the same name (minus the Params suffix).
+/// These are used by the proc macro on `ToolName` to automatically construct the tool handler
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

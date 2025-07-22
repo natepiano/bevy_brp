@@ -40,7 +40,7 @@ impl ToolFn for BrpExecute {
 
         Box::pin(async move {
             // Extract typed parameters
-            let params = ctx.extract_typed_params::<ExecuteParams>()?;
+            let params = ctx.extract_parameter_values::<ExecuteParams>()?;
             let port = params.port;
 
             // For brp_execute, use method from parameters (user input)

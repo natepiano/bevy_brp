@@ -6,8 +6,8 @@ use std::sync::Arc;
 use rmcp::model::CallToolRequestParam;
 
 use super::annotations::BrpToolAnnotations;
-use super::constants::ToolName;
-use super::mcp_tool_schema::ParameterBuilder;
+use super::parameters::ParameterBuilder;
+use super::tool_name::ToolName;
 use super::types::{ErasedUnifiedToolFn, ToolHandler};
 use crate::response::ResponseDef;
 

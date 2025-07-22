@@ -1,14 +1,14 @@
 //! Parameter names, and tools to automatically create parameter definitions for rmcp from our
 //! parameter structs
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use schemars::{JsonSchema, Schema};
 use serde::{Deserialize, Deserializer};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
 use crate::brp_tools::VALID_PORT_RANGE;
-use crate::tool::mcp_tool_schema::ParameterBuilder;
 
 /// Deserialize and validate port numbers
 ///
@@ -119,6 +119,139 @@ enum ParameterType {
     Any,
 }
 
+/// Builder for creating JSON schemas for MCP tool registration in rmcp framework
+#[derive(Clone)]
+pub struct ParameterBuilder {
+    properties: Map<String, Value>,
+    required:   Vec<String>,
+}
+
+impl ParameterBuilder {
+    pub fn new() -> Self {
+        Self {
+            properties: Map::new(),
+            required:   Vec::new(),
+        }
+    }
+
+    /// Add a string property to the schema
+    pub fn add_string_property(mut self, name: &str, description: &str, required: bool) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), "string".into());
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
+    /// Add a string array property to the schema
+    pub fn add_string_array_property(
+        mut self,
+        name: &str,
+        description: &str,
+        required: bool,
+    ) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), "array".into());
+
+        let mut items = Map::new();
+        items.insert("type".to_string(), "string".into());
+        prop.insert("items".to_string(), items.into());
+
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
+    /// Add a number array property to the schema
+    pub fn add_number_array_property(
+        mut self,
+        name: &str,
+        description: &str,
+        required: bool,
+    ) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), "array".into());
+
+        let mut items = Map::new();
+        items.insert("type".to_string(), "number".into());
+        prop.insert("items".to_string(), items.into());
+
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
+    /// Add a number property to the schema
+    pub fn add_number_property(mut self, name: &str, description: &str, required: bool) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), "number".into());
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
+    /// Add a boolean property to the schema
+    pub fn add_boolean_property(mut self, name: &str, description: &str, required: bool) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), "boolean".into());
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
+    /// Add a property that can be any type (object, array, null, etc.)
+    pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
+        let mut prop = Map::new();
+        prop.insert("type".to_string(), vec!["object", "array", "null"].into());
+        prop.insert("description".to_string(), description.into());
+        self.properties.insert(name.to_string(), prop.into());
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
+    /// Build the final schema
+    pub fn build(self) -> Arc<Map<String, Value>> {
+        let mut schema = Map::new();
+        schema.insert("type".to_string(), "object".into());
+        schema.insert("properties".to_string(), self.properties.into());
+
+        if !self.required.is_empty() {
+            schema.insert("required".to_string(), self.required.into());
+        }
+
+        Arc::new(schema)
+    }
+}
+
 fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
     let Some(obj) = schema.as_object() else {
         return ParameterType::Any;
@@ -174,7 +307,7 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
 /// Build parameters from a `JsonSchema` type directly into a `ParameterBuilder`
 /// All tools with parameters derive `JsonSchema` making it possible for us
 /// to build the parameters from the schema
-pub fn extract_parameters<T: JsonSchema>() -> ParameterBuilder {
+pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     let schema = schemars::schema_for!(T);
     let mut builder = ParameterBuilder::new();
 

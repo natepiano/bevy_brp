@@ -41,14 +41,13 @@ use std::collections::HashMap;
 use serde_json::Value;
 use tracing::{debug, trace};
 
-use super::constants::FORMAT_DISCOVERY_METHODS;
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
 use super::{UnifiedTypeInfo, recovery_engine};
 use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpResult, execute_brp_method};
 use crate::error::Result;
-use crate::tool::{BRP_METHOD_INSERT, BRP_METHOD_SPAWN};
+use crate::tool::BrpMethod;
 
 /// Format correction information for a type (component or resource)
 #[derive(Debug, Clone)]
@@ -103,7 +102,7 @@ async fn execute_level_1(
             let registry_type_info = get_registry_type_info(method, params.as_ref(), port).await;
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
-            if matches!(method, BRP_METHOD_SPAWN | BRP_METHOD_INSERT)
+            if (method == BrpMethod::BevySpawn.as_str() || method == BrpMethod::BevyInsert.as_str())
                 && error.code == BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
             {
                 // Check if this is a serialization error that should be short-circuited
@@ -135,7 +134,7 @@ async fn execute_level_1(
 
 /// Check if a method supports format discovery
 fn is_format_discovery_supported(method: &str) -> bool {
-    FORMAT_DISCOVERY_METHODS.contains(&method)
+    crate::tool::BrpMethod::supports_format_discovery(method)
 }
 
 /// Check if any types lack serialization support using pre-fetched type infos

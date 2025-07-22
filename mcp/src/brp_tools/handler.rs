@@ -163,7 +163,7 @@ where
 
     async move {
         // Extract typed parameters
-        let params = ctx.extract_typed_params::<T>()?;
+        let params = ctx.extract_parameter_values::<T>()?;
         let port = params.port(); // Type-safe port access through trait
         let mut params_json = serde_json::to_value(params)
             .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;

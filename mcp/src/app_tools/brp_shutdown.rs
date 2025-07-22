@@ -8,7 +8,7 @@ use crate::brp_tools::{
     BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, execute_brp_method,
 };
 use crate::error::{Error, Result};
-use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ShutdownParams {
@@ -131,7 +131,7 @@ impl ToolFn for Shutdown {
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract and validate parameters using the new typed system
-        let params: ShutdownParams = match ctx.extract_typed_params() {
+        let params: ShutdownParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
@@ -204,7 +204,7 @@ async fn handle_impl(
 /// Try to gracefully shutdown via `bevy_brp_extras`
 async fn try_graceful_shutdown(port: u16) -> Result<Option<serde_json::Value>> {
     debug!("Starting graceful shutdown attempt on port {port}");
-    match execute_brp_method(BRP_METHOD_EXTRAS_SHUTDOWN, None, port).await {
+    match execute_brp_method(BrpMethod::BrpShutdown.as_str(), None, port).await {
         Ok(BrpResult::Success(result)) => {
             // Graceful shutdown succeeded
             debug!("BRP extras shutdown successful: {result:?}");

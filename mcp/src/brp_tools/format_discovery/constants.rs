@@ -17,20 +17,6 @@ macro_rules! define_regex {
     };
 }
 
-use crate::tool::{
-    BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
-    BRP_METHOD_MUTATE_RESOURCE, BRP_METHOD_SPAWN,
-};
-
-/// Methods that support format discovery (components and resources)
-pub const FORMAT_DISCOVERY_METHODS: &[&str] = &[
-    BRP_METHOD_SPAWN,
-    BRP_METHOD_INSERT,
-    BRP_METHOD_MUTATE_COMPONENT,
-    BRP_METHOD_INSERT_RESOURCE,
-    BRP_METHOD_MUTATE_RESOURCE,
-];
-
 /// Field name for "name" property
 pub const FIELD_NAME: &str = "name";
 

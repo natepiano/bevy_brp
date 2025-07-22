@@ -36,7 +36,7 @@ impl ToolFn for DeleteLogs {
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
-        let params: DeleteLogsParams = match ctx.extract_typed_params() {
+        let params: DeleteLogsParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };

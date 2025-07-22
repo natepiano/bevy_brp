@@ -28,7 +28,7 @@ impl ToolFn for BevyListWatch {
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
-        let params: ListWatchParams = match ctx.extract_typed_params() {
+        let params: ListWatchParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };

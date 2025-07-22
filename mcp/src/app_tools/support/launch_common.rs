@@ -108,7 +108,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
-        let typed_params: P = match ctx.extract_typed_params() {
+        let typed_params: P = match ctx.extract_parameter_values() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };

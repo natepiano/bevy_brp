@@ -4,7 +4,7 @@ use sysinfo::System;
 
 use crate::brp_tools::{BrpResult, default_port, execute_brp_method};
 use crate::error::Error;
-use crate::tool::{BRP_METHOD_LIST, HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct StatusParams {
@@ -39,7 +39,7 @@ impl ToolFn for Status {
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract and validate parameters using the new typed system
-        let params: StatusParams = match ctx.extract_typed_params() {
+        let params: StatusParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
@@ -162,7 +162,10 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> crate::error::Result<St
 /// Check if BRP is responding on the given port
 async fn check_brp_on_port(port: u16) -> crate::error::Result<bool> {
     // Try a simple BRP request to check connectivity using bevy/list
-    match execute_brp_method(BRP_METHOD_LIST, None, port).await {
+
+    let method_name = BrpMethod::BevyList.as_str();
+
+    match execute_brp_method(method_name, None, port).await {
         Ok(BrpResult::Success(_)) => {
             // BRP is responding and working
             Ok(true)

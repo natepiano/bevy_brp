@@ -17,7 +17,7 @@ use super::logger::{self as watch_logger, BufferedWatchLogger};
 use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools;
 use crate::error::{Error, Result};
-use crate::tool::{BRP_METHOD_GET_WATCH, BRP_METHOD_LIST_WATCH};
+use crate::tool::BrpMethod;
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {
@@ -632,7 +632,14 @@ pub async fn start_entity_watch_task(
         "components": components
     });
 
-    start_watch_task(entity_id, "get", BRP_METHOD_GET_WATCH, params, port).await
+    start_watch_task(
+        entity_id,
+        "get",
+        BrpMethod::BevyGetWatch.as_str(),
+        params,
+        port,
+    )
+    .await
 }
 
 /// Start a background task for entity list watching
@@ -641,5 +648,12 @@ pub async fn start_list_watch_task(entity_id: u64, port: u16) -> Result<(u32, Pa
         "entity": entity_id
     });
 
-    start_watch_task(entity_id, "list", BRP_METHOD_LIST_WATCH, params, port).await
+    start_watch_task(
+        entity_id,
+        "list",
+        BrpMethod::BevyListWatch.as_str(),
+        params,
+        port,
+    )
+    .await
 }

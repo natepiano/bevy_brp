@@ -10,7 +10,7 @@ use tracing::debug;
 use super::adapters::from_registry_schema;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpResult, execute_brp_method};
-use crate::tool::BRP_METHOD_REGISTRY_SCHEMA;
+use crate::tool::BrpMethod;
 
 /// Find type in registry response (handles various response formats)
 fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
@@ -72,9 +72,7 @@ pub async fn get_registry_type_info(
     params: Option<&serde_json::Value>,
     port: u16,
 ) -> std::collections::HashMap<String, UnifiedTypeInfo> {
-    use super::constants::FORMAT_DISCOVERY_METHODS;
-
-    if !FORMAT_DISCOVERY_METHODS.contains(&method) {
+    if !crate::tool::BrpMethod::supports_format_discovery(method) {
         debug!("get_registry_type_info: Method {method} does not support format discovery");
         return std::collections::HashMap::new();
     }
@@ -187,7 +185,7 @@ pub async fn check_multiple_types_registry_status(
 
     debug!("Registry Integration: Batch call with params: {params}");
 
-    match execute_brp_method(BRP_METHOD_REGISTRY_SCHEMA, Some(params), port).await {
+    match execute_brp_method(BrpMethod::BevyRegistrySchema.as_str(), Some(params), port).await {
         Ok(BrpResult::Success(Some(response_data))) => {
             debug!("Registry Integration: Received successful batch response");
 
