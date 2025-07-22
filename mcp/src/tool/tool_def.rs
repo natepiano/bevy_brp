@@ -1,10 +1,12 @@
 //! Unified tool definition that can handle both BRP and Local tools
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use rmcp::model::CallToolRequestParam;
 
 use super::annotations::BrpToolAnnotations;
+use super::constants::ToolName;
 use super::mcp_tool_schema::ParameterBuilder;
 use super::types::{ErasedUnifiedToolFn, ToolHandler};
 use crate::response::ResponseDef;
@@ -12,14 +14,12 @@ use crate::response::ResponseDef;
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
 pub struct ToolDef {
-    /// Tool name
-    pub name:        &'static str,
-    /// Tool description
-    pub description: &'static str,
+    /// Tool name and description
+    pub tool_name:   ToolName,
     /// Tool annotations
     pub annotations: BrpToolAnnotations,
     /// Handler function
-    pub handler:     std::sync::Arc<dyn ErasedUnifiedToolFn>,
+    pub handler:     Arc<dyn ErasedUnifiedToolFn>,
     /// Function to build parameters for MCP registration
     pub parameters:  Option<fn() -> ParameterBuilder>,
     /// Response formatting specification
@@ -27,8 +27,8 @@ pub struct ToolDef {
 }
 
 impl ToolDef {
-    pub const fn name(&self) -> &'static str {
-        self.name
+    pub fn name(&self) -> &'static str {
+        self.tool_name.into()
     }
 
     pub const fn response_def(&self) -> &ResponseDef {
@@ -70,8 +70,8 @@ impl ToolDef {
         };
 
         rmcp::model::Tool {
-            name:         self.name.into(),
-            description:  Some(self.description.into()),
+            name:         <&'static str>::from(self.tool_name).into(),
+            description:  Some(self.tool_name.description().into()),
             input_schema: builder.build(),
             annotations:  Some(enhanced_annotations.into()),
         }
