@@ -13,17 +13,17 @@ use crate::response::ResponseSpecification;
 #[derive(Clone)]
 pub struct ToolDef {
     /// Tool name
-    pub name:            &'static str,
+    pub name:                   &'static str,
     /// Tool description
-    pub description:     &'static str,
+    pub description:            &'static str,
     /// Tool annotations
-    pub annotations:     BrpToolAnnotations,
+    pub annotations:            BrpToolAnnotations,
     /// Handler function
-    pub handler:         std::sync::Arc<dyn ErasedUnifiedToolFn>,
+    pub handler:                std::sync::Arc<dyn ErasedUnifiedToolFn>,
     /// Function to build parameters for MCP registration
-    pub parameters:      Option<fn() -> ParameterBuilder>,
+    pub parameters:             Option<fn() -> ParameterBuilder>,
     /// Response formatting specification
-    pub response_format: ResponseSpecification,
+    pub response_specification: ResponseSpecification,
 }
 
 impl ToolDef {
@@ -31,8 +31,8 @@ impl ToolDef {
         self.name
     }
 
-    pub const fn formatter(&self) -> &ResponseSpecification {
-        &self.response_format
+    pub const fn response_specification(&self) -> &ResponseSpecification {
+        &self.response_specification
     }
 
     pub fn create_handler(

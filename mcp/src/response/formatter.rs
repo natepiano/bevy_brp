@@ -37,7 +37,7 @@ use crate::tool::HandlerContext;
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
     /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
-    pub success_template:      Option<String>,
+    pub message_template:      Option<String>,
     /// Additional fields to add to success responses
     pub success_fields:        Vec<ResponseField>,
     /// Configuration for large response handling
@@ -423,7 +423,7 @@ impl ResponseFormatter {
         clean_data: &Value,
         template_values: &serde_json::Map<String, Value>,
     ) {
-        if let Some(template) = &self.success_template {
+        if let Some(template) = &self.message_template {
             let final_template_values =
                 Self::resolve_template_placeholders(template, template_values, clean_data);
             let template_params = Value::Object(final_template_values);

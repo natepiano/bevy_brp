@@ -1,8 +1,9 @@
 use super::ResponseFieldName;
 use super::extraction::{FieldSpec, JsonFieldProvider, ResponseFieldType};
+use super::large_response::LargeResponseConfig;
 use crate::tool::ParameterName;
 
-/// Bridge struct for response field extraction using the new type-safe system
+/// Bridge struct for response field extraction
 pub struct ResponseFieldSpec {
     pub field_name: String,
     pub field_type: ResponseFieldType,
@@ -130,18 +131,16 @@ pub struct ResponseSpecification {
 
 impl ResponseSpecification {
     /// Build formatter configuration from this response specification
-    pub fn build_formatter_config(&self) -> super::ResponseFormatter {
-        use super::large_response::LargeResponseConfig;
-
+    pub fn build_response_formatter(&self) -> super::ResponseFormatter {
         // Set the template if provided
-        let success_template = if self.message_template.is_empty() {
+        let message_template = if self.message_template.is_empty() {
             None
         } else {
             Some(self.message_template.to_string())
         };
 
         super::ResponseFormatter {
-            success_template,
+            message_template,
             success_fields: self.response_fields.clone(),
             large_response_config: LargeResponseConfig {
                 file_prefix: "brp_response_".to_string(),

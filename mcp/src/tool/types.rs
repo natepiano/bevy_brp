@@ -97,7 +97,11 @@ impl ToolHandler {
 impl ToolHandler {
     pub async fn call_tool(self) -> std::result::Result<CallToolResult, McpError> {
         // Generate formatter config from tool definition
-        let formatter_config = self.context.tool_def().formatter().build_formatter_config();
+        let formatter_config = self
+            .context
+            .tool_def()
+            .response_specification()
+            .build_response_formatter();
 
         self.handler
             .call_erased(&self.context, formatter_config)
