@@ -7,50 +7,40 @@ use serde_json::Value;
 
 use crate::error::Result;
 
-/// Trait for anything that provides JSON fields for extraction.
+/// Get a field value from JSON data by name, supporting dot notation.
 ///
-/// This trait allows different sources (request arguments, response data, etc.)
-/// to provide a uniform interface for field access.
-pub trait JsonFieldProvider {
-    /// Get the root JSON value.
-    ///
-    /// This is used for dot notation field access.
-    fn get_root(&self) -> Value;
+/// Returns `None` if the field doesn't exist.
+/// Supports dot notation for nested field access (e.g., "metadata.entity").
+/// Also supports array indexing like "items.0".
+fn get_json_field(data: &Value, field_name: &str) -> Option<Value> {
+    // Check if field name contains dots for nested access
+    if field_name.contains('.') {
+        let parts: Vec<&str> = field_name.split('.').collect();
+        let mut current = data.clone();
 
-    /// Get a field value by name.
-    ///
-    /// Returns `None` if the field doesn't exist.
-    /// The default implementation supports dot notation for nested field access.
-    fn get_field(&self, field_name: &str) -> Option<Value> {
-        // Check if field name contains dots for nested access
-        if field_name.contains('.') {
-            let parts: Vec<&str> = field_name.split('.').collect();
-            let mut current = self.get_root();
-
-            for part in parts {
-                match current {
-                    Value::Object(ref map) => {
-                        current = map.get(part)?.clone();
-                    }
-                    Value::Array(ref arr) => {
-                        // Support array indexing like "items.0"
-                        if let Ok(index) = part.parse::<usize>() {
-                            current = arr.get(index)?.clone();
-                        } else {
-                            return None;
-                        }
-                    }
-                    _ => return None,
+        for part in parts {
+            match current {
+                Value::Object(ref map) => {
+                    current = map.get(part)?.clone();
                 }
+                Value::Array(ref arr) => {
+                    // Support array indexing like "items.0"
+                    if let Ok(index) = part.parse::<usize>() {
+                        current = arr.get(index)?.clone();
+                    } else {
+                        return None;
+                    }
+                }
+                _ => return None,
             }
+        }
 
-            Some(current)
-        } else {
-            // Simple field access from root
-            match self.get_root() {
-                Value::Object(map) => map.get(field_name).cloned(),
-                _ => None,
-            }
+        Some(current)
+    } else {
+        // Simple field access from root
+        match data {
+            Value::Object(map) => map.get(field_name).cloned(),
+            _ => None,
         }
     }
 }
@@ -318,18 +308,16 @@ impl ResponseFieldType {
     }
 }
 
-/// Extract a response field value from a provider.
+/// Extract a response field value from JSON data.
 ///
 /// This function provides type-safe extraction for responses, allowing
-/// all field types including Count and `LineSplit`.
-pub fn extract_response_field<P>(
-    provider: &P,
+/// all field types including `Count` and `LineSplit`.
+/// Supports dot notation for nested field access.
+pub fn extract_response_field(
+    data: &Value,
     field_name: &str,
     field_type: ResponseFieldType,
-) -> Option<ExtractedValue>
-where
-    P: JsonFieldProvider,
-{
-    let value = provider.get_field(field_name)?;
+) -> Option<ExtractedValue> {
+    let value = get_json_field(data, field_name)?;
     field_type.extract(&value)
 }
