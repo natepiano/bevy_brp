@@ -132,15 +132,8 @@ pub struct ResponseSpecification {
 impl ResponseSpecification {
     /// Build formatter configuration from this response specification
     pub fn build_response_formatter(&self) -> super::ResponseFormatter {
-        // Set the template if provided
-        let message_template = if self.message_template.is_empty() {
-            None
-        } else {
-            Some(self.message_template.to_string())
-        };
-
         super::ResponseFormatter {
-            message_template,
+            message_template: self.message_template.to_string(),
             success_fields: self.response_fields.clone(),
             large_response_config: LargeResponseConfig {
                 file_prefix: "brp_response_".to_string(),
