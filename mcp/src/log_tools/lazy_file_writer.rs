@@ -51,20 +51,29 @@ impl Write for LazyWriter {
             *file_guard = Some(file);
         }
 
-        // Write to the file, recreate if write fails (file might be deleted)
-        if let Some(Ok(bytes)) = file_guard.as_mut().map(|file| file.write(buf)) {
-            drop(file_guard);
-            Ok(bytes)
-        } else {
-            // Write failed, try recreating the file
-            let mut file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&self.path)?;
-            let bytes = file.write(buf)?;
-            *file_guard = Some(file);
-            drop(file_guard);
-            Ok(bytes)
+        // Try to write to the file
+        match file_guard.as_mut() {
+            Some(file) => match file.write(buf) {
+                Ok(bytes) => {
+                    drop(file_guard);
+                    Ok(bytes)
+                }
+                Err(_) => {
+                    // Write failed, file handle might be stale, recreate
+                    let mut new_file = OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(&self.path)?;
+                    let bytes = new_file.write(buf)?;
+                    *file_guard = Some(new_file);
+                    drop(file_guard);
+                    Ok(bytes)
+                }
+            },
+            None => {
+                // This should not happen due to the check above, but handle it
+                Err(io::Error::other("File handle unexpectedly None"))
+            }
         }
     }
 
@@ -74,21 +83,41 @@ impl Write for LazyWriter {
             .lock()
             .map_err(|_| io::Error::other("Mutex poisoned"))?;
 
-        // If file doesn't exist or flush fails, recreate the file handle
-        match file_guard.as_mut().map(std::io::Write::flush) {
-            Some(Err(_)) | None if self.path.exists() => {
-                // File exists but flush failed, recreate handle
-                let file = OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&self.path)?;
-                *file_guard = Some(file);
+        // Check if file was deleted
+        if file_guard.is_some() && !self.path.exists() {
+            // File was deleted, clear the stale handle
+            *file_guard = None;
+            drop(file_guard);
+            return Ok(()); // Nothing to flush
+        }
+
+        // Try to flush
+        match file_guard.as_mut() {
+            Some(file) => match file.flush() {
+                Ok(()) => {
+                    drop(file_guard);
+                    Ok(())
+                }
+                Err(_) => {
+                    // Flush failed, might be stale handle
+                    if self.path.exists() {
+                        // File exists but handle is stale, recreate
+                        let new_file = OpenOptions::new()
+                            .create(true)
+                            .append(true)
+                            .open(&self.path)?;
+                        *file_guard = Some(new_file);
+                    } else {
+                        // File doesn't exist, clear handle
+                        *file_guard = None;
+                    }
+                    drop(file_guard);
+                    Ok(())
+                }
+            },
+            None => {
                 drop(file_guard);
-                Ok(())
-            }
-            _ => {
-                drop(file_guard);
-                Ok(()) // File doesn't exist or flush succeeded, nothing more to do
+                Ok(()) // Nothing to flush
             }
         }
     }
