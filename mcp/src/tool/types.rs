@@ -37,6 +37,7 @@ pub trait UnifiedToolFn: Send + Sync {
 }
 
 /// Type-erased version for heterogeneous storage
+/// Provides significant value of formatting the Result correctly
 pub trait ErasedUnifiedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
