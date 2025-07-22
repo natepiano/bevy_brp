@@ -1,10 +1,5 @@
 Inserts/updates resources via bevy/insert_resource BRP method. Useful for modifying config, injecting data, testing states, and building tools.
 
-Parameters:
-- resource (required): Fully-qualified type name
-- value (required): Resource value to insert
-- port (optional): BRP port (default: 15702)
-
 Example:
 ```json
 {

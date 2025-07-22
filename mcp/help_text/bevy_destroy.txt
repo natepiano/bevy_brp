@@ -1,8 +1,4 @@
 Destroys entities permanently via bevy/destroy BRP method. Useful for removing game objects, cleaning up temporaries, and managing lifecycles.
 
-Parameters:
-- entity_id (required): Entity ID to destroy
-- port (optional): BRP port (default: 15702)
-
 WARNING: Permanent operation - entity and all components removed.
 Note: Entity ID may be reused for new entities.

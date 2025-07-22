@@ -1,9 +1,5 @@
 Spawns entities with components via bevy/spawn BRP method. Useful for creating game objects, testing configurations, and building editors.
 
-Parameters:
-- components (optional object): Component data - keys are fully-qualified type names, values are data
-- port (optional): BRP port (default: 15702)
-
 Example:
 ```json
 {

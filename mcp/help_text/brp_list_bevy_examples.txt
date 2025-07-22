@@ -1,7 +1,5 @@
 Discovers all Bevy examples in workspace using cargo metadata. Returns example names organized by package with paths to source code.
 
-No parameters.
-
 Returns: Examples grouped by package, useful for exploring learning resources and demos.
 
 Note: Found in Bevy repositories and tutorials. Listed without build status.

@@ -1,9 +1,5 @@
 Set the tracing level for comprehensive BRP diagnostic logging to file.
 
-Parameters:
-- level (required): Tracing level to set - one of: error, warn, info, debug, trace
-- port (optional): BRP port (default: 15702)
-
 Tracing levels (from least to most verbose):
 - error: Only error messages
 - warn: Warnings and errors  

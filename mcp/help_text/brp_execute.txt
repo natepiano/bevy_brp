@@ -1,6 +1,1 @@
 Execute any Bevy Remote Protocol (BRP) method on a running Bevy app to send arbitrary commands and receive responses.
-
-Parameters:
-- method (required): BRP method name (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')
-- params (optional): Method parameters as JSON object or array
-- port (optional): BRP port

@@ -1,10 +1,5 @@
 Changes entity parents via bevy/reparent BRP method. Useful for reorganizing hierarchies, drag-and-drop, scene graphs, and dynamic attachment.
 
-Parameters:
-- entities (required array): Entity IDs to reparent
-- parent (optional): New parent ID (omit for root-level)
-- port (optional): BRP port (default: 15702)
-
 Examples:
 ```json
 {"entities": [123, 124, 125], "parent": 100}

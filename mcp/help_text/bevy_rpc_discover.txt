@@ -1,8 +1,5 @@
 Discover available BRP methods using rpc.discover to understand method signatures, build dynamic tools, or debug BRP connectivity.
 
-Parameters:
-- port (optional): BRP port
-
 Returns OpenRPC specification containing:
 - All available BRP methods
 - Parameter schemas for each method

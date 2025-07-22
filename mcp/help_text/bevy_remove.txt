@@ -1,10 +1,5 @@
 Removes components from entities via bevy/remove BRP method. Useful for removing behaviors, implementing state machines, and optimizing entities.
 
-Parameters:
-- entity_id (required): Target entity ID
-- components (required array): Component type names to remove
-- port (optional): BRP port (default: 15702)
-
 Example:
 ```json
 {

@@ -1,9 +1,5 @@
 Check if a Bevy app is running with BRP enabled to verify app status, confirm BRP connectivity, troubleshoot connection issues, or get process information.
 
-Parameters:
-- app_name (required): Name of Bevy app to check
-- port (optional): Port to check for BRP
-
 Return status values:
 - "running_with_brp": App running with BRP responding
 - "running_no_brp": App running but BRP not responding (check RemotePlugin)

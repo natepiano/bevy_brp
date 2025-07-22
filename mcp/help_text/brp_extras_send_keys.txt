@@ -1,10 +1,5 @@
 Sends keyboard input to Bevy apps via bevy_brp_extras. Performs complete press-hold-release cycles for testing, remote control, and automation.
 
-Parameters:
-- keys (required array): Key codes to send (e.g., ["KeyA", "Space", "Enter"])
-- duration_ms (optional): Hold duration in ms (default: 100, max: 60000)
-- port (optional): BRP port (default: 15702)
-
 Key formats: Letters (KeyA-Z), Digits (Digit0-9), Function (F1-F24), Modifiers (ShiftLeft/Right, ControlLeft/Right, AltLeft/Right, SuperLeft/Right), Navigation (Arrows, Home/End, PageUp/Down), Editing (Enter, Tab, Space, Backspace, Delete, Escape).
 
 Platform-specific modifiers:

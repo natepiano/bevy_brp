@@ -1,9 +1,5 @@
 Gracefully shutdown running Bevy applications for proper resource cleanup, stopping resource-blocking apps, testing shutdown behavior, or managing app lifecycle.
 
-Parameters:
-- app_name (required): Name of Bevy app to shutdown
-- port (optional): BRP port
-
 Shutdown behavior:
 1. Attempts bevy_brp_extras/shutdown for clean shutdown
 2. Falls back to process termination if unavailable

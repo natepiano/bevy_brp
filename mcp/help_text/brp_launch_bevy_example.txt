@@ -1,11 +1,5 @@
 Launches Bevy examples via cargo run --example in detached mode with auto-building, asset loading, and logging.
 
-Parameters:
-- example_name (required): Name of Bevy example to launch
-- profile (optional): Build profile - "debug" (default) or "release"
-- path (optional): Path to use when multiple examples with the same name exist (supports full paths, partial paths, or workspace names)
-- port (optional): BRP port to use (default: 15702)
-
 Features: Non-blocking execution, auto-build if needed, temp directory logs, proper CARGO_MANIFEST_DIR.
 
 Notes:

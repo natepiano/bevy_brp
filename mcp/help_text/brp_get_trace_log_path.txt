@@ -1,7 +1,5 @@
 Get the path to the comprehensive BRP diagnostic trace log file.
 
-Parameters: None
-
 Returns information about the trace log file including:
 - log_path: Full path to the trace log file in the system temp directory
 - exists: Boolean indicating whether the log file currently exists

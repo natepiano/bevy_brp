@@ -1,7 +1,3 @@
 Lists bevy_brp_mcp log files sorted newest first with optional verbose details.
 
-Parameters:
-- app_name (optional): Filter by app name
-- verbose (optional): Include full details (path, timestamps, size in bytes). Default is false for minimal output
-
 Returns: Log files from temp directory created when launching Bevy apps.

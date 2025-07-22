@@ -1,7 +1,5 @@
 Discovers BRP-enabled Bevy apps with bevy_remote feature using cargo metadata. Returns app names, paths, build status, and BRP confirmation.
 
-No parameters.
-
 Returns: BRP-enabled apps with name, path, build status (debug/release).
 
 Note: For remote protocol testing. Apps must be built before launching.

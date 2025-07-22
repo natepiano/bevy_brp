@@ -1,7 +1,5 @@
 List active watch subscriptions to audit running tasks, find log paths, or manage resources by identifying unneeded watches.
 
-Parameters: None
-
 Returns:
 - status: "success"
 - count: Number of active watches

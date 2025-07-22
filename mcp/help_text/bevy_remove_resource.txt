@@ -1,9 +1,5 @@
 Removes resources via bevy/remove_resource BRP method. Useful for cleanup, resetting state, testing dependencies, and managing lifecycle.
 
-Parameters:
-- resource (required): Fully-qualified type name
-- port (optional): BRP port (default: 15702)
-
 Example:
 ```json
 {
