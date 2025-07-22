@@ -3,18 +3,7 @@
 use std::sync::Arc;
 
 use super::annotations::{BrpToolAnnotations, EnvironmentImpact, ToolCategory};
-use super::constants::{
-    DESC_BEVY_DESTROY, DESC_BEVY_GET, DESC_BEVY_GET_RESOURCE, DESC_BEVY_GET_WATCH,
-    DESC_BEVY_INSERT, DESC_BEVY_INSERT_RESOURCE, DESC_BEVY_LIST, DESC_BEVY_LIST_RESOURCES,
-    DESC_BEVY_LIST_WATCH, DESC_BEVY_MUTATE_COMPONENT, DESC_BEVY_MUTATE_RESOURCE, DESC_BEVY_QUERY,
-    DESC_BEVY_REGISTRY_SCHEMA, DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_REPARENT,
-    DESC_BEVY_RPC_DISCOVER, DESC_BEVY_SPAWN, DESC_BRP_EXECUTE, DESC_BRP_EXTRAS_DISCOVER_FORMAT,
-    DESC_BRP_EXTRAS_SCREENSHOT, DESC_BRP_EXTRAS_SEND_KEYS, DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-    DESC_DELETE_LOGS, DESC_GET_TRACE_LOG_PATH, DESC_LAUNCH_BEVY_APP, DESC_LAUNCH_BEVY_EXAMPLE,
-    DESC_LIST_ACTIVE_WATCHES, DESC_LIST_BEVY_APPS, DESC_LIST_BEVY_EXAMPLES, DESC_LIST_BRP_APPS,
-    DESC_LIST_LOGS, DESC_READ_LOG, DESC_SET_TRACING_LEVEL, DESC_SHUTDOWN, DESC_STATUS,
-    DESC_STOP_WATCH, ToolName,
-};
+use super::constants::ToolName;
 use super::parameters::extract_parameters;
 use super::tool_def::ToolDef;
 use crate::app_tools::{
@@ -46,7 +35,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
     vec![
         ToolDef {
             name:        ToolName::BevyDestroy.as_ref(),
-            description: DESC_BEVY_DESTROY,
+            description: ToolName::BevyDestroy.description(),
             annotations: BrpToolAnnotations::new(
                 "Destroy Bevy Entity",
                 ToolCategory::Entity,
@@ -65,7 +54,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyGet.as_ref(),
-            description: DESC_BEVY_GET,
+            description: ToolName::BevyGet.description(),
             annotations: BrpToolAnnotations::new(
                 "Get Component Data",
                 ToolCategory::Component,
@@ -101,7 +90,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyGetResource.as_ref(),
-            description: DESC_BEVY_GET_RESOURCE,
+            description: ToolName::BevyGetResource.description(),
             annotations: BrpToolAnnotations::new(
                 "Get Resource Data",
                 ToolCategory::Resource,
@@ -116,7 +105,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyInsert.as_ref(),
-            description: DESC_BEVY_INSERT,
+            description: ToolName::BevyInsert.description(),
             annotations: BrpToolAnnotations::new(
                 "Insert Components",
                 ToolCategory::Component,
@@ -143,7 +132,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyInsertResource.as_ref(),
-            description: DESC_BEVY_INSERT_RESOURCE,
+            description: ToolName::BevyInsertResource.description(),
             annotations: BrpToolAnnotations::new(
                 "Insert Resource",
                 ToolCategory::Resource,
@@ -165,7 +154,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyList.as_ref(),
-            description: DESC_BEVY_LIST,
+            description: ToolName::BevyList.description(),
             annotations: BrpToolAnnotations::new(
                 "List Components",
                 ToolCategory::Component,
@@ -187,7 +176,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyListResources.as_ref(),
-            description: DESC_BEVY_LIST_RESOURCES,
+            description: ToolName::BevyListResources.description(),
             annotations: BrpToolAnnotations::new(
                 "List Resources",
                 ToolCategory::Resource,
@@ -209,7 +198,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyMutateComponent.as_ref(),
-            description: DESC_BEVY_MUTATE_COMPONENT,
+            description: ToolName::BevyMutateComponent.description(),
             annotations: BrpToolAnnotations::new(
                 "Mutate Component",
                 ToolCategory::Component,
@@ -231,7 +220,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyMutateResource.as_ref(),
-            description: DESC_BEVY_MUTATE_RESOURCE,
+            description: ToolName::BevyMutateResource.description(),
             annotations: BrpToolAnnotations::new(
                 "Mutate Resource",
                 ToolCategory::Resource,
@@ -253,7 +242,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyQuery.as_ref(),
-            description: DESC_BEVY_QUERY,
+            description: ToolName::BevyQuery.description(),
             annotations: BrpToolAnnotations::new(
                 "Query Entities/Components",
                 ToolCategory::Component,
@@ -280,7 +269,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyRegistrySchema.as_ref(),
-            description: DESC_BEVY_REGISTRY_SCHEMA,
+            description: ToolName::BevyRegistrySchema.description(),
             annotations: BrpToolAnnotations::new(
                 "Get Type Schemas",
                 ToolCategory::Discovery,
@@ -302,7 +291,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyRemove.as_ref(),
-            description: DESC_BEVY_REMOVE,
+            description: ToolName::BevyRemove.description(),
             annotations: BrpToolAnnotations::new(
                 "Remove Components",
                 ToolCategory::Component,
@@ -328,7 +317,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyRemoveResource.as_ref(),
-            description: DESC_BEVY_REMOVE_RESOURCE,
+            description: ToolName::BevyRemoveResource.description(),
             annotations: BrpToolAnnotations::new(
                 "Remove Resource",
                 ToolCategory::Resource,
@@ -347,7 +336,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyReparent.as_ref(),
-            description: DESC_BEVY_REPARENT,
+            description: ToolName::BevyReparent.description(),
             annotations: BrpToolAnnotations::new(
                 "Reparent Entities",
                 ToolCategory::Entity,
@@ -373,7 +362,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyRpcDiscover.as_ref(),
-            description: DESC_BEVY_RPC_DISCOVER,
+            description: ToolName::BevyRpcDiscover.description(),
             annotations: BrpToolAnnotations::new(
                 "Discover BRP Methods",
                 ToolCategory::Discovery,
@@ -396,7 +385,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // todo: (later) make this match curl
         ToolDef {
             name:        ToolName::BevySpawn.as_ref(),
-            description: DESC_BEVY_SPAWN,
+            description: ToolName::BevySpawn.description(),
             annotations: BrpToolAnnotations::new(
                 "Spawn Entity",
                 ToolCategory::Entity,
@@ -420,7 +409,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // rather than static method names from ToolDef constants
         ToolDef {
             name:        ToolName::BrpExecute.as_ref(),
-            description: DESC_BRP_EXECUTE,
+            description: ToolName::BrpExecute.description(),
             annotations: BrpToolAnnotations::new(
                 "Execute BRP Method",
                 ToolCategory::DynamicBrp,
@@ -435,7 +424,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpExtrasDiscoverFormat.as_ref(),
-            description: DESC_BRP_EXTRAS_DISCOVER_FORMAT,
+            description: ToolName::BrpExtrasDiscoverFormat.description(),
             annotations: BrpToolAnnotations::new(
                 "Discover Component Format",
                 ToolCategory::Extras,
@@ -450,7 +439,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpExtrasScreenshot.as_ref(),
-            description: DESC_BRP_EXTRAS_SCREENSHOT,
+            description: ToolName::BrpExtrasScreenshot.description(),
             annotations: BrpToolAnnotations::new(
                 "Take Screenshot",
                 ToolCategory::Extras,
@@ -469,7 +458,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpExtrasSendKeys.as_ref(),
-            description: DESC_BRP_EXTRAS_SEND_KEYS,
+            description: ToolName::BrpExtrasSendKeys.description(),
             annotations: BrpToolAnnotations::new(
                 "Send Keys",
                 ToolCategory::Extras,
@@ -495,7 +484,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpExtrasSetDebugMode.as_ref(),
-            description: DESC_BRP_EXTRAS_SET_DEBUG_MODE,
+            description: ToolName::BrpExtrasSetDebugMode.description(),
             annotations: BrpToolAnnotations::new(
                 "Set Debug Mode",
                 ToolCategory::Extras,
@@ -525,7 +514,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // the results and log them to a file
         ToolDef {
             name:        ToolName::BevyGetWatch.as_ref(),
-            description: DESC_BEVY_GET_WATCH,
+            description: ToolName::BevyGetWatch.description(),
             annotations: BrpToolAnnotations::new(
                 "Watch Component Changes",
                 ToolCategory::WatchMonitoring,
@@ -556,7 +545,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BevyListWatch.as_ref(),
-            description: DESC_BEVY_LIST_WATCH,
+            description: ToolName::BevyListWatch.description(),
             annotations: BrpToolAnnotations::new(
                 "Watch Component List",
                 ToolCategory::WatchMonitoring,
@@ -587,7 +576,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpDeleteLogs.as_ref(),
-            description: DESC_DELETE_LOGS,
+            description: ToolName::BrpDeleteLogs.description(),
             annotations: BrpToolAnnotations::new(
                 "Delete Log Files",
                 ToolCategory::Logging,
@@ -623,7 +612,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpGetTraceLogPath.as_ref(),
-            description: DESC_GET_TRACE_LOG_PATH,
+            description: ToolName::BrpGetTraceLogPath.description(),
             annotations: BrpToolAnnotations::new(
                 "Get Trace Log Path",
                 ToolCategory::Logging,
@@ -654,7 +643,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpLaunchBevyApp.as_ref(),
-            description: DESC_LAUNCH_BEVY_APP,
+            description: ToolName::BrpLaunchBevyApp.description(),
             annotations: BrpToolAnnotations::new(
                 "Launch Bevy App",
                 ToolCategory::App,
@@ -676,7 +665,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpLaunchBevyExample.as_ref(),
-            description: DESC_LAUNCH_BEVY_EXAMPLE,
+            description: ToolName::BrpLaunchBevyExample.description(),
             annotations: BrpToolAnnotations::new(
                 "Launch Bevy Example",
                 ToolCategory::App,
@@ -698,7 +687,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpListBevyApps.as_ref(),
-            description: DESC_LIST_BEVY_APPS,
+            description: ToolName::BrpListBevyApps.description(),
             annotations: BrpToolAnnotations::new(
                 "List Bevy Apps",
                 ToolCategory::App,
@@ -724,7 +713,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpListBevyExamples.as_ref(),
-            description: DESC_LIST_BEVY_EXAMPLES,
+            description: ToolName::BrpListBevyExamples.description(),
             annotations: BrpToolAnnotations::new(
                 "List Bevy Examples",
                 ToolCategory::App,
@@ -750,7 +739,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpListBrpApps.as_ref(),
-            description: DESC_LIST_BRP_APPS,
+            description: ToolName::BrpListBrpApps.description(),
             annotations: BrpToolAnnotations::new(
                 "List Bevy BRP-enabled Apps",
                 ToolCategory::App,
@@ -776,7 +765,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpListActiveWatches.as_ref(),
-            description: DESC_LIST_ACTIVE_WATCHES,
+            description: ToolName::BrpListActiveWatches.description(),
             annotations: BrpToolAnnotations::new(
                 "List Active Watches",
                 ToolCategory::WatchMonitoring,
@@ -802,7 +791,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpStopWatch.as_ref(),
-            description: DESC_STOP_WATCH,
+            description: ToolName::BrpStopWatch.description(),
             annotations: BrpToolAnnotations::new(
                 "Stop Watch",
                 ToolCategory::WatchMonitoring,
@@ -821,7 +810,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpListLogs.as_ref(),
-            description: DESC_LIST_LOGS,
+            description: ToolName::BrpListLogs.description(),
             annotations: BrpToolAnnotations::new(
                 "List Log Files",
                 ToolCategory::Logging,
@@ -852,7 +841,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpReadLog.as_ref(),
-            description: DESC_READ_LOG,
+            description: ToolName::BrpReadLog.description(),
             annotations: BrpToolAnnotations::new(
                 "Read Log File",
                 ToolCategory::Logging,
@@ -908,7 +897,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpSetTracingLevel.as_ref(),
-            description: DESC_SET_TRACING_LEVEL,
+            description: ToolName::BrpSetTracingLevel.description(),
             annotations: BrpToolAnnotations::new(
                 "Set Tracing Level",
                 ToolCategory::Logging,
@@ -934,7 +923,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpStatus.as_ref(),
-            description: DESC_STATUS,
+            description: ToolName::BrpStatus.description(),
             annotations: BrpToolAnnotations::new(
                 "Check App Status",
                 ToolCategory::App,
@@ -970,7 +959,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             name:        ToolName::BrpShutdown.as_ref(),
-            description: DESC_SHUTDOWN,
+            description: ToolName::BrpShutdown.description(),
             annotations: BrpToolAnnotations::new(
                 "Shutdown Bevy App",
                 ToolCategory::App,

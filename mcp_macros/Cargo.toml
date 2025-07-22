@@ -1,0 +1,20 @@
+[package]
+authors     = ["natepiano <slicks.curable.0k@icloud.com>"]
+categories  = ["development-tools", "game-development"]
+description = "Procedural macros for bevy_brp_mcp"
+edition     = "2024"
+keywords    = ["bevy", "brp", "macros", "mcp"]
+license     = "MIT OR Apache-2.0"
+name        = "bevy_brp_mcp_macros"
+readme      = "README.md"
+repository  = "https://github.com/natepiano/bevy_brp/mcp_macros"
+version     = "0.2.1"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+heck.workspace        = true
+proc-macro2.workspace = true
+quote.workspace       = true
+syn.workspace         = true

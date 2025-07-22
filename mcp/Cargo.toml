@@ -14,6 +14,9 @@ version     = "0.2.1"
 # MCP only needs bevy_remote feature, no defaults
 bevy = { workspace = true, features = ["bevy_remote"] }
 
+# Macro dependencies
+bevy_brp_mcp_macros = { path = "../mcp_macros", version = "0.2.1" }
+
 # All other dependencies use workspace
 anyhow.workspace             = true
 async-trait.workspace        = true
