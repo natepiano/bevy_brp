@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub struct ListActiveWatchesResult {
 
 pub struct BrpListActiveWatches;
 
-impl UnifiedToolFn for BrpListActiveWatches {
+impl ToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
     type CallInfoData = crate::response::LocalCallInfo;
 

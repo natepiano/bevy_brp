@@ -616,55 +616,57 @@ impl ResponseFormatter {
     }
 }
 
-/// Type-safe formatter that accepts our internal Result directly
-pub fn format_tool_result<T, C>(
-    result: Result<T>,
-    handler_context: &HandlerContext,
-    formatter_config: FormatterConfig,
-    call_info_data: C,
-) -> std::result::Result<CallToolResult, McpError>
-where
-    T: serde::Serialize,
-    C: CallInfoProvider,
-{
-    let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
+impl FormatterConfig {
+    /// Type-safe formatter that accepts our internal Result directly
+    pub fn format_tool_result<T, C>(
+        self,
+        result: Result<T>,
+        handler_context: &HandlerContext,
+        call_info_data: C,
+    ) -> std::result::Result<CallToolResult, McpError>
+    where
+        T: serde::Serialize,
+        C: CallInfoProvider,
+    {
+        let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
 
-    match result {
-        Ok(data) => {
-            // Handle success - serialize data and format via ResponseFormatter
-            let value = serde_json::to_value(&data).map_err(|e| {
-                McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
-            })?;
+        match result {
+            Ok(data) => {
+                // Handle success - serialize data and format via ResponseFormatter
+                let value = serde_json::to_value(&data).map_err(|e| {
+                    McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
+                })?;
 
-            let formatter = ResponseFormatter::new(formatter_config);
+                let formatter = ResponseFormatter::new(self);
 
-            // Check if this is a BRP result with format correction information
-            let (format_corrections, format_corrected) = extract_format_correction_info(&value);
+                // Check if this is a BRP result with format correction information
+                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
 
-            Ok(formatter.format_success_with_corrections(
-                &value,
-                handler_context,
-                format_corrections.as_deref(),
-                format_corrected.as_ref(),
-                call_info,
-            ))
-        }
-        Err(report) => {
-            match report.current_context() {
-                Error::ToolCall { message, details } => {
-                    // Handle tool-specific errors (preserve current ToolError behavior)
-                    Ok(ResponseBuilder::error(call_info)
-                        .message(message)
-                        .add_optional_details(details.as_ref())
-                        .build()
-                        .to_call_tool_result())
-                }
-                _ => {
-                    // Catchall for other internal errors that propagated up
-                    Ok(ResponseBuilder::error(call_info)
-                        .message(format!("Internal error: {}", report.current_context()))
-                        .build()
-                        .to_call_tool_result())
+                Ok(formatter.format_success_with_corrections(
+                    &value,
+                    handler_context,
+                    format_corrections.as_deref(),
+                    format_corrected.as_ref(),
+                    call_info,
+                ))
+            }
+            Err(report) => {
+                match report.current_context() {
+                    Error::ToolCall { message, details } => {
+                        // Handle tool-specific errors (preserve current ToolError behavior)
+                        Ok(ResponseBuilder::error(call_info)
+                            .message(message)
+                            .add_optional_details(details.as_ref())
+                            .build()
+                            .to_call_tool_result())
+                    }
+                    _ => {
+                        // Catchall for other internal errors that propagated up
+                        Ok(ResponseBuilder::error(call_info)
+                            .message(format!("Internal error: {}", report.current_context()))
+                            .build()
+                            .to_call_tool_result())
+                    }
                 }
             }
         }

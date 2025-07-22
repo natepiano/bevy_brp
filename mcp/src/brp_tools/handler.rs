@@ -7,13 +7,18 @@ use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
 use crate::error::{Error, Result};
+use crate::tool::HandlerContext;
 
 /// Trait for parameter structs that have a port field
 pub trait HasPortField {
     fn port(&self) -> u16;
 }
 
-use crate::tool::{HandlerContext, HasBrpMethod};
+/// Trait for BRP tools to provide their method string at compile time
+pub trait HasBrpMethod {
+    /// Returns the BRP method string for this tool
+    fn brp_method() -> &'static str;
+}
 
 /// Result type for BRP method calls that follows local handler patterns
 #[derive(Serialize)]

@@ -23,10 +23,10 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use crate::error::Result;
-use crate::response::FormatterConfig;
+use crate::response::{FormatterConfig, LocalCallInfo};
 
 /// Unified trait for all tool handlers (local and BRP)
-pub trait UnifiedToolFn: Send + Sync {
+pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: serde::Serialize + Send + Sync;
     /// The type that provides `CallInfo` data for this tool
@@ -37,7 +37,13 @@ pub trait UnifiedToolFn: Send + Sync {
 }
 
 /// Type-erased version for heterogeneous storage
-/// Provides significant value of formatting the Result correctly
+/// Provides consistent formatting the Result for all tool calls - reducing potential bugs
+/// Also allows us to pass the typed Result to the formatter although
+/// the formatter does serialize it right away so this may be of dubious value
+///
+/// Without some kind of type erasure, we can't use the associated types on `ToolFn`
+/// If retaining the type info is deemed unnecessary, we could serialize result, get rid of
+/// the type erasure and and simplify the call flow a bit.
 pub trait ErasedUnifiedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
@@ -46,8 +52,8 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
 
-/// Blanket implementation to convert typed handlers to erased ones
-impl<T: UnifiedToolFn> ErasedUnifiedToolFn for T {
+/// Blanket implementation to convert typed `ToolFn`s to erased ones
+impl<T: ToolFn> ErasedUnifiedToolFn for T {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
@@ -57,20 +63,12 @@ impl<T: UnifiedToolFn> ErasedUnifiedToolFn for T {
         Box::pin(async move {
             let result = self.call(ctx).await;
             match result {
-                Ok((call_info_data, output)) => crate::response::format_tool_result(
-                    Ok(output),
-                    ctx,
-                    formatter_config,
-                    call_info_data,
-                ),
+                Ok((call_info_data, output)) => {
+                    formatter_config.format_tool_result(Ok(output), ctx, call_info_data)
+                }
                 Err(e) => {
                     // For errors, we don't have CallInfoData, so use a default LocalCallInfo
-                    crate::response::format_tool_result::<T::Output, _>(
-                        Err(e),
-                        ctx,
-                        formatter_config,
-                        crate::response::LocalCallInfo,
-                    )
+                    formatter_config.format_tool_result::<T::Output, _>(Err(e), ctx, LocalCallInfo)
                 }
             }
         })
@@ -111,9 +109,3 @@ impl ToolHandler {
 /// - `Output = crate::error::Result<T>`: Can fail with internal `Error` type
 /// - `+ Send + 'static`: Can be sent between threads, static lifetime
 pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
-
-/// Trait for BRP tools to provide their method string at compile time
-pub trait HasBrpMethod {
-    /// Returns the BRP method string for this tool
-    fn brp_method() -> &'static str;
-}

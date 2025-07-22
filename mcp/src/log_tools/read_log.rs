@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadLogParams {
@@ -43,7 +43,7 @@ pub struct ReadLogResult {
 
 pub struct ReadLog;
 
-impl UnifiedToolFn for ReadLog {
+impl ToolFn for ReadLog {
     type Output = ReadLogResult;
     type CallInfoData = crate::response::LocalCallInfo;
 

@@ -12,7 +12,7 @@ macro_rules! define_brp_tool {
     ($tool_struct:ident, $params_struct:ident, $brp_method:expr) => {
         pub struct $tool_struct;
 
-        impl crate::tool::UnifiedToolFn for $tool_struct {
+        impl crate::tool::ToolFn for $tool_struct {
             type Output = crate::brp_tools::handler::BrpMethodResult;
             type CallInfoData = crate::response::BrpCallInfo;
 
@@ -33,7 +33,8 @@ macro_rules! define_brp_tool {
 
                     Ok((
                         crate::response::BrpCallInfo {
-                            method: <$tool_struct as crate::tool::HasBrpMethod>::brp_method(),
+                            method:
+                                <$tool_struct as crate::brp_tools::handler::HasBrpMethod>::brp_method(),
                             port,
                         },
                         result,
@@ -42,7 +43,7 @@ macro_rules! define_brp_tool {
             }
         }
 
-        impl crate::tool::HasBrpMethod for $tool_struct {
+        impl crate::brp_tools::handler::HasBrpMethod for $tool_struct {
             fn brp_method() -> &'static str {
                 $brp_method
             }

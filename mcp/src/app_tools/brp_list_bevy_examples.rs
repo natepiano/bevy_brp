@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,7 +15,7 @@ pub struct ListBevyExamplesResult {
 
 pub struct ListBevyExamples;
 
-impl UnifiedToolFn for ListBevyExamples {
+impl ToolFn for ListBevyExamples {
     type Output = ListBevyExamplesResult;
     type CallInfoData = crate::response::LocalCallInfo;
 

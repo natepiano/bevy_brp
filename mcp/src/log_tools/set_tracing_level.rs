@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct SetTracingLevelParams {
@@ -24,7 +24,7 @@ pub struct SetTracingLevelResult {
 
 pub struct SetTracingLevel;
 
-impl UnifiedToolFn for SetTracingLevel {
+impl ToolFn for SetTracingLevel {
     type Output = SetTracingLevelResult;
     type CallInfoData = crate::response::LocalCallInfo;
 
@@ -35,7 +35,7 @@ impl UnifiedToolFn for SetTracingLevel {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { 
+        Box::pin(async move {
             let result = handle_impl(&params.level)?;
             Ok((crate::response::LocalCallInfo, result))
         })

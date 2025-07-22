@@ -5,7 +5,7 @@ use sysinfo::System;
 use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::default_port;
 use crate::error::Error;
-use crate::tool::{BRP_METHOD_LIST, HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{BRP_METHOD_LIST, HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct StatusParams {
@@ -34,7 +34,7 @@ pub struct StatusResult {
 
 pub struct Status;
 
-impl UnifiedToolFn for Status {
+impl ToolFn for Status {
     type Output = StatusResult;
     type CallInfoData = crate::response::LocalWithPortCallInfo;
 

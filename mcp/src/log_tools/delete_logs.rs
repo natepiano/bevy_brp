@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct DeleteLogsParams {
@@ -32,7 +32,7 @@ pub struct DeleteLogsResult {
 
 pub struct DeleteLogs;
 
-impl UnifiedToolFn for DeleteLogs {
+impl ToolFn for DeleteLogs {
     type Output = DeleteLogsResult;
     type CallInfoData = crate::response::LocalCallInfo;
 
@@ -43,7 +43,7 @@ impl UnifiedToolFn for DeleteLogs {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { 
+        Box::pin(async move {
             let result = handle_impl(params.app_name.as_deref(), params.older_than_seconds)?;
             Ok((crate::response::LocalCallInfo, result))
         })

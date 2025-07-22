@@ -7,7 +7,7 @@ use tracing::debug;
 use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port};
 use crate::error::{Error, Result};
-use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ShutdownParams {
@@ -124,7 +124,7 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
 
 pub struct Shutdown;
 
-impl UnifiedToolFn for Shutdown {
+impl ToolFn for Shutdown {
     type Output = ShutdownResultData;
     type CallInfoData = crate::response::LocalWithPortCallInfo;
 

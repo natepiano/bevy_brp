@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct StopWatchParams {
@@ -22,7 +22,7 @@ pub struct StopWatchResult {
 
 pub struct BrpStopWatch;
 
-impl UnifiedToolFn for BrpStopWatch {
+impl ToolFn for BrpStopWatch {
     type Output = StopWatchResult;
     type CallInfoData = crate::response::LocalCallInfo;
 
@@ -33,7 +33,7 @@ impl UnifiedToolFn for BrpStopWatch {
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { 
+        Box::pin(async move {
             let result = handle_impl(params.watch_id).await?;
             Ok((crate::response::LocalCallInfo, result))
         })

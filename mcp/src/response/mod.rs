@@ -6,6 +6,6 @@ mod response_fields;
 mod specification;
 
 pub use builder::{BrpCallInfo, CallInfo, CallInfoProvider, LocalCallInfo, LocalWithPortCallInfo};
-pub use formatter::{FormatterConfig, format_tool_result};
+pub use formatter::FormatterConfig;
 pub use response_fields::ResponseFieldName;
 pub use specification::{FieldPlacement, ResponseField, ResponseSpecification};

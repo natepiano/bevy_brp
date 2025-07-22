@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,7 +17,7 @@ pub struct GetTraceLogPathResult {
 /// Handler for the `brp_get_trace_log_path` tool using the `LocalFn` approach
 pub struct GetTraceLogPath;
 
-impl UnifiedToolFn for GetTraceLogPath {
+impl ToolFn for GetTraceLogPath {
     type Output = GetTraceLogPathResult;
     type CallInfoData = crate::response::LocalCallInfo;
 

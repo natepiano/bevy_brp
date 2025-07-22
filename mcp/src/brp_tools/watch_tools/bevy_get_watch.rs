@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::constants::default_port;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, UnifiedToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct GetWatchParams {
@@ -25,7 +25,7 @@ pub struct GetWatchParams {
 
 pub struct BevyGetWatch;
 
-impl UnifiedToolFn for BevyGetWatch {
+impl ToolFn for BevyGetWatch {
     type Output = WatchStartResult;
     type CallInfoData = crate::response::LocalWithPortCallInfo;
 
