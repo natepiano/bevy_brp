@@ -45,6 +45,59 @@ pub struct ResponseFormatter {
 }
 
 impl ResponseFormatter {
+    /// Type-safe formatter that accepts our internal Result directly
+    pub fn format_tool_result<T, C>(
+        self,
+        result: Result<T>,
+        handler_context: &HandlerContext,
+        call_info_data: C,
+    ) -> std::result::Result<CallToolResult, McpError>
+    where
+        T: serde::Serialize,
+        C: CallInfoProvider,
+    {
+        let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
+
+        match result {
+            Ok(data) => {
+                // Handle success - serialize data and format via ResponseFormatter
+                let value = serde_json::to_value(&data).map_err(|e| {
+                    McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
+                })?;
+
+                // Check if this is a BRP result with format correction information
+                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
+
+                Ok(self.format_success_with_corrections(
+                    &value,
+                    handler_context,
+                    format_corrections.as_deref(),
+                    format_corrected.as_ref(),
+                    call_info,
+                ))
+            }
+            Err(report) => {
+                match report.current_context() {
+                    Error::ToolCall { message, details } => {
+                        // Handle tool-specific errors (preserve current ToolError behavior)
+                        Ok(ResponseBuilder::error(call_info)
+                            .message(message)
+                            .add_optional_details(details.as_ref())
+                            .build()
+                            .to_call_tool_result())
+                    }
+                    _ => {
+                        // Catchall for other internal errors that propagated up
+                        Ok(ResponseBuilder::error(call_info)
+                            .message(format!("Internal error: {}", report.current_context()))
+                            .build()
+                            .to_call_tool_result())
+                    }
+                }
+            }
+        }
+    }
+
     /// Extract field value based on `ResponseField` specification
     fn extract_field_value(
         field: &ResponseField,
@@ -120,7 +173,7 @@ impl ResponseFormatter {
         }
     }
 
-    pub fn format_success_with_corrections(
+    fn format_success_with_corrections(
         &self,
         data: &Value,
         handler_context: &HandlerContext,
@@ -435,29 +488,7 @@ impl ResponseFormatter {
 
         final_template_values
     }
-}
 
-/// Substitute placeholders in a template string with values from params
-fn substitute_template(template: &str, params: Option<&Value>) -> String {
-    let mut result = template.to_string();
-
-    if let Some(Value::Object(map)) = params {
-        for (key, value) in map {
-            let placeholder = format!("{{{key}}}");
-            let replacement = match value {
-                Value::String(s) => s.clone(),
-                Value::Number(n) => n.to_string(),
-                Value::Bool(b) => b.to_string(),
-                _ => value.to_string(),
-            };
-            result = result.replace(&placeholder, &replacement);
-        }
-    }
-
-    result
-}
-
-impl ResponseFormatter {
     /// Add format corrections to the response builder - with internal method check
     #[allow(clippy::too_many_lines)]
     fn add_format_corrections(
@@ -605,59 +636,26 @@ impl ResponseFormatter {
                 .message("Request succeeded with format correction applied");
         }
     }
+}
 
-    /// Type-safe formatter that accepts our internal Result directly
-    pub fn format_tool_result<T, C>(
-        self,
-        result: Result<T>,
-        handler_context: &HandlerContext,
-        call_info_data: C,
-    ) -> std::result::Result<CallToolResult, McpError>
-    where
-        T: serde::Serialize,
-        C: CallInfoProvider,
-    {
-        let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
+/// Substitute placeholders in a template string with values from params
+fn substitute_template(template: &str, params: Option<&Value>) -> String {
+    let mut result = template.to_string();
 
-        match result {
-            Ok(data) => {
-                // Handle success - serialize data and format via ResponseFormatter
-                let value = serde_json::to_value(&data).map_err(|e| {
-                    McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
-                })?;
-
-                // Check if this is a BRP result with format correction information
-                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
-
-                Ok(self.format_success_with_corrections(
-                    &value,
-                    handler_context,
-                    format_corrections.as_deref(),
-                    format_corrected.as_ref(),
-                    call_info,
-                ))
-            }
-            Err(report) => {
-                match report.current_context() {
-                    Error::ToolCall { message, details } => {
-                        // Handle tool-specific errors (preserve current ToolError behavior)
-                        Ok(ResponseBuilder::error(call_info)
-                            .message(message)
-                            .add_optional_details(details.as_ref())
-                            .build()
-                            .to_call_tool_result())
-                    }
-                    _ => {
-                        // Catchall for other internal errors that propagated up
-                        Ok(ResponseBuilder::error(call_info)
-                            .message(format!("Internal error: {}", report.current_context()))
-                            .build()
-                            .to_call_tool_result())
-                    }
-                }
-            }
+    if let Some(Value::Object(map)) = params {
+        for (key, value) in map {
+            let placeholder = format!("{{{key}}}");
+            let replacement = match value {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                Value::Bool(b) => b.to_string(),
+                _ => value.to_string(),
+            };
+            result = result.replace(&placeholder, &replacement);
         }
     }
+
+    result
 }
 
 /// Extract format correction information from BRP result JSON
