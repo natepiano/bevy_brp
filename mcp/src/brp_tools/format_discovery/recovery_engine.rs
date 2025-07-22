@@ -18,6 +18,7 @@ use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
+use crate::brp_tools::FormatCorrectionField;
 use crate::brp_tools::brp_client::{self, BrpError, BrpResult};
 use crate::tool::{
     BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_MUTATE_COMPONENT,
@@ -264,7 +265,7 @@ fn execute_level_3_pattern_transformations(
         BRP_METHOD_MUTATE_COMPONENT | BRP_METHOD_MUTATE_RESOURCE
     ) {
         original_params
-            .and_then(|p| p.get("path"))
+            .and_then(|p| p.get(FormatCorrectionField::Path.as_ref()))
             .and_then(|v| v.as_str())
     } else {
         None
@@ -543,7 +544,7 @@ fn extract_type_values_from_params<'a>(
         }
         BRP_METHOD_MUTATE_COMPONENT | BRP_METHOD_INSERT_RESOURCE | BRP_METHOD_MUTATE_RESOURCE => {
             // Return the value field
-            params.get("value")
+            params.get(FormatCorrectionField::Value.as_ref())
         }
         _ => {
             // For other methods, we don't currently support value extraction
@@ -700,7 +701,10 @@ fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<S
         }
         BRP_METHOD_MUTATE_COMPONENT => {
             // Single type in "component" field
-            if let Some(component) = params.get("component").and_then(|c| c.as_str()) {
+            if let Some(component) = params
+                .get(FormatCorrectionField::Component.as_ref())
+                .and_then(|c| c.as_str())
+            {
                 type_names.push(component.to_string());
             }
         }
@@ -735,9 +739,9 @@ fn can_retry_with_corrections(
         if correction.corrected_value.is_null()
             || (correction.corrected_value.is_object()
                 && correction.corrected_value.as_object().is_some_and(|o| {
-                    o.contains_key("hint")
-                        || o.contains_key("examples")
-                        || o.contains_key("valid_values")
+                    o.contains_key(FormatCorrectionField::Hint.as_ref())
+                        || o.contains_key(FormatCorrectionField::Examples.as_ref())
+                        || o.contains_key(FormatCorrectionField::ValidValues.as_ref())
                 }))
         {
             return false;
@@ -755,7 +759,7 @@ fn extract_component_value(method: &str, params: &Value, type_name: &str) -> Opt
             .and_then(|c| c.get(type_name))
             .cloned(),
         BRP_METHOD_INSERT_RESOURCE | BRP_METHOD_MUTATE_COMPONENT | BRP_METHOD_MUTATE_RESOURCE => {
-            params.get("value").cloned()
+            params.get(FormatCorrectionField::Value.as_ref()).cloned()
         }
         _ => None,
     }
@@ -780,7 +784,7 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &st
         }
 
         let mut guidance = serde_json::json!({
-            "hint": "Use appropriate path and value for mutation"
+            FormatCorrectionField::Hint.as_ref(): "Use appropriate path and value for mutation"
         });
 
         if !type_info.format_info.mutation_paths.is_empty() {
@@ -790,17 +794,18 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &st
                 .keys()
                 .cloned()
                 .collect();
-            guidance["available_paths"] = serde_json::json!(paths);
+            guidance[FormatCorrectionField::AvailablePaths.as_ref()] = serde_json::json!(paths);
         }
 
         // Add enum-specific guidance if this is an enum
         if let Some(enum_info) = &type_info.enum_info {
             let variants: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
-            guidance["valid_values"] = serde_json::json!(variants);
-            guidance["hint"] = serde_json::json!("Use empty path with variant name as value");
-            guidance["examples"] = serde_json::json!([
-                {"path": "", "value": variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
-                {"path": "", "value": variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}
+            guidance[FormatCorrectionField::ValidValues.as_ref()] = serde_json::json!(variants);
+            guidance[FormatCorrectionField::Hint.as_ref()] =
+                serde_json::json!("Use empty path with variant name as value");
+            guidance[FormatCorrectionField::Examples.as_ref()] = serde_json::json!([
+                {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
+                {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}
             ]);
         }
 
@@ -836,22 +841,26 @@ fn build_corrected_params(
             }
             BRP_METHOD_INSERT_RESOURCE => {
                 // Update value directly
-                params["value"] = correction.corrected_value.clone();
+                params[FormatCorrectionField::Value.as_ref()] = correction.corrected_value.clone();
             }
             BRP_METHOD_MUTATE_COMPONENT | BRP_METHOD_MUTATE_RESOURCE => {
                 // For mutations, we need both path and value
                 if correction.corrected_value.is_object() {
                     if let Some(obj) = correction.corrected_value.as_object() {
-                        if let (Some(path), Some(value)) = (obj.get("path"), obj.get("value")) {
-                            params["path"] = path.clone();
-                            params["value"] = value.clone();
+                        if let (Some(path), Some(value)) = (
+                            obj.get(FormatCorrectionField::Path.as_ref()),
+                            obj.get(FormatCorrectionField::Value.as_ref()),
+                        ) {
+                            params[FormatCorrectionField::Path.as_ref()] = path.clone();
+                            params[FormatCorrectionField::Value.as_ref()] = value.clone();
                         } else {
                             return Err("Mutation correction missing path or value".to_string());
                         }
                     }
                 } else {
                     // Simple value correction
-                    params["value"] = correction.corrected_value.clone();
+                    params[FormatCorrectionField::Value.as_ref()] =
+                        correction.corrected_value.clone();
                 }
             }
             _ => return Err(format!("Unsupported method for corrections: {method}")),

@@ -10,8 +10,9 @@ use std::ops::RangeInclusive;
 
 /// JSON field name constants for BRP responses
 pub const RESPONSE_DEBUG_INFO: &str = "debug_info";
-pub const RESPONSE_FORMAT_CORRECTIONS: &str = "format_corrections";
-pub const RESPONSE_FORMAT_CORRECTED: &str = "format_corrected";
+// These are now replaced by FormatCorrectionField enum usage directly
+// pub const RESPONSE_FORMAT_CORRECTIONS: &str = "format_corrections";
+// pub const RESPONSE_FORMAT_CORRECTED: &str = "format_corrected";
 pub const RESPONSE_METADATA: &str = "metadata";
 
 // ============================================================================

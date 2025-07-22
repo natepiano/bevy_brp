@@ -2,12 +2,12 @@
 
 use serde_json::Value;
 
-use super::super::constants::{FIELD_LABEL, FIELD_NAME, FIELD_TEXT, FIELD_VALUE};
+use super::super::constants::{FIELD_LABEL, FIELD_NAME, FIELD_TEXT};
 use super::super::detection::ErrorPattern;
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
-use crate::brp_tools::BrpError;
+use crate::brp_tools::{BrpError, FormatCorrectionField};
 
 /// Transformer for string types, especially the Name component
 /// Extracts strings from objects and arrays to convert to string format
@@ -25,7 +25,12 @@ impl StringTypeTransformer {
         match value {
             Value::Object(obj) => {
                 // Try common field names that might contain the string value
-                for field in [FIELD_NAME, FIELD_VALUE, FIELD_TEXT, FIELD_LABEL] {
+                for field in [
+                    FIELD_NAME,
+                    FormatCorrectionField::Value.as_ref(),
+                    FIELD_TEXT,
+                    FIELD_LABEL,
+                ] {
                     if let Some(Value::String(s)) = obj.get(field) {
                         return Some((s.clone(), messages::extracted_from_field(field)));
                     }

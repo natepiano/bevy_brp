@@ -9,7 +9,7 @@ use tracing::debug;
 use super::adapters::from_type_discovery_response_json;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
-use crate::brp_tools::{BrpResult, execute_brp_method};
+use crate::brp_tools::{BrpResult, FormatCorrectionField, execute_brp_method};
 
 /// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(
@@ -156,11 +156,11 @@ pub fn create_correction_from_discovery(
             enum_info.variants.iter().map(|v| v.name.clone()).collect();
 
         let corrected_format = json!({
-            "hint": "Use empty path with variant name as value",
-            "valid_values": variant_names,
-            "examples": variant_names.iter().take(2).map(|variant| json!({
-                "path": "",
-                "value": variant
+            FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
+            FormatCorrectionField::ValidValues.as_ref(): variant_names,
+            FormatCorrectionField::Examples.as_ref(): variant_names.iter().take(2).map(|variant| json!({
+                FormatCorrectionField::Path.as_ref(): "",
+                FormatCorrectionField::Value.as_ref(): variant
             })).collect::<Vec<_>>()
         });
 

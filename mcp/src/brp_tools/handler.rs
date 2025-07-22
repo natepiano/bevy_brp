@@ -6,6 +6,7 @@ use super::brp_client::{BrpError, BrpResult};
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
+use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
 use crate::tool::HandlerContext;
 
@@ -37,22 +38,33 @@ pub struct BrpMethodResult {
 /// Convert a `FormatCorrection` to JSON representation with metadata
 fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     let mut correction_json = json!({
-        "component": correction.component,
-        "original_format": correction.original_format,
-        "corrected_format": correction.corrected_format,
-        "hint": correction.hint
+        FormatCorrectionField::Component.as_ref(): correction.component,
+        FormatCorrectionField::OriginalFormat.as_ref(): correction.original_format,
+        FormatCorrectionField::CorrectedFormat.as_ref(): correction.corrected_format,
+        FormatCorrectionField::Hint.as_ref(): correction.hint
     });
 
     // Add rich metadata fields if available
     if let Some(obj) = correction_json.as_object_mut() {
         if let Some(ops) = &correction.supported_operations {
-            obj.insert("supported_operations".to_string(), json!(ops));
+            obj.insert(
+                FormatCorrectionField::SupportedOperations
+                    .as_ref()
+                    .to_string(),
+                json!(ops),
+            );
         }
         if let Some(paths) = &correction.mutation_paths {
-            obj.insert("mutation_paths".to_string(), json!(paths));
+            obj.insert(
+                FormatCorrectionField::MutationPaths.as_ref().to_string(),
+                json!(paths),
+            );
         }
         if let Some(cat) = &correction.type_category {
-            obj.insert("type_category".to_string(), json!(cat));
+            obj.insert(
+                FormatCorrectionField::TypeCategory.as_ref().to_string(),
+                json!(cat),
+            );
         }
     }
 
@@ -86,7 +98,7 @@ pub fn convert_to_brp_method_result(
                 let mut data_obj = error_data.unwrap_or_else(|| serde_json::json!({}));
                 if let Value::Object(map) = &mut data_obj {
                     map.insert(
-                        "original_error".to_string(),
+                        FormatCorrectionField::OriginalError.as_ref().to_string(),
                         Value::String(err.message.clone()),
                     );
                 }
@@ -95,14 +107,14 @@ pub fn convert_to_brp_method_result(
 
             // Build Error with all the error context including format corrections
             let error_details = serde_json::json!({
-                "code": err.code,
-                "error_data": error_data,
-                "format_corrections": enhanced_result
+                FormatCorrectionField::Code.as_ref(): err.code,
+                FormatCorrectionField::ErrorData.as_ref(): error_data,
+                FormatCorrectionField::FormatCorrections.as_ref(): enhanced_result
                     .format_corrections
                     .iter()
                     .map(format_correction_to_json)
                     .collect::<Vec<_>>(),
-                "format_corrected": enhanced_result.format_corrected
+                FormatCorrectionField::FormatCorrected.as_ref(): enhanced_result.format_corrected
             });
 
             Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())

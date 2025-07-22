@@ -12,6 +12,7 @@ mod watch_tools;
 pub use brp_client::{BrpError, BrpResult, build_brp_url, execute_brp_method};
 // Export special case tools that don't follow the standard pattern
 pub use brp_execute::{BrpExecute, ExecuteParams};
+pub use constants::FormatCorrectionField;
 pub use format_discovery::{FormatCorrection, FormatCorrectionStatus};
 // Export all generated tools and params
 pub use generated::{

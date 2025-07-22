@@ -34,9 +34,6 @@ pub const FORMAT_DISCOVERY_METHODS: &[&str] = &[
 /// Field name for "name" property
 pub const FIELD_NAME: &str = "name";
 
-/// Field name for "value" property
-pub const FIELD_VALUE: &str = "value";
-
 /// Field name for "text" property
 pub const FIELD_TEXT: &str = "text";
 

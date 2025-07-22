@@ -6,7 +6,7 @@ use super::super::detection::ErrorPattern;
 use super::super::unified_types::{TransformationResult, TypeCategory, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
-use crate::brp_tools::BrpError;
+use crate::brp_tools::{BrpError, FormatCorrectionField};
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types
@@ -302,10 +302,10 @@ impl EnumVariantTransformer {
             );
 
             json!({
-                "hint": "Use empty path with variant name as value",
-                "path": "",
-                "valid_values": valid_values,
-                "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+                FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
+                FormatCorrectionField::Path.as_ref(): "",
+                FormatCorrectionField::ValidValues.as_ref(): valid_values,
+                FormatCorrectionField::Examples.as_ref(): valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): v})).collect::<Vec<_>>()
             })
         };
 
@@ -348,10 +348,10 @@ impl EnumVariantTransformer {
 
         // Return format correction that explains empty path usage
         let format_info = json!({
-            "hint": "Use empty path with variant name as value",
-            "path": "",
-            "valid_values": valid_values,
-            "examples": valid_values.iter().take(2).map(|v| json!({"path": "", "value": v})).collect::<Vec<_>>()
+            FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
+            FormatCorrectionField::Path.as_ref(): "",
+            FormatCorrectionField::ValidValues.as_ref(): valid_values,
+            FormatCorrectionField::Examples.as_ref(): valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): v})).collect::<Vec<_>>()
         });
 
         let hint = format!(
@@ -909,13 +909,13 @@ mod tests {
         // Check that the transformed value has the expected structure
         assert!(transformation_result.corrected_value.is_object());
         let obj = transformation_result.corrected_value.as_object().unwrap();
-        assert!(obj.contains_key("hint"));
-        assert!(obj.contains_key("path"));
-        assert!(obj.contains_key("valid_values"));
-        assert!(obj.contains_key("examples"));
+        assert!(obj.contains_key(FormatCorrectionField::Hint.as_ref()));
+        assert!(obj.contains_key(FormatCorrectionField::Path.as_ref()));
+        assert!(obj.contains_key(FormatCorrectionField::ValidValues.as_ref()));
+        assert!(obj.contains_key(FormatCorrectionField::Examples.as_ref()));
 
         // Check that the path is empty as required for unit variant mutation
-        assert_eq!(obj["path"], "");
+        assert_eq!(obj[FormatCorrectionField::Path.as_ref()], "");
     }
 
     #[test]

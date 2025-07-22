@@ -3,7 +3,7 @@ use serde_json::Value;
 use super::extraction::{ResponseFieldType, extract_response_field};
 use super::template_substitution::substitute_template_with_priority;
 use super::{FieldPlacement, ResponseField};
-use crate::brp_tools::{FormatCorrection, FormatCorrectionStatus};
+use crate::brp_tools::{FormatCorrection, FormatCorrectionField, FormatCorrectionStatus};
 use crate::constants::{RESPONSE_DEBUG_INFO, RESPONSE_METADATA};
 use crate::tool::HandlerContext;
 
@@ -75,40 +75,40 @@ impl ResponseComponents {
         Option<FormatCorrectionStatus>,
     ) {
         let format_corrected = value
-            .get("format_corrected")
+            .get(FormatCorrectionField::FormatCorrected.as_ref())
             .and_then(|v| serde_json::from_value(v.clone()).ok());
 
         let format_corrections = value
-            .get("format_corrections")
+            .get(FormatCorrectionField::FormatCorrections.as_ref())
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
                     .map(|correction_json| {
                         // Convert JSON back to FormatCorrection struct
                         let component = correction_json
-                            .get("component")
+                            .get(FormatCorrectionField::Component.as_ref())
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();
 
                         let original_format = correction_json
-                            .get("original_format")
+                            .get(FormatCorrectionField::OriginalFormat.as_ref())
                             .cloned()
                             .unwrap_or(serde_json::Value::Null);
 
                         let corrected_format = correction_json
-                            .get("corrected_format")
+                            .get(FormatCorrectionField::CorrectedFormat.as_ref())
                             .cloned()
                             .unwrap_or(serde_json::Value::Null);
 
                         let hint = correction_json
-                            .get("hint")
+                            .get(FormatCorrectionField::Hint.as_ref())
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string();
 
                         let supported_operations = correction_json
-                            .get("supported_operations")
+                            .get(FormatCorrectionField::SupportedOperations.as_ref())
                             .and_then(|v| v.as_array())
                             .map(|arr| {
                                 arr.iter()
@@ -117,7 +117,7 @@ impl ResponseComponents {
                             });
 
                         let mutation_paths = correction_json
-                            .get("mutation_paths")
+                            .get(FormatCorrectionField::MutationPaths.as_ref())
                             .and_then(|v| v.as_array())
                             .map(|arr| {
                                 arr.iter()
@@ -126,7 +126,7 @@ impl ResponseComponents {
                             });
 
                         let type_category = correction_json
-                            .get("type_category")
+                            .get(FormatCorrectionField::TypeCategory.as_ref())
                             .and_then(|v| v.as_str())
                             .map(String::from);
 
@@ -266,30 +266,48 @@ impl ResponseComponents {
         let mut format_data = serde_json::Map::new();
 
         // Extract format_corrected status
-        if let Some(format_corrected) = data.get("format_corrected") {
+        if let Some(format_corrected) = data.get(FormatCorrectionField::FormatCorrected.as_ref()) {
             if !format_corrected.is_null() {
-                format_data.insert("format_corrected".to_string(), format_corrected.clone());
+                format_data.insert(
+                    FormatCorrectionField::FormatCorrected.as_ref().to_string(),
+                    format_corrected.clone(),
+                );
             }
         }
 
         // Extract original_error if present (when error message was enhanced)
-        if let Some(error_data) = data.get("error_data") {
-            if let Some(original_error) = error_data.get("original_error") {
+        if let Some(error_data) = data.get(FormatCorrectionField::ErrorData.as_ref()) {
+            if let Some(original_error) =
+                error_data.get(FormatCorrectionField::OriginalError.as_ref())
+            {
                 if !original_error.is_null() {
-                    format_data.insert("original_error".to_string(), original_error.clone());
+                    format_data.insert(
+                        FormatCorrectionField::OriginalError.as_ref().to_string(),
+                        original_error.clone(),
+                    );
                 }
             }
         }
 
         // Extract format_corrections array
-        if let Some(format_corrections) = data.get("format_corrections") {
+        if let Some(format_corrections) =
+            data.get(FormatCorrectionField::FormatCorrections.as_ref())
+        {
             if !format_corrections.is_null() {
-                format_data.insert("format_corrections".to_string(), format_corrections.clone());
+                format_data.insert(
+                    FormatCorrectionField::FormatCorrections
+                        .as_ref()
+                        .to_string(),
+                    format_corrections.clone(),
+                );
             }
         }
 
         // Extract metadata from first correction if available
-        if let Some(corrections_array) = data.get("format_corrections").and_then(|c| c.as_array()) {
+        if let Some(corrections_array) = data
+            .get(FormatCorrectionField::FormatCorrections.as_ref())
+            .and_then(|c| c.as_array())
+        {
             if let Some(first_correction) = corrections_array.first() {
                 if let Some(obj) = first_correction.as_object() {
                     Self::extract_correction_metadata(&mut format_data, obj);
@@ -307,38 +325,47 @@ impl ResponseComponents {
     ) {
         // Extract common format correction metadata
         for field in [
-            "hint",
-            "mutation_paths",
-            "supported_operations",
-            "type_category",
+            FormatCorrectionField::Hint,
+            FormatCorrectionField::MutationPaths,
+            FormatCorrectionField::SupportedOperations,
+            FormatCorrectionField::TypeCategory,
         ] {
-            if let Some(value) = correction.get(field) {
+            if let Some(value) = correction.get(field.as_ref()) {
                 if !value.is_null() {
-                    format_data.insert(field.to_string(), value.clone());
+                    format_data.insert(field.as_ref().to_string(), value.clone());
                 }
             }
         }
 
         // Extract rich guidance from corrected_format if available
-        if let Some(corrected_format) = correction.get("corrected_format") {
+        if let Some(corrected_format) =
+            correction.get(FormatCorrectionField::CorrectedFormat.as_ref())
+        {
             if let Some(corrected_obj) = corrected_format.as_object() {
                 Self::extract_rich_guidance(format_data, corrected_obj);
             }
         }
 
         // Also check for examples and valid_values at correction level
-        if !format_data.contains_key("examples") {
-            if let Some(examples) = correction.get("examples") {
+        if !format_data.contains_key(FormatCorrectionField::Examples.as_ref()) {
+            if let Some(examples) = correction.get(FormatCorrectionField::Examples.as_ref()) {
                 if !examples.is_null() {
-                    format_data.insert("examples".to_string(), examples.clone());
+                    format_data.insert(
+                        FormatCorrectionField::Examples.as_ref().to_string(),
+                        examples.clone(),
+                    );
                 }
             }
         }
 
-        if !format_data.contains_key("valid_values") {
-            if let Some(valid_values) = correction.get("valid_values") {
+        if !format_data.contains_key(FormatCorrectionField::ValidValues.as_ref()) {
+            if let Some(valid_values) = correction.get(FormatCorrectionField::ValidValues.as_ref())
+            {
                 if !valid_values.is_null() {
-                    format_data.insert("valid_values".to_string(), valid_values.clone());
+                    format_data.insert(
+                        FormatCorrectionField::ValidValues.as_ref().to_string(),
+                        valid_values.clone(),
+                    );
                 }
             }
         }
@@ -350,24 +377,35 @@ impl ResponseComponents {
         corrected_format: &serde_json::Map<String, Value>,
     ) {
         // Extract examples from corrected_format
-        if let Some(examples) = corrected_format.get("examples") {
+        if let Some(examples) = corrected_format.get(FormatCorrectionField::Examples.as_ref()) {
             if !examples.is_null() {
-                format_data.insert("examples".to_string(), examples.clone());
+                format_data.insert(
+                    FormatCorrectionField::Examples.as_ref().to_string(),
+                    examples.clone(),
+                );
             }
         }
 
         // Extract valid_values from corrected_format
-        if let Some(valid_values) = corrected_format.get("valid_values") {
+        if let Some(valid_values) =
+            corrected_format.get(FormatCorrectionField::ValidValues.as_ref())
+        {
             if !valid_values.is_null() {
-                format_data.insert("valid_values".to_string(), valid_values.clone());
+                format_data.insert(
+                    FormatCorrectionField::ValidValues.as_ref().to_string(),
+                    valid_values.clone(),
+                );
             }
         }
 
         // Also check for hint in corrected_format as fallback
-        if !format_data.contains_key("hint") {
-            if let Some(hint) = corrected_format.get("hint") {
+        if !format_data.contains_key(FormatCorrectionField::Hint.as_ref()) {
+            if let Some(hint) = corrected_format.get(FormatCorrectionField::Hint.as_ref()) {
                 if !hint.is_null() {
-                    format_data.insert("hint".to_string(), hint.clone());
+                    format_data.insert(
+                        FormatCorrectionField::Hint.as_ref().to_string(),
+                        hint.clone(),
+                    );
                 }
             }
         }

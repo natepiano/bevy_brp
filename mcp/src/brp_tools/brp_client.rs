@@ -12,6 +12,7 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use super::json_rpc_builder::BrpJsonRpcBuilder;
+use crate::brp_tools::FormatCorrectionField;
 use crate::constants::{
     BRP_DEFAULT_HOST, BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
     BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,
@@ -172,7 +173,10 @@ fn handle_http_error(
             if let Some(entity) = params.get("entity") {
                 context_info.push(format!("Entity: {entity}"));
             }
-            if let Some(component) = params.get("component").and_then(|c| c.as_str()) {
+            if let Some(component) = params
+                .get(FormatCorrectionField::Component.as_ref())
+                .and_then(|c| c.as_str())
+            {
                 context_info.push(format!("Component: {component}"));
             }
             if let Some(path) = params.get("path").and_then(|p| p.as_str()) {

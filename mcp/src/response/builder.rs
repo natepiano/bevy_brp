@@ -2,6 +2,7 @@ use rmcp::model::{CallToolResult, Content};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
 use crate::response::FieldPlacement;
 
@@ -295,7 +296,6 @@ impl ResponseBuilder {
         components: &super::components::ResponseComponents,
     ) -> Result<Self> {
         use crate::brp_tools::FormatCorrectionStatus;
-        use crate::constants::{RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS};
 
         // Add format_corrected status if provided
         if let Some(status) = &components.format_corrected {
@@ -304,14 +304,20 @@ impl ResponseBuilder {
                     "Failed to serialize format_corrected: {e}"
                 )))
             })?;
-            self = self.add_field(RESPONSE_FORMAT_CORRECTED, &format_corrected_value)?;
+            self = self.add_field(
+                FormatCorrectionField::FormatCorrected.as_ref(),
+                &format_corrected_value,
+            )?;
         }
 
         // Add format corrections array if provided and not empty
         if let Some(corrections) = &components.format_corrections {
             if !corrections.is_empty() {
                 let corrections_value = Self::serialize_format_corrections(corrections);
-                self = self.add_field(RESPONSE_FORMAT_CORRECTIONS, &corrections_value)?;
+                self = self.add_field(
+                    FormatCorrectionField::FormatCorrections.as_ref(),
+                    &corrections_value,
+                )?;
 
                 // Add metadata for successful corrections
                 if components.format_corrected == Some(FormatCorrectionStatus::Succeeded) {
@@ -354,22 +360,22 @@ impl ResponseBuilder {
                 .iter()
                 .map(|correction| {
                     let mut correction_json = serde_json::json!({
-                        "component": correction.component,
-                        "original_format": correction.original_format,
-                        "corrected_format": correction.corrected_format,
-                        "hint": correction.hint
+                        FormatCorrectionField::Component.as_ref(): correction.component,
+                        FormatCorrectionField::OriginalFormat.as_ref(): correction.original_format,
+                        FormatCorrectionField::CorrectedFormat.as_ref(): correction.corrected_format,
+                        FormatCorrectionField::Hint.as_ref(): correction.hint
                     });
 
                     // Add rich metadata fields if available
                     if let Some(obj) = correction_json.as_object_mut() {
                         if let Some(ops) = &correction.supported_operations {
-                            obj.insert("supported_operations".to_string(), serde_json::json!(ops));
+                            obj.insert(FormatCorrectionField::SupportedOperations.as_ref().to_string(), serde_json::json!(ops));
                         }
                         if let Some(paths) = &correction.mutation_paths {
-                            obj.insert("mutation_paths".to_string(), serde_json::json!(paths));
+                            obj.insert(FormatCorrectionField::MutationPaths.as_ref().to_string(), serde_json::json!(paths));
                         }
                         if let Some(cat) = &correction.type_category {
-                            obj.insert("type_category".to_string(), serde_json::json!(cat));
+                            obj.insert(FormatCorrectionField::TypeCategory.as_ref().to_string(), serde_json::json!(cat));
                         }
                     }
 
@@ -392,7 +398,7 @@ impl ResponseBuilder {
         if let Some(ops) = &correction.supported_operations {
             tracing::debug!("Adding supported_operations: {:?}", ops);
             self = self.add_field_to(
-                "supported_operations",
+                FormatCorrectionField::SupportedOperations.as_ref(),
                 serde_json::json!(ops),
                 FieldPlacement::Metadata,
             )?;
@@ -400,7 +406,7 @@ impl ResponseBuilder {
         if let Some(paths) = &correction.mutation_paths {
             tracing::debug!("Adding mutation_paths: {:?}", paths);
             self = self.add_field_to(
-                "mutation_paths",
+                FormatCorrectionField::MutationPaths.as_ref(),
                 serde_json::json!(paths),
                 FieldPlacement::Metadata,
             )?;
@@ -408,7 +414,7 @@ impl ResponseBuilder {
         if let Some(cat) = &correction.type_category {
             tracing::debug!("Adding type_category: {:?}", cat);
             self = self.add_field_to(
-                "type_category",
+                FormatCorrectionField::TypeCategory.as_ref(),
                 serde_json::json!(cat),
                 FieldPlacement::Metadata,
             )?;
