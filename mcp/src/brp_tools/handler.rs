@@ -13,7 +13,7 @@ pub trait HasPortField {
     fn port(&self) -> u16;
 }
 
-use crate::tool::HandlerContext;
+use crate::tool::{HandlerContext, HasBrpMethod};
 
 /// Result type for BRP method calls that follows local handler patterns
 #[derive(Serialize)]
@@ -154,7 +154,7 @@ pub fn execute_static_brp_call<Tool, T>(
     ctx: &HandlerContext,
 ) -> impl std::future::Future<Output = Result<BrpMethodResult>> + Send + 'static
 where
-    Tool: crate::tool::HasBrpMethod,
+    Tool: HasBrpMethod,
     T: serde::de::DeserializeOwned + serde::Serialize + HasPortField + Send,
 {
     let ctx = ctx.clone();
