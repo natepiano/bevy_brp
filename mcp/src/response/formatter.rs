@@ -36,11 +36,6 @@ use crate::tool::HandlerContext;
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
-    config: FormatterConfig,
-}
-
-/// Configuration for the configurable formatter
-pub struct FormatterConfig {
     /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
     pub success_template:      Option<String>,
     /// Additional fields to add to success responses
@@ -50,10 +45,6 @@ pub struct FormatterConfig {
 }
 
 impl ResponseFormatter {
-    pub const fn new(config: FormatterConfig) -> Self {
-        Self { config }
-    }
-
     /// Extract field value based on `ResponseField` specification
     fn extract_field_value(
         field: &ResponseField,
@@ -162,7 +153,7 @@ impl ResponseFormatter {
         match large_response::handle_large_response(
             response,
             method,
-            self.config.large_response_config.clone(),
+            self.large_response_config.clone(),
         ) {
             Ok(processed_response) => {
                 // Return the processed response (either original or with result field saved to
@@ -194,7 +185,7 @@ impl ResponseFormatter {
         tracing::debug!(
             "build_success_response<{}>: response_fields count = {}",
             type_name,
-            self.config.success_fields.len()
+            self.success_fields.len()
         );
 
         let mut builder = ResponseBuilder::success(call_info);
@@ -266,7 +257,7 @@ impl ResponseFormatter {
         mut template_values: serde_json::Map<String, Value>,
         handler_context: &HandlerContext,
     ) -> Result<serde_json::Map<String, Value>> {
-        for field in &self.config.success_fields {
+        for field in &self.success_fields {
             let field_name = field.name();
             let (value, placement) = Self::extract_field_value(field, clean_data, handler_context);
 
@@ -406,7 +397,7 @@ impl ResponseFormatter {
         clean_data: &Value,
         template_values: &serde_json::Map<String, Value>,
     ) {
-        if let Some(template) = &self.config.success_template {
+        if let Some(template) = &self.success_template {
             let final_template_values =
                 Self::resolve_template_placeholders(template, template_values, clean_data);
             let template_params = Value::Object(final_template_values);
@@ -614,9 +605,7 @@ impl ResponseFormatter {
                 .message("Request succeeded with format correction applied");
         }
     }
-}
 
-impl FormatterConfig {
     /// Type-safe formatter that accepts our internal Result directly
     pub fn format_tool_result<T, C>(
         self,
@@ -637,12 +626,10 @@ impl FormatterConfig {
                     McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
                 })?;
 
-                let formatter = ResponseFormatter::new(self);
-
                 // Check if this is a BRP result with format correction information
                 let (format_corrections, format_corrected) = extract_format_correction_info(&value);
 
-                Ok(formatter.format_success_with_corrections(
+                Ok(self.format_success_with_corrections(
                     &value,
                     handler_context,
                     format_corrections.as_deref(),
@@ -673,7 +660,7 @@ impl FormatterConfig {
     }
 }
 
-/// Extract format correction information from V2 BRP result JSON
+/// Extract format correction information from BRP result JSON
 fn extract_format_correction_info(
     value: &serde_json::Value,
 ) -> (

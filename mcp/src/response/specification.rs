@@ -130,7 +130,7 @@ pub struct ResponseSpecification {
 
 impl ResponseSpecification {
     /// Build formatter configuration from this response specification
-    pub fn build_formatter_config(&self) -> super::FormatterConfig {
+    pub fn build_formatter_config(&self) -> super::ResponseFormatter {
         use super::large_response::LargeResponseConfig;
 
         // Set the template if provided
@@ -140,7 +140,7 @@ impl ResponseSpecification {
             Some(self.message_template.to_string())
         };
 
-        super::FormatterConfig {
+        super::ResponseFormatter {
             success_template,
             success_fields: self.response_fields.clone(),
             large_response_config: LargeResponseConfig {

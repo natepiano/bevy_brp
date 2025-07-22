@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use crate::error::Result;
-use crate::response::{FormatterConfig, LocalCallInfo};
+use crate::response::{LocalCallInfo, ResponseFormatter};
 
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
@@ -48,7 +48,7 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
-        formatter_config: FormatterConfig,
+        response_formatter: ResponseFormatter,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
 
@@ -57,18 +57,22 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
-        formatter_config: FormatterConfig,
+        response_formatter: ResponseFormatter,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
     {
         Box::pin(async move {
             let result = self.call(ctx).await;
             match result {
                 Ok((call_info_data, output)) => {
-                    formatter_config.format_tool_result(Ok(output), ctx, call_info_data)
+                    response_formatter.format_tool_result(Ok(output), ctx, call_info_data)
                 }
                 Err(e) => {
                     // For errors, we don't have CallInfoData, so use a default LocalCallInfo
-                    formatter_config.format_tool_result::<T::Output, _>(Err(e), ctx, LocalCallInfo)
+                    response_formatter.format_tool_result::<T::Output, _>(
+                        Err(e),
+                        ctx,
+                        LocalCallInfo,
+                    )
                 }
             }
         })
