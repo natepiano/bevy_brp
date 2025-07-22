@@ -131,7 +131,6 @@ fn enhance_error_message(
     err.message.clone()
 }
 
-
 /// Shared implementation for all static BRP tools
 /// This function handles the common pattern of:
 /// 1. Extract typed parameters
