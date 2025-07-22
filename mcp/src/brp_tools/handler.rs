@@ -74,7 +74,7 @@ pub fn convert_to_brp_method_result(
         BrpResult::Error(ref err) => {
             // Process error enhancements (reuse logic from current handler)
             let enhanced_message = enhance_error_message(err, &enhanced_result, ctx);
-            let mut error_data = enhance_error_data(err.data.clone(), &enhanced_result, ctx);
+            let mut error_data = err.data.clone();
 
             // If message was enhanced, preserve the original error message
             if enhanced_message != err.message {
@@ -131,16 +131,6 @@ fn enhance_error_message(
     err.message.clone()
 }
 
-/// Enhance error data with format corrections
-const fn enhance_error_data(
-    original_data: Option<Value>,
-    _enhanced_result: &EnhancedBrpResult,
-    _ctx: &HandlerContext,
-) -> Option<Value> {
-    // Format corrections are handled through ResponseField::FormatCorrection extractor
-    // which extracts from the main BrpMethodResult.format_corrections field
-    original_data
-}
 
 /// Shared implementation for all static BRP tools
 /// This function handles the common pattern of:
