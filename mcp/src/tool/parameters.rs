@@ -1,4 +1,5 @@
-//! Parameter definitions for our MCP tools
+//! Parameter names, and tools to automatically create parameter definitions for rmcp from our
+//! parameter structs
 use std::collections::HashSet;
 
 use schemars::{JsonSchema, Schema};
