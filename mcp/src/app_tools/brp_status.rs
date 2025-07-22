@@ -6,7 +6,7 @@ use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::default_port;
 use crate::error::Error;
 use crate::tool::{
-    BRP_METHOD_LIST, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod,
+    BRP_METHOD_LIST, HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort,
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -33,10 +33,10 @@ pub struct StatusResult {
 
 pub struct Status;
 
-impl LocalToolFnWithPort for Status {
+impl LocalToolFn for Status {
     type Output = StatusResult;
 
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract and validate parameters using the new typed system
         let params: StatusParams = match ctx.extract_typed_params() {
             Ok(params) => params,

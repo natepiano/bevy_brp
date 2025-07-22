@@ -6,7 +6,7 @@
 /// 3. Implementation of `HasPortField` trait for the params struct
 /// 4. Implementation of `HasBrpMethod` trait with the specified BRP method
 ///
-/// Usage: define_brp_tool!(ToolStruct, ParamsStruct, BRP_METHOD_CONSTANT);
+/// Usage: `define_brp_tool!`(`ToolStruct`, `ParamsStruct`, `BRP_METHOD_CONSTANT`);
 /// The parameter struct must be defined separately in params.rs
 macro_rules! define_brp_tool {
     ($tool_struct:ident, $params_struct:ident, $brp_method:expr) => {

@@ -24,4 +24,4 @@ pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMet
 pub use handler_fn::HandlerFn;
 pub use parameters::ParameterName;
 pub use tool_def::ToolDef;
-pub use types::{BrpToolFn, HandlerResponse, HasBrpMethod, LocalToolFn, LocalToolFnWithPort};
+pub use types::{BrpToolFn, HandlerResponse, HasBrpMethod, LocalToolFn};

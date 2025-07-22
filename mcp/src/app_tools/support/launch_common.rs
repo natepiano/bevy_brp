@@ -7,7 +7,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -100,12 +100,12 @@ impl<T: FromLaunchParams, P: ToLaunchParams> GenericLaunchHandler<T, P> {
     }
 }
 
-impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> LocalToolFnWithPort
+impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> LocalToolFn
     for GenericLaunchHandler<T, P>
 {
     type Output = LaunchResult;
 
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract typed parameters
         let typed_params: P = match ctx.extract_typed_params() {
             Ok(params) => params,

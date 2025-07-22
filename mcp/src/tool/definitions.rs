@@ -434,7 +434,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::DynamicBrp,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:         HandlerFn::local_with_port(BrpExecute),
+            handler:         HandlerFn::local(BrpExecute),
             parameters:      Some(parameters_from_schema::<ExecuteParams>),
             response_format: ResponseSpecification {
                 message_template: "Method executed successfully",
@@ -539,7 +539,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::local_with_port(BevyGetWatch),
+            handler:         HandlerFn::local(BevyGetWatch),
             parameters:      Some(parameters_from_schema::<GetWatchParams>),
             response_format: ResponseSpecification {
                 message_template: "Started entity watch {watch_id} for entity {entity}",
@@ -570,7 +570,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::local_with_port(BevyListWatch),
+            handler:         HandlerFn::local(BevyListWatch),
             parameters:      Some(parameters_from_schema::<ListWatchParams>),
             response_format: ResponseSpecification {
                 message_template: "Started list watch {watch_id} for entity {entity}",
@@ -668,7 +668,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::local_with_port(app_tools::create_launch_bevy_app_handler()),
+            handler:         HandlerFn::local(app_tools::create_launch_bevy_app_handler()),
             parameters:      Some(parameters_from_schema::<LaunchBevyAppParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully launched bevy app '{target_name}' (PID: {pid})",
@@ -690,9 +690,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::local_with_port(
-                app_tools::create_launch_bevy_example_handler(),
-            ),
+            handler:         HandlerFn::local(app_tools::create_launch_bevy_example_handler()),
             parameters:      Some(parameters_from_schema::<LaunchBevyExampleParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully launched example '{target_name}' (PID: {pid})",
@@ -950,7 +948,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::local_with_port(Status),
+            handler:         HandlerFn::local(Status),
             parameters:      Some(parameters_from_schema::<StatusParams>),
             response_format: ResponseSpecification {
                 message_template: "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}",
@@ -986,7 +984,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::App,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:         HandlerFn::local_with_port(Shutdown),
+            handler:         HandlerFn::local(Shutdown),
             parameters:      Some(parameters_from_schema::<ShutdownParams>),
             response_format: ResponseSpecification {
                 message_template: "{message}",

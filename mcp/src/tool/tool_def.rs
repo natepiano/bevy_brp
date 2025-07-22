@@ -48,22 +48,10 @@ impl ToolDef {
         // Direct context creation - pure capability-based approach
         match &self.handler {
             HandlerFn::Local(_) => {
-                // Create HandlerContext<NoPort, NoMethod>
+                // Create HandlerContext<NoPort, NoMethod> - all local tools use this unified
+                // context
                 let ctx = HandlerContext::with_data(self.clone(), request, roots, NoPort, NoMethod);
                 let tool_context = ToolContext::Local(ctx);
-                Ok(ToolHandler::new(self.handler.clone(), tool_context))
-            }
-            HandlerFn::LocalWithPort(_) => {
-                // Extract port and create HandlerContext<HasPort, NoMethod>
-                let port = extract_port_directly(&request)?;
-                let ctx = HandlerContext::with_data(
-                    self.clone(),
-                    request,
-                    roots,
-                    HasPort { port },
-                    NoMethod,
-                );
-                let tool_context = ToolContext::LocalWithPort(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
             HandlerFn::Brp(_) => {
@@ -107,7 +95,7 @@ impl ToolDef {
                     // TODO: Consider adding method to display if needed
                     format!("{category_prefix}: {base_title}")
                 }
-                HandlerFn::Local(_) | HandlerFn::LocalWithPort(_) => {
+                HandlerFn::Local(_) => {
                     format!("{category_prefix}: {base_title}")
                 }
             };

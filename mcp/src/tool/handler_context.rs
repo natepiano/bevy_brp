@@ -125,17 +125,10 @@ impl<Port> HandlerContext<Port, HasMethod> {
 
 // HasCallInfo implementations for each capability combination
 
-// Local tools (no port, no method)
+// Local tools (unified - all use CallInfo::Local for now)
 impl HasCallInfo for HandlerContext<NoPort, NoMethod> {
     fn call_info(&self) -> CallInfo {
         CallInfo::local(self.request.name.to_string())
-    }
-}
-
-// Local tools with port (has port, no method)
-impl HasCallInfo for HandlerContext<HasPort, NoMethod> {
-    fn call_info(&self) -> CallInfo {
-        CallInfo::local_with_port(self.request.name.to_string(), self.port())
     }
 }
 

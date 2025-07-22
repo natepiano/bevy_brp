@@ -4,10 +4,7 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
-use super::types::{
-    BrpToolFn, ErasedBrpToolFn, ErasedLocalToolFn, ErasedLocalToolFnWithPort, LocalToolFn,
-    LocalToolFnWithPort, ToolContext,
-};
+use super::types::{BrpToolFn, ErasedBrpToolFn, ErasedLocalToolFn, LocalToolFn, ToolContext};
 use crate::response::FormatterConfig;
 
 /// Trait for extracting formatter config from any tool context
@@ -19,19 +16,15 @@ impl HasFormatterConfig for ToolContext {
     fn formatter_config(&self) -> FormatterConfig {
         match self {
             Self::Local(local_ctx) => create_formatter_from_def(local_ctx),
-            Self::LocalWithPort(local_with_port_ctx) => {
-                create_formatter_from_def(local_with_port_ctx)
-            }
             Self::Brp(brp_ctx) => create_formatter_from_def(brp_ctx),
         }
     }
 }
 
-/// Enum to hold either basic handler or handler with port
+/// Enum to hold either local handler or BRP handler
 #[derive(Clone)]
 pub enum HandlerFn {
     Local(Arc<dyn ErasedLocalToolFn>),
-    LocalWithPort(Arc<dyn ErasedLocalToolFnWithPort>),
     Brp(Arc<dyn ErasedBrpToolFn>),
 }
 
@@ -51,9 +44,6 @@ impl HandlerFn {
             (Self::Local(handler), ToolContext::Local(local_ctx)) => {
                 handler.call_erased(local_ctx, formatter_config)
             }
-            (Self::LocalWithPort(handler), ToolContext::LocalWithPort(local_with_port_ctx)) => {
-                handler.call_erased(local_with_port_ctx, formatter_config)
-            }
             (Self::Brp(handler), ToolContext::Brp(brp_ctx)) => {
                 handler.call_erased(brp_ctx, formatter_config)
             }
@@ -68,14 +58,9 @@ impl HandlerFn {
 }
 
 impl HandlerFn {
-    /// Create a Basic handler with automatic Arc wrapping
+    /// Create a local handler with automatic Arc wrapping
     pub fn local<T: LocalToolFn + 'static>(handler: T) -> Self {
         Self::Local(Arc::new(handler))
-    }
-
-    /// Create a `WithPort` handler with automatic Arc wrapping
-    pub fn local_with_port<T: LocalToolFnWithPort + 'static>(handler: T) -> Self {
-        Self::LocalWithPort(Arc::new(handler))
     }
 
     /// Create a BRP handler

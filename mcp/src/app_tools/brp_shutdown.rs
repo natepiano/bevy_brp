@@ -8,8 +8,7 @@ use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port};
 use crate::error::{Error, Result};
 use crate::tool::{
-    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort,
-    NoMethod,
+    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort,
 };
 
 #[derive(Deserialize, JsonSchema)]
@@ -124,10 +123,10 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
 
 pub struct Shutdown;
 
-impl LocalToolFnWithPort for Shutdown {
+impl LocalToolFn for Shutdown {
     type Output = ShutdownResultData;
 
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract and validate parameters using the new typed system
         let params: ShutdownParams = match ctx.extract_typed_params() {
             Ok(params) => params,

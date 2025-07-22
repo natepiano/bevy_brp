@@ -60,10 +60,10 @@ impl CallInfo {
         Self::Local { mcp_tool }
     }
 
-    /// Create `CallInfo` for a local tool with port
-    pub const fn local_with_port(mcp_tool: String, port: u16) -> Self {
-        Self::LocalWithPort { mcp_tool, port }
-    }
+    // /// Create `CallInfo` for a local tool with port
+    // pub const fn local_with_port(mcp_tool: String, port: u16) -> Self {
+    //     Self::LocalWithPort { mcp_tool, port }
+    // }
 
     /// Create `CallInfo` for a BRP tool
     pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {

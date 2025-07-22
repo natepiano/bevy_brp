@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::constants::default_port;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResponse, HasPort, LocalToolFnWithPort, NoMethod};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListWatchParams {
@@ -19,10 +19,10 @@ pub struct ListWatchParams {
 
 pub struct BevyListWatch;
 
-impl LocalToolFnWithPort for BevyListWatch {
+impl LocalToolFn for BevyListWatch {
     type Output = WatchStartResult;
 
-    fn call(&self, ctx: &HandlerContext<HasPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
         // Extract typed parameters
         let params: ListWatchParams = match ctx.extract_typed_params() {
             Ok(params) => params,
