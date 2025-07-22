@@ -18,7 +18,7 @@ pub fn is_valid_log_filename(filename: &str) -> bool {
 
 /// Parses app log filename with port pattern into app name and timestamp
 /// Returns `Some((app_name, timestamp_str))` if matches app log pattern, `None` otherwise
-/// 
+///
 /// Format: bevy_brp_mcp_{app_name}_port{number}_{timestamp}_{suffix}.log
 /// Extracts app_name as the part between "bevy_brp_mcp_" and "_port{number}"
 pub fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
@@ -28,7 +28,7 @@ pub fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
 
     // Pattern: bevy_brp_mcp_{app_name}_port{digits}_{timestamp}_{suffix}.log
     let re = Regex::new(r"^bevy_brp_mcp_(.+?)_port\d+_(\d+)_\d+\.log$").unwrap();
-    
+
     if let Some(captures) = re.captures(filename) {
         let app_name = captures.get(1)?.as_str().to_string();
         let timestamp = captures.get(2)?.as_str().to_string();
@@ -40,7 +40,7 @@ pub fn parse_app_log_filename(filename: &str) -> Option<(String, String)> {
 
 /// Parses any log filename into app name and timestamp components
 /// Returns `Some((app_name, timestamp_str))` if valid, `None` otherwise
-/// 
+///
 /// Tries app log pattern first, falls back to generic pattern for other log types
 pub fn parse_log_filename(filename: &str) -> Option<(String, String)> {
     // Try app log pattern first
