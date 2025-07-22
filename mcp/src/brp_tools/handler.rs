@@ -73,7 +73,7 @@ pub fn convert_to_brp_method_result(
         }
         BrpResult::Error(ref err) => {
             // Process error enhancements (reuse logic from current handler)
-            let enhanced_message = enhance_error_message(err, &enhanced_result, ctx);
+            let enhanced_message = enhance_error_message(err, &enhanced_result);
             let mut error_data = err.data.clone();
 
             // If message was enhanced, preserve the original error message
@@ -106,11 +106,7 @@ pub fn convert_to_brp_method_result(
 }
 
 /// Enhance error message with format discovery insights
-fn enhance_error_message(
-    err: &BrpError,
-    enhanced_result: &EnhancedBrpResult,
-    _ctx: &HandlerContext,
-) -> String {
+fn enhance_error_message(err: &BrpError, enhanced_result: &EnhancedBrpResult) -> String {
     // Check if the enhanced result has a different error message
     if let BrpResult::Error(enhanced_error) = &enhanced_result.result {
         if enhanced_error.message != err.message {
