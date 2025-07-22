@@ -34,14 +34,19 @@ pub struct DeleteLogs;
 
 impl UnifiedToolFn for DeleteLogs {
     type Output = DeleteLogsResult;
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    type CallInfoData = crate::response::LocalCallInfo;
+
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let params: DeleteLogsParams = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { handle_impl(params.app_name.as_deref(), params.older_than_seconds) })
+        Box::pin(async move { 
+            let result = handle_impl(params.app_name.as_deref(), params.older_than_seconds)?;
+            Ok((crate::response::LocalCallInfo, result))
+        })
     }
 }
 

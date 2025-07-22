@@ -29,8 +29,9 @@ pub struct ListLogs;
 
 impl UnifiedToolFn for ListLogs {
     type Output = ListLogResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let params: ListLogsParams = match ctx.extract_typed_params() {
             Ok(params) => params,
@@ -39,10 +40,13 @@ impl UnifiedToolFn for ListLogs {
 
         Box::pin(async move {
             match list_log_files(params.app_name.as_deref(), params.verbose) {
-                Ok(logs) => Ok(ListLogResult {
-                    logs,
-                    temp_directory: support::get_log_directory().display().to_string(),
-                }),
+                Ok(logs) => {
+                    let result = ListLogResult {
+                        logs,
+                        temp_directory: support::get_log_directory().display().to_string(),
+                    };
+                    Ok((crate::response::LocalCallInfo, result))
+                }
                 Err(e) => Err(Error::tool_call_failed(e.message).into()),
             }
         })

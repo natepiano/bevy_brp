@@ -26,15 +26,19 @@ pub struct SetTracingLevel;
 
 impl UnifiedToolFn for SetTracingLevel {
     type Output = SetTracingLevelResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let params: SetTracingLevelParams = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { handle_impl(&params.level) })
+        Box::pin(async move { 
+            let result = handle_impl(&params.level)?;
+            Ok((crate::response::LocalCallInfo, result))
+        })
     }
 }
 

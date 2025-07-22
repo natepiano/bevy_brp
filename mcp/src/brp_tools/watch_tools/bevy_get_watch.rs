@@ -27,15 +27,20 @@ pub struct BevyGetWatch;
 
 impl UnifiedToolFn for BevyGetWatch {
     type Output = WatchStartResult;
+    type CallInfoData = crate::response::LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let params: GetWatchParams = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { handle_impl(params.entity, Some(params.types), params.port).await })
+        let port = params.port;
+        Box::pin(async move {
+            let result = handle_impl(params.entity, Some(params.types), port).await?;
+            Ok((crate::response::LocalWithPortCallInfo { port }, result))
+        })
     }
 }
 

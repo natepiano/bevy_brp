@@ -126,18 +126,21 @@ pub struct Shutdown;
 
 impl UnifiedToolFn for Shutdown {
     type Output = ShutdownResultData;
+    type CallInfoData = crate::response::LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract and validate parameters using the new typed system
         let params: ShutdownParams = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
+        let port = params.port;
         Box::pin(async move {
-            handle_impl(&params.app_name, params.port)
+            let result = handle_impl(&params.app_name, port)
                 .await
-                .map_err(|e| Error::tool_call_failed(e.message).into())
+                .map_err(|e| Error::tool_call_failed(e.message))?;
+            Ok((crate::response::LocalWithPortCallInfo { port }, result))
         })
     }
 }

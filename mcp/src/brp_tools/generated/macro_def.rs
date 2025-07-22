@@ -14,15 +14,31 @@ macro_rules! define_brp_tool {
 
         impl crate::tool::UnifiedToolFn for $tool_struct {
             type Output = crate::brp_tools::handler::BrpMethodResult;
+            type CallInfoData = crate::response::BrpCallInfo;
 
             fn call(
                 &self,
                 ctx: &crate::tool::HandlerContext,
-            ) -> crate::tool::HandlerResponse<Self::Output> {
-                Box::pin(crate::brp_tools::handler::execute_static_brp_call::<
-                    $tool_struct,
-                    $params_struct,
-                >(ctx))
+            ) -> crate::tool::HandlerResponse<(Self::CallInfoData, Self::Output)> {
+                let ctx_clone = ctx.clone();
+                Box::pin(async move {
+                    let params = ctx_clone.extract_typed_params::<$params_struct>()?;
+                    let port =
+                        <$params_struct as crate::brp_tools::handler::HasPortField>::port(&params);
+                    let result = crate::brp_tools::handler::execute_static_brp_call::<
+                        $tool_struct,
+                        $params_struct,
+                    >(&ctx_clone)
+                    .await?;
+
+                    Ok((
+                        crate::response::BrpCallInfo {
+                            method: <$tool_struct as crate::tool::HasBrpMethod>::brp_method(),
+                            port,
+                        },
+                        result,
+                    ))
+                })
             }
         }
 

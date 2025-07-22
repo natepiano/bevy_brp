@@ -31,9 +31,13 @@ pub struct BrpListActiveWatches;
 
 impl UnifiedToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, _ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
-        Box::pin(async move { handle_impl().await })
+    fn call(&self, _ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+        Box::pin(async move {
+            let result = handle_impl().await?;
+            Ok((crate::response::LocalCallInfo, result))
+        })
     }
 }
 

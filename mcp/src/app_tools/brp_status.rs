@@ -36,15 +36,20 @@ pub struct Status;
 
 impl UnifiedToolFn for Status {
     type Output = StatusResult;
+    type CallInfoData = crate::response::LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract and validate parameters using the new typed system
         let params: StatusParams = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { handle_impl(&params.app_name, params.port).await })
+        let port = params.port;
+        Box::pin(async move {
+            let result = handle_impl(&params.app_name, port).await?;
+            Ok((crate::response::LocalWithPortCallInfo { port }, result))
+        })
     }
 }
 

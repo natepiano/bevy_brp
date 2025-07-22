@@ -19,8 +19,9 @@ pub struct GetTraceLogPath;
 
 impl UnifiedToolFn for GetTraceLogPath {
     type Output = GetTraceLogPathResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, _ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, _ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         Box::pin(async move {
             // Get the trace log path
             let log_path = get_trace_log_path();
@@ -36,7 +37,7 @@ impl UnifiedToolFn for GetTraceLogPath {
                 file_size_bytes,
             };
 
-            Ok(result)
+            Ok((crate::response::LocalCallInfo, result))
         })
     }
 }

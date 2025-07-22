@@ -17,15 +17,17 @@ pub struct ListBevyExamples;
 
 impl UnifiedToolFn for ListBevyExamples {
     type Output = ListBevyExamplesResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Clone context to owned data for async move closure
         let owned_ctx = ctx.clone();
 
         Box::pin(async move {
-            handle_impl(&owned_ctx)
+            let result = handle_impl(&owned_ctx)
                 .await
-                .map_err(|e| Error::tool_call_failed(e.message).into())
+                .map_err(|e| Error::tool_call_failed(e.message))?;
+            Ok((crate::response::LocalCallInfo, result))
         })
     }
 }

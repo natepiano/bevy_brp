@@ -104,8 +104,9 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
     for GenericLaunchHandler<T, P>
 {
     type Output = LaunchResult;
+    type CallInfoData = crate::response::LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let typed_params: P = match ctx.extract_typed_params() {
             Ok(params) => params,
@@ -114,6 +115,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
 
         // Convert to LaunchParams
         let params = typed_params.to_launch_params(self.default_profile);
+        let port = params.port;
 
         let ctx_clone = ctx.clone();
         Box::pin(async move {
@@ -124,7 +126,8 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
             let config = T::from_params(&params);
 
             // Launch the target
-            launch_target(&config, &search_paths)
+            let result = launch_target(&config, &search_paths)?;
+            Ok((crate::response::LocalWithPortCallInfo { port }, result))
         })
     }
 }

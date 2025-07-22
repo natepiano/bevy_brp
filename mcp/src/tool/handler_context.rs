@@ -4,13 +4,7 @@ use rmcp::model::CallToolRequestParam;
 use serde_json::Value;
 
 use crate::error::Error;
-use crate::response::CallInfo;
 use crate::tool::ToolDef;
-
-/// Trait for `HandlerContext` types that can provide `CallInfo`
-pub trait HasCallInfo {
-    fn call_info(&self) -> CallInfo;
-}
 
 /// Context passed to all handlers containing service, request, and MCP context
 #[derive(Clone)]
@@ -70,14 +64,5 @@ impl HandlerContext {
             .attach_printable("Parameter validation failed")
             .attach_printable(format!("Expected type: {}", std::any::type_name::<T>()))
         })
-    }
-}
-
-// HasCallInfo implementation for simplified HandlerContext
-impl HasCallInfo for HandlerContext {
-    fn call_info(&self) -> CallInfo {
-        // Temporary implementation - all tools use CallInfo::Local for now
-        // Phase 6 will restore proper CallInfo variants
-        CallInfo::local(self.request.name.to_string())
     }
 }

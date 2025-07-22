@@ -60,19 +60,57 @@ impl CallInfo {
         Self::Local { mcp_tool }
     }
 
-    // /// Create `CallInfo` for a local tool with port
-    // pub const fn local_with_port(mcp_tool: String, port: u16) -> Self {
-    //     Self::LocalWithPort { mcp_tool, port }
-    // }
+    /// Create `CallInfo` for a local tool with port
+    pub const fn local_with_port(mcp_tool: String, port: u16) -> Self {
+        Self::LocalWithPort { mcp_tool, port }
+    }
 
-    // /// Create `CallInfo` for a BRP tool
-    // pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
-    //     Self::Brp {
-    //         mcp_tool,
-    //         brp_method,
-    //         port,
-    //     }
-    // }
+    /// Create `CallInfo` for a BRP tool
+    pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
+        Self::Brp {
+            mcp_tool,
+            brp_method,
+            port,
+        }
+    }
+}
+
+/// Trait for types that can provide `CallInfo` data
+pub trait CallInfoProvider: Send + Sync {
+    /// Convert this provider into a `CallInfo` instance
+    fn to_call_info(&self, tool_name: String) -> CallInfo;
+}
+
+/// Marker type for local tools without port
+pub struct LocalCallInfo;
+
+/// Marker type for local tools with port
+pub struct LocalWithPortCallInfo {
+    pub port: u16,
+}
+
+/// Marker type for BRP tools
+pub struct BrpCallInfo {
+    pub method: &'static str,
+    pub port:   u16,
+}
+
+impl CallInfoProvider for LocalCallInfo {
+    fn to_call_info(&self, tool_name: String) -> CallInfo {
+        CallInfo::local(tool_name)
+    }
+}
+
+impl CallInfoProvider for LocalWithPortCallInfo {
+    fn to_call_info(&self, tool_name: String) -> CallInfo {
+        CallInfo::local_with_port(tool_name, self.port)
+    }
+}
+
+impl CallInfoProvider for BrpCallInfo {
+    fn to_call_info(&self, tool_name: String) -> CallInfo {
+        CallInfo::brp(tool_name, self.method.to_string(), self.port)
+    }
 }
 
 impl JsonResponse {

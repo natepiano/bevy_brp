@@ -24,15 +24,19 @@ pub struct BrpStopWatch;
 
 impl UnifiedToolFn for BrpStopWatch {
     type Output = StopWatchResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let params: StopWatchParams = match ctx.extract_typed_params() {
             Ok(params) => params,
             Err(e) => return Box::pin(async move { Err(e) }),
         };
 
-        Box::pin(async move { handle_impl(params.watch_id).await })
+        Box::pin(async move { 
+            let result = handle_impl(params.watch_id).await?;
+            Ok((crate::response::LocalCallInfo, result))
+        })
     }
 }
 

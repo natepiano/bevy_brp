@@ -33,24 +33,27 @@ pub struct BrpExecute;
 
 impl UnifiedToolFn for BrpExecute {
     type Output = BrpMethodResult;
+    type CallInfoData = crate::response::LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         let ctx = ctx.clone();
 
         Box::pin(async move {
             // Extract typed parameters
             let params = ctx.extract_typed_params::<ExecuteParams>()?;
+            let port = params.port;
 
             // For brp_execute, use method from parameters (user input)
             let enhanced_result = execute_brp_method_with_format_discovery(
                 &params.method, // User-provided method name from ExecuteParams
                 params.params,  // User-provided params (already Option<Value>)
-                params.port,    // Use typed port parameter
+                port,           // Use typed port parameter
             )
             .await?;
 
             // Convert result using existing conversion function
-            convert_to_brp_method_result(enhanced_result, &ctx)
+            let result = convert_to_brp_method_result(enhanced_result, &ctx)?;
+            Ok((crate::response::LocalWithPortCallInfo { port }, result))
         })
     }
 }

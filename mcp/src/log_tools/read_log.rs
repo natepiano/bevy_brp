@@ -45,8 +45,9 @@ pub struct ReadLog;
 
 impl UnifiedToolFn for ReadLog {
     type Output = ReadLogResult;
+    type CallInfoData = crate::response::LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
         let params: ReadLogParams = match ctx.extract_typed_params() {
             Ok(params) => params,
@@ -67,8 +68,9 @@ impl UnifiedToolFn for ReadLog {
                 None => None,
             };
 
-            handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
-                .map_err(|e| Error::tool_call_failed(e.message).into())
+            let result = handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
+                .map_err(|e| Error::tool_call_failed(e.message))?;
+            Ok((crate::response::LocalCallInfo, result))
         })
     }
 }

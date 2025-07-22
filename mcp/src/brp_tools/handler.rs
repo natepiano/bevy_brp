@@ -57,7 +57,7 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 /// Convert `EnhancedBrpResult` to `BrpMethodResult`
 pub fn convert_to_brp_method_result(
     enhanced_result: EnhancedBrpResult,
-    ctx: &HandlerContext,
+    _ctx: &HandlerContext,
 ) -> Result<BrpMethodResult> {
     match enhanced_result.result {
         BrpResult::Success(data) => {

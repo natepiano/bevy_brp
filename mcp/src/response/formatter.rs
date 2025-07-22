@@ -22,7 +22,7 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
-use super::builder::{JsonResponse, ResponseBuilder};
+use super::builder::{CallInfo, CallInfoProvider, JsonResponse, ResponseBuilder};
 use super::extraction::{ResponseFieldType, extract_response_field};
 use super::large_response::{self, LargeResponseConfig};
 use super::specification::{FieldPlacement, ResponseField, ResponseFieldSpec};
@@ -32,7 +32,7 @@ use crate::constants::{
     RESPONSE_DEBUG_INFO, RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS, RESPONSE_METADATA,
 };
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HasCallInfo};
+use crate::tool::HandlerContext;
 
 /// A configurable formatter that can handle various BRP response formatting needs
 pub struct ResponseFormatter {
@@ -135,20 +135,19 @@ impl ResponseFormatter {
         handler_context: &HandlerContext,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
-    ) -> CallToolResult
-    where
-        HandlerContext: HasCallInfo,
-    {
+        call_info: CallInfo,
+    ) -> CallToolResult {
         // First build the response
         let response_result = self.build_success_response_with_corrections(
             data,
             handler_context,
             format_corrections,
             format_corrected,
+            call_info.clone(),
         );
         response_result.map_or_else(
             |_| {
-                let fallback = ResponseBuilder::error(handler_context.call_info())
+                let fallback = ResponseBuilder::error(call_info)
                     .message("Failed to build success response")
                     .build();
                 fallback.to_call_tool_result()
@@ -189,10 +188,8 @@ impl ResponseFormatter {
         handler_context: &HandlerContext,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
-    ) -> Result<JsonResponse>
-    where
-        HandlerContext: HasCallInfo,
-    {
+        call_info: CallInfo,
+    ) -> Result<JsonResponse> {
         let type_name = "HandlerContext";
         tracing::debug!(
             "build_success_response<{}>: response_fields count = {}",
@@ -200,7 +197,6 @@ impl ResponseFormatter {
             self.config.success_fields.len()
         );
 
-        let call_info = handler_context.call_info();
         let mut builder = ResponseBuilder::success(call_info);
         let template_values = Self::initialize_template_values(handler_context);
         let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
@@ -621,15 +617,18 @@ impl ResponseFormatter {
 }
 
 /// Type-safe formatter that accepts our internal Result directly
-pub fn format_tool_result<T>(
+pub fn format_tool_result<T, C>(
     result: Result<T>,
     handler_context: &HandlerContext,
     formatter_config: FormatterConfig,
+    call_info_data: C,
 ) -> std::result::Result<CallToolResult, McpError>
 where
     T: serde::Serialize,
-    HandlerContext: HasCallInfo,
+    C: CallInfoProvider,
 {
+    let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
+
     match result {
         Ok(data) => {
             // Handle success - serialize data and format via ResponseFormatter
@@ -647,13 +646,14 @@ where
                 handler_context,
                 format_corrections.as_deref(),
                 format_corrected.as_ref(),
+                call_info,
             ))
         }
         Err(report) => {
             match report.current_context() {
                 Error::ToolCall { message, details } => {
                     // Handle tool-specific errors (preserve current ToolError behavior)
-                    Ok(ResponseBuilder::error(handler_context.call_info())
+                    Ok(ResponseBuilder::error(call_info)
                         .message(message)
                         .add_optional_details(details.as_ref())
                         .build()
@@ -661,7 +661,7 @@ where
                 }
                 _ => {
                     // Catchall for other internal errors that propagated up
-                    Ok(ResponseBuilder::error(handler_context.call_info())
+                    Ok(ResponseBuilder::error(call_info)
                         .message(format!("Internal error: {}", report.current_context()))
                         .build()
                         .to_call_tool_result())

@@ -29,9 +29,11 @@ use crate::response::FormatterConfig;
 pub trait UnifiedToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: serde::Serialize + Send + Sync;
+    /// The type that provides `CallInfo` data for this tool
+    type CallInfoData: crate::response::CallInfoProvider;
 
-    /// Handle the request and return a typed result
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output>;
+    /// Handle the request and return a typed result with `CallInfo` data
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)>;
 }
 
 /// Type-erased version for heterogeneous storage
@@ -53,7 +55,23 @@ impl<T: UnifiedToolFn> ErasedUnifiedToolFn for T {
     {
         Box::pin(async move {
             let result = self.call(ctx).await;
-            crate::response::format_tool_result(result, ctx, formatter_config)
+            match result {
+                Ok((call_info_data, output)) => crate::response::format_tool_result(
+                    Ok(output),
+                    ctx,
+                    formatter_config,
+                    call_info_data,
+                ),
+                Err(e) => {
+                    // For errors, we don't have CallInfoData, so use a default LocalCallInfo
+                    crate::response::format_tool_result::<T::Output, _>(
+                        Err(e),
+                        ctx,
+                        formatter_config,
+                        crate::response::LocalCallInfo,
+                    )
+                }
+            }
         })
     }
 }
@@ -91,7 +109,7 @@ impl ToolHandler {
 /// - `dyn Future`: Async function that can be awaited
 /// - `Output = crate::error::Result<T>`: Can fail with internal `Error` type
 /// - `+ Send + 'static`: Can be sent between threads, static lifetime
-pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'static>>;
+pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
 /// Trait for BRP tools to provide their method string at compile time
 pub trait HasBrpMethod {
