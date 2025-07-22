@@ -59,33 +59,17 @@ impl ResponseFormatter {
         let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
 
         match result {
-            Ok(data) => {
-                // Handle success - serialize data and format via ResponseFormatter
-                let value = serde_json::to_value(&data).map_err(|e| {
-                    McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
-                })?;
-
-                // Check if this is a BRP result with format correction information
-                let (format_corrections, format_corrected) = extract_format_correction_info(&value);
-
-                Ok(self.format_success_with_corrections(
-                    &value,
-                    handler_context,
-                    format_corrections.as_deref(),
-                    format_corrected.as_ref(),
-                    call_info,
-                ))
-            }
+            Ok(data) => self.format_success(data, handler_context, call_info),
             Err(report) => {
                 match report.current_context() {
-                    Error::ToolCall { message, details } => {
-                        // Handle tool-specific errors (preserve current ToolError behavior)
-                        Ok(ResponseBuilder::error(call_info)
-                            .message(message)
-                            .add_optional_details(details.as_ref())
-                            .build()
-                            .to_call_tool_result())
-                    }
+                    // Handle tool-specific errors - Error::ToolCall captures standard Brp tool
+                    // errors - propagating standard "message" and "details" fields
+                    // from Brp tools
+                    Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
+                        .message(message)
+                        .add_optional_details(details.as_ref())
+                        .build()
+                        .to_call_tool_result()),
                     _ => {
                         // Catchall for other internal errors that propagated up
                         Ok(ResponseBuilder::error(call_info)
@@ -96,6 +80,67 @@ impl ResponseFormatter {
                 }
             }
         }
+    }
+
+    fn format_success<T>(
+        &self,
+        data: T,
+        handler_context: &HandlerContext,
+        call_info: CallInfo,
+    ) -> std::result::Result<CallToolResult, McpError>
+    where
+        T: serde::Serialize,
+    {
+        // Serialize the data
+        let value = serde_json::to_value(&data).map_err(|e| {
+            McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
+        })?;
+
+        //  build the response
+        let response_result =
+            self.build_success_response(&value, handler_context, call_info.clone());
+
+        Ok(response_result.map_or_else(
+            |_| {
+                let fallback = ResponseBuilder::error(call_info)
+                    .message("Failed to build success response")
+                    .build();
+                fallback.to_call_tool_result()
+            },
+            |response| self.handle_large_response(response, &handler_context.request.name),
+        ))
+    }
+
+    fn build_success_response(
+        &self,
+        data: &Value,
+        handler_context: &HandlerContext,
+        call_info: CallInfo,
+    ) -> Result<JsonResponse> {
+        // Check if this is a BRP result with format correction information
+        let (format_corrections, format_corrected) = extract_format_corrections(data);
+
+        let mut builder = ResponseBuilder::success(call_info);
+        let template_values = Self::initialize_template_values(handler_context);
+        let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
+
+        Self::add_format_corrections(
+            &mut builder,
+            format_corrections.as_deref(),
+            format_corrected.as_ref(),
+            None, // BRP method name not available in generic context
+        )?;
+        let template_values = self.add_configured_fields(
+            &mut builder,
+            &clean_data,
+            template_values,
+            handler_context,
+        )?;
+        self.apply_template_if_provided(&mut builder, &clean_data, &template_values);
+        Self::override_message_for_format_correction(&mut builder, format_corrected.as_ref());
+        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
+
+        Ok(builder.build())
     }
 
     /// Extract field value based on `ResponseField` specification
@@ -173,33 +218,6 @@ impl ResponseFormatter {
         }
     }
 
-    fn format_success_with_corrections(
-        &self,
-        data: &Value,
-        handler_context: &HandlerContext,
-        format_corrections: Option<&[FormatCorrection]>,
-        format_corrected: Option<&FormatCorrectionStatus>,
-        call_info: CallInfo,
-    ) -> CallToolResult {
-        // First build the response
-        let response_result = self.build_success_response_with_corrections(
-            data,
-            handler_context,
-            format_corrections,
-            format_corrected,
-            call_info.clone(),
-        );
-        response_result.map_or_else(
-            |_| {
-                let fallback = ResponseBuilder::error(call_info)
-                    .message("Failed to build success response")
-                    .build();
-                fallback.to_call_tool_result()
-            },
-            |response| self.handle_large_response(response, &handler_context.request.name),
-        )
-    }
-
     /// Handle large response processing if configured
     fn handle_large_response(&self, response: JsonResponse, method: &str) -> CallToolResult {
         // Check if response is too large and handle result field extraction
@@ -224,51 +242,6 @@ impl ResponseFormatter {
                 .to_call_tool_result()
             }
         }
-    }
-
-    fn build_success_response_with_corrections(
-        &self,
-        data: &Value,
-        handler_context: &HandlerContext,
-        format_corrections: Option<&[FormatCorrection]>,
-        format_corrected: Option<&FormatCorrectionStatus>,
-        call_info: CallInfo,
-    ) -> Result<JsonResponse> {
-        let type_name = "HandlerContext";
-        tracing::debug!(
-            "build_success_response<{}>: response_fields count = {}",
-            type_name,
-            self.success_fields.len()
-        );
-
-        let mut builder = ResponseBuilder::success(call_info);
-        let template_values = Self::initialize_template_values(handler_context);
-        let (clean_data, brp_extras_debug_info) = Self::extract_debug_and_clean_data(data);
-
-        Self::add_format_corrections(
-            &mut builder,
-            handler_context,
-            format_corrections,
-            format_corrected,
-            None, // BRP method name not available in generic context
-        )?;
-        let template_values = self.add_configured_fields(
-            &mut builder,
-            &clean_data,
-            template_values,
-            handler_context,
-        )?;
-        self.apply_template_if_provided(&mut builder, &clean_data, &template_values);
-        Self::override_message_for_format_correction(&mut builder, format_corrected);
-        builder = builder.auto_inject_debug_info(brp_extras_debug_info.as_ref());
-
-        let response = builder.build();
-        tracing::trace!(
-            "build_success_response<{}>: final response = {:?}",
-            type_name,
-            response
-        );
-        Ok(response)
     }
 
     /// Initialize template values with original parameters
@@ -493,22 +466,10 @@ impl ResponseFormatter {
     #[allow(clippy::too_many_lines)]
     fn add_format_corrections(
         builder: &mut ResponseBuilder,
-        handler_context: &HandlerContext,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
         brp_method_name: Option<&str>,
     ) -> Result<()> {
-        tracing::debug!(
-            "add_format_corrections called for method: {}",
-            handler_context.request.name
-        );
-        tracing::debug!(
-            "format_corrections: {:?}",
-            format_corrections.map(<[_]>::len)
-        );
-        tracing::debug!("format_corrected: {:?}", format_corrected);
-        tracing::debug!("brp_method_name: {:?}", brp_method_name);
-
         // Early return if method doesn't support format discovery - check BRP method name, not MCP
         // tool name
         if let Some(brp_method) = brp_method_name {
@@ -659,7 +620,7 @@ fn substitute_template(template: &str, params: Option<&Value>) -> String {
 }
 
 /// Extract format correction information from BRP result JSON
-fn extract_format_correction_info(
+fn extract_format_corrections(
     value: &serde_json::Value,
 ) -> (
     Option<Vec<FormatCorrection>>,
