@@ -1,6 +1,6 @@
 //! Procedural macros for bevy_brp_mcp
 
-use heck::{ToShoutySnakeCase, ToSnakeCase};
+use heck::ToSnakeCase;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, parse_macro_input};
@@ -133,7 +133,6 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
     };
 
     let mut tool_impls = Vec::new();
-    let mut constants = Vec::new();
 
     // Process each variant
     for variant in &data_enum.variants {
@@ -153,22 +152,12 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
             panic!("Variant {variant_name} has #[brp_tool] but no #[brp_method]");
         }
 
-        // Generate constant for any variant with brp_method
-        if let Some(method) = &method {
-            let constant_name =
-                syn::Ident::new(&method_to_constant_name(method), variant_name.span());
-
-            constants.push(quote! {
-                pub const #constant_name: &str = #method;
-            });
-        }
+        // No longer generate constants - we use the BrpMethod enum instead
 
         // Generate tool implementation only if brp_tool is present
         if let Some(params) = tool_params {
             let method = method.expect("already validated");
             let params_ident = syn::Ident::new(&params, variant_name.span());
-            let constant_name =
-                syn::Ident::new(&method_to_constant_name(&method), variant_name.span());
 
             tool_impls.push(quote! {
                 pub struct #variant_name;
@@ -204,7 +193,7 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 
                 impl crate::brp_tools::handler::HasBrpMethod for #variant_name {
                     fn brp_method() -> &'static str {
-                        #constant_name
+                        #method
                     }
                 }
 
@@ -267,9 +256,6 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 
     // Generate the complete output
     let expanded = quote! {
-        // BRP method constants
-        #(#constants)*
-
         // Tool implementations
         #(#tool_impls)*
 
@@ -351,22 +337,4 @@ fn extract_brp_tool_attr(attrs: &[syn::Attribute]) -> Option<String> {
         }
     }
     None
-}
-
-/// Convert method string to constant name (e.g. "bevy/list" -> "BRP_METHOD_LIST")
-fn method_to_constant_name(method: &str) -> String {
-    let parts: Vec<&str> = method.split('/').collect();
-    let last_part = parts.last().unwrap();
-
-    // Handle special cases
-    match method {
-        "rpc.discover" => "BRP_METHOD_RPC_DISCOVER".to_string(),
-        "bevy/registry/schema" => "BRP_METHOD_REGISTRY_SCHEMA".to_string(),
-        method if method.starts_with("brp_extras/") => {
-            format!("BRP_METHOD_EXTRAS_{}", last_part.to_shouty_snake_case())
-        }
-        _ => {
-            format!("BRP_METHOD_{}", last_part.to_shouty_snake_case())
-        }
-    }
 }
