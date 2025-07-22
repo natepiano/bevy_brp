@@ -79,6 +79,12 @@ pub trait BrpToolFn: Send + Sync {
     fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<Self::Output>;
 }
 
+/// Trait for BRP tools to provide their method string at compile time
+pub trait HasBrpMethod {
+    /// Returns the BRP method string for this tool
+    fn brp_method() -> &'static str;
+}
+
 /// Type-erased version for use in `HandlerFn` enum
 /// These traits return `CallToolResult` directly, avoiding double serialization
 pub trait ErasedLocalToolFn: Send + Sync {

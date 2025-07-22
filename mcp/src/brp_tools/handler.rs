@@ -146,14 +146,15 @@ const fn enhance_error_data<Port, Method>(
 /// This function handles the common pattern of:
 /// 1. Extract typed parameters
 /// 2. Convert to JSON for BRP call
-/// 3. Use `ctx.brp_method()` for static method name
+/// 3. Use `Tool::brp_method()` for compile-time method name
 /// 4. Use params.port for typed port parameter
 /// 5. Call shared BRP infrastructure
 /// 6. Convert result to `BrpMethodResult`
-pub fn execute_static_brp_call<T>(
+pub fn execute_static_brp_call<Tool, T>(
     ctx: &HandlerContext<HasPort, HasMethod>,
 ) -> impl std::future::Future<Output = Result<BrpMethodResult>> + Send + 'static
 where
+    Tool: crate::tool::HasBrpMethod,
     T: serde::de::DeserializeOwned + serde::Serialize + HasPortField + Send,
 {
     let ctx = ctx.clone();
@@ -179,9 +180,9 @@ where
             Some(params_json)
         };
 
-        // Use ctx.brp_method() to get method from ToolDef
+        // Use Tool::brp_method() to get method from trait at compile time
         let enhanced_result =
-            execute_brp_method_with_format_discovery(ctx.brp_method(), brp_params, port).await?;
+            execute_brp_method_with_format_discovery(Tool::brp_method(), brp_params, port).await?;
 
         // Convert result using existing conversion function
         convert_to_brp_method_result(enhanced_result, &ctx)

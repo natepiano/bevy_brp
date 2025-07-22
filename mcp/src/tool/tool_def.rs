@@ -66,8 +66,9 @@ impl ToolDef {
                 let tool_context = ToolContext::LocalWithPort(ctx);
                 Ok(ToolHandler::new(self.handler.clone(), tool_context))
             }
-            HandlerFn::Brp { method, .. } => {
-                // Extract port and use static method, create HandlerContext<HasPort, HasMethod>
+            HandlerFn::Brp(_) => {
+                // Extract port and create HandlerContext<HasPort, HasMethod>
+                // Method is now provided by the trait at compile time
                 let port = extract_port_directly(&request)?;
                 let ctx = HandlerContext::with_data(
                     self.clone(),
@@ -75,7 +76,7 @@ impl ToolDef {
                     roots,
                     HasPort { port },
                     HasMethod {
-                        method: (*method).to_string(),
+                        method: String::new(), // Placeholder - method comes from trait now
                     },
                 );
                 let tool_context = ToolContext::Brp(ctx);
@@ -101,8 +102,10 @@ impl ToolDef {
 
             // Add method name for BRP tools
             let full_title = match &self.handler {
-                HandlerFn::Brp { method, .. } => {
-                    format!("{category_prefix}: {base_title} ({method})")
+                HandlerFn::Brp(_) => {
+                    // Method is now compile-time via trait, use base title for now
+                    // TODO: Consider adding method to display if needed
+                    format!("{category_prefix}: {base_title}")
                 }
                 HandlerFn::Local(_) | HandlerFn::LocalWithPort(_) => {
                     format!("{category_prefix}: {base_title}")

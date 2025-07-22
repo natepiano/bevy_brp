@@ -3,15 +3,9 @@
 use super::HandlerFn;
 use super::annotations::{BrpToolAnnotations, EnvironmentImpact, ToolCategory};
 use super::constants::{
-    BRP_METHOD_DESTROY, BRP_METHOD_EXTRAS_DISCOVER_FORMAT, BRP_METHOD_EXTRAS_SCREENSHOT,
-    BRP_METHOD_EXTRAS_SEND_KEYS, BRP_METHOD_EXTRAS_SET_DEBUG_MODE, BRP_METHOD_GET,
-    BRP_METHOD_GET_RESOURCE, BRP_METHOD_INSERT, BRP_METHOD_INSERT_RESOURCE, BRP_METHOD_LIST,
-    BRP_METHOD_LIST_RESOURCES, BRP_METHOD_MUTATE_COMPONENT, BRP_METHOD_MUTATE_RESOURCE,
-    BRP_METHOD_QUERY, BRP_METHOD_REGISTRY_SCHEMA, BRP_METHOD_REMOVE, BRP_METHOD_REMOVE_RESOURCE,
-    BRP_METHOD_REPARENT, BRP_METHOD_RPC_DISCOVER, BRP_METHOD_SPAWN, DESC_BEVY_DESTROY,
-    DESC_BEVY_GET, DESC_BEVY_GET_RESOURCE, DESC_BEVY_GET_WATCH, DESC_BEVY_INSERT,
-    DESC_BEVY_INSERT_RESOURCE, DESC_BEVY_LIST, DESC_BEVY_LIST_RESOURCES, DESC_BEVY_LIST_WATCH,
-    DESC_BEVY_MUTATE_COMPONENT, DESC_BEVY_MUTATE_RESOURCE, DESC_BEVY_QUERY,
+    DESC_BEVY_DESTROY, DESC_BEVY_GET, DESC_BEVY_GET_RESOURCE, DESC_BEVY_GET_WATCH,
+    DESC_BEVY_INSERT, DESC_BEVY_INSERT_RESOURCE, DESC_BEVY_LIST, DESC_BEVY_LIST_RESOURCES,
+    DESC_BEVY_LIST_WATCH, DESC_BEVY_MUTATE_COMPONENT, DESC_BEVY_MUTATE_RESOURCE, DESC_BEVY_QUERY,
     DESC_BEVY_REGISTRY_SCHEMA, DESC_BEVY_REMOVE, DESC_BEVY_REMOVE_RESOURCE, DESC_BEVY_REPARENT,
     DESC_BEVY_RPC_DISCOVER, DESC_BEVY_SPAWN, DESC_BRP_EXECUTE, DESC_BRP_EXTRAS_DISCOVER_FORMAT,
     DESC_BRP_EXTRAS_SCREENSHOT, DESC_BRP_EXTRAS_SEND_KEYS, DESC_BRP_EXTRAS_SET_DEBUG_MODE,
@@ -66,7 +60,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Entity,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyDestroy, BRP_METHOD_DESTROY),
+            handler:         HandlerFn::brp(BevyDestroy),
             parameters:      Some(parameters_from_schema::<DestroyParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
@@ -85,7 +79,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyGet, BRP_METHOD_GET),
+            handler:         HandlerFn::brp(BevyGet),
             parameters:      Some(parameters_from_schema::<GetParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
@@ -121,7 +115,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyGetResource, BRP_METHOD_GET_RESOURCE),
+            handler:         HandlerFn::brp(BevyGetResource),
             parameters:      Some(parameters_from_schema::<GetResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved resource: {resource}",
@@ -136,7 +130,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyInsert, BRP_METHOD_INSERT),
+            handler:         HandlerFn::brp(BevyInsert),
             parameters:      Some(parameters_from_schema::<InsertParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully inserted components into entity {entity}",
@@ -163,7 +157,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyInsertResource, BRP_METHOD_INSERT_RESOURCE),
+            handler:         HandlerFn::brp(BevyInsertResource),
             parameters:      Some(parameters_from_schema::<InsertResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully inserted/updated resource: {resource}",
@@ -185,7 +179,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyList, BRP_METHOD_LIST),
+            handler:         HandlerFn::brp(BevyList),
             parameters:      Some(parameters_from_schema::<ListParams>),
             response_format: ResponseSpecification {
                 message_template: "Listed {component_count} components",
@@ -207,7 +201,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyListResources, BRP_METHOD_LIST_RESOURCES),
+            handler:         HandlerFn::brp(BevyListResources),
             parameters:      Some(parameters_from_schema::<ListResourcesParams>),
             response_format: ResponseSpecification {
                 message_template: "Listed {resource_count} resources",
@@ -229,7 +223,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyMutateComponent, BRP_METHOD_MUTATE_COMPONENT),
+            handler:         HandlerFn::brp(BevyMutateComponent),
             parameters:      Some(parameters_from_schema::<MutateComponentParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully mutated component on entity {entity}",
@@ -251,7 +245,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyMutateResource, BRP_METHOD_MUTATE_RESOURCE),
+            handler:         HandlerFn::brp(BevyMutateResource),
             parameters:      Some(parameters_from_schema::<MutateResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully mutated resource: `{resource}`",
@@ -273,7 +267,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyQuery, BRP_METHOD_QUERY),
+            handler:         HandlerFn::brp(BevyQuery),
             parameters:      Some(parameters_from_schema::<QueryParams>),
             response_format: ResponseSpecification {
                 message_template: "Query completed successfully",
@@ -300,7 +294,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyRegistrySchema, BRP_METHOD_REGISTRY_SCHEMA),
+            handler:         HandlerFn::brp(BevyRegistrySchema),
             parameters:      Some(parameters_from_schema::<RegistrySchemaParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved schema information",
@@ -322,7 +316,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyRemove, BRP_METHOD_REMOVE),
+            handler:         HandlerFn::brp(BevyRemove),
             parameters:      Some(parameters_from_schema::<RemoveParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully removed components from entity {entity}",
@@ -348,7 +342,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyRemoveResource, BRP_METHOD_REMOVE_RESOURCE),
+            handler:         HandlerFn::brp(BevyRemoveResource),
             parameters:      Some(parameters_from_schema::<RemoveResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully removed resource",
@@ -367,7 +361,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp(BevyReparent, BRP_METHOD_REPARENT),
+            handler:         HandlerFn::brp(BevyReparent),
             parameters:      Some(parameters_from_schema::<ReparentParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully reparented entities",
@@ -393,7 +387,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(BevyRpcDiscover, BRP_METHOD_RPC_DISCOVER),
+            handler:         HandlerFn::brp(BevyRpcDiscover),
             parameters:      Some(parameters_from_schema::<RpcDiscoverParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved BRP method discovery information for {method_count} methods",
@@ -416,7 +410,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp(BevySpawn, BRP_METHOD_SPAWN),
+            handler:         HandlerFn::brp(BevySpawn),
             parameters:      Some(parameters_from_schema::<SpawnParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully spawned entity",
@@ -455,10 +449,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(
-                BrpExtrasDiscoverFormat,
-                BRP_METHOD_EXTRAS_DISCOVER_FORMAT,
-            ),
+            handler:         HandlerFn::brp(BrpExtrasDiscoverFormat),
             parameters:      Some(parameters_from_schema::<DiscoverFormatParams>),
             response_format: ResponseSpecification {
                 message_template: "Format discovery completed",
@@ -473,7 +464,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp(BrpExtrasScreenshot, BRP_METHOD_EXTRAS_SCREENSHOT),
+            handler:         HandlerFn::brp(BrpExtrasScreenshot),
             parameters:      Some(parameters_from_schema::<ScreenshotParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully captured screenshot",
@@ -492,7 +483,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:         HandlerFn::brp(BrpExtrasSendKeys, BRP_METHOD_EXTRAS_SEND_KEYS),
+            handler:         HandlerFn::brp(BrpExtrasSendKeys),
             parameters:      Some(parameters_from_schema::<SendKeysParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully sent keyboard input",
@@ -518,10 +509,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:         HandlerFn::brp(
-                BrpExtrasSetDebugMode,
-                BRP_METHOD_EXTRAS_SET_DEBUG_MODE,
-            ),
+            handler:         HandlerFn::brp(BrpExtrasSetDebugMode),
             parameters:      Some(parameters_from_schema::<SetDebugModeParams>),
             response_format: ResponseSpecification {
                 message_template: "Debug mode updated successfully",

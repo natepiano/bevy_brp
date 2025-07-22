@@ -32,10 +32,7 @@ impl HasFormatterConfig for ToolContext {
 pub enum HandlerFn {
     Local(Arc<dyn ErasedLocalToolFn>),
     LocalWithPort(Arc<dyn ErasedLocalToolFnWithPort>),
-    Brp {
-        handler: Arc<dyn ErasedBrpToolFn>,
-        method:  &'static str,
-    },
+    Brp(Arc<dyn ErasedBrpToolFn>),
 }
 
 impl HandlerFn {
@@ -57,7 +54,7 @@ impl HandlerFn {
             (Self::LocalWithPort(handler), ToolContext::LocalWithPort(local_with_port_ctx)) => {
                 handler.call_erased(local_with_port_ctx, formatter_config)
             }
-            (Self::Brp { handler, .. }, ToolContext::Brp(brp_ctx)) => {
+            (Self::Brp(handler), ToolContext::Brp(brp_ctx)) => {
                 handler.call_erased(brp_ctx, formatter_config)
             }
             _ => Box::pin(async move {
@@ -81,12 +78,9 @@ impl HandlerFn {
         Self::LocalWithPort(Arc::new(handler))
     }
 
-    /// Create a BRP handler with method
-    pub fn brp<T: BrpToolFn + 'static>(handler: T, method: &'static str) -> Self {
-        Self::Brp {
-            handler: Arc::new(handler),
-            method,
-        }
+    /// Create a BRP handler
+    pub fn brp<T: BrpToolFn + 'static>(handler: T) -> Self {
+        Self::Brp(Arc::new(handler))
     }
 }
 
