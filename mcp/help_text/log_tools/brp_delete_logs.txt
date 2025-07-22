@@ -1,9 +1,11 @@
 Deletes bevy_brp_mcp log files from temp directory with optional filters.
 
 Parameters:
-- app_name (optional): Filter by app name
-- older_than_seconds (optional): Delete logs older than N seconds
+- app_name (optional): Filter by app name (doesn't include watch logs)
+- older_than_seconds (optional): Delete all logs older than N seconds
 
 Returns: Count of deleted files.
 
 Note: Use list_logs first to preview. Only bevy_brp_mcp logs can be deleted for safety.
+
+Note: Currently watch logs cannot be deleted exclusively. You can delete _all_ logs including watch logsby not specifying app_name or older_than_seconds. You can also delete all logs older than a certain age by specifying older_than_seconds.

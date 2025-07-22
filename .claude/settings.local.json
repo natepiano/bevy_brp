@@ -63,7 +63,9 @@
       "mcp__brp__brp_get_trace_log_path",
       "mcp__brp__brp_set_tracing_level",
       "Bash(ps:*)",
-      "WebFetch(domain:status.anthropic.com)"
+      "WebFetch(domain:status.anthropic.com)",
+      "mcp__brp__brp_delete_logs",
+      "mcp__brp__brp_delete_logs"
     ],
     "deny": []
   }

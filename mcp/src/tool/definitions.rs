@@ -609,7 +609,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 response_fields:  vec![
                     ResponseField::FromResponse {
                         response_field_name: ResponseFieldName::DeletedCount,
-                        source_path:         ResponseFieldName::DeletedCount.into(),
+                        source_path:         ResponseFieldName::DeletedFiles.into(),
                         placement:           FieldPlacement::Metadata,
                     },
                     ResponseField::FromResponse {
