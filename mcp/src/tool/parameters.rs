@@ -103,7 +103,7 @@ pub enum ParameterName {
 
 /// Parameter field types for schema generation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum ParameterFieldType {
+enum ParameterType {
     /// A string field
     String,
     /// A numeric field (typically u64)
@@ -118,37 +118,34 @@ enum ParameterFieldType {
     Any,
 }
 
-fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
+fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
     let Some(obj) = schema.as_object() else {
-        return ParameterFieldType::Any;
+        return ParameterType::Any;
     };
 
     // Get the "type" field
     let Some(type_value) = obj.get("type") else {
-        return ParameterFieldType::Any;
+        return ParameterType::Any;
     };
 
     match type_value {
         Value::String(type_str) => match type_str.as_str() {
-            "string" => ParameterFieldType::String,
-            "integer" | "number" => ParameterFieldType::Number,
-            "boolean" => ParameterFieldType::Boolean,
+            "string" => ParameterType::String,
+            "integer" | "number" => ParameterType::Number,
+            "boolean" => ParameterType::Boolean,
             "array" => {
                 // Check items schema for array element type
                 obj.get("items")
                     .and_then(|items| items.as_object())
                     .and_then(|items_obj| items_obj.get("type"))
                     .and_then(|item_type| item_type.as_str())
-                    .map_or(
-                        ParameterFieldType::Any,
-                        |item_type_str| match item_type_str {
-                            "string" => ParameterFieldType::StringArray,
-                            "integer" | "number" => ParameterFieldType::NumberArray,
-                            _ => ParameterFieldType::Any,
-                        },
-                    )
+                    .map_or(ParameterType::Any, |item_type_str| match item_type_str {
+                        "string" => ParameterType::StringArray,
+                        "integer" | "number" => ParameterType::NumberArray,
+                        _ => ParameterType::Any,
+                    })
             }
-            _ => ParameterFieldType::Any,
+            _ => ParameterType::Any,
         },
         Value::Array(types) => {
             // Handle Option<T> types which generate ["T", "null"] schemas
@@ -160,16 +157,16 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterFieldType {
 
             if non_null_types.len() == 1 {
                 match non_null_types.first() {
-                    Some(&"string") => ParameterFieldType::String,
-                    Some(&"integer" | &"number") => ParameterFieldType::Number,
-                    Some(&"boolean") => ParameterFieldType::Boolean,
-                    _ => ParameterFieldType::Any,
+                    Some(&"string") => ParameterType::String,
+                    Some(&"integer" | &"number") => ParameterType::Number,
+                    Some(&"boolean") => ParameterType::Boolean,
+                    _ => ParameterType::Any,
                 }
             } else {
-                ParameterFieldType::Any
+                ParameterType::Any
             }
         }
-        _ => ParameterFieldType::Any,
+        _ => ParameterType::Any,
     }
 }
 
@@ -221,22 +218,18 @@ pub fn extract_parameters<T: JsonSchema>() -> ParameterBuilder {
 
         // Add to builder based on type
         builder = match param_type {
-            ParameterFieldType::String => {
-                builder.add_string_property(field_name, description, required)
-            }
-            ParameterFieldType::Number => {
-                builder.add_number_property(field_name, description, required)
-            }
-            ParameterFieldType::Boolean => {
+            ParameterType::String => builder.add_string_property(field_name, description, required),
+            ParameterType::Number => builder.add_number_property(field_name, description, required),
+            ParameterType::Boolean => {
                 builder.add_boolean_property(field_name, description, required)
             }
-            ParameterFieldType::StringArray => {
+            ParameterType::StringArray => {
                 builder.add_string_array_property(field_name, description, required)
             }
-            ParameterFieldType::NumberArray => {
+            ParameterType::NumberArray => {
                 builder.add_number_array_property(field_name, description, required)
             }
-            ParameterFieldType::Any => builder.add_any_property(field_name, description, required),
+            ParameterType::Any => builder.add_any_property(field_name, description, required),
         };
     }
 
