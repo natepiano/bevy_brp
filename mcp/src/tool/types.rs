@@ -25,6 +25,15 @@ use super::handler_context::HandlerContext;
 use crate::error::Result;
 use crate::response::{LocalCallInfo, ResponseDef};
 
+/// Type alias for the response from local handlers
+///
+/// Breaking down the type:
+/// - `Pin<Box<...>>`: Heap-allocated Future that won't move in memory
+/// - `dyn Future`: Async function that can be awaited
+/// - `Output = crate::error::Result<T>`: Can fail with internal `Error` type
+/// - `+ Send + 'static`: Can be sent between threads, static lifetime
+pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
+
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
@@ -100,12 +109,3 @@ impl ToolHandler {
             .await
     }
 }
-
-/// Type alias for the response from local handlers
-///
-/// Breaking down the type:
-/// - `Pin<Box<...>>`: Heap-allocated Future that won't move in memory
-/// - `dyn Future`: Async function that can be awaited
-/// - `Output = crate::error::Result<T>`: Can fail with internal `Error` type
-/// - `+ Send + 'static`: Can be sent between threads, static lifetime
-pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
