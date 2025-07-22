@@ -24,7 +24,7 @@ use super::constants::{
     TOOL_LIST_LOGS, TOOL_READ_LOG, TOOL_SET_TRACING_LEVEL, TOOL_SHUTDOWN, TOOL_STATUS,
     TOOL_STOP_WATCH,
 };
-use super::schema_utils::parameters_from_schema;
+use super::parameters::extract_parameters;
 use super::tool_def::ToolDef;
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
@@ -62,7 +62,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:         Arc::new(BevyDestroy),
-            parameters:      Some(parameters_from_schema::<DestroyParams>),
+            parameters:      Some(extract_parameters::<DestroyParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully destroyed entity {entity}",
                 response_fields:  vec![ResponseField::FromRequest {
@@ -81,7 +81,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyGet),
-            parameters:      Some(parameters_from_schema::<GetParams>),
+            parameters:      Some(extract_parameters::<GetParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
                 response_fields:  vec![
@@ -117,7 +117,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyGetResource),
-            parameters:      Some(parameters_from_schema::<GetResourceParams>),
+            parameters:      Some(extract_parameters::<GetResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved resource: {resource}",
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
@@ -132,7 +132,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:         Arc::new(BevyInsert),
-            parameters:      Some(parameters_from_schema::<InsertParams>),
+            parameters:      Some(extract_parameters::<InsertParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully inserted components into entity {entity}",
                 response_fields:  vec![
@@ -159,7 +159,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:         Arc::new(BevyInsertResource),
-            parameters:      Some(parameters_from_schema::<InsertResourceParams>),
+            parameters:      Some(extract_parameters::<InsertResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully inserted/updated resource: {resource}",
                 response_fields:  vec![
@@ -181,7 +181,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyList),
-            parameters:      Some(parameters_from_schema::<ListParams>),
+            parameters:      Some(extract_parameters::<ListParams>),
             response_format: ResponseSpecification {
                 message_template: "Listed {component_count} components",
                 response_fields:  vec![
@@ -203,7 +203,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyListResources),
-            parameters:      Some(parameters_from_schema::<ListResourcesParams>),
+            parameters:      Some(extract_parameters::<ListResourcesParams>),
             response_format: ResponseSpecification {
                 message_template: "Listed {resource_count} resources",
                 response_fields:  vec![
@@ -225,7 +225,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:         Arc::new(BevyMutateComponent),
-            parameters:      Some(parameters_from_schema::<MutateComponentParams>),
+            parameters:      Some(extract_parameters::<MutateComponentParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully mutated component on entity {entity}",
                 response_fields:  vec![
@@ -247,7 +247,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:         Arc::new(BevyMutateResource),
-            parameters:      Some(parameters_from_schema::<MutateResourceParams>),
+            parameters:      Some(extract_parameters::<MutateResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully mutated resource: `{resource}`",
                 response_fields:  vec![
@@ -269,7 +269,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyQuery),
-            parameters:      Some(parameters_from_schema::<QueryParams>),
+            parameters:      Some(extract_parameters::<QueryParams>),
             response_format: ResponseSpecification {
                 message_template: "Query completed successfully",
                 response_fields:  vec![
@@ -296,7 +296,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyRegistrySchema),
-            parameters:      Some(parameters_from_schema::<RegistrySchemaParams>),
+            parameters:      Some(extract_parameters::<RegistrySchemaParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved schema information",
                 response_fields:  vec![
@@ -318,7 +318,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:         Arc::new(BevyRemove),
-            parameters:      Some(parameters_from_schema::<RemoveParams>),
+            parameters:      Some(extract_parameters::<RemoveParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully removed components from entity {entity}",
                 response_fields:  vec![
@@ -344,7 +344,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:         Arc::new(BevyRemoveResource),
-            parameters:      Some(parameters_from_schema::<RemoveResourceParams>),
+            parameters:      Some(extract_parameters::<RemoveResourceParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully removed resource",
                 response_fields:  vec![ResponseField::FromRequest {
@@ -363,7 +363,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:         Arc::new(BevyReparent),
-            parameters:      Some(parameters_from_schema::<ReparentParams>),
+            parameters:      Some(extract_parameters::<ReparentParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully reparented entities",
                 response_fields:  vec![
@@ -389,7 +389,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BevyRpcDiscover),
-            parameters:      Some(parameters_from_schema::<RpcDiscoverParams>),
+            parameters:      Some(extract_parameters::<RpcDiscoverParams>),
             response_format: ResponseSpecification {
                 message_template: "Retrieved BRP method discovery information for {method_count} methods",
                 response_fields:  vec![
@@ -412,7 +412,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:         Arc::new(BevySpawn),
-            parameters:      Some(parameters_from_schema::<SpawnParams>),
+            parameters:      Some(extract_parameters::<SpawnParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully spawned entity",
                 response_fields:  vec![
@@ -436,7 +436,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:         Arc::new(BrpExecute),
-            parameters:      Some(parameters_from_schema::<ExecuteParams>),
+            parameters:      Some(extract_parameters::<ExecuteParams>),
             response_format: ResponseSpecification {
                 message_template: "Method executed successfully",
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
@@ -451,7 +451,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BrpExtrasDiscoverFormat),
-            parameters:      Some(parameters_from_schema::<DiscoverFormatParams>),
+            parameters:      Some(extract_parameters::<DiscoverFormatParams>),
             response_format: ResponseSpecification {
                 message_template: "Format discovery completed",
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
@@ -466,7 +466,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:         Arc::new(BrpExtrasScreenshot),
-            parameters:      Some(parameters_from_schema::<ScreenshotParams>),
+            parameters:      Some(extract_parameters::<ScreenshotParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully captured screenshot",
                 response_fields:  vec![ResponseField::FromRequest {
@@ -485,7 +485,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:         Arc::new(BrpExtrasSendKeys),
-            parameters:      Some(parameters_from_schema::<SendKeysParams>),
+            parameters:      Some(extract_parameters::<SendKeysParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully sent keyboard input",
                 response_fields:  vec![
@@ -511,7 +511,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(BrpExtrasSetDebugMode),
-            parameters:      Some(parameters_from_schema::<SetDebugModeParams>),
+            parameters:      Some(extract_parameters::<SetDebugModeParams>),
             response_format: ResponseSpecification {
                 message_template: "Debug mode updated successfully",
                 response_fields:  vec![
@@ -541,7 +541,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:         Arc::new(BevyGetWatch),
-            parameters:      Some(parameters_from_schema::<GetWatchParams>),
+            parameters:      Some(extract_parameters::<GetWatchParams>),
             response_format: ResponseSpecification {
                 message_template: "Started entity watch {watch_id} for entity {entity}",
                 response_fields:  vec![
@@ -572,7 +572,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:         Arc::new(BevyListWatch),
-            parameters:      Some(parameters_from_schema::<ListWatchParams>),
+            parameters:      Some(extract_parameters::<ListWatchParams>),
             response_format: ResponseSpecification {
                 message_template: "Started list watch {watch_id} for entity {entity}",
                 response_fields:  vec![
@@ -603,7 +603,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:         Arc::new(DeleteLogs),
-            parameters:      Some(parameters_from_schema::<DeleteLogsParams>),
+            parameters:      Some(extract_parameters::<DeleteLogsParams>),
             response_format: ResponseSpecification {
                 message_template: "Deleted {deleted_count} log files",
                 response_fields:  vec![
@@ -670,7 +670,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(app_tools::create_launch_bevy_app_handler()),
-            parameters:      Some(parameters_from_schema::<LaunchBevyAppParams>),
+            parameters:      Some(extract_parameters::<LaunchBevyAppParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully launched bevy app '{target_name}' (PID: {pid})",
                 response_fields:  vec![
@@ -692,7 +692,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(app_tools::create_launch_bevy_example_handler()),
-            parameters:      Some(parameters_from_schema::<LaunchBevyExampleParams>),
+            parameters:      Some(extract_parameters::<LaunchBevyExampleParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully launched example '{target_name}' (PID: {pid})",
                 response_fields:  vec![
@@ -818,7 +818,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:         Arc::new(BrpStopWatch),
-            parameters:      Some(parameters_from_schema::<StopWatchParams>),
+            parameters:      Some(extract_parameters::<StopWatchParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully stopped watch",
                 response_fields:  vec![ResponseField::FromResponse {
@@ -837,7 +837,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(ListLogs),
-            parameters:      Some(parameters_from_schema::<ListLogsParams>),
+            parameters:      Some(extract_parameters::<ListLogsParams>),
             response_format: ResponseSpecification {
                 message_template: "Found {count} log files",
                 response_fields:  vec![
@@ -868,7 +868,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(ReadLog),
-            parameters:      Some(parameters_from_schema::<ReadLogParams>),
+            parameters:      Some(extract_parameters::<ReadLogParams>),
             response_format: ResponseSpecification {
                 message_template: "Successfully read log file: {filename}",
                 response_fields:  vec![
@@ -924,7 +924,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:         Arc::new(SetTracingLevel),
-            parameters:      Some(parameters_from_schema::<SetTracingLevelParams>),
+            parameters:      Some(extract_parameters::<SetTracingLevelParams>),
             response_format: ResponseSpecification {
                 message_template: "Tracing level set to '{tracing_level}' - diagnostic information will be logged to temp directory",
                 response_fields:  vec![
@@ -950,7 +950,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:         Arc::new(Status),
-            parameters:      Some(parameters_from_schema::<StatusParams>),
+            parameters:      Some(extract_parameters::<StatusParams>),
             response_format: ResponseSpecification {
                 message_template: "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}",
                 response_fields:  vec![
@@ -986,7 +986,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:         Arc::new(Shutdown),
-            parameters:      Some(parameters_from_schema::<ShutdownParams>),
+            parameters:      Some(extract_parameters::<ShutdownParams>),
             response_format: ResponseSpecification {
                 message_template: "{message}",
                 response_fields:  vec![

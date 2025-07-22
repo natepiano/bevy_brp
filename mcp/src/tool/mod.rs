@@ -4,7 +4,6 @@ mod definitions;
 mod handler_context;
 mod mcp_tool_schema;
 mod parameters;
-mod schema_utils;
 mod tool_def;
 mod types;
 
