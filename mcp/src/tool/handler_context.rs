@@ -33,10 +33,7 @@ impl HandlerContext {
             roots,
         }
     }
-}
 
-// Common methods available for HandlerContext
-impl HandlerContext {
     /// Get tool definition by looking up the request name in the service's tool registry
     ///
     /// # Errors
