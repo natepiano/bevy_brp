@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::error::Error;
 use crate::log_tools::support;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListLogsParams {
@@ -30,7 +30,7 @@ pub struct ListLogs;
 impl LocalToolFn for ListLogs {
     type Output = ListLogResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract typed parameters
         let params: ListLogsParams = match ctx.extract_typed_params() {
             Ok(params) => params,

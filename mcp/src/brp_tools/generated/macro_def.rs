@@ -17,7 +17,7 @@ macro_rules! define_brp_tool {
 
             fn call(
                 &self,
-                ctx: &crate::tool::HandlerContext<crate::tool::HasPort, crate::tool::HasMethod>,
+                ctx: &crate::tool::HandlerContext,
             ) -> crate::tool::HandlerResponse<Self::Output> {
                 Box::pin(crate::brp_tools::handler::execute_static_brp_call::<
                     $tool_struct,

@@ -65,14 +65,14 @@ impl CallInfo {
     //     Self::LocalWithPort { mcp_tool, port }
     // }
 
-    /// Create `CallInfo` for a BRP tool
-    pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
-        Self::Brp {
-            mcp_tool,
-            brp_method,
-            port,
-        }
-    }
+    // /// Create `CallInfo` for a BRP tool
+    // pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
+    //     Self::Brp {
+    //         mcp_tool,
+    //         brp_method,
+    //         port,
+    //     }
+    // }
 }
 
 impl JsonResponse {

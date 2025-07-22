@@ -13,7 +13,7 @@ pub trait HasPortField {
     fn port(&self) -> u16;
 }
 
-use crate::tool::{HandlerContext, HasMethod, HasPort};
+use crate::tool::HandlerContext;
 
 /// Result type for BRP method calls that follows local handler patterns
 #[derive(Serialize)]
@@ -55,9 +55,9 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 }
 
 /// Convert `EnhancedBrpResult` to `BrpMethodResult`
-pub fn convert_to_brp_method_result<Port, Method>(
+pub fn convert_to_brp_method_result(
     enhanced_result: EnhancedBrpResult,
-    ctx: &HandlerContext<Port, Method>,
+    ctx: &HandlerContext,
 ) -> Result<BrpMethodResult> {
     match enhanced_result.result {
         BrpResult::Success(data) => {
@@ -106,10 +106,10 @@ pub fn convert_to_brp_method_result<Port, Method>(
 }
 
 /// Enhance error message with format discovery insights
-fn enhance_error_message<Port, Method>(
+fn enhance_error_message(
     err: &BrpError,
     enhanced_result: &EnhancedBrpResult,
-    _ctx: &HandlerContext<Port, Method>,
+    _ctx: &HandlerContext,
 ) -> String {
     // Check if the enhanced result has a different error message
     if let BrpResult::Error(enhanced_error) = &enhanced_result.result {
@@ -132,10 +132,10 @@ fn enhance_error_message<Port, Method>(
 }
 
 /// Enhance error data with format corrections
-const fn enhance_error_data<Port, Method>(
+const fn enhance_error_data(
     original_data: Option<Value>,
     _enhanced_result: &EnhancedBrpResult,
-    _ctx: &HandlerContext<Port, Method>,
+    _ctx: &HandlerContext,
 ) -> Option<Value> {
     // Format corrections are handled through ResponseField::FormatCorrection extractor
     // which extracts from the main BrpMethodResult.format_corrections field
@@ -151,7 +151,7 @@ const fn enhance_error_data<Port, Method>(
 /// 5. Call shared BRP infrastructure
 /// 6. Convert result to `BrpMethodResult`
 pub fn execute_static_brp_call<Tool, T>(
-    ctx: &HandlerContext<HasPort, HasMethod>,
+    ctx: &HandlerContext,
 ) -> impl std::future::Future<Output = Result<BrpMethodResult>> + Send + 'static
 where
     Tool: crate::tool::HasBrpMethod,

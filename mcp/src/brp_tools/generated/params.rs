@@ -12,7 +12,10 @@ pub struct DestroyParams {
     /// The entity ID to destroy
     pub entity: u64,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:   u16,
 }
 
@@ -21,7 +24,10 @@ pub struct DiscoverFormatParams {
     /// Array of fully-qualified component type names to discover formats for
     pub types: Vec<String>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:  u16,
 }
 
@@ -32,7 +38,10 @@ pub struct GetParams {
     /// Array of component types to retrieve. Each component must be a fully-qualified type name
     pub components: serde_json::Value,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:       u16,
 }
 
@@ -41,7 +50,10 @@ pub struct GetResourceParams {
     /// The fully-qualified type name of the resource to get
     pub resource: String,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
@@ -54,7 +66,10 @@ pub struct InsertParams {
     /// not objects with named fields.
     pub components: serde_json::Value,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:       u16,
 }
 
@@ -66,7 +81,10 @@ pub struct InsertResourceParams {
     /// [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.
     pub value:    serde_json::Value,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
@@ -76,14 +94,20 @@ pub struct ListParams {
     #[serde(default)]
     pub entity: Option<u64>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:   u16,
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 pub struct ListResourcesParams {
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port: u16,
 }
 
@@ -99,7 +123,10 @@ pub struct MutateComponentParams {
     /// The path to the field within the component (e.g., 'translation.x')
     pub path:      String,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:      u16,
 }
 
@@ -113,7 +140,10 @@ pub struct MutateResourceParams {
     /// [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.
     pub value:    serde_json::Value,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
@@ -129,7 +159,10 @@ pub struct QueryParams {
     #[serde(default)]
     pub strict: Option<bool>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:   u16,
 }
 
@@ -148,7 +181,10 @@ pub struct RegistrySchemaParams {
     #[serde(default)]
     pub without_types:  Option<Vec<String>>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:           u16,
 }
 
@@ -159,7 +195,10 @@ pub struct RemoveParams {
     /// Array of component type names to remove
     pub components: serde_json::Value,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:       u16,
 }
 
@@ -168,7 +207,10 @@ pub struct RemoveResourceParams {
     /// The fully-qualified type name of the resource to remove
     pub resource: String,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
@@ -180,14 +222,20 @@ pub struct ReparentParams {
     #[serde(default)]
     pub parent:   Option<u64>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 pub struct RpcDiscoverParams {
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port: u16,
 }
 
@@ -196,7 +244,10 @@ pub struct ScreenshotParams {
     /// File path where the screenshot should be saved
     pub path: String,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port: u16,
 }
 
@@ -209,7 +260,10 @@ pub struct SendKeysParams {
     #[serde(default)]
     pub duration_ms: Option<u32>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:        u16,
 }
 
@@ -218,7 +272,10 @@ pub struct SetDebugModeParams {
     /// Enable or disable debug mode for `bevy_brp_extras` plugin
     pub enabled: bool,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:    u16,
 }
 
@@ -230,6 +287,9 @@ pub struct SpawnParams {
     #[serde(default)]
     pub components: Option<serde_json::Value>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:       u16,
 }

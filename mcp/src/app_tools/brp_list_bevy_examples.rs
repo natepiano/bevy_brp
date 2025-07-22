@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,7 +18,7 @@ pub struct ListBevyExamples;
 impl LocalToolFn for ListBevyExamples {
     type Output = ListBevyExamplesResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Clone context to owned data for async move closure
         let owned_ctx = ctx.clone();
 
@@ -30,12 +30,8 @@ impl LocalToolFn for ListBevyExamples {
     }
 }
 
-async fn handle_impl<Port, Method>(
-    handler_context: &HandlerContext<Port, Method>,
-) -> Result<ListBevyExamplesResult, McpError>
+async fn handle_impl(handler_context: &HandlerContext) -> Result<ListBevyExamplesResult, McpError>
 where
-    Port: Send + Sync,
-    Method: Send + Sync,
 {
     support::handle_list_binaries(handler_context, |search_paths| async move {
         let items = support::collect_all_items(&search_paths, &BevyExamplesStrategy);

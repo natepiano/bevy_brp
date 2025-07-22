@@ -12,15 +12,13 @@ use super::scanning;
 use crate::tool::HandlerContext;
 
 /// Typed handler wrapper for binary listing operations that fetches search paths
-pub async fn handle_list_binaries<F, Fut, T, Port, Method>(
-    handler_context: &HandlerContext<Port, Method>,
+pub async fn handle_list_binaries<F, Fut, T>(
+    handler_context: &HandlerContext,
     handler: F,
 ) -> Result<T, McpError>
 where
     F: FnOnce(Vec<PathBuf>) -> Fut + Send,
     Fut: Future<Output = Result<T, McpError>> + Send,
-    Port: Send + Sync,
-    Method: Send + Sync,
 {
     let search_paths = handler_context.roots.clone();
     handler(search_paths).await

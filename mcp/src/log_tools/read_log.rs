@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadLogParams {
@@ -46,7 +46,7 @@ pub struct ReadLog;
 impl LocalToolFn for ReadLog {
     type Output = ReadLogResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract typed parameters
         let params: ReadLogParams = match ctx.extract_typed_params() {
             Ok(params) => params,

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::error::Error;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct SetTracingLevelParams {
@@ -27,7 +27,7 @@ pub struct SetTracingLevel;
 impl LocalToolFn for SetTracingLevel {
     type Output = SetTracingLevelResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract typed parameters
         let params: SetTracingLevelParams = match ctx.extract_typed_params() {
             Ok(params) => params,

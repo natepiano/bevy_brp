@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::brp_tools::format_discovery::execute_brp_method_with_format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
 use crate::constants::default_port;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 pub struct ExecuteParams {
@@ -16,7 +16,10 @@ pub struct ExecuteParams {
     /// Optional parameters for the method, as a JSON object or array
     pub params: Option<serde_json::Value>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:   u16,
 }
 
@@ -31,7 +34,7 @@ pub struct BrpExecute;
 impl LocalToolFn for BrpExecute {
     type Output = BrpMethodResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         let ctx = ctx.clone();
 
         Box::pin(async move {

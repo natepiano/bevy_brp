@@ -7,27 +7,6 @@ use crate::error::Error;
 use crate::response::CallInfo;
 use crate::tool::ToolDef;
 
-/// Capability types that hold data for compile-time access control
-/// Capability type indicating no port is available
-#[derive(Clone)]
-pub struct NoPort;
-
-/// Capability type indicating a port is available with stored data
-#[derive(Clone)]
-pub struct HasPort {
-    pub port: u16,
-}
-
-/// Capability type indicating no method is available
-#[derive(Clone)]
-pub struct NoMethod;
-
-/// Capability type indicating a method is available with stored data
-#[derive(Clone)]
-pub struct HasMethod {
-    pub method: String,
-}
-
 /// Trait for `HandlerContext` types that can provide `CallInfo`
 pub trait HasCallInfo {
     fn call_info(&self) -> CallInfo;
@@ -35,38 +14,29 @@ pub trait HasCallInfo {
 
 /// Context passed to all handlers containing service, request, and MCP context
 #[derive(Clone)]
-pub struct HandlerContext<Port = NoPort, Method = NoMethod> {
+pub struct HandlerContext {
     pub(super) tool_def: ToolDef,
     pub request:         CallToolRequestParam,
     pub roots:           Vec<PathBuf>,
-    // Store capability types directly - they contain the actual data
-    port_capability:     Port,
-    method_capability:   Method,
 }
 
-// Note: HandlerContext now uses capability-based types directly via HandlerContext::with_data()
-
-impl<Port, Method> HandlerContext<Port, Method> {
-    /// Create a new `HandlerContext` with specific capabilities
-    pub(crate) const fn with_data(
+impl HandlerContext {
+    /// Create a new `HandlerContext`
+    pub(crate) const fn new(
         tool_def: ToolDef,
         request: CallToolRequestParam,
         roots: Vec<PathBuf>,
-        port_capability: Port,
-        method_capability: Method,
     ) -> Self {
         Self {
             tool_def,
             request,
             roots,
-            port_capability,
-            method_capability,
         }
     }
 }
 
-// Common methods available for all HandlerContext types
-impl<Port, Method> HandlerContext<Port, Method> {
+// Common methods available for HandlerContext
+impl HandlerContext {
     /// Get tool definition by looking up the request name in the service's tool registry
     ///
     /// # Errors
@@ -106,39 +76,11 @@ impl<Port, Method> HandlerContext<Port, Method> {
     }
 }
 
-// Capability-based method access - Port access only available when Port = HasPort
-impl<Method> HandlerContext<HasPort, Method> {
-    /// Get the port number - only available when port capability is present
-    pub const fn port(&self) -> u16 {
-        self.port_capability.port // Direct access to data in HasPort
-    }
-}
-
-// Capability-based method access - Method access only available when Method = HasMethod (i.e., BRP
-// method calls)
-impl<Port> HandlerContext<Port, HasMethod> {
-    /// Get the BRP method name - only available when method capability is present
-    pub fn brp_method(&self) -> &str {
-        &self.method_capability.method // Direct access to data in HasMethod
-    }
-}
-
-// HasCallInfo implementations for each capability combination
-
-// Local tools (unified - all use CallInfo::Local for now)
-impl HasCallInfo for HandlerContext<NoPort, NoMethod> {
+// HasCallInfo implementation for simplified HandlerContext
+impl HasCallInfo for HandlerContext {
     fn call_info(&self) -> CallInfo {
+        // Temporary implementation - all tools use CallInfo::Local for now
+        // Phase 6 will restore proper CallInfo variants
         CallInfo::local(self.request.name.to_string())
-    }
-}
-
-// BRP tools (has port and method)
-impl HasCallInfo for HandlerContext<HasPort, HasMethod> {
-    fn call_info(&self) -> CallInfo {
-        CallInfo::brp(
-            self.request.name.to_string(),
-            self.brp_method().to_string(),
-            self.port(),
-        )
     }
 }

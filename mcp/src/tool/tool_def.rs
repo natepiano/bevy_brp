@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 
-use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolRequestParam;
 
 use super::HandlerFn;
@@ -41,34 +40,23 @@ impl ToolDef {
         &self,
         request: CallToolRequestParam,
         roots: Vec<PathBuf>,
-    ) -> Result<ToolHandler, McpError> {
-        use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
+    ) -> ToolHandler {
+        use super::handler_context::HandlerContext;
         use crate::tool::types::ToolContext;
 
-        // Direct context creation - pure capability-based approach
+        // Simplified context creation - all tools use same simple context
         match &self.handler {
             HandlerFn::Local(_) => {
-                // Create HandlerContext<NoPort, NoMethod> - all local tools use this unified
-                // context
-                let ctx = HandlerContext::with_data(self.clone(), request, roots, NoPort, NoMethod);
+                // Create simple HandlerContext - all local tools use this unified context
+                let ctx = HandlerContext::new(self.clone(), request, roots);
                 let tool_context = ToolContext::Local(ctx);
-                Ok(ToolHandler::new(self.handler.clone(), tool_context))
+                ToolHandler::new(self.handler.clone(), tool_context)
             }
             HandlerFn::Brp(_) => {
-                // Extract port and create HandlerContext<HasPort, HasMethod>
-                // Method is now provided by the trait at compile time
-                let port = extract_port_directly(&request)?;
-                let ctx = HandlerContext::with_data(
-                    self.clone(),
-                    request,
-                    roots,
-                    HasPort { port },
-                    HasMethod {
-                        method: String::new(), // Placeholder - method comes from trait now
-                    },
-                );
+                // Create simple HandlerContext - BRP tools extract port/method themselves
+                let ctx = HandlerContext::new(self.clone(), request, roots);
                 let tool_context = ToolContext::Brp(ctx);
-                Ok(ToolHandler::new(self.handler.clone(), tool_context))
+                ToolHandler::new(self.handler.clone(), tool_context)
             }
         }
     }
@@ -111,35 +99,4 @@ impl ToolDef {
             annotations:  Some(enhanced_annotations.into()),
         }
     }
-}
-
-/// Extract port parameter directly from request arguments\
-/// Used during context creation, then discarded
-fn extract_port_directly(request: &CallToolRequestParam) -> Result<u16, McpError> {
-    use crate::constants::{DEFAULT_BRP_PORT, PARAM_PORT, VALID_PORT_RANGE};
-
-    let port_u64 = request
-        .arguments
-        .as_ref()
-        .and_then(|args| args.get(PARAM_PORT))
-        .and_then(serde_json::Value::as_u64)
-        .unwrap_or_else(|| u64::from(DEFAULT_BRP_PORT));
-
-    let port = u16::try_from(port_u64).map_err(|_| {
-        McpError::invalid_params("Invalid port parameter: value too large for u16", None)
-    })?;
-
-    // Validate port range (1024-65535 for non-privileged ports)
-    if !VALID_PORT_RANGE.contains(&port) {
-        return Err(McpError::invalid_params(
-            format!(
-                "Invalid port {port}: must be in range {}-{}",
-                VALID_PORT_RANGE.start(),
-                VALID_PORT_RANGE.end()
-            ),
-            None,
-        ));
-    }
-
-    Ok(port)
 }

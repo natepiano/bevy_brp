@@ -20,8 +20,8 @@ pub use constants::{
     BRP_METHOD_REPARENT, BRP_METHOD_RPC_DISCOVER, BRP_METHOD_SPAWN,
 };
 pub use definitions::get_all_tool_definitions;
-pub use handler_context::{HandlerContext, HasCallInfo, HasMethod, HasPort, NoMethod, NoPort};
+pub use handler_context::{HandlerContext, HasCallInfo};
 pub use handler_fn::HandlerFn;
-pub use parameters::ParameterName;
+pub use parameters::{ParameterName, deserialize_port};
 pub use tool_def::ToolDef;
 pub use types::{BrpToolFn, HandlerResponse, HasBrpMethod, LocalToolFn};

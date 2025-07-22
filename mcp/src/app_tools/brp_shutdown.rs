@@ -7,16 +7,17 @@ use tracing::debug;
 use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port};
 use crate::error::{Error, Result};
-use crate::tool::{
-    BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort,
-};
+use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ShutdownParams {
     /// Name of the Bevy app to shutdown
     pub app_name: String,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
@@ -126,7 +127,7 @@ pub struct Shutdown;
 impl LocalToolFn for Shutdown {
     type Output = ShutdownResultData;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract and validate parameters using the new typed system
         let params: ShutdownParams = match ctx.extract_typed_params() {
             Ok(params) => params,

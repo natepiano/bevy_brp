@@ -20,7 +20,6 @@ pub const RESPONSE_METADATA: &str = "metadata";
 
 /// Parameter name constants for BRP tool inputs
 pub const PARAM_PARAMS: &str = "params";
-pub const PARAM_PORT: &str = "port";
 
 // ============================================================================
 // NETWORK CONSTANTS

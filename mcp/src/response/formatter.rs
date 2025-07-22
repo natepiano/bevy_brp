@@ -55,10 +55,10 @@ impl ResponseFormatter {
     }
 
     /// Extract field value based on `ResponseField` specification
-    fn extract_field_value<Port, Method>(
+    fn extract_field_value(
         field: &ResponseField,
         data: &Value,
-        handler_context: &HandlerContext<Port, Method>,
+        handler_context: &HandlerContext,
     ) -> (Value, FieldPlacement) {
         match field {
             ResponseField::FromRequest {
@@ -129,15 +129,15 @@ impl ResponseFormatter {
         }
     }
 
-    pub fn format_success_with_corrections<Port, Method>(
+    pub fn format_success_with_corrections(
         &self,
         data: &Value,
-        handler_context: &HandlerContext<Port, Method>,
+        handler_context: &HandlerContext,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
     ) -> CallToolResult
     where
-        HandlerContext<Port, Method>: HasCallInfo,
+        HandlerContext: HasCallInfo,
     {
         // First build the response
         let response_result = self.build_success_response_with_corrections(
@@ -183,15 +183,15 @@ impl ResponseFormatter {
         }
     }
 
-    fn build_success_response_with_corrections<Port, Method>(
+    fn build_success_response_with_corrections(
         &self,
         data: &Value,
-        handler_context: &HandlerContext<Port, Method>,
+        handler_context: &HandlerContext,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
     ) -> Result<JsonResponse>
     where
-        HandlerContext<Port, Method>: HasCallInfo,
+        HandlerContext: HasCallInfo,
     {
         let type_name = "HandlerContext";
         tracing::debug!(
@@ -232,8 +232,8 @@ impl ResponseFormatter {
     }
 
     /// Initialize template values with original parameters
-    fn initialize_template_values<Port, Method>(
-        handler_context: &HandlerContext<Port, Method>,
+    fn initialize_template_values(
+        handler_context: &HandlerContext,
     ) -> serde_json::Map<String, Value> {
         let mut template_values = serde_json::Map::new();
         if let Some(params) = &handler_context.request.arguments {
@@ -263,12 +263,12 @@ impl ResponseFormatter {
     }
 
     /// Add configured fields and collect their values for template substitution
-    fn add_configured_fields<Port, Method>(
+    fn add_configured_fields(
         &self,
         builder: &mut ResponseBuilder,
         clean_data: &Value,
         mut template_values: serde_json::Map<String, Value>,
-        handler_context: &HandlerContext<Port, Method>,
+        handler_context: &HandlerContext,
     ) -> Result<serde_json::Map<String, Value>> {
         for field in &self.config.success_fields {
             let field_name = field.name();
@@ -473,9 +473,9 @@ fn substitute_template(template: &str, params: Option<&Value>) -> String {
 impl ResponseFormatter {
     /// Add format corrections to the response builder - with internal method check
     #[allow(clippy::too_many_lines)]
-    fn add_format_corrections<Port, Method>(
+    fn add_format_corrections(
         builder: &mut ResponseBuilder,
-        handler_context: &HandlerContext<Port, Method>,
+        handler_context: &HandlerContext,
         format_corrections: Option<&[FormatCorrection]>,
         format_corrected: Option<&FormatCorrectionStatus>,
         brp_method_name: Option<&str>,
@@ -621,14 +621,14 @@ impl ResponseFormatter {
 }
 
 /// Type-safe formatter that accepts our internal Result directly
-pub fn format_tool_result<T, Port, Method>(
+pub fn format_tool_result<T>(
     result: Result<T>,
-    handler_context: &HandlerContext<Port, Method>,
+    handler_context: &HandlerContext,
     formatter_config: FormatterConfig,
 ) -> std::result::Result<CallToolResult, McpError>
 where
     T: serde::Serialize,
-    HandlerContext<Port, Method>: HasCallInfo,
+    HandlerContext: HasCallInfo,
 {
     match result {
         Ok(data) => {

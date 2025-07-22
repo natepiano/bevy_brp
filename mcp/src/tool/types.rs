@@ -22,7 +22,7 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::HandlerFn;
-use super::handler_context::{HandlerContext, HasMethod, HasPort, NoMethod, NoPort};
+use super::handler_context::HandlerContext;
 use crate::error::Result;
 use crate::response::FormatterConfig;
 
@@ -60,7 +60,7 @@ pub trait LocalToolFn: Send + Sync {
 
     /// Handle the request and return a typed result
     /// Tools that need port access get it directly from their parameter struct via `params.port`
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output>;
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output>;
 }
 
 /// Trait for BRP handlers that return `HandlerResponse` (unified with local handlers)
@@ -68,7 +68,7 @@ pub trait BrpToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: serde::Serialize + Send + Sync;
 
-    fn call(&self, ctx: &HandlerContext<HasPort, HasMethod>) -> HandlerResponse<Self::Output>;
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output>;
 }
 
 /// Trait for BRP tools to provide their method string at compile time
@@ -82,7 +82,7 @@ pub trait HasBrpMethod {
 pub trait ErasedLocalToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
-        ctx: &'a HandlerContext<NoPort, NoMethod>,
+        ctx: &'a HandlerContext,
         formatter_config: FormatterConfig,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
@@ -90,7 +90,7 @@ pub trait ErasedLocalToolFn: Send + Sync {
 pub trait ErasedBrpToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
-        ctx: &'a HandlerContext<HasPort, HasMethod>,
+        ctx: &'a HandlerContext,
         formatter_config: FormatterConfig,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
@@ -99,7 +99,7 @@ pub trait ErasedBrpToolFn: Send + Sync {
 impl<T: LocalToolFn> ErasedLocalToolFn for T {
     fn call_erased<'a>(
         &'a self,
-        ctx: &'a HandlerContext<NoPort, NoMethod>,
+        ctx: &'a HandlerContext,
         formatter_config: FormatterConfig,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
     {
@@ -113,7 +113,7 @@ impl<T: LocalToolFn> ErasedLocalToolFn for T {
 impl<T: BrpToolFn> ErasedBrpToolFn for T {
     fn call_erased<'a>(
         &'a self,
-        ctx: &'a HandlerContext<HasPort, HasMethod>,
+        ctx: &'a HandlerContext,
         formatter_config: FormatterConfig,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
     {
@@ -127,6 +127,6 @@ impl<T: BrpToolFn> ErasedBrpToolFn for T {
 /// Unified context that wraps Local and BRP handler contexts
 #[derive(Clone)]
 pub enum ToolContext {
-    Local(HandlerContext<NoPort, NoMethod>), // For Local
-    Brp(HandlerContext<HasPort, HasMethod>), // For Brp
+    Local(HandlerContext), // For Local
+    Brp(HandlerContext),   // For Brp
 }

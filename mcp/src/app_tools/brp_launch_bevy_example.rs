@@ -14,7 +14,10 @@ pub struct LaunchBevyExampleParams {
     /// Path to use when multiple examples with the same name exist
     pub path:         Option<String>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:         u16,
 }
 

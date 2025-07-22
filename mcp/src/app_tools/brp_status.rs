@@ -5,16 +5,17 @@ use sysinfo::System;
 use crate::brp_tools::{BrpResult, execute_brp_method};
 use crate::constants::default_port;
 use crate::error::Error;
-use crate::tool::{
-    BRP_METHOD_LIST, HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort,
-};
+use crate::tool::{BRP_METHOD_LIST, HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct StatusParams {
     /// Name of the process to check for
     pub app_name: String,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:     u16,
 }
 
@@ -36,7 +37,7 @@ pub struct Status;
 impl LocalToolFn for Status {
     type Output = StatusResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract and validate parameters using the new typed system
         let params: StatusParams = match ctx.extract_typed_params() {
             Ok(params) => params,

@@ -70,9 +70,7 @@ impl HandlerFn {
 }
 
 /// Create formatter config from tool definition (generic for all context types)
-fn create_formatter_from_def<Port, Method>(
-    handler_context: &HandlerContext<Port, Method>,
-) -> FormatterConfig {
+fn create_formatter_from_def(handler_context: &HandlerContext) -> FormatterConfig {
     // Build the formatter config from the response specification
     handler_context
         .tool_def()

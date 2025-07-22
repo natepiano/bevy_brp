@@ -6,14 +6,17 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::constants::default_port;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn, NoMethod, NoPort};
+use crate::tool::{HandlerContext, HandlerResponse, LocalToolFn};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ListWatchParams {
     /// The entity ID to watch for component list changes
     pub entity: u64,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port")]
+    #[serde(
+        default = "default_port",
+        deserialize_with = "crate::tool::deserialize_port"
+    )]
     pub port:   u16,
 }
 
@@ -22,7 +25,7 @@ pub struct BevyListWatch;
 impl LocalToolFn for BevyListWatch {
     type Output = WatchStartResult;
 
-    fn call(&self, ctx: &HandlerContext<NoPort, NoMethod>) -> HandlerResponse<Self::Output> {
+    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<Self::Output> {
         // Extract typed parameters
         let params: ListWatchParams = match ctx.extract_typed_params() {
             Ok(params) => params,

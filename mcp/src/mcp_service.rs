@@ -152,6 +152,6 @@ impl ServerHandler for McpService {
             )
         })?;
 
-        tool_def.create_handler(request, roots)?.call_tool().await
+        tool_def.create_handler(request, roots).call_tool().await
     }
 }
