@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use super::constants::DEFAULT_PROFILE;
 use super::support::{App, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams};
-use crate::constants::default_port;
+use crate::brp_tools::default_port;
 
 #[derive(Deserialize, JsonSchema)]
 pub struct LaunchBevyAppParams {

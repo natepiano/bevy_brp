@@ -2,8 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
-use crate::brp_tools::{BrpResult, execute_brp_method};
-use crate::constants::default_port;
+use crate::brp_tools::{BrpResult, default_port, execute_brp_method};
 use crate::error::Error;
 use crate::tool::{BRP_METHOD_LIST, HandlerContext, HandlerResponse, ToolFn};
 

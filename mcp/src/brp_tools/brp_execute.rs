@@ -4,9 +4,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::constants::default_port;
 use crate::brp_tools::format_discovery::execute_brp_method_with_format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
-use crate::constants::default_port;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, Serialize, JsonSchema)]

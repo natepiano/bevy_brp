@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use error_stack::ResultExt;
 use serde_json::json;
 
-use crate::constants::{CHARS_PER_TOKEN, DEFAULT_MAX_RESPONSE_TOKENS};
+use super::constants::{CHARS_PER_TOKEN, DEFAULT_MAX_RESPONSE_TOKENS};
 use crate::error::{Error, Result};
 use crate::response::builder::JsonResponse;
 

@@ -92,9 +92,8 @@ impl Write for LazyWriter {
 
         // Try to flush
         if let Some(file) = file_guard.as_mut() {
-            if let Ok(()) = file.flush() {
-                drop(file_guard);
-                Ok(())
+            if matches!(file.flush(), Ok(())) {
+                // Flush succeeded
             } else {
                 // Flush failed, might be stale handle
                 if self.path.exists() {
@@ -108,13 +107,10 @@ impl Write for LazyWriter {
                     // File doesn't exist, clear handle
                     *file_guard = None;
                 }
-                drop(file_guard);
-                Ok(())
             }
-        } else {
-            drop(file_guard);
-            Ok(()) // Nothing to flush
         }
+        drop(file_guard);
+        Ok(())
     }
 }
 

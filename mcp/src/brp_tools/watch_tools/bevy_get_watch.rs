@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::types::WatchStartResult;
-use crate::constants::default_port;
+use crate::brp_tools::default_port;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 

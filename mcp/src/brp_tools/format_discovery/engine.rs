@@ -46,8 +46,7 @@ use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
 use super::{UnifiedTypeInfo, recovery_engine};
-use crate::brp_tools::{BrpResult, execute_brp_method};
-use crate::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
+use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpResult, execute_brp_method};
 use crate::error::Result;
 use crate::tool::{BRP_METHOD_INSERT, BRP_METHOD_SPAWN};
 

@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use strum::{Display, EnumString};
 
-use crate::constants::VALID_PORT_RANGE;
+use crate::brp_tools::VALID_PORT_RANGE;
 use crate::tool::mcp_tool_schema::ParameterBuilder;
 
 /// Deserialize and validate port numbers

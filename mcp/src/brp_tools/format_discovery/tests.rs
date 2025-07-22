@@ -9,8 +9,7 @@ use super::engine::FormatCorrection;
 // Legacy types imported for backward compatibility during tests
 use super::transformers::TransformerRegistry;
 use super::unified_types::TypeCategory;
-use crate::brp_tools::BrpError;
-use crate::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
+use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpError};
 
 #[test]
 fn test_analyze_error_pattern_tuple_struct_access() {

@@ -72,7 +72,7 @@ pub struct LaunchResult {
 }
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
-use crate::constants::BRP_PORT_ENV_VAR;
+use crate::brp_tools::BRP_PORT_ENV_VAR;
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {

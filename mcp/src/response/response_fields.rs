@@ -1,4 +1,4 @@
-use strum::{Display, EnumString, IntoStaticStr};
+use strum::{AsRefStr, Display, EnumString, IntoStaticStr};
 
 use super::extraction::ResponseFieldType;
 
@@ -13,7 +13,7 @@ pub enum CoreResponseField {
 }
 
 /// Enum representing all possible response field names
-#[derive(Display, EnumString, IntoStaticStr, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Display, EnumString, AsRefStr, IntoStaticStr, Debug, Clone, Copy, PartialEq, Eq)]
 #[strum(serialize_all = "snake_case")]
 pub enum ResponseFieldName {
     /// `app_name` - Application name

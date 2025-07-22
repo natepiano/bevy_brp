@@ -2,9 +2,8 @@ use serde_json::Value;
 
 use super::extraction::{ResponseFieldType, extract_response_field};
 use super::template_substitution::substitute_template_with_priority;
-use super::{FieldPlacement, ResponseField};
+use super::{FieldPlacement, ResponseField, ResponseFieldName};
 use crate::brp_tools::{FormatCorrection, FormatCorrectionField, FormatCorrectionStatus};
-use crate::constants::{RESPONSE_DEBUG_INFO, RESPONSE_METADATA};
 use crate::tool::HandlerContext;
 
 /// Encapsulates all extracted components from a response
@@ -152,14 +151,14 @@ impl ResponseComponents {
         let mut brp_extras_debug_info = None;
 
         if let Value::Object(data_map) = data {
-            if let Some(debug_info) = data_map.get(RESPONSE_DEBUG_INFO) {
+            if let Some(debug_info) = data_map.get(ResponseFieldName::DebugInfo.as_ref()) {
                 if !debug_info.is_null() && (debug_info.is_array() || debug_info.is_string()) {
                     brp_extras_debug_info = Some(debug_info.clone());
                 }
             }
 
             if let Value::Object(clean_map) = &mut clean_data {
-                clean_map.remove(RESPONSE_DEBUG_INFO);
+                clean_map.remove(ResponseFieldName::DebugInfo.as_ref());
             }
         }
 
@@ -182,8 +181,8 @@ impl ResponseComponents {
             let field_name = field.name();
             let (value, placement) = Self::extract_field_value(field, clean_data, handler_context);
 
-            let is_metadata_object =
-                field_name == RESPONSE_METADATA && matches!(placement, FieldPlacement::Metadata);
+            let is_metadata_object = field_name == (ResponseFieldName::Metadata.as_ref())
+                && matches!(placement, FieldPlacement::Metadata);
 
             configured_fields.push(ConfiguredField {
                 name: field_name.to_string(),

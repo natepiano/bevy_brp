@@ -11,15 +11,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, warn};
 
+use super::constants::{
+    BRP_DEFAULT_HOST, BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
+    BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,
+    JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND,
+};
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::FormatCorrectionField;
-use crate::constants::{
-    BRP_DEFAULT_HOST, BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
-    BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,
-    JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND, PARAM_PARAMS,
-};
+use crate::constants::PARAM_PARAMS;
 use crate::error::{Error, Result};
-use crate::tool::BRP_EXTRAS_PREFIX;
 
 /// Result of a BRP operation
 #[derive(Debug, Clone)]

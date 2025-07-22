@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
-use crate::brp_tools::{BrpResult, execute_brp_method};
-use crate::constants::{JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port};
+use crate::brp_tools::{
+    BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, execute_brp_method,
+};
 use crate::error::{Error, Result};
 use crate::tool::{BRP_METHOD_EXTRAS_SHUTDOWN, HandlerContext, HandlerResponse, ToolFn};
 
