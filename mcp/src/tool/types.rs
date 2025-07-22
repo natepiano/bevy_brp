@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use crate::error::Result;
-use crate::response::{LocalCallInfo, ResponseFormatter};
+use crate::response::{LocalCallInfo, ResponseDef};
 
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
@@ -48,7 +48,7 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
-        response_formatter: ResponseFormatter,
+        response_def: ResponseDef,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
 }
 
@@ -57,22 +57,18 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
-        response_formatter: ResponseFormatter,
+        response_def: ResponseDef,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
     {
         Box::pin(async move {
             let result = self.call(ctx).await;
             match result {
                 Ok((call_info_data, output)) => {
-                    response_formatter.format_tool_result(Ok(output), ctx, call_info_data)
+                    response_def.format_result(Ok(output), ctx, call_info_data)
                 }
                 Err(e) => {
                     // For errors, we don't have CallInfoData, so use a default LocalCallInfo
-                    response_formatter.format_tool_result::<T::Output, _>(
-                        Err(e),
-                        ctx,
-                        LocalCallInfo,
-                    )
+                    response_def.format_result::<T::Output, _>(Err(e), ctx, LocalCallInfo)
                 }
             }
         })
@@ -97,14 +93,10 @@ impl ToolHandler {
 impl ToolHandler {
     pub async fn call_tool(self) -> std::result::Result<CallToolResult, McpError> {
         // Generate formatter config from tool definition
-        let formatter_config = self
-            .context
-            .tool_def()
-            .response_specification()
-            .build_response_formatter();
+        let response_spec = self.context.tool_def().response_def();
 
         self.handler
-            .call_erased(&self.context, formatter_config)
+            .call_erased(&self.context, response_spec.clone())
             .await
     }
 }

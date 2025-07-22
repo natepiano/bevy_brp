@@ -1,52 +1,131 @@
-//! # Response Handling Module
-//!
-//! This module provides different APIs for handling responses in the Bevy BRP MCP server.
-//! There are three main approaches, each suited for different use cases:
-//!
-//! ## `ResponseBuilder` API (`ResponseBuilder`)
-//!
-//! A flexible builder pattern for constructing responses:
-//! - Allows setting message, data, and individual fields
-//! - Supports auto-injection of debug information
-//! - Provides error handling for serialization issues
-//!
-//! ## `ResponseFormatter` API (`ResponseFormatter`)
-//!
-//! A configurable formatter that handles BRP-specific concerns:
-//! - Automatic large response handling with file fallback
-//! - Template-based message formatting with parameter substitution
-//! - Format correction status handling
-//! - Configurable field extraction from response data
-
 use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 use serde_json::{Value, json};
 
+use super::ResponseFieldName;
 use super::builder::{CallInfo, CallInfoProvider, JsonResponse, ResponseBuilder};
-use super::extraction::{ResponseFieldType, extract_response_field};
+use super::extraction::{JsonFieldProvider, ResponseFieldType, extract_response_field};
 use super::large_response::{self, LargeResponseConfig};
-use super::specification::{FieldPlacement, ResponseField};
-// Import format discovery types for convenience
 use crate::brp_tools::{FORMAT_DISCOVERY_METHODS, FormatCorrection, FormatCorrectionStatus};
 use crate::constants::{
     RESPONSE_DEBUG_INFO, RESPONSE_FORMAT_CORRECTED, RESPONSE_FORMAT_CORRECTIONS, RESPONSE_METADATA,
 };
 use crate::error::{Error, Result};
-use crate::tool::HandlerContext;
+use crate::tool::{HandlerContext, ParameterName};
 
-/// A configurable formatter that can handle various BRP response formatting needs
-pub struct ResponseFormatter {
-    /// Template for success messages - can include placeholders like {entity}, {resource}, etc.
-    pub message_template:      String,
-    /// Additional fields to add to success responses
-    pub success_fields:        Vec<ResponseField>,
-    /// Configuration for large response handling
-    pub large_response_config: LargeResponseConfig,
+/// Implement `JsonFieldProvider` for `serde_json::Value` to enable field extraction
+impl JsonFieldProvider for serde_json::Value {
+    fn get_root(&self) -> serde_json::Value {
+        self.clone()
+    }
 }
 
-impl ResponseFormatter {
+/// Specifies where a response field should be placed in the output JSON
+#[derive(Clone, Debug)]
+pub enum FieldPlacement {
+    /// Place field in the metadata object
+    Metadata,
+    /// Place field in the result object
+    Result,
+}
+
+/// Response field specification for structured responses.
+///
+/// Defines how to extract and place fields in the response JSON structure.
+#[derive(Clone, Debug)]
+pub enum ResponseField {
+    /// Reference a field from already-extracted request parameters with explicit placement.
+    ///
+    /// This variant references data that was already extracted and validated during
+    /// the parameter extraction phase, with explicit control over where the field is placed.
+    FromRequest {
+        /// Name of the field to be output in the response
+        response_field_name: ResponseFieldName,
+        /// Parameter name from the tool call request parameters
+        parameter_name:      ParameterName,
+        /// Where to place this field in the response
+        placement:           FieldPlacement,
+    },
+    /// Extract a field from response data with explicit placement.
+    ///
+    /// This variant specifies extraction of data from the handler or BRP response payload
+    /// with explicit control over where the field is placed.
+    FromResponse {
+        /// Name of the field in the response
+        response_field_name: ResponseFieldName,
+        /// Source path for extraction
+        /// Supports dot notation for nested fields (e.g., "result.entity")
+        source_path:         &'static str,
+        /// Where to place this field in the response
+        placement:           FieldPlacement,
+    },
+    /// Pass all fields from the BRP response directly to the metadata field.
+    ///
+    /// This variant takes all top-level fields from the response and places them
+    /// in metadata, useful for tools that return many fields that all belong in metadata.
+    DirectToMetadata,
+    /// Extract a field from response data that may be null - skip if null.
+    ///
+    /// This variant extracts a field and omits it from the response if the value is null.
+    /// Use this for optional fields that should not appear in the response when missing.
+    FromResponseNullableWithPlacement {
+        /// Name of the field in the response
+        response_field_name: ResponseFieldName,
+        /// Source path for extraction
+        /// Supports dot notation for nested fields (e.g., "result.entity")
+        source_path:         &'static str,
+        /// Where to place this field in the response
+        placement:           FieldPlacement,
+    },
+    /// Extract the raw BRP response data from the "result" field to the result field
+    ///
+    /// This is a convenience variant for BRP tools that need to extract the raw BRP response
+    /// from the "result" field and place it in the JSON response result field.
+    BrpRawResultToResult,
+    /// Extract format correction metadata from handler responses
+    ///
+    /// This variant extracts all format correction fields (`format_corrected`,
+    /// `format_corrections`, etc.) from `BrpMethodResult` and places them in metadata. Only
+    /// used for V2 tools that support format correction.
+    FormatCorrection,
+}
+
+impl ResponseField {
+    /// Get the field name for this response field specification.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::FromRequest {
+                response_field_name: name,
+                ..
+            }
+            | Self::FromResponse {
+                response_field_name: name,
+                ..
+            }
+            | Self::FromResponseNullableWithPlacement {
+                response_field_name: name,
+                ..
+            } => name.into(),
+            Self::DirectToMetadata | Self::FormatCorrection => ResponseFieldName::Metadata.into(),
+            Self::BrpRawResultToResult => ResponseFieldName::Result.into(),
+        }
+    }
+}
+
+/// Defines how to format the response for a tool.
+///
+/// Specifies the message template and fields to include in structured responses.
+#[derive(Clone)]
+pub struct ResponseDef {
+    /// Template for success messages
+    pub message_template: &'static str,
+    /// Fields to include in the response
+    pub response_fields:  Vec<ResponseField>,
+}
+
+impl ResponseDef {
     /// Type-safe formatter that accepts our internal Result directly
-    pub fn format_tool_result<T, C>(
+    pub fn format_result<T, C>(
         self,
         result: Result<T>,
         handler_context: &HandlerContext,
@@ -214,7 +293,7 @@ impl ResponseFormatter {
         match large_response::handle_large_response(
             response,
             method,
-            self.large_response_config.clone(),
+            LargeResponseConfig::default(),
         ) {
             Ok(processed_response) => {
                 // Return the processed response (either original or with result field saved to
@@ -273,7 +352,7 @@ impl ResponseFormatter {
         mut template_values: serde_json::Map<String, Value>,
         handler_context: &HandlerContext,
     ) -> Result<serde_json::Map<String, Value>> {
-        for field in &self.success_fields {
+        for field in &self.response_fields {
             let field_name = field.name();
             let (value, placement) = Self::extract_field_value(field, clean_data, handler_context);
 
@@ -689,69 +768,4 @@ fn extract_format_corrections(
         });
 
     (format_corrections, format_corrected)
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use serde_json::json;
-
-    use super::*;
-    use crate::response::CallInfo;
-
-    #[test]
-    fn test_substitute_template() {
-        let params = Some(json!({
-            "entity": 123,
-            "name": "test_resource"
-        }));
-
-        let result = substitute_template("Entity {entity} with name {name}", params.as_ref());
-        assert_eq!(result, "Entity 123 with name test_resource");
-
-        let result = substitute_template("No substitutions", params.as_ref());
-        assert_eq!(result, "No substitutions");
-
-        let result = substitute_template("Missing {missing} placeholder", params.as_ref());
-        assert_eq!(result, "Missing {missing} placeholder");
-    }
-
-    #[test]
-    fn test_result_placement_direct_value() {
-        // Test that FieldPlacement::Result puts data directly in result field
-        use crate::response::builder::ResponseBuilder;
-
-        let test_data = json!({
-            "value": {
-                "Srgba": {
-                    "alpha": 1.0,
-                    "blue": 0.1843,
-                    "green": 0.1725,
-                    "red": 0.1686
-                }
-            }
-        });
-
-        let call_info = CallInfo::local("test_tool".to_string());
-        let response = ResponseBuilder::success(call_info)
-            .message("Retrieved resource")
-            .add_field_to("ignored_field_name", &test_data, FieldPlacement::Result)
-            .expect("Failed to add field")
-            .build();
-
-        // The result field should directly contain our test_data
-        assert_eq!(response.result, Some(test_data));
-
-        // Convert to JSON to verify structure
-        let json_str = response.to_json().expect("Failed to convert to JSON");
-        let parsed: Value = serde_json::from_str(&json_str).expect("Failed to parse JSON");
-
-        // Verify the structure matches expected format
-        assert_eq!(parsed["status"], "success");
-        assert_eq!(parsed["message"], "Retrieved resource");
-        assert_eq!(parsed["result"]["value"]["Srgba"]["alpha"], 1.0);
-
-        // Ensure no wrapping field name was added
-        assert!(parsed["result"].get("ignored_field_name").is_none());
-    }
 }

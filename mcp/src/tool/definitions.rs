@@ -46,7 +46,7 @@ use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
     ReadLogParams, SetTracingLevel, SetTracingLevelParams,
 };
-use crate::response::{FieldPlacement, ResponseField, ResponseFieldName, ResponseSpecification};
+use crate::response::{FieldPlacement, ResponseDef, ResponseField, ResponseFieldName};
 use crate::tool::ParameterName;
 
 /// Get all tool definitions for registration with the MCP service
@@ -54,16 +54,16 @@ use crate::tool::ParameterName;
 pub fn get_all_tool_definitions() -> Vec<ToolDef> {
     vec![
         ToolDef {
-            name:                   TOOL_BEVY_DESTROY,
-            description:            DESC_BEVY_DESTROY,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_DESTROY,
+            description: DESC_BEVY_DESTROY,
+            annotations: BrpToolAnnotations::new(
                 "Destroy Bevy Entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:                Arc::new(BevyDestroy),
-            parameters:             Some(extract_parameters::<DestroyParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyDestroy),
+            parameters:  Some(extract_parameters::<DestroyParams>),
+            response:    ResponseDef {
                 message_template: "Successfully destroyed entity {entity}",
                 response_fields:  vec![ResponseField::FromRequest {
                     response_field_name: ResponseFieldName::Entity,
@@ -73,16 +73,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_GET,
-            description:            DESC_BEVY_GET,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_GET,
+            description: DESC_BEVY_GET,
+            annotations: BrpToolAnnotations::new(
                 "Get Component Data",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyGet),
-            parameters:             Some(extract_parameters::<GetParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyGet),
+            parameters:  Some(extract_parameters::<GetParams>),
+            response:    ResponseDef {
                 message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -109,31 +109,31 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_GET_RESOURCE,
-            description:            DESC_BEVY_GET_RESOURCE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_GET_RESOURCE,
+            description: DESC_BEVY_GET_RESOURCE,
+            annotations: BrpToolAnnotations::new(
                 "Get Resource Data",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyGetResource),
-            parameters:             Some(extract_parameters::<GetResourceParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyGetResource),
+            parameters:  Some(extract_parameters::<GetResourceParams>),
+            response:    ResponseDef {
                 message_template: "Retrieved resource: {resource}",
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_INSERT,
-            description:            DESC_BEVY_INSERT,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_INSERT,
+            description: DESC_BEVY_INSERT,
+            annotations: BrpToolAnnotations::new(
                 "Insert Components",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:                Arc::new(BevyInsert),
-            parameters:             Some(extract_parameters::<InsertParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyInsert),
+            parameters:  Some(extract_parameters::<InsertParams>),
+            response:    ResponseDef {
                 message_template: "Successfully inserted components into entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -151,16 +151,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_INSERT_RESOURCE,
-            description:            DESC_BEVY_INSERT_RESOURCE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_INSERT_RESOURCE,
+            description: DESC_BEVY_INSERT_RESOURCE,
+            annotations: BrpToolAnnotations::new(
                 "Insert Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:                Arc::new(BevyInsertResource),
-            parameters:             Some(extract_parameters::<InsertResourceParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyInsertResource),
+            parameters:  Some(extract_parameters::<InsertResourceParams>),
+            response:    ResponseDef {
                 message_template: "Successfully inserted/updated resource: {resource}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -173,16 +173,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_LIST,
-            description:            DESC_BEVY_LIST,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_LIST,
+            description: DESC_BEVY_LIST,
+            annotations: BrpToolAnnotations::new(
                 "List Components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyList),
-            parameters:             Some(extract_parameters::<ListParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyList),
+            parameters:  Some(extract_parameters::<ListParams>),
+            response:    ResponseDef {
                 message_template: "Listed {component_count} components",
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
@@ -195,16 +195,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_LIST_RESOURCES,
-            description:            DESC_BEVY_LIST_RESOURCES,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_LIST_RESOURCES,
+            description: DESC_BEVY_LIST_RESOURCES,
+            annotations: BrpToolAnnotations::new(
                 "List Resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyListResources),
-            parameters:             Some(extract_parameters::<ListResourcesParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyListResources),
+            parameters:  Some(extract_parameters::<ListResourcesParams>),
+            response:    ResponseDef {
                 message_template: "Listed {resource_count} resources",
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
@@ -217,16 +217,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_MUTATE_COMPONENT,
-            description:            DESC_BEVY_MUTATE_COMPONENT,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_MUTATE_COMPONENT,
+            description: DESC_BEVY_MUTATE_COMPONENT,
+            annotations: BrpToolAnnotations::new(
                 "Mutate Component",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:                Arc::new(BevyMutateComponent),
-            parameters:             Some(extract_parameters::<MutateComponentParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyMutateComponent),
+            parameters:  Some(extract_parameters::<MutateComponentParams>),
+            response:    ResponseDef {
                 message_template: "Successfully mutated component on entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -239,16 +239,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_MUTATE_RESOURCE,
-            description:            DESC_BEVY_MUTATE_RESOURCE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_MUTATE_RESOURCE,
+            description: DESC_BEVY_MUTATE_RESOURCE,
+            annotations: BrpToolAnnotations::new(
                 "Mutate Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            handler:                Arc::new(BevyMutateResource),
-            parameters:             Some(extract_parameters::<MutateResourceParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyMutateResource),
+            parameters:  Some(extract_parameters::<MutateResourceParams>),
+            response:    ResponseDef {
                 message_template: "Successfully mutated resource: `{resource}`",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -261,16 +261,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_QUERY,
-            description:            DESC_BEVY_QUERY,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_QUERY,
+            description: DESC_BEVY_QUERY,
+            annotations: BrpToolAnnotations::new(
                 "Query Entities/Components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyQuery),
-            parameters:             Some(extract_parameters::<QueryParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyQuery),
+            parameters:  Some(extract_parameters::<QueryParams>),
+            response:    ResponseDef {
                 message_template: "Query completed successfully",
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
@@ -288,16 +288,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_REGISTRY_SCHEMA,
-            description:            DESC_BEVY_REGISTRY_SCHEMA,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_REGISTRY_SCHEMA,
+            description: DESC_BEVY_REGISTRY_SCHEMA,
+            annotations: BrpToolAnnotations::new(
                 "Get Type Schemas",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyRegistrySchema),
-            parameters:             Some(extract_parameters::<RegistrySchemaParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyRegistrySchema),
+            parameters:  Some(extract_parameters::<RegistrySchemaParams>),
+            response:    ResponseDef {
                 message_template: "Retrieved schema information",
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
@@ -310,16 +310,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_REMOVE,
-            description:            DESC_BEVY_REMOVE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_REMOVE,
+            description: DESC_BEVY_REMOVE,
+            annotations: BrpToolAnnotations::new(
                 "Remove Components",
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:                Arc::new(BevyRemove),
-            parameters:             Some(extract_parameters::<RemoveParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyRemove),
+            parameters:  Some(extract_parameters::<RemoveParams>),
+            response:    ResponseDef {
                 message_template: "Successfully removed components from entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -336,16 +336,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_REMOVE_RESOURCE,
-            description:            DESC_BEVY_REMOVE_RESOURCE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_REMOVE_RESOURCE,
+            description: DESC_BEVY_REMOVE_RESOURCE,
+            annotations: BrpToolAnnotations::new(
                 "Remove Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:                Arc::new(BevyRemoveResource),
-            parameters:             Some(extract_parameters::<RemoveResourceParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyRemoveResource),
+            parameters:  Some(extract_parameters::<RemoveResourceParams>),
+            response:    ResponseDef {
                 message_template: "Successfully removed resource",
                 response_fields:  vec![ResponseField::FromRequest {
                     response_field_name: ResponseFieldName::Resource,
@@ -355,16 +355,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_REPARENT,
-            description:            DESC_BEVY_REPARENT,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_REPARENT,
+            description: DESC_BEVY_REPARENT,
+            annotations: BrpToolAnnotations::new(
                 "Reparent Entities",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:                Arc::new(BevyReparent),
-            parameters:             Some(extract_parameters::<ReparentParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyReparent),
+            parameters:  Some(extract_parameters::<ReparentParams>),
+            response:    ResponseDef {
                 message_template: "Successfully reparented entities",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -381,16 +381,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_RPC_DISCOVER,
-            description:            DESC_BEVY_RPC_DISCOVER,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_RPC_DISCOVER,
+            description: DESC_BEVY_RPC_DISCOVER,
+            annotations: BrpToolAnnotations::new(
                 "Discover BRP Methods",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BevyRpcDiscover),
-            parameters:             Some(extract_parameters::<RpcDiscoverParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyRpcDiscover),
+            parameters:  Some(extract_parameters::<RpcDiscoverParams>),
+            response:    ResponseDef {
                 message_template: "Retrieved BRP method discovery information for {method_count} methods",
                 response_fields:  vec![
                     ResponseField::BrpRawResultToResult,
@@ -404,16 +404,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         // todo: (later) make this match curl
         ToolDef {
-            name:                   TOOL_BEVY_SPAWN,
-            description:            DESC_BEVY_SPAWN,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_SPAWN,
+            description: DESC_BEVY_SPAWN,
+            annotations: BrpToolAnnotations::new(
                 "Spawn Entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:                Arc::new(BevySpawn),
-            parameters:             Some(extract_parameters::<SpawnParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevySpawn),
+            parameters:  Some(extract_parameters::<SpawnParams>),
+            response:    ResponseDef {
                 message_template: "Successfully spawned entity",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -428,46 +428,46 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // brp_execute is a LocalToolFnWithPort since it uses user-provided method names
         // rather than static method names from ToolDef constants
         ToolDef {
-            name:                   TOOL_BRP_EXECUTE,
-            description:            DESC_BRP_EXECUTE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BRP_EXECUTE,
+            description: DESC_BRP_EXECUTE,
+            annotations: BrpToolAnnotations::new(
                 "Execute BRP Method",
                 ToolCategory::DynamicBrp,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:                Arc::new(BrpExecute),
-            parameters:             Some(extract_parameters::<ExecuteParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpExecute),
+            parameters:  Some(extract_parameters::<ExecuteParams>),
+            response:    ResponseDef {
                 message_template: "Method executed successfully",
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         ToolDef {
-            name:                   TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
-            description:            DESC_BRP_EXTRAS_DISCOVER_FORMAT,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BRP_EXTRAS_DISCOVER_FORMAT,
+            description: DESC_BRP_EXTRAS_DISCOVER_FORMAT,
+            annotations: BrpToolAnnotations::new(
                 "Discover Component Format",
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BrpExtrasDiscoverFormat),
-            parameters:             Some(extract_parameters::<DiscoverFormatParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpExtrasDiscoverFormat),
+            parameters:  Some(extract_parameters::<DiscoverFormatParams>),
+            response:    ResponseDef {
                 message_template: "Format discovery completed",
                 response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         ToolDef {
-            name:                   TOOL_BRP_EXTRAS_SCREENSHOT,
-            description:            DESC_BRP_EXTRAS_SCREENSHOT,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BRP_EXTRAS_SCREENSHOT,
+            description: DESC_BRP_EXTRAS_SCREENSHOT,
+            annotations: BrpToolAnnotations::new(
                 "Take Screenshot",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:                Arc::new(BrpExtrasScreenshot),
-            parameters:             Some(extract_parameters::<ScreenshotParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpExtrasScreenshot),
+            parameters:  Some(extract_parameters::<ScreenshotParams>),
+            response:    ResponseDef {
                 message_template: "Successfully captured screenshot",
                 response_fields:  vec![ResponseField::FromRequest {
                     response_field_name: ResponseFieldName::Path,
@@ -477,16 +477,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BRP_EXTRAS_SEND_KEYS,
-            description:            DESC_BRP_EXTRAS_SEND_KEYS,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BRP_EXTRAS_SEND_KEYS,
+            description: DESC_BRP_EXTRAS_SEND_KEYS,
+            annotations: BrpToolAnnotations::new(
                 "Send Keys",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:                Arc::new(BrpExtrasSendKeys),
-            parameters:             Some(extract_parameters::<SendKeysParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpExtrasSendKeys),
+            parameters:  Some(extract_parameters::<SendKeysParams>),
+            response:    ResponseDef {
                 message_template: "Successfully sent keyboard input",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -503,16 +503,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
-            description:            DESC_BRP_EXTRAS_SET_DEBUG_MODE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BRP_EXTRAS_SET_DEBUG_MODE,
+            description: DESC_BRP_EXTRAS_SET_DEBUG_MODE,
+            annotations: BrpToolAnnotations::new(
                 "Set Debug Mode",
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BrpExtrasSetDebugMode),
-            parameters:             Some(extract_parameters::<SetDebugModeParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpExtrasSetDebugMode),
+            parameters:  Some(extract_parameters::<SetDebugModeParams>),
+            response:    ResponseDef {
                 message_template: "Debug mode updated successfully",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -533,16 +533,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // but we need the local tool in order to set up the watch to stream
         // the results and log them to a file
         ToolDef {
-            name:                   TOOL_BEVY_GET_WATCH,
-            description:            DESC_BEVY_GET_WATCH,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_GET_WATCH,
+            description: DESC_BEVY_GET_WATCH,
+            annotations: BrpToolAnnotations::new(
                 "Watch Component Changes",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:                Arc::new(BevyGetWatch),
-            parameters:             Some(extract_parameters::<GetWatchParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyGetWatch),
+            parameters:  Some(extract_parameters::<GetWatchParams>),
+            response:    ResponseDef {
                 message_template: "Started entity watch {watch_id} for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -564,16 +564,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_BEVY_LIST_WATCH,
-            description:            DESC_BEVY_LIST_WATCH,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_BEVY_LIST_WATCH,
+            description: DESC_BEVY_LIST_WATCH,
+            annotations: BrpToolAnnotations::new(
                 "Watch Component List",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
-            handler:                Arc::new(BevyListWatch),
-            parameters:             Some(extract_parameters::<ListWatchParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BevyListWatch),
+            parameters:  Some(extract_parameters::<ListWatchParams>),
+            response:    ResponseDef {
                 message_template: "Started list watch {watch_id} for entity {entity}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -595,16 +595,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_DELETE_LOGS,
-            description:            DESC_DELETE_LOGS,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_DELETE_LOGS,
+            description: DESC_DELETE_LOGS,
+            annotations: BrpToolAnnotations::new(
                 "Delete Log Files",
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:                Arc::new(DeleteLogs),
-            parameters:             Some(extract_parameters::<DeleteLogsParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(DeleteLogs),
+            parameters:  Some(extract_parameters::<DeleteLogsParams>),
+            response:    ResponseDef {
                 message_template: "Deleted {deleted_count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -631,16 +631,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_GET_TRACE_LOG_PATH,
-            description:            DESC_GET_TRACE_LOG_PATH,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_GET_TRACE_LOG_PATH,
+            description: DESC_GET_TRACE_LOG_PATH,
+            annotations: BrpToolAnnotations::new(
                 "Get Trace Log Path",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(GetTraceLogPath),
-            parameters:             None,
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(GetTraceLogPath),
+            parameters:  None,
+            response:    ResponseDef {
                 message_template: "Trace log found",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -662,16 +662,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LAUNCH_BEVY_APP,
-            description:            DESC_LAUNCH_BEVY_APP,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LAUNCH_BEVY_APP,
+            description: DESC_LAUNCH_BEVY_APP,
+            annotations: BrpToolAnnotations::new(
                 "Launch Bevy App",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(app_tools::create_launch_bevy_app_handler()),
-            parameters:             Some(extract_parameters::<LaunchBevyAppParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(app_tools::create_launch_bevy_app_handler()),
+            parameters:  Some(extract_parameters::<LaunchBevyAppParams>),
+            response:    ResponseDef {
                 message_template: "Successfully launched bevy app '{target_name}' (PID: {pid})",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -684,16 +684,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LAUNCH_BEVY_EXAMPLE,
-            description:            DESC_LAUNCH_BEVY_EXAMPLE,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LAUNCH_BEVY_EXAMPLE,
+            description: DESC_LAUNCH_BEVY_EXAMPLE,
+            annotations: BrpToolAnnotations::new(
                 "Launch Bevy Example",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(app_tools::create_launch_bevy_example_handler()),
-            parameters:             Some(extract_parameters::<LaunchBevyExampleParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(app_tools::create_launch_bevy_example_handler()),
+            parameters:  Some(extract_parameters::<LaunchBevyExampleParams>),
+            response:    ResponseDef {
                 message_template: "Successfully launched example '{target_name}' (PID: {pid})",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -706,16 +706,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LIST_BEVY_APPS,
-            description:            DESC_LIST_BEVY_APPS,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LIST_BEVY_APPS,
+            description: DESC_LIST_BEVY_APPS,
+            annotations: BrpToolAnnotations::new(
                 "List Bevy Apps",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(ListBevyApps),
-            parameters:             None,
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(ListBevyApps),
+            parameters:  None,
+            response:    ResponseDef {
                 message_template: "Found {count} Bevy apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -732,16 +732,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LIST_BEVY_EXAMPLES,
-            description:            DESC_LIST_BEVY_EXAMPLES,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LIST_BEVY_EXAMPLES,
+            description: DESC_LIST_BEVY_EXAMPLES,
+            annotations: BrpToolAnnotations::new(
                 "List Bevy Examples",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(ListBevyExamples),
-            parameters:             None,
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(ListBevyExamples),
+            parameters:  None,
+            response:    ResponseDef {
                 message_template: "Found {count} Bevy examples",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -758,16 +758,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LIST_BRP_APPS,
-            description:            DESC_LIST_BRP_APPS,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LIST_BRP_APPS,
+            description: DESC_LIST_BRP_APPS,
+            annotations: BrpToolAnnotations::new(
                 "List Bevy BRP-enabled Apps",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(ListBrpApps),
-            parameters:             None,
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(ListBrpApps),
+            parameters:  None,
+            response:    ResponseDef {
                 message_template: "Found {count} BRP-enabled apps",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -784,16 +784,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LIST_ACTIVE_WATCHES,
-            description:            DESC_LIST_ACTIVE_WATCHES,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LIST_ACTIVE_WATCHES,
+            description: DESC_LIST_ACTIVE_WATCHES,
+            annotations: BrpToolAnnotations::new(
                 "List Active Watches",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(BrpListActiveWatches),
-            parameters:             None,
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpListActiveWatches),
+            parameters:  None,
+            response:    ResponseDef {
                 message_template: "Found {count} active watches",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -810,16 +810,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_STOP_WATCH,
-            description:            DESC_STOP_WATCH,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_STOP_WATCH,
+            description: DESC_STOP_WATCH,
+            annotations: BrpToolAnnotations::new(
                 "Stop Watch",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            handler:                Arc::new(BrpStopWatch),
-            parameters:             Some(extract_parameters::<StopWatchParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(BrpStopWatch),
+            parameters:  Some(extract_parameters::<StopWatchParams>),
+            response:    ResponseDef {
                 message_template: "Successfully stopped watch",
                 response_fields:  vec![ResponseField::FromResponse {
                     response_field_name: ResponseFieldName::WatchId,
@@ -829,16 +829,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_LIST_LOGS,
-            description:            DESC_LIST_LOGS,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_LIST_LOGS,
+            description: DESC_LIST_LOGS,
+            annotations: BrpToolAnnotations::new(
                 "List Log Files",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(ListLogs),
-            parameters:             Some(extract_parameters::<ListLogsParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(ListLogs),
+            parameters:  Some(extract_parameters::<ListLogsParams>),
+            response:    ResponseDef {
                 message_template: "Found {count} log files",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -860,16 +860,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_READ_LOG,
-            description:            DESC_READ_LOG,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_READ_LOG,
+            description: DESC_READ_LOG,
+            annotations: BrpToolAnnotations::new(
                 "Read Log File",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(ReadLog),
-            parameters:             Some(extract_parameters::<ReadLogParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(ReadLog),
+            parameters:  Some(extract_parameters::<ReadLogParams>),
+            response:    ResponseDef {
                 message_template: "Successfully read log file: {filename}",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -916,16 +916,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_SET_TRACING_LEVEL,
-            description:            DESC_SET_TRACING_LEVEL,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_SET_TRACING_LEVEL,
+            description: DESC_SET_TRACING_LEVEL,
+            annotations: BrpToolAnnotations::new(
                 "Set Tracing Level",
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:                Arc::new(SetTracingLevel),
-            parameters:             Some(extract_parameters::<SetTracingLevelParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(SetTracingLevel),
+            parameters:  Some(extract_parameters::<SetTracingLevelParams>),
+            response:    ResponseDef {
                 message_template: "Tracing level set to '{tracing_level}' - diagnostic information will be logged to temp directory",
                 response_fields:  vec![
                     ResponseField::FromResponse {
@@ -942,16 +942,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_STATUS,
-            description:            DESC_STATUS,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_STATUS,
+            description: DESC_STATUS,
+            annotations: BrpToolAnnotations::new(
                 "Check App Status",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
             ),
-            handler:                Arc::new(Status),
-            parameters:             Some(extract_parameters::<StatusParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(Status),
+            parameters:  Some(extract_parameters::<StatusParams>),
+            response:    ResponseDef {
                 message_template: "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}",
                 response_fields:  vec![
                     ResponseField::FromRequest {
@@ -978,16 +978,16 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             },
         },
         ToolDef {
-            name:                   TOOL_SHUTDOWN,
-            description:            DESC_SHUTDOWN,
-            annotations:            BrpToolAnnotations::new(
+            name:        TOOL_SHUTDOWN,
+            description: DESC_SHUTDOWN,
+            annotations: BrpToolAnnotations::new(
                 "Shutdown Bevy App",
                 ToolCategory::App,
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
-            handler:                Arc::new(Shutdown),
-            parameters:             Some(extract_parameters::<ShutdownParams>),
-            response_specification: ResponseSpecification {
+            handler:     Arc::new(Shutdown),
+            parameters:  Some(extract_parameters::<ShutdownParams>),
+            response:    ResponseDef {
                 message_template: "{message}",
                 response_fields:  vec![
                     // ResponseField::FromResponse {

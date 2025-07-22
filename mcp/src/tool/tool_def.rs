@@ -7,23 +7,23 @@ use rmcp::model::CallToolRequestParam;
 use super::annotations::BrpToolAnnotations;
 use super::mcp_tool_schema::ParameterBuilder;
 use super::types::{ErasedUnifiedToolFn, ToolHandler};
-use crate::response::ResponseSpecification;
+use crate::response::ResponseDef;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
 pub struct ToolDef {
     /// Tool name
-    pub name:                   &'static str,
+    pub name:        &'static str,
     /// Tool description
-    pub description:            &'static str,
+    pub description: &'static str,
     /// Tool annotations
-    pub annotations:            BrpToolAnnotations,
+    pub annotations: BrpToolAnnotations,
     /// Handler function
-    pub handler:                std::sync::Arc<dyn ErasedUnifiedToolFn>,
+    pub handler:     std::sync::Arc<dyn ErasedUnifiedToolFn>,
     /// Function to build parameters for MCP registration
-    pub parameters:             Option<fn() -> ParameterBuilder>,
+    pub parameters:  Option<fn() -> ParameterBuilder>,
     /// Response formatting specification
-    pub response_specification: ResponseSpecification,
+    pub response:    ResponseDef,
 }
 
 impl ToolDef {
@@ -31,8 +31,8 @@ impl ToolDef {
         self.name
     }
 
-    pub const fn response_specification(&self) -> &ResponseSpecification {
-        &self.response_specification
+    pub const fn response_def(&self) -> &ResponseDef {
+        &self.response
     }
 
     pub fn create_handler(
