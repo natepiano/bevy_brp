@@ -11,7 +11,7 @@ use super::brp_parameters::{
     ReparentParams, RpcDiscoverParams, ScreenshotParams, SendKeysParams, SetDebugModeParams,
     SpawnParams,
 };
-use super::parameters::build_parameters_from;
+use super::parameters;
 use super::tool_def::ToolDef;
 use super::tool_name::ToolName;
 // Import generated tool structs from tool module
@@ -34,8 +34,7 @@ use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
     ReadLogParams, SetTracingLevel, SetTracingLevelParams,
 };
-use crate::response::{FieldPlacement, ResponseDef, ResponseField, ResponseFieldName};
-use crate::tool::ParameterName;
+use crate::response::ResponseDef;
 
 /// Get all tool definitions for registration with the MCP service
 #[allow(clippy::too_many_lines)]
@@ -49,14 +48,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:     Arc::new(BevyDestroy),
-            parameters:  Some(build_parameters_from::<DestroyParams>),
+            parameters:  Some(parameters::build_parameters_from::<DestroyParams>),
             response:    ResponseDef {
                 message_template: "Successfully destroyed entity {entity}",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name: ResponseFieldName::Entity,
-                    parameter_name:      ParameterName::Entity,
-                    placement:           FieldPlacement::Metadata,
-                }],
             },
         },
         ToolDef {
@@ -67,31 +61,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyGet),
-            parameters:  Some(build_parameters_from::<GetParams>),
+            parameters:  Some(parameters::build_parameters_from::<GetParams>),
             response:    ResponseDef {
                 message_template: "Retrieved component data from entity {entity} - component count: {component_count}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entity,
-                        parameter_name:      ParameterName::Entity,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Components,
-                        source_path:         ResponseFieldName::Result.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ComponentCount,
-                        source_path:         "result.components",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ErrorCount,
-                        source_path:         "result.errors",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -102,10 +74,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyGetResource),
-            parameters:  Some(build_parameters_from::<GetResourceParams>),
+            parameters:  Some(parameters::build_parameters_from::<GetResourceParams>),
             response:    ResponseDef {
                 message_template: "Retrieved resource: {resource}",
-                response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         ToolDef {
@@ -116,22 +87,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:     Arc::new(BevyInsert),
-            parameters:  Some(build_parameters_from::<InsertParams>),
+            parameters:  Some(parameters::build_parameters_from::<InsertParams>),
             response:    ResponseDef {
                 message_template: "Successfully inserted components into entity {entity}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entity,
-                        parameter_name:      ParameterName::Entity,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Components,
-                        parameter_name:      ParameterName::Components,
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FormatCorrection,
-                ],
             },
         },
         ToolDef {
@@ -142,17 +100,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:     Arc::new(BevyInsertResource),
-            parameters:  Some(build_parameters_from::<InsertResourceParams>),
+            parameters:  Some(parameters::build_parameters_from::<InsertResourceParams>),
             response:    ResponseDef {
                 message_template: "Successfully inserted/updated resource: {resource}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Resource,
-                        parameter_name:      ParameterName::Resource,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FormatCorrection,
-                ],
             },
         },
         ToolDef {
@@ -163,17 +113,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyList),
-            parameters:  Some(build_parameters_from::<ListParams>),
+            parameters:  Some(parameters::build_parameters_from::<ListParams>),
             response:    ResponseDef {
                 message_template: "Listed {component_count} components",
-                response_fields:  vec![
-                    ResponseField::BrpRawResultToResult,
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ComponentCount,
-                        source_path:         ResponseFieldName::Result.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -184,17 +126,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyListResources),
-            parameters:  Some(build_parameters_from::<ListResourcesParams>),
+            parameters:  Some(parameters::build_parameters_from::<ListResourcesParams>),
             response:    ResponseDef {
                 message_template: "Listed {resource_count} resources",
-                response_fields:  vec![
-                    ResponseField::BrpRawResultToResult,
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ResourceCount,
-                        source_path:         ResponseFieldName::Result.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -205,17 +139,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:     Arc::new(BevyMutateComponent),
-            parameters:  Some(build_parameters_from::<MutateComponentParams>),
+            parameters:  Some(parameters::build_parameters_from::<MutateComponentParams>),
             response:    ResponseDef {
                 message_template: "Successfully mutated component on entity {entity}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entity,
-                        parameter_name:      ParameterName::Entity,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FormatCorrection,
-                ],
             },
         },
         ToolDef {
@@ -226,17 +152,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveIdempotent,
             ),
             handler:     Arc::new(BevyMutateResource),
-            parameters:  Some(build_parameters_from::<MutateResourceParams>),
+            parameters:  Some(parameters::build_parameters_from::<MutateResourceParams>),
             response:    ResponseDef {
                 message_template: "Successfully mutated resource: `{resource}`",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Resource,
-                        parameter_name:      ParameterName::Resource,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FormatCorrection,
-                ],
             },
         },
         ToolDef {
@@ -247,22 +165,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyQuery),
-            parameters:  Some(build_parameters_from::<QueryParams>),
+            parameters:  Some(parameters::build_parameters_from::<QueryParams>),
             response:    ResponseDef {
                 message_template: "Query completed successfully",
-                response_fields:  vec![
-                    ResponseField::BrpRawResultToResult,
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::EntityCount,
-                        source_path:         ResponseFieldName::Result.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ComponentCount,
-                        source_path:         ResponseFieldName::Result.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -273,17 +178,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyRegistrySchema),
-            parameters:  Some(build_parameters_from::<RegistrySchemaParams>),
+            parameters:  Some(parameters::build_parameters_from::<RegistrySchemaParams>),
             response:    ResponseDef {
                 message_template: "Retrieved schema information",
-                response_fields:  vec![
-                    ResponseField::BrpRawResultToResult,
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::TypeCount,
-                        source_path:         ResponseFieldName::Result.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -294,21 +191,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:     Arc::new(BevyRemove),
-            parameters:  Some(build_parameters_from::<RemoveParams>),
+            parameters:  Some(parameters::build_parameters_from::<RemoveParams>),
             response:    ResponseDef {
                 message_template: "Successfully removed components from entity {entity}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entity,
-                        parameter_name:      ParameterName::Entity,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Components,
-                        parameter_name:      ParameterName::Components,
-                        placement:           FieldPlacement::Result,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -319,14 +204,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:     Arc::new(BevyRemoveResource),
-            parameters:  Some(build_parameters_from::<RemoveResourceParams>),
+            parameters:  Some(parameters::build_parameters_from::<RemoveResourceParams>),
             response:    ResponseDef {
                 message_template: "Successfully removed resource",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name: ResponseFieldName::Resource,
-                    parameter_name:      ParameterName::Resource,
-                    placement:           FieldPlacement::Metadata,
-                }],
             },
         },
         ToolDef {
@@ -337,21 +217,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:     Arc::new(BevyReparent),
-            parameters:  Some(build_parameters_from::<ReparentParams>),
+            parameters:  Some(parameters::build_parameters_from::<ReparentParams>),
             response:    ResponseDef {
                 message_template: "Successfully reparented entities",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entities,
-                        parameter_name:      ParameterName::Entities,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Parent,
-                        parameter_name:      ParameterName::Parent,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -362,17 +230,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BevyRpcDiscover),
-            parameters:  Some(build_parameters_from::<RpcDiscoverParams>),
+            parameters:  Some(parameters::build_parameters_from::<RpcDiscoverParams>),
             response:    ResponseDef {
                 message_template: "Retrieved BRP method discovery information for {method_count} methods",
-                response_fields:  vec![
-                    ResponseField::BrpRawResultToResult,
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::MethodCount,
-                        source_path:         "result.methods",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         // todo: (later) make this match curl
@@ -384,17 +244,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:     Arc::new(BevySpawn),
-            parameters:  Some(build_parameters_from::<SpawnParams>),
+            parameters:  Some(parameters::build_parameters_from::<SpawnParams>),
             response:    ResponseDef {
                 message_template: "Successfully spawned entity",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Entity,
-                        source_path:         "result.entity",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FormatCorrection,
-                ],
             },
         },
         // brp_execute is a LocalToolFnWithPort since it uses user-provided method names
@@ -407,10 +259,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:     Arc::new(BrpExecute),
-            parameters:  Some(build_parameters_from::<ExecuteParams>),
+            parameters:  Some(parameters::build_parameters_from::<ExecuteParams>),
             response:    ResponseDef {
                 message_template: "Method executed successfully",
-                response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         ToolDef {
@@ -421,10 +272,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BrpExtrasDiscoverFormat),
-            parameters:  Some(build_parameters_from::<DiscoverFormatParams>),
+            parameters:  Some(parameters::build_parameters_from::<DiscoverFormatParams>),
             response:    ResponseDef {
                 message_template: "Format discovery completed",
-                response_fields:  vec![ResponseField::BrpRawResultToResult],
             },
         },
         ToolDef {
@@ -435,14 +285,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:     Arc::new(BrpExtrasScreenshot),
-            parameters:  Some(build_parameters_from::<ScreenshotParams>),
+            parameters:  Some(parameters::build_parameters_from::<ScreenshotParams>),
             response:    ResponseDef {
                 message_template: "Successfully captured screenshot",
-                response_fields:  vec![ResponseField::FromRequest {
-                    response_field_name: ResponseFieldName::Path,
-                    parameter_name:      ParameterName::Path,
-                    placement:           FieldPlacement::Metadata,
-                }],
             },
         },
         ToolDef {
@@ -453,21 +298,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:     Arc::new(BrpExtrasSendKeys),
-            parameters:  Some(build_parameters_from::<SendKeysParams>),
+            parameters:  Some(parameters::build_parameters_from::<SendKeysParams>),
             response:    ResponseDef {
                 message_template: "Successfully sent keyboard input",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::KeysSent,
-                        source_path:         "result.keys_sent",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::DurationMs,
-                        source_path:         "result.duration_ms",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -478,21 +311,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(BrpExtrasSetDebugMode),
-            parameters:  Some(build_parameters_from::<SetDebugModeParams>),
+            parameters:  Some(parameters::build_parameters_from::<SetDebugModeParams>),
             response:    ResponseDef {
                 message_template: "Debug mode updated successfully",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::DebugEnabled,
-                        source_path:         "result.debug_enabled",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Details,
-                        source_path:         "result.message",
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         // BevyGetWatch and BevyListWatch are unusual in that
@@ -507,26 +328,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:     Arc::new(BevyGetWatch),
-            parameters:  Some(build_parameters_from::<GetWatchParams>),
+            parameters:  Some(parameters::build_parameters_from::<GetWatchParams>),
             response:    ResponseDef {
                 message_template: "Started entity watch {watch_id} for entity {entity}",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::WatchId,
-                        source_path:         ResponseFieldName::WatchId.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::LogPath,
-                        source_path:         ResponseFieldName::LogPath.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entity,
-                        parameter_name:      ParameterName::Entity,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -537,26 +341,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
             handler:     Arc::new(BevyListWatch),
-            parameters:  Some(build_parameters_from::<ListWatchParams>),
+            parameters:  Some(parameters::build_parameters_from::<ListWatchParams>),
             response:    ResponseDef {
                 message_template: "Started list watch {watch_id} for entity {entity}",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::WatchId,
-                        source_path:         ResponseFieldName::WatchId.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::LogPath,
-                        source_path:         ResponseFieldName::LogPath.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::Entity,
-                        parameter_name:      ParameterName::Entity,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -567,31 +354,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:     Arc::new(DeleteLogs),
-            parameters:  Some(build_parameters_from::<DeleteLogsParams>),
+            parameters:  Some(parameters::build_parameters_from::<DeleteLogsParams>),
             response:    ResponseDef {
                 message_template: "Deleted {deleted_count} log files",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::DeletedCount,
-                        source_path:         ResponseFieldName::DeletedFiles.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::DeletedFiles,
-                        source_path:         ResponseFieldName::DeletedFiles.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::AppNameFilter,
-                        source_path:         ResponseFieldName::AppNameFilter.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::OlderThanSeconds,
-                        source_path:         ResponseFieldName::OlderThanSeconds.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -605,23 +370,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             parameters:  None,
             response:    ResponseDef {
                 message_template: "Trace log found",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::LogPath,
-                        source_path:         ResponseFieldName::LogPath.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Exists,
-                        source_path:         ResponseFieldName::Exists.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::FileSizeBytes,
-                        source_path:         ResponseFieldName::FileSizeBytes.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -632,17 +380,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(app_tools::create_launch_bevy_app_handler()),
-            parameters:  Some(build_parameters_from::<LaunchBevyAppParams>),
+            parameters:  Some(parameters::build_parameters_from::<LaunchBevyAppParams>),
             response:    ResponseDef {
                 message_template: "Successfully launched bevy app '{target_name}' (PID: {pid})",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Pid,
-                        source_path:         ResponseFieldName::Pid.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::DirectToMetadata,
-                ],
             },
         },
         ToolDef {
@@ -653,17 +393,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(app_tools::create_launch_bevy_example_handler()),
-            parameters:  Some(build_parameters_from::<LaunchBevyExampleParams>),
+            parameters:  Some(parameters::build_parameters_from::<LaunchBevyExampleParams>),
             response:    ResponseDef {
                 message_template: "Successfully launched example '{target_name}' (PID: {pid})",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Pid,
-                        source_path:         ResponseFieldName::Pid.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::DirectToMetadata,
-                ],
             },
         },
         ToolDef {
@@ -677,18 +409,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             parameters:  None,
             response:    ResponseDef {
                 message_template: "Found {count} Bevy apps",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Apps,
-                        source_path:         ResponseFieldName::Apps.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Count,
-                        source_path:         ResponseFieldName::Apps.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -702,18 +422,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             parameters:  None,
             response:    ResponseDef {
                 message_template: "Found {count} Bevy examples",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Examples,
-                        source_path:         ResponseFieldName::Examples.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Count,
-                        source_path:         ResponseFieldName::Examples.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -727,18 +435,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             parameters:  None,
             response:    ResponseDef {
                 message_template: "Found {count} BRP-enabled apps",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Apps,
-                        source_path:         ResponseFieldName::Apps.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Count,
-                        source_path:         ResponseFieldName::Apps.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -752,18 +448,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             parameters:  None,
             response:    ResponseDef {
                 message_template: "Found {count} active watches",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Watches,
-                        source_path:         ResponseFieldName::Watches.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Count,
-                        source_path:         ResponseFieldName::Watches.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -774,14 +458,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             handler:     Arc::new(BrpStopWatch),
-            parameters:  Some(build_parameters_from::<StopWatchParams>),
+            parameters:  Some(parameters::build_parameters_from::<StopWatchParams>),
             response:    ResponseDef {
                 message_template: "Successfully stopped watch",
-                response_fields:  vec![ResponseField::FromResponse {
-                    response_field_name: ResponseFieldName::WatchId,
-                    source_path:         ResponseFieldName::WatchId.into(),
-                    placement:           FieldPlacement::Metadata,
-                }],
             },
         },
         ToolDef {
@@ -792,26 +471,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(ListLogs),
-            parameters:  Some(build_parameters_from::<ListLogsParams>),
+            parameters:  Some(parameters::build_parameters_from::<ListLogsParams>),
             response:    ResponseDef {
                 message_template: "Found {count} log files",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Logs,
-                        source_path:         ResponseFieldName::Logs.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::TempDirectory,
-                        source_path:         ResponseFieldName::TempDirectory.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Count,
-                        source_path:         ResponseFieldName::Logs.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -822,51 +484,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(ReadLog),
-            parameters:  Some(build_parameters_from::<ReadLogParams>),
+            parameters:  Some(parameters::build_parameters_from::<ReadLogParams>),
             response:    ResponseDef {
                 message_template: "Successfully read log file: {filename}",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Filename,
-                        source_path:         ResponseFieldName::Filename.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::FilePath,
-                        source_path:         ResponseFieldName::FilePath.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::SizeBytes,
-                        source_path:         ResponseFieldName::SizeBytes.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::SizeHuman,
-                        source_path:         ResponseFieldName::SizeHuman.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::LinesRead,
-                        source_path:         ResponseFieldName::LinesRead.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Content,
-                        source_path:         ResponseFieldName::Content.into(),
-                        placement:           FieldPlacement::Result,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::FilteredByKeyword,
-                        source_path:         ResponseFieldName::FilteredByKeyword.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::TailMode,
-                        source_path:         ResponseFieldName::TailMode.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -877,21 +497,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:     Arc::new(SetTracingLevel),
-            parameters:  Some(build_parameters_from::<SetTracingLevelParams>),
+            parameters:  Some(parameters::build_parameters_from::<SetTracingLevelParams>),
             response:    ResponseDef {
                 message_template: "Tracing level set to '{tracing_level}' - diagnostic information will be logged to temp directory",
-                response_fields:  vec![
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::TracingLevel,
-                        source_path:         ResponseFieldName::TracingLevel.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::TracingLogFile,
-                        source_path:         ResponseFieldName::TracingLogFile.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -902,31 +510,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::ReadOnly,
             ),
             handler:     Arc::new(Status),
-            parameters:  Some(build_parameters_from::<StatusParams>),
+            parameters:  Some(parameters::build_parameters_from::<StatusParams>),
             response:    ResponseDef {
                 message_template: "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}",
-                response_fields:  vec![
-                    ResponseField::FromRequest {
-                        response_field_name: ResponseFieldName::AppName,
-                        parameter_name:      ParameterName::AppName,
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::AppRunning,
-                        source_path:         ResponseFieldName::AppRunning.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::BrpResponsive,
-                        source_path:         ResponseFieldName::BrpResponsive.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::Pid,
-                        source_path:         ResponseFieldName::Pid.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
         ToolDef {
@@ -937,31 +523,9 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 EnvironmentImpact::DestructiveNonIdempotent,
             ),
             handler:     Arc::new(Shutdown),
-            parameters:  Some(build_parameters_from::<ShutdownParams>),
+            parameters:  Some(parameters::build_parameters_from::<ShutdownParams>),
             response:    ResponseDef {
                 message_template: "{message}",
-                response_fields:  vec![
-                    // ResponseField::FromResponse {
-                    //     response_field_name: ResponseFieldName::ShutdownMethod,
-                    //     source_path: "shutdown_method",
-                    //     placement:           FieldPlacement::Metadata,
-                    // },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::AppName,
-                        source_path:         ResponseFieldName::AppName.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponse {
-                        response_field_name: ResponseFieldName::ShutdownMethod,
-                        source_path:         ResponseFieldName::ShutdownMethod.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                    ResponseField::FromResponseNullableWithPlacement {
-                        response_field_name: ResponseFieldName::Pid,
-                        source_path:         ResponseFieldName::Pid.into(),
-                        placement:           FieldPlacement::Metadata,
-                    },
-                ],
             },
         },
     ]

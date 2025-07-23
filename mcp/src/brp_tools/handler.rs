@@ -22,16 +22,21 @@ pub trait HasBrpMethod {
 }
 
 /// Result type for BRP method calls that follows local handler patterns
-#[derive(Serialize)]
+#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct BrpMethodResult {
     // Success data - the actual BRP response data
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_result(skip_if_none)]
     pub result: Option<Value>,
 
     // BRP metadata - using existing field names
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub format_corrections: Vec<Value>,
+    // Only include if not empty - but skip_if_empty would be better than always including empty
+    // vec
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_metadata(skip_if_none)]
+    pub format_corrections: Option<Vec<Value>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_metadata(skip_if_none)]
     pub format_corrected:   Option<FormatCorrectionStatus>,
 }
 
@@ -78,14 +83,23 @@ pub fn convert_to_brp_method_result(
 ) -> Result<BrpMethodResult> {
     match enhanced_result.result {
         BrpResult::Success(data) => {
+            let format_corrections = enhanced_result
+                .format_corrections
+                .iter()
+                .map(format_correction_to_json)
+                .collect::<Vec<_>>();
+
             Ok(BrpMethodResult {
                 result:             data, // Direct BRP response data
-                format_corrections: enhanced_result
-                    .format_corrections
-                    .iter()
-                    .map(format_correction_to_json)
-                    .collect(),
-                format_corrected:   Some(enhanced_result.format_corrected),
+                format_corrections: if format_corrections.is_empty() {
+                    None
+                } else {
+                    Some(format_corrections)
+                },
+                format_corrected:   match enhanced_result.format_corrected {
+                    FormatCorrectionStatus::NotAttempted => None,
+                    other => Some(other),
+                },
             })
         }
         BrpResult::Error(ref err) => {

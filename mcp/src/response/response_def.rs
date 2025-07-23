@@ -5,6 +5,7 @@ use serde_json::Value;
 use super::ResponseFieldName;
 use super::builder::{CallInfo, CallInfoProvider, JsonResponse, ResponseBuilder};
 use super::components::ResponseComponents;
+use super::field_placement_traits::{FieldAccessor, ResponseData};
 use super::large_response::{self, LargeResponseConfig};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, ParameterName};
@@ -103,13 +104,11 @@ impl ResponseField {
 
 /// Defines how to format the response for a tool.
 ///
-/// Specifies the message template and fields to include in structured responses.
+/// Specifies the message template for responses.
 #[derive(Clone)]
 pub struct ResponseDef {
     /// Template for success messages
     pub message_template: &'static str,
-    /// Fields to include in the response
-    pub response_fields:  Vec<ResponseField>,
 }
 
 impl ResponseDef {
@@ -121,32 +120,100 @@ impl ResponseDef {
         call_info_data: C,
     ) -> std::result::Result<CallToolResult, McpError>
     where
-        T: serde::Serialize,
+        T: ResponseData,
         C: CallInfoProvider,
     {
         let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
 
         match result {
-            Ok(data) => self.format_success(data, handler_context, call_info),
-            Err(report) => {
-                match report.current_context() {
-                    // Handle tool-specific errors - Error::ToolCall captures standard Brp tool
-                    // errors - propagating standard "message" and "details" fields
-                    // from Brp tools
-                    Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
-                        .message(message)
-                        .add_optional_details(details.as_ref())
-                        .build()
-                        .to_call_tool_result()),
-                    _ => {
-                        // Catchall for other internal errors that propagated up
-                        Ok(ResponseBuilder::error(call_info)
-                            .message(format!("Internal error: {}", report.current_context()))
-                            .build()
-                            .to_call_tool_result())
-                    }
-                }
+            Ok(data) => {
+                // Build response using ResponseData trait
+                let builder = ResponseBuilder::success(call_info);
+                let builder = data.add_response_fields(builder).map_err(|e| {
+                    McpError::internal_error(format!("Failed to add response fields: {e}"), None)
+                })?;
+
+                // Perform template substitution
+                let message = self.substitute_template(&builder, handler_context);
+                let builder = builder.message(message);
+
+                let response = builder.build();
+                Ok(Self::handle_large_response(
+                    response,
+                    &handler_context.request.name,
+                ))
             }
+            Err(report) => match report.current_context() {
+                Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
+                    .message(message)
+                    .add_optional_details(details.as_ref())
+                    .build()
+                    .to_call_tool_result()),
+                _ => Ok(ResponseBuilder::error(call_info)
+                    .message(format!("Internal error: {}", report.current_context()))
+                    .build()
+                    .to_call_tool_result()),
+            },
+        }
+    }
+
+    /// Type-safe formatter for types that implement FieldAccessor
+    /// This allows direct field access without JSON serialization
+    pub fn format_result_with_field_access<T, C>(
+        self,
+        result: Result<T>,
+        handler_context: &HandlerContext,
+        call_info_data: C,
+    ) -> std::result::Result<CallToolResult, McpError>
+    where
+        T: FieldAccessor + serde::Serialize,
+        C: CallInfoProvider,
+    {
+        let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
+
+        match result {
+            Ok(data) => {
+                // Use field accessor to build response
+                let components =
+                    ResponseComponents::from_field_accessor(&self, handler_context, &data);
+
+                // Build response with clean method chaining
+                let builder = ResponseBuilder::success(call_info)
+                    .apply_format_corrections(&components)
+                    .map_err(|e| {
+                        McpError::internal_error(
+                            format!("Failed to apply format corrections: {e}"),
+                            None,
+                        )
+                    })?
+                    .apply_configured_fields(&components)
+                    .map_err(|e| {
+                        McpError::internal_error(
+                            format!("Failed to apply configured fields: {e}"),
+                            None,
+                        )
+                    })?
+                    .message(&components.final_message)
+                    .auto_inject_debug_info(components.debug_info.as_ref());
+
+                let response = builder.build();
+
+                Ok(Self::handle_large_response(
+                    response,
+                    &handler_context.request.name,
+                ))
+            }
+            Err(report) => match report.current_context() {
+                Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
+                    .message(message)
+                    .add_optional_details(details.as_ref())
+                    .build()
+                    .to_call_tool_result()),
+                _ => Ok(ResponseBuilder::error(call_info)
+                    .message(format!("Internal error: {}", report.current_context()))
+                    .build()
+                    .to_call_tool_result()),
+            },
         }
     }
 
@@ -157,36 +224,29 @@ impl ResponseDef {
         call_info: CallInfo,
     ) -> std::result::Result<CallToolResult, McpError>
     where
-        T: serde::Serialize,
+        T: FieldAccessor,
     {
-        // Serialize the data
-        let value = serde_json::to_value(&data).map_err(|e| {
-            McpError::internal_error(format!("Failed to serialize success data: {e}"), None)
-        })?;
+        // Use field accessor for typed extraction - no JSON serialization
+        let response = self
+            .build_success_response(&data, handler_context, call_info)
+            .map_err(|e| {
+                McpError::internal_error(format!("Failed to build success response: {e}"), None)
+            })?;
 
-        //  build the response
-        let response_result =
-            self.build_success_response(&value, handler_context, call_info.clone());
-
-        Ok(response_result.map_or_else(
-            |_| {
-                let fallback = ResponseBuilder::error(call_info)
-                    .message("Failed to build success response")
-                    .build();
-                fallback.to_call_tool_result()
-            },
-            |response| Self::handle_large_response(response, &handler_context.request.name),
+        Ok(Self::handle_large_response(
+            response,
+            &handler_context.request.name,
         ))
     }
 
     fn build_success_response(
         &self,
-        data: &Value,
+        data: &dyn FieldAccessor,
         handler_context: &HandlerContext,
         call_info: CallInfo,
     ) -> Result<JsonResponse> {
-        // Extract all components and process final message
-        let components = ResponseComponents::from_response_data(self, handler_context, data);
+        // Extract all components using field accessor - no JSON
+        let components = ResponseComponents::from_field_accessor(&self, handler_context, data);
 
         // Build response with clean method chaining
         let builder = ResponseBuilder::success(call_info)
@@ -196,6 +256,89 @@ impl ResponseDef {
             .auto_inject_debug_info(components.debug_info.as_ref());
 
         Ok(builder.build())
+    }
+
+    /// Substitute template placeholders with values from the builder
+    fn substitute_template(
+        &self,
+        builder: &ResponseBuilder,
+        handler_context: &HandlerContext,
+    ) -> String {
+        let mut result = self.message_template.to_string();
+
+        // Extract placeholders from template
+        let placeholders = self.parse_template_placeholders(&result);
+
+        for placeholder in placeholders {
+            if let Some(replacement) =
+                self.find_placeholder_value(&placeholder, builder, handler_context)
+            {
+                let placeholder_str = format!("{{{}}}", placeholder);
+                result = result.replace(&placeholder_str, &replacement);
+            }
+        }
+
+        result
+    }
+
+    /// Parse template to find placeholder names
+    fn parse_template_placeholders(&self, template: &str) -> Vec<String> {
+        let mut placeholders = Vec::new();
+        let mut remaining = template;
+
+        while let Some(start) = remaining.find('{') {
+            if let Some(end) = remaining[start + 1..].find('}') {
+                let placeholder = &remaining[start + 1..start + 1 + end];
+                if !placeholder.is_empty() {
+                    placeholders.push(placeholder.to_string());
+                }
+                remaining = &remaining[start + 1 + end + 1..];
+            } else {
+                break;
+            }
+        }
+
+        placeholders
+    }
+
+    /// Find value for a placeholder
+    fn find_placeholder_value(
+        &self,
+        placeholder: &str,
+        builder: &ResponseBuilder,
+        handler_context: &HandlerContext,
+    ) -> Option<String> {
+        // First check metadata
+        if let Some(Value::Object(metadata)) = builder.metadata() {
+            if let Some(value) = metadata.get(placeholder) {
+                return Some(self.value_to_string(value));
+            }
+        }
+
+        // Then check result if placeholder is "result"
+        if placeholder == "result" {
+            if let Some(result_value) = builder.result() {
+                return Some(self.value_to_string(result_value));
+            }
+        }
+
+        // Finally check request parameters
+        if let Some(value) = handler_context.extract_optional_named_field(placeholder) {
+            return Some(self.value_to_string(value));
+        }
+
+        None
+    }
+
+    /// Convert value to string for template substitution
+    fn value_to_string(&self, value: &Value) -> String {
+        match value {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Array(arr) => format!("{} items", arr.len()),
+            _ => value.to_string(),
+        }
     }
 
     /// Handle large response processing if configured

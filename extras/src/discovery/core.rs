@@ -9,13 +9,11 @@ use bevy::prelude::*;
 use serde_json::Value;
 
 use super::error::{DebugContext, DiscoveryResult};
-use super::mutation::generate_mutation_info;
-use super::registry::get_type_info_from_registry;
-use super::serialization_format::generate_serialization_format;
 use super::types::{
     DiscoveryInfo, MutationInfo, TypeDiscoveryResponse, analyze_type_info,
     check_serialization_traits, is_mutable_type,
 };
+use super::{mutation, registry, serialization_format};
 
 /// Result of discovering multiple component formats
 #[derive(Debug, Clone)]
@@ -33,16 +31,18 @@ pub fn discover_component_format(
     debug_context.push(format!("Discovering format for type: {type_name}"));
 
     // Get type info from registry
-    let type_info = get_type_info_from_registry(world, type_name, debug_context.as_mut_vec())?;
+    let type_info =
+        registry::get_type_info_from_registry(world, type_name, debug_context.as_mut_vec())?;
 
     // Generate format
     debug_context.push("Generating format".to_string());
-    let spawn_info = generate_serialization_format(&type_info, type_name, debug_context)?;
+    let spawn_info =
+        serialization_format::generate_serialization_format(&type_info, type_name, debug_context)?;
 
     // Generate mutation info (if supported)
     debug_context.push("Generating mutation info".to_string());
     let mutation_info = if is_mutable_type(&type_info) {
-        generate_mutation_info(&type_info, type_name, debug_context)?
+        mutation::generate_mutation_info(&type_info, type_name, debug_context)?
     } else {
         debug_context.push("Type is not mutable, creating empty mutation info".to_string());
         MutationInfo {
@@ -133,7 +133,7 @@ fn determine_type_capabilities(
     world: &World,
     type_name: &str,
 ) -> (bool, Option<bevy::reflect::TypeInfo>, bool, bool) {
-    let type_info_result = get_type_info_from_registry(world, type_name, &mut Vec::new());
+    let type_info_result = registry::get_type_info_from_registry(world, type_name, &mut Vec::new());
 
     type_info_result.map_or_else(
         |_| (false, None, false, false),
@@ -184,7 +184,7 @@ fn extract_mutation_paths(
 ) -> HashMap<String, String> {
     type_info_opt.map_or_else(HashMap::new, |type_info| {
         if is_mutable_type(type_info) {
-            match generate_mutation_info(type_info, type_name, debug_context) {
+            match mutation::generate_mutation_info(type_info, type_name, debug_context) {
                 Ok(mutation_info) => mutation_info
                     .fields
                     .into_iter()

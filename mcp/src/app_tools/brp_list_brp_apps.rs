@@ -4,12 +4,14 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BrpAppsStrategy;
 use crate::error::Error;
+use crate::response::LocalCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Result from listing BRP apps
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListBrpAppsResult {
     /// List of BRP-enabled apps found
+    #[to_result]
     pub apps: Vec<serde_json::Value>,
 }
 
@@ -17,7 +19,7 @@ pub struct ListBrpApps;
 
 impl ToolFn for ListBrpApps {
     type Output = ListBrpAppsResult;
-    type CallInfoData = crate::response::LocalCallInfo;
+    type CallInfoData = LocalCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Clone context to owned data for async move closure
@@ -27,7 +29,7 @@ impl ToolFn for ListBrpApps {
             let result = handle_impl(&owned_ctx)
                 .await
                 .map_err(|e| Error::tool_call_failed(e.message))?;
-            Ok((crate::response::LocalCallInfo, result))
+            Ok((LocalCallInfo, result))
         })
     }
 }

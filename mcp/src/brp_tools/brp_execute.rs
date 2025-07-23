@@ -8,19 +8,24 @@ use super::constants::default_port;
 use super::format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
 use crate::error::Error;
+use crate::response::LocalWithPortCallInfo;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
-#[derive(Deserialize, Serialize, JsonSchema)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ExecuteParams {
     /// The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')
+    #[to_metadata]
+    #[to_call_info(as = "brp_method")]
     pub method: String,
     /// Optional parameters for the method, as a JSON object or array
+    #[to_metadata(skip_if_none)]
     pub params: Option<serde_json::Value>,
     /// The BRP port (default: 15702)
     #[serde(
         default = "default_port",
         deserialize_with = "crate::tool::deserialize_port"
     )]
+    #[to_call_info]
     pub port:   u16,
 }
 
@@ -34,7 +39,7 @@ pub struct BrpExecute;
 
 impl ToolFn for BrpExecute {
     type Output = BrpMethodResult;
-    type CallInfoData = crate::response::LocalWithPortCallInfo;
+    type CallInfoData = LocalWithPortCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         let ctx = ctx.clone();
@@ -58,7 +63,7 @@ impl ToolFn for BrpExecute {
 
             // Convert result using existing conversion function
             let result = convert_to_brp_method_result(enhanced_result, &ctx)?;
-            Ok((crate::response::LocalWithPortCallInfo { port }, result))
+            Ok((LocalWithPortCallInfo { port }, result))
         })
     }
 }

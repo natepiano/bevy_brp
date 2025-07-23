@@ -5,6 +5,7 @@ mod format_discovery;
 pub mod handler;
 mod http_client;
 mod json_rpc_builder;
+pub mod tools;
 mod watch_tools;
 
 // Public exports
@@ -17,6 +18,7 @@ pub use constants::{
 };
 pub use format_discovery::{FormatCorrection, FormatCorrectionStatus};
 use json_rpc_builder::BrpJsonRpcBuilder;
+pub use watch_tools::WatchInfo;
 // Export parameter structs from the parameters module
 
 // Export watch tools

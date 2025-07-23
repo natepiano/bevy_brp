@@ -290,6 +290,16 @@ impl ResponseBuilder {
         response
     }
 
+    /// Get metadata for template substitution
+    pub fn metadata(&self) -> &Option<Value> {
+        &self.metadata
+    }
+
+    /// Get result for template substitution
+    pub fn result(&self) -> &Option<Value> {
+        &self.result
+    }
+
     /// Apply format corrections from components
     pub fn apply_format_corrections(
         mut self,
@@ -300,7 +310,7 @@ impl ResponseBuilder {
         // Add format_corrected status if provided
         if let Some(status) = &components.format_corrected {
             let format_corrected_value = serde_json::to_value(status).map_err(|e| {
-                error_stack::Report::new(crate::error::Error::General(format!(
+                error_stack::Report::new(Error::General(format!(
                     "Failed to serialize format_corrected: {e}"
                 )))
             })?;

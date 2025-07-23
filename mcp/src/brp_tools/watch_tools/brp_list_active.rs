@@ -3,27 +3,35 @@
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
+use crate::error::Result;
+use crate::response::LocalCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Individual watch information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct WatchInfo {
     /// Watch ID
+    #[to_result]
     pub watch_id:   u32,
     /// Entity ID being watched
+    #[to_result]
     pub entity_id:  u64,
     /// Type of watch (get/list)
+    #[to_result]
     pub watch_type: String,
     /// Log file path
+    #[to_result]
     pub log_path:   String,
     /// BRP port
+    #[to_result]
     pub port:       u16,
 }
 
 /// Result from listing active watches
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListActiveWatchesResult {
     /// List of active watches
+    #[to_result]
     pub watches: Vec<WatchInfo>,
 }
 
@@ -31,17 +39,17 @@ pub struct BrpListActiveWatches;
 
 impl ToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
-    type CallInfoData = crate::response::LocalCallInfo;
+    type CallInfoData = LocalCallInfo;
 
     fn call(&self, _ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         Box::pin(async move {
             let result = handle_impl().await?;
-            Ok((crate::response::LocalCallInfo, result))
+            Ok((LocalCallInfo, result))
         })
     }
 }
 
-async fn handle_impl() -> crate::error::Result<ListActiveWatchesResult> {
+async fn handle_impl() -> Result<ListActiveWatchesResult> {
     // Get active watches from manager and release lock immediately
     let active_watches = {
         let manager = WATCH_MANAGER.lock().await;

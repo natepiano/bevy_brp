@@ -4,21 +4,25 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
-use crate::error::Error;
+use crate::error::{Error, Result};
+use crate::response::LocalCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SetTracingLevelParams {
     /// Tracing level to set (error, warn, info, debug, trace)
+    #[to_metadata]
     pub level: String,
 }
 
 /// Result from setting the tracing level
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SetTracingLevelResult {
     /// The new tracing level that was set
+    #[to_metadata]
     pub tracing_level:    String,
     /// The log file where trace output is written
+    #[to_metadata]
     pub tracing_log_file: String,
 }
 
@@ -26,7 +30,7 @@ pub struct SetTracingLevel;
 
 impl ToolFn for SetTracingLevel {
     type Output = SetTracingLevelResult;
-    type CallInfoData = crate::response::LocalCallInfo;
+    type CallInfoData = LocalCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
@@ -37,12 +41,12 @@ impl ToolFn for SetTracingLevel {
 
         Box::pin(async move {
             let result = handle_impl(&params.level)?;
-            Ok((crate::response::LocalCallInfo, result))
+            Ok((LocalCallInfo, result))
         })
     }
 }
 
-fn handle_impl(level_str: &str) -> crate::error::Result<SetTracingLevelResult> {
+fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult> {
     // Parse the tracing level
     let tracing_level = match TracingLevel::from_str(level_str) {
         Ok(level) => level,

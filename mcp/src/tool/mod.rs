@@ -11,5 +11,5 @@ pub use definitions::get_all_tool_definitions;
 pub use handler_context::HandlerContext;
 pub use parameters::{ParameterName, deserialize_port};
 pub use tool_def::ToolDef;
-pub use tool_name::BrpMethod;
+pub use tool_name::{BrpMethod, ToolName};
 pub use types::{HandlerResponse, ToolFn};

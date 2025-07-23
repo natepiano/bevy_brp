@@ -2,32 +2,39 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
-use crate::brp_tools::{BrpResult, default_port, execute_brp_method};
-use crate::error::Error;
+use crate::brp_tools::{self, BrpResult};
+use crate::error::{Error, Result};
+use crate::response::LocalWithPortCallInfo;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StatusParams {
     /// Name of the process to check for
+    #[to_metadata]
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(
-        default = "default_port",
+        default = "brp_tools::default_port",
         deserialize_with = "crate::tool::deserialize_port"
     )]
+    #[to_call_info]
     pub port:     u16,
 }
 
 /// Result from checking status of a Bevy app
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StatusResult {
     /// App name that was checked
+    #[to_metadata]
     pub app_name:       String,
     /// Whether the app process is running
+    #[to_metadata]
     pub app_running:    bool,
     /// Whether BRP is responsive
+    #[to_metadata]
     pub brp_responsive: bool,
     /// Process ID if running
+    #[to_metadata(skip_if_none)]
     pub pid:            Option<u32>,
 }
 
@@ -35,7 +42,7 @@ pub struct Status;
 
 impl ToolFn for Status {
     type Output = StatusResult;
-    type CallInfoData = crate::response::LocalWithPortCallInfo;
+    type CallInfoData = LocalWithPortCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract and validate parameters using the new typed system
@@ -47,12 +54,12 @@ impl ToolFn for Status {
         let port = params.port;
         Box::pin(async move {
             let result = handle_impl(&params.app_name, port).await?;
-            Ok((crate::response::LocalWithPortCallInfo { port }, result))
+            Ok((LocalWithPortCallInfo { port }, result))
         })
     }
 }
 
-async fn handle_impl(app_name: &str, port: u16) -> crate::error::Result<StatusResult> {
+async fn handle_impl(app_name: &str, port: u16) -> Result<StatusResult> {
     check_brp_for_app(app_name, port).await
 }
 
@@ -110,7 +117,7 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
     false
 }
 
-async fn check_brp_for_app(app_name: &str, port: u16) -> crate::error::Result<StatusResult> {
+async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
     // Check if a process with this name is running using sysinfo
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
@@ -160,10 +167,10 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> crate::error::Result<St
 }
 
 /// Check if BRP is responding on the given port
-async fn check_brp_on_port(port: u16) -> crate::error::Result<bool> {
+async fn check_brp_on_port(port: u16) -> Result<bool> {
     // Try a simple BRP request to check connectivity using bevy/list
 
-    match execute_brp_method(BrpMethod::BevyList, None, port).await {
+    match brp_tools::execute_brp_method(BrpMethod::BevyList, None, port).await {
         Ok(BrpResult::Success(_)) => {
             // BRP is responding and working
             Ok(true)

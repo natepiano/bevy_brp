@@ -4,12 +4,14 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::Error;
+use crate::response::LocalCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Result from listing Bevy examples
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListBevyExamplesResult {
     /// List of Bevy examples found
+    #[to_result]
     pub examples: Vec<serde_json::Value>,
 }
 
@@ -17,7 +19,7 @@ pub struct ListBevyExamples;
 
 impl ToolFn for ListBevyExamples {
     type Output = ListBevyExamplesResult;
-    type CallInfoData = crate::response::LocalCallInfo;
+    type CallInfoData = LocalCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Clone context to owned data for async move closure
@@ -27,7 +29,7 @@ impl ToolFn for ListBevyExamples {
             let result = handle_impl(&owned_ctx)
                 .await
                 .map_err(|e| Error::tool_call_failed(e.message))?;
-            Ok((crate::response::LocalCallInfo, result))
+            Ok((LocalCallInfo, result))
         })
     }
 }

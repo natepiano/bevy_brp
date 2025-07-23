@@ -8,36 +8,48 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, report_to_mcp_error};
+use crate::response::LocalCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReadLogParams {
     /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
+    #[to_metadata]
     pub filename:   String,
     /// Optional keyword to filter lines (case-insensitive)
+    #[to_metadata(skip_if_none)]
     pub keyword:    Option<String>,
     /// Optional number of lines to read from the end of file
+    #[to_metadata(skip_if_none)]
     pub tail_lines: Option<u32>,
 }
 
 /// Result from reading a log file
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReadLogResult {
     /// The filename that was read
+    #[to_metadata]
     pub filename:            String,
     /// Full path to the file
+    #[to_metadata]
     pub file_path:           String,
     /// Size of the file in bytes
+    #[to_metadata]
     pub size_bytes:          u64,
     /// Human-readable file size
+    #[to_metadata]
     pub size_human:          String,
     /// Number of lines read
+    #[to_metadata]
     pub lines_read:          usize,
     /// The actual log content
+    #[to_result]
     pub content:             String,
     /// Whether content was filtered by keyword
+    #[to_metadata]
     pub filtered_by_keyword: bool,
     /// Whether tail mode was used
+    #[to_metadata]
     pub tail_mode:           bool,
 }
 
@@ -45,7 +57,7 @@ pub struct ReadLog;
 
 impl ToolFn for ReadLog {
     type Output = ReadLogResult;
-    type CallInfoData = crate::response::LocalCallInfo;
+    type CallInfoData = LocalCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
@@ -70,7 +82,7 @@ impl ToolFn for ReadLog {
 
             let result = handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
                 .map_err(|e| Error::tool_call_failed(e.message))?;
-            Ok((crate::response::LocalCallInfo, result))
+            Ok((LocalCallInfo, result))
         })
     }
 }

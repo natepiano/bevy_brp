@@ -1,3 +1,4 @@
+use bevy_brp_mcp_macros::FieldPlacement;
 use rmcp::ErrorData as McpError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,7 @@ use crate::brp_tools::{
     BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, execute_brp_method,
 };
 use crate::error::{Error, Result};
+use crate::response::LocalWithPortCallInfo;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, JsonSchema)]
@@ -23,18 +25,23 @@ pub struct ShutdownParams {
 }
 
 /// Result from shutting down a Bevy app
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FieldPlacement)]
 pub struct ShutdownResultData {
     /// Status of the shutdown operation
+    #[to_metadata]
     pub status:          String,
     /// Shutdown method used
+    #[to_metadata]
     pub shutdown_method: String,
     /// App name that was shut down
+    #[to_metadata]
     pub app_name:        String,
     /// Process ID if terminated via kill
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_metadata(skip_if_none)]
     pub pid:             Option<u32>,
     /// Detailed shutdown message for display
+    #[to_result]
     pub message:         String,
 }
 
@@ -127,7 +134,7 @@ pub struct Shutdown;
 
 impl ToolFn for Shutdown {
     type Output = ShutdownResultData;
-    type CallInfoData = crate::response::LocalWithPortCallInfo;
+    type CallInfoData = LocalWithPortCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract and validate parameters using the new typed system
@@ -141,7 +148,7 @@ impl ToolFn for Shutdown {
             let result = handle_impl(&params.app_name, port)
                 .await
                 .map_err(|e| Error::tool_call_failed(e.message))?;
-            Ok((crate::response::LocalWithPortCallInfo { port }, result))
+            Ok((LocalWithPortCallInfo { port }, result))
         })
     }
 }

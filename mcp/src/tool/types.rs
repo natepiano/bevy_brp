@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use crate::error::Result;
-use crate::response::{LocalCallInfo, ResponseDef};
+use crate::response::{CallInfoProvider, FieldAccessor, LocalCallInfo, ResponseData, ResponseDef};
 
 /// Type alias for the response from local handlers
 ///
@@ -37,12 +37,20 @@ pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
-    type Output: serde::Serialize + Send + Sync;
+    type Output: ResponseData + Send + Sync;
     /// The type that provides `CallInfo` data for this tool
-    type CallInfoData: crate::response::CallInfoProvider;
+    type CallInfoData: CallInfoProvider;
 
     /// Handle the request and return a typed result with `CallInfo` data
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)>;
+}
+
+/// Extension trait for tools whose output implements FieldAccessor
+pub trait ToolFnWithFieldAccess: ToolFn
+where
+    Self::Output: FieldAccessor,
+{
+    // Marker trait
 }
 
 /// Type-erased version for heterogeneous storage
@@ -73,6 +81,7 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
             let result = self.call(ctx).await;
             match result {
                 Ok((call_info_data, output)) => {
+                    // Use standard format_result which will internally check for FieldAccessor
                     response_def.format_result(Ok(output), ctx, call_info_data)
                 }
                 Err(e) => {

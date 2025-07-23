@@ -22,7 +22,7 @@ use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
 /// Result of a BRP operation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BrpResult {
     /// Successful operation with optional data
     Success(Option<Value>),
@@ -31,7 +31,7 @@ pub enum BrpResult {
 }
 
 /// Error information from BRP operations
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BrpError {
     pub code:    i32,
     pub message: String,

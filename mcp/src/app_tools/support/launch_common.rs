@@ -7,6 +7,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use crate::response::LocalWithPortCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
 /// Marker type for App launch configuration
@@ -43,31 +44,43 @@ impl<T> LaunchConfig<T> {
 }
 
 /// Unified result type for launching Bevy apps and examples
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
+    #[to_metadata(skip_if_none)]
     pub target_name:        Option<String>,
     /// Process ID of the launched target
+    #[to_metadata(skip_if_none)]
     pub pid:                Option<u32>,
     /// Working directory used for launch
+    #[to_metadata(skip_if_none)]
     pub working_directory:  Option<String>,
     /// Build profile used (debug/release)
+    #[to_metadata(skip_if_none)]
     pub profile:            Option<String>,
     /// Log file path for the launched target
+    #[to_metadata(skip_if_none)]
     pub log_file:           Option<String>,
     /// Binary path of the launched app (only for apps, not examples)
+    #[to_metadata(skip_if_none)]
     pub binary_path:        Option<String>,
     /// Launch duration in milliseconds
+    #[to_metadata(skip_if_none)]
     pub launch_duration_ms: Option<u64>,
     /// Launch timestamp
+    #[to_metadata(skip_if_none)]
     pub launch_timestamp:   Option<String>,
     /// Workspace information
+    #[to_metadata(skip_if_none)]
     pub workspace:          Option<String>,
     /// Package name containing the example (only for examples)
+    #[to_metadata(skip_if_none)]
     pub package_name:       Option<String>,
     /// Available duplicate paths (for disambiguation errors)
+    #[to_metadata(skip_if_none)]
     pub duplicate_paths:    Option<Vec<String>>,
     /// Note about build behavior or other information
+    #[to_metadata(skip_if_none)]
     pub note:               Option<String>,
 }
 
@@ -104,7 +117,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
     for GenericLaunchHandler<T, P>
 {
     type Output = LaunchResult;
-    type CallInfoData = crate::response::LocalWithPortCallInfo;
+    type CallInfoData = LocalWithPortCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
@@ -127,7 +140,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
 
             // Launch the target
             let result = launch_target(&config, &search_paths)?;
-            Ok((crate::response::LocalWithPortCallInfo { port }, result))
+            Ok((LocalWithPortCallInfo { port }, result))
         })
     }
 }
@@ -297,7 +310,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
     log_file_for_redirect: std::fs::File,
     target: &super::cargo_detector::BevyTarget,
     launch_start: std::time::Instant,
-) -> crate::error::Result<LaunchResult> {
+) -> Result<LaunchResult> {
     use super::process;
 
     // Launch the process
@@ -484,7 +497,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
 pub fn launch_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
-) -> crate::error::Result<LaunchResult> {
+) -> Result<LaunchResult> {
     use std::time::Instant;
 
     use tracing::debug;
@@ -558,10 +571,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
         build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
     }
 
-    fn validate_target(
-        &self,
-        target: &super::cargo_detector::BevyTarget,
-    ) -> crate::error::Result<()> {
+    fn validate_target(&self, target: &super::cargo_detector::BevyTarget) -> Result<()> {
         let binary_path = target.get_binary_path(self.profile());
         validate_binary_exists(&binary_path, self.profile())
     }

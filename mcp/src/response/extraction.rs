@@ -5,7 +5,9 @@
 
 use serde_json::Value;
 
-use crate::error::Result;
+use crate::brp_tools::{BrpResult, FormatCorrection, FormatCorrectionStatus, WatchInfo};
+use crate::error::{Error, Result};
+use crate::log_tools::LogFileInfo;
 
 /// Get a field value from JSON data by name, supporting dot notation.
 ///
@@ -70,7 +72,7 @@ impl ExtractedValue {
     pub fn into_string(self) -> Result<String> {
         match self {
             Self::String(s) => Ok(s),
-            _ => Err(crate::error::Error::invalid("parameter", "Expected string value").into()),
+            _ => Err(Error::invalid("parameter", "Expected string value").into()),
         }
     }
 
@@ -78,17 +80,16 @@ impl ExtractedValue {
     pub fn into_u64(self) -> Result<u64> {
         match self {
             Self::Number(n) => Ok(n),
-            _ => Err(crate::error::Error::invalid("parameter", "Expected number value").into()),
+            _ => Err(Error::invalid("parameter", "Expected number value").into()),
         }
     }
 
     /// Convert to u32, returning error if wrong type or out of range
     pub fn into_u32(self) -> Result<u32> {
         match self {
-            Self::Number(n) => u32::try_from(n).map_err(|_| {
-                crate::error::Error::invalid("parameter", "Number value too large for u32").into()
-            }),
-            _ => Err(crate::error::Error::invalid("parameter", "Expected number value").into()),
+            Self::Number(n) => u32::try_from(n)
+                .map_err(|_| Error::invalid("parameter", "Number value too large for u32").into()),
+            _ => Err(Error::invalid("parameter", "Expected number value").into()),
         }
     }
 
@@ -96,7 +97,7 @@ impl ExtractedValue {
     pub fn into_bool(self) -> Result<bool> {
         match self {
             Self::Boolean(b) => Ok(b),
-            _ => Err(crate::error::Error::invalid("parameter", "Expected boolean value").into()),
+            _ => Err(Error::invalid("parameter", "Expected boolean value").into()),
         }
     }
 
@@ -104,9 +105,7 @@ impl ExtractedValue {
     pub fn into_string_array(self) -> Result<Vec<String>> {
         match self {
             Self::StringArray(arr) => Ok(arr),
-            _ => {
-                Err(crate::error::Error::invalid("parameter", "Expected string array value").into())
-            }
+            _ => Err(Error::invalid("parameter", "Expected string array value").into()),
         }
     }
 
@@ -114,9 +113,7 @@ impl ExtractedValue {
     pub fn into_number_array(self) -> Result<Vec<u64>> {
         match self {
             Self::NumberArray(arr) => Ok(arr),
-            _ => {
-                Err(crate::error::Error::invalid("parameter", "Expected number array value").into())
-            }
+            _ => Err(Error::invalid("parameter", "Expected number array value").into()),
         }
     }
 
@@ -124,7 +121,7 @@ impl ExtractedValue {
     pub fn into_any(self) -> Result<Value> {
         match self {
             Self::Any(v) => Ok(v),
-            _ => Err(crate::error::Error::invalid("parameter", "Expected any JSON value").into()),
+            _ => Err(Error::invalid("parameter", "Expected any JSON value").into()),
         }
     }
 }
@@ -181,6 +178,58 @@ impl From<Vec<u64>> for ExtractedValue {
 impl From<Value> for ExtractedValue {
     fn from(v: Value) -> Self {
         Self::Any(v)
+    }
+}
+
+impl From<usize> for ExtractedValue {
+    fn from(n: usize) -> Self {
+        Self::Number(n as u64)
+    }
+}
+
+impl From<Vec<serde_json::Value>> for ExtractedValue {
+    fn from(vec: Vec<serde_json::Value>) -> Self {
+        Self::Any(Value::Array(vec))
+    }
+}
+
+impl From<Vec<WatchInfo>> for ExtractedValue {
+    fn from(vec: Vec<WatchInfo>) -> Self {
+        // Serialize to JSON
+        let value = serde_json::to_value(vec).unwrap_or(Value::Array(vec![]));
+        Self::Any(value)
+    }
+}
+
+impl From<Vec<LogFileInfo>> for ExtractedValue {
+    fn from(vec: Vec<LogFileInfo>) -> Self {
+        // Serialize to JSON
+        let value = serde_json::to_value(vec).unwrap_or(Value::Array(vec![]));
+        Self::Any(value)
+    }
+}
+
+impl From<Vec<FormatCorrection>> for ExtractedValue {
+    fn from(vec: Vec<FormatCorrection>) -> Self {
+        // Serialize to JSON
+        let value = serde_json::to_value(vec).unwrap_or(Value::Array(vec![]));
+        Self::Any(value)
+    }
+}
+
+impl From<FormatCorrectionStatus> for ExtractedValue {
+    fn from(status: FormatCorrectionStatus) -> Self {
+        // Serialize to JSON
+        let value = serde_json::to_value(status).unwrap_or(Value::Null);
+        Self::Any(value)
+    }
+}
+
+impl From<BrpResult> for ExtractedValue {
+    fn from(result: BrpResult) -> Self {
+        // Serialize to JSON
+        let value = serde_json::to_value(result).unwrap_or(Value::Null);
+        Self::Any(value)
     }
 }
 

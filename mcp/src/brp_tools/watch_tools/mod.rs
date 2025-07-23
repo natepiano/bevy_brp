@@ -9,6 +9,7 @@ pub mod manager;
 mod task;
 mod types;
 
+pub use brp_list_active::WatchInfo;
 pub use task::{start_entity_watch_task, start_list_watch_task};
 
 use crate::error::Error;

@@ -5,22 +5,27 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::error::Error;
 use crate::log_tools::support;
+use crate::response::LocalCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListLogsParams {
     /// Optional filter to list logs for a specific app only
+    #[to_metadata(skip_if_none)]
     pub app_name: Option<String>,
     /// Include full details (path, timestamps, size in bytes). Default is false for minimal output
+    #[to_metadata(skip_if_none)]
     pub verbose:  Option<bool>,
 }
 
 /// Result from listing log files
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListLogResult {
     /// List of log files found
+    #[to_result]
     pub logs:           Vec<LogFileInfo>,
     /// Path to the temp directory containing logs
+    #[to_metadata]
     pub temp_directory: String,
 }
 
@@ -29,7 +34,7 @@ pub struct ListLogs;
 
 impl ToolFn for ListLogs {
     type Output = ListLogResult;
-    type CallInfoData = crate::response::LocalCallInfo;
+    type CallInfoData = LocalCallInfo;
 
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
         // Extract typed parameters
@@ -45,7 +50,7 @@ impl ToolFn for ListLogs {
                         logs,
                         temp_directory: support::get_log_directory().display().to_string(),
                     };
-                    Ok((crate::response::LocalCallInfo, result))
+                    Ok((LocalCallInfo, result))
                 }
                 Err(e) => Err(Error::tool_call_failed(e.message).into()),
             }
@@ -117,25 +122,32 @@ fn list_log_files(
 }
 
 /// Individual log file entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct LogFileInfo {
     /// The filename
+    #[to_result]
     pub filename:   String,
     /// The app name extracted from the filename
+    #[to_result]
     pub app_name:   String,
     /// Full path to the file (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_result(skip_if_none)]
     pub path:       Option<String>,
     /// Human-readable file size (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_result(skip_if_none)]
     pub size:       Option<String>,
     /// File size in bytes (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_result(skip_if_none)]
     pub size_bytes: Option<u64>,
     /// Creation time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_result(skip_if_none)]
     pub created:    Option<String>,
     /// Modification time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_result(skip_if_none)]
     pub modified:   Option<String>,
 }

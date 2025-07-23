@@ -50,14 +50,23 @@ use crate::error::Result;
 use crate::tool::BrpMethod;
 
 /// Format correction information for a type (component or resource)
-#[derive(Debug, Clone)]
+#[derive(
+    Debug, Clone, serde::Serialize, serde::Deserialize, bevy_brp_mcp_macros::FieldPlacement,
+)]
 pub struct FormatCorrection {
+    #[to_metadata]
     pub component:            String, // Keep field name for API compatibility
+    #[to_metadata]
     pub original_format:      Value,
+    #[to_metadata]
     pub corrected_format:     Value,
+    #[to_metadata]
     pub hint:                 String,
+    #[to_metadata(skip_if_none)]
     pub supported_operations: Option<Vec<String>>,
+    #[to_metadata(skip_if_none)]
     pub mutation_paths:       Option<Vec<String>>,
+    #[to_metadata(skip_if_none)]
     pub type_category:        Option<String>,
 }
 
@@ -76,7 +85,7 @@ pub enum FormatCorrectionStatus {
 }
 
 /// Enhanced response with format corrections
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct EnhancedBrpResult {
     pub result:             BrpResult,
     pub format_corrections: Vec<FormatCorrection>,

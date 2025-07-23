@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use rmcp::model::CallToolRequestParam;
 use serde_json::Value;
 
-use crate::error::Error;
+use crate::error::{Error, Result};
 use crate::tool::ToolDef;
 
 /// Context passed to all handlers containing service, request, and MCP context
@@ -46,7 +46,7 @@ impl HandlerContext {
     // Note: extract_method_param() and extract_port() now available on all HandlerContext types
 
     /// Extract typed parameters from request using serde deserialization
-    pub fn extract_parameter_values<T>(&self) -> crate::error::Result<T>
+    pub fn extract_parameter_values<T>(&self) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
     {

@@ -8,7 +8,7 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData as McpError, Peer, RoleServer, ServerHandler};
 
-use crate::error::{Error as ServiceError, report_to_mcp_error};
+use crate::error::{self, Error};
 use crate::tool::{self, ToolDef};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
@@ -97,8 +97,8 @@ impl McpService {
             }
             Err(e) => {
                 tracing::error!("Failed to send roots/list request: {}", e);
-                Err(report_to_mcp_error(&error_stack::Report::new(
-                    ServiceError::McpClientCommunication(format!("Failed to list roots: {e}")),
+                Err(error::report_to_mcp_error(&error_stack::Report::new(
+                    Error::McpClientCommunication(format!("Failed to list roots: {e}")),
                 )))
             }
         }
@@ -143,7 +143,7 @@ impl ServerHandler for McpService {
         let roots = self.fetch_roots_and_get_paths(context.peer.clone()).await?;
 
         let tool_def = self.get_tool_def(&request.name).ok_or_else(|| {
-            crate::error::report_to_mcp_error(
+            error::report_to_mcp_error(
                 &error_stack::Report::new(crate::error::Error::InvalidArgument(format!(
                     "unknown tool: {}",
                     request.name
