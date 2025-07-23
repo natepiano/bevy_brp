@@ -5,9 +5,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::constants::default_port;
-use crate::brp_tools::format_discovery::execute_brp_method_with_format_discovery;
+use super::format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::error::Error;
+use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
 #[derive(Deserialize, Serialize, JsonSchema)]
 pub struct ExecuteParams {
@@ -43,11 +44,15 @@ impl ToolFn for BrpExecute {
             let params = ctx.extract_parameter_values::<ExecuteParams>()?;
             let port = params.port;
 
-            // For brp_execute, use method from parameters (user input)
-            let enhanced_result = execute_brp_method_with_format_discovery(
-                &params.method, // User-provided method name from ExecuteParams
-                params.params,  // User-provided params (already Option<Value>)
-                port,           // Use typed port parameter
+            // For brp_execute, parse user input to BrpMethod
+            let brp_method = BrpMethod::from_str(&params.method).ok_or_else(|| {
+                Error::InvalidArgument(format!("Unknown BRP method: {}", params.method))
+            })?;
+
+            let enhanced_result = format_discovery::execute_brp_method_with_format_discovery(
+                brp_method,    // Parsed BRP method
+                params.params, // User-provided params (already Option<Value>)
+                port,          // Use typed port parameter
             )
             .await?;
 

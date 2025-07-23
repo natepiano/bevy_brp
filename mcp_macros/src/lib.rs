@@ -156,7 +156,7 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 
         // Generate tool implementation only if brp_tool is present
         if let Some(params) = tool_params {
-            let method = method.expect("already validated");
+            let _method = method.expect("already validated");
             let params_ident = syn::Ident::new(&params, variant_name.span());
 
             tool_impls.push(quote! {
@@ -182,7 +182,7 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 
                             Ok((
                                 crate::response::BrpCallInfo {
-                                    method: <#variant_name as crate::brp_tools::handler::HasBrpMethod>::brp_method(),
+                                    method: <#variant_name as crate::brp_tools::handler::HasBrpMethod>::brp_method().as_str(),
                                     port,
                                 },
                                 result,
@@ -192,8 +192,8 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
                 }
 
                 impl crate::brp_tools::handler::HasBrpMethod for #variant_name {
-                    fn brp_method() -> &'static str {
-                        #method
+                    fn brp_method() -> crate::tool::BrpMethod {
+                        crate::tool::BrpMethod::#variant_name
                     }
                 }
 
@@ -228,6 +228,7 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
     let mut to_brp_method_arms = Vec::new();
     let mut from_brp_method_arms = Vec::new();
     let mut brp_method_string_arms = Vec::new();
+    let mut from_str_arms = Vec::new();
 
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
@@ -246,6 +247,10 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 
             brp_method_string_arms.push(quote! {
                 BrpMethod::#variant_name => #method
+            });
+
+            from_str_arms.push(quote! {
+                #method => Some(BrpMethod::#variant_name)
             });
         } else {
             to_brp_method_arms.push(quote! {
@@ -288,6 +293,20 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
                 match self {
                     #(#brp_method_string_arms,)*
                 }
+            }
+
+            /// Parse a method string into a BrpMethod variant
+            pub fn from_str(s: &str) -> Option<Self> {
+                match s {
+                    #(#from_str_arms,)*
+                    _ => None
+                }
+            }
+        }
+
+        impl std::fmt::Display for BrpMethod {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.as_str())
             }
         }
 

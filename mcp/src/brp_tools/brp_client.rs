@@ -19,7 +19,7 @@ use super::constants::{
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
-use crate::tool::ParameterName;
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Result of a BRP operation
 #[derive(Debug, Clone)]
@@ -87,26 +87,27 @@ pub fn build_brp_url(port: u16) -> String {
 
 /// Execute a BRP method and return structured result
 pub async fn execute_brp_method(
-    method: &str,
+    method: BrpMethod,
     params: Option<Value>,
     port: u16,
 ) -> Result<BrpResult> {
     let url = build_brp_url(port);
+    let method_str = method.as_str();
 
     // Build JSON-RPC request body
-    let request_body = build_request_body(method, params);
+    let request_body = build_request_body(method_str, params);
 
     // Send HTTP request
-    let response = send_http_request(&url, request_body, method, port).await?;
+    let response = send_http_request(&url, request_body, method_str, port).await?;
 
     // Check HTTP status
-    check_http_status(&response, method, port)?;
+    check_http_status(&response, method_str, port)?;
 
     // Parse JSON-RPC response
-    let brp_response = parse_json_response(response, method, port).await?;
+    let brp_response = parse_json_response(response, method_str, port).await?;
 
     // Convert to structured result
-    Ok(convert_to_brp_result(brp_response, method))
+    Ok(convert_to_brp_result(brp_response, method_str))
 }
 
 /// Build the JSON-RPC request body

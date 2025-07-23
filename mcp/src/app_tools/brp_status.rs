@@ -163,9 +163,7 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> crate::error::Result<St
 async fn check_brp_on_port(port: u16) -> crate::error::Result<bool> {
     // Try a simple BRP request to check connectivity using bevy/list
 
-    let method_name = BrpMethod::BevyList.as_str();
-
-    match execute_brp_method(method_name, None, port).await {
+    match execute_brp_method(BrpMethod::BevyList, None, port).await {
         Ok(BrpResult::Success(_)) => {
             // BRP is responding and working
             Ok(true)

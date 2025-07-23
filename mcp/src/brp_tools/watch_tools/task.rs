@@ -530,13 +530,13 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
 async fn start_watch_task(
     entity_id: u64,
     watch_type: &str,
-    brp_method: &str,
+    brp_method: BrpMethod,
     params: Value,
     port: u16,
 ) -> Result<(u32, PathBuf)> {
     // Prepare all data that doesn't require the watch_id
     let watch_type_owned = watch_type.to_string();
-    let brp_method_owned = brp_method.to_string();
+    let brp_method_owned = brp_method.as_str().to_string();
 
     // Perform all operations within a single lock to ensure atomicity
     let mut manager = WATCH_MANAGER.lock().await;
@@ -632,14 +632,7 @@ pub async fn start_entity_watch_task(
         "components": components
     });
 
-    start_watch_task(
-        entity_id,
-        "get",
-        BrpMethod::BevyGetWatch.as_str(),
-        params,
-        port,
-    )
-    .await
+    start_watch_task(entity_id, "get", BrpMethod::BevyGetWatch, params, port).await
 }
 
 /// Start a background task for entity list watching
@@ -648,12 +641,5 @@ pub async fn start_list_watch_task(entity_id: u64, port: u16) -> Result<(u32, Pa
         "entity": entity_id
     });
 
-    start_watch_task(
-        entity_id,
-        "list",
-        BrpMethod::BevyListWatch.as_str(),
-        params,
-        port,
-    )
-    .await
+    start_watch_task(entity_id, "list", BrpMethod::BevyListWatch, params, port).await
 }

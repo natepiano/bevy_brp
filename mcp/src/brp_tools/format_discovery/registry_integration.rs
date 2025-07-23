@@ -68,17 +68,21 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
 
 /// Get registry type information for format discovery methods
 pub async fn get_registry_type_info(
-    method: &str,
+    method: BrpMethod,
     params: Option<&serde_json::Value>,
     port: u16,
 ) -> std::collections::HashMap<String, UnifiedTypeInfo> {
-    if !crate::tool::BrpMethod::supports_format_discovery(method) {
-        debug!("get_registry_type_info: Method {method} does not support format discovery");
+    if !method.supports_format_discovery() {
+        debug!(
+            "get_registry_type_info: Method {} does not support format discovery",
+            method.as_str()
+        );
         return std::collections::HashMap::new();
     }
 
     debug!(
-        "get_registry_type_info: Method {method} supports format discovery, extracting component types"
+        "get_registry_type_info: Method {} supports format discovery, extracting component types",
+        method.as_str()
     );
 
     let type_names = extract_type_names_from_params(method, params);
@@ -113,14 +117,18 @@ pub async fn get_registry_type_info(
 }
 
 /// Extract type names (components/resources) from BRP request parameters
-fn extract_type_names_from_params(method: &str, params: Option<&serde_json::Value>) -> Vec<String> {
+fn extract_type_names_from_params(
+    method: BrpMethod,
+    params: Option<&serde_json::Value>,
+) -> Vec<String> {
     let Some(params) = params else {
         debug!("extract_type_names_from_params: No params provided");
         return Vec::new();
     };
 
     debug!(
-        "extract_type_names_from_params: Processing method {method} with params keys: {params_keys:?}",
+        "extract_type_names_from_params: Processing method {} with params keys: {params_keys:?}",
+        method.as_str(),
         params_keys = params
             .as_object()
             .map(|obj| obj.keys().collect::<Vec<_>>())
@@ -185,7 +193,7 @@ pub async fn check_multiple_types_registry_status(
 
     debug!("Registry Integration: Batch call with params: {params}");
 
-    match execute_brp_method(BrpMethod::BevyRegistrySchema.as_str(), Some(params), port).await {
+    match execute_brp_method(BrpMethod::BevyRegistrySchema, Some(params), port).await {
         Ok(BrpResult::Success(Some(response_data))) => {
             debug!("Registry Integration: Received successful batch response");
 

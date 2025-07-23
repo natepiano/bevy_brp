@@ -20,6 +20,7 @@ use std::collections::HashMap;
 
 use super::{CorrectionInfo, UnifiedTypeInfo};
 use crate::brp_tools::BrpResult;
+use crate::tool::BrpMethod;
 
 /// Result of a BRP request attempt, determining whether to enter format recovery
 #[derive(Debug, Clone)]
@@ -29,7 +30,7 @@ pub enum BrpRequestResult {
     /// Request failed with recoverable format error - enter exception path
     FormatError {
         error:           BrpResult,
-        method:          String,
+        method:          BrpMethod,
         original_params: Option<serde_json::Value>,
         type_infos:      HashMap<String, UnifiedTypeInfo>,
     },

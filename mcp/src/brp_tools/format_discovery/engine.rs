@@ -85,7 +85,7 @@ pub struct EnhancedBrpResult {
 
 /// Execute Level 1: Direct BRP request without format discovery overhead
 async fn execute_level_1(
-    method: &str,
+    method: BrpMethod,
     params: Option<Value>,
     port: u16,
 ) -> Result<BrpRequestResult> {
@@ -102,7 +102,7 @@ async fn execute_level_1(
             let registry_type_info = get_registry_type_info(method, params.as_ref(), port).await;
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
-            if (method == BrpMethod::BevySpawn.as_str() || method == BrpMethod::BevyInsert.as_str())
+            if matches!(method, BrpMethod::BevySpawn | BrpMethod::BevyInsert)
                 && error.code == BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
             {
                 // Check if this is a serialization error that should be short-circuited
@@ -117,12 +117,12 @@ async fn execute_level_1(
             }
 
             // Check if this is a (potentially) recoverable format error
-            if error.is_format_error() && is_format_discovery_supported(method) {
+            if error.is_format_error() && method.supports_format_discovery() {
                 Ok(BrpRequestResult::FormatError {
-                    error:           result,
-                    method:          method.to_string(),
+                    error: result,
+                    method,
                     original_params: params,
-                    type_infos:      registry_type_info,
+                    type_infos: registry_type_info,
                 })
             } else {
                 // Non-recoverable error - return immediately
@@ -132,22 +132,17 @@ async fn execute_level_1(
     }
 }
 
-/// Check if a method supports format discovery
-fn is_format_discovery_supported(method: &str) -> bool {
-    crate::tool::BrpMethod::supports_format_discovery(method)
-}
-
 /// Check if any types lack serialization support using pre-fetched type infos
 fn check_serialization_support(
-    method: &str,
+    method: BrpMethod,
     registry_type_info: &HashMap<String, UnifiedTypeInfo>,
 ) -> Option<String> {
     debug!("Checking for serialization errors using pre-fetched type infos");
 
     for (component_type, type_info) in registry_type_info {
         debug!(
-            "Component '{}' found in registry, brp_compatible={}",
-            component_type, type_info.serialization.brp_compatible
+            "Component '{component_type}' found in registry, brp_compatible={}",
+            type_info.serialization.brp_compatible
         );
         // Component is registered but lacks serialization - short circuit
         if !type_info.serialization.brp_compatible {
@@ -156,10 +151,8 @@ fn check_serialization_support(
                 component_type
             );
             return Some(format!(
-                "Component '{}' is registered but lacks Serialize and Deserialize traits required for {} operations. \
+                "Component '{component_type}' is registered but lacks Serialize and Deserialize traits required for {method} operations. \
                 Add #[derive(Serialize, Deserialize)] to the component definition.",
-                component_type,
-                method.split('/').next_back().unwrap_or(method)
             ));
         }
     }
@@ -170,7 +163,7 @@ fn check_serialization_support(
 
 /// Execute exception path: Format error recovery using the 3-level decision tree
 async fn execute_exception_path(
-    method: String,
+    method: BrpMethod,
     original_params: Option<Value>,
     error: BrpResult,
     registry_type_info: HashMap<String, super::unified_types::UnifiedTypeInfo>,
@@ -180,7 +173,7 @@ async fn execute_exception_path(
 
     // Use the new recovery engine with 3-level decision tree, passing pre-fetched type infos
     recovery_engine::attempt_format_recovery_with_type_infos(
-        &method,
+        method,
         original_params,
         error,
         registry_type_info,
@@ -191,13 +184,12 @@ async fn execute_exception_path(
 
 /// Execute a BRP method with automatic format discovery using the new flow architecture
 pub async fn execute_brp_method_with_format_discovery(
-    method: &str,
+    method: BrpMethod,
     params: Option<Value>,
     port: u16,
 ) -> Result<EnhancedBrpResult> {
     // Add debug info about calling BRP
     debug!("Calling BRP `{method}` with validated parameters");
-    trace!("Discovery: Format Discovery: Starting request for method '{method}'");
 
     // Level 1: Direct BRP execution (normal path)
     trace!("Discovery: Level 1: Attempting direct BRP execution");

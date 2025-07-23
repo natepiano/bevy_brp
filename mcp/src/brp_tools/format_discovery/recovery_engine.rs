@@ -16,6 +16,7 @@ use tracing::debug;
 use super::detection::ErrorPattern;
 use super::extras_integration;
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
+use super::transformers::TransformerRegistry;
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
@@ -25,7 +26,7 @@ use crate::tool::BrpMethod;
 
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
 pub async fn attempt_format_recovery_with_type_infos(
-    method: &str,
+    method: BrpMethod,
     original_params: Option<Value>,
     error: BrpResult,
     registry_type_info: HashMap<String, UnifiedTypeInfo>,
@@ -133,7 +134,7 @@ enum LevelResult {
 /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
 async fn execute_level_2_direct_discovery(
     type_names: &[String],
-    method: &str,
+    method: BrpMethod,
     registry_type_info: &HashMap<String, UnifiedTypeInfo>,
     original_params: Option<&Value>,
     port: u16,
@@ -174,9 +175,10 @@ async fn execute_level_2_direct_discovery(
                 enhanced_type_info.insert(type_name.clone(), discovered_info.clone());
 
                 // Check if this is a mutation method and we have mutation paths
-                if (method == BrpMethod::BevyMutateComponent.as_str()
-                    || method == BrpMethod::BevyMutateResource.as_str())
-                    && discovered_info.supports_mutation()
+                if matches!(
+                    method,
+                    BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+                ) && discovered_info.supports_mutation()
                 {
                     debug!(
                         "Level 2: Type '{}' supports mutation with {} paths",
@@ -239,7 +241,7 @@ async fn execute_level_2_direct_discovery(
 /// Level 3: Apply pattern-based transformations for known errors
 fn execute_level_3_pattern_transformations(
     type_names: &[String],
-    method: &str,
+    method: BrpMethod,
     original_params: Option<&Value>,
     original_error: &BrpError,
     type_infos: &HashMap<String, UnifiedTypeInfo>,
@@ -250,16 +252,17 @@ fn execute_level_3_pattern_transformations(
     );
 
     // Initialize transformer registry with default transformers
-    let transformer_registry = super::transformers::TransformerRegistry::with_defaults();
+    let transformer_registry = TransformerRegistry::with_defaults();
     let mut corrections = Vec::new();
 
     // Extract original values from parameters for transformation
     let original_values = extract_type_values_from_params(method, original_params);
 
     // For mutation methods, also extract the path that was attempted
-    let mutation_path = if method == BrpMethod::BevyMutateComponent.as_str()
-        || method == BrpMethod::BevyMutateResource.as_str()
-    {
+    let mutation_path = if matches!(
+        method,
+        BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+    ) {
         original_params
             .and_then(|p| p.get(FormatCorrectionField::Path.as_ref()))
             .and_then(|v| v.as_str())
@@ -325,15 +328,16 @@ fn execute_level_3_pattern_transformations(
 
 /// Handle mutation-specific errors
 fn handle_mutation_specific_errors(
-    method: &str,
+    method: BrpMethod,
     mutation_path: Option<&str>,
     error_pattern: &ErrorPattern,
     type_name: &str,
     type_info: Option<&UnifiedTypeInfo>,
 ) -> Option<CorrectionResult> {
-    if method != BrpMethod::BevyMutateComponent.as_str()
-        && method != BrpMethod::BevyMutateResource.as_str()
-    {
+    if !matches!(
+        method,
+        BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+    ) {
         return None;
     }
 
@@ -406,7 +410,7 @@ fn attempt_pattern_based_correction(
     transformer_registry: &super::transformers::TransformerRegistry,
     original_value: Option<&Value>,
     error: &BrpError,
-    method: &str,
+    method: BrpMethod,
     mutation_path: Option<&str>,
     type_info: Option<&UnifiedTypeInfo>,
 ) -> Option<CorrectionResult> {
@@ -526,21 +530,17 @@ fn attempt_pattern_based_correction(
 }
 
 /// Extract original values from BRP method parameters for transformer use
-fn extract_type_values_from_params<'a>(
-    method: &str,
-    params: Option<&'a Value>,
-) -> Option<&'a Value> {
+fn extract_type_values_from_params(method: BrpMethod, params: Option<&Value>) -> Option<&Value> {
     let params = params?;
 
     match method {
-        m if m == BrpMethod::BevySpawn.as_str() || m == BrpMethod::BevyInsert.as_str() => {
+        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
             // Return the components object containing type values
             params.get("components")
         }
-        m if m == BrpMethod::BevyMutateComponent.as_str()
-            || m == BrpMethod::BevyInsertResource.as_str()
-            || m == BrpMethod::BevyMutateResource.as_str() =>
-        {
+        BrpMethod::BevyMutateComponent
+        | BrpMethod::BevyInsertResource
+        | BrpMethod::BevyMutateResource => {
             // Return the value field
             params.get(FormatCorrectionField::Value.as_ref())
         }
@@ -681,7 +681,7 @@ fn create_enhanced_enum_guidance(
 }
 
 /// Extract type names from BRP method parameters based on method type
-fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<String> {
+fn extract_type_names_from_params(method: BrpMethod, params: Option<&Value>) -> Vec<String> {
     let Some(params) = params else {
         return Vec::new();
     };
@@ -689,7 +689,7 @@ fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<S
     let mut type_names = Vec::new();
 
     match method {
-        m if m == BrpMethod::BevySpawn.as_str() || m == BrpMethod::BevyInsert.as_str() => {
+        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
             // Types are keys in the "components" object
             if let Some(components) = params.get("components").and_then(|c| c.as_object()) {
                 for type_name in components.keys() {
@@ -697,7 +697,7 @@ fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<S
                 }
             }
         }
-        m if m == BrpMethod::BevyMutateComponent.as_str() => {
+        BrpMethod::BevyMutateComponent => {
             // Single type in "component" field
             if let Some(component) = params
                 .get(FormatCorrectionField::Component.as_ref())
@@ -706,9 +706,7 @@ fn extract_type_names_from_params(method: &str, params: Option<&Value>) -> Vec<S
                 type_names.push(component.to_string());
             }
         }
-        m if m == BrpMethod::BevyInsertResource.as_str()
-            || m == BrpMethod::BevyMutateResource.as_str() =>
-        {
+        BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
             // Single type in "resource" field
             if let Some(resource) = params.get("resource").and_then(|r| r.as_str()) {
                 type_names.push(resource.to_string());
@@ -752,16 +750,15 @@ fn can_retry_with_corrections(
 }
 
 /// Extract component value from parameters based on method
-fn extract_component_value(method: &str, params: &Value, type_name: &str) -> Option<Value> {
+fn extract_component_value(method: BrpMethod, params: &Value, type_name: &str) -> Option<Value> {
     match method {
-        m if m == BrpMethod::BevySpawn.as_str() || m == BrpMethod::BevyInsert.as_str() => params
+        BrpMethod::BevySpawn | BrpMethod::BevyInsert => params
             .get("components")
             .and_then(|c| c.get(type_name))
             .cloned(),
-        m if m == BrpMethod::BevyInsertResource.as_str()
-            || m == BrpMethod::BevyMutateComponent.as_str()
-            || m == BrpMethod::BevyMutateResource.as_str() =>
-        {
+        BrpMethod::BevyInsertResource
+        | BrpMethod::BevyMutateComponent
+        | BrpMethod::BevyMutateResource => {
             params.get(FormatCorrectionField::Value.as_ref()).cloned()
         }
         _ => None,
@@ -769,20 +766,21 @@ fn extract_component_value(method: &str, params: &Value, type_name: &str) -> Opt
 }
 
 /// Build a corrected value from type info for guidance
-fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &str) -> Value {
+fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: BrpMethod) -> Value {
     // Clone the type info so we can call ensure_examples on it
     let mut type_info_copy = type_info.clone();
     type_info_copy.ensure_examples();
 
     // Check if we have examples for this method
-    if let Some(example) = type_info_copy.format_info.examples.get(method) {
+    if let Some(example) = type_info_copy.format_info.examples.get(method.as_str()) {
         return example.clone();
     }
 
     // For mutations, provide mutation path guidance
-    if method == BrpMethod::BevyMutateComponent.as_str()
-        || method == BrpMethod::BevyMutateResource.as_str()
-    {
+    if matches!(
+        method,
+        BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+    ) {
         // Check if we have a mutate example after ensure_examples
         if let Some(mutate_example) = type_info_copy.format_info.examples.get("mutate") {
             return mutate_example.clone();
@@ -823,7 +821,7 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: &st
 
 /// Build corrected parameters from corrections
 fn build_corrected_params(
-    method: &str,
+    method: BrpMethod,
     original_params: Option<&Value>,
     corrections: &[CorrectionInfo],
 ) -> Result<Option<Value>, String> {
@@ -833,7 +831,7 @@ fn build_corrected_params(
 
     for correction in corrections {
         match method {
-            m if m == BrpMethod::BevySpawn.as_str() || m == BrpMethod::BevyInsert.as_str() => {
+            BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
                 // Update components
                 if let Some(components) =
                     params.get_mut("components").and_then(|c| c.as_object_mut())
@@ -844,13 +842,11 @@ fn build_corrected_params(
                     );
                 }
             }
-            m if m == BrpMethod::BevyInsertResource.as_str() => {
+            BrpMethod::BevyInsertResource => {
                 // Update value directly
                 params[FormatCorrectionField::Value.as_ref()] = correction.corrected_value.clone();
             }
-            m if m == BrpMethod::BevyMutateComponent.as_str()
-                || m == BrpMethod::BevyMutateResource.as_str() =>
-            {
+            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource => {
                 // For mutations, we need both path and value
                 if correction.corrected_value.is_object() {
                     if let Some(obj) = correction.corrected_value.as_object() {
@@ -870,7 +866,12 @@ fn build_corrected_params(
                         correction.corrected_value.clone();
                 }
             }
-            _ => return Err(format!("Unsupported method for corrections: {method}")),
+            _ => {
+                return Err(format!(
+                    "Unsupported method for corrections: {}",
+                    method.as_str()
+                ));
+            }
         }
     }
 
@@ -880,7 +881,7 @@ fn build_corrected_params(
 /// Convert correction results into final recovery result
 async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
-    method: &str,
+    method: BrpMethod,
     original_params: Option<&Value>,
     original_error: &BrpResult,
     port: u16,
@@ -928,7 +929,8 @@ async fn build_recovery_success(
     }
 
     // Check if we can actually apply the corrections (i.e., we have fixable corrections)
-    if has_applied_corrections && can_retry_with_corrections(method, &corrections, original_params)
+    if has_applied_corrections
+        && can_retry_with_corrections(method.as_str(), &corrections, original_params)
     {
         debug!("Recovery Engine: Attempting to retry operation with corrected parameters");
 

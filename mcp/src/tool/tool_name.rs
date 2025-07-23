@@ -153,13 +153,19 @@ pub enum ToolName {
     BrpSetTracingLevel,
 }
 
+/// `BrpMethod` is created by `BrpTools` macro - which is why you don't see the enum defined here.
+/// We wanted to make it part of the `ToolName` definition as they go hand in hand. Helps prevent
+/// errors of omission.
 impl BrpMethod {
-    /// Check if a method string supports format discovery
-    pub fn supports_format_discovery(method: &str) -> bool {
-        method == Self::BevySpawn.as_str()
-            || method == Self::BevyInsert.as_str()
-            || method == Self::BevyMutateComponent.as_str()
-            || method == Self::BevyInsertResource.as_str()
-            || method == Self::BevyMutateResource.as_str()
+    /// Check if this method supports format discovery
+    pub const fn supports_format_discovery(self) -> bool {
+        matches!(
+            self,
+            Self::BevySpawn
+                | Self::BevyInsert
+                | Self::BevyMutateComponent
+                | Self::BevyInsertResource
+                | Self::BevyMutateResource
+        )
     }
 }

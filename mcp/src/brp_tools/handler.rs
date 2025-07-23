@@ -8,17 +8,17 @@ use super::format_discovery::{
 };
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
-use crate::tool::HandlerContext;
+use crate::tool::{BrpMethod, HandlerContext};
 
 /// Trait for parameter structs that have a port field
 pub trait HasPortField {
     fn port(&self) -> u16;
 }
 
-/// Trait for BRP tools to provide their method string at compile time
+/// Trait for BRP tools to provide their method at compile time
 pub trait HasBrpMethod {
-    /// Returns the BRP method string for this tool
-    fn brp_method() -> &'static str;
+    /// Returns the BRP method for this tool
+    fn brp_method() -> BrpMethod;
 }
 
 /// Result type for BRP method calls that follows local handler patterns
@@ -183,8 +183,9 @@ where
         };
 
         // Use Tool::brp_method() to get method from trait at compile time
+        let method = Tool::brp_method();
         let enhanced_result =
-            execute_brp_method_with_format_discovery(Tool::brp_method(), brp_params, port).await?;
+            execute_brp_method_with_format_discovery(method, brp_params, port).await?;
 
         // Convert result using existing conversion function
         convert_to_brp_method_result(enhanced_result, &ctx)
