@@ -96,7 +96,8 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
                 }
                 Err(e) => {
                     // This should be rare - only if the handler itself fails before returning
-                    // CallInfo In this case, we still need to use a default
+                    // CallInfo In this case, we still need to use a default whicdh is just the
+                    // tool name
                     tool_name.format_result::<T::Output, _>(LocalCallInfo, Err(e), ctx)
                 }
             }

@@ -551,7 +551,7 @@ impl ToolName {
         T: ResponseData,
         C: CallInfoProvider,
     {
-        let call_info = call_info_data.to_call_info(handler_context.request.name.to_string());
+        let call_info = call_info_data.to_call_info(self.to_string());
 
         match result {
             Ok(data) => {
