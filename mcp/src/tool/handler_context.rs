@@ -55,7 +55,7 @@ impl HandlerContext {
         );
 
         // Deserialize into target type
-        serde_json::from_value(args_value).map_err(|e| {
+        serde_json::from_value(args_value).map_err(|_| {
             error_stack::Report::new(Error::ParameterExtraction(format!(
                 "Failed to extract parameters for type: {}",
                 std::any::type_name::<T>()

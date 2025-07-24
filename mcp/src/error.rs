@@ -14,17 +14,11 @@ pub type Result<T> = error_stack::Result<T, Error>;
 // Internal error types for detailed error categorization
 #[derive(Error, Debug, Clone)]
 pub enum Error {
-    #[error("Mutex poisoned: {0}")]
-    MutexPoisoned(String),
-
     #[error("BRP communication failed: {0}")]
     BrpCommunication(String),
 
     #[error("JSON-RPC error: {0}")]
     JsonRpc(String),
-
-    #[error("Format discovery error: {0}")]
-    FormatDiscovery(String),
 
     #[error("File operation failed: {0}")]
     FileOperation(String),
@@ -74,16 +68,14 @@ pub enum Error {
 impl Error {
     // Builder methods for common patterns
 
-    /// Create a "Failed to X" error with appropriate variant
+    /// Create a "Failed to X" error
     pub fn failed_to(action: &str, details: impl std::fmt::Display) -> Self {
-        let message = format!("{MSG_FAILED_TO_PREFIX} {action}: {details}");
-        Self::categorize_error(&message)
+        Self::General(format!("{MSG_FAILED_TO_PREFIX} {action}: {details}"))
     }
 
     /// Create a "Cannot X" error
     pub fn cannot(action: &str, reason: impl std::fmt::Display) -> Self {
-        let message = format!("{MSG_CANNOT_PREFIX} {action}: {reason}");
-        Self::categorize_error(&message)
+        Self::General(format!("{MSG_CANNOT_PREFIX} {action}: {reason}"))
     }
 
     /// Create an "Invalid X" error
@@ -98,8 +90,7 @@ impl Error {
 
     /// Create an "Unexpected X" error
     pub fn unexpected(what: &str, details: impl std::fmt::Display) -> Self {
-        let message = format!("{MSG_UNEXPECTED_PREFIX} {what}: {details}");
-        Self::categorize_error(&message)
+        Self::General(format!("{MSG_UNEXPECTED_PREFIX} {what}: {details}"))
     }
 
     /// Create error for IO operations
@@ -175,31 +166,6 @@ impl Error {
         }
     }
 
-    /// Categorize error based on content
-    fn categorize_error(message: &str) -> Self {
-        // Simple heuristic categorization
-        if message.contains("watch") || message.contains("subscription") {
-            Self::WatchOperation(message.to_string())
-        } else if message.contains("process")
-            || message.contains("kill")
-            || message.contains("launch")
-        {
-            Self::ProcessManagement(message.to_string())
-        } else if message.contains("file")
-            || message.contains("log")
-            || message.contains("read")
-            || message.contains("write")
-        {
-            Self::LogOperation(message.to_string())
-        } else if message.contains("parameter")
-            || message.contains("extract")
-            || message.contains("invalid")
-        {
-            Self::InvalidArgument(message.to_string())
-        } else {
-            Self::General(message.to_string()) // Default fallback
-        }
-    }
 }
 
 // Conversion to McpError for API boundaries
@@ -208,9 +174,9 @@ impl From<Error> for McpError {
         match err {
             Error::BrpCommunication(msg)
             | Error::JsonRpc(msg)
-            | Error::FormatDiscovery(msg)
             | Error::FileOrPathNotFound(msg)
-            | Error::InvalidArgument(msg) => Self::invalid_params(msg, None),
+            | Error::InvalidArgument(msg)
+            | Error::ParameterExtraction(msg) => Self::invalid_params(msg, None),
             Error::PathDisambiguation { message, .. } => {
                 // For path disambiguation, we want to preserve the detailed message
                 // as an invalid_params error since it's a parameter issue that can be resolved
@@ -220,8 +186,7 @@ impl From<Error> for McpError {
                 // Tool errors are typically parameter/request issues
                 Self::invalid_params(message, details)
             }
-            Error::MutexPoisoned(msg)
-            | Error::FileOperation(msg)
+            Error::FileOperation(msg)
             | Error::InvalidState(msg)
             | Error::WatchOperation(msg)
             | Error::ProcessManagement(msg)
