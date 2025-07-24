@@ -6,7 +6,8 @@ use std::time::Duration;
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyCode;
 use bevy::prelude::*;
-use bevy::remote::{BrpError, BrpResult, error_codes};
+use bevy::remote::error_codes::INVALID_PARAMS;
+use bevy::remote::{BrpError, BrpResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use strum_macros::{Display, EnumIter, EnumString};
@@ -407,7 +408,7 @@ fn validate_keys(keys: &[String]) -> Result<Vec<(String, KeyCode)>, BrpError> {
             }
             Err(e) => {
                 return Err(BrpError {
-                    code:    error_codes::INVALID_PARAMS,
+                    code:    INVALID_PARAMS,
                     message: format!("Invalid key code '{key_str}': {e}"),
                     data:    None,
                 });
@@ -458,13 +459,13 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Parse the request
     let request: SendKeysRequest = if let Some(params) = params {
         serde_json::from_value(params).map_err(|e| BrpError {
-            code:    error_codes::INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: format!("Invalid request format: {e}"),
             data:    None,
         })?
     } else {
         return Err(BrpError {
-            code:    error_codes::INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: "Missing request parameters".to_string(),
             data:    None,
         });
@@ -478,7 +479,7 @@ pub fn send_keys_handler(In(params): In<Option<Value>>, world: &mut World) -> Br
     // Validate duration doesn't exceed maximum
     if request.duration_ms > MAX_KEY_DURATION_MS {
         return Err(BrpError {
-            code:    error_codes::INVALID_PARAMS,
+            code:    INVALID_PARAMS,
             message: format!(
                 "Duration {}ms exceeds maximum allowed duration of {}ms (1 minute)",
                 request.duration_ms, MAX_KEY_DURATION_MS
@@ -585,7 +586,7 @@ mod tests {
         assert!(result.is_err());
 
         let error = result.expect_err("Expected an error but got success");
-        assert_eq!(error.code, error_codes::INVALID_PARAMS);
+        assert_eq!(error.code, INVALID_PARAMS);
         assert!(error.message.contains("exceeds maximum allowed duration"));
         assert!(error.message.contains("60000ms"));
     }
