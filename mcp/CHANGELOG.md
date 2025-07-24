@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `brp_set_tracing_level` tool for runtime diagnostic level management
 - `brp_get_trace_log_path` tool to locate trace log files
 - Implements "do no harm" principle - no log files created until explicitly enabled
-- `brp_extras_set_debug_mode` tool for bevy_brp_extras plugin debug info - added as a field on the response
+- Optional `enable_debug_info` parameter to `brp_extras_discover_format` tool for detailed diagnostic information
 - Optional `port` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for custom BRP port support (requires bevy_brp_extras)
 - Configurable timeouts for watch operations (`bevy_get_watch` and `bevy_list_watch`) with `timeout_seconds` parameter
 - Trace logging integration for watch operations controlled by tracing level
@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `brp_list_logs` returns minimal output by default to reduce token limit errors, allows verbose mode for detailed logs
 - `bevy_get_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
 - Substantial tool call response changes. If you have any prompts that depend on the response returned from a tool call, please review the response carefully.
+- All BRP tool `port` parameters are now optional with default value 15702
 
 ## [0.1.4] - Initial Release
 

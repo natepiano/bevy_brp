@@ -4,6 +4,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::brp_tools::{default_port, deserialize_port};
+
 /// Parameters for the bevy/get_resource tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct GetResourceParams {
@@ -11,6 +13,7 @@ pub struct GetResourceParams {
     pub resource: String,
 
     /// The BRP port (default: 15702)
+    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     #[to_call_info]
     pub port: u16,
 }

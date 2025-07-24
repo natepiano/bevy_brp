@@ -15,8 +15,7 @@ use crate::brp_tools::{
     MutateResourceResult, QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult,
     RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentParams,
     ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult,
-    SendKeysParams, SendKeysResult, SetDebugModeParams, SetDebugModeResult, SpawnParams,
-    SpawnResult,
+    SendKeysParams, SendKeysResult, SpawnParams, SpawnResult,
 };
 
 /// Tool names enum with automatic `snake_case` serialization
@@ -125,10 +124,6 @@ pub enum ToolName {
     #[brp_method("brp_extras/send_keys")]
     #[brp_tool(params = "SendKeysParams", result = "SendKeysResult")]
     BrpExtrasSendKeys,
-    /// `brp_extras_set_debug_mode` - Enable/disable debug mode
-    #[brp_method("brp_extras/set_debug_mode")]
-    #[brp_tool(params = "SetDebugModeParams", result = "SetDebugModeResult")]
-    BrpExtrasSetDebugMode,
 
     // BRP Watch Assist Tools
     /// `brp_stop_watch` - Stop active watch subscriptions

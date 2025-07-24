@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - claude code agentic test suite for parallel execution of bevy_brp_extras and bevy_brp_mcp
 - New `brp_extras/send_keys` method for simulating keyboard input
-- Debug mode for format discovery via `brp_extras/set_debug_mode` method
-  - Provides detailed diagnostic information about type discovery process
+- Optional `enable_debug_info` parameter for `brp_extras/discover_format` method
+  - Provides detailed diagnostic information about type discovery process when enabled
   - Helps troubleshoot format discovery issues with complex types
 - Environment variable port override support via `BRP_PORT`
   - Allows runtime port configuration without code changes

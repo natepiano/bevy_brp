@@ -102,22 +102,6 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
         // Only add placement info if there's a placement attribute
         if let Some(placement) = &placement {
             let field_name_str = field_name.to_string();
-            let field_type_token = field_type_override
-                .map(|t| match t.as_str() {
-                    "String" => quote! { crate::response::ResponseFieldType::String },
-                    "Number" => quote! { crate::response::ResponseFieldType::Number },
-                    "Boolean" => quote! { crate::response::ResponseFieldType::Boolean },
-                    "StringArray" => quote! { crate::response::ResponseFieldType::StringArray },
-                    "NumberArray" => quote! { crate::response::ResponseFieldType::NumberArray },
-                    "Any" => quote! { crate::response::ResponseFieldType::Any },
-                    "Count" => quote! { crate::response::ResponseFieldType::Count },
-                    "LineSplit" => quote! { crate::response::ResponseFieldType::LineSplit },
-                    "QueryComponentCount" => {
-                        quote! { crate::response::ResponseFieldType::QueryComponentCount }
-                    }
-                    _ => panic!("Unknown field type: {}", t),
-                })
-                .unwrap_or_else(|| infer_field_type(field_type));
 
             let source_path_token = source_path
                 .as_ref()
@@ -129,7 +113,6 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
                     field_name: #field_name_str,
                     placement: #placement,
                     source_path: #source_path_token,
-                    field_type: #field_type_token,
                     skip_if_none: #skip_if_none,
                 }
             });
@@ -138,7 +121,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
             response_data_fields.push(generate_response_data_field(
                 field_name,
                 field_type,
-                &placement,
+                placement,
                 skip_if_none,
             ));
         }
@@ -169,15 +152,6 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
                 vec![
                     #(#field_placements,)*
                 ]
-            }
-        }
-
-        impl crate::response::FieldAccessor for #struct_name {
-            fn get_field(&self, name: &str) -> Option<crate::response::ExtractedValue> {
-                match name {
-                    #(#field_accessors,)*
-                    _ => None,
-                }
             }
         }
 
@@ -257,29 +231,6 @@ fn parse_computed_attr(
             Err(meta.error("unsupported computed attribute"))
         }
     });
-}
-
-/// Infer ResponseFieldType from Rust type
-fn infer_field_type(ty: &syn::Type) -> proc_macro2::TokenStream {
-    let type_str = quote!(#ty).to_string();
-
-    if type_str.contains("String") {
-        quote! { crate::response::ResponseFieldType::String }
-    } else if type_str.contains("usize")
-        || type_str.contains("u64")
-        || type_str.contains("u32")
-        || type_str.contains("u16")
-    {
-        quote! { crate::response::ResponseFieldType::Number }
-    } else if type_str.contains("bool") {
-        quote! { crate::response::ResponseFieldType::Boolean }
-    } else if type_str.contains("Vec < String >") {
-        quote! { crate::response::ResponseFieldType::StringArray }
-    } else if type_str.contains("Vec < u") {
-        quote! { crate::response::ResponseFieldType::NumberArray }
-    } else {
-        quote! { crate::response::ResponseFieldType::Any }
-    }
 }
 
 /// Generate field accessor match arm
@@ -407,7 +358,7 @@ fn generate_from_brp_value(
         let source = if from_field == "result" {
             quote! { value }
         } else {
-            let from_ident = syn::Ident::new(&from_field, field_name.span());
+            let from_ident = syn::Ident::new(from_field, field_name.span());
             quote! { #from_ident }
         };
 
@@ -531,7 +482,7 @@ fn generate_from_brp_value(
                         .map(String::from)
                 }
             }
-            _ => panic!("Unknown computed operation: {}", operation),
+            _ => panic!("Unknown computed operation: {operation}"),
         };
 
         field_initializers.push(quote! { #field_name: #computation });

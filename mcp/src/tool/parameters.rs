@@ -4,33 +4,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use schemars::{JsonSchema, Schema};
-use serde::{Deserialize, Deserializer};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
-
-use crate::brp_tools::VALID_PORT_RANGE;
-
-/// Deserialize and validate port numbers
-///
-/// This function ensures that all port parameters are within the valid range (1024-65534).
-/// It's used as a serde `deserialize_with` attribute on port fields.
-pub fn deserialize_port<'de, D>(deserializer: D) -> Result<u16, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let port = u16::deserialize(deserializer)?;
-
-    if VALID_PORT_RANGE.contains(&port) {
-        Ok(port)
-    } else {
-        Err(serde::de::Error::custom(format!(
-            "Invalid port {}: must be in range {}-{}",
-            port,
-            VALID_PORT_RANGE.start(),
-            VALID_PORT_RANGE.end()
-        )))
-    }
-}
 
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance

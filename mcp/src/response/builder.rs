@@ -2,7 +2,6 @@ use rmcp::model::{CallToolResult, Content};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
 use crate::response::FieldPlacement;
 
@@ -261,19 +260,6 @@ impl ResponseBuilder {
         Ok(self)
     }
 
-    /// Auto-inject debug info if debug mode is enabled
-    /// This should be called before `build()` to ensure debug info is included when appropriate
-    pub fn auto_inject_debug_info(mut self, brp_extras_debug: Option<impl Serialize>) -> Self {
-        // Always inject BRP extras debug info if it's provided (means extras debug is enabled)
-        if let Some(debug_info) = brp_extras_debug {
-            if let Ok(serialized) = serde_json::to_value(&debug_info) {
-                self.brp_extras_debug_info = Some(serialized);
-            }
-        }
-
-        self
-    }
-
     pub fn build(self) -> JsonResponse {
         let response = JsonResponse {
             status:                self.status,
@@ -298,138 +284,5 @@ impl ResponseBuilder {
     /// Get result for template substitution
     pub fn result(&self) -> &Option<Value> {
         &self.result
-    }
-
-    /// Apply format corrections from components
-    pub fn apply_format_corrections(
-        mut self,
-        components: &super::components::ResponseComponents,
-    ) -> Result<Self> {
-        use crate::brp_tools::FormatCorrectionStatus;
-
-        // Add format_corrected status if provided
-        if let Some(status) = &components.format_corrected {
-            let format_corrected_value = serde_json::to_value(status).map_err(|e| {
-                error_stack::Report::new(Error::General(format!(
-                    "Failed to serialize format_corrected: {e}"
-                )))
-            })?;
-            self = self.add_field(
-                FormatCorrectionField::FormatCorrected.as_ref(),
-                &format_corrected_value,
-            )?;
-        }
-
-        // Add format corrections array if provided and not empty
-        if let Some(corrections) = &components.format_corrections {
-            if !corrections.is_empty() {
-                let corrections_value = Self::serialize_format_corrections(corrections);
-                self = self.add_field(
-                    FormatCorrectionField::FormatCorrections.as_ref(),
-                    &corrections_value,
-                )?;
-
-                // Add metadata for successful corrections
-                if components.format_corrected == Some(FormatCorrectionStatus::Succeeded) {
-                    if let Some(first) = corrections.first() {
-                        self = self.add_format_correction_metadata(first)?;
-                    }
-                }
-            }
-        }
-
-        Ok(self)
-    }
-
-    /// Apply configured fields from components
-    pub fn apply_configured_fields(
-        mut self,
-        components: &super::components::ResponseComponents,
-    ) -> Result<Self> {
-        for field in &components.configured_fields {
-            if field.is_metadata_object {
-                // Special handling for metadata objects
-                if let serde_json::Value::Object(map) = &field.value {
-                    for (key, val) in map {
-                        self = self.add_field(key, val)?;
-                    }
-                }
-            } else {
-                self = self.add_field_to(&field.name, &field.value, field.placement.clone())?;
-            }
-        }
-        Ok(self)
-    }
-
-    /// Serialize format corrections to JSON value
-    fn serialize_format_corrections(
-        corrections: &[crate::brp_tools::FormatCorrection],
-    ) -> serde_json::Value {
-        serde_json::json!(
-            corrections
-                .iter()
-                .map(|correction| {
-                    let mut correction_json = serde_json::json!({
-                        FormatCorrectionField::Component.as_ref(): correction.component,
-                        FormatCorrectionField::OriginalFormat.as_ref(): correction.original_format,
-                        FormatCorrectionField::CorrectedFormat.as_ref(): correction.corrected_format,
-                        FormatCorrectionField::Hint.as_ref(): correction.hint
-                    });
-
-                    // Add rich metadata fields if available
-                    if let Some(obj) = correction_json.as_object_mut() {
-                        if let Some(ops) = &correction.supported_operations {
-                            obj.insert(FormatCorrectionField::SupportedOperations.as_ref().to_string(), serde_json::json!(ops));
-                        }
-                        if let Some(paths) = &correction.mutation_paths {
-                            obj.insert(FormatCorrectionField::MutationPaths.as_ref().to_string(), serde_json::json!(paths));
-                        }
-                        if let Some(cat) = &correction.type_category {
-                            obj.insert(FormatCorrectionField::TypeCategory.as_ref().to_string(), serde_json::json!(cat));
-                        }
-                    }
-
-                    correction_json
-                })
-                .collect::<Vec<_>>()
-        )
-    }
-
-    /// Add format correction metadata to builder
-    fn add_format_correction_metadata(
-        mut self,
-        correction: &crate::brp_tools::FormatCorrection,
-    ) -> Result<Self> {
-        tracing::debug!(
-            "Adding format correction metadata for component: {:?}",
-            correction.component
-        );
-
-        if let Some(ops) = &correction.supported_operations {
-            tracing::debug!("Adding supported_operations: {:?}", ops);
-            self = self.add_field_to(
-                FormatCorrectionField::SupportedOperations.as_ref(),
-                serde_json::json!(ops),
-                FieldPlacement::Metadata,
-            )?;
-        }
-        if let Some(paths) = &correction.mutation_paths {
-            tracing::debug!("Adding mutation_paths: {:?}", paths);
-            self = self.add_field_to(
-                FormatCorrectionField::MutationPaths.as_ref(),
-                serde_json::json!(paths),
-                FieldPlacement::Metadata,
-            )?;
-        }
-        if let Some(cat) = &correction.type_category {
-            tracing::debug!("Adding type_category: {:?}", cat);
-            self = self.add_field_to(
-                FormatCorrectionField::TypeCategory.as_ref(),
-                serde_json::json!(cat),
-                FieldPlacement::Metadata,
-            )?;
-        }
-
-        Ok(self)
     }
 }

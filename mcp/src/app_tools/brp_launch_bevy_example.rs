@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use super::constants::DEFAULT_PROFILE;
 use super::support::{Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams};
-use crate::brp_tools::default_port;
+use crate::brp_tools::{default_port, deserialize_port};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct LaunchBevyExampleParams {
@@ -17,10 +17,7 @@ pub struct LaunchBevyExampleParams {
     #[to_metadata(skip_if_none)]
     pub path:         Option<String>,
     /// The BRP port (default: 15702)
-    #[serde(
-        default = "default_port",
-        deserialize_with = "crate::tool::deserialize_port"
-    )]
+    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     #[to_call_info]
     pub port:         u16,
 }

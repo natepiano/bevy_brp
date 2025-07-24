@@ -6,7 +6,7 @@ use sysinfo::{Signal, System};
 use tracing::debug;
 
 use crate::brp_tools::{
-    BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, execute_brp_method,
+    BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, deserialize_port, execute_brp_method,
 };
 use crate::error::{Error, Result};
 use crate::response::LocalWithPortCallInfo;
@@ -17,10 +17,7 @@ pub struct ShutdownParams {
     /// Name of the Bevy app to shutdown
     pub app_name: String,
     /// The BRP port (default: 15702)
-    #[serde(
-        default = "default_port",
-        deserialize_with = "crate::tool::deserialize_port"
-    )]
+    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     pub port:     u16,
 }
 
@@ -41,7 +38,7 @@ pub struct ShutdownResultData {
     #[to_metadata(skip_if_none)]
     pub pid:             Option<u32>,
     /// Detailed shutdown message for display
-    #[to_result]
+    #[to_metadata]
     pub message:         String,
 }
 

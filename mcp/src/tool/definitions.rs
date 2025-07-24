@@ -11,7 +11,7 @@ use super::tool_name::{
     BevyDestroy, BevyGet, BevyGetResource, BevyInsert, BevyInsertResource, BevyList,
     BevyListResources, BevyMutateComponent, BevyMutateResource, BevyQuery, BevyRegistrySchema,
     BevyRemove, BevyRemoveResource, BevyReparent, BevyRpcDiscover, BevySpawn,
-    BrpExtrasDiscoverFormat, BrpExtrasScreenshot, BrpExtrasSendKeys, BrpExtrasSetDebugMode,
+    BrpExtrasDiscoverFormat, BrpExtrasScreenshot, BrpExtrasSendKeys,
 };
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
@@ -27,8 +27,7 @@ use crate::brp_tools::{
     DestroyParams, DiscoverFormatParams, GetParams, GetResourceParams, InsertParams,
     InsertResourceParams, ListParams, ListResourcesParams, MutateComponentParams,
     MutateResourceParams, QueryParams, RegistrySchemaParams, RemoveParams, RemoveResourceParams,
-    ReparentParams, RpcDiscoverParams, ScreenshotParams, SendKeysParams, SetDebugModeParams,
-    SpawnParams,
+    ReparentParams, RpcDiscoverParams, ScreenshotParams, SendKeysParams, SpawnParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -303,19 +302,6 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
                 message_template: "Successfully sent keyboard input",
             },
         },
-        ToolDef {
-            tool_name:   ToolName::BrpExtrasSetDebugMode,
-            annotations: BrpToolAnnotations::new(
-                "Set Debug Mode",
-                ToolCategory::Extras,
-                EnvironmentImpact::ReadOnly,
-            ),
-            handler:     Arc::new(BrpExtrasSetDebugMode),
-            parameters:  Some(parameters::build_parameters_from::<SetDebugModeParams>),
-            response:    ResponseDef {
-                message_template: "Debug mode updated successfully",
-            },
-        },
         // BevyGetWatch and BevyListWatch are unusual in that
         // ultimately we do call bevy/get+watch and bevy/list+watch
         // but we need the local tool in order to set up the watch to stream
@@ -512,7 +498,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             handler:     Arc::new(Status),
             parameters:  Some(parameters::build_parameters_from::<StatusParams>),
             response:    ResponseDef {
-                message_template: "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}",
+                message_template: "{message}",
             },
         },
         ToolDef {

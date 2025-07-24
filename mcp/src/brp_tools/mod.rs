@@ -14,9 +14,9 @@ pub use brp_client::{BrpError, BrpResult, build_brp_url, execute_brp_method};
 pub use brp_execute::{BrpExecute, ExecuteParams};
 pub use constants::{
     BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BRP_PORT_ENV_VAR, FormatCorrectionField,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND, VALID_PORT_RANGE, default_port,
+    JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, deserialize_port,
 };
-pub use format_discovery::{FormatCorrection, FormatCorrectionStatus};
+pub use format_discovery::FormatCorrectionStatus;
 use json_rpc_builder::BrpJsonRpcBuilder;
 //
 // Export all parameter and result structs by name
@@ -39,10 +39,8 @@ pub use tools::bevy_spawn::{SpawnParams, SpawnResult};
 pub use tools::brp_extras_discover_format::{DiscoverFormatParams, DiscoverFormatResult};
 pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
-pub use tools::brp_extras_set_debug_mode::{SetDebugModeParams, SetDebugModeResult};
 //
 // Export watch tools
-pub use watch_tools::WatchInfo;
 pub use watch_tools::bevy_get_watch::{BevyGetWatch, GetWatchParams};
 pub use watch_tools::bevy_list_watch::{BevyListWatch, ListWatchParams};
 pub use watch_tools::brp_list_active::BrpListActiveWatches;

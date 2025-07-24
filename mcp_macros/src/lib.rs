@@ -47,7 +47,7 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
 ///     #[brp_method("bevy/destroy")]
 ///     #[brp_tool(params = "DestroyParams")]
 ///     BevyDestroy,
-///     
+///
 ///     #[brp_method("bevy/get+watch")]
 ///     BevyGetWatch,  // No brp_tool, just the method
 /// }
@@ -72,10 +72,10 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 /// struct GetParams {
 ///     #[to_metadata]
 ///     pub entity: u64,
-///     
+///
 ///     #[to_result]
 ///     pub components: Value,
-///     
+///
 ///     #[to_call_info]
 ///     pub port: u16,
 /// }
@@ -83,7 +83,6 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 ///
 /// This will generate implementations for:
 /// - `HasFieldPlacement` - provides field placement information
-/// - `FieldAccessor` - provides direct field access without JSON serialization
 /// - `CallInfoProvider` - if there are `#[to_call_info]` fields
 #[proc_macro_derive(FieldPlacement, attributes(to_metadata, to_result, to_call_info))]
 pub fn derive_field_placement(input: TokenStream) -> TokenStream {

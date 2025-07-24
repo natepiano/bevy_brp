@@ -2,8 +2,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
-use crate::brp_tools::{self, BrpResult};
-use crate::error::{Error, Result};
+use crate::brp_tools::{self, BrpResult, default_port, deserialize_port};
+use crate::error::Result;
 use crate::response::LocalWithPortCallInfo;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
 
@@ -13,10 +13,7 @@ pub struct StatusParams {
     #[to_metadata]
     pub app_name: String,
     /// The BRP port (default: 15702)
-    #[serde(
-        default = "brp_tools::default_port",
-        deserialize_with = "crate::tool::deserialize_port"
-    )]
+    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     #[to_call_info]
     pub port:     u16,
 }
@@ -24,18 +21,27 @@ pub struct StatusParams {
 /// Result from checking status of a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StatusResult {
-    /// App name that was checked
+    /// Status of the check - "success" only if app found and BRP responding
     #[to_metadata]
-    pub app_name:       String,
-    /// Whether the app process is running
+    pub status:             String,
+    /// App name that was requested
     #[to_metadata]
-    pub app_running:    bool,
-    /// Whether BRP is responsive
+    pub app_name_requested: String,
+    /// Whether the app process was found
     #[to_metadata]
-    pub brp_responsive: bool,
+    pub app_found:          bool,
+    /// Whether BRP is responding on the port
+    #[to_metadata]
+    pub responding_on_port: bool,
     /// Process ID if running
     #[to_metadata(skip_if_none)]
-    pub pid:            Option<u32>,
+    pub pid:                Option<u32>,
+    /// Similar app name if no exact match found
+    #[to_metadata(skip_if_none)]
+    pub similar_app_name:   Option<String>,
+    /// Status message
+    #[to_metadata]
+    pub message:            String,
 }
 
 pub struct Status;
@@ -80,8 +86,8 @@ fn normalize_process_name(name: &str) -> String {
         .to_string()
 }
 
-/// Check if process matches the target app name
-fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
+/// Check if process matches the target app name with exact match
+fn process_matches_app_exact(process: &sysinfo::Process, target_app: &str) -> bool {
     let normalized_target = normalize_process_name(target_app);
 
     // Check process name
@@ -92,24 +98,10 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
         return true;
     }
 
-    // Check command line arguments for additional matching
-    // This helps catch cases where the process name is different from the binary name
+    // Check exact match on binary name from command
     if let Some(cmd) = process.cmd().first() {
         let cmd_normalized = normalize_process_name(&cmd.to_string_lossy());
-        if cmd_normalized.contains(&normalized_target)
-            || normalized_target.contains(&cmd_normalized)
-        {
-            return true;
-        }
-    }
-
-    // Check all command line arguments for potential matches
-    for arg in process.cmd() {
-        let arg_str = arg.to_string_lossy();
-        let arg_normalized = normalize_process_name(&arg_str);
-
-        // Check if this argument contains our target name
-        if arg_normalized.contains(&normalized_target) {
+        if cmd_normalized == normalized_target {
             return true;
         }
     }
@@ -117,52 +109,179 @@ fn process_matches_app(process: &sysinfo::Process, target_app: &str) -> bool {
     false
 }
 
+/// Check if process matches the target app name with substring match
+fn process_matches_app_substring(process: &sysinfo::Process, target_app: &str) -> bool {
+    let normalized_target = normalize_process_name(target_app);
+
+    // Check process name
+    let process_name = process.name().to_string_lossy();
+    let normalized_process_name = normalize_process_name(&process_name);
+
+    if normalized_process_name.contains(&normalized_target) {
+        return true;
+    }
+
+    // Check first command argument (usually the binary path) for substring matches
+    // but skip generic process names that wouldn't be helpful
+    if let Some(cmd) = process.cmd().first() {
+        let cmd_str = cmd.to_string_lossy();
+        let cmd_normalized = normalize_process_name(&cmd_str);
+
+        // Skip if it's a generic utility that happens to have the target in its args
+        let generic_utils = ["tail", "grep", "cat", "less", "more", "head", "sed", "awk"];
+        if !generic_utils.contains(&normalized_process_name.as_str())
+            && cmd_normalized.contains(&normalized_target)
+        {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Check if process is `bevy_brp_mcp` (the MCP tool itself)
+fn is_bevy_brp_mcp(process: &sysinfo::Process) -> bool {
+    let process_name = process.name().to_string_lossy();
+    process_name == "bevy_brp_mcp"
+}
+
+/// Extract clean app name from process for suggestions
+fn extract_app_name(process: &sysinfo::Process) -> String {
+    let process_name = process.name().to_string_lossy();
+
+    // Check if it's running through cargo
+    if process_name == "cargo" {
+        // Look for "run" and then the binary name in args
+        let args: Vec<String> = process
+            .cmd()
+            .iter()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect();
+        if let Some(_run_pos) = args.iter().position(|arg| arg == "run") {
+            // Check for --bin argument
+            if let Some(bin_pos) = args.iter().position(|arg| arg == "--bin") {
+                if let Some(bin_name) = args.get(bin_pos + 1) {
+                    return bin_name.clone();
+                }
+            }
+            // Check for --example argument
+            if let Some(ex_pos) = args.iter().position(|arg| arg == "--example") {
+                if let Some(ex_name) = args.get(ex_pos + 1) {
+                    return ex_name.clone();
+                }
+            }
+        }
+    }
+
+    // If the process name looks like a path to a binary, extract just the binary name
+    if process_name.contains("target/debug") || process_name.contains("target/release") {
+        return normalize_process_name(&process_name);
+    }
+
+    // For processes run directly, check the first command argument
+    if let Some(cmd) = process.cmd().first() {
+        let cmd_str = cmd.to_string_lossy();
+        if cmd_str.contains("target/debug")
+            || cmd_str.contains("target/release")
+            || cmd_str.contains("/examples/")
+        {
+            return normalize_process_name(&cmd_str);
+        }
+    }
+
+    normalize_process_name(&process_name)
+}
+
 async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
     // Check if a process with this name is running using sysinfo
     let mut system = System::new_all();
     system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
-    let running_process = system.processes().values().find(|process| {
+    // First try exact match
+    let exact_match = system.processes().values().find(|process| {
         // Filter out defunct/zombie processes
         !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
-            && process_matches_app(process, app_name)
+            && process_matches_app_exact(process, app_name)
     });
 
     // Check BRP connectivity
     let brp_responsive = check_brp_on_port(port).await?;
 
-    // Build response based on findings
-    match (running_process, brp_responsive) {
-        (Some(process), true) => {
-            // SUCCESS CASE: Process running with BRP enabled
-            let pid = process.pid().as_u32();
+    if let Some(process) = exact_match {
+        // Found exact match
+        let pid = process.pid().as_u32();
+
+        if brp_responsive {
+            // SUCCESS: Both conditions met
             Ok(StatusResult {
-                app_name:       app_name.to_string(),
-                app_running:    true,
-                brp_responsive: true,
-                pid:            Some(pid),
+                status:             "success".to_string(),
+                app_name_requested: app_name.to_string(),
+                app_found:          true,
+                responding_on_port: true,
+                pid:                Some(pid),
+                similar_app_name:   None,
+                message:            format!(
+                    "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
+                ),
+            })
+        } else {
+            // Process running but BRP not responding
+            Ok(StatusResult {
+                status:             "error".to_string(),
+                app_name_requested: app_name.to_string(),
+                app_found:          true,
+                responding_on_port: false,
+                pid:                Some(pid),
+                similar_app_name:   None,
+                message:            format!(
+                    "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
+                ),
             })
         }
-        (Some(process), false) => {
-            // ERROR: Process running but BRP not responding
-            let pid = process.pid().as_u32();
-            Err(Error::tool_call_failed(format!(
-                "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
-            )).into())
-        }
-        (None, true) => {
-            // ERROR: BRP responding but process not detected
-            Err(Error::tool_call_failed(format!(
-                "BRP is responding on port {port} but process '{app_name}' not detected. Another process may be using BRP."
-            )).into())
-        }
-        (None, false) => {
-            // ERROR: Process not running
-            Err(
-                Error::tool_call_failed(format!("Process '{app_name}' is not currently running"))
-                    .into(),
-            )
-        }
+    } else {
+        // No exact match found, look for suggestions
+        let suggestions: Vec<String> = system
+            .processes()
+            .values()
+            .filter(|process| {
+                !matches!(process.status(), sysinfo::ProcessStatus::Zombie)
+                    && process_matches_app_substring(process, app_name)
+                    && !is_bevy_brp_mcp(process)
+            })
+            .map(extract_app_name)
+            .collect();
+
+        // Pick the first suggestion if available
+        let similar_app = suggestions.first().cloned();
+
+        let message = match (similar_app.as_ref(), brp_responsive) {
+            (Some(suggestion), true) => {
+                format!(
+                    "Process '{app_name}' not found. Did you mean: {suggestion}? (BRP is responding on port {port})"
+                )
+            }
+            (Some(suggestion), false) => {
+                format!("Process '{app_name}' not found. Did you mean: {suggestion}?")
+            }
+            (None, true) => {
+                format!(
+                    "Process '{app_name}' not found. BRP is responding on port {port} - another process may be using it."
+                )
+            }
+            (None, false) => {
+                format!("Process '{app_name}' not found and BRP is not responding on port {port}.")
+            }
+        };
+
+        Ok(StatusResult {
+            status: "error".to_string(),
+            app_name_requested: app_name.to_string(),
+            app_found: false,
+            responding_on_port: brp_responsive,
+            pid: None,
+            similar_app_name: similar_app,
+            message,
+        })
     }
 }
 

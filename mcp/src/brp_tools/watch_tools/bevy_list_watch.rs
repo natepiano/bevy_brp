@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::types::WatchStartResult;
-use crate::brp_tools::default_port;
+use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::{Error, Result};
 use crate::response::LocalWithPortCallInfo;
 use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
@@ -15,10 +15,7 @@ pub struct ListWatchParams {
     #[to_metadata]
     pub entity: u64,
     /// The BRP port (default: 15702)
-    #[serde(
-        default = "default_port",
-        deserialize_with = "crate::tool::deserialize_port"
-    )]
+    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     #[to_call_info]
     pub port:   u16,
 }

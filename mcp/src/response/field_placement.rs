@@ -5,11 +5,12 @@
 //! - Direct field access without JSON serialization
 //! - Automatic `CallInfo` generation
 
-use crate::response::extraction::{ExtractedValue, ResponseFieldType};
+use super::ResponseBuilder;
+use crate::error::Result;
 
 /// Information about where a field should be placed in the response
-/// 
-/// Note: Fields appear unused but are actually used by the `FieldPlacement` derive macro
+///
+/// Note: appears unused but is actually used by the `FieldPlacement` derive macro
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct FieldPlacementInfo {
@@ -19,35 +20,21 @@ pub struct FieldPlacementInfo {
     pub placement:    super::FieldPlacement,
     /// Optional source path for response fields (e.g., "result.entities")
     pub source_path:  Option<&'static str>,
-    /// The type of the field for extraction
-    pub field_type:   ResponseFieldType,
     /// Whether to skip this field if it's None
     pub skip_if_none: bool,
 }
 
 /// Trait for types that have field placement information
-/// 
-/// Note: This trait appears unused but is actually used by the `FieldPlacement` derive macro
+///
+/// Note: appears unused but is actually used by the `FieldPlacement` derive macro
 #[allow(dead_code)]
 pub trait HasFieldPlacement {
     /// Get the field placement information for this type
     fn field_placements() -> Vec<FieldPlacementInfo>;
 }
 
-/// Trait for direct field access without JSON serialization
-/// 
-/// Note: This trait appears unused but is actually used by the `FieldPlacement` derive macro
-#[allow(dead_code)]
-pub trait FieldAccessor {
-    /// Get a field value by name
-    fn get_field(&self, name: &str) -> Option<ExtractedValue>;
-}
-
 /// Trait for adding response fields directly to the builder
 pub trait ResponseData {
     /// Add all response fields to the builder
-    fn add_response_fields(
-        &self,
-        builder: super::builder::ResponseBuilder,
-    ) -> crate::error::Result<super::builder::ResponseBuilder>;
+    fn add_response_fields(&self, builder: ResponseBuilder) -> Result<ResponseBuilder>;
 }

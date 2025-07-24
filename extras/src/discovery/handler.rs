@@ -77,6 +77,14 @@ fn parse_types_parameter(params: Option<Value>) -> Result<Vec<String>, BrpError>
     Ok(type_names)
 }
 
+/// Parse the debug parameter from BRP request parameters
+fn parse_debug_parameter(params: Option<&Value>) -> bool {
+    params
+        .and_then(|p| p.get("enable_debug_info"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
 /// Get common component types (convenience function for API users)
 #[must_use]
 pub fn get_common_component_types_public() -> Vec<String> {
@@ -88,12 +96,12 @@ pub fn get_common_component_types_public() -> Vec<String> {
 /// This handler returns factual information about types instead of placeholder examples
 pub fn factual_handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
     // Parse parameters - types parameter is required
-    let type_names = parse_types_parameter(params)?;
+    let type_names = parse_types_parameter(params.clone())?;
 
-    // Check if debug mode is enabled
+    // Parse debug parameter (defaults to false)
+    let include_debug = parse_debug_parameter(params.as_ref());
+
     let mut debug_info = DebugContext::new();
-    let include_debug = crate::debug_mode::is_debug_enabled();
-
     debug_info.push(format!(
         "Processing factual request for {} types",
         type_names.len()

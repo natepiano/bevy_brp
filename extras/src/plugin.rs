@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
 
-use crate::{DEFAULT_REMOTE_PORT, debug_mode, discovery, keyboard, screenshot, shutdown};
+use crate::{DEFAULT_REMOTE_PORT, discovery, keyboard, screenshot, shutdown};
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
@@ -16,7 +16,6 @@ const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
 /// - `brp_extras/shutdown`: Gracefully shutdown the app
 /// - `brp_extras/discover_format`: Discover component format information
 /// - `brp_extras/send_keys`: Send keyboard input
-/// - `brp_extras/set_debug_mode`: Enable/disable debug information in responses
 #[allow(non_upper_case_globals)]
 pub const BrpExtrasPlugin: BrpExtrasPlugin = BrpExtrasPlugin::new();
 
@@ -100,10 +99,6 @@ impl Plugin for BrpExtrasPlugin {
             .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}send_keys"),
                 keyboard::send_keys_handler,
-            )
-            .with_method(
-                format!("{EXTRAS_COMMAND_PREFIX}set_debug_mode"),
-                debug_mode::handler,
             );
 
         let http_plugin = RemoteHttpPlugin::default().with_port(effective_port);
@@ -129,7 +124,6 @@ fn log_initialization(port: u16, source_description: &str) {
     trace!("  - brp_extras/shutdown - Shutdown the app");
     trace!("  - brp_extras/discover_format - Discover component format information");
     trace!("  - brp_extras/send_keys - Send keyboard input");
-    trace!("  - brp_extras/set_debug_mode - Enable/disable debug information");
 }
 
 #[cfg(test)]
