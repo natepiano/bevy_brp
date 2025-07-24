@@ -1,10 +1,11 @@
 //! bevy/remove_resource tool - Remove resources
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/remove_resource tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct RemoveResourceParams {
     /// The fully-qualified type name of the resource to remove
     #[to_metadata]

@@ -1,10 +1,11 @@
 //! bevy/registry/schema tool - Get type schemas
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/registry/schema tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct RegistrySchemaParams {
     /// Include only types from these crates (e.g., [`bevy_transform`, `my_game`])
     #[serde(skip_serializing_if = "Option::is_none")]

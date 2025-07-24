@@ -1,10 +1,11 @@
 //! bevy/query tool - Query entities by components
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/query tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct QueryParams {
     /// Object specifying what component data to retrieve. Properties: components (array), option
     /// (array), has (array)

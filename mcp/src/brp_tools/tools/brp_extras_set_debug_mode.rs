@@ -1,10 +1,11 @@
 //! brp_extras/set_debug_mode tool - Enable/disable debug mode
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the brp_extras/set_debug_mode tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SetDebugModeParams {
     /// Enable or disable debug mode for `bevy_brp_extras` plugin
     pub enabled: bool,

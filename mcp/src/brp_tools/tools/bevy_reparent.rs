@@ -1,10 +1,11 @@
 //! bevy/reparent tool - Change entity parents
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/reparent tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReparentParams {
     /// Array of entity IDs to reparent
     #[to_metadata]

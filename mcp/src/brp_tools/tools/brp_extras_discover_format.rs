@@ -1,10 +1,11 @@
 //! brp_extras/discover_format tool - Discover component format information
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the brp_extras/discover_format tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct DiscoverFormatParams {
     /// Array of fully-qualified component type names to discover formats for
     pub types: Vec<String>,

@@ -1,10 +1,11 @@
 //! bevy/insert_resource tool - Insert or update resources
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/insert_resource tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct InsertResourceParams {
     /// The fully-qualified type name of the resource to insert or update
     #[to_metadata]

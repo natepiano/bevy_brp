@@ -1,7 +1,6 @@
 use std::fs;
 use std::time::{Duration, SystemTime};
 
-use rmcp::ErrorData as McpError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

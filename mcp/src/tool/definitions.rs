@@ -3,14 +3,6 @@
 use std::sync::Arc;
 
 use super::annotations::{BrpToolAnnotations, EnvironmentImpact, ToolCategory};
-// Import parameter structs from tool module
-use super::brp_parameters::{
-    DestroyParams, DiscoverFormatParams, GetParams, GetResourceParams, InsertParams,
-    InsertResourceParams, ListParams, ListResourcesParams, MutateComponentParams,
-    MutateResourceParams, QueryParams, RegistrySchemaParams, RemoveParams, RemoveResourceParams,
-    ReparentParams, RpcDiscoverParams, ScreenshotParams, SendKeysParams, SetDebugModeParams,
-    SpawnParams,
-};
 use super::parameters;
 use super::tool_def::ToolDef;
 use super::tool_name::ToolName;
@@ -29,6 +21,14 @@ use crate::app_tools::{
 use crate::brp_tools::{
     BevyGetWatch, BevyListWatch, BrpExecute, BrpListActiveWatches, BrpStopWatch, ExecuteParams,
     GetWatchParams, ListWatchParams, StopWatchParams,
+};
+// Import parameter structs from tool module
+use crate::brp_tools::{
+    DestroyParams, DiscoverFormatParams, GetParams, GetResourceParams, InsertParams,
+    InsertResourceParams, ListParams, ListResourcesParams, MutateComponentParams,
+    MutateResourceParams, QueryParams, RegistrySchemaParams, RemoveParams, RemoveResourceParams,
+    ReparentParams, RpcDiscoverParams, ScreenshotParams, SendKeysParams, SetDebugModeParams,
+    SpawnParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,

@@ -1,10 +1,11 @@
 //! bevy/remove tool - Remove components from entities
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/remove tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct RemoveParams {
     /// The entity ID to remove components from
     #[to_metadata]

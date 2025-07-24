@@ -1,10 +1,11 @@
 //! bevy/list tool - List components on an entity or all component types
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/list tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListParams {
     /// Optional entity ID to list components for - to list all types, do not pass entity parameter
     #[serde(skip_serializing_if = "Option::is_none")]

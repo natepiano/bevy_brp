@@ -1,10 +1,11 @@
 //! rpc.discover tool - Discover available BRP methods
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the rpc.discover tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct RpcDiscoverParams {
     /// The BRP port (default: 15702)
     #[to_call_info]

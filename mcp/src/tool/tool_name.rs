@@ -6,6 +6,19 @@
 use bevy_brp_mcp_macros::{BrpTools, ToolDescription};
 use strum::{AsRefStr, Display, EnumString, IntoStaticStr};
 
+// Import parameter and result types so they're in scope for the macro
+use crate::brp_tools::{
+    DestroyParams, DestroyResult, DiscoverFormatParams, DiscoverFormatResult, GetParams,
+    GetResourceParams, GetResourceResult, GetResult, InsertParams, InsertResourceParams,
+    InsertResourceResult, InsertResult, ListParams, ListResourcesParams, ListResourcesResult,
+    ListResult, MutateComponentParams, MutateComponentResult, MutateResourceParams,
+    MutateResourceResult, QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult,
+    RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentParams,
+    ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult,
+    SendKeysParams, SendKeysResult, SetDebugModeParams, SetDebugModeResult, SpawnParams,
+    SpawnResult,
+};
+
 /// Tool names enum with automatic `snake_case` serialization
 #[derive(
     Display,

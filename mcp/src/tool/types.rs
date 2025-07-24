@@ -45,14 +45,6 @@ pub trait ToolFn: Send + Sync {
     fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)>;
 }
 
-/// Extension trait for tools whose output implements FieldAccessor
-pub trait ToolFnWithFieldAccess: ToolFn
-where
-    Self::Output: FieldAccessor,
-{
-    // Marker trait
-}
-
 /// Type-erased version for heterogeneous storage
 /// Provides consistent formatting the Result for all tool calls - reducing potential bugs
 /// Also allows us to pass the typed Result to the formatter although

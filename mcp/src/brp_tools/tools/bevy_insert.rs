@@ -1,10 +1,11 @@
 //! bevy/insert tool - Insert or replace components on entities
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/insert tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct InsertParams {
     /// The entity ID to insert components into
     #[to_metadata]

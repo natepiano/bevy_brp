@@ -1,5 +1,4 @@
 mod annotations;
-mod brp_parameters;
 mod definitions;
 mod handler_context;
 mod parameters;

@@ -41,7 +41,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
             // Use specific result type if provided, otherwise use BrpMethodResult
             let result_type = if let Some(result) = &tool_result {
                 let result_ident = syn::Ident::new(result, variant_name.span());
-                quote! { crate::brp_tools::tools::#result_ident }
+                quote! { #result_ident }
             } else {
                 quote! { crate::brp_tools::handler::BrpMethodResult }
             };
@@ -84,7 +84,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
                 impl crate::tool::ToolFn for #variant_name {
                     type Output = #result_type;
-                    type CallInfoData = crate::tool::brp_parameters::#params_ident;
+                    type CallInfoData = #params_ident;
 
                     fn call(
                         &self,
@@ -92,10 +92,10 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                     ) -> crate::tool::HandlerResponse<(Self::CallInfoData, Self::Output)> {
                         let ctx_clone = ctx.clone();
                         Box::pin(async move {
-                            let params = ctx_clone.extract_parameter_values::<crate::tool::brp_parameters::#params_ident>()?;
+                            let params = ctx_clone.extract_parameter_values::<#params_ident>()?;
                             let brp_result = crate::brp_tools::handler::execute_static_brp_call::<
                                 #variant_name,
-                                crate::tool::brp_parameters::#params_ident,
+                                #params_ident,
                             >(&ctx_clone)
                             .await?;
                             // Convert BrpMethodResult to specific result type
@@ -112,7 +112,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                     }
                 }
 
-                impl crate::brp_tools::handler::HasPortField for crate::tool::brp_parameters::#params_ident {
+                impl crate::brp_tools::handler::HasPortField for #params_ident {
                     fn port(&self) -> u16 {
                         self.port
                     }

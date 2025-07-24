@@ -217,27 +217,27 @@ impl ResponseDef {
         }
     }
 
-    fn format_success<T>(
-        &self,
-        data: T,
-        handler_context: &HandlerContext,
-        call_info: CallInfo,
-    ) -> std::result::Result<CallToolResult, McpError>
-    where
-        T: FieldAccessor,
-    {
-        // Use field accessor for typed extraction - no JSON serialization
-        let response = self
-            .build_success_response(&data, handler_context, call_info)
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to build success response: {e}"), None)
-            })?;
+    // fn format_success<T>(
+    //     &self,
+    //     data: T,
+    //     handler_context: &HandlerContext,
+    //     call_info: CallInfo,
+    // ) -> std::result::Result<CallToolResult, McpError>
+    // where
+    //     T: FieldAccessor,
+    // {
+    //     // Use field accessor for typed extraction - no JSON serialization
+    //     let response = self
+    //         .build_success_response(&data, handler_context, call_info)
+    //         .map_err(|e| {
+    //             McpError::internal_error(format!("Failed to build success response: {e}"), None)
+    //         })?;
 
-        Ok(Self::handle_large_response(
-            response,
-            &handler_context.request.name,
-        ))
-    }
+    //     Ok(Self::handle_large_response(
+    //         response,
+    //         &handler_context.request.name,
+    //     ))
+    // }
 
     fn build_success_response(
         &self,

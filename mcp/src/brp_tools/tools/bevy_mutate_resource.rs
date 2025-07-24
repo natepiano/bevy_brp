@@ -1,10 +1,11 @@
 //! bevy/mutate_resource tool - Mutate resource fields
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Parameters for the bevy/mutate_resource tool
-#[derive(Deserialize, Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct MutateResourceParams {
     /// The fully-qualified type name of the resource to mutate
     #[to_metadata]
