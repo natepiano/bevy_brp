@@ -25,6 +25,9 @@ pub struct DeleteLogsResult {
     /// List of deleted filenames
     #[to_metadata]
     pub deleted_files:      Vec<String>,
+    /// Number of files deleted
+    #[to_metadata]
+    pub deleted_count:      usize,
     /// App name filter that was applied (if any)
     #[to_metadata(skip_if_none)]
     pub app_name_filter:    Option<String>,
@@ -65,6 +68,7 @@ fn handle_impl(
     let deleted_files = delete_log_files(app_name_filter, older_than_seconds)?;
 
     Ok(DeleteLogsResult {
+        deleted_count: deleted_files.len(),
         deleted_files,
         app_name_filter: app_name_filter.map(String::from),
         older_than_seconds,
