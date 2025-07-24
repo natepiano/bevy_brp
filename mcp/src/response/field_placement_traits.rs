@@ -8,7 +8,10 @@
 use crate::response::extraction::{ExtractedValue, ResponseFieldType};
 
 /// Information about where a field should be placed in the response
+/// 
+/// Note: Fields appear unused but are actually used by the `FieldPlacement` derive macro
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct FieldPlacementInfo {
     /// The name of the field
     pub field_name:   &'static str,
@@ -23,12 +26,18 @@ pub struct FieldPlacementInfo {
 }
 
 /// Trait for types that have field placement information
+/// 
+/// Note: This trait appears unused but is actually used by the `FieldPlacement` derive macro
+#[allow(dead_code)]
 pub trait HasFieldPlacement {
     /// Get the field placement information for this type
     fn field_placements() -> Vec<FieldPlacementInfo>;
 }
 
 /// Trait for direct field access without JSON serialization
+/// 
+/// Note: This trait appears unused but is actually used by the `FieldPlacement` derive macro
+#[allow(dead_code)]
 pub trait FieldAccessor {
     /// Get a field value by name
     fn get_field(&self, name: &str) -> Option<ExtractedValue>;

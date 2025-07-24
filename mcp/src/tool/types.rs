@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use crate::error::Result;
-use crate::response::{CallInfoProvider, FieldAccessor, LocalCallInfo, ResponseData, ResponseDef};
+use crate::response::{CallInfoProvider, LocalCallInfo, ResponseData, ResponseDef};
 
 /// Type alias for the response from local handlers
 ///
@@ -73,7 +73,7 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
             let result = self.call(ctx).await;
             match result {
                 Ok((call_info_data, output)) => {
-                    // Use standard format_result which will internally check for FieldAccessor
+                    // Use standard format_result which will internally check for `FieldAccessor`
                     response_def.format_result(Ok(output), ctx, call_info_data)
                 }
                 Err(e) => {
