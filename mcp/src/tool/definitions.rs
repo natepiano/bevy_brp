@@ -459,7 +459,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
             handler:     Arc::new(ListLogs),
             parameters:  Some(parameters::build_parameters_from::<ListLogsParams>),
             response:    ResponseDef {
-                message_template: "Found {count} log files",
+                message_template: "Found {log_count} log files",
             },
         },
         ToolDef {

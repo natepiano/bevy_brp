@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::manager::WATCH_MANAGER;
 use crate::error::{Error, Result};
 use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StopWatchParams {
@@ -29,16 +29,20 @@ impl ToolFn for BrpStopWatch {
     type Output = StopWatchResult;
     type CallInfoData = LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         // Extract typed parameters
         let params: StopWatchParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
         };
 
         Box::pin(async move {
-            let result = handle_impl(params.watch_id).await?;
-            Ok((LocalCallInfo, result))
+            Ok(handle_impl(params.watch_id)
+                .await
+                .with_call_info(LocalCallInfo))
         })
     }
 }

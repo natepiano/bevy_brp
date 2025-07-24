@@ -11,4 +11,4 @@ pub use handler_context::HandlerContext;
 pub use parameters::ParameterName;
 pub use tool_def::ToolDef;
 pub use tool_name::{BrpMethod, ToolName};
-pub use types::{HandlerResponse, ToolFn};
+pub use types::{HandlerResponse, ToolFn, WithCallInfo};

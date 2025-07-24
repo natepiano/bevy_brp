@@ -1,12 +1,11 @@
-use rmcp::ErrorData as McpError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support::LogFileEntry;
-use crate::error::Error;
+use crate::error::{Error, Result};
 use crate::log_tools::support;
 use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListLogsParams {
@@ -27,6 +26,9 @@ pub struct ListLogResult {
     /// Path to the temp directory containing logs
     #[to_metadata]
     pub temp_directory: String,
+    /// Log file count
+    #[to_metadata]
+    pub log_count:      usize,
 }
 
 /// Handler for the `brp_list_logs` tool using the `LocalFn` approach
@@ -36,24 +38,25 @@ impl ToolFn for ListLogs {
     type Output = ListLogResult;
     type CallInfoData = LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         // Extract typed parameters
         let params: ListLogsParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
         };
 
         Box::pin(async move {
-            match list_log_files(params.app_name.as_deref(), params.verbose) {
-                Ok(logs) => {
-                    let result = ListLogResult {
-                        logs,
-                        temp_directory: support::get_log_directory().display().to_string(),
-                    };
-                    Ok((LocalCallInfo, result))
+            let result = list_log_files(params.app_name.as_deref(), params.verbose).map(|logs| {
+                ListLogResult {
+                    log_count: logs.len(),
+                    logs,
+                    temp_directory: support::get_log_directory().display().to_string(),
                 }
-                Err(e) => Err(Error::tool_call_failed(e.message).into()),
-            }
+            });
+            Ok(result.with_call_info(LocalCallInfo))
         })
     }
 }
@@ -61,14 +64,15 @@ impl ToolFn for ListLogs {
 fn list_log_files(
     app_name_filter: Option<&str>,
     verbose: Option<bool>,
-) -> Result<Vec<LogFileInfo>, McpError> {
+) -> Result<Vec<LogFileInfo>> {
     // Use the iterator to get all log files with optional filter
     let filter = |entry: &LogFileEntry| -> bool {
         // Apply app name filter if provided
         app_name_filter.map_or_else(|| true, |app_filter| entry.app_name == app_filter)
     };
 
-    let mut log_entries = support::iterate_log_files(filter)?;
+    let mut log_entries =
+        support::iterate_log_files(filter).map_err(|e| Error::tool_call_failed(e.message))?;
 
     // Sort by timestamp (newest first)
     log_entries.sort_by(|a, b| {

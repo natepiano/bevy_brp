@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 use super::format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
 use crate::brp_tools::{default_port, deserialize_port};
-use crate::error::Error;
+use crate::error::{Error, Result};
 use crate::response::LocalWithPortCallInfo;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ExecuteParams {
@@ -38,29 +38,44 @@ impl ToolFn for BrpExecute {
     type Output = BrpMethodResult;
     type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         let ctx = ctx.clone();
 
         Box::pin(async move {
             // Extract typed parameters
-            let params = ctx.extract_parameter_values::<ExecuteParams>()?;
+            let params = match ctx.extract_parameter_values::<ExecuteParams>() {
+                Ok(params) => params,
+                Err(e) => return Ok(Err(e).with_call_info(LocalWithPortCallInfo { port: 15702 })),
+            };
             let port = params.port;
 
             // For brp_execute, parse user input to BrpMethod
-            let brp_method = BrpMethod::from_str(&params.method).ok_or_else(|| {
-                Error::InvalidArgument(format!("Unknown BRP method: {}", params.method))
-            })?;
+            let Some(brp_method) = BrpMethod::from_str(&params.method) else {
+                return Ok(Err(Error::InvalidArgument(format!(
+                    "Unknown BRP method: {}",
+                    params.method
+                ))
+                .into())
+                .with_call_info(LocalWithPortCallInfo { port }));
+            };
 
-            let enhanced_result = format_discovery::execute_brp_method_with_format_discovery(
+            let enhanced_result = match format_discovery::execute_brp_method_with_format_discovery(
                 brp_method,    // Parsed BRP method
                 params.params, // User-provided params (already Option<Value>)
                 port,          // Use typed port parameter
             )
-            .await?;
+            .await
+            {
+                Ok(result) => result,
+                Err(e) => return Ok(Err(e).with_call_info(LocalWithPortCallInfo { port })),
+            };
 
             // Convert result using existing conversion function
-            let result = convert_to_brp_method_result(enhanced_result, &ctx)?;
-            Ok((LocalWithPortCallInfo { port }, result))
+            Ok(convert_to_brp_method_result(enhanced_result, &ctx)
+                .with_call_info(LocalWithPortCallInfo { port }))
         })
     }
 }

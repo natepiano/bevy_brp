@@ -1,4 +1,4 @@
-//! bevy/query tool - Query entities by components
+//! `bevy/query` tool - Query entities by components
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the bevy/query tool
+/// Parameters for the `bevy/query` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct QueryParams {
     /// Object specifying what component data to retrieve. Properties: components (array), option
@@ -28,7 +28,7 @@ pub struct QueryParams {
     pub port: u16,
 }
 
-/// Result for the bevy/query tool
+/// Result for the `bevy/query` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct QueryResult {
     /// The raw BRP response - array of entities with their components
@@ -37,13 +37,10 @@ pub struct QueryResult {
     pub result: Option<Value>,
 
     /// Count of entities returned
-    #[to_metadata(computed_from = "result", computed_operation = "count")]
+    #[to_metadata(result_operation = "count")]
     pub entity_count: usize,
 
     /// Total count of components across all entities
-    #[to_metadata(
-        computed_from = "result",
-        computed_operation = "count_query_components"
-    )]
+    #[to_metadata(result_operation = "count_query_components")]
     pub component_count: usize,
 }

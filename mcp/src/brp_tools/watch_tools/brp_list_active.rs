@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::manager::WATCH_MANAGER;
 use crate::error::Result;
 use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
@@ -41,11 +41,11 @@ impl ToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
     type CallInfoData = LocalCallInfo;
 
-    fn call(&self, _ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
-        Box::pin(async move {
-            let result = handle_impl().await?;
-            Ok((LocalCallInfo, result))
-        })
+    fn call(
+        &self,
+        _ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
+        Box::pin(async move { Ok(handle_impl().await.with_call_info(LocalCallInfo)) })
     }
 }
 

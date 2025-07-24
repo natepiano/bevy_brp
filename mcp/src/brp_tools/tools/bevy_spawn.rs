@@ -1,4 +1,4 @@
-//! bevy/spawn tool - Spawn entities with components
+//! `bevy/spawn` tool - Spawn entities with components
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the bevy/spawn tool
+/// Parameters for the `bevy/spawn` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SpawnParams {
     /// Object containing component data to spawn with. Keys are component types, values are
@@ -20,7 +20,7 @@ pub struct SpawnParams {
     pub port: u16,
 }
 
-/// Result for the bevy/spawn tool
+/// Result for the `bevy/spawn` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SpawnResult {
     /// The raw BRP response data containing the new entity ID
@@ -29,7 +29,7 @@ pub struct SpawnResult {
     pub result: Option<Value>,
 
     /// The spawned entity ID
-    #[to_metadata(computed_from = "result", computed_operation = "extract_entity")]
+    #[to_metadata(result_operation = "extract_entity")]
     pub entity: u64,
 
     /// Format corrections applied during spawn

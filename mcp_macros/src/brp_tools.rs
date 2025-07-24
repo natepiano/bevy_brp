@@ -89,19 +89,22 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                     fn call(
                         &self,
                         ctx: &crate::tool::HandlerContext,
-                    ) -> crate::tool::HandlerResponse<(Self::CallInfoData, Self::Output)> {
+                    ) -> crate::tool::HandlerResponse<(Self::CallInfoData, crate::error::Result<Self::Output>)> {
                         let ctx_clone = ctx.clone();
                         Box::pin(async move {
                             let params = ctx_clone.extract_parameter_values::<#params_ident>()?;
-                            let brp_result = crate::brp_tools::handler::execute_static_brp_call::<
+                            let brp_result = match crate::brp_tools::handler::execute_static_brp_call::<
                                 #variant_name,
                                 #params_ident,
                             >(&ctx_clone)
-                            .await?;
+                            .await {
+                                Ok(r) => r,
+                                Err(e) => return Ok((params, Err(e))),
+                            };
                             // Convert BrpMethodResult to specific result type
                             #conversion
 
-                            Ok((params, result))
+                            Ok((params, Ok(result)))
                         })
                     }
                 }

@@ -5,7 +5,7 @@ use sysinfo::System;
 use crate::brp_tools::{self, BrpResult, default_port, deserialize_port};
 use crate::error::Result;
 use crate::response::LocalWithPortCallInfo;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StatusParams {
@@ -50,17 +50,25 @@ impl ToolFn for Status {
     type Output = StatusResult;
     type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         // Extract and validate parameters using the new typed system
         let params: StatusParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => {
+                return Box::pin(async move {
+                    Ok(Err(e).with_call_info(LocalWithPortCallInfo { port: 15702 }))
+                });
+            }
         };
 
         let port = params.port;
         Box::pin(async move {
-            let result = handle_impl(&params.app_name, port).await?;
-            Ok((LocalWithPortCallInfo { port }, result))
+            Ok(handle_impl(&params.app_name, port)
+                .await
+                .with_call_info(LocalWithPortCallInfo { port }))
         })
     }
 }
@@ -207,38 +215,7 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
     // Check BRP connectivity
     let brp_responsive = check_brp_on_port(port).await?;
 
-    if let Some(process) = exact_match {
-        // Found exact match
-        let pid = process.pid().as_u32();
-
-        if brp_responsive {
-            // SUCCESS: Both conditions met
-            Ok(StatusResult {
-                status:             "success".to_string(),
-                app_name_requested: app_name.to_string(),
-                app_found:          true,
-                responding_on_port: true,
-                pid:                Some(pid),
-                similar_app_name:   None,
-                message:            format!(
-                    "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
-                ),
-            })
-        } else {
-            // Process running but BRP not responding
-            Ok(StatusResult {
-                status:             "error".to_string(),
-                app_name_requested: app_name.to_string(),
-                app_found:          true,
-                responding_on_port: false,
-                pid:                Some(pid),
-                similar_app_name:   None,
-                message:            format!(
-                    "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
-                ),
-            })
-        }
-    } else {
+    exact_match.map_or_else(|| {
         // No exact match found, look for suggestions
         let suggestions: Vec<String> = system
             .processes()
@@ -282,7 +259,38 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
             similar_app_name: similar_app,
             message,
         })
-    }
+    }, |process| {
+        // Found exact match
+        let pid = process.pid().as_u32();
+
+        if brp_responsive {
+            // SUCCESS: Both conditions met
+            Ok(StatusResult {
+                status:             "success".to_string(),
+                app_name_requested: app_name.to_string(),
+                app_found:          true,
+                responding_on_port: true,
+                pid:                Some(pid),
+                similar_app_name:   None,
+                message:            format!(
+                    "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
+                ),
+            })
+        } else {
+            // Process running but BRP not responding
+            Ok(StatusResult {
+                status:             "error".to_string(),
+                app_name_requested: app_name.to_string(),
+                app_found:          true,
+                responding_on_port: false,
+                pid:                Some(pid),
+                similar_app_name:   None,
+                message:            format!(
+                    "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
+                ),
+            })
+        }
+    })
 }
 
 /// Check if BRP is responding on the given port

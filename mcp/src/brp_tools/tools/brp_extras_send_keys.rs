@@ -1,4 +1,4 @@
-//! brp_extras/send_keys tool - Send keyboard input
+//! `brp_extras/send_keys` tool - Send keyboard input
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the brp_extras/send_keys tool
+/// Parameters for the `brp_extras/send_keys` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SendKeysParams {
     /// Array of key code names to send
@@ -23,7 +23,7 @@ pub struct SendKeysParams {
     pub port: u16,
 }
 
-/// Result for the brp_extras/send_keys tool
+/// Result for the `brp_extras/send_keys` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SendKeysResult {
     /// The raw BRP response
@@ -32,10 +32,10 @@ pub struct SendKeysResult {
     pub result: Option<Value>,
 
     /// Keys that were sent
-    #[to_metadata(computed_from = "result", computed_operation = "extract_keys_sent")]
+    #[to_metadata(result_operation = "extract_keys_sent")]
     pub keys_sent: Vec<String>,
 
     /// Duration in milliseconds
-    #[to_metadata(computed_from = "result", computed_operation = "extract_duration_ms")]
+    #[to_metadata(result_operation = "extract_duration_ms")]
     pub duration_ms: u32,
 }

@@ -2,14 +2,13 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use rmcp::ErrorData as McpError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::support;
-use crate::error::{Error, report_to_mcp_error};
+use crate::error::{Error, Result};
 use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReadLogParams {
@@ -59,11 +58,14 @@ impl ToolFn for ReadLog {
     type Output = ReadLogResult;
     type CallInfoData = LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, crate::error::Result<Self::Output>)> {
         // Extract typed parameters
         let params: ReadLogParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
         };
 
         Box::pin(async move {
@@ -72,17 +74,19 @@ impl ToolFn for ReadLog {
                 Some(lines) => match usize::try_from(lines) {
                     Ok(n) => Some(n),
                     Err(_) => {
-                        return Err(
+                        return Ok(Err(
                             Error::invalid("tail_lines", "tail_lines value too large").into()
-                        );
+                        )
+                        .with_call_info(LocalCallInfo));
                     }
                 },
                 None => None,
             };
 
-            let result = handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
-                .map_err(|e| Error::tool_call_failed(e.message))?;
-            Ok((LocalCallInfo, result))
+            Ok(
+                handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
+                    .with_call_info(LocalCallInfo),
+            )
         })
     }
 }
@@ -91,12 +95,10 @@ fn handle_impl(
     filename: &str,
     keyword: Option<&str>,
     tail_lines: Option<usize>,
-) -> Result<ReadLogResult, McpError> {
+) -> Result<ReadLogResult> {
     // Validate filename format for security
     if !support::is_valid_log_filename(filename) {
-        return Err(report_to_mcp_error(&error_stack::Report::new(
-            Error::invalid("filename", "only bevy_brp_mcp log files can be read"),
-        )));
+        return Err(Error::invalid("filename", "only bevy_brp_mcp log files can be read").into());
     }
 
     // Build full path
@@ -104,9 +106,7 @@ fn handle_impl(
 
     // Check if file exists
     if !log_path.exists() {
-        return Err(report_to_mcp_error(&error_stack::Report::new(
-            Error::missing(&format!("log file '{filename}'")),
-        )));
+        return Err(Error::missing(&format!("log file '{filename}'")).into());
     }
 
     // Read the log file
@@ -128,37 +128,20 @@ fn read_log_file(
     path: &Path,
     keyword: Option<&str>,
     tail_lines: Option<usize>,
-) -> Result<(String, std::fs::Metadata), McpError> {
+) -> Result<(String, std::fs::Metadata)> {
     // Get file metadata
-    let metadata = std::fs::metadata(path).map_err(|e| {
-        report_to_mcp_error(&error_stack::Report::new(Error::io_failed(
-            "get file metadata",
-            path,
-            &e,
-        )))
-    })?;
+    let metadata =
+        std::fs::metadata(path).map_err(|e| Error::io_failed("get file metadata", path, &e))?;
 
     // Open the file
-    let file = File::open(path).map_err(|e| {
-        report_to_mcp_error(&error_stack::Report::new(Error::io_failed(
-            "open log file",
-            path,
-            &e,
-        )))
-    })?;
+    let file = File::open(path).map_err(|e| Error::io_failed("open log file", path, &e))?;
 
     let reader = BufReader::new(file);
     let mut lines: Vec<String> = Vec::new();
 
     // Read lines with optional keyword filtering
     for line_result in reader.lines() {
-        let line = line_result.map_err(|e| {
-            report_to_mcp_error(&error_stack::Report::new(Error::io_failed(
-                "read line from log",
-                path,
-                &e,
-            )))
-        })?;
+        let line = line_result.map_err(|e| Error::io_failed("read line from log", path, &e))?;
 
         // Apply keyword filter if provided
         let should_include =

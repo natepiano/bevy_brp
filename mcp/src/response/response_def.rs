@@ -30,9 +30,9 @@ impl ResponseDef {
     /// Type-safe formatter that accepts our internal Result directly
     pub fn format_result<T, C>(
         self,
+        call_info_data: C,
         result: Result<T>,
         handler_context: &HandlerContext,
-        call_info_data: C,
     ) -> std::result::Result<CallToolResult, McpError>
     where
         T: ResponseData,
@@ -81,11 +81,11 @@ impl ResponseDef {
         let mut result = self.message_template.to_string();
 
         // Extract placeholders from template
-        let placeholders = self.parse_template_placeholders(&result);
+        let placeholders = Self::parse_template_placeholders(&result);
 
         for placeholder in placeholders {
             if let Some(replacement) =
-                self.find_placeholder_value(&placeholder, builder, handler_context)
+                Self::find_placeholder_value(&placeholder, builder, handler_context)
             {
                 let placeholder_str = format!("{{{placeholder}}}");
                 result = result.replace(&placeholder_str, &replacement);
@@ -96,7 +96,7 @@ impl ResponseDef {
     }
 
     /// Parse template to find placeholder names
-    fn parse_template_placeholders(&self, template: &str) -> Vec<String> {
+    fn parse_template_placeholders(template: &str) -> Vec<String> {
         let mut placeholders = Vec::new();
         let mut remaining = template;
 
@@ -117,7 +117,6 @@ impl ResponseDef {
 
     /// Find value for a placeholder
     fn find_placeholder_value(
-        &self,
         placeholder: &str,
         builder: &ResponseBuilder,
         handler_context: &HandlerContext,
@@ -125,27 +124,27 @@ impl ResponseDef {
         // First check metadata
         if let Some(Value::Object(metadata)) = builder.metadata() {
             if let Some(value) = metadata.get(placeholder) {
-                return Some(self.value_to_string(value));
+                return Some(Self::value_to_string(value));
             }
         }
 
         // Then check result if placeholder is "result"
         if placeholder == "result" {
             if let Some(result_value) = builder.result() {
-                return Some(self.value_to_string(result_value));
+                return Some(Self::value_to_string(result_value));
             }
         }
 
         // Finally check request parameters
         if let Some(value) = handler_context.extract_optional_named_field(placeholder) {
-            return Some(self.value_to_string(value));
+            return Some(Self::value_to_string(value));
         }
 
         None
     }
 
     /// Convert value to string for template substitution
-    fn value_to_string(&self, value: &Value) -> String {
+    fn value_to_string(value: &Value) -> String {
         match value {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),

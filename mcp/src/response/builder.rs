@@ -277,12 +277,12 @@ impl ResponseBuilder {
     }
 
     /// Get metadata for template substitution
-    pub fn metadata(&self) -> &Option<Value> {
-        &self.metadata
+    pub const fn metadata(&self) -> Option<&Value> {
+        self.metadata.as_ref()
     }
 
     /// Get result for template substitution
-    pub fn result(&self) -> &Option<Value> {
-        &self.result
+    pub const fn result(&self) -> Option<&Value> {
+        self.result.as_ref()
     }
 }

@@ -1,4 +1,4 @@
-//! brp_extras/screenshot tool - Capture screenshots
+//! `brp_extras/screenshot` tool - Capture screenshots
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the brp_extras/screenshot tool
+/// Parameters for the `brp_extras/screenshot` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ScreenshotParams {
     /// File path where the screenshot should be saved
@@ -19,7 +19,7 @@ pub struct ScreenshotParams {
     pub port: u16,
 }
 
-/// Result for the brp_extras/screenshot tool
+/// Result for the `brp_extras/screenshot` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ScreenshotResult {
     /// The raw BRP response

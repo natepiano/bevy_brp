@@ -1,4 +1,4 @@
-//! brp_extras/discover_format tool - Discover component format information
+//! `brp_extras/discover_format` tool - Discover component format information
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the brp_extras/discover_format tool
+/// Parameters for the `brp_extras/discover_format` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct DiscoverFormatParams {
     /// Array of fully-qualified component type names to discover formats for
@@ -22,7 +22,7 @@ pub struct DiscoverFormatParams {
     pub port: u16,
 }
 
-/// Result for the brp_extras/discover_format tool
+/// Result for the `brp_extras/discover_format` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct DiscoverFormatResult {
     /// The raw BRP response containing format information

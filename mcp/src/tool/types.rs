@@ -25,6 +25,18 @@ use super::handler_context::HandlerContext;
 use crate::error::Result;
 use crate::response::{CallInfoProvider, LocalCallInfo, ResponseData, ResponseDef};
 
+/// Helper trait to convert a `Result<T>` into the tuple format required by `ToolFn`
+pub trait WithCallInfo<C: CallInfoProvider> {
+    /// Convert a `Result<T>` to `(CallInfoData, Result<T>)` format
+    fn with_call_info(self, call_info: C) -> (C, Self);
+}
+
+impl<T, C: CallInfoProvider> WithCallInfo<C> for Result<T> {
+    fn with_call_info(self, call_info: C) -> (C, Self) {
+        (call_info, self)
+    }
+}
+
 /// Type alias for the response from local handlers
 ///
 /// Breaking down the type:
@@ -41,8 +53,12 @@ pub trait ToolFn: Send + Sync {
     /// The type that provides `CallInfo` data for this tool
     type CallInfoData: CallInfoProvider;
 
-    /// Handle the request and return a typed result with `CallInfo` data
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)>;
+    /// Handle the request and return `CallInfo` data with a typed result
+    /// `CallInfo` is always returned, even in error cases, ensuring proper context is preserved
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)>;
 }
 
 /// Type-erased version for heterogeneous storage
@@ -72,13 +88,17 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
         Box::pin(async move {
             let result = self.call(ctx).await;
             match result {
-                Ok((call_info_data, output)) => {
-                    // Use standard format_result which will internally check for `FieldAccessor`
-                    response_def.format_result(Ok(output), ctx, call_info_data)
+                Ok((call_info_data, inner_result)) => {
+                    // Now we always have call_info_data, regardless of success or error
+                    // prior to this we returned the an Err that lost the call_info_data and we had
+                    // to default now we can return an Ok with call info always
+                    // and the result itself will be Ok/Err depending on the inner result
+                    response_def.format_result(call_info_data, inner_result, ctx)
                 }
                 Err(e) => {
-                    // For errors, we don't have CallInfoData, so use a default LocalCallInfo
-                    response_def.format_result::<T::Output, _>(Err(e), ctx, LocalCallInfo)
+                    // This should be rare - only if the handler itself fails before returning
+                    // CallInfo In this case, we still need to use a default
+                    response_def.format_result::<T::Output, _>(LocalCallInfo, Err(e), ctx)
                 }
             }
         })

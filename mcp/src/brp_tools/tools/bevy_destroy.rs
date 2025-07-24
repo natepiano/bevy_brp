@@ -1,4 +1,4 @@
-//! bevy/destroy tool - Destroy entities permanently
+//! `bevy/destroy` tool - Destroy entities permanently
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the bevy/destroy tool
+/// Parameters for the `bevy/destroy` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct DestroyParams {
     /// The entity ID to destroy
@@ -18,7 +18,7 @@ pub struct DestroyParams {
     pub port: u16,
 }
 
-/// Result for the bevy/destroy tool
+/// Result for the `bevy/destroy` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct DestroyResult {
     /// The raw BRP response data (empty for destroy)

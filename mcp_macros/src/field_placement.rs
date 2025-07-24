@@ -43,8 +43,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
         let mut field_type_override = None;
         let mut skip_if_none = false;
         let mut is_computed = false;
-        let mut computed_from = None;
-        let mut computed_operation = None;
+        let mut result_operation = None;
 
         for attr in &field.attrs {
             if attr.path().is_ident("to_metadata") {
@@ -54,8 +53,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
                     &mut source_path,
                     &mut field_type_override,
                     &mut skip_if_none,
-                    &mut computed_from,
-                    &mut computed_operation,
+                    &mut result_operation,
                 );
             } else if attr.path().is_ident("to_result") {
                 placement = Some(quote! { crate::response::FieldPlacement::Result });
@@ -64,20 +62,19 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
                     &mut source_path,
                     &mut field_type_override,
                     &mut skip_if_none,
-                    &mut computed_from,
-                    &mut computed_operation,
+                    &mut result_operation,
                 );
             } else if attr.path().is_ident("to_call_info") {
                 call_info_fields.push(field_name.clone());
                 continue; // Skip adding to other collections
             } else if attr.path().is_ident("computed") {
                 is_computed = true;
-                parse_computed_attr(attr, &mut computed_from, &mut computed_operation);
+                parse_computed_attr(attr, &mut result_operation);
             }
         }
 
-        // If we found computed_from and computed_operation in placement attrs, mark as computed
-        if computed_from.is_some() && computed_operation.is_some() {
+        // If we found result_operation in placement attrs, mark as computed
+        if result_operation.is_some() {
             is_computed = true;
         }
 
@@ -88,10 +85,10 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
 
         // Handle computed fields
         if is_computed {
-            if let (Some(from), Some(operation)) = (computed_from, computed_operation) {
+            if let Some(operation) = result_operation {
                 computed_fields.push(ComputedField {
                     field_name: field_name.clone(),
-                    from_field: from,
+                    from_field: "result".to_string(), // Always operate on result
                     operation,
                 });
             }
@@ -177,8 +174,7 @@ fn parse_placement_attr(
     source_path: &mut Option<String>,
     field_type: &mut Option<String>,
     skip_if_none: &mut bool,
-    computed_from: &mut Option<String>,
-    computed_operation: &mut Option<String>,
+    result_operation: &mut Option<String>,
 ) {
     let _ = attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("from") {
@@ -194,15 +190,10 @@ fn parse_placement_attr(
         } else if meta.path.is_ident("skip_if_none") {
             *skip_if_none = true;
             Ok(())
-        } else if meta.path.is_ident("computed_from") {
+        } else if meta.path.is_ident("result_operation") {
             let value = meta.value()?;
             let s: syn::LitStr = value.parse()?;
-            *computed_from = Some(s.value());
-            Ok(())
-        } else if meta.path.is_ident("computed_operation") {
-            let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            *computed_operation = Some(s.value());
+            *result_operation = Some(s.value());
             Ok(())
         } else {
             Err(meta.error("unsupported attribute"))
@@ -211,21 +202,12 @@ fn parse_placement_attr(
 }
 
 /// Parse computed attribute arguments
-fn parse_computed_attr(
-    attr: &syn::Attribute,
-    from_field: &mut Option<String>,
-    operation: &mut Option<String>,
-) {
+fn parse_computed_attr(attr: &syn::Attribute, result_operation: &mut Option<String>) {
     let _ = attr.parse_nested_meta(|meta| {
-        if meta.path.is_ident("from") {
+        if meta.path.is_ident("operation") {
             let value = meta.value()?;
             let s: syn::LitStr = value.parse()?;
-            *from_field = Some(s.value());
-            Ok(())
-        } else if meta.path.is_ident("operation") {
-            let value = meta.value()?;
-            let s: syn::LitStr = value.parse()?;
-            *operation = Some(s.value());
+            *result_operation = Some(s.value());
             Ok(())
         } else {
             Err(meta.error("unsupported computed attribute"))

@@ -1,4 +1,4 @@
-//! bevy/reparent tool - Change entity parents
+//! `bevy/reparent` tool - Change entity parents
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the bevy/reparent tool
+/// Parameters for the `bevy/reparent` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReparentParams {
     /// Array of entity IDs to reparent
@@ -24,7 +24,7 @@ pub struct ReparentParams {
     pub port: u16,
 }
 
-/// Result for the bevy/reparent tool
+/// Result for the `bevy/reparent` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReparentResult {
     /// The raw BRP response data (empty for reparent)

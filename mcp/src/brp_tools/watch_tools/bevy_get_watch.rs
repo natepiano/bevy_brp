@@ -7,7 +7,7 @@ use super::types::WatchStartResult;
 use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::{Error, Result};
 use crate::response::LocalWithPortCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct GetWatchParams {
@@ -30,17 +30,25 @@ impl ToolFn for BevyGetWatch {
     type Output = WatchStartResult;
     type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         // Extract typed parameters
         let params: GetWatchParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => {
+                return Box::pin(async move {
+                    Ok(Err(e).with_call_info(LocalWithPortCallInfo { port: 15702 }))
+                });
+            }
         };
 
         let port = params.port;
         Box::pin(async move {
-            let result = handle_impl(params.entity, Some(params.types), port).await?;
-            Ok((LocalWithPortCallInfo { port }, result))
+            Ok(handle_impl(params.entity, Some(params.types), port)
+                .await
+                .with_call_info(LocalWithPortCallInfo { port }))
         })
     }
 }

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::support::{self, LogFileEntry};
 use crate::error::{Error, Result};
 use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct DeleteLogsParams {
@@ -39,16 +39,21 @@ impl ToolFn for DeleteLogs {
     type Output = DeleteLogsResult;
     type CallInfoData = LocalCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, crate::error::Result<Self::Output>)> {
         // Extract typed parameters
         let params: DeleteLogsParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
         };
 
         Box::pin(async move {
-            let result = handle_impl(params.app_name.as_deref(), params.older_than_seconds)?;
-            Ok((LocalCallInfo, result))
+            Ok(
+                handle_impl(params.app_name.as_deref(), params.older_than_seconds)
+                    .with_call_info(LocalCallInfo),
+            )
         })
     }
 }

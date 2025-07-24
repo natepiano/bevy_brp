@@ -1,4 +1,4 @@
-//! bevy/mutate_component tool - Mutate component fields
+//! `bevy/mutate_component` tool - Mutate component fields
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the bevy/mutate_component tool
+/// Parameters for the `bevy/mutate_component` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct MutateComponentParams {
     /// The entity ID containing the component to mutate
@@ -29,7 +29,7 @@ pub struct MutateComponentParams {
     pub port: u16,
 }
 
-/// Result for the bevy/mutate_component tool
+/// Result for the `bevy/mutate_component` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct MutateComponentResult {
     /// The raw BRP response data (empty for mutate)

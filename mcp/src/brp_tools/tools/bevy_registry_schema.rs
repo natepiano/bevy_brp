@@ -1,4 +1,4 @@
-//! bevy/registry/schema tool - Get type schemas
+//! `bevy/registry/schema` tool - Get type schemas
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::brp_tools::{default_port, deserialize_port};
 
-/// Parameters for the bevy/registry/schema tool
+/// Parameters for the `bevy/registry/schema` tool
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct RegistrySchemaParams {
     /// Include only types from these crates (e.g., [`bevy_transform`, `my_game`])
@@ -31,7 +31,7 @@ pub struct RegistrySchemaParams {
     pub port: u16,
 }
 
-/// Result for the bevy/registry/schema tool
+/// Result for the `bevy/registry/schema` tool
 #[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct RegistrySchemaResult {
     /// The raw BRP response - array of type schemas
@@ -40,6 +40,6 @@ pub struct RegistrySchemaResult {
     pub result: Option<Value>,
 
     /// Count of types returned
-    #[to_metadata(computed_from = "result", computed_operation = "count")]
+    #[to_metadata(result_operation = "count")]
     pub type_count: usize,
 }

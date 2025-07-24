@@ -119,11 +119,18 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
     type Output = LaunchResult;
     type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         // Extract typed parameters
         let typed_params: P = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => {
+                return Box::pin(
+                    async move { Ok((LocalWithPortCallInfo { port: 15702 }, Err(e))) },
+                );
+            }
         };
 
         // Convert to LaunchParams
@@ -139,8 +146,11 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
             let config = T::from_params(&params);
 
             // Launch the target
-            let result = launch_target(&config, &search_paths)?;
-            Ok((LocalWithPortCallInfo { port }, result))
+            let result = match launch_target(&config, &search_paths) {
+                Ok(r) => r,
+                Err(e) => return Ok((LocalWithPortCallInfo { port }, Err(e))),
+            };
+            Ok((LocalWithPortCallInfo { port }, Ok(result)))
         })
     }
 }

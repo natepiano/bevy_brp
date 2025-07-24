@@ -1,5 +1,4 @@
 use bevy_brp_mcp_macros::FieldPlacement;
-use rmcp::ErrorData as McpError;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
@@ -10,7 +9,7 @@ use crate::brp_tools::{
 };
 use crate::error::{Error, Result};
 use crate::response::LocalWithPortCallInfo;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ShutdownParams {
@@ -133,27 +132,30 @@ impl ToolFn for Shutdown {
     type Output = ShutdownResultData;
     type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(&self, ctx: &HandlerContext) -> HandlerResponse<(Self::CallInfoData, Self::Output)> {
+    fn call(
+        &self,
+        ctx: &HandlerContext,
+    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
         // Extract and validate parameters using the new typed system
         let params: ShutdownParams = match ctx.extract_parameter_values() {
             Ok(params) => params,
-            Err(e) => return Box::pin(async move { Err(e) }),
+            Err(e) => {
+                return Box::pin(async move {
+                    Ok(Err(e).with_call_info(LocalWithPortCallInfo { port: 15702 }))
+                });
+            }
         };
 
         let port = params.port;
         Box::pin(async move {
-            let result = handle_impl(&params.app_name, port)
+            Ok(handle_impl(&params.app_name, port)
                 .await
-                .map_err(|e| Error::tool_call_failed(e.message))?;
-            Ok((LocalWithPortCallInfo { port }, result))
+                .with_call_info(LocalWithPortCallInfo { port }))
         })
     }
 }
 
-async fn handle_impl(
-    app_name: &str,
-    port: u16,
-) -> std::result::Result<ShutdownResultData, McpError> {
+async fn handle_impl(app_name: &str, port: u16) -> Result<ShutdownResultData> {
     // Shutdown the app
     let result = shutdown_app(app_name, port).await;
 
