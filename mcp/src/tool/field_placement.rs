@@ -8,6 +8,15 @@
 use super::ResponseBuilder;
 use crate::error::Result;
 
+/// Specifies where a response field should be placed in the output JSON
+#[derive(Clone, Debug)]
+pub enum FieldPlacement {
+    /// Place field in the metadata object
+    Metadata,
+    /// Place field in the result object
+    Result,
+}
+
 /// Information about where a field should be placed in the response
 ///
 /// Note: appears unused but is actually used by the `FieldPlacement` derive macro
@@ -17,7 +26,7 @@ pub struct FieldPlacementInfo {
     /// The name of the field
     pub field_name:   &'static str,
     /// Where to place this field (metadata or result)
-    pub placement:    super::FieldPlacement,
+    pub placement:    FieldPlacement,
     /// Optional source path for response fields (e.g., "result.entities")
     pub source_path:  Option<&'static str>,
     /// Whether to skip this field if it's None

@@ -13,7 +13,7 @@ use error_stack::ResultExt;
 use serde_json::json;
 
 use crate::error::{Error, Result};
-use crate::response::builder::JsonResponse;
+use crate::tool::builder::JsonResponse;
 
 // ============================================================================
 // LARGE RESPONSE TOKEN CALCULATION CONSTANTS

@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::error::{Error, Result};
-use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StopWatchParams {

@@ -47,7 +47,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
 
         for attr in &field.attrs {
             if attr.path().is_ident("to_metadata") {
-                placement = Some(quote! { crate::response::FieldPlacement::Metadata });
+                placement = Some(quote! { crate::tool::FieldPlacement::Metadata });
                 parse_placement_attr(
                     attr,
                     &mut source_path,
@@ -56,7 +56,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
                     &mut result_operation,
                 );
             } else if attr.path().is_ident("to_result") {
-                placement = Some(quote! { crate::response::FieldPlacement::Result });
+                placement = Some(quote! { crate::tool::FieldPlacement::Result });
                 parse_placement_attr(
                     attr,
                     &mut source_path,
@@ -106,7 +106,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
                 .unwrap_or_else(|| quote! { None });
 
             field_placements.push(quote! {
-                crate::response::FieldPlacementInfo {
+                crate::tool::FieldPlacementInfo {
                     field_name: #field_name_str,
                     placement: #placement,
                     source_path: #source_path_token,
@@ -144,16 +144,16 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
 
     // Generate the trait implementations
     let expanded = quote! {
-        impl crate::response::HasFieldPlacement for #struct_name {
-            fn field_placements() -> Vec<crate::response::FieldPlacementInfo> {
+        impl crate::tool::HasFieldPlacement for #struct_name {
+            fn field_placements() -> Vec<crate::tool::FieldPlacementInfo> {
                 vec![
                     #(#field_placements,)*
                 ]
             }
         }
 
-        impl crate::response::ResponseData for #struct_name {
-            fn add_response_fields(&self, builder: crate::response::ResponseBuilder) -> crate::error::Result<crate::response::ResponseBuilder> {
+        impl crate::tool::ResponseData for #struct_name {
+            fn add_response_fields(&self, builder: crate::tool::ResponseBuilder) -> crate::error::Result<crate::tool::ResponseBuilder> {
                 let mut builder = builder;
                 #(#response_data_fields)*
                 Ok(builder)
@@ -274,19 +274,19 @@ fn generate_call_info_provider(
 
     if has_port {
         quote! {
-            impl crate::response::CallInfoProvider for #struct_name {
-                fn to_call_info(&self, tool_name: String) -> crate::response::CallInfo {
+            impl crate::tool::CallInfoProvider for #struct_name {
+                fn to_call_info(&self, tool_name: String) -> crate::tool::CallInfo {
                     use crate::tool::ToolName;
                     use std::str::FromStr;
 
                     if let Ok(tn) = ToolName::from_str(&tool_name) {
                         if let Some(brp_method) = tn.to_brp_method() {
-                            crate::response::CallInfo::brp(tool_name, brp_method.to_string(), self.port)
+                            crate::tool::CallInfo::brp(tool_name, brp_method.to_string(), self.port)
                         } else {
-                            crate::response::CallInfo::local_with_port(tool_name, self.port)
+                            crate::tool::CallInfo::local_with_port(tool_name, self.port)
                         }
                     } else {
-                        crate::response::CallInfo::local(tool_name)
+                        crate::tool::CallInfo::local(tool_name)
                     }
                 }
             }

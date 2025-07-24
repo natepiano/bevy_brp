@@ -4,8 +4,9 @@ use sysinfo::System;
 
 use crate::brp_tools::{self, BrpResult, default_port, deserialize_port};
 use crate::error::Result;
-use crate::response::LocalWithPortCallInfo;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{
+    BrpMethod, HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn, WithCallInfo,
+};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct StatusParams {

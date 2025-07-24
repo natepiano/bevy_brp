@@ -22,8 +22,9 @@ use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
+use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::response::{CallInfoProvider, LocalCallInfo, ResponseData, ResponseDef};
+use crate::tool::{CallInfoProvider, LocalCallInfo, ResponseData};
 
 /// Helper trait to convert a `Result<T>` into the tuple format required by `ToolFn`
 pub trait WithCallInfo<C: CallInfoProvider> {
@@ -73,8 +74,8 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
-        response_def: ResponseDef,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>;
+        tool_name: ToolName,
+    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult>> + Send + 'a>>;
 }
 
 /// Blanket implementation to convert typed `ToolFn`s to erased ones
@@ -82,9 +83,8 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
     fn call_erased<'a>(
         &'a self,
         ctx: &'a HandlerContext,
-        response_def: ResponseDef,
-    ) -> Pin<Box<dyn Future<Output = std::result::Result<CallToolResult, McpError>> + Send + 'a>>
-    {
+        tool_name: ToolName,
+    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult>> + Send + 'a>> {
         Box::pin(async move {
             let result = self.call(ctx).await;
             match result {
@@ -93,12 +93,12 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
                     // prior to this we returned the an Err that lost the call_info_data and we had
                     // to default now we can return an Ok with call info always
                     // and the result itself will be Ok/Err depending on the inner result
-                    response_def.format_result(call_info_data, inner_result, ctx)
+                    tool_name.format_result(call_info_data, inner_result, ctx)
                 }
                 Err(e) => {
                     // This should be rare - only if the handler itself fails before returning
                     // CallInfo In this case, we still need to use a default
-                    response_def.format_result::<T::Output, _>(LocalCallInfo, Err(e), ctx)
+                    tool_name.format_result::<T::Output, _>(LocalCallInfo, Err(e), ctx)
                 }
             }
         })
@@ -122,11 +122,13 @@ impl ToolHandler {
 
 impl ToolHandler {
     pub async fn call_tool(self) -> std::result::Result<CallToolResult, McpError> {
-        // Generate formatter config from tool definition
-        let response_spec = self.context.tool_def().response_def();
+        // Get tool name from tool definition
+        let tool_name = self.context.tool_def().tool_name;
 
+        // This is the crate boundary - convert from internal Result to MCP types
         self.handler
-            .call_erased(&self.context, response_spec.clone())
+            .call_erased(&self.context, tool_name)
             .await
+            .map_err(|report| report.current_context().clone().into())
     }
 }

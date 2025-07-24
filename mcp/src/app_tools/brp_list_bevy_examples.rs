@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::{Error, Result};
-use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]

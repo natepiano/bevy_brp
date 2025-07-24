@@ -9,7 +9,6 @@ use super::annotations::Annotation;
 use super::parameters::ParameterBuilder;
 use super::tool_name::ToolName;
 use super::types::{ErasedUnifiedToolFn, ToolHandler};
-use crate::response::ResponseDef;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
@@ -22,17 +21,11 @@ pub struct ToolDef {
     pub handler:     Arc<dyn ErasedUnifiedToolFn>,
     /// Function to build parameters for MCP registration
     pub parameters:  Option<fn() -> ParameterBuilder>,
-    /// Response formatting specification
-    pub response:    ResponseDef,
 }
 
 impl ToolDef {
     pub fn name(&self) -> &'static str {
         self.tool_name.into()
-    }
-
-    pub const fn response_def(&self) -> &ResponseDef {
-        &self.response
     }
 
     pub fn create_handler(

@@ -4,6 +4,13 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, Fields, parse_macro_input};
 
+/// Attributes extracted from #[tool(...)]
+struct ToolAttrs {
+    params:     Option<String>,
+    result:     Option<String>,
+    brp_method: Option<String>,
+}
+
 /// Implementation of the BrpTools derive macro
 pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -14,6 +21,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     };
 
     let mut tool_impls = Vec::new();
+    let mut marker_structs = Vec::new();
 
     // Process each variant
     for variant in &data_enum.variants {
@@ -24,63 +32,68 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
         let variant_name = &variant.ident;
 
-        // Extract brp_method and brp_tool attributes
-        let method = extract_brp_method_attr(&variant.attrs);
-        let (tool_params, tool_result) = extract_brp_tool_attr(&variant.attrs);
+        // Extract tool attributes from unified #[tool(...)] syntax
+        let tool_attrs = extract_tool_attr(&variant.attrs);
 
-        // Validate: brp_tool requires brp_method
-        if tool_params.is_some() && method.is_none() {
-            panic!("Variant {variant_name} has #[brp_tool] but no #[brp_method]");
+        let method = tool_attrs.brp_method;
+        let tool_params = tool_attrs.params;
+        let tool_result = tool_attrs.result;
+
+        // Only generate a marker struct if this is a BRP tool with params
+        if tool_params.is_some() && method.is_some() {
+            marker_structs.push(quote! {
+                pub struct #variant_name;
+            });
         }
 
-        // Generate tool implementation only if brp_tool is present
+        // Generate tool implementation if params are present and it's a BRP tool
         if let Some(params) = tool_params {
-            let _method = method.expect("already validated");
-            let params_ident = syn::Ident::new(&params, variant_name.span());
+            if method.is_some() {
+                // This is a BRP tool with params
+                let params_ident = syn::Ident::new(&params, variant_name.span());
 
-            // Use specific result type if provided, otherwise use BrpMethodResult
-            let result_type = if let Some(result) = &tool_result {
-                let result_ident = syn::Ident::new(result, variant_name.span());
-                quote! { #result_ident }
-            } else {
-                quote! { crate::brp_tools::handler::BrpMethodResult }
-            };
+                // Use specific result type if provided, otherwise use BrpMethodResult
+                let result_type = if let Some(result) = &tool_result {
+                    let result_ident = syn::Ident::new(result, variant_name.span());
+                    quote! { #result_ident }
+                } else {
+                    quote! { crate::brp_tools::handler::BrpMethodResult }
+                };
 
-            // Check if this method supports format discovery
-            let supports_format_discovery = matches!(
-                variant_name.to_string().as_str(),
-                "BevySpawn"
-                    | "BevyInsert"
-                    | "BevyMutateComponent"
-                    | "BevyInsertResource"
-                    | "BevyMutateResource"
-            );
+                // Check if this method supports format discovery
+                let supports_format_discovery = matches!(
+                    variant_name.to_string().as_str(),
+                    "BevySpawn"
+                        | "BevyInsert"
+                        | "BevyMutateComponent"
+                        | "BevyInsertResource"
+                        | "BevyMutateResource"
+                );
 
-            // Generate the conversion based on whether format discovery is supported
-            let conversion = if tool_result.is_some() {
-                if supports_format_discovery {
-                    quote! {
-                        let result = #result_type::from_brp_value(
-                            brp_result.result,
-                            brp_result.format_corrections,
-                            brp_result.format_corrected,
-                        )?;
+                // Generate the conversion based on whether format discovery is supported
+                let conversion = if tool_result.is_some() {
+                    if supports_format_discovery {
+                        quote! {
+                            let result = #result_type::from_brp_value(
+                                brp_result.result,
+                                brp_result.format_corrections,
+                                brp_result.format_corrected,
+                            )?;
+                        }
+                    } else {
+                        quote! {
+                            let result = #result_type::from_brp_value(
+                                brp_result.result,
+                            )?;
+                        }
                     }
                 } else {
                     quote! {
-                        let result = #result_type::from_brp_value(
-                            brp_result.result,
-                        )?;
+                        let result = brp_result;
                     }
-                }
-            } else {
-                quote! {
-                    let result = brp_result;
-                }
-            };
+                };
 
-            tool_impls.push(quote! {
-                pub struct #variant_name;
+                tool_impls.push(quote! {
 
                 impl crate::tool::ToolFn for #variant_name {
                     type Output = #result_type;
@@ -121,6 +134,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                     }
                 }
             });
+            }
         }
     }
 
@@ -128,7 +142,8 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     let mut method_match_arms = Vec::new();
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
-        if let Some(method) = extract_brp_method_attr(&variant.attrs) {
+        let tool_attrs = extract_tool_attr(&variant.attrs);
+        if let Some(method) = tool_attrs.brp_method {
             method_match_arms.push(quote! {
                 Self::#variant_name => Some(#method)
             });
@@ -150,7 +165,8 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
-        if let Some(method) = extract_brp_method_attr(&variant.attrs) {
+        let tool_attrs = extract_tool_attr(&variant.attrs);
+        if let Some(method) = tool_attrs.brp_method {
             brp_method_variants.push(quote! {
                 #variant_name
             });
@@ -179,6 +195,9 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
     // Generate the complete output
     let expanded = quote! {
+        // Marker structs for all tools
+        #(#marker_structs)*
+
         // Tool implementations
         #(#tool_impls)*
 
@@ -240,43 +259,37 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Extract method from brp_method attribute
-fn extract_brp_method_attr(attrs: &[syn::Attribute]) -> Option<String> {
-    for attr in attrs {
-        if attr.path().is_ident("brp_method") {
-            // Parse the method string directly from the attribute
-            if let Ok(method) = attr.parse_args::<syn::LitStr>() {
-                return Some(method.value());
-            }
-        }
-    }
-    None
-}
+/// Extract unified tool attributes from #[tool(...)]
+fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
+    let mut tool_attrs = ToolAttrs {
+        params:     None,
+        result:     None,
+        brp_method: None,
+    };
 
-/// Extract params and result from brp_tool attribute
-fn extract_brp_tool_attr(attrs: &[syn::Attribute]) -> (Option<String>, Option<String>) {
     for attr in attrs {
-        if attr.path().is_ident("brp_tool") {
-            let mut params = None;
-            let mut result = None;
-
+        if attr.path().is_ident("tool") {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("params") {
                     let value = meta.value()?;
                     let s: syn::LitStr = value.parse()?;
-                    params = Some(s.value());
+                    tool_attrs.params = Some(s.value());
                 } else if meta.path.is_ident("result") {
                     let value = meta.value()?;
                     let s: syn::LitStr = value.parse()?;
-                    result = Some(s.value());
+                    tool_attrs.result = Some(s.value());
+                } else if meta.path.is_ident("brp_method") {
+                    let value = meta.value()?;
+                    let s: syn::LitStr = value.parse()?;
+                    tool_attrs.brp_method = Some(s.value());
                 } else {
-                    return Err(meta.error("unsupported brp_tool attribute"));
+                    return Err(meta.error("unsupported tool attribute"));
                 }
                 Ok(())
             });
-
-            return (params, result);
+            break;
         }
     }
-    (None, None)
+
+    tool_attrs
 }

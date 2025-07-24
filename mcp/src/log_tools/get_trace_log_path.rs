@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
 use crate::error::Result;
-use crate::response::LocalCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]

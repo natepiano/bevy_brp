@@ -17,7 +17,6 @@ mod brp_tools;
 mod error;
 mod log_tools;
 mod mcp_service;
-mod response;
 mod tool;
 
 #[tokio::main]

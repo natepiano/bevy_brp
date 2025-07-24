@@ -7,8 +7,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::response::LocalWithPortCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn};
+use crate::tool::{HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn};
 
 /// Marker type for App launch configuration
 pub struct App;

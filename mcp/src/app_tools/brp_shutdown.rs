@@ -8,8 +8,9 @@ use crate::brp_tools::{
     BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, deserialize_port, execute_brp_method,
 };
 use crate::error::{Error, Result};
-use crate::response::LocalWithPortCallInfo;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{
+    BrpMethod, HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn, WithCallInfo,
+};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ShutdownParams {

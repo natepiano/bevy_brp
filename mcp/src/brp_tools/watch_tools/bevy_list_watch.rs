@@ -6,8 +6,7 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::{Error, Result};
-use crate::response::LocalWithPortCallInfo;
-use crate::tool::{HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn, WithCallInfo};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListWatchParams {

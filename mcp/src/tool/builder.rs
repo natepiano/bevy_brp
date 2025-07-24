@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::{Error, Result};
-use crate::response::FieldPlacement;
+use crate::tool::FieldPlacement;
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize)]

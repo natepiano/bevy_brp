@@ -95,7 +95,7 @@ enum ParameterType {
 }
 
 /// Builder for creating JSON schemas for MCP tool registration in rmcp framework
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ParameterBuilder {
     properties: Map<String, Value>,
     required:   Vec<String>,
@@ -103,10 +103,7 @@ pub struct ParameterBuilder {
 
 impl ParameterBuilder {
     pub fn new() -> Self {
-        Self {
-            properties: Map::new(),
-            required:   Vec::new(),
-        }
+        Self::default()
     }
 
     /// Add a string property to the schema

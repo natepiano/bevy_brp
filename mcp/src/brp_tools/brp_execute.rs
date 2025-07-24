@@ -8,8 +8,9 @@ use super::format_discovery;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
 use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::{Error, Result};
-use crate::response::LocalWithPortCallInfo;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResponse, ToolFn, WithCallInfo};
+use crate::tool::{
+    BrpMethod, HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn, WithCallInfo,
+};
 
 #[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ExecuteParams {
