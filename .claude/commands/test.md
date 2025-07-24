@@ -1,7 +1,7 @@
 # BRP Test Suite Runner
 
 ## Configuration
-**PARALLEL_TESTS**: 12 # Number of tests to run concurrently
+**PARALLEL_TESTS**: 6 # Number of tests to run concurrently
 
 ## Overview
 

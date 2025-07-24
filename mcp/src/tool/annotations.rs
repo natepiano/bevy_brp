@@ -30,7 +30,7 @@ pub enum ToolCategory {
 
 /// Ergonomic tool annotations for BRP tools
 #[derive(Debug, Clone)]
-pub struct BrpToolAnnotations {
+pub struct Annotation {
     pub title:                 String,
     pub category:              ToolCategory,
     pub environment_impact:    EnvironmentImpact,
@@ -61,7 +61,7 @@ pub enum DomainOfInteraction {
     LocalOnly,
 }
 
-impl BrpToolAnnotations {
+impl Annotation {
     pub fn new(
         title: impl Into<String>,
         category: ToolCategory,
@@ -81,8 +81,8 @@ impl BrpToolAnnotations {
     }
 }
 
-impl From<BrpToolAnnotations> for ToolAnnotations {
-    fn from(brp: BrpToolAnnotations) -> Self {
+impl From<Annotation> for ToolAnnotations {
+    fn from(brp: Annotation) -> Self {
         let (read_only, destructive, idempotent) = match brp.environment_impact {
             EnvironmentImpact::ReadOnly => (Some(true), None, None),
             EnvironmentImpact::DestructiveIdempotent | EnvironmentImpact::AdditiveIdempotent => {

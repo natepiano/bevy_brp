@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use rmcp::model::CallToolRequestParam;
 
-use super::annotations::BrpToolAnnotations;
+use super::annotations::Annotation;
 use super::parameters::ParameterBuilder;
 use super::tool_name::ToolName;
 use super::types::{ErasedUnifiedToolFn, ToolHandler};
@@ -17,7 +17,7 @@ pub struct ToolDef {
     /// Tool name and description
     pub tool_name:   ToolName,
     /// Tool annotations
-    pub annotations: BrpToolAnnotations,
+    pub annotations: Annotation,
     /// Handler function
     pub handler:     Arc<dyn ErasedUnifiedToolFn>,
     /// Function to build parameters for MCP registration

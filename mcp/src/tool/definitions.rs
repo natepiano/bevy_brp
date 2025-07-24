@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use super::annotations::{BrpToolAnnotations, EnvironmentImpact, ToolCategory};
+use super::annotations::{Annotation, EnvironmentImpact, ToolCategory};
 use super::parameters;
 use super::tool_def::ToolDef;
 use super::tool_name::ToolName;
@@ -41,7 +41,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
     vec![
         ToolDef {
             tool_name:   ToolName::BevyDestroy,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Destroy Bevy Entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::DestructiveIdempotent,
@@ -54,7 +54,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyGet,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Get Component Data",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
@@ -67,7 +67,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyGetResource,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Get Resource Data",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
@@ -80,7 +80,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyInsert,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Insert Components",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -93,7 +93,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyInsertResource,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Insert Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -106,7 +106,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyList,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
@@ -119,7 +119,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyListResources,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Resources",
                 ToolCategory::Resource,
                 EnvironmentImpact::ReadOnly,
@@ -132,7 +132,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyMutateComponent,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Mutate Component",
                 ToolCategory::Component,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -145,7 +145,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyMutateResource,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Mutate Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::AdditiveIdempotent,
@@ -158,7 +158,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyQuery,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Query Entities/Components",
                 ToolCategory::Component,
                 EnvironmentImpact::ReadOnly,
@@ -171,7 +171,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyRegistrySchema,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Get Type Schemas",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
@@ -184,7 +184,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyRemove,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Remove Components",
                 ToolCategory::Component,
                 EnvironmentImpact::DestructiveIdempotent,
@@ -197,7 +197,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyRemoveResource,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Remove Resource",
                 ToolCategory::Resource,
                 EnvironmentImpact::DestructiveIdempotent,
@@ -210,7 +210,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyReparent,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Reparent Entities",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -223,7 +223,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyRpcDiscover,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Discover BRP Methods",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
@@ -237,7 +237,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // todo: (later) make this match curl
         ToolDef {
             tool_name:   ToolName::BevySpawn,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Spawn Entity",
                 ToolCategory::Entity,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -252,7 +252,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // rather than static method names from ToolDef constants
         ToolDef {
             tool_name:   ToolName::BrpExecute,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Execute BRP Method",
                 ToolCategory::DynamicBrp,
                 EnvironmentImpact::DestructiveNonIdempotent,
@@ -265,7 +265,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpExtrasDiscoverFormat,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Discover Component Format",
                 ToolCategory::Extras,
                 EnvironmentImpact::ReadOnly,
@@ -278,7 +278,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpExtrasScreenshot,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Take Screenshot",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -291,7 +291,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpExtrasSendKeys,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Send Keys",
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -308,7 +308,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         // the results and log them to a file
         ToolDef {
             tool_name:   ToolName::BevyGetWatch,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Watch Component Changes",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -321,7 +321,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BevyListWatch,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Watch Component List",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::AdditiveNonIdempotent,
@@ -334,7 +334,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpDeleteLogs,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Delete Log Files",
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveNonIdempotent,
@@ -347,7 +347,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpGetTraceLogPath,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Get Trace Log Path",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
@@ -360,7 +360,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpLaunchBevyApp,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Launch Bevy App",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
@@ -373,7 +373,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpLaunchBevyExample,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Launch Bevy Example",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
@@ -386,7 +386,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpListBevyApps,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Bevy Apps",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
@@ -399,7 +399,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpListBevyExamples,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Bevy Examples",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
@@ -412,7 +412,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpListBrpApps,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Bevy BRP-enabled Apps",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
@@ -425,7 +425,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpListActiveWatches,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Active Watches",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::ReadOnly,
@@ -438,7 +438,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpStopWatch,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Stop Watch",
                 ToolCategory::WatchMonitoring,
                 EnvironmentImpact::DestructiveIdempotent,
@@ -451,7 +451,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpListLogs,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "List Log Files",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
@@ -464,7 +464,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpReadLog,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Read Log File",
                 ToolCategory::Logging,
                 EnvironmentImpact::ReadOnly,
@@ -477,7 +477,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpSetTracingLevel,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Set Tracing Level",
                 ToolCategory::Logging,
                 EnvironmentImpact::DestructiveNonIdempotent,
@@ -490,7 +490,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpStatus,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Check App Status",
                 ToolCategory::App,
                 EnvironmentImpact::ReadOnly,
@@ -503,7 +503,7 @@ pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         },
         ToolDef {
             tool_name:   ToolName::BrpShutdown,
-            annotations: BrpToolAnnotations::new(
+            annotations: Annotation::new(
                 "Shutdown Bevy App",
                 ToolCategory::App,
                 EnvironmentImpact::DestructiveNonIdempotent,
