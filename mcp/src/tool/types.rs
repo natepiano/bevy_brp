@@ -18,7 +18,6 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use rmcp::ErrorData as McpError;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
@@ -102,33 +101,5 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
                 }
             }
         })
-    }
-}
-
-/// Unified tool handler that works with any tool
-pub struct ToolHandler {
-    handler: std::sync::Arc<dyn ErasedUnifiedToolFn>,
-    context: HandlerContext,
-}
-
-impl ToolHandler {
-    pub const fn new(
-        handler: std::sync::Arc<dyn ErasedUnifiedToolFn>,
-        context: HandlerContext,
-    ) -> Self {
-        Self { handler, context }
-    }
-}
-
-impl ToolHandler {
-    pub async fn call_tool(self) -> std::result::Result<CallToolResult, McpError> {
-        // Get tool name from tool definition
-        let tool_name = self.context.tool_def().tool_name;
-
-        // This is the crate boundary - convert from internal Result to MCP types
-        self.handler
-            .call_erased(&self.context, tool_name)
-            .await
-            .map_err(|report| report.current_context().clone().into())
     }
 }

@@ -31,7 +31,6 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, se
 - Verify appropriate error response
 
 ### 5. Debug Mode Control Tests
-- **Enable debug mode**: Execute `mcp__brp__brp_extras_set_debug_mode` with `{"enabled": true}`
 - **Verify enabled**: Execute `mcp__brp__brp_extras_discover_format` with Transform type
 - **Check debug field**: Verify response contains `brp_extras_debug_info` field with debug details
 - **Disable debug mode**: Execute `mcp__brp__brp_extras_set_debug_mode` with `{"enabled": false}`

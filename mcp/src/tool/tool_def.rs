@@ -3,12 +3,14 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rmcp::model::CallToolRequestParam;
+use rmcp::ErrorData;
+use rmcp::model::{CallToolRequestParam, CallToolResult};
 
+use super::HandlerContext;
 use super::annotations::Annotation;
 use super::parameters::ParameterBuilder;
 use super::tool_name::ToolName;
-use super::types::{ErasedUnifiedToolFn, ToolHandler};
+use super::types::ErasedUnifiedToolFn;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
@@ -28,16 +30,19 @@ impl ToolDef {
         self.tool_name.into()
     }
 
-    pub fn create_handler(
+    pub async fn call_tool(
         &self,
         request: CallToolRequestParam,
         roots: Vec<PathBuf>,
-    ) -> ToolHandler {
-        use super::handler_context::HandlerContext;
-
-        // Create simple HandlerContext - all tools use the same context
+    ) -> std::result::Result<CallToolResult, ErrorData> {
+        // Create HandlerContext - all tools use the same context
         let ctx = HandlerContext::new(self.clone(), request, roots);
-        ToolHandler::new(self.handler.clone(), ctx)
+
+        // This is the crate boundary - convert from internal Result to MCP types
+        self.handler
+            .call_erased(&ctx, self.tool_name)
+            .await
+            .map_err(|report| report.current_context().clone().into())
     }
 
     /// Convert to MCP Tool for registration
