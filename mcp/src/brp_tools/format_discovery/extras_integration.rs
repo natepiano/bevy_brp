@@ -6,10 +6,10 @@
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::adapters::from_type_discovery_response_json;
+use super::adapters;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
-use crate::brp_tools::{BrpResult, FormatCorrectionField, execute_brp_method};
+use crate::brp_tools::{self, BrpResult, FormatCorrectionField};
 use crate::tool::BrpMethod;
 
 /// Discover type format via `bevy_brp_extras/discover_format`
@@ -26,7 +26,9 @@ pub async fn discover_type_format(
 
     debug!("Extras Integration: Calling brp_extras/discover_format with params: {params}");
 
-    match execute_brp_method(BrpMethod::BrpExtrasDiscoverFormat, Some(params), port).await {
+    match brp_tools::execute_brp_method(BrpMethod::BrpExtrasDiscoverFormat, Some(params), port)
+        .await
+    {
         Ok(BrpResult::Success(Some(response_data))) => {
             debug!("Extras Integration: Received successful response from brp_extras");
 
@@ -73,7 +75,7 @@ fn process_discovery_response(
         debug!("Extras Integration: Found type data for '{type_name}'");
 
         // Use the schema adapter to convert TypeDiscoveryResponse → UnifiedTypeInfo
-        if let Some(unified_info) = from_type_discovery_response_json(type_data) {
+        if let Some(unified_info) = adapters::from_type_discovery_response_json(type_data) {
             debug!(
                 "Extras Integration: Successfully converted to UnifiedTypeInfo with {} mutation paths, {} examples",
                 unified_info.format_info.mutation_paths.len(),

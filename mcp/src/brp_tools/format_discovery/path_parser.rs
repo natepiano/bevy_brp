@@ -1,6 +1,6 @@
 //! Path parsing logic to convert strings to `FieldAccess` structs
 
-use super::field_mapper::parse_field_name;
+use super::field_mapper;
 use super::types::{ComponentType, FieldAccess};
 
 /// Parses a path string like ".LinearRgba.red" into a `FieldAccess` struct
@@ -25,7 +25,7 @@ pub fn parse_path_to_field_access(path: &str) -> Option<FieldAccess> {
     let component_type = parse_component_type(component_name)?;
 
     // Parse field name
-    let field = parse_field_name(field_name, component_type)?;
+    let field = field_mapper::parse_field_name(field_name, component_type)?;
 
     Some(FieldAccess {
         component_type,

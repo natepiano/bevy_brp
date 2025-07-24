@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 use super::super::detection::ErrorPattern;
-use super::super::field_mapper::map_field_to_tuple_index;
+use super::super::field_mapper;
 use super::super::path_parser::{parse_generic_enum_field_access, parse_path_to_field_access};
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
@@ -25,7 +25,7 @@ impl TupleStructTransformer {
     pub fn fix_tuple_struct_path(path: &str) -> String {
         // First, try the type-safe approach using our new parsing system
         if let Some(field_access) = parse_path_to_field_access(path) {
-            return map_field_to_tuple_index(&field_access);
+            return field_mapper::map_field_to_tuple_index(&field_access);
         }
 
         // Fallback: handle simple field access patterns

@@ -42,9 +42,8 @@ use serde_json::Value;
 use tracing::{debug, trace};
 
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
-use super::registry_integration::get_registry_type_info;
 use super::unified_types::CorrectionInfo;
-use super::{UnifiedTypeInfo, recovery_engine};
+use super::{UnifiedTypeInfo, recovery_engine, registry_integration};
 use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpResult, execute_brp_method};
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -108,7 +107,8 @@ async fn execute_level_1(
         }
         BrpResult::Error(ref error) => {
             // Get type information only when needed for error handling
-            let registry_type_info = get_registry_type_info(method, params.as_ref(), port).await;
+            let registry_type_info =
+                registry_integration::get_registry_type_info(method, params.as_ref(), port).await;
             // Check for serialization errors first (missing Serialize/Deserialize traits)
             // Only spawn/insert methods require full serialization
             if matches!(method, BrpMethod::BevySpawn | BrpMethod::BevyInsert)
