@@ -54,6 +54,29 @@ enum ShutdownResult {
     Error { message: String },
 }
 
+pub struct Shutdown;
+
+impl ToolFn for Shutdown {
+    type Output = ShutdownResultData;
+    type CallInfoData = LocalWithPortCallInfo;
+
+    fn call(
+        &self,
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+        Box::pin(async move {
+            let params: ShutdownParams = ctx.extract_parameter_values()?;
+            let port = params.port;
+
+            let result = handle_impl(&params.app_name, port).await;
+            Ok(ToolResult::from_result(
+                result,
+                LocalWithPortCallInfo { port },
+            ))
+        })
+    }
+}
+
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
 async fn shutdown_app(app_name: &str, port: u16) -> ShutdownResult {
     debug!("Starting shutdown process for app '{app_name}' on port {port}");
@@ -124,29 +147,6 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
                 message: error_message,
             }
         }
-    }
-}
-
-pub struct Shutdown;
-
-impl ToolFn for Shutdown {
-    type Output = ShutdownResultData;
-    type CallInfoData = LocalWithPortCallInfo;
-
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
-        Box::pin(async move {
-            let params: ShutdownParams = ctx.extract_parameter_values()?;
-            let port = params.port;
-
-            let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult::from_result(
-                result,
-                LocalWithPortCallInfo { port },
-            ))
-        })
     }
 }
 

@@ -56,8 +56,9 @@ impl HandlerContext {
 
         // Deserialize into target type
         serde_json::from_value(args_value).map_err(|e| {
-            error_stack::Report::new(Error::InvalidArgument(format!(
-                "Failed to parse parameters: {e}"
+            error_stack::Report::new(Error::ParameterExtraction(format!(
+                "Failed to extract parameters for type: {}",
+                std::any::type_name::<T>()
             )))
             .attach_printable("Parameter validation failed")
             .attach_printable(format!("Expected type: {}", std::any::type_name::<T>()))

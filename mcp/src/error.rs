@@ -38,6 +38,9 @@ pub enum Error {
     #[error("File or path not found error: {0}")]
     FileOrPathNotFound(String),
 
+    #[error("Unable to extract parameters: {0}")]
+    ParameterExtraction(String),
+
     #[error("Watch operation failed: {0}")]
     WatchOperation(String),
 
