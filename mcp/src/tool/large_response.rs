@@ -12,6 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use error_stack::ResultExt;
 use serde_json::json;
 
+use super::ToolName;
 use crate::error::{Error, Result};
 use crate::tool::response_builder::JsonResponse;
 
@@ -51,7 +52,7 @@ impl Default for LargeResponseConfig {
 /// Check if response exceeds token limit and save result field to file if needed
 pub fn handle_large_response(
     response: JsonResponse,
-    identifier: &str,
+    tool_name: &ToolName,
     config: LargeResponseConfig,
 ) -> Result<JsonResponse> {
     // First check if the entire response is too large
@@ -67,7 +68,7 @@ pub fn handle_large_response(
                 .change_context(Error::General("Failed to get timestamp".to_string()))?
                 .as_secs();
 
-            let sanitized_identifier = identifier.replace(['/', ' '], "_");
+            let sanitized_identifier = tool_name.to_string().replace(['/', ' '], "_");
             let filename = format!(
                 "{}{}{}.json",
                 config.file_prefix, sanitized_identifier, timestamp

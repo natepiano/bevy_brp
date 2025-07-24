@@ -568,7 +568,7 @@ impl ToolName {
                 let builder = builder.message(message);
 
                 let response = builder.build();
-                Self::handle_large_response(response, &handler_context.request.name)
+                Self::handle_large_response(response, &self)
             }
             Err(report) => match report.current_context() {
                 Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
@@ -666,11 +666,14 @@ impl ToolName {
         }
     }
 
-    /// Handle large response processing if configured
-    fn handle_large_response(response: JsonResponse, method: &str) -> Result<CallToolResult> {
+    /// large response processing - this would possibly be where we would implement pagination
+    fn handle_large_response(
+        response: JsonResponse,
+        tool_name: &ToolName,
+    ) -> Result<CallToolResult> {
         // Check if response is too large and handle result field extraction
         let processed_response =
-            handle_large_response(response, method, LargeResponseConfig::default())?;
+            handle_large_response(response, tool_name, LargeResponseConfig::default())?;
         Ok(processed_response.to_call_tool_result())
     }
 
