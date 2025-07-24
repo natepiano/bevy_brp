@@ -7,7 +7,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn};
+use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -120,36 +120,30 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
-        // Extract typed parameters
-        let typed_params: P = match ctx.extract_parameter_values() {
-            Ok(params) => params,
-            Err(e) => {
-                return Box::pin(
-                    async move { Ok((LocalWithPortCallInfo { port: 15702 }, Err(e))) },
-                );
-            }
-        };
-
-        // Convert to LaunchParams
-        let params = typed_params.to_launch_params(self.default_profile);
-        let port = params.port;
-
-        let ctx_clone = ctx.clone();
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+        let default_profile = self.default_profile;
         Box::pin(async move {
+            // Extract typed parameters - this returns framework error on failure
+            let typed_params: P = ctx.extract_parameter_values()?;
+
+            // Convert to LaunchParams
+            let params = typed_params.to_launch_params(default_profile);
+            let port = params.port;
+
             // Get search paths
-            let search_paths = ctx_clone.roots;
+            let search_paths = ctx.roots;
 
             // Create config from params
             let config = T::from_params(&params);
 
             // Launch the target
-            let result = match launch_target(&config, &search_paths) {
-                Ok(r) => r,
-                Err(e) => return Ok((LocalWithPortCallInfo { port }, Err(e))),
-            };
-            Ok((LocalWithPortCallInfo { port }, Ok(result)))
+            let result = launch_target(&config, &search_paths);
+
+            Ok(ToolResult::from_result(
+                result,
+                LocalWithPortCallInfo { port },
+            ))
         })
     }
 }

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ReadLogParams {
@@ -59,33 +59,29 @@ impl ToolFn for ReadLog {
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, crate::error::Result<Self::Output>)> {
-        // Extract typed parameters
-        let params: ReadLogParams = match ctx.extract_parameter_values() {
-            Ok(params) => params,
-            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
-        };
-
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
         Box::pin(async move {
+            let params: ReadLogParams = ctx.extract_parameter_values()?;
+
             // Convert tail_lines if provided
             let tail_lines = match params.tail_lines {
                 Some(lines) => match usize::try_from(lines) {
                     Ok(n) => Some(n),
                     Err(_) => {
-                        return Ok(Err(
-                            Error::invalid("tail_lines", "tail_lines value too large").into()
-                        )
-                        .with_call_info(LocalCallInfo));
+                        return Ok(ToolResult::from_result(
+                            Err(Error::invalid("tail_lines", "tail_lines value too large").into()),
+                            LocalCallInfo,
+                        ));
                     }
                 },
                 None => None,
             };
 
-            Ok(
-                handle_impl(&params.filename, params.keyword.as_deref(), tail_lines)
-                    .with_call_info(LocalCallInfo),
-            )
+            Ok(ToolResult::from_result(
+                handle_impl(&params.filename, params.keyword.as_deref(), tail_lines),
+                LocalCallInfo,
+            ))
         })
     }
 }

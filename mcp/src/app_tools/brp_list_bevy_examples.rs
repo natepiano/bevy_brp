@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BevyExamplesStrategy;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Result from listing Bevy examples
 #[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
@@ -21,16 +21,16 @@ impl ToolFn for ListBevyExamples {
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
-        // Clone context to owned data for async move closure
-        let owned_ctx = ctx.clone();
-
-        Box::pin(async move { Ok(handle_impl(&owned_ctx).await.with_call_info(LocalCallInfo)) })
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+        Box::pin(async move {
+            let result = handle_impl(ctx).await;
+            Ok(ToolResult::from_result(result, LocalCallInfo))
+        })
     }
 }
 
-async fn handle_impl(handler_context: &HandlerContext) -> Result<ListBevyExamplesResult>
+async fn handle_impl(handler_context: HandlerContext) -> Result<ListBevyExamplesResult>
 where
 {
     support::handle_list_binaries(handler_context, |search_paths| async move {

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::error::{Error, Result};
 use crate::log_tools::support;
-use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListLogsParams {
@@ -39,15 +39,10 @@ impl ToolFn for ListLogs {
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
-        // Extract typed parameters
-        let params: ListLogsParams = match ctx.extract_parameter_values() {
-            Ok(params) => params,
-            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
-        };
-
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
         Box::pin(async move {
+            let params: ListLogsParams = ctx.extract_parameter_values()?;
             let result = list_log_files(params.app_name.as_deref(), params.verbose).map(|logs| {
                 ListLogResult {
                     log_count: logs.len(),
@@ -55,7 +50,7 @@ impl ToolFn for ListLogs {
                     temp_directory: support::get_log_directory().display().to_string(),
                 }
             });
-            Ok(result.with_call_info(LocalCallInfo))
+            Ok(ToolResult::from_result(result, LocalCallInfo))
         })
     }
 }

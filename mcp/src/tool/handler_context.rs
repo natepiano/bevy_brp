@@ -43,8 +43,6 @@ impl HandlerContext {
         self.request.arguments.as_ref()?.get(field_name)
     }
 
-    // Note: extract_method_param() and extract_port() now available on all HandlerContext types
-
     /// Extract typed parameters from request using serde deserialization
     pub fn extract_parameter_values<T>(&self) -> Result<T>
     where

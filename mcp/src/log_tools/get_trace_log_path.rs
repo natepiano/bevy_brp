@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
-use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
@@ -27,8 +26,8 @@ impl ToolFn for GetTraceLogPath {
 
     fn call(
         &self,
-        _ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
+        _ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
         Box::pin(async move {
             // Get the trace log path
             let log_path = get_trace_log_path();
@@ -44,7 +43,7 @@ impl ToolFn for GetTraceLogPath {
                 file_size_bytes,
             });
 
-            Ok(result.with_call_info(LocalCallInfo))
+            Ok(ToolResult::from_result(result, LocalCallInfo))
         })
     }
 }

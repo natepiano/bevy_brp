@@ -23,28 +23,31 @@ use rmcp::model::CallToolResult;
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::tool::{CallInfoProvider, LocalCallInfo, ResponseData};
+use crate::tool::{CallInfoProvider, ResponseData};
 
-/// Helper trait to convert a `Result<T>` into the tuple format required by `ToolFn`
-pub trait WithCallInfo<C: CallInfoProvider> {
-    /// Convert a `Result<T>` to `(CallInfoData, Result<T>)` format
-    fn with_call_info(self, call_info: C) -> (C, Self);
+/// Framework-level result for tool handler execution.
+/// Catches infrastructure errors like parameter extraction failures,
+/// system-level errors, or handler setup issues.
+pub type HandlerResult<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
+
+/// Business logic result wrapper that always includes call info data.
+/// Generic over C: `CallInfoProvider` to preserve the tool's specific call info type.
+#[derive(Debug)]
+pub struct ToolResult<T, C: CallInfoProvider> {
+    pub call_info_data: C,
+    /// The actual result of the tool's business logic
+    pub result:         Result<T>,
 }
 
-impl<T, C: CallInfoProvider> WithCallInfo<C> for Result<T> {
-    fn with_call_info(self, call_info: C) -> (C, Self) {
-        (call_info, self)
+impl<T, C: CallInfoProvider> ToolResult<T, C> {
+    /// Create a result from call info data and result
+    pub const fn from_result(result: Result<T>, call_info_data: C) -> Self {
+        Self {
+            call_info_data,
+            result,
+        }
     }
 }
-
-/// Type alias for the response from local handlers
-///
-/// Breaking down the type:
-/// - `Pin<Box<...>>`: Heap-allocated Future that won't move in memory
-/// - `dyn Future`: Async function that can be awaited
-/// - `Output = crate::error::Result<T>`: Can fail with internal `Error` type
-/// - `+ Send + 'static`: Can be sent between threads, static lifetime
-pub type HandlerResponse<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
@@ -53,12 +56,11 @@ pub trait ToolFn: Send + Sync {
     /// The type that provides `CallInfo` data for this tool
     type CallInfoData: CallInfoProvider;
 
-    /// Handle the request and return `CallInfo` data with a typed result
-    /// `CallInfo` is always returned, even in error cases, ensuring proper context is preserved
+    /// Handle the request and return `ToolResult` with `CallInfoData`
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)>;
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>>;
 }
 
 /// Type-erased version for heterogeneous storage
@@ -72,7 +74,7 @@ pub trait ToolFn: Send + Sync {
 pub trait ErasedUnifiedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
-        ctx: &'a HandlerContext,
+        ctx: HandlerContext,
         tool_name: ToolName,
     ) -> Pin<Box<dyn Future<Output = Result<CallToolResult>> + Send + 'a>>;
 }
@@ -81,24 +83,22 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
 impl<T: ToolFn> ErasedUnifiedToolFn for T {
     fn call_erased<'a>(
         &'a self,
-        ctx: &'a HandlerContext,
+        ctx: HandlerContext,
         tool_name: ToolName,
     ) -> Pin<Box<dyn Future<Output = Result<CallToolResult>> + Send + 'a>> {
         Box::pin(async move {
-            let result = self.call(ctx).await;
+            // we're making a judgement call that we passed a reference to call()
+
+            let result = self.call(ctx.clone()).await;
             match result {
-                Ok((call_info_data, inner_result)) => {
-                    // Now we always have call_info_data, regardless of success or error
-                    // prior to this we returned the an Err that lost the call_info_data and we had
-                    // to default now we can return an Ok with call info always
-                    // and the result itself will be Ok/Err depending on the inner result
-                    tool_name.format_result(call_info_data, inner_result, ctx)
+                Ok(tool_result) => {
+                    // Process the ToolResult - pass both call_info_data and result to format_result
+                    tool_name.format_result(tool_result.call_info_data, tool_result.result, &ctx)
                 }
                 Err(e) => {
-                    // This should be rare - only if the handler itself fails before returning
-                    // CallInfo In this case, we still need to use a default whicdh is just the
-                    // tool name
-                    tool_name.format_result::<T::Output, _>(LocalCallInfo, Err(e), ctx)
+                    // Framework error - can't extract parameters or other infrastructure issue
+                    // Use simple LocalCallInfo default and call format_framework_error
+                    Ok(tool_name.format_framework_error(e, &ctx))
                 }
             }
         })

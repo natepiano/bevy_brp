@@ -18,7 +18,7 @@ pub use response_builder::{
 };
 pub use tool_def::ToolDef;
 pub use tool_name::{BrpMethod, ToolName, get_all_tool_definitions};
-pub use types::{HandlerResponse, ToolFn, WithCallInfo};
+pub use types::{HandlerResult, ToolFn, ToolResult};
 
 /// Message template for tool responses
 #[derive(Clone, Debug)]

@@ -5,7 +5,7 @@ use sysinfo::System;
 use crate::brp_tools::{self, BrpResult, default_port, deserialize_port};
 use crate::error::Result;
 use crate::tool::{
-    BrpMethod, HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn, WithCallInfo,
+    BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
 };
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
@@ -53,23 +53,16 @@ impl ToolFn for Status {
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, Result<Self::Output>)> {
-        // Extract and validate parameters using the new typed system
-        let params: StatusParams = match ctx.extract_parameter_values() {
-            Ok(params) => params,
-            Err(e) => {
-                return Box::pin(async move {
-                    Ok(Err(e).with_call_info(LocalWithPortCallInfo { port: 15702 }))
-                });
-            }
-        };
-
-        let port = params.port;
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
         Box::pin(async move {
-            Ok(handle_impl(&params.app_name, port)
-                .await
-                .with_call_info(LocalWithPortCallInfo { port }))
+            let params: StatusParams = ctx.extract_parameter_values()?;
+            let port = params.port;
+            let result = handle_impl(&params.app_name, port).await;
+            Ok(ToolResult::from_result(
+                result,
+                LocalWithPortCallInfo { port },
+            ))
         })
     }
 }

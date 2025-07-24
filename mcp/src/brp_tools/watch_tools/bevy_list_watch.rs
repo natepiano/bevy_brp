@@ -6,7 +6,7 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, LocalWithPortCallInfo, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct ListWatchParams {
@@ -27,23 +27,16 @@ impl ToolFn for BevyListWatch {
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, crate::error::Result<Self::Output>)> {
-        // Extract typed parameters
-        let params: ListWatchParams = match ctx.extract_parameter_values() {
-            Ok(params) => params,
-            Err(e) => {
-                return Box::pin(async move {
-                    Ok(Err(e).with_call_info(LocalWithPortCallInfo { port: 15702 }))
-                });
-            }
-        };
-
-        let port = params.port;
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
         Box::pin(async move {
-            Ok(handle_impl(params.entity, port)
-                .await
-                .with_call_info(LocalWithPortCallInfo { port }))
+            let params: ListWatchParams = ctx.extract_parameter_values()?;
+
+            let port = params.port;
+            Ok(ToolResult::from_result(
+                handle_impl(params.entity, port).await,
+                LocalWithPortCallInfo { port },
+            ))
         })
     }
 }

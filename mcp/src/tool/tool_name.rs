@@ -568,7 +568,7 @@ impl ToolName {
                 let builder = builder.message(message);
 
                 let response = builder.build();
-                Self::handle_large_response(response, &self)
+                Self::handle_large_response(response, self)
             }
             Err(report) => match report.current_context() {
                 Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
@@ -582,6 +582,20 @@ impl ToolName {
                     .to_call_tool_result()),
             },
         }
+    }
+
+    /// Format framework errors (parameter extraction failures, etc) with `LocalCallInfo` default
+    pub fn format_framework_error(
+        self,
+        error: error_stack::Report<crate::error::Error>,
+        _handler_context: &HandlerContext,
+    ) -> CallToolResult {
+        let call_info = crate::tool::LocalCallInfo.to_call_info(self.to_string());
+
+        ResponseBuilder::error(call_info)
+            .message(format!("Framework error: {}", error.current_context()))
+            .build()
+            .to_call_tool_result()
     }
 
     /// Substitute template placeholders with values from the builder
@@ -667,10 +681,7 @@ impl ToolName {
     }
 
     /// large response processing - this would possibly be where we would implement pagination
-    fn handle_large_response(
-        response: JsonResponse,
-        tool_name: &ToolName,
-    ) -> Result<CallToolResult> {
+    fn handle_large_response(response: JsonResponse, tool_name: Self) -> Result<CallToolResult> {
         // Check if response is too large and handle result field extraction
         let processed_response =
             handle_large_response(response, tool_name, LargeResponseConfig::default())?;

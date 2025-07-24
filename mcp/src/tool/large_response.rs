@@ -52,7 +52,7 @@ impl Default for LargeResponseConfig {
 /// Check if response exceeds token limit and save result field to file if needed
 pub fn handle_large_response(
     response: JsonResponse,
-    tool_name: &ToolName,
+    tool_name: ToolName,
     config: LargeResponseConfig,
 ) -> Result<JsonResponse> {
     // First check if the entire response is too large

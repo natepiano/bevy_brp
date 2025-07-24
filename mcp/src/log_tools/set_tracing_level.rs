@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResponse, LocalCallInfo, ToolFn, WithCallInfo};
+use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
 pub struct SetTracingLevelParams {
@@ -33,15 +33,15 @@ impl ToolFn for SetTracingLevel {
 
     fn call(
         &self,
-        ctx: &HandlerContext,
-    ) -> HandlerResponse<(Self::CallInfoData, crate::error::Result<Self::Output>)> {
-        // Extract typed parameters
-        let params: SetTracingLevelParams = match ctx.extract_parameter_values() {
-            Ok(params) => params,
-            Err(e) => return Box::pin(async move { Ok(Err(e).with_call_info(LocalCallInfo)) }),
-        };
-
-        Box::pin(async move { Ok(handle_impl(&params.level).with_call_info(LocalCallInfo)) })
+        ctx: HandlerContext,
+    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+        Box::pin(async move {
+            let params: SetTracingLevelParams = ctx.extract_parameter_values()?;
+            Ok(ToolResult::from_result(
+                handle_impl(&params.level),
+                LocalCallInfo,
+            ))
+        })
     }
 }
 
