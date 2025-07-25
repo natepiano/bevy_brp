@@ -2,11 +2,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use error_stack::Report;
+use error_stack::ResultExt;
 use regex::Regex;
-use rmcp::ErrorData as McpError;
 
-use crate::error::{Error, report_to_mcp_error};
+use crate::error::{Error, Result};
 
 // Constants
 pub const LOG_PREFIX: &str = "bevy_brp_mcp_";
@@ -117,7 +116,7 @@ pub struct LogFileEntry {
 
 /// Iterates over app log files (port pattern only) in the temp directory with optional filtering
 /// The filter function receives a `LogFileEntry` and returns true to include it
-pub fn iterate_app_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>, McpError>
+pub fn iterate_app_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>>
 where
     F: Fn(&LogFileEntry) -> bool,
 {
@@ -125,27 +124,19 @@ where
     let mut log_entries = Vec::new();
 
     // Read the temp directory
-    let entries = fs::read_dir(&temp_dir).map_err(|e| {
-        report_to_mcp_error(
-            &Report::new(Error::FileOperation(
-                "Failed to read temp directory".to_string(),
-            ))
-            .attach_printable(format!("Path: {}", temp_dir.display()))
-            .attach_printable(format!("Error: {e}")),
-        )
-    })?;
+    let entries = fs::read_dir(&temp_dir)
+        .change_context(Error::FileOperation(
+            "Failed to read temp directory".to_string(),
+        ))
+        .attach_printable(format!("Path: {}", temp_dir.display()))?;
 
     // Process each entry
     for entry in entries {
-        let entry = entry.map_err(|e| {
-            report_to_mcp_error(
-                &Report::new(Error::FileOperation(
-                    "Failed to read directory entry".to_string(),
-                ))
-                .attach_printable(format!("Directory: {}", temp_dir.display()))
-                .attach_printable(format!("Error: {e}")),
-            )
-        })?;
+        let entry = entry
+            .change_context(Error::FileOperation(
+                "Failed to read directory entry".to_string(),
+            ))
+            .attach_printable(format!("Directory: {}", temp_dir.display()))?;
 
         let path = entry.path();
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -153,15 +144,12 @@ where
         // Parse only app log filenames (with port pattern)
         if let Some((app_name, timestamp)) = parse_app_log_filename(filename) {
             // Get file metadata
-            let metadata = entry.metadata().map_err(|e| {
-                report_to_mcp_error(
-                    &Report::new(Error::FileOperation(
-                        "Failed to get file metadata".to_string(),
-                    ))
-                    .attach_printable(format!("Path: {}", path.display()))
-                    .attach_printable(format!("Error: {e}")),
-                )
-            })?;
+            let metadata = entry
+                .metadata()
+                .change_context(Error::FileOperation(
+                    "Failed to get file metadata".to_string(),
+                ))
+                .attach_printable(format!("Path: {}", path.display()))?;
 
             let log_entry = LogFileEntry {
                 filename: filename.to_string(),
@@ -183,7 +171,7 @@ where
 
 /// Iterates over all log files in the temp directory with optional filtering
 /// The filter function receives a `LogFileEntry` and returns true to include it
-pub fn iterate_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>, McpError>
+pub fn iterate_log_files<F>(filter: F) -> Result<Vec<LogFileEntry>>
 where
     F: Fn(&LogFileEntry) -> bool,
 {
@@ -191,27 +179,19 @@ where
     let mut log_entries = Vec::new();
 
     // Read the temp directory
-    let entries = fs::read_dir(&temp_dir).map_err(|e| {
-        report_to_mcp_error(
-            &Report::new(Error::FileOperation(
-                "Failed to read temp directory".to_string(),
-            ))
-            .attach_printable(format!("Path: {}", temp_dir.display()))
-            .attach_printable(format!("Error: {e}")),
-        )
-    })?;
+    let entries = fs::read_dir(&temp_dir)
+        .change_context(Error::FileOperation(
+            "Failed to read temp directory".to_string(),
+        ))
+        .attach_printable(format!("Path: {}", temp_dir.display()))?;
 
     // Process each entry
     for entry in entries {
-        let entry = entry.map_err(|e| {
-            report_to_mcp_error(
-                &Report::new(Error::FileOperation(
-                    "Failed to read directory entry".to_string(),
-                ))
-                .attach_printable(format!("Directory: {}", temp_dir.display()))
-                .attach_printable(format!("Error: {e}")),
-            )
-        })?;
+        let entry = entry
+            .change_context(Error::FileOperation(
+                "Failed to read directory entry".to_string(),
+            ))
+            .attach_printable(format!("Directory: {}", temp_dir.display()))?;
 
         let path = entry.path();
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -219,15 +199,12 @@ where
         // Parse the filename
         if let Some((app_name, timestamp)) = parse_log_filename(filename) {
             // Get file metadata
-            let metadata = entry.metadata().map_err(|e| {
-                report_to_mcp_error(
-                    &Report::new(Error::FileOperation(
-                        "Failed to get file metadata".to_string(),
-                    ))
-                    .attach_printable(format!("Path: {}", path.display()))
-                    .attach_printable(format!("Error: {e}")),
-                )
-            })?;
+            let metadata = entry
+                .metadata()
+                .change_context(Error::FileOperation(
+                    "Failed to get file metadata".to_string(),
+                ))
+                .attach_printable(format!("Path: {}", path.display()))?;
 
             let log_entry = LogFileEntry {
                 filename: filename.to_string(),

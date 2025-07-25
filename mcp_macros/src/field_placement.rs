@@ -448,23 +448,23 @@ fn generate_message_template_provider(
         };
 
         // For Option<String> types without defaults, generate a builder
-        let new_return_type = if is_option_type && default_template.is_none() {
+        if is_option_type && default_template.is_none() {
             let builder_name = quote::format_ident!("{}Builder", struct_name);
-            
+
             // Get field names for the builder constructor
             let field_names: Vec<_> = regular_fields
                 .iter()
                 .filter(|(name, _)| name != field_name)
                 .map(|(name, _)| name.clone())
                 .collect();
-                
+
             // Get field types for builder struct
             let builder_fields: Vec<_> = regular_fields
                 .iter()
                 .filter(|(name, _)| name != field_name)
                 .map(|(name, ty)| quote! { #name: #ty })
                 .collect();
-                
+
             // Create initializers for building the final struct
             let mut builder_to_struct_initializers = Vec::new();
             for (name, _) in regular_fields {
@@ -474,7 +474,7 @@ fn generate_message_template_provider(
                     builder_to_struct_initializers.push(quote! { #name: self.#name });
                 }
             }
-            
+
             // Add computed field initializers
             for computed in computed_fields {
                 let field_name = &computed.field_name;
@@ -556,9 +556,7 @@ fn generate_message_template_provider(
                     }
                 }
             }
-        };
-
-        new_return_type
+        }
     } else {
         quote! {}
     }

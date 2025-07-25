@@ -326,7 +326,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
         config.target_name(),
         "launch",
     )
-    .map_err(|e| Error::tool_call_failed(e.message))?;
+    .map_err(|e| Error::tool_call_failed(e.to_string()))?;
 
     // Calculate launch duration
     let launch_end = std::time::Instant::now();

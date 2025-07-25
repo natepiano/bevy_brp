@@ -199,8 +199,3 @@ impl From<Error> for McpError {
         }
     }
 }
-
-// Helper function to convert error-stack Report to McpError
-pub fn report_to_mcp_error(report: &error_stack::Report<Error>) -> McpError {
-    (*report.current_context()).clone().into()
-}

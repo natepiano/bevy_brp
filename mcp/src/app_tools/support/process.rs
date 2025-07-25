@@ -2,9 +2,9 @@ use std::fs::File;
 use std::path::Path;
 use std::process::Stdio;
 
-use rmcp::ErrorData as McpError;
+use error_stack::{Report, ResultExt};
 
-use crate::error::{Error, report_to_mcp_error};
+use crate::error::{Error, Result};
 
 /// Launch a detached process with proper setup
 pub fn launch_detached_process(
@@ -13,16 +13,14 @@ pub fn launch_detached_process(
     log_file: File,
     process_name: &str,
     operation: &str,
-) -> Result<u32, McpError> {
+) -> Result<u32> {
     // Clone the log file handle for stderr
-    let log_file_for_stderr = log_file.try_clone().map_err(|e| {
-        let error_report = error_stack::Report::new(e)
-            .change_context(Error::ProcessManagement(
-                "Failed to clone log file handle".to_string(),
-            ))
-            .attach_printable(format!("Process: {process_name}, Operation: {operation}"));
-        report_to_mcp_error(&error_report)
-    })?;
+    let log_file_for_stderr = log_file
+        .try_clone()
+        .change_context(Error::ProcessManagement(
+            "Failed to clone log file handle".to_string(),
+        ))
+        .attach_printable(format!("Process: {process_name}, Operation: {operation}"))?;
 
     // Create a new command from the provided one
     let mut new_cmd = std::process::Command::new(cmd.get_program());
@@ -66,14 +64,13 @@ pub fn launch_detached_process(
         }
         Err(e) => {
             tracing::error!("Failed to spawn process {process_name}: {e}");
-            let error_report = error_stack::Report::new(e)
+            Err(Report::new(e)
                 .change_context(Error::ProcessManagement(
                     "Failed to spawn process".to_string(),
                 ))
                 .attach_printable(format!("Process: {process_name}"))
                 .attach_printable(format!("Operation: {operation}"))
-                .attach_printable(format!("Working directory: {}", working_dir.display()));
-            Err(report_to_mcp_error(&error_report))
+                .attach_printable(format!("Working directory: {}", working_dir.display())))?
         }
     }
 }

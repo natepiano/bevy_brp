@@ -70,7 +70,7 @@ fn list_log_files(
     };
 
     let mut log_entries =
-        support::iterate_log_files(filter).map_err(|e| Error::tool_call_failed(e.message))?;
+        support::iterate_log_files(filter).map_err(|e| Error::tool_call_failed(e.to_string()))?;
 
     // Sort by timestamp (newest first)
     log_entries.sort_by(|a, b| {
