@@ -1,3 +1,4 @@
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -22,7 +23,7 @@ pub trait HasBrpMethod {
 }
 
 /// Result type for BRP method calls that follows local handler patterns
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct BrpMethodResult {
     // Success data - the actual BRP response data
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -41,7 +42,7 @@ pub struct BrpMethodResult {
 
     /// Message template for formatting responses
     #[to_message(message_template = "Executed method {method}")]
-    message_template: String,
+    message_template: Option<String>,
 }
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
@@ -105,7 +106,7 @@ pub fn convert_to_brp_method_result(
                     FormatCorrectionStatus::NotAttempted => None,
                     other => Some(other),
                 },
-                message_template:   (*method).to_string(),
+                message_template:   Some((*method).to_string()),
             })
         }
         BrpResult::Error(ref err) => {

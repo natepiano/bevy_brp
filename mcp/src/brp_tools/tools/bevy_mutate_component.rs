@@ -31,7 +31,7 @@ pub struct MutateComponentParams {
 }
 
 /// Result for the `bevy/mutate_component` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct MutateComponentResult {
     /// The raw BRP response data (empty for mutate)
     #[serde(skip_serializing_if = "Option::is_none")]

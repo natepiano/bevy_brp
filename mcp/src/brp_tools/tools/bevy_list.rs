@@ -21,7 +21,7 @@ pub struct ListParams {
 }
 
 /// Result for the `bevy/list` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct ListResult {
     /// The raw BRP response data - an array of component type names
     #[serde(skip_serializing_if = "Option::is_none")]

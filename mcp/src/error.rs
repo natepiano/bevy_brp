@@ -41,6 +41,9 @@ pub enum Error {
     #[error("Process management error: {0}")]
     ProcessManagement(String),
 
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+
     #[error("Path disambiguation required: {message}")]
     PathDisambiguation {
         message:         String,
@@ -191,7 +194,8 @@ impl From<Error> for McpError {
             | Error::ProcessManagement(msg)
             | Error::LogOperation(msg)
             | Error::McpClientCommunication(msg)
-            | Error::General(msg) => Self::internal_error(msg, None),
+            | Error::General(msg)
+            | Error::Configuration(msg) => Self::internal_error(msg, None),
         }
     }
 }

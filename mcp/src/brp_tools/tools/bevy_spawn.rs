@@ -22,7 +22,7 @@ pub struct SpawnParams {
 }
 
 /// Result for the `bevy/spawn` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct SpawnResult {
     /// The raw BRP response data containing the new entity ID
     #[serde(skip_serializing_if = "Option::is_none")]

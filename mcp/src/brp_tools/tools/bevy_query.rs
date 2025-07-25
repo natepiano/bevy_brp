@@ -30,7 +30,7 @@ pub struct QueryParams {
 }
 
 /// Result for the `bevy/query` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct QueryResult {
     /// The raw BRP response - array of entities with their components
     #[serde(skip_serializing_if = "Option::is_none")]

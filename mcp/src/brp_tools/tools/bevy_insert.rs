@@ -27,7 +27,7 @@ pub struct InsertParams {
 }
 
 /// Result for the `bevy/insert` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct InsertResult {
     /// The raw BRP response data (usually empty for insert)
     #[serde(skip_serializing_if = "Option::is_none")]

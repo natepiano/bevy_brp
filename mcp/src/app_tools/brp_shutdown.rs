@@ -37,12 +37,9 @@ pub struct ShutdownResultData {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
     pid:              Option<u32>,
-    /// Detailed shutdown message for display
-    #[to_metadata]
-    message:          String,
     /// Message template for formatting responses
-    #[to_message(message_template = "{status}")]
-    message_template: String,
+    #[to_message]
+    message_template: Option<String>,
 }
 
 /// Result of a shutdown operation
@@ -168,8 +165,8 @@ async fn handle_impl(app_name: &str, port: u16) -> Result<ShutdownResultData> {
                 "clean_shutdown".to_string(),
                 app_name.to_string(),
                 Some(pid),
-                message,
             )
+            .with_message_template(message)
         }
         ShutdownResult::ProcessKilled { pid } => {
             let message = format!(
@@ -180,8 +177,8 @@ async fn handle_impl(app_name: &str, port: u16) -> Result<ShutdownResultData> {
                 "process_kill".to_string(),
                 app_name.to_string(),
                 Some(pid),
-                message,
             )
+            .with_message_template(message)
         }
         ShutdownResult::NotRunning => {
             let message = format!("Process '{app_name}' is not currently running");
@@ -190,16 +187,16 @@ async fn handle_impl(app_name: &str, port: u16) -> Result<ShutdownResultData> {
                 "none".to_string(),
                 app_name.to_string(),
                 None,
-                message,
             )
+            .with_message_template(message)
         }
         ShutdownResult::Error { message } => ShutdownResultData::new(
             "error".to_string(),
             "process_kill_failed".to_string(),
             app_name.to_string(),
             None,
-            message,
-        ),
+        )
+        .with_message_template(message),
     };
 
     Ok(shutdown_result)

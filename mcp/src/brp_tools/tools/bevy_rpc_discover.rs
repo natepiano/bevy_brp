@@ -17,7 +17,7 @@ pub struct RpcDiscoverParams {
 }
 
 /// Result for the `rpc.discover` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct RpcDiscoverResult {
     /// The raw BRP response containing method discovery information
     #[serde(skip_serializing_if = "Option::is_none")]

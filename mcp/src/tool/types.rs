@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::tool::{CallInfoProvider, MessageTemplateProvider, ResponseData};
+use crate::tool::{CallInfoProvider, ResponseData};
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
@@ -103,4 +103,33 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
             }
         })
     }
+}
+
+/// Trait for types that can provide dynamic message templates
+///
+/// This trait is automatically implemented by the `ResultFieldPlacement` derive macro
+/// for structs that have a field with `#[to_message(message_template = "...")]`.
+///
+/// **Important**: When this trait is implemented via the macro:
+/// - All struct fields become private
+/// - A `::new()` constructor is generated
+/// - The struct can ONLY be constructed via `::new()` to ensure the message template is set
+///
+/// # Example
+/// ```ignore
+/// #[derive(ResultFieldPlacement)]
+/// struct MyResult {
+///     #[to_metadata]
+///     count: usize,  // This becomes private!
+///
+///     #[to_message(message_template = "Processed {count} items")]
+///     message_template: String,  // This becomes private!
+/// }
+///
+/// // Can only construct via:
+/// let result = MyResult::new(42);
+/// ```
+pub trait MessageTemplateProvider {
+    /// Get the message template for this response
+    fn get_message_template(&self) -> Result<&str>;
 }

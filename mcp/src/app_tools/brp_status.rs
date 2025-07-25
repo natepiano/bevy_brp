@@ -44,12 +44,9 @@ pub struct StatusResult {
     /// Similar app name if no exact match found
     #[to_metadata(skip_if_none)]
     similar_app_name:   Option<String>,
-    /// Status message
-    #[to_metadata]
-    message:            String,
     /// Message template for formatting responses
-    #[to_message(message_template = "{message}")]
-    message_template:   String,
+    #[to_message]
+    message_template:   Option<String>,
 }
 
 pub struct Status;
@@ -258,8 +255,7 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
             brp_responsive,
             None,
             similar_app,
-            message,
-        ))
+        ).with_message_template(message))
     }, |process| {
         // Found exact match
         let pid = process.pid().as_u32();
@@ -273,10 +269,9 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
                 true,
                 Some(pid),
                 None,
-                format!(
-                    "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
-                ),
-            ))
+            ).with_message_template(format!(
+                "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
+            )))
         } else {
             // Process running but BRP not responding
             Ok(StatusResult::new(
@@ -286,10 +281,9 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
                 false,
                 Some(pid),
                 None,
-                format!(
-                    "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
-                ),
-            ))
+            ).with_message_template(format!(
+                "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
+            )))
         }
     })
 }

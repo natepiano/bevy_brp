@@ -21,7 +21,7 @@ pub struct RemoveResourceParams {
 }
 
 /// Result for the `bevy/remove_resource` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct RemoveResourceResult {
     /// The raw BRP response data (empty for remove)
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -509,7 +509,7 @@ impl ToolName {
                     .map_err(|e| Error::failed_to("add response fields", e))?;
 
                 // Perform template substitution using dynamic template
-                let template_str = data.get_message_template();
+                let template_str = data.get_message_template()?;
                 let message =
                     Self::substitute_dynamic_template(template_str, &builder, handler_context);
                 let builder = builder.message(message);

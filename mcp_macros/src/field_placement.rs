@@ -1,14 +1,14 @@
 //! FieldPlacement derive macro implementation
 //!
 //! This macro generates implementations for result structs used in MCP tools.
-//! 
+//!
 //! ## Important: Result Struct Construction
-//! 
+//!
 //! When a struct has a `#[to_message(message_template = "...")]` field, the macro:
 //! - Makes all struct fields private
 //! - Generates a `::new()` constructor with all fields except `message_template`
 //! - Generates a `with_message_template()` method for overriding the default template
-//! 
+//!
 //! This ensures result structs can ONLY be constructed via `::new()`, preventing:
 //! - Forgetting to set the message template
 //! - Inconsistent construction patterns
@@ -43,7 +43,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
     let mut computed_fields = Vec::new();
     let mut regular_fields = Vec::new();
     let mut has_format_corrections = false;
-    let mut message_template_field = None;
+    let mut message_template_field: Option<(syn::Ident, Option<String>)> = None;
 
     for field in &data_struct.fields {
         let field_name = field
@@ -246,7 +246,7 @@ fn parse_computed_attr(attr: &syn::Attribute, result_operation: &mut Option<Stri
 }
 
 /// Parse to_message attribute arguments
-fn parse_to_message_attr(attr: &syn::Attribute) -> String {
+fn parse_to_message_attr(attr: &syn::Attribute) -> Option<String> {
     let mut message_template = None;
     let _ = attr.parse_nested_meta(|meta| {
         if meta.path.is_ident("message_template") {
@@ -259,7 +259,7 @@ fn parse_to_message_attr(attr: &syn::Attribute) -> String {
         }
     });
 
-    message_template.expect("to_message attribute requires message_template parameter")
+    message_template
 }
 
 /// Generate field accessor match arm
@@ -346,7 +346,7 @@ fn generate_call_info_provider(
 /// Generate MessageTemplateProvider implementation and constructor methods
 fn generate_message_template_provider(
     struct_name: &syn::Ident,
-    message_template_field: &Option<(syn::Ident, String)>,
+    message_template_field: &Option<(syn::Ident, Option<String>)>,
     regular_fields: &[(syn::Ident, syn::Type)],
     computed_fields: &[ComputedField],
 ) -> proc_macro2::TokenStream {
@@ -362,9 +362,29 @@ fn generate_message_template_provider(
         let mut field_initializers = Vec::new();
 
         // Handle regular fields
-        for (name, _) in regular_fields {
+        for (name, ty) in regular_fields {
             if name == field_name {
-                field_initializers.push(quote! { #name: #default_template.to_string() });
+                // Check if the field type is Option<String> or String
+                let type_str = quote!(#ty).to_string();
+                let is_option = type_str.contains("Option <");
+
+                if let Some(template) = default_template {
+                    if is_option {
+                        field_initializers.push(quote! { #name: Some(#template.to_string()) });
+                    } else {
+                        field_initializers.push(quote! { #name: #template.to_string() });
+                    }
+                } else {
+                    // No default template
+                    if is_option {
+                        field_initializers.push(quote! { #name: None });
+                    } else {
+                        // This is an error case - String field with no default
+                        panic!(
+                            "Message template field must be Option<String> when no default template is provided"
+                        );
+                    }
+                }
             } else {
                 field_initializers.push(quote! { #name });
             }
@@ -391,29 +411,154 @@ fn generate_message_template_provider(
             field_initializers.push(quote! { #field_name: #default_value });
         }
 
-        quote! {
-            impl crate::tool::MessageTemplateProvider for #struct_name {
-                fn get_message_template(&self) -> &str {
-                    &self.#field_name
+        // Determine if the field is Option<String> or String
+        let message_field_type = regular_fields
+            .iter()
+            .find(|(name, _)| name == field_name)
+            .map(|(_, ty)| ty);
+
+        let is_option_type = message_field_type
+            .map(|ty| quote!(#ty).to_string().contains("Option <"))
+            .unwrap_or(false);
+
+        let get_template_impl = if is_option_type {
+            quote! {
+                self.#field_name.as_ref()
+                    .map(|s| s.as_str())
+                    .ok_or_else(|| {
+                        error_stack::Report::new(crate::error::Error::Configuration(
+                            "Message template not set. Use .with_message_template() to provide a template.".to_string()
+                        ))
+                    })
+            }
+        } else {
+            quote! {
+                Ok(self.#field_name.as_str())
+            }
+        };
+
+        let with_template_impl = if is_option_type {
+            quote! {
+                self.#field_name = Some(template.into());
+            }
+        } else {
+            quote! {
+                self.#field_name = template.into();
+            }
+        };
+
+        // For Option<String> types without defaults, generate a builder
+        let new_return_type = if is_option_type && default_template.is_none() {
+            let builder_name = quote::format_ident!("{}Builder", struct_name);
+            
+            // Get field names for the builder constructor
+            let field_names: Vec<_> = regular_fields
+                .iter()
+                .filter(|(name, _)| name != field_name)
+                .map(|(name, _)| name.clone())
+                .collect();
+                
+            // Get field types for builder struct
+            let builder_fields: Vec<_> = regular_fields
+                .iter()
+                .filter(|(name, _)| name != field_name)
+                .map(|(name, ty)| quote! { #name: #ty })
+                .collect();
+                
+            // Create initializers for building the final struct
+            let mut builder_to_struct_initializers = Vec::new();
+            for (name, _) in regular_fields {
+                if name == field_name {
+                    // Skip - we'll add this with the template parameter
+                } else {
+                    builder_to_struct_initializers.push(quote! { #name: self.#name });
                 }
             }
+            
+            // Add computed field initializers
+            for computed in computed_fields {
+                let field_name = &computed.field_name;
+                let default_value = match computed.operation.as_str() {
+                    "count"
+                    | "count_object"
+                    | "count_components"
+                    | "count_methods"
+                    | "count_query_components" => quote! { 0 },
+                    "count_errors" => quote! { None },
+                    "extract_entity" => quote! { 0 },
+                    "extract_duration_ms" => quote! { 100 },
+                    "extract_keys_sent" => quote! { Vec::new() },
+                    "extract_debug_enabled" => quote! { false },
+                    "extract_message" => quote! { String::new() },
+                    _ => quote! { Default::default() },
+                };
+                builder_to_struct_initializers.push(quote! { #field_name: #default_value });
+            }
 
-            impl #struct_name {
-                /// Create a new instance with default message template
-                #[allow(clippy::too_many_arguments)]
-                pub fn new(#(#constructor_params),*) -> Self {
-                    Self {
-                        #(#field_initializers,)*
+            quote! {
+                impl crate::tool::MessageTemplateProvider for #struct_name {
+                    fn get_message_template(&self) -> crate::error::Result<&str> {
+                        #get_template_impl
                     }
                 }
 
-                /// Override the message template for this result
-                pub fn with_message_template(mut self, template: impl Into<String>) -> Self {
-                    self.#field_name = template.into();
-                    self
+                pub struct #builder_name {
+                    #(#builder_fields,)*
+                }
+
+                impl #builder_name {
+                    /// Set the message template and build the final result
+                    pub fn with_message_template(self, template: impl Into<String>) -> #struct_name {
+                        #struct_name {
+                            #(#builder_to_struct_initializers,)*
+                            #field_name: Some(template.into()),
+                        }
+                    }
+                }
+
+                impl #struct_name {
+                    /// Create a new instance - requires setting message template
+                    #[allow(clippy::too_many_arguments)]
+                    pub fn new(#(#constructor_params),*) -> #builder_name {
+                        #builder_name {
+                            #(#field_names,)*
+                        }
+                    }
+
+                    /// Override the message template for this result
+                    pub fn with_message_template(mut self, template: impl Into<String>) -> Self {
+                        #with_template_impl
+                        self
+                    }
                 }
             }
-        }
+        } else {
+            quote! {
+                impl crate::tool::MessageTemplateProvider for #struct_name {
+                    fn get_message_template(&self) -> crate::error::Result<&str> {
+                        #get_template_impl
+                    }
+                }
+
+                impl #struct_name {
+                    /// Create a new instance with default message template
+                    #[allow(clippy::too_many_arguments)]
+                    pub fn new(#(#constructor_params),*) -> Self {
+                        Self {
+                            #(#field_initializers,)*
+                        }
+                    }
+
+                    /// Override the message template for this result
+                    pub fn with_message_template(mut self, template: impl Into<String>) -> Self {
+                        #with_template_impl
+                        self
+                    }
+                }
+            }
+        };
+
+        new_return_type
     } else {
         quote! {}
     }
@@ -425,7 +570,7 @@ fn generate_from_brp_value(
     regular_fields: &[(syn::Ident, syn::Type)],
     computed_fields: &[ComputedField],
     has_format_corrections: bool,
-    message_template_field: &Option<(syn::Ident, String)>,
+    message_template_field: &Option<(syn::Ident, Option<String>)>,
 ) -> proc_macro2::TokenStream {
     let mut field_initializers = Vec::new();
 
@@ -452,7 +597,27 @@ fn generate_from_brp_value(
             });
         } else if let Some((template_field_name, template_default)) = message_template_field {
             if field_name == template_field_name {
-                field_initializers.push(quote! { #field_name: #template_default.to_string() });
+                // Check if the field type is Option<String> or String
+                let type_str = quote!(#field_type).to_string();
+                let is_option = type_str.contains("Option <");
+
+                if let Some(template) = template_default {
+                    if is_option {
+                        field_initializers
+                            .push(quote! { #field_name: Some(#template.to_string()) });
+                    } else {
+                        field_initializers.push(quote! { #field_name: #template.to_string() });
+                    }
+                } else {
+                    // No default template
+                    if is_option {
+                        field_initializers.push(quote! { #field_name: None });
+                    } else {
+                        panic!(
+                            "Message template field must be Option<String> when no default template is provided"
+                        );
+                    }
+                }
             }
         }
         // Other regular fields would need to be passed as parameters or have defaults

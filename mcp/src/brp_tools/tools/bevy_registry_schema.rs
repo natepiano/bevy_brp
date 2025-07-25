@@ -33,7 +33,7 @@ pub struct RegistrySchemaParams {
 }
 
 /// Result for the `bevy/registry/schema` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct RegistrySchemaResult {
     /// The raw BRP response - array of type schemas
     #[serde(skip_serializing_if = "Option::is_none")]
