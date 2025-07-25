@@ -44,4 +44,8 @@ pub struct MutateResourceResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
     pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Mutated resource {resource_name}")]
+    pub message_template: String,
 }

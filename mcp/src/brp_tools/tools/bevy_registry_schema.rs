@@ -43,4 +43,8 @@ pub struct RegistrySchemaResult {
     /// Count of types returned
     #[to_metadata(result_operation = "count")]
     pub type_count: usize,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Retrieved {type_count} schemas")]
+    pub message_template: String,
 }

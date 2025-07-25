@@ -9,9 +9,15 @@ use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResu
 /// Result from listing BRP apps
 #[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ListBrpAppsResult {
+    /// Count of apps found
+    #[to_metadata]
+    count:            usize,
     /// List of BRP-enabled apps found
     #[to_result]
-    pub apps: Vec<serde_json::Value>,
+    apps:             Vec<serde_json::Value>,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {count} BRP-enabled apps")]
+    message_template: String,
 }
 
 pub struct ListBrpApps;
@@ -37,7 +43,7 @@ where
     support::handle_list_binaries(handler_context, |search_paths| async move {
         let items = support::collect_all_items(&search_paths, &BrpAppsStrategy);
 
-        Ok(ListBrpAppsResult { apps: items })
+        Ok(ListBrpAppsResult::new(items.len(), items))
     })
     .await
     .map_err(|e| Error::tool_call_failed(e.message).into())

@@ -26,4 +26,8 @@ pub struct GetResourceResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Retrieved {resource_name} resource")]
+    pub message_template: String,
 }

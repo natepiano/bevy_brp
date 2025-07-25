@@ -26,9 +26,13 @@ pub struct ListResult {
     /// The raw BRP response data - an array of component type names
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
-    pub result: Option<Value>,
+    result: Option<Value>,
 
     /// Count of components - computed from result array length
     #[to_metadata(result_operation = "count")]
-    pub component_count: usize,
+    component_count: usize,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {component_count} components")]
+    message_template: String,
 }

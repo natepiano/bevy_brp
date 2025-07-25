@@ -31,4 +31,8 @@ pub struct RemoveResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Removed components from entity {entity}")]
+    pub message_template: String,
 }

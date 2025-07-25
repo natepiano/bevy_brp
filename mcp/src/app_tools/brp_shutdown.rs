@@ -26,20 +26,23 @@ pub struct ShutdownParams {
 pub struct ShutdownResultData {
     /// Status of the shutdown operation
     #[to_metadata]
-    pub status:          String,
+    status:           String,
     /// Shutdown method used
     #[to_metadata]
-    pub shutdown_method: String,
+    shutdown_method:  String,
     /// App name that was shut down
     #[to_metadata]
-    pub app_name:        String,
+    app_name:         String,
     /// Process ID if terminated via kill
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
-    pub pid:             Option<u32>,
+    pid:              Option<u32>,
     /// Detailed shutdown message for display
     #[to_metadata]
-    pub message:         String,
+    message:          String,
+    /// Message template for formatting responses
+    #[to_message(message_template = "{status}")]
+    message_template: String,
 }
 
 /// Result of a shutdown operation
@@ -160,43 +163,43 @@ async fn handle_impl(app_name: &str, port: u16) -> Result<ShutdownResultData> {
             let message = format!(
                 "Successfully initiated graceful shutdown for '{app_name}' (PID: {pid}) via bevy_brp_extras"
             );
-            ShutdownResultData {
-                status: "success".to_string(),
-                shutdown_method: "clean_shutdown".to_string(),
-                app_name: app_name.to_string(),
-                pid: Some(pid),
+            ShutdownResultData::new(
+                "success".to_string(),
+                "clean_shutdown".to_string(),
+                app_name.to_string(),
+                Some(pid),
                 message,
-            }
+            )
         }
         ShutdownResult::ProcessKilled { pid } => {
             let message = format!(
                 "Terminated process '{app_name}' (PID: {pid}) using kill. Consider adding bevy_brp_extras for clean shutdown."
             );
-            ShutdownResultData {
-                status: "success".to_string(),
-                shutdown_method: "process_kill".to_string(),
-                app_name: app_name.to_string(),
-                pid: Some(pid),
+            ShutdownResultData::new(
+                "success".to_string(),
+                "process_kill".to_string(),
+                app_name.to_string(),
+                Some(pid),
                 message,
-            }
+            )
         }
         ShutdownResult::NotRunning => {
             let message = format!("Process '{app_name}' is not currently running");
-            ShutdownResultData {
-                status: "error".to_string(),
-                shutdown_method: "none".to_string(),
-                app_name: app_name.to_string(),
-                pid: None,
+            ShutdownResultData::new(
+                "error".to_string(),
+                "none".to_string(),
+                app_name.to_string(),
+                None,
                 message,
-            }
+            )
         }
-        ShutdownResult::Error { message } => ShutdownResultData {
-            status: "error".to_string(),
-            shutdown_method: "process_kill_failed".to_string(),
-            app_name: app_name.to_string(),
-            pid: None,
+        ShutdownResult::Error { message } => ShutdownResultData::new(
+            "error".to_string(),
+            "process_kill_failed".to_string(),
+            app_name.to_string(),
+            None,
             message,
-        },
+        ),
     };
 
     Ok(shutdown_result)

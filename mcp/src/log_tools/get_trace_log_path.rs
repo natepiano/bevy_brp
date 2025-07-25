@@ -9,13 +9,16 @@ use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResu
 pub struct GetTraceLogPathResult {
     /// Full path to the trace log file
     #[to_metadata]
-    pub log_path:        String,
+    log_path:         String,
     /// Whether the log file currently exists
     #[to_metadata]
-    pub exists:          bool,
+    exists:           bool,
     /// Size of the log file in bytes (if it exists)
     #[to_metadata(skip_if_none)]
-    pub file_size_bytes: Option<u64>,
+    file_size_bytes:  Option<u64>,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Trace log path: {log_path}")]
+    message_template: String,
 }
 
 /// Handler for the `brp_get_trace_log_path` tool using the `LocalFn` approach
@@ -38,11 +41,11 @@ impl ToolFn for GetTraceLogPath {
             let (exists, file_size_bytes) = std::fs::metadata(&log_path)
                 .map_or((false, None), |metadata| (true, Some(metadata.len())));
 
-            let result = Ok(GetTraceLogPathResult {
-                log_path: log_path_str,
+            let result = Ok(GetTraceLogPathResult::new(
+                log_path_str,
                 exists,
                 file_size_bytes,
-            });
+            ));
 
             Ok(ToolResult::from_result(result, LocalCallInfo))
         })

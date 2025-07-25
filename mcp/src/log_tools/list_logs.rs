@@ -22,13 +22,16 @@ pub struct ListLogsParams {
 pub struct ListLogResult {
     /// List of log files found
     #[to_result]
-    pub logs:           Vec<LogFileInfo>,
+    logs:             Vec<LogFileInfo>,
     /// Path to the temp directory containing logs
     #[to_metadata]
-    pub temp_directory: String,
+    temp_directory:   String,
     /// Log file count
     #[to_metadata]
-    pub log_count:      usize,
+    log_count:        usize,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {log_count} log files")]
+    message_template: String,
 }
 
 /// Handler for the `brp_list_logs` tool using the `LocalFn` approach
@@ -45,11 +48,11 @@ impl ToolFn for ListLogs {
         Box::pin(async move {
             let params: ListLogsParams = ctx.extract_parameter_values()?;
             let result = list_log_files(params.app_name.as_deref(), params.verbose).map(|logs| {
-                ListLogResult {
-                    log_count: logs.len(),
-                    logs,
-                    temp_directory: support::get_log_directory().display().to_string(),
-                }
+                ListLogResult::new(
+                    logs.clone(),
+                    support::get_log_directory().display().to_string(),
+                    logs.len(),
+                )
             });
             Ok(ToolResult::from_result(result, LocalCallInfo))
         })

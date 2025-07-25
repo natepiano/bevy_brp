@@ -10,8 +10,12 @@ use serde::{Deserialize, Serialize};
 pub struct WatchStartResult {
     /// Watch ID
     #[to_metadata]
-    pub watch_id: u32,
+    watch_id: u32,
     /// Log path
     #[to_metadata]
-    pub log_path: String,
+    log_path: String,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Started watch {watch_id}")]
+    message_template: String,
 }

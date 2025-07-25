@@ -27,4 +27,8 @@ pub struct RpcDiscoverResult {
     /// Count of methods discovered
     #[to_metadata(result_operation = "count_methods")]
     pub method_count: usize,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Discovered {method_count} methods")]
+    pub message_template: String,
 }

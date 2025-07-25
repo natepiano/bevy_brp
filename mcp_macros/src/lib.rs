@@ -64,26 +64,51 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 
 /// Derives field placement traits for parameter and response structs.
 ///
-/// # Example
+/// # Example for Parameters (fields remain public)
 ///
 /// ```ignore
-/// #[derive(FieldPlacement)]
+/// #[derive(ResultFieldPlacement)]
 /// struct GetParams {
 ///     #[to_metadata]
 ///     pub entity: u64,
-///
-///     #[to_result]
-///     pub components: Value,
 ///
 ///     #[to_call_info]
 ///     pub port: u16,
 /// }
 /// ```
 ///
+/// # Example for Results (fields become private with `#[to_message]`)
+///
+/// ```ignore
+/// #[derive(ResultFieldPlacement)]
+/// struct GetResult {
+///     #[to_result]
+///     result: Option<Value>,  // Private field!
+///
+///     #[to_metadata]
+///     count: usize,           // Private field!
+///
+///     #[to_message(message_template = "Found {count} items")]
+///     message_template: String,  // Private field!
+/// }
+///
+/// // Result structs with #[to_message] can ONLY be constructed via:
+/// let result = GetResult::new(Some(value), 5);
+/// // Or with custom template:
+/// let result = GetResult::new(Some(value), 5)
+///     .with_message_template("Custom: {count}");
+/// ```
+///
 /// This will generate implementations for:
 /// - `HasFieldPlacement` - provides field placement information
+/// - `ResponseData` - for building MCP responses
 /// - `CallInfoProvider` - if there are `#[to_call_info]` fields
-#[proc_macro_derive(ResultFieldPlacement, attributes(to_metadata, to_result, to_call_info))]
+/// - `MessageTemplateProvider` - if there's a `#[to_message]` field
+/// - `::new()` constructor - if there's a `#[to_message]` field (makes fields private)
+#[proc_macro_derive(
+    ResultFieldPlacement,
+    attributes(to_metadata, to_result, to_call_info, to_message, computed)
+)]
 pub fn derive_field_placement(input: TokenStream) -> TokenStream {
     field_placement::derive_field_placement_impl(input)
 }

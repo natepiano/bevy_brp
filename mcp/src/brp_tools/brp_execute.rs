@@ -77,7 +77,7 @@ impl ToolFn for BrpExecute {
             };
 
             // Convert result using existing conversion function
-            let result = convert_to_brp_method_result(enhanced_result, &ctx);
+            let result = convert_to_brp_method_result(enhanced_result, &ctx, &params.method);
             Ok(ToolResult::from_result(
                 result,
                 LocalWithPortCallInfo { port },

@@ -29,13 +29,17 @@ pub struct GetResult {
     /// The raw BRP response with components and errors
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
-    pub result: Option<Value>,
+    result: Option<Value>,
 
     /// Count of components retrieved - computed from result.components object
     #[to_metadata(result_operation = "count_components")]
-    pub component_count: usize,
+    component_count: usize,
 
     /// Count of errors if any components failed to retrieve
     #[to_metadata(skip_if_none, result_operation = "count_errors")]
-    pub error_count: Option<usize>,
+    error_count: Option<usize>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Retrieved {component_count} components")]
+    message_template: String,
 }

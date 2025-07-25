@@ -32,7 +32,11 @@ pub struct WatchInfo {
 pub struct ListActiveWatchesResult {
     /// List of active watches
     #[to_result]
-    pub watches: Vec<WatchInfo>,
+    watches: Vec<WatchInfo>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {watch_count} active watches")]
+    message_template: String,
 }
 
 pub struct BrpListActiveWatches;
@@ -68,5 +72,5 @@ async fn handle_impl() -> Result<ListActiveWatchesResult> {
         })
         .collect();
 
-    Ok(ListActiveWatchesResult { watches })
+    Ok(ListActiveWatchesResult::new(watches))
 }

@@ -38,6 +38,10 @@ pub struct BrpMethodResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
     pub format_corrected:   Option<FormatCorrectionStatus>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Executed method {method}")]
+    message_template: String,
 }
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
@@ -80,6 +84,7 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 pub fn convert_to_brp_method_result(
     enhanced_result: EnhancedBrpResult,
     _ctx: &HandlerContext,
+    method: &str,
 ) -> Result<BrpMethodResult> {
     match enhanced_result.result {
         BrpResult::Success(data) => {
@@ -100,6 +105,7 @@ pub fn convert_to_brp_method_result(
                     FormatCorrectionStatus::NotAttempted => None,
                     other => Some(other),
                 },
+                message_template:   (*method).to_string(),
             })
         }
         BrpResult::Error(ref err) => {
@@ -202,6 +208,6 @@ where
             execute_brp_method_with_format_discovery(method, brp_params, port).await?;
 
         // Convert result using existing conversion function
-        convert_to_brp_method_result(enhanced_result, &ctx)
+        convert_to_brp_method_result(enhanced_result, &ctx, method.as_str())
     }
 }

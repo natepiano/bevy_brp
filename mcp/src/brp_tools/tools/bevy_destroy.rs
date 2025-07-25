@@ -20,10 +20,14 @@ pub struct DestroyParams {
 }
 
 /// Result for the `bevy/destroy` tool
-#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
+#[derive(Serialize, ResultFieldPlacement)]
 pub struct DestroyResult {
     /// The raw BRP response data (empty for destroy)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
-    pub result: Option<Value>,
+    result: Option<Value>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Destroyed entity {entity}")]
+    message_template: String,
 }

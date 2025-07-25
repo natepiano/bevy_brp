@@ -9,9 +9,15 @@ use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResu
 /// Result from listing Bevy apps
 #[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ListBevyAppsResult {
+    /// Count of apps found
+    #[to_metadata]
+    count:            usize,
     /// List of Bevy apps found
     #[to_result]
-    pub apps: Vec<serde_json::Value>,
+    apps:             Vec<serde_json::Value>,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {count} Bevy apps")]
+    message_template: String,
 }
 
 pub struct ListBevyApps;
@@ -35,7 +41,7 @@ async fn handle_impl(handler_context: HandlerContext) -> Result<ListBevyAppsResu
     support::handle_list_binaries(handler_context, |search_paths| async move {
         let items = support::collect_all_items(&search_paths, &BevyAppsStrategy);
 
-        Ok(ListBevyAppsResult { apps: items })
+        Ok(ListBevyAppsResult::new(items.len(), items))
     })
     .await
     .map_err(|e| Error::tool_call_failed(e.message).into())

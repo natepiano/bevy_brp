@@ -21,29 +21,35 @@ pub struct StatusParams {
 }
 
 /// Result from checking status of a Bevy app
+///
+/// Note: This struct has private fields and can only be constructed via `StatusResult::new()`
+/// due to the `#[to_message]` attribute. This ensures the message template is always set.
 #[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct StatusResult {
     /// Status of the check - "success" only if app found and BRP responding
     #[to_metadata]
-    pub status:             String,
+    status:             String,
     /// App name that was requested
     #[to_metadata]
-    pub app_name_requested: String,
+    app_name_requested: String,
     /// Whether the app process was found
     #[to_metadata]
-    pub app_found:          bool,
+    app_found:          bool,
     /// Whether BRP is responding on the port
     #[to_metadata]
-    pub responding_on_port: bool,
+    responding_on_port: bool,
     /// Process ID if running
     #[to_metadata(skip_if_none)]
-    pub pid:                Option<u32>,
+    pid:                Option<u32>,
     /// Similar app name if no exact match found
     #[to_metadata(skip_if_none)]
-    pub similar_app_name:   Option<String>,
+    similar_app_name:   Option<String>,
     /// Status message
     #[to_metadata]
-    pub message:            String,
+    message:            String,
+    /// Message template for formatting responses
+    #[to_message(message_template = "{message}")]
+    message_template:   String,
 }
 
 pub struct Status;
@@ -245,45 +251,45 @@ async fn check_brp_for_app(app_name: &str, port: u16) -> Result<StatusResult> {
             }
         };
 
-        Ok(StatusResult {
-            status: "error".to_string(),
-            app_name_requested: app_name.to_string(),
-            app_found: false,
-            responding_on_port: brp_responsive,
-            pid: None,
-            similar_app_name: similar_app,
+        Ok(StatusResult::new(
+            "error".to_string(),
+            app_name.to_string(),
+            false,
+            brp_responsive,
+            None,
+            similar_app,
             message,
-        })
+        ))
     }, |process| {
         // Found exact match
         let pid = process.pid().as_u32();
 
         if brp_responsive {
             // SUCCESS: Both conditions met
-            Ok(StatusResult {
-                status:             "success".to_string(),
-                app_name_requested: app_name.to_string(),
-                app_found:          true,
-                responding_on_port: true,
-                pid:                Some(pid),
-                similar_app_name:   None,
-                message:            format!(
+            Ok(StatusResult::new(
+                "success".to_string(),
+                app_name.to_string(),
+                true,
+                true,
+                Some(pid),
+                None,
+                format!(
                     "Process '{app_name}' (PID: {pid}) is running with BRP enabled on port {port}"
                 ),
-            })
+            ))
         } else {
             // Process running but BRP not responding
-            Ok(StatusResult {
-                status:             "error".to_string(),
-                app_name_requested: app_name.to_string(),
-                app_found:          true,
-                responding_on_port: false,
-                pid:                Some(pid),
-                similar_app_name:   None,
-                message:            format!(
+            Ok(StatusResult::new(
+                "error".to_string(),
+                app_name.to_string(),
+                true,
+                false,
+                Some(pid),
+                None,
+                format!(
                     "Process '{app_name}' (PID: {pid}) is running but not responding to BRP on port {port}. Make sure RemotePlugin is added to your Bevy app."
                 ),
-            })
+            ))
         }
     })
 }

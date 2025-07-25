@@ -44,4 +44,8 @@ pub struct QueryResult {
     /// Total count of components across all entities
     #[to_metadata(result_operation = "count_query_components")]
     pub component_count: usize,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {entity_count} entities")]
+    pub message_template: String,
 }

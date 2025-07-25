@@ -25,31 +25,35 @@ pub struct ReadLogParams {
 
 /// Result from reading a log file
 #[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[allow(clippy::too_many_arguments)]
 pub struct ReadLogResult {
     /// The filename that was read
     #[to_metadata]
-    pub filename:            String,
+    filename:            String,
     /// Full path to the file
     #[to_metadata]
-    pub file_path:           String,
+    file_path:           String,
     /// Size of the file in bytes
     #[to_metadata]
-    pub size_bytes:          u64,
+    size_bytes:          u64,
     /// Human-readable file size
     #[to_metadata]
-    pub size_human:          String,
+    size_human:          String,
     /// Number of lines read
     #[to_metadata]
-    pub lines_read:          usize,
+    lines_read:          usize,
     /// The actual log content
     #[to_result]
-    pub content:             String,
+    content:             String,
     /// Whether content was filtered by keyword
     #[to_metadata]
-    pub filtered_by_keyword: bool,
+    filtered_by_keyword: bool,
     /// Whether tail mode was used
     #[to_metadata]
-    pub tail_mode:           bool,
+    tail_mode:           bool,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Read {lines_read} lines from {filename}")]
+    message_template:    String,
 }
 
 pub struct ReadLog;
@@ -108,16 +112,16 @@ fn handle_impl(
     // Read the log file
     let (content, metadata) = read_log_file(&log_path, keyword, tail_lines)?;
 
-    Ok(ReadLogResult {
-        filename: filename.to_string(),
-        file_path: log_path.display().to_string(),
-        size_bytes: metadata.len(),
-        size_human: support::format_bytes(metadata.len()),
-        lines_read: content.lines().count(),
+    Ok(ReadLogResult::new(
+        filename.to_string(),
+        log_path.display().to_string(),
+        metadata.len(),
+        support::format_bytes(metadata.len()),
+        content.lines().count(),
         content,
-        filtered_by_keyword: keyword.is_some(),
-        tail_mode: tail_lines.is_some(),
-    })
+        keyword.is_some(),
+        tail_lines.is_some(),
+    ))
 }
 
 fn read_log_file(

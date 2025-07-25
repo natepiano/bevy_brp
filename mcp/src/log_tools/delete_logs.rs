@@ -24,16 +24,19 @@ pub struct DeleteLogsParams {
 pub struct DeleteLogsResult {
     /// List of deleted filenames
     #[to_metadata]
-    pub deleted_files:      Vec<String>,
+    deleted_files:      Vec<String>,
     /// Number of files deleted
     #[to_metadata]
-    pub deleted_count:      usize,
+    deleted_count:      usize,
     /// App name filter that was applied (if any)
     #[to_metadata(skip_if_none)]
-    pub app_name_filter:    Option<String>,
+    app_name_filter:    Option<String>,
     /// Age filter in seconds that was applied (if any)
     #[to_metadata(skip_if_none)]
-    pub older_than_seconds: Option<u32>,
+    older_than_seconds: Option<u32>,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Deleted {deleted_count} log files")]
+    message_template:   String,
 }
 
 pub struct DeleteLogs;
@@ -62,12 +65,12 @@ fn handle_impl(
 ) -> Result<DeleteLogsResult> {
     let deleted_files = delete_log_files(app_name_filter, older_than_seconds)?;
 
-    Ok(DeleteLogsResult {
-        deleted_count: deleted_files.len(),
-        deleted_files,
-        app_name_filter: app_name_filter.map(String::from),
+    Ok(DeleteLogsResult::new(
+        deleted_files.clone(),
+        deleted_files.len(),
+        app_name_filter.map(String::from),
         older_than_seconds,
-    })
+    ))
 }
 
 fn delete_log_files(

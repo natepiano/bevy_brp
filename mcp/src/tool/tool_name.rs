@@ -230,7 +230,7 @@ use crate::error::{Error, Result};
 use crate::tool::annotations::{Annotation, EnvironmentImpact, ToolCategory};
 use crate::tool::types::ErasedUnifiedToolFn;
 use crate::tool::{
-    CallInfoProvider, HandlerContext, JsonResponse, LargeResponseConfig, MessageTemplate,
+    CallInfoProvider, HandlerContext, JsonResponse, LargeResponseConfig, MessageTemplateProvider,
     ResponseBuilder, ResponseData, handle_large_response, parameters,
 };
 
@@ -422,59 +422,6 @@ impl ToolName {
         }
     }
 
-    /// Get message template for this tool
-    pub const fn get_message_template(self) -> MessageTemplate {
-        MessageTemplate {
-            ok: match self {
-                Self::BevyDestroy => "Successfully destroyed entity {entity}",
-                Self::BevyGet => {
-                    "Retrieved component data from entity {entity} - component count: {component_count}"
-                }
-                Self::BevyGetResource => "Retrieved resource: {resource}",
-                Self::BevyInsert => "Successfully inserted components into entity {entity}",
-                Self::BevyInsertResource => "Successfully inserted/updated resource: {resource}",
-                Self::BevyList => "Listed {component_count} components",
-                Self::BevyListResources => "Listed {resource_count} resources",
-                Self::BevyMutateComponent => "Successfully mutated component on entity {entity}",
-                Self::BevyMutateResource => "Successfully mutated resource: `{resource}`",
-                Self::BevyQuery => "Query completed successfully",
-                Self::BevyRegistrySchema => "Retrieved schema information",
-                Self::BevyRemove => "Successfully removed components from entity {entity}",
-                Self::BevyRemoveResource => "Successfully removed resource",
-                Self::BevyReparent => "Successfully reparented entities",
-                Self::BevyRpcDiscover => {
-                    "Retrieved BRP method discovery information for {method_count} methods"
-                }
-                Self::BevySpawn => "Successfully spawned entity",
-                Self::BrpExecute => "Method executed successfully",
-                Self::BrpExtrasDiscoverFormat => "Format discovery completed",
-                Self::BrpExtrasScreenshot => "Successfully captured screenshot",
-                Self::BrpExtrasSendKeys => "Successfully sent keyboard input",
-                Self::BevyGetWatch => "Started entity watch {watch_id} for entity {entity}",
-                Self::BevyListWatch => "Started list watch {watch_id} for entity {entity}",
-                Self::BrpDeleteLogs => "Deleted {deleted_count} log files",
-                Self::BrpGetTraceLogPath => "Trace log found",
-                Self::BrpLaunchBevyApp => {
-                    "Successfully launched bevy app '{target_name}' (PID: {pid})"
-                }
-                Self::BrpLaunchBevyExample => {
-                    "Successfully launched example '{target_name}' (PID: {pid})"
-                }
-                Self::BrpListBevyApps => "Found {count} Bevy apps",
-                Self::BrpListBevyExamples => "Found {count} Bevy examples",
-                Self::BrpListBrpApps => "Found {count} BRP-enabled apps",
-                Self::BrpListActiveWatches => "Found {count} active watches",
-                Self::BrpStopWatch => "Successfully stopped watch",
-                Self::BrpListLogs => "Found {log_count} log files",
-                Self::BrpReadLog => "Successfully read log file: {filename}",
-                Self::BrpSetTracingLevel => {
-                    "Tracing level set to '{tracing_level}' - diagnostic information will be logged to temp directory"
-                }
-                Self::BrpStatus | Self::BrpShutdown => "{message}",
-            },
-        }
-    }
-
     /// Get parameter builder function for this tool
     #[allow(clippy::too_many_lines)]
     pub fn get_parameters(self) -> Option<fn() -> parameters::ParameterBuilder> {
@@ -548,7 +495,7 @@ impl ToolName {
         handler_context: &HandlerContext,
     ) -> Result<CallToolResult>
     where
-        T: ResponseData,
+        T: ResponseData + MessageTemplateProvider,
         C: CallInfoProvider,
     {
         let call_info = call_info_data.to_call_info(self.to_string());
@@ -561,10 +508,10 @@ impl ToolName {
                     .add_response_fields(builder)
                     .map_err(|e| Error::failed_to("add response fields", e))?;
 
-                // Perform template substitution
-                let message_template = self.get_message_template();
+                // Perform template substitution using dynamic template
+                let template_str = data.get_message_template();
                 let message =
-                    Self::substitute_template(&message_template, &builder, handler_context);
+                    Self::substitute_dynamic_template(template_str, &builder, handler_context);
                 let builder = builder.message(message);
 
                 let response = builder.build();
@@ -598,13 +545,13 @@ impl ToolName {
             .to_call_tool_result()
     }
 
-    /// Substitute template placeholders with values from the builder
-    fn substitute_template(
-        template: &MessageTemplate,
+    /// Substitute template placeholders with values from the builder using dynamic template string
+    fn substitute_dynamic_template(
+        template_str: &str,
         builder: &ResponseBuilder,
         handler_context: &HandlerContext,
     ) -> String {
-        let mut result = template.ok.to_string();
+        let mut result = template_str.to_string();
 
         // Extract placeholders from template
         let placeholders = Self::parse_template_placeholders(&result);

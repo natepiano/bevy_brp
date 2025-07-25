@@ -20,7 +20,11 @@ pub struct StopWatchParams {
 pub struct StopWatchResult {
     /// Watch ID that was stopped
     #[to_metadata]
-    pub watch_id: u32,
+    watch_id: u32,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Stopped watch {watch_id}")]
+    message_template: String,
 }
 
 pub struct BrpStopWatch;
@@ -54,7 +58,7 @@ async fn handle_impl(watch_id: u32) -> Result<StopWatchResult> {
 
     // Convert result to our typed response
     match result {
-        Ok(()) => Ok(StopWatchResult { watch_id }),
+        Ok(()) => Ok(StopWatchResult::new(watch_id)),
         Err(e) => {
             Err(Error::tool_call_failed(format!("Failed to stop watch {watch_id}: {e}")).into())
         }

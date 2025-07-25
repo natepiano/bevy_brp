@@ -30,4 +30,8 @@ pub struct DiscoverFormatResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Discovered {type_count} formats")]
+    pub message_template: String,
 }

@@ -1,4 +1,18 @@
 //! FieldPlacement derive macro implementation
+//!
+//! This macro generates implementations for result structs used in MCP tools.
+//! 
+//! ## Important: Result Struct Construction
+//! 
+//! When a struct has a `#[to_message(message_template = "...")]` field, the macro:
+//! - Makes all struct fields private
+//! - Generates a `::new()` constructor with all fields except `message_template`
+//! - Generates a `with_message_template()` method for overriding the default template
+//! 
+//! This ensures result structs can ONLY be constructed via `::new()`, preventing:
+//! - Forgetting to set the message template
+//! - Inconsistent construction patterns
+//! - Direct field access from outside the module
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -29,6 +43,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
     let mut computed_fields = Vec::new();
     let mut regular_fields = Vec::new();
     let mut has_format_corrections = false;
+    let mut message_template_field = None;
 
     for field in &data_struct.fields {
         let field_name = field
@@ -70,6 +85,10 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
             } else if attr.path().is_ident("computed") {
                 is_computed = true;
                 parse_computed_attr(attr, &mut result_operation);
+            } else if attr.path().is_ident("to_message") {
+                let template = parse_to_message_attr(attr);
+                message_template_field = Some((field_name.clone(), template));
+                continue; // Skip adding to other collections
             }
         }
 
@@ -127,6 +146,14 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
     // Generate CallInfoProvider if needed
     let call_info_impl = generate_call_info_provider(struct_name, &call_info_fields);
 
+    // Generate MessageTemplateProvider and constructor methods if needed
+    let message_template_impl = generate_message_template_provider(
+        struct_name,
+        &message_template_field,
+        &regular_fields,
+        &computed_fields,
+    );
+
     // Generate from_brp_value method only if needed (for result structs)
     let from_brp_value_impl = if !computed_fields.is_empty()
         || has_format_corrections
@@ -137,6 +164,7 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
             &regular_fields,
             &computed_fields,
             has_format_corrections,
+            &message_template_field,
         )
     } else {
         quote! {}
@@ -163,6 +191,8 @@ pub fn derive_field_placement_impl(input: TokenStream) -> TokenStream {
         #from_brp_value_impl
 
         #call_info_impl
+
+        #message_template_impl
     };
 
     TokenStream::from(expanded)
@@ -213,6 +243,23 @@ fn parse_computed_attr(attr: &syn::Attribute, result_operation: &mut Option<Stri
             Err(meta.error("unsupported computed attribute"))
         }
     });
+}
+
+/// Parse to_message attribute arguments
+fn parse_to_message_attr(attr: &syn::Attribute) -> String {
+    let mut message_template = None;
+    let _ = attr.parse_nested_meta(|meta| {
+        if meta.path.is_ident("message_template") {
+            let value = meta.value()?;
+            let s: syn::LitStr = value.parse()?;
+            message_template = Some(s.value());
+            Ok(())
+        } else {
+            Err(meta.error("unsupported to_message attribute"))
+        }
+    });
+
+    message_template.expect("to_message attribute requires message_template parameter")
 }
 
 /// Generate field accessor match arm
@@ -296,12 +343,89 @@ fn generate_call_info_provider(
     }
 }
 
+/// Generate MessageTemplateProvider implementation and constructor methods
+fn generate_message_template_provider(
+    struct_name: &syn::Ident,
+    message_template_field: &Option<(syn::Ident, String)>,
+    regular_fields: &[(syn::Ident, syn::Type)],
+    computed_fields: &[ComputedField],
+) -> proc_macro2::TokenStream {
+    if let Some((field_name, default_template)) = message_template_field {
+        // Create parameter list for constructor (excluding message_template field)
+        let constructor_params: Vec<_> = regular_fields
+            .iter()
+            .filter(|(name, _)| name != field_name)
+            .map(|(name, ty)| quote! { #name: #ty })
+            .collect();
+
+        // Create field initializers for constructor
+        let mut field_initializers = Vec::new();
+
+        // Handle regular fields
+        for (name, _) in regular_fields {
+            if name == field_name {
+                field_initializers.push(quote! { #name: #default_template.to_string() });
+            } else {
+                field_initializers.push(quote! { #name });
+            }
+        }
+
+        // Handle computed fields with default values
+        for computed in computed_fields {
+            let field_name = &computed.field_name;
+            // Provide default values for computed fields
+            let default_value = match computed.operation.as_str() {
+                "count"
+                | "count_object"
+                | "count_components"
+                | "count_methods"
+                | "count_query_components" => quote! { 0 },
+                "count_errors" => quote! { None }, // count_errors is always optional
+                "extract_entity" => quote! { 0 },
+                "extract_duration_ms" => quote! { 100 },
+                "extract_keys_sent" => quote! { Vec::new() },
+                "extract_debug_enabled" => quote! { false },
+                "extract_message" => quote! { String::new() },
+                _ => quote! { Default::default() },
+            };
+            field_initializers.push(quote! { #field_name: #default_value });
+        }
+
+        quote! {
+            impl crate::tool::MessageTemplateProvider for #struct_name {
+                fn get_message_template(&self) -> &str {
+                    &self.#field_name
+                }
+            }
+
+            impl #struct_name {
+                /// Create a new instance with default message template
+                #[allow(clippy::too_many_arguments)]
+                pub fn new(#(#constructor_params),*) -> Self {
+                    Self {
+                        #(#field_initializers,)*
+                    }
+                }
+
+                /// Override the message template for this result
+                pub fn with_message_template(mut self, template: impl Into<String>) -> Self {
+                    self.#field_name = template.into();
+                    self
+                }
+            }
+        }
+    } else {
+        quote! {}
+    }
+}
+
 /// Generate from_brp_value method
 fn generate_from_brp_value(
     struct_name: &syn::Ident,
     regular_fields: &[(syn::Ident, syn::Type)],
     computed_fields: &[ComputedField],
     has_format_corrections: bool,
+    message_template_field: &Option<(syn::Ident, String)>,
 ) -> proc_macro2::TokenStream {
     let mut field_initializers = Vec::new();
 
@@ -326,6 +450,10 @@ fn generate_from_brp_value(
                     other => other,
                 }
             });
+        } else if let Some((template_field_name, template_default)) = message_template_field {
+            if field_name == template_field_name {
+                field_initializers.push(quote! { #field_name: #template_default.to_string() });
+            }
         }
         // Other regular fields would need to be passed as parameters or have defaults
     }

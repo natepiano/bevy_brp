@@ -45,40 +45,44 @@ impl<T> LaunchConfig<T> {
 
 /// Unified result type for launching Bevy apps and examples
 #[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[allow(clippy::too_many_arguments)]
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
     #[to_metadata(skip_if_none)]
-    pub target_name:        Option<String>,
+    target_name:        Option<String>,
     /// Process ID of the launched target
     #[to_metadata(skip_if_none)]
-    pub pid:                Option<u32>,
+    pid:                Option<u32>,
     /// Working directory used for launch
     #[to_metadata(skip_if_none)]
-    pub working_directory:  Option<String>,
+    working_directory:  Option<String>,
     /// Build profile used (debug/release)
     #[to_metadata(skip_if_none)]
-    pub profile:            Option<String>,
+    profile:            Option<String>,
     /// Log file path for the launched target
     #[to_metadata(skip_if_none)]
-    pub log_file:           Option<String>,
+    log_file:           Option<String>,
     /// Binary path of the launched app (only for apps, not examples)
     #[to_metadata(skip_if_none)]
-    pub binary_path:        Option<String>,
+    binary_path:        Option<String>,
     /// Launch duration in milliseconds
     #[to_metadata(skip_if_none)]
-    pub launch_duration_ms: Option<u64>,
+    launch_duration_ms: Option<u64>,
     /// Launch timestamp
     #[to_metadata(skip_if_none)]
-    pub launch_timestamp:   Option<String>,
+    launch_timestamp:   Option<String>,
     /// Workspace information
     #[to_metadata(skip_if_none)]
-    pub workspace:          Option<String>,
+    workspace:          Option<String>,
     /// Package name containing the example (only for examples)
     #[to_metadata(skip_if_none)]
-    pub package_name:       Option<String>,
+    package_name:       Option<String>,
     /// Available duplicate paths (for disambiguation errors)
     #[to_metadata(skip_if_none)]
-    pub duplicate_paths:    Option<Vec<String>>,
+    duplicate_paths:    Option<Vec<String>>,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Successfully launched {target_name} (PID: {pid})")]
+    message_template:   String,
 }
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
@@ -608,6 +612,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
             workspace,
             package_name: None,
             duplicate_paths: None,
+            message_template: "Successfully launched {{target_name}} (PID: {{pid}})".to_string(),
         }
     }
 }
@@ -682,6 +687,8 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
             workspace,
             package_name: Some(target.package_name.clone()),
             duplicate_paths: None,
+            message_template: "Successfully launched example {{target_name}} (PID: {{pid}})"
+                .to_string(),
         }
     }
 }

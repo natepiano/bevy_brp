@@ -27,4 +27,8 @@ pub struct ListResourcesResult {
     /// Count of resources
     #[to_metadata(result_operation = "count")]
     pub resource_count: usize,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Found {resource_count} resources")]
+    pub message_template: String,
 }

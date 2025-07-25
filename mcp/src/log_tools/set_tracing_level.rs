@@ -20,10 +20,13 @@ pub struct SetTracingLevelParams {
 pub struct SetTracingLevelResult {
     /// The new tracing level that was set
     #[to_metadata]
-    pub tracing_level:    String,
+    tracing_level:    String,
     /// The log file where trace output is written
     #[to_metadata]
-    pub tracing_log_file: String,
+    tracing_log_file: String,
+    /// Message template for formatting responses
+    #[to_message(message_template = "Set tracing level to {tracing_level}")]
+    message_template: String,
 }
 
 pub struct SetTracingLevel;
@@ -66,8 +69,8 @@ fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult> {
     let log_path = get_trace_log_path();
     let log_path_str = log_path.to_string_lossy().to_string();
 
-    Ok(SetTracingLevelResult {
-        tracing_level:    tracing_level.as_str().to_string(),
-        tracing_log_file: log_path_str,
-    })
+    Ok(SetTracingLevelResult::new(
+        tracing_level.as_str().to_string(),
+        log_path_str,
+    ))
 }

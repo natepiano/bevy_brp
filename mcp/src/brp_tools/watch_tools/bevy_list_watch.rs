@@ -49,10 +49,10 @@ async fn handle_impl(entity_id: u64, port: u16) -> Result<WatchStartResult> {
         .map_err(|e| super::wrap_watch_error("Failed to start list watch", Some(entity_id), e));
 
     match result {
-        Ok((watch_id, log_path)) => Ok(WatchStartResult {
+        Ok((watch_id, log_path)) => Ok(WatchStartResult::new(
             watch_id,
-            log_path: log_path.to_string_lossy().to_string(),
-        }),
+            log_path.to_string_lossy().to_string(),
+        )),
         Err(e) => Err(Error::tool_call_failed(e.to_string()).into()),
     }
 }

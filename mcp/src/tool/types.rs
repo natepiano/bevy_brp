@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::tool::{CallInfoProvider, ResponseData};
+use crate::tool::{CallInfoProvider, MessageTemplateProvider, ResponseData};
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
@@ -52,7 +52,7 @@ impl<T, C: CallInfoProvider> ToolResult<T, C> {
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
-    type Output: ResponseData + Send + Sync;
+    type Output: ResponseData + MessageTemplateProvider + Send + Sync;
     /// The type that provides `CallInfo` data for this tool
     type CallInfoData: CallInfoProvider;
 

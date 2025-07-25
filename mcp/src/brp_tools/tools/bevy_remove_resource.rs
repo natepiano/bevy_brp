@@ -27,4 +27,8 @@ pub struct RemoveResourceResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
+
+    /// Message template for formatting responses
+    #[to_message(message_template = "Removed resource {resource_name}")]
+    pub message_template: String,
 }
