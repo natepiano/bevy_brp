@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::FieldPlacement;
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
@@ -22,7 +22,7 @@ pub struct ShutdownParams {
 }
 
 /// Result from shutting down a Bevy app
-#[derive(Debug, Clone, Serialize, Deserialize, FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ShutdownResultData {
     /// Status of the shutdown operation
     #[to_metadata]

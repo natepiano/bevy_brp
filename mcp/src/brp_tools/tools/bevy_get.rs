@@ -1,5 +1,6 @@
 //! `bevy/get` tool - Get component data from entities
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/get` tool
-#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
 pub struct GetParams {
     /// The entity ID to get component data from
     #[to_metadata]
@@ -23,7 +24,7 @@ pub struct GetParams {
 }
 
 /// Result for the `bevy/get` tool
-#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct GetResult {
     /// The raw BRP response with components and errors
     #[serde(skip_serializing_if = "Option::is_none")]

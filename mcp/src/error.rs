@@ -165,7 +165,6 @@ impl Error {
             details: Some(details),
         }
     }
-
 }
 
 // Conversion to McpError for API boundaries

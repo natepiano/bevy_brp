@@ -1,5 +1,6 @@
 //! `bevy/query` tool - Query entities by components
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/query` tool
-#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
 pub struct QueryParams {
     /// Object specifying what component data to retrieve. Properties: components (array), option
     /// (array), has (array)
@@ -29,7 +30,7 @@ pub struct QueryParams {
 }
 
 /// Result for the `bevy/query` tool
-#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct QueryResult {
     /// The raw BRP response - array of entities with their components
     #[serde(skip_serializing_if = "Option::is_none")]

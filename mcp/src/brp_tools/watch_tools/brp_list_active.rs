@@ -1,5 +1,6 @@
 //! List all active watches
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
@@ -7,7 +8,7 @@ use crate::error::Result;
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Individual watch information
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct WatchInfo {
     /// Watch ID
     #[to_result]
@@ -27,7 +28,7 @@ pub struct WatchInfo {
 }
 
 /// Result from listing active watches
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ListActiveWatchesResult {
     /// List of active watches
     #[to_result]

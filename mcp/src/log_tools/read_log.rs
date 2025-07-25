@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +10,7 @@ use super::support;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
 pub struct ReadLogParams {
     /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
     #[to_metadata]
@@ -23,7 +24,7 @@ pub struct ReadLogParams {
 }
 
 /// Result from reading a log file
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ReadLogResult {
     /// The filename that was read
     #[to_metadata]

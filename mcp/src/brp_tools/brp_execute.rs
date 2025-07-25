@@ -1,6 +1,7 @@
 //! `brp_execute` allows for executing an arbitrary BRP method - generally this is used as a
 //! debugging tool for his MCP server but can also be used if (for example) a new brp method is
 //! added before it's been implemented in this server code.
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +13,7 @@ use crate::tool::{
     BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
 };
 
-#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
 pub struct ExecuteParams {
     /// The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')
     #[to_metadata]

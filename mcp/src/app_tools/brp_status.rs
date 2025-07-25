@@ -1,3 +1,4 @@
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
@@ -8,7 +9,7 @@ use crate::tool::{
     BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
 };
 
-#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
 pub struct StatusParams {
     /// Name of the process to check for
     #[to_metadata]
@@ -20,7 +21,7 @@ pub struct StatusParams {
 }
 
 /// Result from checking status of a Bevy app
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct StatusResult {
     /// Status of the check - "success" only if app found and BRP responding
     #[to_metadata]

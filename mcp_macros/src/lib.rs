@@ -83,7 +83,7 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 /// This will generate implementations for:
 /// - `HasFieldPlacement` - provides field placement information
 /// - `CallInfoProvider` - if there are `#[to_call_info]` fields
-#[proc_macro_derive(FieldPlacement, attributes(to_metadata, to_result, to_call_info))]
+#[proc_macro_derive(ResultFieldPlacement, attributes(to_metadata, to_result, to_call_info))]
 pub fn derive_field_placement(input: TokenStream) -> TokenStream {
     field_placement::derive_field_placement_impl(input)
 }

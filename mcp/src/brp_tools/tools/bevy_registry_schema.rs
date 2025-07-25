@@ -1,5 +1,6 @@
 //! `bevy/registry/schema` tool - Get type schemas
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/registry/schema` tool
-#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
 pub struct RegistrySchemaParams {
     /// Include only types from these crates (e.g., [`bevy_transform`, `my_game`])
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,7 +33,7 @@ pub struct RegistrySchemaParams {
 }
 
 /// Result for the `bevy/registry/schema` tool
-#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct RegistrySchemaResult {
     /// The raw BRP response - array of type schemas
     #[serde(skip_serializing_if = "Option::is_none")]

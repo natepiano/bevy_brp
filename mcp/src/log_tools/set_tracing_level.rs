@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +8,7 @@ use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
 pub struct SetTracingLevelParams {
     /// Tracing level to set (error, warn, info, debug, trace)
     #[to_metadata]
@@ -15,7 +16,7 @@ pub struct SetTracingLevelParams {
 }
 
 /// Result from setting the tracing level
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct SetTracingLevelResult {
     /// The new tracing level that was set
     #[to_metadata]

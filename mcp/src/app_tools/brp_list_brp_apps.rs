@@ -1,3 +1,4 @@
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use serde::{Deserialize, Serialize};
 
 use super::support;
@@ -6,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Result from listing BRP apps
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ListBrpAppsResult {
     /// List of BRP-enabled apps found
     #[to_result]

@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use chrono::Utc;
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
@@ -43,7 +44,7 @@ impl<T> LaunchConfig<T> {
 }
 
 /// Unified result type for launching Bevy apps and examples
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
     #[to_metadata(skip_if_none)]
@@ -78,9 +79,6 @@ pub struct LaunchResult {
     /// Available duplicate paths (for disambiguation errors)
     #[to_metadata(skip_if_none)]
     pub duplicate_paths:    Option<Vec<String>>,
-    /// Note about build behavior or other information
-    #[to_metadata(skip_if_none)]
-    pub note:               Option<String>,
 }
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
@@ -610,7 +608,6 @@ impl LaunchConfigTrait for LaunchConfig<App> {
             workspace,
             package_name: None,
             duplicate_paths: None,
-            note: None,
         }
     }
 }
@@ -685,7 +682,6 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
             workspace,
             package_name: Some(target.package_name.clone()),
             duplicate_paths: None,
-            note: Some("Cargo will build the example if needed before running".to_string()),
         }
     }
 }

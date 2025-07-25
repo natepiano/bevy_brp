@@ -1,5 +1,6 @@
 //! `bevy/list_resources` tool - List all registered resources
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/list_resources` tool
-#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
 pub struct ListResourcesParams {
     /// The BRP port (default: 15702)
     #[serde(default = "default_port", deserialize_with = "deserialize_port")]
@@ -16,7 +17,7 @@ pub struct ListResourcesParams {
 }
 
 /// Result for the `bevy/list_resources` tool
-#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct ListResourcesResult {
     /// The raw BRP response - array of resource type names
     #[serde(skip_serializing_if = "Option::is_none")]

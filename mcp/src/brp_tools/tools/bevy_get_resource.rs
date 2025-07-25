@@ -1,5 +1,6 @@
 //! `bevy/get_resource` tool - Get resource data
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/get_resource` tool
-#[derive(Deserialize, Serialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
 pub struct GetResourceParams {
     /// The fully-qualified type name of the resource to get
     pub resource: String,
@@ -19,7 +20,7 @@ pub struct GetResourceParams {
 }
 
 /// Result for the `bevy/get_resource` tool
-#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct GetResourceResult {
     /// The raw BRP response containing the resource data
     #[serde(skip_serializing_if = "Option::is_none")]

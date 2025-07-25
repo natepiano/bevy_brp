@@ -1,6 +1,7 @@
 use std::fs;
 use std::time::{Duration, SystemTime};
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,7 @@ use super::support::{self, LogFileEntry};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
 pub struct DeleteLogsParams {
     /// Optional filter to delete logs for a specific app only
     #[to_metadata(skip_if_none)]
@@ -19,7 +20,7 @@ pub struct DeleteLogsParams {
 }
 
 /// Result from cleaning up log files
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct DeleteLogsResult {
     /// List of deleted filenames
     #[to_metadata]

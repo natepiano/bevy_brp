@@ -22,7 +22,7 @@ pub trait HasBrpMethod {
 }
 
 /// Result type for BRP method calls that follows local handler patterns
-#[derive(Serialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct BrpMethodResult {
     // Success data - the actual BRP response data
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,3 +1,4 @@
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -6,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::log_tools::support;
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
 pub struct ListLogsParams {
     /// Optional filter to list logs for a specific app only
     #[to_metadata(skip_if_none)]
@@ -17,7 +18,7 @@ pub struct ListLogsParams {
 }
 
 /// Result from listing log files
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct ListLogResult {
     /// List of log files found
     #[to_result]
@@ -120,7 +121,7 @@ fn list_log_files(
 }
 
 /// Individual log file entry
-#[derive(Debug, Clone, Serialize, Deserialize, bevy_brp_mcp_macros::FieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
 pub struct LogFileInfo {
     /// The filename
     #[to_result]

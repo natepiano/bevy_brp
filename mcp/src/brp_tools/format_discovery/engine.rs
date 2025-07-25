@@ -38,6 +38,7 @@
 
 use std::collections::HashMap;
 
+use bevy_brp_mcp_macros::ResultFieldPlacement;
 use serde_json::Value;
 use tracing::{debug, trace};
 
@@ -49,9 +50,7 @@ use crate::error::Result;
 use crate::tool::BrpMethod;
 
 /// Format correction information for a type (component or resource)
-#[derive(
-    Debug, Clone, serde::Serialize, serde::Deserialize, bevy_brp_mcp_macros::FieldPlacement,
-)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, ResultFieldPlacement)]
 pub struct FormatCorrection {
     #[to_metadata]
     pub component:            String, // Keep field name for API compatibility
