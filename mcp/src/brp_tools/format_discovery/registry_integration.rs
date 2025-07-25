@@ -10,7 +10,7 @@ use tracing::debug;
 use super::adapters;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{self, BrpResult};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Find type in registry response (handles various response formats)
 fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {

@@ -1,4 +1,3 @@
-use bevy_brp_mcp_macros::message_template;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -23,7 +22,6 @@ pub trait HasBrpMethod {
 }
 
 /// Result type for BRP method calls that follows local handler patterns
-#[message_template("Method executed successfully")]
 #[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct BrpMethodResult {
     // Success data - the actual BRP response data

@@ -19,7 +19,7 @@ use super::constants::{
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Result of a BRP operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -170,14 +170,11 @@ fn handle_http_error(
 
     // Try to parse request body to extract component/entity info for mutations
     if let Ok(body_json) = serde_json::from_str::<Value>(request_body) {
-        if let Some(params) = ParameterName::Params.get_object_from(&body_json) {
+        if let Some(params) = ParameterName::Params.get_from(&body_json) {
             if let Some(entity) = ParameterName::Entity.get_from(params) {
                 context_info.push(format!("Entity: {entity}"));
             }
-            if let Some(component) = params
-                .get(FormatCorrectionField::Component.as_ref())
-                .and_then(|c| c.as_str())
-            {
+            if let Some(component) = FormatCorrectionField::Component.get_str_from(params) {
                 context_info.push(format!("Component: {component}"));
             }
             if let Some(path) = ParameterName::Path.get_str_from(params) {

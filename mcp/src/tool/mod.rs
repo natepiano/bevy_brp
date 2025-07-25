@@ -12,7 +12,7 @@ mod types;
 pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement, ResponseData};
 pub use handler_context::HandlerContext;
 pub use large_response::{LargeResponseConfig, handle_large_response};
-pub use parameters::ParameterName;
+pub use parameters::{JsonFieldAccess, ParameterName};
 pub use response_builder::{
     CallInfo, CallInfoProvider, JsonResponse, LocalCallInfo, LocalWithPortCallInfo, ResponseBuilder,
 };

@@ -3,6 +3,8 @@ use std::ops::RangeInclusive;
 use serde::{Deserialize, Deserializer};
 use strum_macros::{Display, EnumString};
 
+use crate::tool::JsonFieldAccess;
+
 /// Format correction field names enum for type-safe field access
 ///
 /// This enum provides compile-time safety for format correction field names
@@ -47,6 +49,8 @@ pub enum FormatCorrectionField {
     /// Value for mutation operations
     Value,
 }
+
+impl JsonFieldAccess for FormatCorrectionField {}
 
 /// Idle timeout for connection pool in seconds
 pub const POOLE_IDLE_TIMEOUT: u64 = 300;

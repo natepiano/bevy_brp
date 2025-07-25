@@ -22,7 +22,7 @@ use super::unified_types::{
 };
 use crate::brp_tools::FormatCorrectionField;
 use crate::brp_tools::brp_client::{self, BrpError, BrpResult};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
 pub async fn attempt_format_recovery_with_type_infos(
