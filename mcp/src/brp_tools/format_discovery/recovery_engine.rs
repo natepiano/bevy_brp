@@ -22,7 +22,7 @@ use super::unified_types::{
 };
 use crate::brp_tools::FormatCorrectionField;
 use crate::brp_tools::brp_client::{self, BrpError, BrpResult};
-use crate::tool::BrpMethod;
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
 pub async fn attempt_format_recovery_with_type_infos(
@@ -536,7 +536,7 @@ fn extract_type_values_from_params(method: BrpMethod, params: Option<&Value>) ->
     match method {
         BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
             // Return the components object containing type values
-            params.get("components")
+            ParameterName::Components.get_from(params)
         }
         BrpMethod::BevyMutateComponent
         | BrpMethod::BevyInsertResource
@@ -691,7 +691,7 @@ fn extract_type_names_from_params(method: BrpMethod, params: Option<&Value>) -> 
     match method {
         BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
             // Types are keys in the "components" object
-            if let Some(components) = params.get("components").and_then(|c| c.as_object()) {
+            if let Some(components) = ParameterName::Components.get_object_from(params) {
                 for type_name in components.keys() {
                     type_names.push(type_name.clone());
                 }
@@ -708,7 +708,7 @@ fn extract_type_names_from_params(method: BrpMethod, params: Option<&Value>) -> 
         }
         BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
             // Single type in "resource" field
-            if let Some(resource) = params.get("resource").and_then(|r| r.as_str()) {
+            if let Some(resource) = ParameterName::Resource.get_str_from(params) {
                 type_names.push(resource.to_string());
             }
         }
@@ -833,8 +833,7 @@ fn build_corrected_params(
         match method {
             BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
                 // Update components
-                if let Some(components) =
-                    params.get_mut("components").and_then(|c| c.as_object_mut())
+                if let Some(components) = ParameterName::Components.get_object_mut_from(&mut params)
                 {
                     components.insert(
                         correction.type_name.clone(),

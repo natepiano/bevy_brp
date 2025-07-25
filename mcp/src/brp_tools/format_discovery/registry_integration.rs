@@ -10,7 +10,7 @@ use tracing::debug;
 use super::adapters;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{self, BrpResult};
-use crate::tool::BrpMethod;
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Find type in registry response (handles various response formats)
 fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
@@ -136,24 +136,21 @@ fn extract_type_names_from_params(
     );
 
     // For spawn/insert operations, look for "components" (plural)
-    if let Some(components) = params
-        .get("components")
-        .and_then(serde_json::Value::as_object)
-    {
+    if let Some(components) = ParameterName::Components.get_object_from(params) {
         let types: Vec<String> = components.keys().cloned().collect();
         debug!("extract_type_names_from_params: Found components (plural): {types:?}");
         return types;
     }
 
     // For mutate operations, look for "component" (singular)
-    if let Some(component) = params.get("component").and_then(serde_json::Value::as_str) {
+    if let Some(component) = ParameterName::Component.get_str_from(params) {
         let types = vec![component.to_string()];
         debug!("extract_type_names_from_params: Found component (singular): {types:?}");
         return types;
     }
 
     // For resource operations, look for "resource"
-    if let Some(resource) = params.get("resource").and_then(serde_json::Value::as_str) {
+    if let Some(resource) = ParameterName::Resource.get_str_from(params) {
         let types = vec![resource.to_string()];
         debug!("extract_type_names_from_params: Found resource: {types:?}");
         return types;

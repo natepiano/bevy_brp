@@ -170,11 +170,8 @@ fn handle_http_error(
 
     // Try to parse request body to extract component/entity info for mutations
     if let Ok(body_json) = serde_json::from_str::<Value>(request_body) {
-        if let Some(params) = body_json
-            .get(ParameterName::Params.as_ref())
-            .and_then(|p| p.as_object())
-        {
-            if let Some(entity) = params.get("entity") {
+        if let Some(params) = ParameterName::Params.get_object_from(&body_json) {
+            if let Some(entity) = ParameterName::Entity.get_from(params) {
                 context_info.push(format!("Entity: {entity}"));
             }
             if let Some(component) = params
@@ -183,7 +180,7 @@ fn handle_http_error(
             {
                 context_info.push(format!("Component: {component}"));
             }
-            if let Some(path) = params.get("path").and_then(|p| p.as_str()) {
+            if let Some(path) = ParameterName::Path.get_str_from(params) {
                 context_info.push(format!("Path: {path}"));
             }
         }

@@ -51,6 +51,8 @@ pub enum ParameterName {
     Parent,
     /// Path for field mutations or file paths
     Path,
+    /// Port number for connections
+    Port,
     /// Build profile (debug/release)
     Profile,
     /// Resource type name parameter
@@ -75,6 +77,42 @@ pub enum ParameterName {
     WithTypes,
     /// Exclude specific reflect types
     WithoutTypes,
+}
+
+impl ParameterName {
+    /// Get parameter value from a JSON object
+    pub fn get_from<'a>(&self, value: &'a serde_json::Value) -> Option<&'a serde_json::Value> {
+        value.get(self.as_ref())
+    }
+
+    /// Get parameter value as string from a JSON object
+    pub fn get_str_from<'a>(&self, value: &'a serde_json::Value) -> Option<&'a str> {
+        value.get(self.as_ref()).and_then(|v| v.as_str())
+    }
+
+    /// Get parameter value as object from a JSON object
+    pub fn get_object_from<'a>(
+        &self,
+        value: &'a serde_json::Value,
+    ) -> Option<&'a serde_json::Map<String, serde_json::Value>> {
+        value.get(self.as_ref()).and_then(|v| v.as_object())
+    }
+
+    /// Get parameter value from a mutable JSON object
+    pub fn get_mut_from<'a>(
+        &self,
+        value: &'a mut serde_json::Value,
+    ) -> Option<&'a mut serde_json::Value> {
+        value.get_mut(self.as_ref())
+    }
+
+    /// Get parameter value as mutable object from a mutable JSON object
+    pub fn get_object_mut_from<'a>(
+        &self,
+        value: &'a mut serde_json::Value,
+    ) -> Option<&'a mut serde_json::Map<String, serde_json::Value>> {
+        value.get_mut(self.as_ref()).and_then(|v| v.as_object_mut())
+    }
 }
 
 /// Parameter field types for schema generation.

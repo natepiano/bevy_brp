@@ -17,7 +17,7 @@ use super::logger::{self as watch_logger, BufferedWatchLogger};
 use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools;
 use crate::error::{Error, Result};
-use crate::tool::BrpMethod;
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {
@@ -42,7 +42,7 @@ async fn parse_sse_line(
             "DEBUG_LINE_RECEIVED",
             serde_json::json!({
                 "watch_type": watch_type,
-                "entity": entity_id,
+                ParameterName::Entity.as_ref(): entity_id,
                 "line": line,
                 "line_length": line.len(),
                 "is_sse_data": line.starts_with("data: "),
@@ -64,7 +64,7 @@ async fn parse_sse_line(
                 "DEBUG_JSON_PARSED",
                 serde_json::json!({
                     "watch_type": watch_type,
-                    "entity": entity_id,
+                    ParameterName::Entity.as_ref(): entity_id,
                     "has_result": data.get("result").is_some(),
                     "has_error": data.get("error").is_some(),
                     "has_id": data.get("id").is_some(),
@@ -88,7 +88,7 @@ async fn parse_sse_line(
                         "DEBUG_NO_RESULT",
                         serde_json::json!({
                             "watch_type": watch_type,
-                            "entity": entity_id,
+                            ParameterName::Entity.as_ref(): entity_id,
                             "full_data": data,
                             "timestamp": chrono::Local::now().to_rfc3339()
                         }),
@@ -107,7 +107,7 @@ async fn parse_sse_line(
                     "DEBUG_JSON_PARSE_FAILED",
                     serde_json::json!({
                         "watch_type": watch_type,
-                        "entity": entity_id,
+                        ParameterName::Entity.as_ref(): entity_id,
                         "raw_data": json_str,
                         "data_length": json_str.len(),
                         "timestamp": chrono::Local::now().to_rfc3339()
@@ -148,7 +148,7 @@ async fn process_chunk(
             "DEBUG_CHUNK_RECEIVED",
             serde_json::json!({
                 "watch_type": watch_type,
-                "entity": entity_id,
+                ParameterName::Entity.as_ref(): entity_id,
                 "chunk_size": bytes.len(),
                 "line_buffer_size_before": line_buffer.len(),
                 "total_buffer_size_before": *total_buffer_size,
@@ -213,7 +213,7 @@ async fn process_chunk(
                 "DEBUG_LINES_PROCESSED",
                 serde_json::json!({
                     "watch_type": watch_type,
-                    "entity": entity_id,
+                    ParameterName::Entity.as_ref(): entity_id,
                     "lines_processed": lines_processed,
                     "empty_lines": empty_lines,
                     "remaining_buffer_size": line_buffer.len(),
@@ -230,7 +230,7 @@ async fn process_chunk(
                 "DEBUG_INCOMPLETE_LINE_IN_BUFFER",
                 serde_json::json!({
                     "watch_type": watch_type,
-                    "entity": entity_id,
+                    ParameterName::Entity.as_ref(): entity_id,
                     "buffer_content": line_buffer,
                     "buffer_size": line_buffer.len(),
                     "contains_data_prefix": line_buffer.contains("data: "),
@@ -263,7 +263,7 @@ async fn handle_stream_error(
             "DEBUG_STREAM_ERROR",
             serde_json::json!({
                 "watch_type": watch_type,
-                "entity": entity_id,
+                ParameterName::Entity.as_ref(): entity_id,
                 "error": error_string,
                 "chunks_received_before_error": total_chunks,
                 "elapsed_seconds": elapsed.as_secs(),
@@ -295,7 +295,7 @@ async fn log_first_chunk(
             "DEBUG_FIRST_CHUNK",
             serde_json::json!({
                 "watch_type": watch_type,
-                "entity": entity_id,
+                ParameterName::Entity.as_ref(): entity_id,
                 "chunk_size": bytes.len(),
                 "preview": preview,
                 "starts_with_data": String::from_utf8_lossy(bytes).starts_with("data:"),
@@ -333,7 +333,7 @@ async fn process_watch_stream(
             "DEBUG_STREAM_STARTED",
             serde_json::json!({
                 "watch_type": watch_type,
-                "entity": entity_id,
+                ParameterName::Entity.as_ref(): entity_id,
                 "response_status": response.status().as_u16(),
                 "timestamp": chrono::Local::now().to_rfc3339()
             }),
@@ -392,7 +392,7 @@ async fn process_watch_stream(
             "DEBUG_STREAM_ENDED",
             serde_json::json!({
                 "watch_type": watch_type,
-                "entity": entity_id,
+                ParameterName::Entity.as_ref(): entity_id,
                 "total_chunks_received": total_chunks,
                 "final_buffer_size": line_buffer.len(),
                 "had_incomplete_line": !line_buffer.trim().is_empty(),
@@ -425,7 +425,7 @@ async fn handle_connection_error(
             "CONNECTION_ERROR",
             serde_json::json!({
                 "watch_type": &conn_params.watch_type,
-                "entity": conn_params.entity_id,
+                ParameterName::Entity.as_ref(): conn_params.entity_id,
                 "error": error_string,
                 "elapsed_seconds": elapsed.as_secs(),
                 "timestamp": chrono::Local::now().to_rfc3339()
@@ -468,7 +468,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
                 "DEBUG_HTTP_RESPONSE",
                 serde_json::json!({
                     "watch_type": &conn_params.watch_type,
-                    "entity": conn_params.entity_id,
+                    ParameterName::Entity.as_ref(): conn_params.entity_id,
                     "status": response.status().as_u16(),
                     "status_text": response.status().canonical_reason().unwrap_or("Unknown"),
                     "headers_count": response.headers().len(),
@@ -499,7 +499,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
         .write_update(
             "WATCH_ENDED",
             serde_json::json!({
-                "entity": conn_params.entity_id,
+                ParameterName::Entity.as_ref(): conn_params.entity_id,
                 "timestamp": chrono::Local::now().to_rfc3339()
             }),
         )
@@ -551,7 +551,10 @@ async fn start_watch_task(
     // Create initial log entry
     let log_data = match params.clone() {
         Value::Object(mut map) => {
-            map.insert("port".to_string(), serde_json::json!(port));
+            map.insert(
+                ParameterName::Port.as_ref().to_string(),
+                serde_json::json!(port),
+            );
             map.insert(
                 "timestamp".to_string(),
                 serde_json::json!(chrono::Local::now().to_rfc3339()),
@@ -559,8 +562,8 @@ async fn start_watch_task(
             Value::Object(map)
         }
         _ => serde_json::json!({
-            "entity": entity_id,
-            "port": port,
+            ParameterName::Entity.as_ref(): entity_id,
+            ParameterName::Port.as_ref(): port,
             "timestamp": chrono::Local::now().to_rfc3339()
         }),
     };
@@ -628,8 +631,8 @@ pub async fn start_entity_watch_task(
 
     // Build the watch parameters
     let params = serde_json::json!({
-        "entity": entity_id,
-        "components": components
+        ParameterName::Entity.as_ref(): entity_id,
+        ParameterName::Components.as_ref(): components
     });
 
     start_watch_task(entity_id, "get", BrpMethod::BevyGetWatch, params, port).await

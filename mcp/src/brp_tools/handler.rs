@@ -1,3 +1,4 @@
+use bevy_brp_mcp_macros::message_template;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -8,7 +9,7 @@ use super::format_discovery::{
 };
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, HandlerContext};
+use crate::tool::{BrpMethod, HandlerContext, ParameterName};
 
 /// Trait for parameter structs that have a port field
 pub trait HasPortField {
@@ -22,6 +23,7 @@ pub trait HasBrpMethod {
 }
 
 /// Result type for BRP method calls that follows local handler patterns
+#[message_template("Method executed successfully")]
 #[derive(Serialize, bevy_brp_mcp_macros::ResultFieldPlacement)]
 pub struct BrpMethodResult {
     // Success data - the actual BRP response data
@@ -185,7 +187,7 @@ where
         // Filter out null values and port field - BRP expects parameters to be
         // omitted entirely rather than explicitly null, and port is MCP-specific
         let brp_params = if let Value::Object(ref mut map) = params_json {
-            map.retain(|key, value| !value.is_null() && key != "port");
+            map.retain(|key, value| !value.is_null() && key != ParameterName::Port.as_ref());
             // If the object is empty after filtering, send None to BRP
             if map.is_empty() {
                 None
