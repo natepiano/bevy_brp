@@ -7,7 +7,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, parse_macro_input};
 
-use crate::shared::{extract_field_data, ComputedField};
+use crate::shared::{ComputedField, extract_field_data};
 
 /// Implementation of the ResultStruct derive macro
 pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
@@ -21,7 +21,7 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
 
     // Convert fields to a vec of references for the shared function
     let fields: Vec<_> = data_struct.fields.iter().collect();
-    
+
     // Extract field information using shared function
     let extraction_result = extract_field_data(&fields);
 
@@ -139,11 +139,9 @@ fn generate_message_template_provider(
             let field_name = &computed.field_name;
             // Provide default values for computed fields
             let default_value = match computed.operation.as_str() {
-                "count"
-                | "count_object"
-                | "count_components"
-                | "count_methods"
-                | "count_query_components" => quote! { 0 },
+                "count" | "count_components" | "count_methods" | "count_query_components" => {
+                    quote! { 0 }
+                }
                 "count_errors" => quote! { None }, // count_errors is always optional
                 "extract_entity" => quote! { 0 },
                 "extract_duration_ms" => quote! { 100 },
@@ -223,11 +221,9 @@ fn generate_message_template_provider(
             for computed in computed_fields {
                 let field_name = &computed.field_name;
                 let default_value = match computed.operation.as_str() {
-                    "count"
-                    | "count_object"
-                    | "count_components"
-                    | "count_methods"
-                    | "count_query_components" => quote! { 0 },
+                    "count" | "count_components" | "count_methods" | "count_query_components" => {
+                        quote! { 0 }
+                    }
                     "count_errors" => quote! { None },
                     "extract_entity" => quote! { 0 },
                     "extract_duration_ms" => quote! { 100 },
@@ -383,16 +379,15 @@ fn generate_from_brp_value(
             "count" => {
                 quote! {
                     #source.as_ref()
-                        .and_then(|v| v.as_array())
-                        .map(|arr| arr.len())
-                        .unwrap_or(0)
-                }
-            }
-            "count_object" => {
-                quote! {
-                    #source.as_ref()
-                        .and_then(|v| v.as_object())
-                        .map(|obj| obj.len())
+                        .map(|v| {
+                            if let Some(arr) = v.as_array() {
+                                arr.len()
+                            } else if let Some(obj) = v.as_object() {
+                                obj.len()
+                            } else {
+                                0
+                            }
+                        })
                         .unwrap_or(0)
                 }
             }

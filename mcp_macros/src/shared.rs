@@ -8,9 +8,8 @@ use syn::{Attribute, Field, Ident, Type};
 pub struct ComputedField {
     pub field_name: Ident,
     pub from_field: String,
-    pub operation: String,
+    pub operation:  String,
 }
-
 
 /// Parse placement attribute arguments
 pub fn parse_placement_attr(
@@ -76,7 +75,6 @@ pub fn parse_to_message_attr(attr: &Attribute) -> Option<String> {
     message_template
 }
 
-
 /// Generate response data field addition
 pub fn generate_response_data_field(
     field_name: &Ident,
@@ -102,10 +100,7 @@ pub fn generate_response_data_field(
 }
 
 /// Generate CallInfoProvider implementation if there are call_info fields
-pub fn generate_call_info_provider(
-    struct_name: &Ident,
-    call_info_fields: &[Ident],
-) -> TokenStream {
+pub fn generate_call_info_provider(struct_name: &Ident, call_info_fields: &[Ident]) -> TokenStream {
     if call_info_fields.is_empty() {
         return quote! {};
     }
@@ -149,10 +144,7 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
     let mut message_template_field: Option<(Ident, Option<String>)> = None;
 
     for field in fields {
-        let field_name = field
-            .ident
-            .as_ref()
-            .expect("Only works with named fields");
+        let field_name = field.ident.as_ref().expect("Only works with named fields");
         let field_type = &field.ty;
 
         // Check for our placement attributes
@@ -257,11 +249,11 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 }
 
 pub struct FieldExtractionResult {
-    pub field_placements: Vec<TokenStream>,
-    pub response_data_fields: Vec<TokenStream>,
-    pub call_info_fields: Vec<Ident>,
-    pub computed_fields: Vec<ComputedField>,
-    pub regular_fields: Vec<(Ident, Type)>,
+    pub field_placements:       Vec<TokenStream>,
+    pub response_data_fields:   Vec<TokenStream>,
+    pub call_info_fields:       Vec<Ident>,
+    pub computed_fields:        Vec<ComputedField>,
+    pub regular_fields:         Vec<(Ident, Type)>,
     pub has_format_corrections: bool,
     pub message_template_field: Option<(Ident, Option<String>)>,
 }
