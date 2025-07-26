@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::{ParamStruct, ResultFieldPlacement, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -124,32 +124,25 @@ fn list_log_files(
 }
 
 /// Individual log file entry
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogFileInfo {
     /// The filename
-    #[to_result]
     pub filename:   String,
     /// The app name extracted from the filename
-    #[to_result]
     pub app_name:   String,
     /// Full path to the file (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_result(skip_if_none)]
     pub path:       Option<String>,
     /// Human-readable file size (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_result(skip_if_none)]
     pub size:       Option<String>,
     /// File size in bytes (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_result(skip_if_none)]
     pub size_bytes: Option<u64>,
     /// Creation time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_result(skip_if_none)]
     pub created:    Option<String>,
     /// Modification time as ISO string (included in verbose mode)
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_result(skip_if_none)]
     pub modified:   Option<String>,
 }

@@ -38,7 +38,7 @@
 
 use std::collections::HashMap;
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, trace};
 
@@ -50,21 +50,14 @@ use crate::error::Result;
 use crate::tool::BrpMethod;
 
 /// Format correction information for a type (component or resource)
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormatCorrection {
-    #[to_metadata]
     pub component:            String, // Keep field name for API compatibility
-    #[to_metadata]
     pub original_format:      Value,
-    #[to_metadata]
     pub corrected_format:     Value,
-    #[to_metadata]
     pub hint:                 String,
-    #[to_metadata(skip_if_none)]
     pub supported_operations: Option<Vec<String>>,
-    #[to_metadata(skip_if_none)]
     pub mutation_paths:       Option<Vec<String>>,
-    #[to_metadata(skip_if_none)]
     pub type_category:        Option<String>,
 }
 
@@ -83,7 +76,7 @@ pub enum FormatCorrectionStatus {
 }
 
 /// Enhanced response with format corrections
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnhancedBrpResult {
     pub result:             BrpResult,
     pub format_corrections: Vec<FormatCorrection>,

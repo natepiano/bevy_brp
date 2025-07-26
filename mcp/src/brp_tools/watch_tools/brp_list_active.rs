@@ -1,6 +1,6 @@
 //! List all active watches
 
-use bevy_brp_mcp_macros::{ResultFieldPlacement, ResultStruct};
+use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
@@ -8,22 +8,17 @@ use crate::error::Result;
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Individual watch information
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WatchInfo {
     /// Watch ID
-    #[to_result]
     pub watch_id:   u32,
     /// Entity ID being watched
-    #[to_result]
     pub entity_id:  u64,
     /// Type of watch (get/list)
-    #[to_result]
     pub watch_type: String,
     /// Log file path
-    #[to_result]
     pub log_path:   String,
     /// BRP port
-    #[to_result]
     pub port:       u16,
 }
 

@@ -107,7 +107,7 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
 
 /// Trait for types that can provide dynamic message templates
 ///
-/// This trait is automatically implemented by the `ResultFieldPlacement` derive macro
+/// This trait is automatically implemented by the `ResultStruct` derive macro
 /// for structs that have a field with `#[to_message(message_template = "...")]`.
 ///
 /// **Important**: When this trait is implemented via the macro:
@@ -117,7 +117,7 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
 ///
 /// # Example
 /// ```ignore
-/// #[derive(ResultFieldPlacement)]
+/// #[derive(ResultStruct)]
 /// struct MyResult {
 ///     #[to_metadata]
 ///     count: usize,  // This becomes private!
