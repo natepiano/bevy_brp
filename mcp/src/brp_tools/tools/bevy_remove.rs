@@ -1,6 +1,6 @@
 //! `bevy/remove` tool - Remove components from entities
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,14 +8,13 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/remove` tool
-#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RemoveParams {
     /// The entity ID to remove components from
     #[to_metadata]
     pub entity: u64,
 
     /// Array of component type names to remove
-    #[to_result]
     pub components: Value,
 
     /// The BRP port (default: 15702)
@@ -25,7 +24,7 @@ pub struct RemoveParams {
 }
 
 /// Result for the `bevy/remove` tool
-#[derive(Serialize, ResultFieldPlacement)]
+#[derive(Serialize, ResultStruct)]
 pub struct RemoveResult {
     /// The raw BRP response data (empty for remove)
     #[serde(skip_serializing_if = "Option::is_none")]

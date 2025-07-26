@@ -1,6 +1,6 @@
 //! `bevy/insert_resource` tool - Insert or update resources
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/insert_resource` tool
-#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct InsertResourceParams {
     /// The fully-qualified type name of the resource to insert or update
     #[to_metadata]
@@ -25,7 +25,7 @@ pub struct InsertResourceParams {
 }
 
 /// Result for the `bevy/insert_resource` tool
-#[derive(Serialize, ResultFieldPlacement)]
+#[derive(Serialize, ResultStruct)]
 pub struct InsertResourceResult {
     /// The raw BRP response data (empty for insert)
     #[serde(skip_serializing_if = "Option::is_none")]

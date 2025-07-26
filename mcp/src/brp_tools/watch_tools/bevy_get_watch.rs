@@ -1,6 +1,6 @@
 //! Start watching an entity for component changes
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::ParamStruct;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -9,7 +9,7 @@ use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct GetWatchParams {
     /// The entity ID to watch for component changes
     #[to_metadata]

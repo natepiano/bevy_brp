@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
@@ -12,17 +12,19 @@ use crate::tool::{
     BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
 };
 
-#[derive(Deserialize, JsonSchema)]
+#[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct ShutdownParams {
     /// Name of the Bevy app to shutdown
+    #[to_metadata]
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(default = "default_port", deserialize_with = "deserialize_port")]
+    #[to_call_info]
     pub port:     u16,
 }
 
 /// Result from shutting down a Bevy app
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct ShutdownResultData {
     /// Status of the shutdown operation
     #[to_metadata]

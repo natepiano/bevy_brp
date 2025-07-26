@@ -1,6 +1,6 @@
 //! `bevy/list` tool - List components on an entity or all component types
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/list` tool
-#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ListParams {
     /// Optional entity ID to list components for - to list all types, do not pass entity parameter
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -21,7 +21,7 @@ pub struct ListParams {
 }
 
 /// Result for the `bevy/list` tool
-#[derive(Serialize, ResultFieldPlacement)]
+#[derive(Serialize, ResultStruct)]
 pub struct ListResult {
     /// The raw BRP response data - an array of component type names
     #[serde(skip_serializing_if = "Option::is_none")]

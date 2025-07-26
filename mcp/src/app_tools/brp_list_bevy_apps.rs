@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
 use super::support;
@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Result from listing Bevy apps
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct ListBevyAppsResult {
     /// Count of apps found
     #[to_metadata]

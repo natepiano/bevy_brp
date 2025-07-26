@@ -1,6 +1,6 @@
 //! `bevy/destroy` tool - Destroy entities permanently
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `bevy/destroy` tool
-#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct DestroyParams {
     /// The entity ID to destroy
     pub entity: u64,
@@ -20,7 +20,7 @@ pub struct DestroyParams {
 }
 
 /// Result for the `bevy/destroy` tool
-#[derive(Serialize, ResultFieldPlacement)]
+#[derive(Serialize, ResultStruct)]
 pub struct DestroyResult {
     /// The raw BRP response data (empty for destroy)
     #[serde(skip_serializing_if = "Option::is_none")]

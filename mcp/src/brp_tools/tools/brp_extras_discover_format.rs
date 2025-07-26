@@ -1,6 +1,6 @@
 //! `brp_extras/discover_format` tool - Discover component format information
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `brp_extras/discover_format` tool
-#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct DiscoverFormatParams {
     /// Array of fully-qualified component type names to discover formats for
     pub types: Vec<String>,
@@ -24,7 +24,7 @@ pub struct DiscoverFormatParams {
 }
 
 /// Result for the `brp_extras/discover_format` tool
-#[derive(Serialize, ResultFieldPlacement)]
+#[derive(Serialize, ResultStruct)]
 pub struct DiscoverFormatResult {
     /// The raw BRP response containing format information
     #[serde(skip_serializing_if = "Option::is_none")]

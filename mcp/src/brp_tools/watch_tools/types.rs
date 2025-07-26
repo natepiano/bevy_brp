@@ -2,11 +2,11 @@
 //!
 //! These types represent results from watch operations.
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
 /// Result from starting a watch operation
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct WatchStartResult {
     /// Watch ID
     #[to_metadata]

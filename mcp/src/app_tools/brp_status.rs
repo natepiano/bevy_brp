@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
@@ -9,7 +9,7 @@ use crate::tool::{
     BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
 };
 
-#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct StatusParams {
     /// Name of the process to check for
     #[to_metadata]
@@ -24,7 +24,7 @@ pub struct StatusParams {
 ///
 /// Note: This struct has private fields and can only be constructed via `StatusResult::new()`
 /// due to the `#[to_message]` attribute. This ensures the message template is always set.
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct StatusResult {
     /// Status of the check - "success" only if app found and BRP responding
     #[to_metadata]

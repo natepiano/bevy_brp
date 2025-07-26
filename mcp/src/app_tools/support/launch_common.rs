@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::ResultStruct;
 use chrono::Utc;
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
@@ -44,7 +44,7 @@ impl<T> LaunchConfig<T> {
 }
 
 /// Unified result type for launching Bevy apps and examples
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 #[allow(clippy::too_many_arguments)]
 pub struct LaunchResult {
     /// Name of the target that was launched (app or example)

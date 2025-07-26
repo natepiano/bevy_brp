@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::ParamStruct;
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -6,7 +6,7 @@ use super::constants::DEFAULT_PROFILE;
 use super::support::{Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams};
 use crate::brp_tools::{default_port, deserialize_port};
 
-#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct LaunchBevyExampleParams {
     /// Name of the Bevy example to launch
     #[to_metadata]

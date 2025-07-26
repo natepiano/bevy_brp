@@ -1,11 +1,11 @@
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
 /// Result from getting the trace log path
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct GetTraceLogPathResult {
     /// Full path to the trace log file
     #[to_metadata]

@@ -1,6 +1,6 @@
 //! `brp_extras/send_keys` tool - Send keyboard input
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::{default_port, deserialize_port};
 
 /// Parameters for the `brp_extras/send_keys` tool
-#[derive(Deserialize, Serialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct SendKeysParams {
     /// Array of key code names to send
     pub keys: Vec<String>,
@@ -25,7 +25,7 @@ pub struct SendKeysParams {
 }
 
 /// Result for the `brp_extras/send_keys` tool
-#[derive(Serialize, ResultFieldPlacement)]
+#[derive(Serialize, ResultStruct)]
 pub struct SendKeysResult {
     /// The raw BRP response
     #[serde(skip_serializing_if = "Option::is_none")]

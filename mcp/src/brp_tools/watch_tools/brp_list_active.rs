@@ -1,6 +1,6 @@
 //! List all active watches
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ResultFieldPlacement, ResultStruct};
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
@@ -28,7 +28,7 @@ pub struct WatchInfo {
 }
 
 /// Result from listing active watches
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct ListActiveWatchesResult {
     /// List of active watches
     #[to_result]

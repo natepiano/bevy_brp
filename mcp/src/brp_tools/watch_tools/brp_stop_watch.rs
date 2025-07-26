@@ -1,6 +1,6 @@
 //! Stop an active watch
 
-use bevy_brp_mcp_macros::ResultFieldPlacement;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ use super::manager::WATCH_MANAGER;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ResultFieldPlacement)]
+#[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct StopWatchParams {
     /// The watch ID returned from `bevy_start_entity_watch` or `bevy_start_list_watch`
     #[to_metadata]
@@ -16,7 +16,7 @@ pub struct StopWatchParams {
 }
 
 /// Result from stopping a watch operation
-#[derive(Debug, Clone, Serialize, Deserialize, ResultFieldPlacement)]
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct StopWatchResult {
     /// Watch ID that was stopped
     #[to_metadata]
