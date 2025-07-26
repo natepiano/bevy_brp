@@ -9,6 +9,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::info;
 
+use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 
 /// Global watch manager instance
@@ -22,7 +23,7 @@ pub struct WatchInfo {
     pub entity_id:  u64,
     pub watch_type: String,
     pub log_path:   PathBuf,
-    pub port:       u16,
+    pub port:       Port,
 }
 
 /// Manager for watch subscriptions

@@ -21,7 +21,7 @@ pub struct LaunchConfig<T> {
     pub target_name: String,
     pub profile:     String,
     pub path:        Option<String>,
-    pub port:        u16,
+    pub port:        Port,
     _phantom:        PhantomData<T>,
 }
 
@@ -31,7 +31,7 @@ impl<T> LaunchConfig<T> {
         target_name: String,
         profile: String,
         path: Option<String>,
-        port: u16,
+        port: Port,
     ) -> Self {
         Self {
             target_name,
@@ -86,14 +86,14 @@ pub struct LaunchResult {
 }
 
 use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
-use crate::brp_tools::BRP_PORT_ENV_VAR;
+use crate::brp_tools::{BRP_PORT_ENV_VAR, Port};
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
     pub target_name: String,
     pub profile:     String,
     pub path:        Option<String>,
-    pub port:        u16,
+    pub port:        Port,
 }
 
 /// Generic launch handler that can work with any `LaunchConfig` type
@@ -177,7 +177,7 @@ pub trait LaunchConfigTrait {
     fn path(&self) -> Option<&str>;
 
     /// Get the BRP port
-    fn port(&self) -> u16;
+    fn port(&self) -> Port;
 
     /// Build the command to execute
     fn build_command(&self, target: &super::cargo_detector::BevyTarget) -> Command;
@@ -235,7 +235,7 @@ pub fn validate_binary_exists(binary_path: &Path, profile: &str) -> Result<()> {
 /// Currently sets:
 /// - `BRP_PORT`: When a port is provided, sets this environment variable for `bevy_brp_extras` to
 ///   read
-pub fn set_brp_env_vars(cmd: &mut Command, port: Option<u16>) {
+pub fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
     if let Some(port) = port {
         cmd.env(BRP_PORT_ENV_VAR, port.to_string());
     }
@@ -248,7 +248,7 @@ pub fn setup_launch_logging(
     profile: &str,
     command_or_binary: &Path,
     manifest_dir: &Path,
-    port: Option<u16>,
+    port: Option<Port>,
     extra_log_info: Option<&str>,
 ) -> Result<(PathBuf, std::fs::File)> {
     use super::logging;
@@ -283,7 +283,7 @@ pub fn setup_launch_logging(
 pub fn build_cargo_example_command(
     example_name: &str,
     profile: &str,
-    port: Option<u16>,
+    port: Option<Port>,
 ) -> Command {
     let mut cmd = Command::new("cargo");
     cmd.arg("run").arg("--example").arg(example_name);
@@ -300,7 +300,7 @@ pub fn build_cargo_example_command(
 }
 
 /// Build command for running app binaries
-pub fn build_app_command(binary_path: &Path, port: Option<u16>) -> Command {
+pub fn build_app_command(binary_path: &Path, port: Option<Port>) -> Command {
     let mut cmd = Command::new(binary_path);
     set_brp_env_vars(&mut cmd, port);
     cmd
@@ -568,7 +568,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
         self.path.as_deref()
     }
 
-    fn port(&self) -> u16 {
+    fn port(&self) -> Port {
         self.port
     }
 
@@ -643,7 +643,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
         self.path.as_deref()
     }
 
-    fn port(&self) -> u16 {
+    fn port(&self) -> Port {
         self.port
     }
 

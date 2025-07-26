@@ -4,6 +4,7 @@ use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
+use crate::brp_tools::Port;
 use crate::error::Result;
 use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
 
@@ -19,7 +20,7 @@ pub struct WatchInfo {
     /// Log file path
     pub log_path:   String,
     /// BRP port
-    pub port:       u16,
+    pub port:       Port,
 }
 
 /// Result from listing active watches

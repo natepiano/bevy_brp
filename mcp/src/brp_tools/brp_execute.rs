@@ -6,8 +6,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::format_discovery;
+use crate::brp_tools::Port;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
-use crate::brp_tools::{default_port, deserialize_port};
 use crate::error::Error;
 use crate::tool::{
     BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
@@ -23,13 +23,13 @@ pub struct ExecuteParams {
     #[to_metadata(skip_if_none)]
     pub params: Option<serde_json::Value>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
+    #[serde(default)]
     #[to_call_info]
-    pub port:   u16,
+    pub port:   Port,
 }
 
 impl HasPortField for ExecuteParams {
-    fn port(&self) -> u16 {
+    fn port(&self) -> Port {
         self.port
     }
 }

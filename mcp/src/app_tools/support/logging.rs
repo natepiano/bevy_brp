@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use error_stack::ResultExt;
 
+use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 
 /// Global atomic counter for ensuring unique log file names across concurrent operations
@@ -17,7 +18,7 @@ pub fn create_log_file(
     profile: &str,
     binary_path: &Path,
     working_dir: &Path,
-    port: Option<u16>,
+    port: Option<Port>,
 ) -> Result<(PathBuf, File)> {
     // Generate unique log file name in temp directory
     let timestamp = std::time::SystemTime::now()

@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, warn};
 
+use super::Port;
 use super::constants::{
     BRP_DEFAULT_HOST, BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
     BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,
@@ -81,7 +82,7 @@ struct JsonRpcError {
 /// Build a BRP URL for the given port
 ///
 /// Constructs the full URL using standard BRP constants for consistent formatting
-pub fn build_brp_url(port: u16) -> String {
+pub fn build_brp_url(port: Port) -> String {
     format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
 }
 
@@ -89,7 +90,7 @@ pub fn build_brp_url(port: u16) -> String {
 pub async fn execute_brp_method(
     method: BrpMethod,
     params: Option<Value>,
-    port: u16,
+    port: Port,
 ) -> Result<BrpResult> {
     let url = build_brp_url(port);
     let method_str = method.as_str();
@@ -134,19 +135,18 @@ fn handle_http_error(
     url: &str,
     request_body: &str,
     method: &str,
-    port: u16,
+    port: Port,
 ) -> Result<reqwest::Response> {
     // Always log HTTP errors to help debug intermittent failures
     warn!("BRP execute_brp_method: HTTP request failed - error={}", e);
 
     let error_details = format!(
-        "HTTP Error at {}\nMethod: {}\nPort: {}{}\nURL: {}\nError: {:?}\n",
+        "HTTP Error at {}\nMethod: {}\nPort: {}\nURL: {}\nError: {:?}\n",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
             .unwrap_or(0),
         method,
-        port,
         port,
         url,
         e
@@ -218,7 +218,7 @@ async fn send_http_request(
     url: &str,
     request_body: String,
     method: &str,
-    port: u16,
+    port: Port,
 ) -> Result<reqwest::Response> {
     let client = super::http_client::get_client();
 
@@ -237,7 +237,7 @@ async fn send_http_request(
 }
 
 /// Check if the HTTP response status is successful
-fn check_http_status(response: &reqwest::Response, method: &str, port: u16) -> Result<()> {
+fn check_http_status(response: &reqwest::Response, method: &str, port: Port) -> Result<()> {
     if !response.status().is_success() {
         warn!(
             "BRP execute_brp_method: HTTP status error - status={}",
@@ -264,7 +264,7 @@ fn check_http_status(response: &reqwest::Response, method: &str, port: u16) -> R
 async fn parse_json_response(
     response: reqwest::Response,
     method: &str,
-    port: u16,
+    port: Port,
 ) -> Result<BrpResponse> {
     match response.json().await {
         Ok(json_resp) => Ok(json_resp),

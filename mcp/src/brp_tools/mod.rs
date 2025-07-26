@@ -5,6 +5,7 @@ mod format_discovery;
 pub mod handler;
 mod http_client;
 mod json_rpc_builder;
+mod port;
 pub mod tools;
 mod watch_tools;
 
@@ -14,10 +15,11 @@ pub use brp_client::{BrpError, BrpResult, build_brp_url, execute_brp_method};
 pub use brp_execute::{BrpExecute, ExecuteParams};
 pub use constants::{
     BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BRP_PORT_ENV_VAR, FormatCorrectionField,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND, default_port, deserialize_port,
+    JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 pub use format_discovery::FormatCorrectionStatus;
 use json_rpc_builder::BrpJsonRpcBuilder;
+pub use port::Port;
 //
 // Export all parameter and result structs by name
 pub use tools::bevy_destroy::{DestroyParams, DestroyResult};

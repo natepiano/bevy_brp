@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::types::WatchStartResult;
-use crate::brp_tools::{default_port, deserialize_port};
+use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
 
@@ -15,9 +15,9 @@ pub struct ListWatchParams {
     #[to_metadata]
     pub entity: u64,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
+    #[serde(default)]
     #[to_call_info]
-    pub port:   u16,
+    pub port:   Port,
 }
 
 pub struct BevyListWatch;
@@ -42,7 +42,7 @@ impl ToolFn for BevyListWatch {
     }
 }
 
-async fn handle_impl(entity_id: u64, port: u16) -> Result<WatchStartResult> {
+async fn handle_impl(entity_id: u64, port: Port) -> Result<WatchStartResult> {
     // Start the watch task
     let result = super::start_list_watch_task(entity_id, port)
         .await

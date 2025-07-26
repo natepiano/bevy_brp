@@ -2,6 +2,7 @@ use rmcp::model::{CallToolResult, Content};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 use crate::tool::FieldPlacement;
 
@@ -41,7 +42,7 @@ pub enum CallInfo {
         /// The MCP tool name (e.g., "`brp_launch_bevy_app`")
         mcp_tool: String,
         /// The port number
-        port:     u16,
+        port:     Port,
     },
     /// BRP tool execution (calls Bevy Remote Protocol)
     Brp {
@@ -50,7 +51,7 @@ pub enum CallInfo {
         /// The BRP method name (e.g., "bevy/spawn")
         brp_method: String,
         /// The BRP port number
-        port:       u16,
+        port:       Port,
     },
 }
 
@@ -61,12 +62,12 @@ impl CallInfo {
     }
 
     /// Create `CallInfo` for a local tool with port
-    pub const fn local_with_port(mcp_tool: String, port: u16) -> Self {
+    pub const fn local_with_port(mcp_tool: String, port: Port) -> Self {
         Self::LocalWithPort { mcp_tool, port }
     }
 
     /// Create `CallInfo` for a BRP tool
-    pub const fn brp(mcp_tool: String, brp_method: String, port: u16) -> Self {
+    pub const fn brp(mcp_tool: String, brp_method: String, port: Port) -> Self {
         Self::Brp {
             mcp_tool,
             brp_method,
@@ -86,13 +87,13 @@ pub struct LocalCallInfo;
 
 /// Marker type for local tools with port
 pub struct LocalWithPortCallInfo {
-    pub port: u16,
+    pub port: Port,
 }
 
 /// Marker type for BRP tools
 pub struct BrpCallInfo {
     pub method: &'static str,
-    pub port:   u16,
+    pub port:   Port,
 }
 
 impl CallInfoProvider for LocalCallInfo {

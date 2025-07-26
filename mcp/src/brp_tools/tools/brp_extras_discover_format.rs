@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::{default_port, deserialize_port};
+use crate::brp_tools::Port;
 
 /// Parameters for the `brp_extras/discover_format` tool
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -18,9 +18,9 @@ pub struct DiscoverFormatParams {
     pub enable_debug_info: bool,
 
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
+    #[serde(default)]
     #[to_call_info]
-    pub port: u16,
+    pub port: Port,
 }
 
 /// Result for the `brp_extras/discover_format` tool

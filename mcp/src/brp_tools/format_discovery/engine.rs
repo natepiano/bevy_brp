@@ -45,7 +45,9 @@ use tracing::{debug, trace};
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::unified_types::CorrectionInfo;
 use super::{UnifiedTypeInfo, recovery_engine, registry_integration};
-use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpResult, execute_brp_method};
+use crate::brp_tools::{
+    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpResult, Port, execute_brp_method,
+};
 use crate::error::Result;
 use crate::tool::BrpMethod;
 
@@ -87,7 +89,7 @@ pub struct EnhancedBrpResult {
 async fn execute_level_1(
     method: BrpMethod,
     params: Option<Value>,
-    port: u16,
+    port: Port,
 ) -> Result<BrpRequestResult> {
     // Direct BRP execution - no format discovery overhead
     let result = execute_brp_method(method, params.clone(), port).await?;
@@ -168,7 +170,7 @@ async fn execute_exception_path(
     original_params: Option<Value>,
     error: BrpResult,
     registry_type_info: HashMap<String, super::unified_types::UnifiedTypeInfo>,
-    port: u16,
+    port: Port,
 ) -> FormatRecoveryResult {
     tracing::trace!("Discovery: Exception Path: Entering format recovery for method '{method}'");
 
@@ -187,7 +189,7 @@ async fn execute_exception_path(
 pub async fn execute_brp_method_with_format_discovery(
     method: BrpMethod,
     params: Option<Value>,
-    port: u16,
+    port: Port,
 ) -> Result<EnhancedBrpResult> {
     // Add debug info about calling BRP
     debug!("Calling BRP `{method}` with validated parameters");

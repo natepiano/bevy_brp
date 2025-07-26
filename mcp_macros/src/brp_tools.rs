@@ -128,7 +128,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                 }
 
                 impl crate::brp_tools::handler::HasPortField for #params_ident {
-                    fn port(&self) -> u16 {
+                    fn port(&self) -> crate::brp_tools::Port {
                         self.port
                     }
                 }

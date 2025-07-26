@@ -9,7 +9,7 @@ use tracing::debug;
 
 use super::adapters;
 use super::unified_types::UnifiedTypeInfo;
-use crate::brp_tools::{self, BrpResult};
+use crate::brp_tools::{self, BrpResult, Port};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Find type in registry response (handles various response formats)
@@ -70,7 +70,7 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
 pub async fn get_registry_type_info(
     method: BrpMethod,
     params: Option<&serde_json::Value>,
-    port: u16,
+    port: Port,
 ) -> std::collections::HashMap<String, UnifiedTypeInfo> {
     if !method.supports_format_discovery() {
         debug!(
@@ -163,7 +163,7 @@ fn extract_type_names_from_params(
 /// Batch check multiple types in a single registry call
 pub async fn check_multiple_types_registry_status(
     type_names: &[String],
-    port: u16,
+    port: Port,
 ) -> Vec<(String, Option<UnifiedTypeInfo>)> {
     debug!(
         "Registry Integration: Batch checking {} types",

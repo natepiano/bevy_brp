@@ -15,7 +15,7 @@ const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 use super::super::{BrpJsonRpcBuilder, http_client};
 use super::logger::{self as watch_logger, BufferedWatchLogger};
 use super::manager::{WATCH_MANAGER, WatchInfo};
-use crate::brp_tools;
+use crate::brp_tools::{self, Port};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -26,7 +26,7 @@ struct WatchConnectionParams {
     watch_type: String,
     brp_method: String,
     params:     Value,
-    port:       u16,
+    port:       Port,
 }
 
 /// Process a single SSE line and log the update if valid
@@ -532,7 +532,7 @@ async fn start_watch_task(
     watch_type: &str,
     brp_method: BrpMethod,
     params: Value,
-    port: u16,
+    port: Port,
 ) -> Result<(u32, PathBuf)> {
     // Prepare all data that doesn't require the watch_id
     let watch_type_owned = watch_type.to_string();
@@ -615,7 +615,7 @@ async fn start_watch_task(
 pub async fn start_entity_watch_task(
     entity_id: u64,
     components: Option<Vec<String>>,
-    port: u16,
+    port: Port,
 ) -> Result<(u32, PathBuf)> {
     // Validate components parameter
     let components = components.ok_or_else(|| {
@@ -639,7 +639,7 @@ pub async fn start_entity_watch_task(
 }
 
 /// Start a background task for entity list watching
-pub async fn start_list_watch_task(entity_id: u64, port: u16) -> Result<(u32, PathBuf)> {
+pub async fn start_list_watch_task(entity_id: u64, port: Port) -> Result<(u32, PathBuf)> {
     let params = serde_json::json!({
         "entity": entity_id
     });

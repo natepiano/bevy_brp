@@ -64,7 +64,6 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
     brp_tools::derive_brp_tools_impl(input)
 }
 
-
 /// Derives field placement traits for parameter structs.
 ///
 /// Parameter structs are deserialized from JSON and have public fields.
@@ -79,7 +78,7 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 ///     pub entity: u64,
 ///
 ///     #[to_call_info]
-///     pub port: u16,
+///     pub port: Port,
 /// }
 /// ```
 ///

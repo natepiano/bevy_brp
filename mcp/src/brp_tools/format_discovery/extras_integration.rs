@@ -9,13 +9,13 @@ use tracing::debug;
 use super::adapters;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
-use crate::brp_tools::{self, BrpResult, FormatCorrectionField};
+use crate::brp_tools::{self, BrpResult, FormatCorrectionField, Port};
 use crate::tool::BrpMethod;
 
 /// Discover type format via `bevy_brp_extras/discover_format`
 pub async fn discover_type_format(
     type_name: &str,
-    port: u16,
+    port: Port,
 ) -> Result<Option<UnifiedTypeInfo>, String> {
     debug!("Extras Integration: Starting discovery for type '{type_name}'");
 

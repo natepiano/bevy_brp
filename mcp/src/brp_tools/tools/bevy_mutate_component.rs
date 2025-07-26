@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::{default_port, deserialize_port};
+use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/mutate_component` tool
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -25,9 +25,9 @@ pub struct MutateComponentParams {
     pub value: Value,
 
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
+    #[serde(default)]
     #[to_call_info]
-    pub port: u16,
+    pub port: Port,
 }
 
 /// Result for the `bevy/mutate_component` tool

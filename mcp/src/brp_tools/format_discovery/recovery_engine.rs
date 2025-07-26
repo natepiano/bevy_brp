@@ -20,8 +20,8 @@ use super::transformers::TransformerRegistry;
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
-use crate::brp_tools::FormatCorrectionField;
 use crate::brp_tools::brp_client::{self, BrpError, BrpResult};
+use crate::brp_tools::{FormatCorrectionField, Port};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
@@ -30,7 +30,7 @@ pub async fn attempt_format_recovery_with_type_infos(
     original_params: Option<Value>,
     error: BrpResult,
     registry_type_info: HashMap<String, UnifiedTypeInfo>,
-    port: u16,
+    port: Port,
 ) -> FormatRecoveryResult {
     debug!("Recovery Engine: FUNCTION ENTRY - attempt_format_recovery_with_type_infos called");
     debug!(
@@ -137,7 +137,7 @@ async fn execute_level_2_direct_discovery(
     method: BrpMethod,
     registry_type_info: &HashMap<String, UnifiedTypeInfo>,
     original_params: Option<&Value>,
-    port: u16,
+    port: Port,
 ) -> LevelResult {
     debug!(
         "Level 2: Attempting direct discovery for {} types",
@@ -883,7 +883,7 @@ async fn build_recovery_success(
     method: BrpMethod,
     original_params: Option<&Value>,
     original_error: &BrpResult,
-    port: u16,
+    port: Port,
 ) -> FormatRecoveryResult {
     let mut corrections = Vec::new();
     let mut has_applied_corrections = false;

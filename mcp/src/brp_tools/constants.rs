@@ -1,6 +1,5 @@
 use std::ops::RangeInclusive;
 
-use serde::{Deserialize, Deserializer};
 use strum_macros::{Display, EnumString};
 
 use crate::tool::JsonFieldAccess;
@@ -88,33 +87,6 @@ pub const BRP_PORT_ENV_VAR: &str = "BRP_PORT";
 pub const MIN_VALID_PORT: u16 = 1024; // Non-privileged ports start here
 pub const MAX_VALID_PORT: u16 = 65534; // Leave room for calculations
 pub const VALID_PORT_RANGE: RangeInclusive<u16> = MIN_VALID_PORT..=MAX_VALID_PORT;
-
-/// Returns the default BRP port for serde default attribute
-pub const fn default_port() -> u16 {
-    DEFAULT_BRP_PORT
-}
-
-/// Deserialize and validate port numbers
-///
-/// This function ensures that all port parameters are within the valid range (1024-65534).
-/// It's used as a serde `deserialize_with` attribute on port fields.
-pub fn deserialize_port<'de, D>(deserializer: D) -> Result<u16, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let port = u16::deserialize(deserializer)?;
-
-    if VALID_PORT_RANGE.contains(&port) {
-        Ok(port)
-    } else {
-        Err(serde::de::Error::custom(format!(
-            "Invalid port {}: must be in range {}-{}",
-            port,
-            VALID_PORT_RANGE.start(),
-            VALID_PORT_RANGE.end()
-        )))
-    }
-}
 
 /// `bevy_brp_extras` prefix
 pub const BRP_EXTRAS_PREFIX: &str = "brp_extras/";

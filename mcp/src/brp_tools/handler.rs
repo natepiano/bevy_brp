@@ -2,18 +2,18 @@ use bevy_brp_mcp_macros::ResultStruct;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::FormatCorrectionStatus;
 use super::brp_client::{BrpError, BrpResult};
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
+use super::{FormatCorrectionStatus, Port};
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, ParameterName};
 
 /// Trait for parameter structs that have a port field
 pub trait HasPortField {
-    fn port(&self) -> u16;
+    fn port(&self) -> Port;
 }
 
 /// Trait for BRP tools to provide their method at compile time

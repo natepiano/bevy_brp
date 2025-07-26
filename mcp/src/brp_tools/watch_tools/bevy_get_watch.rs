@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 
 use super::types::WatchStartResult;
-use crate::brp_tools::{default_port, deserialize_port};
+use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
 
@@ -19,9 +19,9 @@ pub struct GetWatchParams {
     #[to_metadata]
     pub types:  Vec<String>,
     /// The BRP port (default: 15702)
-    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
+    #[serde(default)]
     #[to_call_info]
-    pub port:   u16,
+    pub port:   Port,
 }
 
 pub struct BevyGetWatch;
@@ -49,7 +49,7 @@ impl ToolFn for BevyGetWatch {
 async fn handle_impl(
     entity_id: u64,
     components: Option<Vec<String>>,
-    port: u16,
+    port: Port,
 ) -> Result<WatchStartResult> {
     // Start the watch task
     let result = super::start_entity_watch_task(entity_id, components, port)
