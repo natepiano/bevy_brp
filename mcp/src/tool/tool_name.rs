@@ -4,7 +4,7 @@
 //! It provides a single source of truth for all tool-related constants.
 
 use bevy_brp_mcp_macros::{BrpTools, ToolDescription};
-use strum::{AsRefStr, Display, EnumString, IntoStaticStr};
+use strum::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
@@ -28,18 +28,18 @@ use crate::log_tools::{
 
 /// Tool names enum with automatic `snake_case` serialization
 #[derive(
-    Display,
-    EnumString,
     AsRefStr,
-    IntoStaticStr,
-    Debug,
+    BrpTools,
     Clone,
     Copy,
-    PartialEq,
+    Debug,
+    Display,
+    EnumIter,
+    EnumString,
     Eq,
+    IntoStaticStr,
+    PartialEq,
     ToolDescription,
-    BrpTools,
-    strum::EnumIter,
 )]
 #[strum(serialize_all = "snake_case")]
 #[tool_description(path = "../../help_text")]
