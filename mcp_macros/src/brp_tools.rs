@@ -97,7 +97,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
                 impl crate::tool::ToolFn for #variant_name {
                     type Output = #result_type;
-                    type CallInfoData = #params_ident;
+                    type CallInfoData = crate::tool::response_builder::BrpCallInfo;
 
                     fn call(
                         &self,
@@ -105,18 +105,22 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                     ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::CallInfoData>> {
                         Box::pin(async move {
                             let params = ctx.extract_parameter_values::<#params_ident>()?;
+                            let port = params.port;
+                            let method = <#variant_name as crate::brp_tools::handler::HasBrpMethod>::brp_method().as_str();
+                            let call_info = crate::tool::response_builder::BrpCallInfo { method, port };
+
                             let brp_result = match crate::brp_tools::handler::execute_static_brp_call::<
                                 #variant_name,
                                 #params_ident,
-                            >(&ctx)
+                            >(params)
                             .await {
                                 Ok(r) => r,
-                                Err(e) => return Ok(crate::tool::ToolResult::from_result(Err(e), params)),
+                                Err(e) => return Ok(crate::tool::ToolResult::from_result(Err(e), call_info)),
                             };
                             // Convert BrpMethodResult to specific result type
                             #conversion
 
-                            Ok(crate::tool::ToolResult::from_result(Ok(result), params))
+                            Ok(crate::tool::ToolResult::from_result(Ok(result), call_info))
                         })
                     }
                 }

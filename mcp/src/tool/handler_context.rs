@@ -36,14 +36,7 @@ impl HandlerContext {
         &self.tool_def
     }
 
-    // Common parameter extraction methods (used by both BRP and local handlers)
-
-    /// Get a field value from the request arguments
-    pub fn extract_optional_named_field(&self, field_name: &str) -> Option<&Value> {
-        self.request.arguments.as_ref()?.get(field_name)
-    }
-
-    /// Extract typed parameters from request using serde deserialization
+    /// Common parameter extraction methods (used by both BRP and local handlers)
     pub fn extract_parameter_values<T>(&self) -> Result<T>
     where
         T: serde::de::DeserializeOwned,
@@ -54,14 +47,20 @@ impl HandlerContext {
             |args| serde_json::Value::Object(args.clone()),
         );
 
-        // Deserialize into target type
-        serde_json::from_value(args_value).map_err(|_| {
+        serde_json::from_value(args_value).map_err(|e| {
+            tracing::debug!("Serde deserialization error: {}", e);
             error_stack::Report::new(Error::ParameterExtraction(format!(
                 "Failed to extract parameters for type: {}",
                 std::any::type_name::<T>()
             )))
             .attach_printable("Parameter validation failed")
             .attach_printable(format!("Expected type: {}", std::any::type_name::<T>()))
+            .attach_printable(format!("Serde error: {e}"))
         })
+    }
+
+    /// Get a field value from the request arguments
+    pub fn extract_optional_named_field(&self, field_name: &str) -> Option<&Value> {
+        self.request.arguments.as_ref()?.get(field_name)
     }
 }

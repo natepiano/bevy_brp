@@ -17,12 +17,13 @@ pub struct MutateComponentParams {
     /// The fully-qualified type name of the component to mutate
     pub component: String,
 
-    /// The path to the field within the component (e.g., 'translation.x')
-    pub path: String,
-
     /// The new value for the field. Note: Math types use array format - Vec2: [x,y], Vec3:
     /// [x,y,z], Vec4/Quat: [x,y,z,w], not objects with named fields.
     pub value: Value,
+
+    /// The path to the field within the component (e.g., 'translation.x')
+    #[serde(default)]
+    pub path: String,
 
     /// The BRP port (default: 15702)
     #[serde(default)]

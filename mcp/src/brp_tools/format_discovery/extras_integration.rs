@@ -24,7 +24,9 @@ pub async fn discover_type_format(
         "types": [type_name]
     });
 
-    debug!("Extras Integration: Calling brp_extras/discover_format with params: {params}");
+    debug!(
+        "Extras Integration: Calling brp_extras/discover_format on port {port} with params: {params}"
+    );
 
     match brp_tools::execute_brp_method(BrpMethod::BrpExtrasDiscoverFormat, Some(params), port)
         .await

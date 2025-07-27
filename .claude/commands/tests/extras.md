@@ -31,11 +31,10 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, se
 - Verify appropriate error response
 
 ### 5. Debug Mode Control Tests
-- **Verify enabled**: Execute `mcp__brp__brp_extras_discover_format` with Transform type
-- **Check debug field**: Verify response contains `brp_extras_debug_info` field with debug details
-- **Disable debug mode**: Execute `mcp__brp__brp_extras_set_debug_mode` with `{"enabled": false}`
-- **Verify disabled**: Execute same discover_format operation
-- **Check no debug field**: Verify response does NOT contain `brp_extras_debug_info` field
+- **Verify debug info enabled**: Execute `mcp__brp__brp_extras_discover_format` with Transform type and `{"enable_debug_info": true}`
+- **Check debug field**: Verify response contains debug information in the response
+- **Verify debug info disabled**: Execute `mcp__brp__brp_extras_discover_format` with Transform type and `{"enable_debug_info": false}` (or omit the parameter)
+- **Check no debug field**: Verify response does NOT contain debug information when disabled
 
 ### 6. Screenshot After Key Input
 - Send some keys to the app
@@ -55,8 +54,8 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, se
 - ✅ Modifier key combinations function correctly
 - ✅ Duration boundaries are enforced properly
 - ✅ Invalid inputs return appropriate errors
-- ✅ Debug mode can be enabled/disabled independently
-- ✅ Debug mode controls brp_extras_debug_info field in responses
+- ✅ Debug info can be enabled/disabled via enable_debug_info parameter
+- ✅ Debug info appears in response when enabled and is absent when disabled
 - ✅ UI updates reflect sent keyboard input
 - ✅ Clean shutdown works via brp_extras method
 

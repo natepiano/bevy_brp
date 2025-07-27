@@ -537,6 +537,11 @@ impl ToolName {
         error: error_stack::Report<crate::error::Error>,
         _handler_context: &HandlerContext,
     ) -> CallToolResult {
+        tracing::debug!(
+            "format_framework_error called for tool: {}",
+            self.to_string()
+        );
+        tracing::trace!("Framework error details: {:#}", error);
         let call_info = crate::tool::LocalCallInfo.to_call_info(self.to_string());
 
         ResponseBuilder::error(call_info)

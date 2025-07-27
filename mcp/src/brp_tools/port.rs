@@ -40,11 +40,50 @@ impl std::fmt::Display for Port {
 /// Deserialize and validate port numbers
 ///
 /// Ensures the port is within the valid range (1024-65534)
+/// Accepts both number and string inputs for compatibility
 pub fn deserialize_port<'de, D>(deserializer: D) -> Result<u16, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let port = u16::deserialize(deserializer)?;
+    use std::fmt;
+
+    use serde::de::{self, Visitor};
+
+    struct PortVisitor;
+
+    impl Visitor<'_> for PortVisitor {
+        type Value = u16;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a port number as u16 or string")
+        }
+
+        fn visit_u16<E>(self, value: u16) -> Result<u16, E>
+        where
+            E: de::Error,
+        {
+            Ok(value)
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<u16, E>
+        where
+            E: de::Error,
+        {
+            u16::try_from(value)
+                .map_err(|_| E::custom(format!("port number {value} is out of u16 range")))
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<u16, E>
+        where
+            E: de::Error,
+        {
+            value
+                .parse::<u16>()
+                .map_err(|_| E::custom(format!("invalid port string: {value}")))
+        }
+    }
+
+    let port = deserializer.deserialize_any(PortVisitor)?;
 
     if VALID_PORT_RANGE.contains(&port) {
         Ok(port)

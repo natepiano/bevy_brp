@@ -9,7 +9,7 @@ use super::format_discovery::{
 use super::{FormatCorrectionStatus, Port};
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, HandlerContext, ParameterName};
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Trait for parameter structs that have a port field
 pub trait HasPortField {
@@ -84,7 +84,6 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 /// Convert `EnhancedBrpResult` to `BrpMethodResult`
 pub fn convert_to_brp_method_result(
     enhanced_result: EnhancedBrpResult,
-    _ctx: &HandlerContext,
     method: &str,
 ) -> Result<BrpMethodResult> {
     match enhanced_result.result {
@@ -173,42 +172,41 @@ fn enhance_error_message(err: &BrpError, enhanced_result: &EnhancedBrpResult) ->
 /// 4. Use params.port for typed port parameter
 /// 5. Call shared BRP infrastructure
 /// 6. Convert result to `BrpMethodResult`
-pub fn execute_static_brp_call<Tool, T>(
-    ctx: &HandlerContext,
-) -> impl std::future::Future<Output = Result<BrpMethodResult>> + Send + 'static
+pub async fn execute_static_brp_call<Tool, T>(
+    params: T,
+) -> Result<BrpMethodResult>
 where
     Tool: HasBrpMethod,
-    T: serde::de::DeserializeOwned + serde::Serialize + HasPortField + Send,
+    T: serde::Serialize + HasPortField + Send + 'static,
 {
-    let ctx = ctx.clone();
+    tracing::debug!("execute_static_brp_call with extracted params");
 
-    async move {
-        // Extract typed parameters
-        let params = ctx.extract_parameter_values::<T>()?;
-        let port = params.port(); // Type-safe port access through trait
-        let mut params_json = serde_json::to_value(params)
-            .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
+    let port = params.port(); // Type-safe port access through trait
 
-        // Filter out null values and port field - BRP expects parameters to be
-        // omitted entirely rather than explicitly null, and port is MCP-specific
-        let brp_params = if let Value::Object(ref mut map) = params_json {
-            map.retain(|key, value| !value.is_null() && key != ParameterName::Port.as_ref());
-            // If the object is empty after filtering, send None to BRP
-            if map.is_empty() {
-                None
-            } else {
-                Some(params_json)
-            }
+    tracing::debug!("execute_static_brp_call Port: {port}",);
+
+    let mut params_json = serde_json::to_value(params)
+        .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
+
+    // Filter out null values and port field - BRP expects parameters to be
+    // omitted entirely rather than explicitly null, and port is MCP-specific
+    let brp_params = if let Value::Object(ref mut map) = params_json {
+        map.retain(|key, value| !value.is_null() && key != ParameterName::Port.as_ref());
+        // If the object is empty after filtering, send None to BRP
+        if map.is_empty() {
+            None
         } else {
             Some(params_json)
-        };
+        }
+    } else {
+        Some(params_json)
+    };
 
-        // Use Tool::brp_method() to get method from trait at compile time
-        let method = Tool::brp_method();
-        let enhanced_result =
-            execute_brp_method_with_format_discovery(method, brp_params, port).await?;
+    // Use Tool::brp_method() to get method from trait at compile time
+    let method = Tool::brp_method();
+    let enhanced_result =
+        execute_brp_method_with_format_discovery(method, brp_params, port).await?;
 
-        // Convert result using existing conversion function
-        convert_to_brp_method_result(enhanced_result, &ctx, method.as_str())
-    }
+    // Convert result using existing conversion function
+    convert_to_brp_method_result(enhanced_result, method.as_str())
 }

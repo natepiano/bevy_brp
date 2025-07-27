@@ -262,19 +262,14 @@ impl ResponseBuilder {
     }
 
     pub fn build(self) -> JsonResponse {
-        let response = JsonResponse {
+        JsonResponse {
             status:                self.status,
             message:               self.message,
             call_info:             self.call_info,
             metadata:              self.metadata,
             result:                self.result,
             brp_extras_debug_info: self.brp_extras_debug_info,
-        };
-        tracing::debug!(
-            "ResponseBuilder::build - result field: {:?}",
-            response.result
-        );
-        response
+        }
     }
 
     /// Get metadata for template substitution
