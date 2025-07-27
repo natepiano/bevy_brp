@@ -9,9 +9,7 @@ use super::format_discovery;
 use crate::brp_tools::Port;
 use crate::brp_tools::handler::{BrpMethodResult, HasPortField, convert_to_brp_method_result};
 use crate::error::Error;
-use crate::tool::{
-    BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
-};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
@@ -38,12 +36,8 @@ pub struct BrpExecute;
 
 impl ToolFn for BrpExecute {
     type Output = BrpMethodResult;
-    type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             // Extract typed parameters
             let params: ExecuteParams = ctx.extract_parameter_values()?;
@@ -51,12 +45,12 @@ impl ToolFn for BrpExecute {
 
             // For brp_execute, parse user input to BrpMethod
             let Some(brp_method) = BrpMethod::from_str(&params.method) else {
-                return Ok(ToolResult::from_result(
+                return Ok(ToolResult::with_port(
                     Err(
                         Error::InvalidArgument(format!("Unknown BRP method: {}", params.method))
                             .into(),
                     ),
-                    LocalWithPortCallInfo { port },
+                    port,
                 ));
             };
 
@@ -69,19 +63,13 @@ impl ToolFn for BrpExecute {
             {
                 Ok(result) => result,
                 Err(e) => {
-                    return Ok(ToolResult::from_result(
-                        Err(e),
-                        LocalWithPortCallInfo { port },
-                    ));
+                    return Ok(ToolResult::with_port(Err(e), port));
                 }
             };
 
             // Convert result using existing conversion function
             let result = convert_to_brp_method_result(enhanced_result, &params.method);
-            Ok(ToolResult::from_result(
-                result,
-                LocalWithPortCallInfo { port },
-            ))
+            Ok(ToolResult::with_port(result, port))
         })
     }
 }

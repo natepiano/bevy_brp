@@ -99,45 +99,10 @@ pub fn generate_response_data_field(
     }
 }
 
-/// Generate CallInfoProvider implementation if there are call_info fields
-pub fn generate_call_info_provider(struct_name: &Ident, call_info_fields: &[Ident]) -> TokenStream {
-    if call_info_fields.is_empty() {
-        return quote! {};
-    }
-
-    // For now, assume port is the main call_info field
-    // This can be extended to handle other patterns
-    let has_port = call_info_fields.iter().any(|f| f == "port");
-
-    if has_port {
-        quote! {
-            impl crate::tool::CallInfoProvider for #struct_name {
-                fn to_call_info(&self, tool_name: String) -> crate::tool::CallInfo {
-                    use crate::tool::ToolName;
-                    use std::str::FromStr;
-
-                    if let Ok(tn) = ToolName::from_str(&tool_name) {
-                        if let Some(brp_method) = tn.to_brp_method() {
-                            crate::tool::CallInfo::brp(tool_name, brp_method.to_string(), self.port)
-                        } else {
-                            crate::tool::CallInfo::local_with_port(tool_name, self.port)
-                        }
-                    } else {
-                        crate::tool::CallInfo::local(tool_name)
-                    }
-                }
-            }
-        }
-    } else {
-        quote! {}
-    }
-}
-
 /// Extract field data from struct fields
 pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
     let mut field_placements = Vec::new();
     let mut response_data_fields = Vec::new();
-    let mut call_info_fields = Vec::new();
     let mut computed_fields = Vec::new();
     let mut regular_fields = Vec::new();
     let mut has_format_corrections = false;
@@ -175,8 +140,8 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
                     &mut result_operation,
                 );
             } else if attr.path().is_ident("to_call_info") {
-                call_info_fields.push(field_name.clone());
-                continue; // Skip adding to other collections
+                // Skip fields marked with to_call_info as we no longer need them
+                continue;
             } else if attr.path().is_ident("computed") {
                 is_computed = true;
                 parse_computed_attr(attr, &mut result_operation);
@@ -240,7 +205,6 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
     FieldExtractionResult {
         field_placements,
         response_data_fields,
-        call_info_fields,
         computed_fields,
         regular_fields,
         has_format_corrections,
@@ -251,7 +215,6 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
 pub struct FieldExtractionResult {
     pub field_placements:       Vec<TokenStream>,
     pub response_data_fields:   Vec<TokenStream>,
-    pub call_info_fields:       Vec<Ident>,
     pub computed_fields:        Vec<ComputedField>,
     pub regular_fields:         Vec<(Ident, Type)>,
     pub has_format_corrections: bool,

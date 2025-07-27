@@ -12,9 +12,7 @@ pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement,
 pub use handler_context::HandlerContext;
 pub use large_response::{LargeResponseConfig, handle_large_response};
 pub use parameters::{JsonFieldAccess, ParameterName};
-pub use response_builder::{
-    CallInfo, CallInfoProvider, JsonResponse, LocalCallInfo, LocalWithPortCallInfo, ResponseBuilder,
-};
+pub use response_builder::{CallInfo, JsonResponse, ResponseBuilder};
 pub use tool_def::ToolDef;
 pub use tool_name::{BrpMethod, ToolName, get_all_tool_definitions};
 pub use types::{HandlerResult, MessageTemplateProvider, ToolFn, ToolResult};

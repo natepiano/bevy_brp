@@ -230,7 +230,7 @@ use crate::error::{Error, Result};
 use crate::tool::annotations::{Annotation, EnvironmentImpact, ToolCategory};
 use crate::tool::types::ErasedUnifiedToolFn;
 use crate::tool::{
-    CallInfoProvider, HandlerContext, JsonResponse, LargeResponseConfig, MessageTemplateProvider,
+    CallInfo, HandlerContext, JsonResponse, LargeResponseConfig, MessageTemplateProvider,
     ResponseBuilder, ResponseData, handle_large_response, parameters,
 };
 
@@ -488,18 +488,15 @@ impl ToolName {
     }
 
     /// Type-safe formatter that accepts our internal Result directly
-    pub fn format_result<T, C>(
+    pub fn format_result<T>(
         self,
-        call_info_data: C,
+        call_info: CallInfo,
         result: Result<T>,
         handler_context: &HandlerContext,
     ) -> Result<CallToolResult>
     where
         T: ResponseData + MessageTemplateProvider,
-        C: CallInfoProvider,
     {
-        let call_info = call_info_data.to_call_info(self.to_string());
-
         match result {
             Ok(data) => {
                 // Build response using ResponseData trait
@@ -531,7 +528,7 @@ impl ToolName {
         }
     }
 
-    /// Format framework errors (parameter extraction failures, etc) with `LocalCallInfo` default
+    /// Format framework errors (parameter extraction failures, etc)
     pub fn format_framework_error(
         self,
         error: error_stack::Report<crate::error::Error>,
@@ -542,7 +539,8 @@ impl ToolName {
             self.to_string()
         );
         tracing::trace!("Framework error details: {:#}", error);
-        let call_info = crate::tool::LocalCallInfo.to_call_info(self.to_string());
+        // Framework errors don't have port information, so pass None
+        let call_info = CallInfo::from_tool_and_port(self.to_string(), None);
 
         ResponseBuilder::error(call_info)
             .message(format!("Framework error: {}", error.current_context()))

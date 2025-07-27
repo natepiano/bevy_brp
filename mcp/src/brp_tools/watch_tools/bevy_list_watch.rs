@@ -7,7 +7,7 @@ use serde::Deserialize;
 use super::types::WatchStartResult;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct ListWatchParams {
@@ -24,19 +24,15 @@ pub struct BevyListWatch;
 
 impl ToolFn for BevyListWatch {
     type Output = WatchStartResult;
-    type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let params: ListWatchParams = ctx.extract_parameter_values()?;
 
             let port = params.port;
-            Ok(ToolResult::from_result(
+            Ok(ToolResult::with_port(
                 handle_impl(params.entity, port).await,
-                LocalWithPortCallInfo { port },
+                port,
             ))
         })
     }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::support;
 use super::support::BrpAppsStrategy;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Result from listing BRP apps
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
@@ -24,15 +24,11 @@ pub struct ListBrpApps;
 
 impl ToolFn for ListBrpApps {
     type Output = ListBrpAppsResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let result = handle_impl(ctx).await;
-            Ok(ToolResult::from_result(result, LocalCallInfo))
+            Ok(ToolResult::without_port(result))
         })
     }
 }

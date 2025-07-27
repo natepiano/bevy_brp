@@ -6,9 +6,7 @@ use tracing::debug;
 
 use crate::brp_tools::{BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, Port, execute_brp_method};
 use crate::error::{Error, Result};
-use crate::tool::{
-    BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
-};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct ShutdownParams {
@@ -58,21 +56,14 @@ pub struct Shutdown;
 
 impl ToolFn for Shutdown {
     type Output = ShutdownResultData;
-    type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let params: ShutdownParams = ctx.extract_parameter_values()?;
             let port = params.port;
 
             let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult::from_result(
-                result,
-                LocalWithPortCallInfo { port },
-            ))
+            Ok(ToolResult::with_port(result, port))
         })
     }
 }

@@ -22,30 +22,36 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
+use crate::brp_tools::Port;
 use crate::error::Result;
-use crate::tool::{CallInfoProvider, ResponseData};
+use crate::tool::{CallInfo, ResponseData};
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
 /// system-level errors, or handler setup issues.
 pub type HandlerResult<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
-/// Business logic result wrapper that always includes call info data.
-/// Generic over C: `CallInfoProvider` to preserve the tool's specific call info type.
+/// Business logic result wrapper that includes optional port.
 #[derive(Debug)]
-pub struct ToolResult<T, C: CallInfoProvider> {
-    pub call_info_data: C,
+pub struct ToolResult<T> {
+    /// Optional port for tools that use ports
+    pub port:   Option<Port>,
     /// The actual result of the tool's business logic
-    pub result:         Result<T>,
+    pub result: Result<T>,
 }
 
-impl<T, C: CallInfoProvider> ToolResult<T, C> {
-    /// Create a result from call info data and result
-    pub const fn from_result(result: Result<T>, call_info_data: C) -> Self {
+impl<T> ToolResult<T> {
+    /// Create a result with port
+    pub const fn with_port(result: Result<T>, port: Port) -> Self {
         Self {
-            call_info_data,
+            port: Some(port),
             result,
         }
+    }
+
+    /// Create a result without port
+    pub const fn without_port(result: Result<T>) -> Self {
+        Self { port: None, result }
     }
 }
 
@@ -53,14 +59,9 @@ impl<T, C: CallInfoProvider> ToolResult<T, C> {
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: ResponseData + MessageTemplateProvider + Send + Sync;
-    /// The type that provides `CallInfo` data for this tool
-    type CallInfoData: CallInfoProvider;
 
-    /// Handle the request and return `ToolResult` with `CallInfoData`
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>>;
+    /// Handle the request and return `ToolResult` with optional port
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>>;
 }
 
 /// Type-erased version for heterogeneous storage
@@ -92,12 +93,13 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
             let result = self.call(ctx.clone()).await;
             match result {
                 Ok(tool_result) => {
-                    // Process the ToolResult - pass both call_info_data and result to format_result
-                    tool_name.format_result(tool_result.call_info_data, tool_result.result, &ctx)
+                    // Construct CallInfo from tool name and optional port
+                    let call_info =
+                        CallInfo::from_tool_and_port(tool_name.to_string(), tool_result.port);
+                    tool_name.format_result(call_info, tool_result.result, &ctx)
                 }
                 Err(e) => {
                     // Framework error - can't extract parameters or other infrastructure issue
-                    // Use simple LocalCallInfo default and call format_framework_error
                     Ok(tool_name.format_framework_error(e, &ctx))
                 }
             }

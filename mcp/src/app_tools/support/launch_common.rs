@@ -8,7 +8,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -118,12 +118,8 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
     for GenericLaunchHandler<T, P>
 {
     type Output = LaunchResult;
-    type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         let default_profile = self.default_profile;
         Box::pin(async move {
             // Extract typed parameters - this returns framework error on failure
@@ -142,10 +138,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
             // Launch the target
             let result = launch_target(&config, &search_paths);
 
-            Ok(ToolResult::from_result(
-                result,
-                LocalWithPortCallInfo { port },
-            ))
+            Ok(ToolResult::with_port(result, port))
         })
     }
 }

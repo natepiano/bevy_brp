@@ -7,7 +7,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Data, DeriveInput, parse_macro_input};
 
-use crate::shared::{extract_field_data, generate_call_info_provider};
+use crate::shared::extract_field_data;
 
 /// Implementation of the ParamStruct derive macro
 pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
@@ -34,10 +34,6 @@ pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
 
     let field_placements = extraction_result.field_placements;
     let response_data_fields = extraction_result.response_data_fields;
-    let call_info_fields = extraction_result.call_info_fields;
-
-    // Generate CallInfoProvider if needed
-    let call_info_impl = generate_call_info_provider(struct_name, &call_info_fields);
 
     // Generate the trait implementations
     let expanded = quote! {
@@ -56,8 +52,6 @@ pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
                 Ok(builder)
             }
         }
-
-        #call_info_impl
     };
 
     TokenStream::from(expanded)

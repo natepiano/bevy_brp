@@ -5,9 +5,7 @@ use sysinfo::System;
 
 use crate::brp_tools::{self, BrpResult, Port};
 use crate::error::Result;
-use crate::tool::{
-    BrpMethod, HandlerContext, HandlerResult, LocalWithPortCallInfo, ToolFn, ToolResult,
-};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct StatusParams {
@@ -53,20 +51,13 @@ pub struct Status;
 
 impl ToolFn for Status {
     type Output = StatusResult;
-    type CallInfoData = LocalWithPortCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let params: StatusParams = ctx.extract_parameter_values()?;
             let port = params.port;
             let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult::from_result(
-                result,
-                LocalWithPortCallInfo { port },
-            ))
+            Ok(ToolResult::with_port(result, port))
         })
     }
 }

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::manager::WATCH_MANAGER;
 use crate::brp_tools::Port;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,13 +39,9 @@ pub struct BrpListActiveWatches;
 
 impl ToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        _ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
-        Box::pin(async move { Ok(ToolResult::from_result(handle_impl().await, LocalCallInfo)) })
+    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+        Box::pin(async move { Ok(ToolResult::without_port(handle_impl().await)) })
     }
 }
 

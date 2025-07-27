@@ -10,6 +10,7 @@ bevy = { version = "0.16.1", default-features = false }
 # Core dependencies (shared between extras and mcp)
 anyhow = "1.0"
 async-trait = "0.1.88"
+bevy_brp_mcp_macros = { path = "./mcp_macros", version = "0.2.1" }
 cargo_metadata = "0.21"
 chrono = "0.4"
 error-stack = { version = "0.5.0", features = ["spantrace"] }
@@ -32,7 +33,7 @@ syn = { version = "2.0.104", features = ["extra-traits", "full"] }
 sysinfo = "0.36.1"
 tempfile = "3.20"
 thiserror = "2.0"
-tokio = { version = "1.46.1", features = ["full", "signal"] }
+tokio = { version = "1.47.0", features = ["full", "signal"] }
 tokio-stream = "0.1.17"
 tokio-util = { version = "0.7", features = ["codec"] }
 tracing = { version = "0.1.41", features = [

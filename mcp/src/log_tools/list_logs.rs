@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::support::LogFileEntry;
 use crate::error::{Error, Result};
 use crate::log_tools::support;
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct ListLogsParams {
@@ -39,12 +39,8 @@ pub struct ListLogs;
 
 impl ToolFn for ListLogs {
     type Output = ListLogResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let params: ListLogsParams = ctx.extract_parameter_values()?;
             let result = list_log_files(params.app_name.as_deref(), params.verbose).map(|logs| {
@@ -54,7 +50,7 @@ impl ToolFn for ListLogs {
                     logs.len(),
                 )
             });
-            Ok(ToolResult::from_result(result, LocalCallInfo))
+            Ok(ToolResult::without_port(result))
         })
     }
 }

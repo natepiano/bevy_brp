@@ -85,7 +85,6 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 /// This will generate implementations for:
 /// - `HasFieldPlacement` - provides field placement information
 /// - `ResponseData` - for building MCP responses
-/// - `CallInfoProvider` - if there are `#[to_call_info]` fields
 #[proc_macro_derive(ParamStruct, attributes(to_metadata, to_call_info))]
 pub fn derive_param_struct(input: TokenStream) -> TokenStream {
     param_struct::derive_param_struct_impl(input)

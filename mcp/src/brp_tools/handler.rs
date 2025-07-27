@@ -172,9 +172,7 @@ fn enhance_error_message(err: &BrpError, enhanced_result: &EnhancedBrpResult) ->
 /// 4. Use params.port for typed port parameter
 /// 5. Call shared BRP infrastructure
 /// 6. Convert result to `BrpMethodResult`
-pub async fn execute_static_brp_call<Tool, T>(
-    params: T,
-) -> Result<BrpMethodResult>
+pub async fn execute_static_brp_call<Tool, T>(params: T) -> Result<BrpMethodResult>
 where
     Tool: HasBrpMethod,
     T: serde::Serialize + HasPortField + Send + 'static,

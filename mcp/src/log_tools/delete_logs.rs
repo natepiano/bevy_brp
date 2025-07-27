@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support::{self, LogFileEntry};
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct DeleteLogsParams {
@@ -43,18 +43,14 @@ pub struct DeleteLogs;
 
 impl ToolFn for DeleteLogs {
     type Output = DeleteLogsResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let params: DeleteLogsParams = ctx.extract_parameter_values()?;
-            Ok(ToolResult::from_result(
-                handle_impl(params.app_name.as_deref(), params.older_than_seconds),
-                LocalCallInfo,
-            ))
+            Ok(ToolResult::without_port(handle_impl(
+                params.app_name.as_deref(),
+                params.older_than_seconds,
+            )))
         })
     }
 }

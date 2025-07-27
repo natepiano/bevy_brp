@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::support;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct ReadLogParams {
@@ -60,12 +60,8 @@ pub struct ReadLog;
 
 impl ToolFn for ReadLog {
     type Output = ReadLogResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             let params: ReadLogParams = ctx.extract_parameter_values()?;
 
@@ -74,19 +70,21 @@ impl ToolFn for ReadLog {
                 Some(lines) => match usize::try_from(lines) {
                     Ok(n) => Some(n),
                     Err(_) => {
-                        return Ok(ToolResult::from_result(
-                            Err(Error::invalid("tail_lines", "tail_lines value too large").into()),
-                            LocalCallInfo,
-                        ));
+                        return Ok(ToolResult::without_port(Err(Error::invalid(
+                            "tail_lines",
+                            "tail_lines value too large",
+                        )
+                        .into())));
                     }
                 },
                 None => None,
             };
 
-            Ok(ToolResult::from_result(
-                handle_impl(&params.filename, params.keyword.as_deref(), tail_lines),
-                LocalCallInfo,
-            ))
+            Ok(ToolResult::without_port(handle_impl(
+                &params.filename,
+                params.keyword.as_deref(),
+                tail_lines,
+            )))
         })
     }
 }

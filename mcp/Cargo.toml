@@ -14,36 +14,34 @@ version     = "0.2.1"
 # MCP only needs bevy_remote feature, no defaults
 bevy = { workspace = true, features = ["bevy_remote"] }
 
-# Macro dependencies
-bevy_brp_mcp_macros = { path = "../mcp_macros", version = "0.2.1" }
-
 # All other dependencies use workspace
-anyhow.workspace             = true
-async-trait.workspace        = true
-cargo_metadata.workspace     = true
-chrono.workspace             = true
-error-stack.workspace        = true
-futures.workspace            = true
-itertools.workspace          = true
-once_cell.workspace          = true
-paste.workspace              = true
-regex.workspace              = true
-reqwest                      = { workspace = true, features = ["json", "stream"] }
-rmcp.workspace               = true
-schemars.workspace           = true
-serde.workspace              = true
-serde_json.workspace         = true
-strum                        = { workspace = true, features = ["derive"] }
-strum_macros.workspace       = true
-sysinfo.workspace            = true
-thiserror.workspace          = true
-tokio.workspace              = true
-tokio-stream.workspace       = true
-tokio-util.workspace         = true
-tracing.workspace            = true
-tracing-appender.workspace   = true
-tracing-subscriber.workspace = true
-uuid.workspace               = true
+anyhow.workspace              = true
+async-trait.workspace         = true
+bevy_brp_mcp_macros.workspace = true
+cargo_metadata.workspace      = true
+chrono.workspace              = true
+error-stack.workspace         = true
+futures.workspace             = true
+itertools.workspace           = true
+once_cell.workspace           = true
+paste.workspace               = true
+regex.workspace               = true
+reqwest                       = { workspace = true, features = ["json", "stream"] }
+rmcp.workspace                = true
+schemars.workspace            = true
+serde.workspace               = true
+serde_json.workspace          = true
+strum                         = { workspace = true, features = ["derive"] }
+strum_macros.workspace        = true
+sysinfo.workspace             = true
+thiserror.workspace           = true
+tokio.workspace               = true
+tokio-stream.workspace        = true
+tokio-util.workspace          = true
+tracing.workspace             = true
+tracing-appender.workspace    = true
+tracing-subscriber.workspace  = true
+uuid.workspace                = true
 
 [dev-dependencies]
 tempfile.workspace = true

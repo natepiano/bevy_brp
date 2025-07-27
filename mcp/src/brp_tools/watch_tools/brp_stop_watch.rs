@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 #[derive(Deserialize, JsonSchema, ParamStruct)]
 pub struct StopWatchParams {
@@ -31,20 +31,13 @@ pub struct BrpStopWatch;
 
 impl ToolFn for BrpStopWatch {
     type Output = StopWatchResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             // Extract typed parameters
             let params: StopWatchParams = ctx.extract_parameter_values()?;
 
-            Ok(ToolResult::from_result(
-                handle_impl(params.watch_id).await,
-                LocalCallInfo,
-            ))
+            Ok(ToolResult::without_port(handle_impl(params.watch_id).await))
         })
     }
 }

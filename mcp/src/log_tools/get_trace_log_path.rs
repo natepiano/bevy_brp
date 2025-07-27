@@ -2,7 +2,7 @@ use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::get_trace_log_path;
-use crate::tool::{HandlerContext, HandlerResult, LocalCallInfo, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
@@ -26,12 +26,8 @@ pub struct GetTraceLogPath;
 
 impl ToolFn for GetTraceLogPath {
     type Output = GetTraceLogPathResult;
-    type CallInfoData = LocalCallInfo;
 
-    fn call(
-        &self,
-        _ctx: HandlerContext,
-    ) -> HandlerResult<ToolResult<Self::Output, Self::CallInfoData>> {
+    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
         Box::pin(async move {
             // Get the trace log path
             let log_path = get_trace_log_path();
@@ -47,7 +43,7 @@ impl ToolFn for GetTraceLogPath {
                 file_size_bytes,
             ));
 
-            Ok(ToolResult::from_result(result, LocalCallInfo))
+            Ok(ToolResult::without_port(result))
         })
     }
 }

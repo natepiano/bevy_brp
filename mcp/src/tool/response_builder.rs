@@ -74,43 +74,36 @@ impl CallInfo {
             port,
         }
     }
-}
 
-/// Trait for types that can provide `CallInfo` data
-pub trait CallInfoProvider: Send + Sync {
-    /// Convert this provider into a `CallInfo` instance
-    fn to_call_info(&self, tool_name: String) -> CallInfo;
-}
+    /// Construct `CallInfo` from tool name and optional port
+    ///
+    /// This function determines the correct `CallInfo` variant based on:
+    /// - Tool name (to determine if it's a BRP tool)
+    /// - Optional port (if the tool uses ports)
+    pub fn from_tool_and_port(tool_name: String, port: Option<Port>) -> Self {
+        use std::str::FromStr;
 
-/// Marker type for local tools without port
-pub struct LocalCallInfo;
+        use crate::tool::ToolName;
 
-/// Marker type for local tools with port
-pub struct LocalWithPortCallInfo {
-    pub port: Port,
-}
-
-/// Marker type for BRP tools
-pub struct BrpCallInfo {
-    pub method: &'static str,
-    pub port:   Port,
-}
-
-impl CallInfoProvider for LocalCallInfo {
-    fn to_call_info(&self, tool_name: String) -> CallInfo {
-        CallInfo::local(tool_name)
-    }
-}
-
-impl CallInfoProvider for LocalWithPortCallInfo {
-    fn to_call_info(&self, tool_name: String) -> CallInfo {
-        CallInfo::local_with_port(tool_name, self.port)
-    }
-}
-
-impl CallInfoProvider for BrpCallInfo {
-    fn to_call_info(&self, tool_name: String) -> CallInfo {
-        CallInfo::brp(tool_name, self.method.to_string(), self.port)
+        if let Ok(tool_enum) = ToolName::from_str(&tool_name) {
+            match (tool_enum.to_brp_method(), port) {
+                (Some(brp_method), Some(port)) => {
+                    Self::brp(tool_name, brp_method.as_str().to_string(), port)
+                }
+                (Some(brp_method), None) => {
+                    // BRP tool without port - use default port
+                    Self::brp(tool_name, brp_method.as_str().to_string(), Port::default())
+                }
+                (None, Some(port)) => Self::local_with_port(tool_name, port),
+                (None, None) => Self::local(tool_name),
+            }
+        } else {
+            // Unknown tool name - treat as local
+            match port {
+                Some(port) => Self::local_with_port(tool_name, port),
+                None => Self::local(tool_name),
+            }
+        }
     }
 }
 
