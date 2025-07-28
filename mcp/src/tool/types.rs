@@ -63,7 +63,7 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
         &'a self,
         ctx: HandlerContext,
         tool_name: ToolName,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult>> + Send + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>>;
 }
 
 /// Blanket implementation to convert typed `ToolFn`s to erased ones
@@ -72,7 +72,7 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
         &'a self,
         ctx: HandlerContext,
         tool_name: ToolName,
-    ) -> Pin<Box<dyn Future<Output = Result<CallToolResult>> + Send + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>> {
         Box::pin(async move {
             // we're making a judgement call that we passed a reference to call()
 
@@ -80,11 +80,13 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
             match result {
                 Ok(tool_result) => {
                     // Pass tool_result to format_result, which will create CallInfo internally
+                    // This now returns CallToolResult directly, not Result<CallToolResult>
                     tool_name.format_result(tool_result, &ctx)
                 }
                 Err(e) => {
                     // Framework error - can't extract parameters or other infrastructure issue
-                    Ok(tool_name.format_framework_error(e, &ctx))
+                    // This also returns CallToolResult directly
+                    tool_name.format_framework_error(e, &ctx)
                 }
             }
         })

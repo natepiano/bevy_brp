@@ -505,7 +505,7 @@ impl ToolName {
         self,
         tool_result: ToolResult<T, P>,
         handler_context: &HandlerContext,
-    ) -> Result<CallToolResult>
+    ) -> CallToolResult
     where
         T: ResponseData + MessageTemplateProvider,
         P: ParamStruct,
@@ -516,35 +516,48 @@ impl ToolName {
         match tool_result.result {
             Ok(data) => {
                 // Build response using ResponseData trait
-                let builder = ResponseBuilder::success(call_info);
-                let mut builder = data
-                    .add_response_fields(builder)
-                    .map_err(|e| Error::failed_to("add response fields", e))?;
+                let builder = ResponseBuilder::success(call_info.clone());
 
-                // Add parameters if present
-                if let Some(params) = tool_result.params {
-                    builder = builder.parameters(params)?;
-                }
+                // Handle potential errors during response building
+                let response = match (|| -> Result<JsonResponse> {
+                    let mut builder = data
+                        .add_response_fields(builder)
+                        .map_err(|e| Error::failed_to("add response fields", e))?;
 
-                // Perform template substitution using dynamic template
-                let template_str = data.get_message_template()?;
-                let message =
-                    Self::substitute_dynamic_template(template_str, &builder, handler_context);
-                let builder = builder.message(message);
+                    // Add parameters if present
+                    if let Some(params) = tool_result.params {
+                        builder = builder.parameters(params)?;
+                    }
 
-                let response = builder.build();
+                    // Perform template substitution using dynamic template
+                    let template_str = data.get_message_template()?;
+                    let message =
+                        Self::substitute_dynamic_template(template_str, &builder, handler_context);
+                    let builder = builder.message(message);
+
+                    Ok(builder.build())
+                })() {
+                    Ok(response) => response,
+                    Err(e) => {
+                        // If building the response fails, return an error response
+                        ResponseBuilder::error(call_info)
+                            .message(format!("Failed to build response: {}", e.current_context()))
+                            .build()
+                    }
+                };
+
                 Self::handle_large_response(response, self)
             }
             Err(report) => match report.current_context() {
-                Error::ToolCall { message, details } => Ok(ResponseBuilder::error(call_info)
+                Error::ToolCall { message, details } => ResponseBuilder::error(call_info)
                     .message(message)
                     .add_optional_details(details.as_ref())
                     .build()
-                    .to_call_tool_result()),
-                _ => Ok(ResponseBuilder::error(call_info)
+                    .to_call_tool_result(),
+                _ => ResponseBuilder::error(call_info)
                     .message(format!("Internal error: {}", report.current_context()))
                     .build()
-                    .to_call_tool_result()),
+                    .to_call_tool_result(),
             },
         }
     }
@@ -659,11 +672,21 @@ impl ToolName {
     }
 
     /// large response processing - this would possibly be where we would implement pagination
-    fn handle_large_response(response: JsonResponse, tool_name: Self) -> Result<CallToolResult> {
+    fn handle_large_response(response: JsonResponse, tool_name: Self) -> CallToolResult {
         // Check if response is too large and handle result field extraction
-        let processed_response =
-            handle_large_response(response, tool_name, LargeResponseConfig::default())?;
-        Ok(processed_response.to_call_tool_result())
+        match handle_large_response(response, tool_name, LargeResponseConfig::default()) {
+            Ok(processed_response) => processed_response.to_call_tool_result(),
+            Err(e) => {
+                // If large response handling fails, return an error response
+                ResponseBuilder::error(tool_name.get_call_info())
+                    .message(format!(
+                        "Failed to process response: {}",
+                        e.current_context()
+                    ))
+                    .build()
+                    .to_call_tool_result()
+            }
+        }
     }
 
     /// Create handler for this tool

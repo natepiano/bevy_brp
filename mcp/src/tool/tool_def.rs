@@ -38,11 +38,8 @@ impl ToolDef {
         // Create HandlerContext - all tools use the same context
         let ctx = HandlerContext::new(self.clone(), request, roots);
 
-        // This is the crate boundary - convert from internal Result to MCP types
-        self.handler
-            .call_erased(ctx, self.tool_name)
-            .await
-            .map_err(|report| report.current_context().clone().into())
+        // Tools now always return CallToolResult - errors are already formatted as responses
+        Ok(self.handler.call_erased(ctx, self.tool_name).await)
     }
 
     /// Convert to MCP Tool for registration

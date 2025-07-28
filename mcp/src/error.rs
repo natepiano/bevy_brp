@@ -1,4 +1,3 @@
-use rmcp::ErrorData as McpError;
 use thiserror::Error;
 
 // Error message prefixes
@@ -170,32 +169,6 @@ impl Error {
     }
 }
 
-// Conversion to McpError for API boundaries
-impl From<Error> for McpError {
-    fn from(err: Error) -> Self {
-        match err {
-            Error::BrpCommunication(msg)
-            | Error::JsonRpc(msg)
-            | Error::FileOrPathNotFound(msg)
-            | Error::InvalidArgument(msg)
-            | Error::ParameterExtraction(msg) => Self::invalid_params(msg, None),
-            Error::PathDisambiguation { message, .. } => {
-                // For path disambiguation, we want to preserve the detailed message
-                // as an invalid_params error since it's a parameter issue that can be resolved
-                Self::invalid_params(message, None)
-            }
-            Error::ToolCall { message, details } => {
-                // Tool errors are typically parameter/request issues
-                Self::invalid_params(message, details)
-            }
-            Error::FileOperation(msg)
-            | Error::InvalidState(msg)
-            | Error::WatchOperation(msg)
-            | Error::ProcessManagement(msg)
-            | Error::LogOperation(msg)
-            | Error::McpClientCommunication(msg)
-            | Error::General(msg)
-            | Error::Configuration(msg) => Self::internal_error(msg, None),
-        }
-    }
-}
+// Note: We don't implement From<Error> for McpError because our errors
+// are handled internally and converted to structured responses.
+// Errors should never escape our tool handlers.
