@@ -24,12 +24,15 @@ Refactoring the tool parameter and result handling system to simplify tool imple
    - ✅ Added parameters field to JsonResponse and ResponseBuilder
    - ✅ Updated format_result to create CallInfo internally using tool_name and port
 
-### Remaining Work (Phases 4-5)
-4. **Phase 4**: Tool migration (partially complete)
-   - ✅ Verified pattern with ListBevyApps (parameterless) and Status (with params)
-   - ⚠️ Need to update remaining ~30 tools to return params in ToolResult
-   - ⚠️ Need to update BRP tools macro to generate the new pattern
+### Completed Work (Phase 4)
+4. **Phase 4**: Tool migration
+   - ✅ Updated all parameterless tools to return params: None
+   - ✅ Updated all tools with parameters to return params: Some(params)
+   - ✅ Updated BRP tools macro to use new pattern with JSON serialization
+   - ✅ Fixed GenericLaunchHandler for app/example launch tools
+   - ✅ All builds and clippy checks passing
 
+### Remaining Work (Phase 5)
 5. **Phase 5**: Cleanup
    - Remove with_port/without_port constructors
    - Remove port field from ToolResult
@@ -42,6 +45,8 @@ Refactoring the tool parameter and result handling system to simplify tool imple
 2. **Serialize bound**: Added to ParamStruct trait rather than individual usages. All parameter structs now derive Serialize.
 
 3. **Temporary constructors**: Added with_port_typed/without_port_typed to allow incremental migration without breaking existing code.
+
+4. **BRP tools macro**: Uses JSON serialization/deserialization to preserve params after moving them to execute_static_brp_call. This avoids requiring Clone on all param structs.
 
 ### Tool Migration Pattern
 **Parameterless tools**:
