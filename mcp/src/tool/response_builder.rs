@@ -234,14 +234,50 @@ impl ResponseBuilder {
         self.result.as_ref()
     }
 
-    /// Set parameters
+    /// Set parameters with optional parameter tracking
     pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
         use error_stack::ResultExt;
 
-        self.parameters = Some(
-            serde_json::to_value(params)
-                .change_context(Error::General("Failed to serialize parameters".to_string()))?,
-        );
+        let mut params_value = serde_json::to_value(params)
+            .change_context(Error::General("Failed to serialize parameters".to_string()))?;
+
+        // Extract optional parameters that were not provided
+        if let Value::Object(ref mut params_obj) = params_value {
+            let mut optional_not_provided = Vec::new();
+
+            // Collect keys that have null values (optional parameters not provided)
+            let null_keys: Vec<String> = params_obj
+                .iter()
+                .filter_map(|(key, value)| {
+                    if value.is_null() {
+                        Some(key.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Remove null values from the main parameters object
+            for key in &null_keys {
+                params_obj.remove(key);
+                optional_not_provided.push(key.clone());
+            }
+
+            // Add the optional_parameters_not_provided array if there are any
+            if !optional_not_provided.is_empty() {
+                params_obj.insert(
+                    "optional_parameters_not_provided".to_string(),
+                    Value::Array(
+                        optional_not_provided
+                            .into_iter()
+                            .map(Value::String)
+                            .collect(),
+                    ),
+                );
+            }
+        }
+
+        self.parameters = Some(params_value);
         Ok(self)
     }
 
