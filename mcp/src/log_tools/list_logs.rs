@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::log_tools::support;
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ListLogsParams {
     /// Optional filter to list logs for a specific app only
     #[to_metadata(skip_if_none)]
@@ -39,8 +39,9 @@ pub struct ListLogs;
 
 impl ToolFn for ListLogs {
     type Output = ListLogResult;
+    type Params = ListLogsParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: ListLogsParams = ctx.extract_parameter_values()?;
             let result = list_log_files(params.app_name.as_deref(), params.verbose).map(|logs| {
@@ -50,7 +51,10 @@ impl ToolFn for ListLogs {
                     logs.len(),
                 )
             });
-            Ok(ToolResult::without_port(result))
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

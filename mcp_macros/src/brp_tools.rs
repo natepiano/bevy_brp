@@ -97,14 +97,17 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
                 impl crate::tool::ToolFn for #variant_name {
                     type Output = #result_type;
+                    type Params = #params_ident;
 
                     fn call(
                         &self,
                         ctx: crate::tool::HandlerContext,
-                    ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output>> {
+                    ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
                         Box::pin(async move {
                             let params = ctx.extract_parameter_values::<#params_ident>()?;
                             let port = params.port;
+
+                            let params_json = serde_json::to_value(&params).ok();
 
                             let brp_result = match crate::brp_tools::handler::execute_static_brp_call::<
                                 #variant_name,
@@ -112,12 +115,27 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                             >(params)
                             .await {
                                 Ok(r) => r,
-                                Err(e) => return Ok(crate::tool::ToolResult::with_port(Err(e), port)),
+                                Err(e) => {
+                                    // Reconstruct params from JSON since we moved them
+                                    let params = params_json
+                                        .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+                                    return Ok(crate::tool::ToolResult {
+                                        result: Err(e),
+                                        params,
+                                    });
+                                },
                             };
                             // Convert BrpMethodResult to specific result type
                             #conversion
 
-                            Ok(crate::tool::ToolResult::with_port(Ok(result), port))
+                            // Reconstruct params from JSON since we moved them
+                            let params = params_json
+                                .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+
+                            Ok(crate::tool::ToolResult {
+                                result: Ok(result),
+                                params,
+                            })
                         })
                     }
                 }

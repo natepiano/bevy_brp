@@ -22,46 +22,32 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
-use crate::brp_tools::Port;
 use crate::error::Result;
-use crate::tool::{CallInfo, ResponseData};
+use crate::tool::{ParamStruct, ResponseData};
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
 /// system-level errors, or handler setup issues.
 pub type HandlerResult<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
-/// Business logic result wrapper that includes optional port.
+/// Business logic result wrapper that includes parameters.
 #[derive(Debug)]
-pub struct ToolResult<T> {
-    /// Optional port for tools that use ports
-    pub port:   Option<Port>,
+pub struct ToolResult<T, P = ()> {
     /// The actual result of the tool's business logic
     pub result: Result<T>,
-}
-
-impl<T> ToolResult<T> {
-    /// Create a result with port
-    pub const fn with_port(result: Result<T>, port: Port) -> Self {
-        Self {
-            port: Some(port),
-            result,
-        }
-    }
-
-    /// Create a result without port
-    pub const fn without_port(result: Result<T>) -> Self {
-        Self { port: None, result }
-    }
+    /// The parameters that were passed to the tool (if any)
+    pub params: Option<P>,
 }
 
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: ResponseData + MessageTemplateProvider + Send + Sync;
+    /// The parameter type for this handler
+    type Params: ParamStruct;
 
     /// Handle the request and return `ToolResult` with optional port
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>>;
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>>;
 }
 
 /// Type-erased version for heterogeneous storage
@@ -93,10 +79,8 @@ impl<T: ToolFn> ErasedUnifiedToolFn for T {
             let result = self.call(ctx.clone()).await;
             match result {
                 Ok(tool_result) => {
-                    // Construct CallInfo from tool name and optional port
-                    let call_info =
-                        CallInfo::from_tool_and_port(tool_name.to_string(), tool_result.port);
-                    tool_name.format_result(call_info, tool_result.result, &ctx)
+                    // Pass tool_result to format_result, which will create CallInfo internally
+                    tool_name.format_result(tool_result, &ctx)
                 }
                 Err(e) => {
                     // Framework error - can't extract parameters or other infrastructure issue

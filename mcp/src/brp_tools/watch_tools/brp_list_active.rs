@@ -39,9 +39,16 @@ pub struct BrpListActiveWatches;
 
 impl ToolFn for BrpListActiveWatches {
     type Output = ListActiveWatchesResult;
+    type Params = ();
 
-    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
-        Box::pin(async move { Ok(ToolResult::without_port(handle_impl().await)) })
+    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
+        Box::pin(async move {
+            let result = handle_impl().await;
+            Ok(ToolResult {
+                result,
+                params: None,
+            })
+        })
     }
 }
 

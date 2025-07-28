@@ -8,10 +8,9 @@ use super::manager::WATCH_MANAGER;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct StopWatchParams {
     /// The watch ID returned from `bevy_start_entity_watch` or `bevy_start_list_watch`
-    #[to_metadata]
     pub watch_id: u32,
 }
 
@@ -31,13 +30,18 @@ pub struct BrpStopWatch;
 
 impl ToolFn for BrpStopWatch {
     type Output = StopWatchResult;
+    type Params = StopWatchParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             // Extract typed parameters
             let params: StopWatchParams = ctx.extract_parameter_values()?;
 
-            Ok(ToolResult::without_port(handle_impl(params.watch_id).await))
+            let result = handle_impl(params.watch_id).await;
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

@@ -26,8 +26,9 @@ pub struct GetTraceLogPath;
 
 impl ToolFn for GetTraceLogPath {
     type Output = GetTraceLogPathResult;
+    type Params = ();
 
-    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             // Get the trace log path
             let log_path = get_trace_log_path();
@@ -43,7 +44,10 @@ impl ToolFn for GetTraceLogPath {
                 file_size_bytes,
             ));
 
-            Ok(ToolResult::without_port(result))
+            Ok(ToolResult {
+                result,
+                params: None,
+            })
         })
     }
 }

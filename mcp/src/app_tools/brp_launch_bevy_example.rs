@@ -1,15 +1,14 @@
 use bevy_brp_mcp_macros::ParamStruct;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::constants::DEFAULT_PROFILE;
 use super::support::{Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams};
 use crate::brp_tools::Port;
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct LaunchBevyExampleParams {
     /// Name of the Bevy example to launch
-    #[to_metadata]
     pub example_name: String,
     /// Build profile to use (debug or release)
     #[to_metadata(skip_if_none)]
@@ -19,7 +18,6 @@ pub struct LaunchBevyExampleParams {
     pub path:         Option<String>,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port:         Port,
 }
 

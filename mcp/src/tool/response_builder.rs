@@ -2,7 +2,6 @@ use rmcp::model::{CallToolResult, Content};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 use crate::tool::FieldPlacement;
 
@@ -14,6 +13,8 @@ pub struct JsonResponse {
     pub call_info:             CallInfo,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata:              Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters:            Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result:                Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,17 +33,10 @@ pub enum ResponseStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CallInfo {
-    /// Local tool execution (no BRP involved, no port)
+    /// Local tool execution (no BRP involved)
     Local {
         /// The MCP tool name (e.g., "`brp_status`")
         mcp_tool: String,
-    },
-    /// Local tool with port (no BRP involved, but uses port)
-    LocalWithPort {
-        /// The MCP tool name (e.g., "`brp_launch_bevy_app`")
-        mcp_tool: String,
-        /// The port number
-        port:     Port,
     },
     /// BRP tool execution (calls Bevy Remote Protocol)
     Brp {
@@ -50,8 +44,6 @@ pub enum CallInfo {
         mcp_tool:   String,
         /// The BRP method name (e.g., "bevy/spawn")
         brp_method: String,
-        /// The BRP port number
-        port:       Port,
     },
 }
 
@@ -61,48 +53,11 @@ impl CallInfo {
         Self::Local { mcp_tool }
     }
 
-    /// Create `CallInfo` for a local tool with port
-    pub const fn local_with_port(mcp_tool: String, port: Port) -> Self {
-        Self::LocalWithPort { mcp_tool, port }
-    }
-
     /// Create `CallInfo` for a BRP tool
-    pub const fn brp(mcp_tool: String, brp_method: String, port: Port) -> Self {
+    pub const fn brp(mcp_tool: String, brp_method: String) -> Self {
         Self::Brp {
             mcp_tool,
             brp_method,
-            port,
-        }
-    }
-
-    /// Construct `CallInfo` from tool name and optional port
-    ///
-    /// This function determines the correct `CallInfo` variant based on:
-    /// - Tool name (to determine if it's a BRP tool)
-    /// - Optional port (if the tool uses ports)
-    pub fn from_tool_and_port(tool_name: String, port: Option<Port>) -> Self {
-        use std::str::FromStr;
-
-        use crate::tool::ToolName;
-
-        if let Ok(tool_enum) = ToolName::from_str(&tool_name) {
-            match (tool_enum.to_brp_method(), port) {
-                (Some(brp_method), Some(port)) => {
-                    Self::brp(tool_name, brp_method.as_str().to_string(), port)
-                }
-                (Some(brp_method), None) => {
-                    // BRP tool without port - use default port
-                    Self::brp(tool_name, brp_method.as_str().to_string(), Port::default())
-                }
-                (None, Some(port)) => Self::local_with_port(tool_name, port),
-                (None, None) => Self::local(tool_name),
-            }
-        } else {
-            // Unknown tool name - treat as local
-            match port {
-                Some(port) => Self::local_with_port(tool_name, port),
-                None => Self::local(tool_name),
-            }
         }
     }
 }
@@ -137,6 +92,7 @@ pub struct ResponseBuilder {
     message:               String,
     call_info:             CallInfo,
     metadata:              Option<Value>,
+    parameters:            Option<Value>,
     result:                Option<Value>,
     brp_extras_debug_info: Option<Value>,
 }
@@ -149,6 +105,7 @@ impl ResponseBuilder {
             message: String::new(),
             call_info,
             metadata: None,
+            parameters: None,
             result: None,
             brp_extras_debug_info: None,
         }
@@ -161,6 +118,7 @@ impl ResponseBuilder {
             message: String::new(),
             call_info,
             metadata: None,
+            parameters: None,
             result: None,
             brp_extras_debug_info: None,
         }
@@ -260,6 +218,7 @@ impl ResponseBuilder {
             message:               self.message,
             call_info:             self.call_info,
             metadata:              self.metadata,
+            parameters:            self.parameters,
             result:                self.result,
             brp_extras_debug_info: self.brp_extras_debug_info,
         }
@@ -273,5 +232,21 @@ impl ResponseBuilder {
     /// Get result for template substitution
     pub const fn result(&self) -> Option<&Value> {
         self.result.as_ref()
+    }
+
+    /// Set parameters
+    pub fn parameters(mut self, params: impl Serialize) -> Result<Self> {
+        use error_stack::ResultExt;
+
+        self.parameters = Some(
+            serde_json::to_value(params)
+                .change_context(Error::General("Failed to serialize parameters".to_string()))?,
+        );
+        Ok(self)
+    }
+
+    /// Get parameters for template substitution
+    pub const fn parameters_ref(&self) -> Option<&Value> {
+        self.parameters.as_ref()
     }
 }

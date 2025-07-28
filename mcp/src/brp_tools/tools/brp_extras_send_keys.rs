@@ -20,7 +20,6 @@ pub struct SendKeysParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

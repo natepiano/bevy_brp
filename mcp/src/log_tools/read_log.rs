@@ -10,10 +10,9 @@ use super::support;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReadLogParams {
     /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
-    #[to_metadata]
     pub filename:   String,
     /// Optional keyword to filter lines (case-insensitive)
     #[to_metadata(skip_if_none)]
@@ -60,8 +59,9 @@ pub struct ReadLog;
 
 impl ToolFn for ReadLog {
     type Output = ReadLogResult;
+    type Params = ReadLogParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: ReadLogParams = ctx.extract_parameter_values()?;
 
@@ -70,21 +70,23 @@ impl ToolFn for ReadLog {
                 Some(lines) => match usize::try_from(lines) {
                     Ok(n) => Some(n),
                     Err(_) => {
-                        return Ok(ToolResult::without_port(Err(Error::invalid(
-                            "tail_lines",
-                            "tail_lines value too large",
-                        )
-                        .into())));
+                        return Ok(ToolResult {
+                            result: Err(
+                                Error::invalid("tail_lines", "tail_lines value too large").into()
+                            ),
+                            params: Some(params),
+                        });
                     }
                 },
                 None => None,
             };
 
-            Ok(ToolResult::without_port(handle_impl(
-                &params.filename,
-                params.keyword.as_deref(),
-                tail_lines,
-            )))
+            let result = handle_impl(&params.filename, params.keyword.as_deref(), tail_lines);
+
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

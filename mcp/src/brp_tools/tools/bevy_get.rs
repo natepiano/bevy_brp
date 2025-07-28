@@ -11,7 +11,6 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetParams {
     /// The entity ID to get component data from
-    #[to_metadata]
     pub entity: u64,
 
     /// Array of component types to retrieve. Each component must be a fully-qualified type name
@@ -19,7 +18,6 @@ pub struct GetParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

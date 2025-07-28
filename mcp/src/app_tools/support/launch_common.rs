@@ -8,7 +8,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, ParamStruct, ToolFn, ToolResult};
 
 /// Marker type for App launch configuration
 pub struct App;
@@ -114,12 +114,13 @@ impl<T: FromLaunchParams, P: ToLaunchParams> GenericLaunchHandler<T, P> {
     }
 }
 
-impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> ToolFn
+impl<T: FromLaunchParams, P: ToLaunchParams + ParamStruct + for<'de> serde::Deserialize<'de>> ToolFn
     for GenericLaunchHandler<T, P>
 {
     type Output = LaunchResult;
+    type Params = P;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         let default_profile = self.default_profile;
         Box::pin(async move {
             // Extract typed parameters - this returns framework error on failure
@@ -127,7 +128,7 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
 
             // Convert to LaunchParams
             let params = typed_params.to_launch_params(default_profile);
-            let port = params.port;
+            // Port is available in params but not needed for launch
 
             // Get search paths
             let search_paths = ctx.roots;
@@ -138,7 +139,10 @@ impl<T: FromLaunchParams, P: ToLaunchParams + for<'de> serde::Deserialize<'de>> 
             // Launch the target
             let result = launch_target(&config, &search_paths);
 
-            Ok(ToolResult::with_port(result, port))
+            Ok(ToolResult {
+                result,
+                params: Some(typed_params),
+            })
         })
     }
 }

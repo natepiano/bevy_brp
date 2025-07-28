@@ -11,7 +11,6 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct MutateComponentParams {
     /// The entity ID containing the component to mutate
-    #[to_metadata]
     pub entity: u64,
 
     /// The fully-qualified type name of the component to mutate
@@ -27,7 +26,6 @@ pub struct MutateComponentParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

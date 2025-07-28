@@ -33,7 +33,6 @@ pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
     }
 
     let field_placements = extraction_result.field_placements;
-    let response_data_fields = extraction_result.response_data_fields;
 
     // Generate the trait implementations
     let expanded = quote! {
@@ -45,13 +44,7 @@ pub fn derive_param_struct_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl crate::tool::ResponseData for #struct_name {
-            fn add_response_fields(&self, builder: crate::tool::ResponseBuilder) -> crate::error::Result<crate::tool::ResponseBuilder> {
-                let mut builder = builder;
-                #(#response_data_fields)*
-                Ok(builder)
-            }
-        }
+        impl crate::tool::ParamStruct for #struct_name {}
     };
 
     TokenStream::from(expanded)

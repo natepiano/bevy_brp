@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bevy_get_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
 - Substantial tool call response changes. If you have any prompts that depend on the response returned from a tool call, please review the response carefully.
 - All BRP tool `port` parameters are now optional with default value 15702
+- Tool responses now include a `parameters` field showing the parameters that were passed to the tool
 
 ## [0.1.4] - Initial Release
 

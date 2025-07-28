@@ -7,6 +7,19 @@ use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
+/// Trait for parameter types used in tools
+///
+/// This trait provides a type-level constraint for tool parameter types.
+/// It ensures that only valid parameter types can be used as associated types
+/// in the `ToolFn` trait.
+///
+/// The trait is automatically implemented by the `ParamStruct` derive macro
+/// for parameter structs.
+pub trait ParamStruct: Send + Sync + serde::Serialize {}
+
+/// Implementation for unit type to support parameterless tools
+impl ParamStruct for () {}
+
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance
 /// serialized into parameter names provided to the rcmp mcp tool framework

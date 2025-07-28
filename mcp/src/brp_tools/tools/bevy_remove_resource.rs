@@ -11,12 +11,10 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RemoveResourceParams {
     /// The fully-qualified type name of the resource to remove
-    #[to_metadata]
     pub resource: String,
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

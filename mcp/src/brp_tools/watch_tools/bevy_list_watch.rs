@@ -2,21 +2,19 @@
 
 use bevy_brp_mcp_macros::ParamStruct;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::types::WatchStartResult;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ListWatchParams {
     /// The entity ID to watch for component list changes
-    #[to_metadata]
     pub entity: u64,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port:   Port,
 }
 
@@ -24,16 +22,18 @@ pub struct BevyListWatch;
 
 impl ToolFn for BevyListWatch {
     type Output = WatchStartResult;
+    type Params = ListWatchParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: ListWatchParams = ctx.extract_parameter_values()?;
-
             let port = params.port;
-            Ok(ToolResult::with_port(
-                handle_impl(params.entity, port).await,
-                port,
-            ))
+
+            let result = handle_impl(params.entity, port).await;
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

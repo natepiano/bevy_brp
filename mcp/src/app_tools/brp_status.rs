@@ -7,14 +7,12 @@ use crate::brp_tools::{self, BrpResult, Port};
 use crate::error::Result;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct StatusParams {
     /// Name of the process to check for
-    #[to_metadata]
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port:     Port,
 }
 
@@ -51,13 +49,17 @@ pub struct Status;
 
 impl ToolFn for Status {
     type Output = StatusResult;
+    type Params = StatusParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: StatusParams = ctx.extract_parameter_values()?;
             let port = params.port;
             let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult::with_port(result, port))
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

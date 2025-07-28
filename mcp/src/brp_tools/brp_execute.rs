@@ -14,15 +14,12 @@ use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
     /// The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')
-    #[to_metadata]
-    #[to_call_info(as = "brp_method")]
     pub method: String,
     /// Optional parameters for the method, as a JSON object or array
     #[to_metadata(skip_if_none)]
     pub params: Option<serde_json::Value>,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port:   Port,
 }
 
@@ -36,8 +33,9 @@ pub struct BrpExecute;
 
 impl ToolFn for BrpExecute {
     type Output = BrpMethodResult;
+    type Params = ExecuteParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             // Extract typed parameters
             let params: ExecuteParams = ctx.extract_parameter_values()?;
@@ -45,31 +43,38 @@ impl ToolFn for BrpExecute {
 
             // For brp_execute, parse user input to BrpMethod
             let Some(brp_method) = BrpMethod::from_str(&params.method) else {
-                return Ok(ToolResult::with_port(
-                    Err(
-                        Error::InvalidArgument(format!("Unknown BRP method: {}", params.method))
-                            .into(),
-                    ),
-                    port,
-                ));
+                return Ok(ToolResult {
+                    result: Err(Error::InvalidArgument(format!(
+                        "Unknown BRP method: {}",
+                        params.method
+                    ))
+                    .into()),
+                    params: Some(params),
+                });
             };
 
             let enhanced_result = match format_discovery::execute_brp_method_with_format_discovery(
-                brp_method,    // Parsed BRP method
-                params.params, // User-provided params (already Option<Value>)
-                port,          // Use typed port parameter
+                brp_method,            // Parsed BRP method
+                params.params.clone(), // User-provided params (already Option<Value>)
+                port,                  // Use typed port parameter
             )
             .await
             {
                 Ok(result) => result,
                 Err(e) => {
-                    return Ok(ToolResult::with_port(Err(e), port));
+                    return Ok(ToolResult {
+                        result: Err(e),
+                        params: Some(params),
+                    });
                 }
             };
 
             // Convert result using existing conversion function
             let result = convert_to_brp_method_result(enhanced_result, &params.method);
-            Ok(ToolResult::with_port(result, port))
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

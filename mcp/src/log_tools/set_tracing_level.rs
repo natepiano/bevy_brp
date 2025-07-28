@@ -8,10 +8,9 @@ use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct SetTracingLevelParams {
     /// Tracing level to set (error, warn, info, debug, trace)
-    #[to_metadata]
     pub level: String,
 }
 
@@ -33,11 +32,17 @@ pub struct SetTracingLevel;
 
 impl ToolFn for SetTracingLevel {
     type Output = SetTracingLevelResult;
+    type Params = SetTracingLevelParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: SetTracingLevelParams = ctx.extract_parameter_values()?;
-            Ok(ToolResult::without_port(handle_impl(&params.level)))
+
+            let result = handle_impl(&params.level);
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

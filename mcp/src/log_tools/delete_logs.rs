@@ -9,7 +9,7 @@ use super::support::{self, LogFileEntry};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct DeleteLogsParams {
     /// Optional filter to delete logs for a specific app only
     #[to_metadata(skip_if_none)]
@@ -43,14 +43,18 @@ pub struct DeleteLogs;
 
 impl ToolFn for DeleteLogs {
     type Output = DeleteLogsResult;
+    type Params = DeleteLogsParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: DeleteLogsParams = ctx.extract_parameter_values()?;
-            Ok(ToolResult::without_port(handle_impl(
-                params.app_name.as_deref(),
-                params.older_than_seconds,
-            )))
+
+            let result = handle_impl(params.app_name.as_deref(), params.older_than_seconds);
+
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

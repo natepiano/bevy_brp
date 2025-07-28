@@ -8,14 +8,12 @@ use crate::brp_tools::{BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, Port, execute
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, JsonSchema, ParamStruct)]
+#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ShutdownParams {
     /// Name of the Bevy app to shutdown
-    #[to_metadata]
     pub app_name: String,
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port:     Port,
 }
 
@@ -56,14 +54,18 @@ pub struct Shutdown;
 
 impl ToolFn for Shutdown {
     type Output = ShutdownResultData;
+    type Params = ShutdownParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let params: ShutdownParams = ctx.extract_parameter_values()?;
             let port = params.port;
 
             let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult::with_port(result, port))
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
         })
     }
 }

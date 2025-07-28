@@ -24,11 +24,15 @@ pub struct ListBevyApps;
 
 impl ToolFn for ListBevyApps {
     type Output = ListBevyAppsResult;
+    type Params = ();
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output>> {
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             let result = handle_impl(ctx).await;
-            Ok(ToolResult::without_port(result))
+            Ok(ToolResult {
+                result,
+                params: None,
+            })
         })
     }
 }

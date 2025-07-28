@@ -11,7 +11,6 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct MutateResourceParams {
     /// The fully-qualified type name of the resource to mutate
-    #[to_metadata]
     pub resource: String,
 
     /// The new value for the field. Note: Math types use array format - Vec2: [x,y], Vec3:
@@ -24,7 +23,6 @@ pub struct MutateResourceParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

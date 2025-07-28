@@ -42,10 +42,15 @@ impl HandlerContext {
         T: serde::de::DeserializeOwned,
     {
         // Get request arguments as JSON Value
-        let args_value = self.request.arguments.as_ref().map_or_else(
-            || serde_json::Value::Object(serde_json::Map::new()),
-            |args| serde_json::Value::Object(args.clone()),
-        );
+        // Special case: if T is unit type, use null instead of empty object
+        let args_value = if std::any::type_name::<T>() == "()" {
+            serde_json::Value::Null
+        } else {
+            self.request.arguments.as_ref().map_or_else(
+                || serde_json::Value::Object(serde_json::Map::new()),
+                |args| serde_json::Value::Object(args.clone()),
+            )
+        };
 
         serde_json::from_value(args_value).map_err(|e| {
             tracing::debug!("Serde deserialization error: {}", e);

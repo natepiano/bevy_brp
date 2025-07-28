@@ -11,7 +11,7 @@ mod types;
 pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement, ResponseData};
 pub use handler_context::HandlerContext;
 pub use large_response::{LargeResponseConfig, handle_large_response};
-pub use parameters::{JsonFieldAccess, ParameterName};
+pub use parameters::{JsonFieldAccess, ParamStruct, ParameterName};
 pub use response_builder::{CallInfo, JsonResponse, ResponseBuilder};
 pub use tool_def::ToolDef;
 pub use tool_name::{BrpMethod, ToolName, get_all_tool_definitions};

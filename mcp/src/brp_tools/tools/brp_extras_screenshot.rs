@@ -11,12 +11,10 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ScreenshotParams {
     /// File path where the screenshot should be saved
-    #[to_metadata]
     pub path: String,
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

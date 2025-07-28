@@ -231,10 +231,23 @@ use crate::tool::annotations::{Annotation, EnvironmentImpact, ToolCategory};
 use crate::tool::types::ErasedUnifiedToolFn;
 use crate::tool::{
     CallInfo, HandlerContext, JsonResponse, LargeResponseConfig, MessageTemplateProvider,
-    ResponseBuilder, ResponseData, handle_large_response, parameters,
+    ParamStruct, ResponseBuilder, ResponseData, ToolResult, handle_large_response, parameters,
 };
 
 impl ToolName {
+    /// Get `CallInfo` for this tool
+    ///
+    /// This method creates the appropriate `CallInfo` variant based on the tool type:
+    /// - BRP tools get `CallInfo::Brp`
+    /// - Non-BRP tools get `CallInfo::Local`
+    pub fn get_call_info(self) -> CallInfo {
+        let tool_name = self.to_string();
+        match self.to_brp_method() {
+            Some(brp_method) => CallInfo::brp(tool_name, brp_method.as_str().to_string()),
+            None => CallInfo::local(tool_name),
+        }
+    }
+
     /// Get annotations for this tool
     #[allow(clippy::too_many_lines)]
     pub fn get_annotations(self) -> Annotation {
@@ -488,22 +501,30 @@ impl ToolName {
     }
 
     /// Type-safe formatter that accepts our internal Result directly
-    pub fn format_result<T>(
+    pub fn format_result<T, P>(
         self,
-        call_info: CallInfo,
-        result: Result<T>,
+        tool_result: ToolResult<T, P>,
         handler_context: &HandlerContext,
     ) -> Result<CallToolResult>
     where
         T: ResponseData + MessageTemplateProvider,
+        P: ParamStruct,
     {
-        match result {
+        // Create CallInfo using self
+        let call_info = self.get_call_info();
+
+        match tool_result.result {
             Ok(data) => {
                 // Build response using ResponseData trait
                 let builder = ResponseBuilder::success(call_info);
-                let builder = data
+                let mut builder = data
                     .add_response_fields(builder)
                     .map_err(|e| Error::failed_to("add response fields", e))?;
+
+                // Add parameters if present
+                if let Some(params) = tool_result.params {
+                    builder = builder.parameters(params)?;
+                }
 
                 // Perform template substitution using dynamic template
                 let template_str = data.get_message_template()?;
@@ -539,8 +560,8 @@ impl ToolName {
             self.to_string()
         );
         tracing::trace!("Framework error details: {:#}", error);
-        // Framework errors don't have port information, so pass None
-        let call_info = CallInfo::from_tool_and_port(self.to_string(), None);
+        // Framework errors use the standard call info
+        let call_info = self.get_call_info();
 
         ResponseBuilder::error(call_info)
             .message(format!("Framework error: {}", error.current_context()))
@@ -563,7 +584,7 @@ impl ToolName {
             if let Some(replacement) =
                 Self::find_placeholder_value(&placeholder, builder, handler_context)
             {
-                let placeholder_str = format!("{{{placeholder}}}");
+                let placeholder_str = format!("{{{{{placeholder}}}}}");
                 result = result.replace(&placeholder_str, &replacement);
             }
         }
@@ -576,13 +597,13 @@ impl ToolName {
         let mut placeholders = Vec::new();
         let mut remaining = template;
 
-        while let Some(start) = remaining.find('{') {
-            if let Some(end) = remaining[start + 1..].find('}') {
-                let placeholder = &remaining[start + 1..start + 1 + end];
-                if !placeholder.is_empty() {
+        while let Some(start) = remaining.find("{{") {
+            if let Some(end) = remaining[start + 2..].find("}}") {
+                let placeholder = &remaining[start + 2..start + 2 + end];
+                if !placeholder.is_empty() && !placeholder.contains('{') {
                     placeholders.push(placeholder.to_string());
                 }
-                remaining = &remaining[start + 1 + end + 1..];
+                remaining = &remaining[start + 2 + end + 2..];
             } else {
                 break;
             }
@@ -608,6 +629,13 @@ impl ToolName {
         if placeholder == "result" {
             if let Some(result_value) = builder.result() {
                 return Some(Self::value_to_string(result_value));
+            }
+        }
+
+        // Check parameters added to the builder
+        if let Some(Value::Object(params_obj)) = builder.parameters_ref() {
+            if let Some(value) = params_obj.get(placeholder) {
+                return Some(Self::value_to_string(value));
             }
         }
 

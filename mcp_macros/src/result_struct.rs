@@ -9,6 +9,25 @@ use syn::{Data, DeriveInput, parse_macro_input};
 
 use crate::shared::{ComputedField, extract_field_data};
 
+/// Convert single-brace template placeholders to double-brace format
+fn convert_template_braces(template: &str) -> String {
+    // Replace {foo} with {{foo}}
+    let mut result = String::new();
+    let mut chars = template.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '{' && chars.peek() != Some(&'{') {
+            result.push_str("{{");
+        } else if ch == '}' && chars.peek() != Some(&'}') {
+            result.push_str("}}");
+        } else {
+            result.push(ch);
+        }
+    }
+
+    result
+}
+
 /// Implementation of the ResultStruct derive macro
 pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -113,10 +132,12 @@ fn generate_message_template_provider(
                 let is_option = type_str.contains("Option <");
 
                 if let Some(template) = default_template {
+                    let converted_template = convert_template_braces(template);
                     if is_option {
-                        field_initializers.push(quote! { #name: Some(#template.to_string()) });
+                        field_initializers
+                            .push(quote! { #name: Some(#converted_template.to_string()) });
                     } else {
-                        field_initializers.push(quote! { #name: #template.to_string() });
+                        field_initializers.push(quote! { #name: #converted_template.to_string() });
                     }
                 } else {
                     // No default template
@@ -340,11 +361,13 @@ fn generate_from_brp_value(
                 let is_option = type_str.contains("Option <");
 
                 if let Some(template) = template_default {
+                    let converted_template = convert_template_braces(template);
                     if is_option {
                         field_initializers
-                            .push(quote! { #field_name: Some(#template.to_string()) });
+                            .push(quote! { #field_name: Some(#converted_template.to_string()) });
                     } else {
-                        field_initializers.push(quote! { #field_name: #template.to_string() });
+                        field_initializers
+                            .push(quote! { #field_name: #converted_template.to_string() });
                     }
                 } else {
                     // No default template

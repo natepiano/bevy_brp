@@ -74,7 +74,6 @@ pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[derive(ParamStruct)]
 /// struct GetParams {
-///     #[to_metadata]
 ///     pub entity: u64,
 ///
 ///     #[to_call_info]

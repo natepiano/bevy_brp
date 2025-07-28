@@ -11,7 +11,6 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RemoveParams {
     /// The entity ID to remove components from
-    #[to_metadata]
     pub entity: u64,
 
     /// Array of component type names to remove
@@ -19,7 +18,6 @@ pub struct RemoveParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

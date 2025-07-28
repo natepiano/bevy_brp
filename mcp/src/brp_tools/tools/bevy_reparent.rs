@@ -11,7 +11,6 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReparentParams {
     /// Array of entity IDs to reparent
-    #[to_metadata]
     pub entities: Vec<u64>,
 
     /// The new parent entity ID (omit to remove parent)
@@ -21,7 +20,6 @@ pub struct ReparentParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 

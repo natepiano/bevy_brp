@@ -11,7 +11,6 @@ use crate::brp_tools::Port;
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct InsertParams {
     /// The entity ID to insert components into
-    #[to_metadata]
     pub entity: u64,
 
     /// Object containing component data to insert. Keys are component types, values are component
@@ -21,7 +20,6 @@ pub struct InsertParams {
 
     /// The BRP port (default: 15702)
     #[serde(default)]
-    #[to_call_info]
     pub port: Port,
 }
 
