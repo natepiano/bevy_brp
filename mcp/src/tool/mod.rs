@@ -16,3 +16,6 @@ pub use response_builder::{CallInfo, JsonResponse, ResponseBuilder};
 pub use tool_def::ToolDef;
 pub use tool_name::{BrpMethod, ToolName, get_all_tool_definitions};
 pub use types::{HandlerResult, MessageTemplateProvider, ToolFn, ToolResult};
+
+/// Trait for types that can be used as structured results
+pub trait ResultStruct: ResponseData + MessageTemplateProvider + Send + Sync {}

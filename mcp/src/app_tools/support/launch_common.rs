@@ -7,6 +7,9 @@ use chrono::Utc;
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
+use super::errors::{
+    BuildRequiredError, NoTargetsFoundError, PathDisambiguationError, TargetNotFoundAtSpecifiedPath,
+};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ParamStruct, ToolFn, ToolResult};
 
@@ -429,62 +432,73 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
         Err(err) => {
             use crate::error::Error;
 
-            // Check if this is already a PathDisambiguation error
-            if let Error::PathDisambiguation {
-                message,
-                available_paths,
-                ..
-            } = &err
-            {
-                // Use the original error message and paths
-                return Err(error_stack::Report::new(
-                    Error::tool_call_failed_with_details(
-                        message.clone(),
-                        create_error_details(config, Some(available_paths.clone())),
-                    ),
-                ));
-            }
-
             // For any other error when duplicates exist, return disambiguation error with paths
-            if duplicate_paths.is_some() {
-                let message = config.path().map_or_else(
-                    || {
-                        // No path provided
-                        format!(
-                            "Found multiple {}s named '{}'. Please specify which path to use.",
-                            T::TARGET_TYPE,
-                            config.target_name()
-                        )
-                    },
-                    |path| {
-                        // User provided a path but it didn't match
-                        format!(
-                            "Found multiple {}s named '{}'. The path '{}' does not match any available paths.",
-                            T::TARGET_TYPE,
-                            config.target_name(),
-                            path
-                        )
-                    }
+            if let Some(available_paths) = duplicate_paths {
+                let path_disambiguation_error = PathDisambiguationError::new(
+                    available_paths,
+                    config.target_name().to_string(),
+                    T::TARGET_TYPE.to_string(),
                 );
 
-                return Err(error_stack::Report::new(
-                    Error::tool_call_failed_with_details(
-                        message,
-                        create_error_details(config, duplicate_paths),
-                    ),
-                ));
+                return Err(error_stack::Report::new(Error::Structured {
+                    result: Box::new(path_disambiguation_error),
+                }));
             }
 
-            // For non-duplicate errors, return standard error
-            return Err(Report::new(Error::tool_call_failed_with_details(
-                err.to_string(),
-                create_error_details(config, None),
-            )));
+            // For non-duplicate errors, determine appropriate structured error
+            match all_targets.len() {
+                0 => {
+                    // No targets found at all
+                    let no_targets_error = NoTargetsFoundError::new(
+                        config.target_name().to_string(),
+                        T::TARGET_TYPE.to_string(),
+                    );
+                    return Err(error_stack::Report::new(Error::Structured {
+                        result: Box::new(no_targets_error),
+                    }));
+                }
+                1 => {
+                    // Exactly one target exists but path disambiguation failed
+                    let available_paths: Vec<String> = all_targets
+                        .iter()
+                        .map(|target| target.relative_path.to_string_lossy().to_string())
+                        .collect();
+                    let target_not_found_error = TargetNotFoundAtSpecifiedPath::new(
+                        config.target_name().to_string(),
+                        T::TARGET_TYPE.to_string(),
+                        config.path().map(std::string::ToString::to_string),
+                        available_paths,
+                    );
+                    return Err(error_stack::Report::new(Error::Structured {
+                        result: Box::new(target_not_found_error),
+                    }));
+                }
+                _ => {
+                    // This should not happen due to duplicate_paths logic above, but fallback
+                    return Err(Report::new(Error::tool_call_failed_with_details(
+                        err.to_string(),
+                        create_error_details(config, None),
+                    )));
+                }
+            }
         }
     };
 
     // Validate the target
     if let Err(e) = config.validate_target(&target) {
+        // Check if this is a build required error (missing binary)
+        if matches!(e.current_context(), Error::FileOrPathNotFound(_)) {
+            let build_required_error = BuildRequiredError::new(
+                config.target_name().to_string(),
+                T::TARGET_TYPE.to_string(),
+                config.profile().to_string(),
+            );
+            return Err(error_stack::Report::new(Error::Structured {
+                result: Box::new(build_required_error),
+            }));
+        }
+
+        // For other validation errors, use generic error
         let error_details = create_error_details(config, None);
         return Err(Report::new(Error::tool_call_failed_with_details(
             (*e.current_context()).to_string(),
@@ -513,7 +527,13 @@ pub fn launch_target<T: LaunchConfigTrait>(
     let target = match find_and_validate_target(config, search_paths) {
         Ok(target) => target,
         Err(launch_result) => {
-            // Convert error to ToolError with details
+            // Check if this is a structured error that should be preserved
+            if let Error::Structured { .. } = launch_result.current_context() {
+                // Preserve structured errors as-is
+                return Err(launch_result);
+            }
+
+            // Convert other errors to ToolError with details
             let error_message = format!("{}", launch_result.current_context());
             let details = serde_json::json!({
                 "error": error_message,

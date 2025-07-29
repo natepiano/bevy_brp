@@ -139,6 +139,15 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
                     &mut skip_if_none,
                     &mut result_operation,
                 );
+            } else if attr.path().is_ident("to_error_info") {
+                placement = Some(quote! { crate::tool::FieldPlacement::ErrorInfo });
+                parse_placement_attr(
+                    attr,
+                    &mut source_path,
+                    &mut field_type_override,
+                    &mut skip_if_none,
+                    &mut result_operation,
+                );
             } else if attr.path().is_ident("to_call_info") {
                 // Skip fields marked with to_call_info as we no longer need them
                 continue;

@@ -121,7 +121,10 @@ pub fn derive_param_struct(input: TokenStream) -> TokenStream {
 /// - `ResponseData` - for building MCP responses
 /// - `MessageTemplateProvider` - for message template handling
 /// - `::new()` constructor and `::from_brp_value()` method
-#[proc_macro_derive(ResultStruct, attributes(to_metadata, to_result, to_message, computed))]
+#[proc_macro_derive(
+    ResultStruct,
+    attributes(to_metadata, to_result, to_message, to_error_info, computed)
+)]
 pub fn derive_result_struct(input: TokenStream) -> TokenStream {
     result_struct::derive_result_struct_impl(input)
 }

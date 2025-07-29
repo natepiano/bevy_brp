@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use tracing::debug;
 
 use super::cargo_detector::{BevyTarget, CargoDetector, TargetType};
+use super::errors::{NoTargetsFoundError, PathDisambiguationError};
 use crate::error::Error;
 
 /// Helper function to safely canonicalize a path
@@ -377,20 +378,13 @@ pub fn find_required_target_with_path(
                         .map(|target| target.relative_path.to_string_lossy().to_string())
                         .collect();
 
-                    let error_msg = format!(
-                        "Ambiguous path '{path_str}' matches multiple {target_type_str}s:\n{}\n\nPlease use a more specific path.",
-                        paths
-                            .iter()
-                            .map(|p| format!("- {p}"))
-                            .collect::<Vec<_>>()
-                            .join("\n")
+                    let path_disambiguation_error = PathDisambiguationError::new(
+                        paths,
+                        target_name.to_string(),
+                        target_type_str.to_string(),
                     );
-
-                    return Err(Error::PathDisambiguation {
-                        message:         error_msg,
-                        item_type:       target_type_str.to_string(),
-                        item_name:       target_name.to_string(),
-                        available_paths: paths,
+                    return Err(Error::Structured {
+                        result: Box::new(path_disambiguation_error),
                     });
                 }
 
@@ -400,20 +394,13 @@ pub fn find_required_target_with_path(
                     .map(|target| target.relative_path.to_string_lossy().to_string())
                     .collect();
 
-                let error_msg = format!(
-                    "Bevy {target_type_str} '{target_name}' not found at path '{path_str}'. Available paths:\n{}",
-                    available_paths
-                        .iter()
-                        .map(|p| format!("- {p}"))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                );
-
-                return Err(Error::PathDisambiguation {
-                    message: error_msg,
-                    item_type: target_type_str.to_string(),
-                    item_name: target_name.to_string(),
+                let path_disambiguation_error = PathDisambiguationError::new(
                     available_paths,
+                    target_name.to_string(),
+                    target_type_str.to_string(),
+                );
+                return Err(Error::Structured {
+                    result: Box::new(path_disambiguation_error),
                 });
             }
 
@@ -421,7 +408,6 @@ pub fn find_required_target_with_path(
                 filtered_targets,
                 target_name,
                 target_type_str,
-                &format!("{target_type_str}_name"),
                 |target| &target.relative_path,
             );
         }
@@ -430,31 +416,9 @@ pub fn find_required_target_with_path(
     let filtered_targets =
         find_and_filter_by_path(all_targets, path, |target| &target.relative_path);
 
-    validate_single_result_or_error(
-        filtered_targets,
-        target_name,
-        target_type_str,
-        &format!("{target_type_str}_name"),
-        |target| &target.relative_path,
-    )
-}
-
-/// Build error message for duplicate items across paths
-fn build_path_selection_error(
-    item_type: &str,
-    item_name: &str,
-    param_name: &str,
-    paths: &[String],
-) -> String {
-    let path_list = paths
-        .iter()
-        .map(|p| format!("- {p}"))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    format!(
-        "Found multiple {item_type} named '{item_name}' at:\n{path_list}\n\nPlease specify which path to use:\n{{\"{param_name}\": \"{item_name}\", \"path\": \"<one of the paths above>\"}}",
-    )
+    validate_single_result_or_error(filtered_targets, target_name, target_type_str, |target| {
+        &target.relative_path
+    })
 }
 
 /// Check if the relative path exactly matches the provided path string
@@ -520,21 +484,26 @@ fn validate_single_result_or_error<T>(
     items: Vec<T>,
     item_name: &str,
     item_type: &str,
-    param_name: &str,
     get_relative_path: impl Fn(&T) -> &PathBuf,
 ) -> Result<T, Error> {
     match items.len() {
-        0 => Err(Error::FileOrPathNotFound(format!(
-            "Bevy {item_type} '{item_name}' not found in search paths"
-        ))),
+        0 => {
+            let no_targets_error =
+                NoTargetsFoundError::new(item_name.to_string(), item_type.to_string());
+            Err(Error::Structured {
+                result: Box::new(no_targets_error),
+            })
+        }
         1 => {
             // We know exactly one item exists
             let mut iter = items.into_iter();
             iter.next().map_or_else(
                 || {
-                    Err(Error::FileOrPathNotFound(format!(
-                        "Bevy {item_type} '{item_name}' not found in search paths"
-                    )))
+                    let no_targets_error =
+                        NoTargetsFoundError::new(item_name.to_string(), item_type.to_string());
+                    Err(Error::Structured {
+                        result: Box::new(no_targets_error),
+                    })
                 },
                 |item| Ok(item),
             )
@@ -554,14 +523,13 @@ fn validate_single_result_or_error<T>(
                 .cloned()
                 .collect();
 
-            let error_msg =
-                build_path_selection_error(item_type, item_name, param_name, &non_empty_paths);
-
-            Err(Error::PathDisambiguation {
-                message:         error_msg,
-                item_type:       item_type.to_string(),
-                item_name:       item_name.to_string(),
-                available_paths: non_empty_paths,
+            let path_disambiguation_error = PathDisambiguationError::new(
+                non_empty_paths,
+                item_name.to_string(),
+                item_type.to_string(),
+            );
+            Err(Error::Structured {
+                result: Box::new(path_disambiguation_error),
             })
         }
     }

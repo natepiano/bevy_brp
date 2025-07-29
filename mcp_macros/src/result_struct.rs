@@ -98,6 +98,9 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
             }
         }
 
+        // Add this new implementation
+        impl crate::tool::ResultStruct for #struct_name {}
+
         #from_brp_value_impl
 
         #message_template_impl

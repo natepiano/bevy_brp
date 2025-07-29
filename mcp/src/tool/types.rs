@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::tool::{ParamStruct, ResponseData};
+use crate::tool::{ParamStruct, ResponseData, ResultStruct};
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
@@ -42,7 +42,7 @@ pub struct ToolResult<T, P = ()> {
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
-    type Output: ResponseData + MessageTemplateProvider + Send + Sync;
+    type Output: ResponseData + MessageTemplateProvider + ResultStruct + Send + Sync;
     /// The parameter type for this handler
     type Params: ParamStruct;
 

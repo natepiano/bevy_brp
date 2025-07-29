@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::{Error, Result};
-use crate::tool::FieldPlacement;
+use crate::tool::{FieldPlacement, HandlerContext, ParamStruct, ResultStruct};
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,6 +17,8 @@ pub struct JsonResponse {
     pub parameters:            Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result:                Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_info:            Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brp_extras_debug_info: Option<Value>,
 }
@@ -94,6 +96,7 @@ pub struct ResponseBuilder {
     metadata:              Option<Value>,
     parameters:            Option<Value>,
     result:                Option<Value>,
+    error_info:            Option<Value>,
     brp_extras_debug_info: Option<Value>,
 }
 
@@ -107,6 +110,7 @@ impl ResponseBuilder {
             metadata: None,
             parameters: None,
             result: None,
+            error_info: None,
             brp_extras_debug_info: None,
         }
     }
@@ -120,6 +124,7 @@ impl ResponseBuilder {
             metadata: None,
             parameters: None,
             result: None,
+            error_info: None,
             brp_extras_debug_info: None,
         }
     }
@@ -207,6 +212,16 @@ impl ResponseBuilder {
                 // Field name is ignored to match raw BRP behavior
                 self.result = Some(value_json);
             }
+            FieldPlacement::ErrorInfo => {
+                // For error_info, use field name as key in object
+                if let Some(Value::Object(map)) = &mut self.error_info {
+                    map.insert(key.to_string(), value_json);
+                } else {
+                    let mut map = serde_json::Map::new();
+                    map.insert(key.to_string(), value_json);
+                    self.error_info = Some(Value::Object(map));
+                }
+            }
         }
 
         Ok(self)
@@ -220,6 +235,7 @@ impl ResponseBuilder {
             metadata:              self.metadata,
             parameters:            self.parameters,
             result:                self.result,
+            error_info:            self.error_info,
             brp_extras_debug_info: self.brp_extras_debug_info,
         }
     }
@@ -284,5 +300,136 @@ impl ResponseBuilder {
     /// Get parameters for template substitution
     pub const fn parameters_ref(&self) -> Option<&Value> {
         self.parameters.as_ref()
+    }
+
+    /// Terminal operation: Build complete response from a `ResultStruct`, handling all formatting
+    /// and template substitution
+    pub fn build_with_result_struct<R: ResultStruct + ?Sized, P: ParamStruct>(
+        mut self,
+        result: &R,
+        params: Option<P>,
+        handler_context: &HandlerContext,
+    ) -> Result<JsonResponse> {
+        // Add response fields
+        self = result
+            .add_response_fields(self)
+            .map_err(|e| Error::failed_to("add response fields", e))?;
+
+        // Add parameters if present
+        if let Some(params) = params {
+            self = self.parameters(params)?;
+        }
+
+        // Perform template substitution
+        let template_str = result.get_message_template()?;
+        tracing::debug!("Template before substitution: '{}'", template_str);
+        let message = Self::substitute_dynamic_template(template_str, &self, handler_context);
+        tracing::debug!("Template after substitution: '{}'", message);
+        self = self.message(message);
+
+        Ok(self.build())
+    }
+
+    /// Substitute template placeholders with values from the builder using dynamic template string
+    fn substitute_dynamic_template(
+        template_str: &str,
+        builder: &Self,
+        handler_context: &HandlerContext,
+    ) -> String {
+        let mut result = template_str.to_string();
+
+        // Extract placeholders from template
+        let placeholders = Self::parse_template_placeholders(&result);
+
+        for placeholder in placeholders {
+            if let Some(replacement) =
+                Self::find_placeholder_value(&placeholder, builder, handler_context)
+            {
+                let placeholder_str = format!("{{{{{placeholder}}}}}");
+                result = result.replace(&placeholder_str, &replacement);
+            }
+        }
+
+        result
+    }
+
+    /// Parse template to find placeholder names
+    fn parse_template_placeholders(template: &str) -> Vec<String> {
+        let mut placeholders = Vec::new();
+        let mut remaining = template;
+
+        while let Some(start) = remaining.find("{{") {
+            if let Some(end) = remaining[start + 2..].find("}}") {
+                let placeholder = &remaining[start + 2..start + 2 + end];
+                if !placeholder.is_empty() && !placeholder.contains('{') {
+                    placeholders.push(placeholder.to_string());
+                }
+                remaining = &remaining[start + 2 + end + 2..];
+            } else {
+                break;
+            }
+        }
+
+        placeholders
+    }
+
+    /// Find value for a placeholder
+    fn find_placeholder_value(
+        placeholder: &str,
+        builder: &Self,
+        handler_context: &HandlerContext,
+    ) -> Option<String> {
+        tracing::debug!("Looking for placeholder: '{}'", placeholder);
+        // First check error_info (for structured error fields)
+        if let Some(Value::Object(error_info)) = &builder.error_info {
+            tracing::debug!(
+                "Error info contains: {:?}",
+                error_info.keys().collect::<Vec<_>>()
+            );
+            if let Some(value) = error_info.get(placeholder) {
+                let result = Self::value_to_string(value);
+                tracing::debug!("Found '{}' in error_info: '{}'", placeholder, result);
+                return Some(result);
+            }
+        }
+
+        // Then check metadata
+        if let Some(Value::Object(metadata)) = builder.metadata() {
+            if let Some(value) = metadata.get(placeholder) {
+                return Some(Self::value_to_string(value));
+            }
+        }
+
+        // Then check result if placeholder is "result"
+        if placeholder == "result" {
+            if let Some(result_value) = builder.result() {
+                return Some(Self::value_to_string(result_value));
+            }
+        }
+
+        // Check parameters added to the builder
+        if let Some(Value::Object(params_obj)) = builder.parameters_ref() {
+            if let Some(value) = params_obj.get(placeholder) {
+                return Some(Self::value_to_string(value));
+            }
+        }
+
+        // Finally check request parameters
+        if let Some(value) = handler_context.extract_optional_named_field(placeholder) {
+            return Some(Self::value_to_string(value));
+        }
+
+        None
+    }
+
+    /// Convert value to string for template substitution
+    fn value_to_string(value: &Value) -> String {
+        match value {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Array(arr) => format!("{} items", arr.len()),
+            _ => value.to_string(),
+        }
     }
 }

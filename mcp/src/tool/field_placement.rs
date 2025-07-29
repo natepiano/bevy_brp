@@ -15,6 +15,8 @@ pub enum FieldPlacement {
     Metadata,
     /// Place field in the result object
     Result,
+    /// Place field in the `error_info` object
+    ErrorInfo,
 }
 
 /// Information about where a field should be placed in the response

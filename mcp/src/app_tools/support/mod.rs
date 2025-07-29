@@ -1,6 +1,7 @@
 // Local support modules for app_tools
 mod cargo_detector;
 mod collection_strategy;
+pub mod errors;
 mod launch_common;
 mod list_common;
 mod logging;

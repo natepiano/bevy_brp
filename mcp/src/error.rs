@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::tool::ResultStruct;
+
 // Error message prefixes
 const MSG_FAILED_TO_PREFIX: &str = "Failed to";
 const MSG_CANNOT_PREFIX: &str = "Cannot";
@@ -11,7 +13,7 @@ const MSG_UNEXPECTED_PREFIX: &str = "Unexpected";
 pub type Result<T> = error_stack::Result<T, Error>;
 
 // Internal error types for detailed error categorization
-#[derive(Error, Debug, Clone)]
+#[derive(Error)]
 pub enum Error {
     #[error("BRP communication failed: {0}")]
     BrpCommunication(String),
@@ -43,14 +45,6 @@ pub enum Error {
     #[error("Configuration error: {0}")]
     Configuration(String),
 
-    #[error("Path disambiguation required: {message}")]
-    PathDisambiguation {
-        message:         String,
-        item_type:       String,
-        item_name:       String,
-        available_paths: Vec<String>,
-    },
-
     #[error("Log operation failed: {0}")]
     LogOperation(String),
 
@@ -63,8 +57,42 @@ pub enum Error {
         details: Option<serde_json::Value>,
     },
 
+    #[error("Structured error")] // Generic message, the real message comes from the ResultStruct
+    Structured { result: Box<dyn ResultStruct> },
+
     #[error("{0}")]
     General(String),
+}
+
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::BrpCommunication(s) => f.debug_tuple("BrpCommunication").field(s).finish(),
+            Self::JsonRpc(s) => f.debug_tuple("JsonRpc").field(s).finish(),
+            Self::FileOperation(s) => f.debug_tuple("FileOperation").field(s).finish(),
+            Self::InvalidArgument(s) => f.debug_tuple("InvalidArgument").field(s).finish(),
+            Self::InvalidState(s) => f.debug_tuple("InvalidState").field(s).finish(),
+            Self::FileOrPathNotFound(s) => f.debug_tuple("FileOrPathNotFound").field(s).finish(),
+            Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
+            Self::WatchOperation(s) => f.debug_tuple("WatchOperation").field(s).finish(),
+            Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
+            Self::Configuration(s) => f.debug_tuple("Configuration").field(s).finish(),
+            Self::LogOperation(s) => f.debug_tuple("LogOperation").field(s).finish(),
+            Self::McpClientCommunication(s) => {
+                f.debug_tuple("McpClientCommunication").field(s).finish()
+            }
+            Self::ToolCall { message, details } => f
+                .debug_struct("ToolCall")
+                .field("message", message)
+                .field("details", details)
+                .finish(),
+            Self::Structured { .. } => f
+                .debug_struct("Structured")
+                .field("result", &"<dyn ResultStruct>")
+                .finish(),
+            Self::General(s) => f.debug_tuple("General").field(s).finish(),
+        }
+    }
 }
 
 impl Error {
