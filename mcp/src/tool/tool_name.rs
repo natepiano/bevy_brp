@@ -46,114 +46,114 @@ use crate::log_tools::{
 pub enum ToolName {
     // Core BRP Tools (Direct protocol methods)
     /// `bevy_list` - List components on an entity or all component types
-    #[tool(brp_method = "bevy/list", params = "ListParams", result = "ListResult")]
+    #[brp_tool(brp_method = "bevy/list", params = "ListParams", result = "ListResult")]
     BevyList,
     /// `bevy_get` - Get component data from entities
-    #[tool(brp_method = "bevy/get", params = "GetParams", result = "GetResult")]
+    #[brp_tool(brp_method = "bevy/get", params = "GetParams", result = "GetResult")]
     BevyGet,
     /// `bevy_destroy` - Destroy entities permanently
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/destroy",
         params = "DestroyParams",
         result = "DestroyResult"
     )]
     BevyDestroy,
     /// `bevy_insert` - Insert or replace components on entities
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/insert",
         params = "InsertParams",
         result = "InsertResult"
     )]
     BevyInsert,
     /// `bevy_remove` - Remove components from entities
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/remove",
         params = "RemoveParams",
         result = "RemoveResult"
     )]
     BevyRemove,
     /// `bevy_list_resources` - List all registered resources
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/list_resources",
         params = "ListResourcesParams",
         result = "ListResourcesResult"
     )]
     BevyListResources,
     /// `bevy_get_resource` - Get resource data
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/get_resource",
         params = "GetResourceParams",
         result = "GetResourceResult"
     )]
     BevyGetResource,
     /// `bevy_insert_resource` - Insert or update resources
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/insert_resource",
         params = "InsertResourceParams",
         result = "InsertResourceResult"
     )]
     BevyInsertResource,
     /// `bevy_remove_resource` - Remove resources
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/remove_resource",
         params = "RemoveResourceParams",
         result = "RemoveResourceResult"
     )]
     BevyRemoveResource,
     /// `bevy_mutate_resource` - Mutate resource fields
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/mutate_resource",
         params = "MutateResourceParams",
         result = "MutateResourceResult"
     )]
     BevyMutateResource,
     /// `bevy_mutate_component` - Mutate component fields
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/mutate_component",
         params = "MutateComponentParams",
         result = "MutateComponentResult"
     )]
     BevyMutateComponent,
     /// `bevy_rpc_discover` - Discover available BRP methods
-    #[tool(
+    #[brp_tool(
         brp_method = "rpc.discover",
         params = "RpcDiscoverParams",
         result = "RpcDiscoverResult"
     )]
     BevyRpcDiscover,
     /// `bevy_query` - Query entities by components
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/query",
         params = "QueryParams",
         result = "QueryResult"
     )]
     BevyQuery,
     /// `bevy_spawn` - Spawn entities with components
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/spawn",
         params = "SpawnParams",
         result = "SpawnResult"
     )]
     BevySpawn,
     /// `bevy_registry_schema` - Get type schemas
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/registry/schema",
         params = "RegistrySchemaParams",
         result = "RegistrySchemaResult"
     )]
     BevyRegistrySchema,
     /// `bevy_reparent` - Change entity parents
-    #[tool(
+    #[brp_tool(
         brp_method = "bevy/reparent",
         params = "ReparentParams",
         result = "ReparentResult"
     )]
     BevyReparent,
     /// `bevy_get_watch` - Watch entity component changes
-    #[tool(brp_method = "bevy/get+watch")]
+    #[brp_tool(brp_method = "bevy/get+watch")]
     BevyGetWatch,
     /// `bevy_list_watch` - Watch entity component list changes
-    #[tool(brp_method = "bevy/list+watch")]
+    #[brp_tool(brp_method = "bevy/list+watch")]
     BevyListWatch,
 
     // BRP Execute Tool
@@ -162,21 +162,21 @@ pub enum ToolName {
 
     // BRP Extras Tools
     /// `brp_extras_discover_format` - Discover component format information
-    #[tool(
+    #[brp_tool(
         brp_method = "brp_extras/discover_format",
         params = "DiscoverFormatParams",
         result = "DiscoverFormatResult"
     )]
     BrpExtrasDiscoverFormat,
     /// `brp_extras_screenshot` - Capture screenshots
-    #[tool(
+    #[brp_tool(
         brp_method = "brp_extras/screenshot",
         params = "ScreenshotParams",
         result = "ScreenshotResult"
     )]
     BrpExtrasScreenshot,
     /// `brp_extras_send_keys` - Send keyboard input
-    #[tool(
+    #[brp_tool(
         brp_method = "brp_extras/send_keys",
         params = "SendKeysParams",
         result = "SendKeysResult"
@@ -201,7 +201,7 @@ pub enum ToolName {
     /// `brp_launch_bevy_example` - Launch Bevy examples
     BrpLaunchBevyExample,
     /// `brp_shutdown` - Shutdown running Bevy applications
-    #[tool(brp_method = "brp_extras/shutdown")]
+    #[brp_tool(brp_method = "brp_extras/shutdown")]
     BrpShutdown,
     /// `brp_status` - Check if Bevy app is running with BRP
     BrpStatus,

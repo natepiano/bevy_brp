@@ -286,7 +286,7 @@ fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
     };
 
     for attr in attrs {
-        if attr.path().is_ident("tool") {
+        if attr.path().is_ident("brp_tool") {
             let _ = attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("params") {
                     let value = meta.value()?;

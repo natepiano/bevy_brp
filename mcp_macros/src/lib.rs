@@ -38,7 +38,7 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
     tool_description::derive_tool_description_impl(input)
 }
 
-/// Generates BRP tool implementations and constants from enum variants with `#[tool(...)]`
+/// Generates BRP tool implementations and constants from enum variants with `#[brp_tool(...)]`
 /// attributes.
 ///
 /// # Example
@@ -46,10 +46,10 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
 /// ```ignore
 /// #[derive(BrpTools)]
 /// pub enum ToolName {
-///     #[tool(brp_method = "bevy/destroy", params = "DestroyParams")]
+///     #[brp_tool(brp_method = "bevy/destroy", params = "DestroyParams")]
 ///     BevyDestroy,
 ///
-///     #[tool(brp_method = "bevy/get+watch")]
+///     #[brp_tool(brp_method = "bevy/get+watch")]
 ///     BevyGetWatch,  // Just the method, no params
 /// }
 /// ```
@@ -59,7 +59,7 @@ pub fn derive_tool_description(input: TokenStream) -> TokenStream {
 /// - BRP method constants for all variants with brp_method
 /// - All necessary trait implementations
 /// - A `brp_method()` function on the enum
-#[proc_macro_derive(BrpTools, attributes(tool))]
+#[proc_macro_derive(BrpTools, attributes(brp_tool))]
 pub fn derive_brp_tools(input: TokenStream) -> TokenStream {
     brp_tools::derive_brp_tools_impl(input)
 }
