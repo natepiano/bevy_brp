@@ -130,5 +130,16 @@
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
     "test_objective": "Test insert_resource with/without Serialize/Deserialize traits",
     "expected_shutdown_method": "clean_shutdown"
+  },
+  {
+    "test_name": "status_shutdown",
+    "test_file": ".claude/commands/tests/status_shutdown.md",
+    "port": 20113,
+    "app_name": "various",
+    "log_file_prefix": "bevy_brp_mcp_*_port20113",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20113 for some tests",
+    "shutdown_instruction": "Varies by test case",
+    "test_objective": "Test all success and error cases for brp_status and brp_shutdown",
+    "expected_shutdown_method": "varies"
   }
 ]

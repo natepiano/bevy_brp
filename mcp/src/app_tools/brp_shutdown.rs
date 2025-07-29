@@ -19,27 +19,30 @@ pub struct ShutdownParams {
 
 /// Result from shutting down a Bevy app
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct ShutdownResultData {
-    /// Status of the shutdown operation
-    #[to_metadata]
-    status:           String,
-    /// Shutdown method used
-    #[to_metadata]
-    shutdown_method:  String,
+pub struct ShutdownResult {
     /// App name that was shut down
     #[to_metadata]
     app_name:         String,
-    /// Process ID if terminated via kill
+    /// Process ID
+    #[to_metadata]
+    pid:              u32,
+    /// Shutdown method used
+    #[to_metadata]
+    shutdown_method:  String,
+    /// Port where shutdown was attempted
+    #[to_metadata]
+    port:             u16,
+    /// Warning for degraded success (process kill)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
-    pid:              Option<u32>,
+    warning:          Option<String>,
     /// Message template for formatting responses
     #[to_message]
     message_template: Option<String>,
 }
 
 /// Result of a shutdown operation
-enum ShutdownResult {
+enum ShutdownOutcome {
     /// Graceful shutdown via `bevy_brp_extras` succeeded
     CleanShutdown { pid: u32 },
     /// Process was killed using system signal - typically when extras plugin is not available
@@ -53,7 +56,7 @@ enum ShutdownResult {
 pub struct Shutdown;
 
 impl ToolFn for Shutdown {
-    type Output = ShutdownResultData;
+    type Output = ShutdownResult;
     type Params = ShutdownParams;
 
     fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
@@ -71,12 +74,12 @@ impl ToolFn for Shutdown {
 }
 
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
-async fn shutdown_app(app_name: &str, port: Port) -> ShutdownResult {
+async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
     debug!("Starting shutdown process for app '{app_name}' on port {port}");
     // First, check if the process is actually running
     if !is_process_running(app_name) {
         debug!("Process '{app_name}' not found in system process list");
-        return ShutdownResult::NotRunning;
+        return ShutdownOutcome::NotRunning;
     }
 
     debug!("Process '{app_name}' found, attempting graceful shutdown");
@@ -96,7 +99,7 @@ async fn shutdown_app(app_name: &str, port: Port) -> ShutdownResult {
                     debug!("Warning: PID not found in BRP extras shutdown response");
                     0
                 });
-            ShutdownResult::CleanShutdown { pid }
+            ShutdownOutcome::CleanShutdown { pid }
         }
         Ok(None) => {
             debug!("Graceful shutdown failed, falling back to process kill");
@@ -112,11 +115,11 @@ async fn shutdown_app(app_name: &str, port: Port) -> ShutdownResult {
 }
 
 /// Handle the fallback to kill process when graceful shutdown fails
-fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> ShutdownResult {
+fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> ShutdownOutcome {
     match kill_process(app_name) {
         Ok(Some(pid)) => {
             debug!("Successfully killed process {app_name} with PID {pid}");
-            ShutdownResult::ProcessKilled { pid }
+            ShutdownOutcome::ProcessKilled { pid }
         }
         Ok(None) => {
             if brp_error.is_some() {
@@ -124,7 +127,7 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
             } else {
                 debug!("Process '{app_name}' not found when attempting to kill");
             }
-            ShutdownResult::NotRunning
+            ShutdownOutcome::NotRunning
         }
         Err(kill_err) => {
             if brp_error.is_some() {
@@ -136,63 +139,46 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
                 || format!("{kill_err:?}"),
                 |brp_err| format!("BRP failed: {brp_err}, Kill failed: {kill_err:?}"),
             );
-            ShutdownResult::Error {
+            ShutdownOutcome::Error {
                 message: error_message,
             }
         }
     }
 }
 
-async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResultData> {
+async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResult> {
     // Shutdown the app
     let result = shutdown_app(app_name, port).await;
 
     // Build and return typed response
-    let shutdown_result = match result {
-        ShutdownResult::CleanShutdown { pid } => {
-            let message = format!(
+    match result {
+        ShutdownOutcome::CleanShutdown { pid } => Ok(ShutdownResult {
+            app_name: app_name.to_string(),
+            pid,
+            shutdown_method: "clean_shutdown".to_string(),
+            port: port.0,
+            warning: None,
+            message_template: Some(format!(
                 "Successfully initiated graceful shutdown for '{app_name}' (PID: {pid}) via bevy_brp_extras"
-            );
-            ShutdownResultData::new(
-                "success".to_string(),
-                "clean_shutdown".to_string(),
-                app_name.to_string(),
-                Some(pid),
-            )
-            .with_message_template(message)
-        }
-        ShutdownResult::ProcessKilled { pid } => {
-            let message = format!(
-                "Terminated process '{app_name}' (PID: {pid}) using kill. Consider adding bevy_brp_extras for clean shutdown."
-            );
-            ShutdownResultData::new(
-                "success".to_string(),
-                "process_kill".to_string(),
-                app_name.to_string(),
-                Some(pid),
-            )
-            .with_message_template(message)
-        }
-        ShutdownResult::NotRunning => {
-            let message = format!("Process '{app_name}' is not currently running");
-            ShutdownResultData::new(
-                "error".to_string(),
-                "none".to_string(),
-                app_name.to_string(),
-                None,
-            )
-            .with_message_template(message)
-        }
-        ShutdownResult::Error { message } => ShutdownResultData::new(
-            "error".to_string(),
-            "process_kill_failed".to_string(),
-            app_name.to_string(),
-            None,
-        )
-        .with_message_template(message),
-    };
-
-    Ok(shutdown_result)
+            )),
+        }),
+        ShutdownOutcome::ProcessKilled { pid } => Ok(ShutdownResult {
+            app_name: app_name.to_string(),
+            pid,
+            shutdown_method: "process_kill".to_string(),
+            port: port.0,
+            warning: Some("Consider adding bevy_brp_extras for clean shutdown".to_string()),
+            message_template: Some(format!(
+                "Terminated process '{app_name}' (PID: {pid}) using kill"
+            )),
+        }),
+        ShutdownOutcome::NotRunning => Err(error_stack::Report::new(Error::Structured {
+            result: Box::new(ProcessNotRunningError::new(app_name.to_string())),
+        })),
+        ShutdownOutcome::Error { message } => Err(error_stack::Report::new(Error::Structured {
+            result: Box::new(ShutdownFailedError::new(app_name.to_string(), message)),
+        })),
+    }
 }
 
 /// Try to gracefully shutdown via `bevy_brp_extras`
@@ -274,4 +260,27 @@ fn kill_process(app_name: &str) -> Result<Option<u32>> {
             .attach_printable("Failed to send SIGTERM signal"))
         }
     })
+}
+
+/// Error when process is not running
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+pub struct ProcessNotRunningError {
+    #[to_error_info]
+    app_name: String,
+
+    #[to_message(message_template = "Process '{app_name}' is not currently running")]
+    message_template: String,
+}
+
+/// Error when shutdown fails
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+pub struct ShutdownFailedError {
+    #[to_error_info]
+    app_name: String,
+
+    #[to_error_info]
+    error_details: String,
+
+    #[to_message(message_template = "Failed to shutdown '{app_name}': {error_details}")]
+    message_template: String,
 }
