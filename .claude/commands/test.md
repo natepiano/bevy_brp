@@ -31,7 +31,7 @@ This file contains an array of test configurations with the following structure:
 - `test_objective`: What the test validates
 - `expected_shutdown_method`: Expected shutdown behavior (`clean_shutdown`, `process_kill`, or `N/A`)
 
-**Total Tests**: 12 tests
+**IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches PARALLEL_TESTS.
 
 ## Shutdown Validation
 
@@ -283,6 +283,7 @@ After the Task completes, simply present the test results as returned by the sub
 **CRITICAL PARALLEL EXECUTION REQUIREMENT**: When executing multiple tests "at a time", you MUST invoke multiple Task tools in a SINGLE message. Sequential execution (one Task per message) is NOT parallel execution.
 
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
+   - **Count the test objects** in the JSON array to determine the actual total number of tests
 2. **Initialize Execution State**:
    - Create queue of all test configurations
    - Track running tests (max PARALLEL_TESTS at a time)
@@ -365,13 +366,16 @@ The execution maintains exactly PARALLEL_TESTS running tests at all times. When 
 # BRP Test Suite - Consolidated Results
 
 ## Overall Statistics
-- **Total Tests**: 12
+- **Total Tests**: [Count from test_config.json]
 - **Passed**: X
 - **Failed**: 0 (execution stops on first failure)
 - **Skipped**: Y
 - **Critical Issues**: 0 (execution stops on critical issues)
 - **Total Execution Time**: ~X minutes (continuous parallel)
 - **Execution Strategy**: PARALLEL_TESTS tests at a time with continuous execution
+
+## Test Results Summary
+[List each test by name with its result count, avoiding duplication]
 
 ## ⚠️ SKIPPED TESTS
 [List of skipped tests with reasons]
