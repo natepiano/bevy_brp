@@ -40,7 +40,7 @@ pub struct TargetNotFoundAtSpecifiedPath {
     message_template: String,
 }
 
-/// Error when no targets found
+/// Error when no targets found - apps only, we don't detect it for examples
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct NoTargetsFoundError {
     #[to_error_info]
