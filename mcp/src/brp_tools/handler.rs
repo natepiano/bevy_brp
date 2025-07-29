@@ -164,24 +164,11 @@ fn enhance_error_message(err: &BrpError, enhanced_result: &EnhancedBrpResult) ->
     err.message.clone()
 }
 
-/// Shared implementation for all static BRP tools
-/// This function handles the common pattern of:
-/// 1. Extract typed parameters
-/// 2. Convert to JSON for BRP call
-/// 3. Use `Tool::brp_method()` for compile-time method name
-/// 4. Use params.port for typed port parameter
-/// 5. Call shared BRP infrastructure
-/// 6. Convert result to `BrpMethodResult`
-pub async fn execute_static_brp_call<Tool, T>(params: T) -> Result<BrpMethodResult>
-where
-    Tool: HasBrpMethod,
-    T: serde::Serialize + HasPortField + Send + 'static,
-{
-    tracing::debug!("execute_static_brp_call with extracted params");
-
-    let port = params.port(); // Type-safe port access through trait
-
-    tracing::debug!("execute_static_brp_call Port: {port}",);
+/// Extract common parameter processing logic used by both execution paths
+fn prepare_brp_params<T: serde::Serialize + HasPortField>(
+    params: T,
+) -> Result<(Port, Option<Value>)> {
+    let port = params.port();
 
     let mut params_json = serde_json::to_value(params)
         .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
@@ -200,11 +187,61 @@ where
         Some(params_json)
     };
 
-    // Use Tool::brp_method() to get method from trait at compile time
+    Ok((port, brp_params))
+}
+
+/// Shared implementation for all static BRP tools
+/// This function handles the common pattern of:
+/// 1. Extract typed parameters
+/// 2. Convert to JSON for BRP call
+/// 3. Use `Tool::brp_method()` for compile-time method name
+/// 4. Use params.port for typed port parameter
+/// 5. Call shared BRP infrastructure
+/// 6. Convert result to `BrpMethodResult`
+pub async fn execute_static_brp_call_with_format_discovery<Tool, T>(
+    params: T,
+) -> Result<BrpMethodResult>
+where
+    Tool: HasBrpMethod,
+    T: serde::Serialize + HasPortField + Send + 'static,
+{
+    tracing::debug!("execute_static_brp_call_with_format_discovery with extracted params");
+
+    // Use shared parameter processing
+    let (port, brp_params) = prepare_brp_params(params)?;
     let method = Tool::brp_method();
+
+    // Execute with format discovery
     let enhanced_result =
         execute_brp_method_with_format_discovery(method, brp_params, port).await?;
 
     // Convert result using existing conversion function
     convert_to_brp_method_result(enhanced_result, method.as_str())
+}
+
+/// Simplified BRP call for tools that don't support format discovery
+pub async fn execute_static_brp_call_simple<Tool, T>(params: T) -> Result<BrpMethodResult>
+where
+    Tool: HasBrpMethod,
+    T: serde::Serialize + HasPortField + Send + 'static,
+{
+    tracing::debug!("execute_static_brp_call_simple with extracted params");
+
+    // Use shared parameter processing
+    let (port, brp_params) = prepare_brp_params(params)?;
+    let method = Tool::brp_method();
+
+    // Direct BRP execution without format discovery
+    let result = crate::brp_tools::execute_brp_method(method, brp_params, port).await?;
+
+    // Simple conversion without format corrections
+    match result {
+        BrpResult::Success(data) => Ok(BrpMethodResult {
+            result:             data,
+            format_corrections: None,
+            format_corrected:   None,
+            message_template:   None,
+        }),
+        BrpResult::Error(err) => Err(Error::tool_call_failed(err.message).into()),
+    }
 }

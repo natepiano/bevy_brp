@@ -62,7 +62,8 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/insert",
         params = "InsertParams",
-        result = "InsertResult"
+        result = "InsertResult",
+        format_discovery = true
     )]
     BevyInsert,
     /// `bevy_remove` - Remove components from entities
@@ -90,7 +91,8 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/insert_resource",
         params = "InsertResourceParams",
-        result = "InsertResourceResult"
+        result = "InsertResourceResult",
+        format_discovery = true
     )]
     BevyInsertResource,
     /// `bevy_remove_resource` - Remove resources
@@ -104,14 +106,16 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/mutate_resource",
         params = "MutateResourceParams",
-        result = "MutateResourceResult"
+        result = "MutateResourceResult",
+        format_discovery = true
     )]
     BevyMutateResource,
     /// `bevy_mutate_component` - Mutate component fields
     #[brp_tool(
         brp_method = "bevy/mutate_component",
         params = "MutateComponentParams",
-        result = "MutateComponentResult"
+        result = "MutateComponentResult",
+        format_discovery = true
     )]
     BevyMutateComponent,
     /// `bevy_rpc_discover` - Discover available BRP methods
@@ -132,7 +136,8 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/spawn",
         params = "SpawnParams",
-        result = "SpawnResult"
+        result = "SpawnResult",
+        format_discovery = true
     )]
     BevySpawn,
     /// `bevy_registry_schema` - Get type schemas
@@ -681,23 +686,6 @@ impl ToolName {
             handler:     self.create_handler(),
             parameters:  self.get_parameters(),
         }
-    }
-}
-
-/// `BrpMethod` is created by `BrpTools` macro - which is why you don't see the enum defined here.
-/// We wanted to make it part of the `ToolName` definition as they go hand in hand. Helps prevent
-/// errors of omission.
-impl BrpMethod {
-    /// Check if this method supports format discovery
-    pub const fn supports_format_discovery(self) -> bool {
-        matches!(
-            self,
-            Self::BevySpawn
-                | Self::BevyInsert
-                | Self::BevyMutateComponent
-                | Self::BevyInsertResource
-                | Self::BevyMutateResource
-        )
     }
 }
 

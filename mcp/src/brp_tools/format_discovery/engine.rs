@@ -120,7 +120,8 @@ async fn execute_level_1(
             }
 
             // Check if this is a (potentially) recoverable format error
-            if error.is_format_error() && method.supports_format_discovery() {
+            if error.is_format_error() {
+                // The fact that we're in the format discovery path means it's supported
                 Ok(BrpRequestResult::FormatError {
                     error: result,
                     method,

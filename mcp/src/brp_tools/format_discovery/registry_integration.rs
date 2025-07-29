@@ -72,13 +72,7 @@ pub async fn get_registry_type_info(
     params: Option<&serde_json::Value>,
     port: Port,
 ) -> std::collections::HashMap<String, UnifiedTypeInfo> {
-    if !method.supports_format_discovery() {
-        debug!(
-            "get_registry_type_info: Method {} does not support format discovery",
-            method.as_str()
-        );
-        return std::collections::HashMap::new();
-    }
+    // This function is only called for methods that support format discovery
 
     debug!(
         "get_registry_type_info: Method {} supports format discovery, extracting component types",
