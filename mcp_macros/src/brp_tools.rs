@@ -57,39 +57,16 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                 // This is a BRP tool with params
                 let params_ident = syn::Ident::new(&params, variant_name.span());
 
-                // Use specific result type if provided, otherwise use BrpMethodResult
+                // Use specific result type (required for BRP tools)
                 let result_type = if let Some(result) = &tool_result {
                     let result_ident = syn::Ident::new(result, variant_name.span());
                     quote! { #result_ident }
                 } else {
-                    quote! { crate::brp_tools::handler::BrpMethodResult }
+                    panic!("BRP tools must specify a result type");
                 };
 
                 // Use the attribute value
                 let supports_format_discovery = tool_attrs.format_discovery.unwrap_or(false);
-
-                // Generate the conversion based on whether format discovery is supported
-                let conversion = if tool_result.is_some() {
-                    if supports_format_discovery {
-                        quote! {
-                            let result = #result_type::from_brp_value(
-                                brp_result.result,
-                                brp_result.format_corrections,
-                                brp_result.format_corrected,
-                            )?;
-                        }
-                    } else {
-                        quote! {
-                            let result = #result_type::from_brp_value(
-                                brp_result.result,
-                            )?;
-                        }
-                    }
-                } else {
-                    quote! {
-                        let result = brp_result;
-                    }
-                };
 
                 // Generate different ToolFn implementations based on format discovery support
                 if supports_format_discovery {
@@ -108,9 +85,10 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                     let port = params.port;
                                     let params_json = serde_json::to_value(&params).ok();
 
-                                    let brp_result = match crate::brp_tools::handler::execute_static_brp_call_with_format_discovery::<
+                                    let result = match crate::brp_tools::handler::execute_static_brp_call_with_format_discovery::<
                                         #variant_name,
                                         #params_ident,
+                                        #result_type,
                                     >(params)
                                     .await {
                                         Ok(r) => r,
@@ -123,9 +101,6 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                             });
                                         },
                                     };
-
-                                    // Convert with format corrections
-                                    #conversion
 
                                     let params = params_json
                                         .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
@@ -154,9 +129,10 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                     let port = params.port;
                                     let params_json = serde_json::to_value(&params).ok();
 
-                                    let brp_result = match crate::brp_tools::handler::execute_static_brp_call_simple::<
+                                    let result = match crate::brp_tools::handler::execute_static_brp_call_simple::<
                                         #variant_name,
                                         #params_ident,
+                                        #result_type,
                                     >(params)
                                     .await {
                                         Ok(r) => r,
@@ -169,9 +145,6 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                             });
                                         },
                                     };
-
-                                    // Simple conversion without format corrections
-                                    #conversion
 
                                     let params = params_json
                                         .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
@@ -200,6 +173,51 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                         }
                     }
                 });
+            }
+        }
+    }
+
+    // Generate FromBrpValue implementations for tool result types
+    for variant in &data_enum.variants {
+        let variant_name = &variant.ident;
+        let tool_attrs = extract_tool_attr(&variant.attrs);
+
+        // Only process variants that have both brp_method and result defined
+        if !tool_attrs.brp_method.is_empty() {
+            if let Some(result) = &tool_attrs.result {
+                let result_ident = syn::Ident::new(result, variant_name.span());
+                let supports_format_discovery = tool_attrs.format_discovery.unwrap_or(false);
+
+                // Generate the appropriate FromBrpValue implementation
+                if supports_format_discovery {
+                    // Format discovery tools need 3-parameter version
+                    tool_impls.push(quote! {
+                        impl crate::brp_tools::handler::FromBrpValue for #result_ident {
+                            type Args = (
+                                Option<serde_json::Value>,
+                                Option<Vec<serde_json::Value>>,
+                                Option<crate::brp_tools::FormatCorrectionStatus>
+                            );
+
+                            fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
+                                // Call the existing macro-generated method
+                                Self::from_brp_value(args.0, args.1, args.2)
+                            }
+                        }
+                    });
+                } else {
+                    // Simple tools need 1-parameter version
+                    tool_impls.push(quote! {
+                        impl crate::brp_tools::handler::FromBrpValue for #result_ident {
+                            type Args = Option<serde_json::Value>;
+
+                            fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
+                                // Call the existing macro-generated method
+                                Self::from_brp_value(args)
+                            }
+                        }
+                    });
+                }
             }
         }
     }

@@ -1,5 +1,3 @@
-use bevy_brp_mcp_macros::ResultStruct;
-use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::brp_client::{BrpError, BrpResult};
@@ -22,31 +20,14 @@ pub trait HasBrpMethod {
     fn brp_method() -> BrpMethod;
 }
 
-/// Result type for BRP method calls that follows local handler patterns
-#[derive(Serialize, ResultStruct)]
-pub struct BrpMethodResult {
-    // Success data - the actual BRP response data
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_result(skip_if_none)]
-    pub result: Option<Value>,
-
-    // BRP metadata - using existing field names
-    // Only include if not empty - but skip_if_empty would be better than always including empty
-    // vec
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub format_corrections: Option<Vec<Value>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub format_corrected:   Option<FormatCorrectionStatus>,
-
-    /// Message template for formatting responses
-    #[to_message(message_template = "Executed method {method}")]
-    message_template: Option<String>,
+/// Trait for converting BRP responses to result types
+pub trait FromBrpValue: Sized {
+    type Args;
+    fn from_brp_value(args: Self::Args) -> Result<Self>;
 }
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
-fn format_correction_to_json(correction: &FormatCorrection) -> Value {
+pub fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     let mut correction_json = json!({
         FormatCorrectionField::Component.as_ref(): correction.component,
         FormatCorrectionField::OriginalFormat.as_ref(): correction.original_format,
@@ -79,67 +60,6 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     }
 
     correction_json
-}
-
-/// Convert `EnhancedBrpResult` to `BrpMethodResult`
-pub fn convert_to_brp_method_result(
-    enhanced_result: EnhancedBrpResult,
-    method: &str,
-) -> Result<BrpMethodResult> {
-    match enhanced_result.result {
-        BrpResult::Success(data) => {
-            let format_corrections = enhanced_result
-                .format_corrections
-                .iter()
-                .map(format_correction_to_json)
-                .collect::<Vec<_>>();
-
-            Ok(BrpMethodResult {
-                result:             data, // Direct BRP response data
-                format_corrections: if format_corrections.is_empty() {
-                    None
-                } else {
-                    Some(format_corrections)
-                },
-                format_corrected:   match enhanced_result.format_corrected {
-                    FormatCorrectionStatus::NotAttempted => None,
-                    other => Some(other),
-                },
-                message_template:   Some((*method).to_string()),
-            })
-        }
-        BrpResult::Error(ref err) => {
-            // Process error enhancements (reuse logic from current handler)
-            let enhanced_message = enhance_error_message(err, &enhanced_result);
-            let mut error_data = err.data.clone();
-
-            // If message was enhanced, preserve the original error message
-            if enhanced_message != err.message {
-                let mut data_obj = error_data.unwrap_or_else(|| serde_json::json!({}));
-                if let Value::Object(map) = &mut data_obj {
-                    map.insert(
-                        FormatCorrectionField::OriginalError.as_ref().to_string(),
-                        Value::String(err.message.clone()),
-                    );
-                }
-                error_data = Some(data_obj);
-            }
-
-            // Build Error with all the error context including format corrections
-            let error_details = serde_json::json!({
-                FormatCorrectionField::Code.as_ref(): err.code,
-                FormatCorrectionField::ErrorData.as_ref(): error_data,
-                FormatCorrectionField::FormatCorrections.as_ref(): enhanced_result
-                    .format_corrections
-                    .iter()
-                    .map(format_correction_to_json)
-                    .collect::<Vec<_>>(),
-                FormatCorrectionField::FormatCorrected.as_ref(): enhanced_result.format_corrected
-            });
-
-            Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())
-        }
-    }
 }
 
 /// Enhance error message with format discovery insights
@@ -197,13 +117,18 @@ fn prepare_brp_params<T: serde::Serialize + HasPortField>(
 /// 3. Use `Tool::brp_method()` for compile-time method name
 /// 4. Use params.port for typed port parameter
 /// 5. Call shared BRP infrastructure
-/// 6. Convert result to `BrpMethodResult`
-pub async fn execute_static_brp_call_with_format_discovery<Tool, T>(
-    params: T,
-) -> Result<BrpMethodResult>
+/// 6. Convert result to tool's `ResultStruct`
+pub async fn execute_static_brp_call_with_format_discovery<Tool, P, R>(params: P) -> Result<R>
 where
     Tool: HasBrpMethod,
-    T: serde::Serialize + HasPortField + Send + 'static,
+    P: serde::Serialize + HasPortField + Send + 'static,
+    R: FromBrpValue<
+        Args = (
+            Option<Value>,
+            Option<Vec<Value>>,
+            Option<FormatCorrectionStatus>,
+        ),
+    >, // 3-param version
 {
     tracing::debug!("execute_static_brp_call_with_format_discovery with extracted params");
 
@@ -215,15 +140,52 @@ where
     let enhanced_result =
         execute_brp_method_with_format_discovery(method, brp_params, port).await?;
 
-    // Convert result using existing conversion function
-    convert_to_brp_method_result(enhanced_result, method.as_str())
+    match enhanced_result.result {
+        BrpResult::Success(data) => {
+            // Format discovery tools know how to convert from enhanced result
+            let format_corrections = if enhanced_result.format_corrections.is_empty() {
+                None
+            } else {
+                Some(
+                    enhanced_result
+                        .format_corrections
+                        .iter()
+                        .map(format_correction_to_json)
+                        .collect(),
+                )
+            };
+
+            // Call the 3-parameter from_brp_value
+            R::from_brp_value((
+                data,
+                format_corrections,
+                Some(enhanced_result.format_corrected),
+            ))
+        }
+        BrpResult::Error(ref err) => {
+            // NOTE: Error handling kept as-is - will be converted to StructuredError pattern
+            // in the subsequent format discovery migration
+            let enhanced_message = enhance_error_message(err, &enhanced_result);
+            let error_details = json!({
+                "code": err.code,
+                "error_data": err.data,
+                "format_corrections": enhanced_result.format_corrections.iter()
+                    .map(format_correction_to_json)
+                    .collect::<Vec<_>>(),
+                "format_corrected": enhanced_result.format_corrected
+            });
+
+            Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())
+        }
+    }
 }
 
 /// Simplified BRP call for tools that don't support format discovery
-pub async fn execute_static_brp_call_simple<Tool, T>(params: T) -> Result<BrpMethodResult>
+pub async fn execute_static_brp_call_simple<Tool, P, R>(params: P) -> Result<R>
 where
     Tool: HasBrpMethod,
-    T: serde::Serialize + HasPortField + Send + 'static,
+    P: serde::Serialize + HasPortField + Send + 'static,
+    R: FromBrpValue<Args = Option<Value>>, // Ensures R has 1-param from_brp_value
 {
     tracing::debug!("execute_static_brp_call_simple with extracted params");
 
@@ -234,14 +196,9 @@ where
     // Direct BRP execution without format discovery
     let result = crate::brp_tools::execute_brp_method(method, brp_params, port).await?;
 
-    // Simple conversion without format corrections
+    // Convert directly to tool's ResultStruct
     match result {
-        BrpResult::Success(data) => Ok(BrpMethodResult {
-            result:             data,
-            format_corrections: None,
-            format_corrected:   None,
-            message_template:   None,
-        }),
+        BrpResult::Success(data) => R::from_brp_value(data),
         BrpResult::Error(err) => Err(Error::tool_call_failed(err.message).into()),
     }
 }
