@@ -24,22 +24,22 @@ use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Result of a BRP operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BrpResult {
+pub enum BrpClientResult {
     /// Successful operation with optional data
     Success(Option<Value>),
     /// Error with code, message and optional data
-    Error(BrpError),
+    Error(BrpClientError),
 }
 
 /// Error information from BRP operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BrpError {
+pub struct BrpClientError {
     pub code:    i32,
     pub message: String,
     pub data:    Option<Value>,
 }
 
-impl BrpError {
+impl BrpClientError {
     /// Check if this error indicates a format issue that can be recovered
     /// This function was constructed through trial and error via vibe coding with claude
     /// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type"
@@ -91,7 +91,7 @@ pub async fn execute_brp_method(
     method: BrpMethod,
     params: Option<Value>,
     port: Port,
-) -> Result<BrpResult> {
+) -> Result<BrpClientResult> {
     let url = build_brp_url(port);
     let method_str = method.as_str();
 
@@ -281,7 +281,7 @@ async fn parse_json_response(
 }
 
 /// Convert `BrpResponse` to `BrpResult`
-fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
+fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpClientResult {
     if let Some(error) = brp_response.error {
         warn!(
             "BRP execute_brp_method: BRP returned error - code={}, message={}",
@@ -300,7 +300,7 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
             error.message
         };
 
-        let result = BrpResult::Error(BrpError {
+        let result = BrpClientResult::Error(BrpClientError {
             code:    error.code,
             message: enhanced_message,
             data:    error.data,
@@ -310,6 +310,6 @@ fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpResult {
 
         result
     } else {
-        BrpResult::Success(brp_response.result)
+        BrpClientResult::Success(brp_response.result)
     }
 }

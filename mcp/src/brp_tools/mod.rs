@@ -10,7 +10,7 @@ pub mod tools;
 mod watch_tools;
 
 // Public exports
-pub use brp_client::{BrpError, BrpResult, build_brp_url, execute_brp_method};
+pub use brp_client::{BrpClientError, BrpClientResult, build_brp_url, execute_brp_method};
 // Export special case tools that don't follow the standard pattern
 pub use brp_execute::{BrpExecute, ExecuteParams};
 pub use constants::{

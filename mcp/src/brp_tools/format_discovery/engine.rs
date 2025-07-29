@@ -46,7 +46,7 @@ use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::unified_types::CorrectionInfo;
 use super::{UnifiedTypeInfo, recovery_engine, registry_integration};
 use crate::brp_tools::{
-    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpResult, Port, execute_brp_method,
+    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpClientResult, Port, execute_brp_method,
 };
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -80,7 +80,7 @@ pub enum FormatCorrectionStatus {
 /// Enhanced response with format corrections
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnhancedBrpResult {
-    pub result:             BrpResult,
+    pub result:             BrpClientResult,
     pub format_corrections: Vec<FormatCorrection>,
     pub format_corrected:   FormatCorrectionStatus,
 }
@@ -95,11 +95,11 @@ async fn execute_level_1(
     let result = execute_brp_method(method, params.clone(), port).await?;
 
     match result {
-        BrpResult::Success(_) => {
+        BrpClientResult::Success(_) => {
             // Success - no format discovery needed
             Ok(BrpRequestResult::Success(result))
         }
-        BrpResult::Error(ref error) => {
+        BrpClientResult::Error(ref error) => {
             // Get type information only when needed for error handling
             let registry_type_info =
                 registry_integration::get_registry_type_info(method, params.as_ref(), port).await;
@@ -169,7 +169,7 @@ fn check_serialization_support(
 async fn execute_exception_path(
     method: BrpMethod,
     original_params: Option<Value>,
-    error: BrpResult,
+    error: BrpClientResult,
     registry_type_info: HashMap<String, super::unified_types::UnifiedTypeInfo>,
     port: Port,
 ) -> FormatRecoveryResult {
@@ -235,12 +235,13 @@ pub async fn execute_brp_method_with_format_discovery(
 
             // Replace the error message with the educational guidance
             let enhanced_error = match error {
-                BrpResult::Error(mut error_info) => {
+                BrpClientResult::Error(mut error_info) => {
                     error_info.message = educational_message;
-                    BrpResult::Error(error_info)
+                    BrpClientResult::Error(error_info)
                 }
-                success @ BrpResult::Success(_) => success, /* Shouldn't happen but preserve if
-                                                             * it does */
+                success @ BrpClientResult::Success(_) => success, /* Shouldn't happen but
+                                                                   * preserve if
+                                                                   * it does */
             };
 
             Ok(EnhancedBrpResult {
@@ -271,14 +272,14 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
 
             // Determine format correction status based on the actual result
             let format_corrected = match corrected_result {
-                BrpResult::Success(_) => FormatCorrectionStatus::Succeeded,
-                BrpResult::Error(_) => FormatCorrectionStatus::AttemptedButFailed,
+                BrpClientResult::Success(_) => FormatCorrectionStatus::Succeeded,
+                BrpClientResult::Error(_) => FormatCorrectionStatus::AttemptedButFailed,
             };
 
             // When recovery succeeded, we need to update the success message to indicate format
             // correction
             let enhanced_result = match corrected_result {
-                BrpResult::Success(mut success_data) => {
+                BrpClientResult::Success(mut success_data) => {
                     if let Some(ref mut result_value) = success_data {
                         if let Some(result_obj) = result_value.as_object_mut() {
                             result_obj.insert(
@@ -289,9 +290,9 @@ fn convert_recovery_to_enhanced_result(recovery_result: FormatRecoveryResult) ->
                             );
                         }
                     }
-                    BrpResult::Success(success_data)
+                    BrpClientResult::Success(success_data)
                 }
-                error @ BrpResult::Error(_) => error,
+                error @ BrpClientResult::Error(_) => error,
             };
 
             EnhancedBrpResult {
@@ -363,11 +364,11 @@ fn convert_corrections_to_legacy_format(corrections: Vec<CorrectionInfo>) -> Vec
 
 /// Enhance retry error with correction information for better error messages
 fn enhance_error_with_correction_info(
-    retry_error: BrpResult,
+    retry_error: BrpClientResult,
     corrections: &[CorrectionInfo],
-) -> BrpResult {
+) -> BrpClientResult {
     match retry_error {
-        BrpResult::Error(mut error) => {
+        BrpClientResult::Error(mut error) => {
             // Enhance error message with correction information
             let correction_summary = if corrections.is_empty() {
                 "No corrections were applied".to_string()
@@ -392,8 +393,8 @@ fn enhance_error_with_correction_info(
             };
 
             error.message = format!("{}\n\n{}", correction_summary, error.message);
-            BrpResult::Error(error)
+            BrpClientResult::Error(error)
         }
-        success @ BrpResult::Success(_) => success, // Pass through success results unchanged
+        success @ BrpClientResult::Success(_) => success, // Pass through success results unchanged
     }
 }

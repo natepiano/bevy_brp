@@ -9,7 +9,7 @@ use tracing::debug;
 use super::adapters;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
-use crate::brp_tools::{self, BrpResult, FormatCorrectionField, Port};
+use crate::brp_tools::{self, BrpClientResult, FormatCorrectionField, Port};
 use crate::tool::BrpMethod;
 
 /// Discover type format via `bevy_brp_extras/discover_format`
@@ -31,17 +31,17 @@ pub async fn discover_type_format(
     match brp_tools::execute_brp_method(BrpMethod::BrpExtrasDiscoverFormat, Some(params), port)
         .await
     {
-        Ok(BrpResult::Success(Some(response_data))) => {
+        Ok(BrpClientResult::Success(Some(response_data))) => {
             debug!("Extras Integration: Received successful response from brp_extras");
 
             // Process the response to extract type information
             process_discovery_response(type_name, &response_data)
         }
-        Ok(BrpResult::Success(None)) => {
+        Ok(BrpClientResult::Success(None)) => {
             debug!("Extras Integration: Received empty success response");
             Ok(None)
         }
-        Ok(BrpResult::Error(error)) => {
+        Ok(BrpClientResult::Error(error)) => {
             debug!(
                 "Extras Integration: brp_extras/discover_format failed: {} - {}",
                 error.code, error.message

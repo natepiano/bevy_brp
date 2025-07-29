@@ -7,7 +7,7 @@ use super::super::detection::ErrorPattern;
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
-use crate::brp_tools::{BrpError, FormatCorrectionField};
+use crate::brp_tools::{BrpClientError, FormatCorrectionField};
 
 /// Transformer for string types, especially the Name component
 /// Extracts strings from objects and arrays to convert to string format
@@ -111,7 +111,7 @@ impl StringTypeTransformer {
     }
 
     /// Check if the error mentions string-related expectations
-    fn is_string_expectation_error(error: &BrpError) -> bool {
+    fn is_string_expectation_error(error: &BrpClientError) -> bool {
         let message = &error.message;
 
         message.contains("expected string")
@@ -148,7 +148,7 @@ impl FormatTransformer for StringTypeTransformer {
     fn transform_with_error(
         &self,
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
     ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name =
@@ -359,21 +359,21 @@ mod tests {
 
     #[test]
     fn test_is_string_expectation_error() {
-        let error1 = BrpError {
+        let error1 = BrpClientError {
             code:    -1,
             message: "expected string but found object".to_string(),
             data:    None,
         };
         assert!(StringTypeTransformer::is_string_expectation_error(&error1));
 
-        let error2 = BrpError {
+        let error2 = BrpClientError {
             code:    -1,
             message: "expected `bevy_ecs::name::Name`".to_string(),
             data:    None,
         };
         assert!(StringTypeTransformer::is_string_expectation_error(&error2));
 
-        let error3 = BrpError {
+        let error3 = BrpClientError {
             code:    -1,
             message: "some other error".to_string(),
             data:    None,

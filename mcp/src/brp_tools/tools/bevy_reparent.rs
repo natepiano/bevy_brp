@@ -25,6 +25,7 @@ pub struct ReparentParams {
 
 /// Result for the `bevy/reparent` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct ReparentResult {
     /// The raw BRP response data (empty for reparent)
     #[serde(skip_serializing_if = "Option::is_none")]

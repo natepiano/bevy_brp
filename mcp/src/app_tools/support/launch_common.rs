@@ -440,7 +440,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     T::TARGET_TYPE.to_string(),
                 );
 
-                return Err(Error::Structured {
+                Err(Error::Structured {
                     result: Box::new(path_disambiguation_error),
                 })?;
             }
@@ -493,7 +493,7 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                 T::TARGET_TYPE.to_string(),
                 config.profile().to_string(),
             );
-            return Err(Error::Structured {
+            Err(Error::Structured {
                 result: Box::new(build_required_error),
             })?;
         }

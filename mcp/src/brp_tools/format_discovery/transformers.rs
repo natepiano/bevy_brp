@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use super::detection::ErrorPattern;
 use super::unified_types::{TransformationResult, UnifiedTypeInfo};
-use crate::brp_tools::BrpError;
+use crate::brp_tools::BrpClientError;
 
 // Import transformer implementations
 pub mod common;
@@ -41,7 +41,7 @@ pub trait FormatTransformer {
     fn transform_with_error(
         &self,
         value: &Value,
-        _error: &BrpError,
+        _error: &BrpClientError,
     ) -> Option<TransformationResult> {
         self.transform(value)
     }
@@ -59,7 +59,7 @@ pub trait FormatTransformer {
     fn transform_with_type_info(
         &self,
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
         _type_info: &UnifiedTypeInfo,
     ) -> Option<TransformationResult> {
         self.transform_with_error(value, error)
@@ -120,7 +120,7 @@ impl TransformerRegistry {
         &self,
         value: &Value,
         error_pattern: &ErrorPattern,
-        error: &BrpError,
+        error: &BrpClientError,
         type_info: &UnifiedTypeInfo,
     ) -> Option<TransformationResult> {
         self.find_transformer(error_pattern)
@@ -135,7 +135,7 @@ impl TransformerRegistry {
         &self,
         value: &Value,
         error_pattern: &ErrorPattern,
-        error: &BrpError,
+        error: &BrpClientError,
     ) -> Option<TransformationResult> {
         self.find_transformer(error_pattern)
             .and_then(|transformer| transformer.transform_with_error(value, error))

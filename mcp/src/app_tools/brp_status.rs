@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 
-use crate::brp_tools::{self, BrpResult, Port};
+use crate::brp_tools::{self, BrpClientResult, Port};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -308,11 +308,11 @@ async fn check_brp_on_port(port: Port) -> Result<bool> {
     // Try a simple BRP request to check connectivity using bevy/list
 
     match brp_tools::execute_brp_method(BrpMethod::BevyList, None, port).await {
-        Ok(BrpResult::Success(_)) => {
+        Ok(BrpClientResult::Success(_)) => {
             // BRP is responding and working
             Ok(true)
         }
-        Ok(BrpResult::Error(_)) | Err(_) => {
+        Ok(BrpClientResult::Error(_)) | Err(_) => {
             // BRP not responding or returned an error
             Ok(false)
         }

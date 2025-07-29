@@ -8,7 +8,7 @@ use super::super::path_parser::{parse_generic_enum_field_access, parse_path_to_f
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
-use crate::brp_tools::BrpError;
+use crate::brp_tools::BrpClientError;
 
 /// Transformer for tuple struct access patterns
 /// Handles field access to tuple index conversions and path corrections
@@ -214,7 +214,7 @@ impl TupleStructTransformer {
     }
 
     /// Check if the error indicates tuple struct access issues
-    fn is_tuple_struct_error(error: &BrpError) -> bool {
+    fn is_tuple_struct_error(error: &BrpClientError) -> bool {
         let message = &error.message;
 
         message.contains("tuple struct")
@@ -261,7 +261,7 @@ impl FormatTransformer for TupleStructTransformer {
     fn transform_with_error(
         &self,
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
     ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name =
@@ -470,21 +470,21 @@ mod tests {
     fn test_is_tuple_struct_error() {
         let _transformer = TupleStructTransformer::new();
 
-        let error1 = BrpError {
+        let error1 = BrpClientError {
             code:    -1,
             message: "tuple struct access error".to_string(),
             data:    None,
         };
         assert!(TupleStructTransformer::is_tuple_struct_error(&error1));
 
-        let error2 = BrpError {
+        let error2 = BrpClientError {
             code:    -1,
             message: "AccessError: Field not found".to_string(),
             data:    None,
         };
         assert!(TupleStructTransformer::is_tuple_struct_error(&error2));
 
-        let error3 = BrpError {
+        let error3 = BrpClientError {
             code:    -1,
             message: "some other error".to_string(),
             data:    None,

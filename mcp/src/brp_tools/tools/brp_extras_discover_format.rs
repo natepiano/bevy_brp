@@ -24,6 +24,7 @@ pub struct DiscoverFormatParams {
 
 /// Result for the `brp_extras/discover_format` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct DiscoverFormatResult {
     /// The raw BRP response containing format information
     #[serde(skip_serializing_if = "Option::is_none")]

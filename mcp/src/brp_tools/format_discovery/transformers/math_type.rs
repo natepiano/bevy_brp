@@ -9,7 +9,7 @@ use super::super::unified_types::{
 };
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
-use crate::brp_tools::BrpError;
+use crate::brp_tools::BrpClientError;
 use crate::brp_tools::format_discovery::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 
 /// Transformer for math types (Vec2, Vec3, Vec4, Quat)
@@ -283,7 +283,7 @@ impl FormatTransformer for MathTypeTransformer {
     fn transform_with_error(
         &self,
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
     ) -> Option<TransformationResult> {
         debug!("MathTypeTransformer: transform_with_error called");
         debug!("MathTypeTransformer: Input value: {}", value);

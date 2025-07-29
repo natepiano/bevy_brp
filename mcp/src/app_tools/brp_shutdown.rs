@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
 use tracing::debug;
 
-use crate::brp_tools::{BrpResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, Port, execute_brp_method};
+use crate::brp_tools::{
+    BrpClientResult, JSON_RPC_ERROR_METHOD_NOT_FOUND, Port, execute_brp_method,
+};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -185,12 +187,12 @@ async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResult> {
 async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> {
     debug!("Starting graceful shutdown attempt on port {port}");
     match execute_brp_method(BrpMethod::BrpShutdown, None, port).await {
-        Ok(BrpResult::Success(result)) => {
+        Ok(BrpClientResult::Success(result)) => {
             // Graceful shutdown succeeded
             debug!("BRP extras shutdown successful: {result:?}");
             Ok(result)
         }
-        Ok(BrpResult::Error(brp_error)) => {
+        Ok(BrpClientResult::Error(brp_error)) => {
             // Check if this is a method not found error (bevy_brp_extras not available)
             if brp_error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND {
                 debug!(

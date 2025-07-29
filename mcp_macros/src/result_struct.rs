@@ -9,6 +9,34 @@ use syn::{Data, DeriveInput, parse_macro_input};
 
 use crate::shared::{ComputedField, extract_field_data};
 
+/// Attributes for #[brp_result(...)]
+#[derive(Default)]
+struct BrpResultAttrs {
+    format_discovery: bool,
+}
+
+/// Parse #[brp_result(...)] attribute
+fn parse_brp_result_attr(attrs: &[syn::Attribute]) -> Option<BrpResultAttrs> {
+    for attr in attrs {
+        if attr.path().is_ident("brp_result") {
+            let mut result = BrpResultAttrs::default();
+
+            // Parse attribute arguments if any
+            let _ = attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("format_discovery") {
+                    let value = meta.value()?;
+                    let lit: syn::LitBool = value.parse()?;
+                    result.format_discovery = lit.value();
+                }
+                Ok(())
+            });
+
+            return Some(result);
+        }
+    }
+    None
+}
+
 /// Convert single-brace template placeholders to double-brace format
 fn convert_template_braces(template: &str) -> String {
     // Replace {foo} with {{foo}}
@@ -33,8 +61,11 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
+    // Parse #[brp_result] attribute
+    let brp_attrs = parse_brp_result_attr(&input.attrs);
+
     // Ensure we're working with a struct
-    let Data::Struct(data_struct) = &input.data else {
+    let Data::Struct(data_struct) = input.data else {
         panic!("ResultStruct can only be derived for structs");
     };
 
@@ -54,7 +85,6 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
     let regular_fields = extraction_result.regular_fields;
     let computed_fields = extraction_result.computed_fields;
     let message_template_field = extraction_result.message_template_field;
-    let has_format_corrections = extraction_result.has_format_corrections;
 
     // Generate MessageTemplateProvider and constructor methods
     let message_template_impl = generate_message_template_provider(
@@ -64,18 +94,26 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         &computed_fields,
     );
 
-    // Generate from_brp_value method only if needed
-    let from_brp_value_impl = if !computed_fields.is_empty()
-        || has_format_corrections
-        || regular_fields.iter().any(|(name, _)| name == "result")
-    {
+    // Generate from_brp_value method only if #[brp_result] is present
+    let from_brp_value_impl = if brp_attrs.is_some() {
         generate_from_brp_value(
             struct_name,
             &regular_fields,
             &computed_fields,
-            has_format_corrections,
             &message_template_field,
         )
+    } else {
+        quote! {}
+    };
+
+    // Generate HasFormatDiscoveryFields trait implementation if #[brp_result] is present
+    let format_discovery_impl = if let Some(ref attrs) = brp_attrs {
+        let has_format_discovery = attrs.format_discovery;
+        quote! {
+            impl crate::brp_tools::handler::HasFormatDiscoveryFields for #struct_name {
+                const HAS_FORMAT_DISCOVERY: bool = #has_format_discovery;
+            }
+        }
     } else {
         quote! {}
     };
@@ -102,6 +140,8 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         impl crate::tool::ResultStruct for #struct_name {}
 
         #from_brp_value_impl
+
+        #format_discovery_impl
 
         #message_template_impl
     };
@@ -332,7 +372,6 @@ fn generate_from_brp_value(
     struct_name: &syn::Ident,
     regular_fields: &[(syn::Ident, syn::Type)],
     computed_fields: &[ComputedField],
-    has_format_corrections: bool,
     message_template_field: &Option<(syn::Ident, Option<String>)>,
 ) -> proc_macro2::TokenStream {
     let mut field_initializers = Vec::new();
@@ -527,17 +566,11 @@ fn generate_from_brp_value(
         field_initializers.push(quote! { #field_name: #computation });
     }
 
-    // Generate the method signature based on whether format corrections are present
-    let params = if has_format_corrections {
-        quote! {
-            value: Option<serde_json::Value>,
-            format_corrections: Option<Vec<serde_json::Value>>,
-            format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
-        }
-    } else {
-        quote! {
-            value: Option<serde_json::Value>,
-        }
+    // Always use 3-parameter signature
+    let params = quote! {
+        value: Option<serde_json::Value>,
+        format_corrections: Option<Vec<serde_json::Value>>,
+        format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
     };
 
     quote! {
@@ -547,6 +580,18 @@ fn generate_from_brp_value(
                 Ok(Self {
                     #(#field_initializers,)*
                 })
+            }
+        }
+
+        impl crate::brp_tools::handler::FromBrpValue for #struct_name {
+            type Args = (
+                Option<serde_json::Value>,
+                Option<Vec<serde_json::Value>>,
+                Option<crate::brp_tools::FormatCorrectionStatus>,
+            );
+
+            fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
+                Self::from_brp_value(args.0, args.1, args.2)
             }
         }
     }

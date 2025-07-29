@@ -6,10 +6,9 @@ use syn::{Data, DeriveInput, Fields, parse_macro_input};
 
 /// Attributes extracted from #[tool(...)]
 struct ToolAttrs {
-    params:           Option<String>,
-    result:           Option<String>,
-    brp_method:       String,       // Make required (not Option)
-    format_discovery: Option<bool>, // Add this field
+    params:     Option<String>,
+    result:     Option<String>,
+    brp_method: String, // Make required (not Option)
 }
 
 /// Implementation of the BrpTools derive macro
@@ -65,99 +64,49 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                     panic!("BRP tools must specify a result type");
                 };
 
-                // Use the attribute value
-                let supports_format_discovery = tool_attrs.format_discovery.unwrap_or(false);
+                // Generate unified ToolFn implementation
+                tool_impls.push(quote! {
+                    impl crate::tool::ToolFn for #variant_name {
+                        type Output = #result_type;
+                        type Params = #params_ident;
 
-                // Generate different ToolFn implementations based on format discovery support
-                if supports_format_discovery {
-                    // Generate format discovery version
-                    tool_impls.push(quote! {
-                        impl crate::tool::ToolFn for #variant_name {
-                            type Output = #result_type;
-                            type Params = #params_ident;
+                        fn call(
+                            &self,
+                            ctx: crate::tool::HandlerContext,
+                        ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
+                            Box::pin(async move {
+                                let params = ctx.extract_parameter_values::<#params_ident>()?;
+                                let port = params.port;
+                                let params_json = serde_json::to_value(&params).ok();
 
-                            fn call(
-                                &self,
-                                ctx: crate::tool::HandlerContext,
-                            ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
-                                Box::pin(async move {
-                                    let params = ctx.extract_parameter_values::<#params_ident>()?;
-                                    let port = params.port;
-                                    let params_json = serde_json::to_value(&params).ok();
+                                let result = match crate::brp_tools::handler::execute_static_brp_call::<
+                                    #variant_name,
+                                    #params_ident,
+                                    #result_type,
+                                >(params)
+                                .await {
+                                    Ok(r) => r,
+                                    Err(e) => {
+                                        let params = params_json
+                                            .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+                                        return Ok(crate::tool::ToolResult {
+                                            result: Err(e),
+                                            params,
+                                        });
+                                    },
+                                };
 
-                                    let result = match crate::brp_tools::handler::execute_static_brp_call_with_format_discovery::<
-                                        #variant_name,
-                                        #params_ident,
-                                        #result_type,
-                                    >(params)
-                                    .await {
-                                        Ok(r) => r,
-                                        Err(e) => {
-                                            let params = params_json
-                                                .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-                                            return Ok(crate::tool::ToolResult {
-                                                result: Err(e),
-                                                params,
-                                            });
-                                        },
-                                    };
+                                let params = params_json
+                                    .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
 
-                                    let params = params_json
-                                        .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-
-                                    Ok(crate::tool::ToolResult {
-                                        result: Ok(result),
-                                        params,
-                                    })
+                                Ok(crate::tool::ToolResult {
+                                    result: Ok(result),
+                                    params,
                                 })
-                            }
+                            })
                         }
-                    });
-                } else {
-                    // Generate simple version without format discovery
-                    tool_impls.push(quote! {
-                        impl crate::tool::ToolFn for #variant_name {
-                            type Output = #result_type;
-                            type Params = #params_ident;
-
-                            fn call(
-                                &self,
-                                ctx: crate::tool::HandlerContext,
-                            ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
-                                Box::pin(async move {
-                                    let params = ctx.extract_parameter_values::<#params_ident>()?;
-                                    let port = params.port;
-                                    let params_json = serde_json::to_value(&params).ok();
-
-                                    let result = match crate::brp_tools::handler::execute_static_brp_call_simple::<
-                                        #variant_name,
-                                        #params_ident,
-                                        #result_type,
-                                    >(params)
-                                    .await {
-                                        Ok(r) => r,
-                                        Err(e) => {
-                                            let params = params_json
-                                                .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-                                            return Ok(crate::tool::ToolResult {
-                                                result: Err(e),
-                                                params,
-                                            });
-                                        },
-                                    };
-
-                                    let params = params_json
-                                        .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-
-                                    Ok(crate::tool::ToolResult {
-                                        result: Ok(result),
-                                        params,
-                                    })
-                                })
-                            }
-                        }
-                    });
-                }
+                    }
+                });
 
                 // Generate trait implementations once for both cases
                 tool_impls.push(quote! {
@@ -173,51 +122,6 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                         }
                     }
                 });
-            }
-        }
-    }
-
-    // Generate FromBrpValue implementations for tool result types
-    for variant in &data_enum.variants {
-        let variant_name = &variant.ident;
-        let tool_attrs = extract_tool_attr(&variant.attrs);
-
-        // Only process variants that have both brp_method and result defined
-        if !tool_attrs.brp_method.is_empty() {
-            if let Some(result) = &tool_attrs.result {
-                let result_ident = syn::Ident::new(result, variant_name.span());
-                let supports_format_discovery = tool_attrs.format_discovery.unwrap_or(false);
-
-                // Generate the appropriate FromBrpValue implementation
-                if supports_format_discovery {
-                    // Format discovery tools need 3-parameter version
-                    tool_impls.push(quote! {
-                        impl crate::brp_tools::handler::FromBrpValue for #result_ident {
-                            type Args = (
-                                Option<serde_json::Value>,
-                                Option<Vec<serde_json::Value>>,
-                                Option<crate::brp_tools::FormatCorrectionStatus>
-                            );
-
-                            fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
-                                // Call the existing macro-generated method
-                                Self::from_brp_value(args.0, args.1, args.2)
-                            }
-                        }
-                    });
-                } else {
-                    // Simple tools need 1-parameter version
-                    tool_impls.push(quote! {
-                        impl crate::brp_tools::handler::FromBrpValue for #result_ident {
-                            type Args = Option<serde_json::Value>;
-
-                            fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
-                                // Call the existing macro-generated method
-                                Self::from_brp_value(args)
-                            }
-                        }
-                    });
-                }
             }
         }
     }
@@ -348,10 +252,9 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 /// Extract unified tool attributes from #[tool(...)]
 fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
     let mut tool_attrs = ToolAttrs {
-        params:           None,
-        result:           None,
-        brp_method:       String::new(), // Required field
-        format_discovery: None,          // Initialize new field
+        params:     None,
+        result:     None,
+        brp_method: String::new(), // Required field
     };
 
     let mut has_brp_tool = false;
@@ -371,10 +274,6 @@ fn extract_tool_attr(attrs: &[syn::Attribute]) -> ToolAttrs {
                     let value = meta.value()?;
                     let s: syn::LitStr = value.parse()?;
                     tool_attrs.brp_method = s.value(); // Set required field
-                } else if meta.path.is_ident("format_discovery") {
-                    let value = meta.value()?;
-                    let b: syn::LitBool = value.parse()?;
-                    tool_attrs.format_discovery = Some(b.value());
                 } else {
                     return Err(meta.error("unsupported tool attribute"));
                 }

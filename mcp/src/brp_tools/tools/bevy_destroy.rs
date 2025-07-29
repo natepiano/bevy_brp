@@ -20,6 +20,7 @@ pub struct DestroyParams {
 
 /// Result for the `bevy/destroy` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct DestroyResult {
     /// The raw BRP response data (empty for destroy)
     #[serde(skip_serializing_if = "Option::is_none")]

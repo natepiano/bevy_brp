@@ -23,6 +23,7 @@ pub struct GetParams {
 
 /// Result for the `bevy/get` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct GetResult {
     /// The raw BRP response with components and errors
     #[serde(skip_serializing_if = "Option::is_none")]

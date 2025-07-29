@@ -10,7 +10,7 @@ use super::constants::{
     TUPLE_STRUCT_PATH_REGEX, TYPE_MISMATCH_REGEX, UNKNOWN_COMPONENT_REGEX,
     UNKNOWN_COMPONENT_TYPE_REGEX, VARIANT_TYPE_MISMATCH_REGEX,
 };
-use crate::brp_tools::BrpError;
+use crate::brp_tools::BrpClientError;
 
 /// Known error patterns that can be deterministically handled
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,7 +174,7 @@ fn match_all_patterns(message: &str) -> Option<ErrorPattern> {
 }
 
 /// Analyze error message to identify known patterns using exact regex matching
-pub fn analyze_error_pattern(error: &BrpError) -> ErrorAnalysis {
+pub fn analyze_error_pattern(error: &BrpClientError) -> ErrorAnalysis {
     ErrorAnalysis {
         pattern: match_all_patterns(&error.message),
     }

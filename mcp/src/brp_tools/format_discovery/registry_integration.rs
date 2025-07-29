@@ -9,7 +9,7 @@ use tracing::debug;
 
 use super::adapters;
 use super::unified_types::UnifiedTypeInfo;
-use crate::brp_tools::{self, BrpResult, Port};
+use crate::brp_tools::{self, BrpClientResult, Port};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Find type in registry response (handles various response formats)
@@ -185,7 +185,7 @@ pub async fn check_multiple_types_registry_status(
     debug!("Registry Integration: Batch call with params: {params}");
 
     match brp_tools::execute_brp_method(BrpMethod::BevyRegistrySchema, Some(params), port).await {
-        Ok(BrpResult::Success(Some(response_data))) => {
+        Ok(BrpClientResult::Success(Some(response_data))) => {
             debug!("Registry Integration: Received successful batch response");
 
             // Process each type in the response
@@ -202,7 +202,7 @@ pub async fn check_multiple_types_registry_status(
             }
             results
         }
-        Ok(BrpResult::Success(None) | BrpResult::Error(_)) | Err(_) => {
+        Ok(BrpClientResult::Success(None) | BrpClientResult::Error(_)) | Err(_) => {
             debug!("Registry Integration: Batch registry check failed");
             type_names.iter().map(|name| (name.clone(), None)).collect()
         }

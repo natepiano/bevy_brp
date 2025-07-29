@@ -20,6 +20,7 @@ pub struct ScreenshotParams {
 
 /// Result for the `brp_extras/screenshot` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct ScreenshotResult {
     /// The raw BRP response
     #[serde(skip_serializing_if = "Option::is_none")]

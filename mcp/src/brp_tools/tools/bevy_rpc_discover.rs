@@ -17,6 +17,7 @@ pub struct RpcDiscoverParams {
 
 /// Result for the `rpc.discover` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct RpcDiscoverResult {
     /// The raw BRP response containing method discovery information
     #[serde(skip_serializing_if = "Option::is_none")]

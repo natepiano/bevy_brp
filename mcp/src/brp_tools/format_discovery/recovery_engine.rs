@@ -20,7 +20,7 @@ use super::transformers::TransformerRegistry;
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
-use crate::brp_tools::brp_client::{self, BrpError, BrpResult};
+use crate::brp_tools::brp_client::{self, BrpClientError, BrpClientResult};
 use crate::brp_tools::{FormatCorrectionField, Port};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
@@ -28,7 +28,7 @@ use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 pub async fn attempt_format_recovery_with_type_infos(
     method: BrpMethod,
     original_params: Option<Value>,
-    error: BrpResult,
+    error: BrpClientResult,
     registry_type_info: HashMap<String, UnifiedTypeInfo>,
     port: Port,
 ) -> FormatRecoveryResult {
@@ -89,8 +89,8 @@ pub async fn attempt_format_recovery_with_type_infos(
 
     // Extract the BrpError from the error result to pass to Level 3
     let brp_error = match &error {
-        BrpResult::Error(brp_error) => brp_error,
-        BrpResult::Success(_) => {
+        BrpClientResult::Error(brp_error) => brp_error,
+        BrpClientResult::Success(_) => {
             // This shouldn't happen as we only call recovery on errors
             debug!("Recovery Engine: Warning - Level 3 called with success result");
             return FormatRecoveryResult::NotRecoverable {
@@ -243,7 +243,7 @@ fn execute_level_3_pattern_transformations(
     type_names: &[String],
     method: BrpMethod,
     original_params: Option<&Value>,
-    original_error: &BrpError,
+    original_error: &BrpClientError,
     type_infos: &HashMap<String, UnifiedTypeInfo>,
 ) -> LevelResult {
     debug!(
@@ -409,7 +409,7 @@ fn attempt_pattern_based_correction(
     type_name: &str,
     transformer_registry: &super::transformers::TransformerRegistry,
     original_value: Option<&Value>,
-    error: &BrpError,
+    error: &BrpClientError,
     method: BrpMethod,
     mutation_path: Option<&str>,
     type_info: Option<&UnifiedTypeInfo>,
@@ -882,7 +882,7 @@ async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: BrpMethod,
     original_params: Option<&Value>,
-    original_error: &BrpResult,
+    original_error: &BrpClientResult,
     port: Port,
 ) -> FormatRecoveryResult {
     let mut corrections = Vec::new();
@@ -953,7 +953,7 @@ async fn build_recovery_success(
                     Err(retry_error) => {
                         debug!("Recovery Engine: Retry failed: {}", retry_error);
                         // Convert error to BrpResult::Error
-                        let retry_brp_error = BrpResult::Error(BrpError {
+                        let retry_brp_error = BrpClientResult::Error(BrpClientError {
                             code:    -1, // Generic error code
                             message: retry_error.to_string(),
                             data:    None,

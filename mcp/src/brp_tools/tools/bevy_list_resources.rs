@@ -17,6 +17,7 @@ pub struct ListResourcesParams {
 
 /// Result for the `bevy/list_resources` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct ListResourcesResult {
     /// The raw BRP response - array of resource type names
     #[serde(skip_serializing_if = "Option::is_none")]

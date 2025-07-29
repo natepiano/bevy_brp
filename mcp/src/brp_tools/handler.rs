@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use super::brp_client::{BrpError, BrpResult};
+use super::brp_client::{BrpClientError, BrpClientResult};
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
@@ -24,6 +24,11 @@ pub trait HasBrpMethod {
 pub trait FromBrpValue: Sized {
     type Args;
     fn from_brp_value(args: Self::Args) -> Result<Self>;
+}
+
+/// Trait to indicate whether a result type supports format discovery
+pub trait HasFormatDiscoveryFields {
+    const HAS_FORMAT_DISCOVERY: bool;
 }
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
@@ -63,9 +68,9 @@ pub fn format_correction_to_json(correction: &FormatCorrection) -> Value {
 }
 
 /// Enhance error message with format discovery insights
-fn enhance_error_message(err: &BrpError, enhanced_result: &EnhancedBrpResult) -> String {
+fn enhance_error_message(err: &BrpClientError, enhanced_result: &EnhancedBrpResult) -> String {
     // Check if the enhanced result has a different error message
-    if let BrpResult::Error(enhanced_error) = &enhanced_result.result {
+    if let BrpClientResult::Error(enhanced_error) = &enhanced_result.result {
         if enhanced_error.message != err.message {
             return enhanced_error.message.clone();
         }
@@ -110,95 +115,78 @@ fn prepare_brp_params<T: serde::Serialize + HasPortField>(
     Ok((port, brp_params))
 }
 
-/// Shared implementation for all static BRP tools
-/// This function handles the common pattern of:
-/// 1. Extract typed parameters
-/// 2. Convert to JSON for BRP call
-/// 3. Use `Tool::brp_method()` for compile-time method name
-/// 4. Use params.port for typed port parameter
-/// 5. Call shared BRP infrastructure
-/// 6. Convert result to tool's `ResultStruct`
-pub async fn execute_static_brp_call_with_format_discovery<Tool, P, R>(params: P) -> Result<R>
+/// Unified BRP call handler that routes based on result type's format discovery support
+pub async fn execute_static_brp_call<Tool, P, R>(params: P) -> Result<R>
 where
     Tool: HasBrpMethod,
     P: serde::Serialize + HasPortField + Send + 'static,
     R: FromBrpValue<
-        Args = (
-            Option<Value>,
-            Option<Vec<Value>>,
-            Option<FormatCorrectionStatus>,
-        ),
-    >, // 3-param version
+            Args = (
+                Option<Value>,
+                Option<Vec<Value>>,
+                Option<FormatCorrectionStatus>,
+            ),
+        > + HasFormatDiscoveryFields,
 {
-    tracing::debug!("execute_static_brp_call_with_format_discovery with extracted params");
+    tracing::debug!("execute_static_brp_call with extracted params");
 
     // Use shared parameter processing
     let (port, brp_params) = prepare_brp_params(params)?;
     let method = Tool::brp_method();
 
-    // Execute with format discovery
-    let enhanced_result =
-        execute_brp_method_with_format_discovery(method, brp_params, port).await?;
+    if R::HAS_FORMAT_DISCOVERY {
+        // Execute with format discovery
+        let enhanced_result =
+            execute_brp_method_with_format_discovery(method, brp_params, port).await?;
 
-    match enhanced_result.result {
-        BrpResult::Success(data) => {
-            // Format discovery tools know how to convert from enhanced result
-            let format_corrections = if enhanced_result.format_corrections.is_empty() {
-                None
-            } else {
-                Some(
-                    enhanced_result
-                        .format_corrections
-                        .iter()
+        match enhanced_result.result {
+            BrpClientResult::Success(data) => {
+                // Format discovery tools know how to convert from enhanced result
+                let format_corrections = if enhanced_result.format_corrections.is_empty() {
+                    None
+                } else {
+                    Some(
+                        enhanced_result
+                            .format_corrections
+                            .iter()
+                            .map(format_correction_to_json)
+                            .collect(),
+                    )
+                };
+
+                // Call from_brp_value with all 3 parameters
+                R::from_brp_value((
+                    data,
+                    format_corrections,
+                    Some(enhanced_result.format_corrected),
+                ))
+            }
+            BrpClientResult::Error(ref err) => {
+                // NOTE: Error handling kept as-is - will be converted to StructuredError pattern
+                // in the subsequent format discovery migration
+                let enhanced_message = enhance_error_message(err, &enhanced_result);
+                let error_details = json!({
+                    "code": err.code,
+                    "error_data": err.data,
+                    "format_corrections": enhanced_result.format_corrections.iter()
                         .map(format_correction_to_json)
-                        .collect(),
-                )
-            };
+                        .collect::<Vec<_>>(),
+                    "format_corrected": enhanced_result.format_corrected
+                });
 
-            // Call the 3-parameter from_brp_value
-            R::from_brp_value((
-                data,
-                format_corrections,
-                Some(enhanced_result.format_corrected),
-            ))
+                Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())
+            }
         }
-        BrpResult::Error(ref err) => {
-            // NOTE: Error handling kept as-is - will be converted to StructuredError pattern
-            // in the subsequent format discovery migration
-            let enhanced_message = enhance_error_message(err, &enhanced_result);
-            let error_details = json!({
-                "code": err.code,
-                "error_data": err.data,
-                "format_corrections": enhanced_result.format_corrections.iter()
-                    .map(format_correction_to_json)
-                    .collect::<Vec<_>>(),
-                "format_corrected": enhanced_result.format_corrected
-            });
+    } else {
+        // Direct BRP execution without format discovery
+        let result = crate::brp_tools::execute_brp_method(method, brp_params, port).await?;
 
-            Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())
+        match result {
+            BrpClientResult::Success(data) => {
+                // Call from_brp_value with None for format fields
+                R::from_brp_value((data, None, None))
+            }
+            BrpClientResult::Error(err) => Err(Error::tool_call_failed(err.message).into()),
         }
-    }
-}
-
-/// Simplified BRP call for tools that don't support format discovery
-pub async fn execute_static_brp_call_simple<Tool, P, R>(params: P) -> Result<R>
-where
-    Tool: HasBrpMethod,
-    P: serde::Serialize + HasPortField + Send + 'static,
-    R: FromBrpValue<Args = Option<Value>>, // Ensures R has 1-param from_brp_value
-{
-    tracing::debug!("execute_static_brp_call_simple with extracted params");
-
-    // Use shared parameter processing
-    let (port, brp_params) = prepare_brp_params(params)?;
-    let method = Tool::brp_method();
-
-    // Direct BRP execution without format discovery
-    let result = crate::brp_tools::execute_brp_method(method, brp_params, port).await?;
-
-    // Convert directly to tool's ResultStruct
-    match result {
-        BrpResult::Success(data) => R::from_brp_value(data),
-        BrpResult::Error(err) => Err(Error::tool_call_failed(err.message).into()),
     }
 }

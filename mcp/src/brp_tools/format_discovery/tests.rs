@@ -9,11 +9,11 @@ use super::engine::FormatCorrection;
 // Legacy types imported for backward compatibility during tests
 use super::transformers::TransformerRegistry;
 use super::unified_types::TypeCategory;
-use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpError};
+use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpClientError};
 
 #[test]
 fn test_analyze_error_pattern_tuple_struct_access() {
-    let error = BrpError {
+    let error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "Error accessing element with Field access at path .LinearRgba.red".to_string(),
         data:    None,
@@ -37,7 +37,7 @@ fn test_analyze_error_pattern_tuple_struct_access() {
 
 #[test]
 fn test_analyze_error_pattern_transform_sequence() {
-    let error = BrpError {
+    let error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "Transform component expected a sequence of 3 f32 values".to_string(),
         data:    None,
@@ -61,7 +61,7 @@ fn test_analyze_error_pattern_transform_sequence() {
 
 #[test]
 fn test_analyze_error_pattern_expected_type() {
-    let error = BrpError {
+    let error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "expected `bevy_ecs::name::Name`".to_string(),
         data:    None,
@@ -82,7 +82,7 @@ fn test_analyze_error_pattern_expected_type() {
 
 #[test]
 fn test_analyze_error_pattern_math_type_array() {
-    let error = BrpError {
+    let error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "Vec3 expects array format".to_string(),
         data:    None,
@@ -111,7 +111,7 @@ fn test_apply_pattern_fix_linear_rgba_case() {
 
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
-    let _error = BrpError {
+    let _error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "tuple struct access error".to_string(),
         data:    None,
@@ -136,7 +136,7 @@ fn test_apply_pattern_fix_transform_sequence() {
 
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
-    let _error = BrpError {
+    let _error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "Transform expected sequence of 3 f32 values".to_string(),
         data:    None,
@@ -157,7 +157,7 @@ fn test_apply_pattern_fix_expected_type_name() {
 
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
-    let _error = BrpError {
+    let _error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "expected bevy_ecs::name::Name".to_string(),
         data:    None,
@@ -178,7 +178,7 @@ fn test_apply_pattern_fix_math_type_array() {
 
     // Use the transformer registry
     let _registry = TransformerRegistry::with_defaults();
-    let _error = BrpError {
+    let _error = BrpClientError {
         code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
         message: "Vec3 expects array format".to_string(),
         data:    None,

@@ -6,9 +6,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::format_discovery;
 use crate::brp_tools::Port;
-use crate::brp_tools::handler::{HasPortField, format_correction_to_json};
+use crate::brp_tools::handler::HasPortField;
 use crate::error::Error;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -32,39 +31,16 @@ impl HasPortField for ExecuteParams {
 
 /// Result type for the dynamic BRP execute tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct ExecuteResult {
     /// The raw BRP response data
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
 
-    /// Format corrections applied during the BRP call
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub format_corrections: Option<Vec<Value>>,
-
-    /// Whether format corrections were applied
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
-
     /// Message template for formatting responses
     #[to_message(message_template = "Executed method {method}")]
     message_template: String,
-}
-
-// ExecuteResult uses format discovery, so it needs the 3-parameter FromBrpValue implementation
-impl crate::brp_tools::handler::FromBrpValue for ExecuteResult {
-    type Args = (
-        Option<Value>,
-        Option<Vec<Value>>,
-        Option<crate::brp_tools::FormatCorrectionStatus>,
-    );
-
-    fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
-        // Call the existing macro-generated method
-        Self::from_brp_value(args.0, args.1, args.2)
-    }
 }
 
 pub struct BrpExecute;
@@ -91,7 +67,7 @@ impl ToolFn for BrpExecute {
                 });
             };
 
-            let enhanced_result = match format_discovery::execute_brp_method_with_format_discovery(
+            let brp_result = match super::brp_client::execute_brp_method(
                 brp_method,            // Parsed BRP method
                 params.params.clone(), // User-provided params (already Option<Value>)
                 port,                  // Use typed port parameter
@@ -107,40 +83,17 @@ impl ToolFn for BrpExecute {
                 }
             };
 
-            // Convert enhanced result to ExecuteResult using FromBrpValue trait
-            let result = match enhanced_result.result {
-                super::brp_client::BrpResult::Success(data) => {
-                    let format_corrections = if enhanced_result.format_corrections.is_empty() {
-                        None
-                    } else {
-                        Some(
-                            enhanced_result
-                                .format_corrections
-                                .iter()
-                                .map(format_correction_to_json)
-                                .collect(),
-                        )
-                    };
-
-                    ExecuteResult::from_brp_value(
-                        data,
-                        format_corrections,
-                        Some(enhanced_result.format_corrected),
-                    )
-                }
-                super::brp_client::BrpResult::Error(err) => {
-                    // For now, keep error handling as-is
-                    return Ok(ToolResult {
-                        result: Err(Error::tool_call_failed(err.message).into()),
-                        params: Some(params),
-                    });
-                }
-            };
-
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
+            // Convert BRP result to ToolResult
+            match brp_result {
+                super::brp_client::BrpClientResult::Success(data) => Ok(ToolResult {
+                    result: Ok(ExecuteResult::new(data)),
+                    params: Some(params),
+                }),
+                super::brp_client::BrpClientResult::Error(err) => Ok(ToolResult {
+                    result: Err(Error::tool_call_failed(err.message).into()),
+                    params: Some(params),
+                }),
+            }
         })
     }
 }

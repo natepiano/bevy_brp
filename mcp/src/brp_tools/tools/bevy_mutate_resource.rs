@@ -28,18 +28,19 @@ pub struct MutateResourceParams {
 
 /// Result for the `bevy/mutate_resource` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result(format_discovery = true)]
 pub struct MutateResourceResult {
     /// The raw BRP response data (empty for mutate)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
 
-    /// Format corrections applied during mutation
+    /// Format corrections applied during execution
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
-    pub format_corrections: Option<Vec<Value>>,
+    pub format_corrections: Option<Vec<serde_json::Value>>,
 
-    /// Status of format correction
+    /// Whether format discovery was applied
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
     pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,

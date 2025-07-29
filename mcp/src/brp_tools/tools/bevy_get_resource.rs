@@ -20,6 +20,7 @@ pub struct GetResourceParams {
 
 /// Result for the `bevy/get_resource` tool
 #[derive(Serialize, ResultStruct)]
+#[brp_result]
 pub struct GetResourceResult {
     /// The raw BRP response containing the resource data
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -105,7 +105,6 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
     let mut response_data_fields = Vec::new();
     let mut computed_fields = Vec::new();
     let mut regular_fields = Vec::new();
-    let mut has_format_corrections = false;
     let mut message_template_field: Option<(Ident, Option<String>)> = None;
 
     for field in fields {
@@ -166,11 +165,6 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
             is_computed = true;
         }
 
-        // Check if this is a format corrections field
-        if field_name == "format_corrections" || field_name == "format_corrected" {
-            has_format_corrections = true;
-        }
-
         // Handle computed fields
         if is_computed {
             if let Some(operation) = result_operation {
@@ -216,7 +210,6 @@ pub fn extract_field_data(fields: &[&Field]) -> FieldExtractionResult {
         response_data_fields,
         computed_fields,
         regular_fields,
-        has_format_corrections,
         message_template_field,
     }
 }
@@ -226,6 +219,5 @@ pub struct FieldExtractionResult {
     pub response_data_fields:   Vec<TokenStream>,
     pub computed_fields:        Vec<ComputedField>,
     pub regular_fields:         Vec<(Ident, Type)>,
-    pub has_format_corrections: bool,
     pub message_template_field: Option<(Ident, Option<String>)>,
 }

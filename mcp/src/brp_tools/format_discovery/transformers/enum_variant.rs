@@ -6,7 +6,7 @@ use super::super::detection::ErrorPattern;
 use super::super::unified_types::{TransformationResult, TypeCategory, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
-use crate::brp_tools::{BrpError, FormatCorrectionField};
+use crate::brp_tools::{BrpClientError, FormatCorrectionField};
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types
@@ -421,7 +421,7 @@ impl EnumVariantTransformer {
     }
 
     /// Check if the error indicates enum variant issues
-    fn is_enum_variant_error(error: &BrpError) -> bool {
+    fn is_enum_variant_error(error: &BrpClientError) -> bool {
         let message = &error.message;
 
         message.contains("variant")
@@ -437,7 +437,7 @@ impl EnumVariantTransformer {
     /// to provide more accurate variant transformations.
     fn transform_enum_with_discovered_info(
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
         type_name: &str,
         enum_info: &super::super::unified_types::EnumInfo,
     ) -> Option<TransformationResult> {
@@ -516,7 +516,7 @@ impl FormatTransformer for EnumVariantTransformer {
     fn transform_with_error(
         &self,
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
     ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
         let type_name =
@@ -575,7 +575,7 @@ impl FormatTransformer for EnumVariantTransformer {
     fn transform_with_type_info(
         &self,
         value: &Value,
-        error: &BrpError,
+        error: &BrpClientError,
         type_info: &UnifiedTypeInfo,
     ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
@@ -808,21 +808,21 @@ mod tests {
 
     #[test]
     fn test_is_enum_variant_error() {
-        let error1 = BrpError {
+        let error1 = BrpClientError {
             code:    -1,
             message: "VariantTypeMismatch: expected tuple variant".to_string(),
             data:    None,
         };
         assert!(EnumVariantTransformer::is_enum_variant_error(&error1));
 
-        let error2 = BrpError {
+        let error2 = BrpClientError {
             code:    -1,
             message: "enum variant access error".to_string(),
             data:    None,
         };
         assert!(EnumVariantTransformer::is_enum_variant_error(&error2));
 
-        let error3 = BrpError {
+        let error3 = BrpClientError {
             code:    -1,
             message: "some other error".to_string(),
             data:    None,
@@ -893,7 +893,7 @@ mod tests {
         assert!(transformer.can_handle(&pattern));
 
         // Create an error that matches the pattern
-        let error = BrpError {
+        let error = BrpClientError {
             code: -1,
             message: "Expected variant field access to access a Struct variant, found a Unit variant instead".to_string(),
             data: None,

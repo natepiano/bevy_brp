@@ -2,7 +2,7 @@
 
 use serde_json::Value;
 
-use crate::brp_tools::BrpError;
+use crate::brp_tools::BrpClientError;
 
 /// Standard error message templates for consistency across transformers
 pub mod messages {
@@ -29,7 +29,7 @@ pub mod messages {
 
 /// Extract type name from error message by looking for text between backticks
 /// Returns `Some(type_name)` if found, `None` otherwise
-pub fn extract_type_name_from_error(error: &BrpError) -> Option<String> {
+pub fn extract_type_name_from_error(error: &BrpClientError) -> Option<String> {
     let message = &error.message;
 
     // Look for common patterns that indicate the type name
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_extract_type_name_from_error_success() {
-        let error = BrpError {
+        let error = BrpClientError {
             code:    -1,
             message: "Invalid type `bevy_transform::components::transform::Transform` found"
                 .to_string(),
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_extract_type_name_from_error_no_backticks() {
-        let error = BrpError {
+        let error = BrpClientError {
             code:    -1,
             message: "Invalid type found with no backticks".to_string(),
             data:    None,
@@ -87,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_extract_type_name_from_error_incomplete_backticks() {
-        let error = BrpError {
+        let error = BrpClientError {
             code:    -1,
             message: "Invalid type `Transform with no closing backtick".to_string(),
             data:    None,
