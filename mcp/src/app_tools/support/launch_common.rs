@@ -440,9 +440,9 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                     T::TARGET_TYPE.to_string(),
                 );
 
-                return Err(error_stack::Report::new(Error::Structured {
+                return Err(Error::Structured {
                     result: Box::new(path_disambiguation_error),
-                }));
+                })?;
             }
 
             // For non-duplicate errors, determine appropriate structured error
@@ -453,9 +453,9 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                         config.target_name().to_string(),
                         T::TARGET_TYPE.to_string(),
                     );
-                    return Err(error_stack::Report::new(Error::Structured {
+                    return Err(Error::Structured {
                         result: Box::new(no_targets_error),
-                    }));
+                    })?;
                 }
                 1 => {
                     // Exactly one target exists but path disambiguation failed
@@ -469,9 +469,9 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                         config.path().map(std::string::ToString::to_string),
                         available_paths,
                     );
-                    return Err(error_stack::Report::new(Error::Structured {
+                    return Err(Error::Structured {
                         result: Box::new(target_not_found_error),
-                    }));
+                    })?;
                 }
                 _ => {
                     // This should not happen due to duplicate_paths logic above, but fallback
@@ -493,9 +493,9 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
                 T::TARGET_TYPE.to_string(),
                 config.profile().to_string(),
             );
-            return Err(error_stack::Report::new(Error::Structured {
+            return Err(Error::Structured {
                 result: Box::new(build_required_error),
-            }));
+            })?;
         }
 
         // For other validation errors, use generic error

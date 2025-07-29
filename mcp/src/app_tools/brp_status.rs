@@ -279,9 +279,9 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
             )
             .with_message_template(message);
 
-            Err(error_stack::Report::new(Error::Structured {
+            Err(Error::Structured {
                 result: Box::new(process_not_found_error),
-            }))
+            })?
         },
         |process| {
             // Found exact match
@@ -295,9 +295,9 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
                 let brp_not_responding_error =
                     BrpNotRespondingError::new(app_name.to_string(), pid, port.0);
 
-                Err(error_stack::Report::new(Error::Structured {
+                Err(Error::Structured {
                     result: Box::new(brp_not_responding_error),
-                }))
+                })?
             }
         },
     )

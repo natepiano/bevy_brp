@@ -172,12 +172,12 @@ async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResult> {
         .with_message_template(format!(
             "Terminated process '{app_name}' (PID: {pid}) using kill"
         ))),
-        ShutdownOutcome::NotRunning => Err(error_stack::Report::new(Error::Structured {
+        ShutdownOutcome::NotRunning => Err(Error::Structured {
             result: Box::new(ProcessNotRunningError::new(app_name.to_string())),
-        })),
-        ShutdownOutcome::Error { message } => Err(error_stack::Report::new(Error::Structured {
+        })?,
+        ShutdownOutcome::Error { message } => Err(Error::Structured {
             result: Box::new(ShutdownFailedError::new(app_name.to_string(), message)),
-        })),
+        })?,
     }
 }
 
