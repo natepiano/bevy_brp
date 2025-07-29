@@ -94,6 +94,24 @@ pub fn derive_param_struct(input: TokenStream) -> TokenStream {
 /// Result structs have private fields and require a `#[to_message]` attribute.
 /// They can only be constructed via the generated `::new()` method.
 ///
+/// # Message Template Patterns
+///
+/// The behavior depends on the field type and whether a default template is provided:
+///
+/// - **`String` with default template**: Direct construction, optional override
+///   - `#[to_message(message_template = "Found {count} items")]`
+///   - Usage: `MyResult::new(...)` or `MyResult::new(...).with_message_template("custom")`
+///
+/// - **`String` without default**: Compile error - not allowed
+///
+/// - **`Option<String>` with default**: Direct construction like String
+///   - `#[to_message(message_template = "Default message")]`
+///   - Usage: `MyResult::new(...)` or `MyResult::new(...).with_message_template("custom")`
+///
+/// - **`Option<String>` without default**: Builder pattern required
+///   - `#[to_message]`
+///   - Usage: `MyResult::new(...).with_message_template("required message")`
+///
 /// # Example
 ///
 /// ```ignore

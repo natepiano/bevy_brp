@@ -152,26 +152,26 @@ async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResult> {
 
     // Build and return typed response
     match result {
-        ShutdownOutcome::CleanShutdown { pid } => Ok(ShutdownResult {
-            app_name: app_name.to_string(),
+        ShutdownOutcome::CleanShutdown { pid } => Ok(ShutdownResult::new(
+            app_name.to_string(),
             pid,
-            shutdown_method: "clean_shutdown".to_string(),
-            port: port.0,
-            warning: None,
-            message_template: Some(format!(
-                "Successfully initiated graceful shutdown for '{app_name}' (PID: {pid}) via bevy_brp_extras"
-            )),
-        }),
-        ShutdownOutcome::ProcessKilled { pid } => Ok(ShutdownResult {
-            app_name: app_name.to_string(),
+            "clean_shutdown".to_string(),
+            port.0,
+            None,
+        )
+        .with_message_template(format!(
+            "Successfully initiated graceful shutdown for '{app_name}' (PID: {pid}) via bevy_brp_extras"
+        ))),
+        ShutdownOutcome::ProcessKilled { pid } => Ok(ShutdownResult::new(
+            app_name.to_string(),
             pid,
-            shutdown_method: "process_kill".to_string(),
-            port: port.0,
-            warning: Some("Consider adding bevy_brp_extras for clean shutdown".to_string()),
-            message_template: Some(format!(
-                "Terminated process '{app_name}' (PID: {pid}) using kill"
-            )),
-        }),
+            "process_kill".to_string(),
+            port.0,
+            Some("Consider adding bevy_brp_extras for clean shutdown".to_string()),
+        )
+        .with_message_template(format!(
+            "Terminated process '{app_name}' (PID: {pid}) using kill"
+        ))),
         ShutdownOutcome::NotRunning => Err(error_stack::Report::new(Error::Structured {
             result: Box::new(ProcessNotRunningError::new(app_name.to_string())),
         })),

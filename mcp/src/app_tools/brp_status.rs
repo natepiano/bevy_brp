@@ -77,42 +77,6 @@ pub struct ProcessNotFoundError {
     message_template: Option<String>,
 }
 
-impl ProcessNotFoundError {
-    fn new_with_message(
-        app_name: String,
-        similar_app_name: Option<String>,
-        brp_responding_on_port: bool,
-        port: u16,
-    ) -> Self {
-        let message = match (similar_app_name.as_ref(), brp_responding_on_port) {
-            (Some(suggestion), true) => {
-                format!(
-                    "Process '{app_name}' not found. Did you mean: {suggestion}? (BRP is responding on port {port})"
-                )
-            }
-            (Some(suggestion), false) => {
-                format!("Process '{app_name}' not found. Did you mean: {suggestion}?")
-            }
-            (None, true) => {
-                format!(
-                    "Process '{app_name}' not found. BRP is responding on port {port} - another process may be using it."
-                )
-            }
-            (None, false) => {
-                format!("Process '{app_name}' not found and BRP is not responding on port {port}.")
-            }
-        };
-
-        Self {
-            app_name,
-            similar_app_name,
-            brp_responding_on_port,
-            port,
-            message_template: Some(message),
-        }
-    }
-}
-
 /// Error when process is running but BRP not responding
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct BrpNotRespondingError {
@@ -286,12 +250,34 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
             // Pick the first suggestion if available
             let similar_app = suggestions.first().cloned();
 
-            let process_not_found_error = ProcessNotFoundError::new_with_message(
+            let message = match (similar_app.as_ref(), brp_responsive) {
+                (Some(suggestion), true) => {
+                    format!(
+                        "Process '{app_name}' not found. Did you mean: {suggestion}? (BRP is responding on port {})",
+                        port.0
+                    )
+                }
+                (Some(suggestion), false) => {
+                    format!("Process '{app_name}' not found. Did you mean: {suggestion}?")
+                }
+                (None, true) => {
+                    format!(
+                        "Process '{app_name}' not found. BRP is responding on port {} - another process may be using it.",
+                        port.0
+                    )
+                }
+                (None, false) => {
+                    format!("Process '{app_name}' not found and BRP is not responding on port {}.", port.0)
+                }
+            };
+
+            let process_not_found_error = ProcessNotFoundError::new(
                 app_name.to_string(),
                 similar_app,
                 brp_responsive,
                 port.0,
-            );
+            )
+            .with_message_template(message);
 
             Err(error_stack::Report::new(Error::Structured {
                 result: Box::new(process_not_found_error),

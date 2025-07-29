@@ -283,6 +283,7 @@ fn generate_message_template_provider(
                 impl #struct_name {
                     /// Create a new instance - requires setting message template
                     #[allow(clippy::too_many_arguments)]
+                    #[must_use = "This returns a builder that must be completed with .with_message_template()"]
                     pub fn new(#(#constructor_params),*) -> #builder_name {
                         #builder_name {
                             #(#field_names,)*
