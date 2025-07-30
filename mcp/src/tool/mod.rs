@@ -21,5 +21,8 @@ pub use parameters::{ParamStruct, ParameterName};
 pub use response_builder::ResponseBuilder;
 //
 pub use tool_def::ToolDef;
+//
+// Macro creates and populates the `BrpMethod` enum from tools
+// flagged in the `ToolName` enum as having a `brp_method`
 pub use tool_name::{BrpMethod, ToolName};
 pub use types::{HandlerResult, ResultStruct, ToolFn, ToolResult};
