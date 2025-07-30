@@ -105,19 +105,6 @@ impl McpService {
     }
 }
 
-impl Clone for McpService {
-    fn clone(&self) -> Self {
-        Self {
-            tool_defs: self
-                .tool_defs
-                .iter()
-                .map(|(k, v)| (k.clone(), v.clone()))
-                .collect(),
-            tools:     self.tools.clone(),
-        }
-    }
-}
-
 impl ServerHandler for McpService {
     fn get_info(&self) -> rmcp::model::ServerInfo {
         rmcp::model::ServerInfo {
