@@ -61,7 +61,7 @@ impl BrpClientError {
 
 /// Raw BRP JSON-RPC response structure
 #[derive(Debug, Serialize, Deserialize)]
-struct BrpResponse {
+struct BrpClientResponse {
     jsonrpc: String,
     id:      u64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -265,7 +265,7 @@ async fn parse_json_response(
     response: reqwest::Response,
     method: &str,
     port: Port,
-) -> Result<BrpResponse> {
+) -> Result<BrpClientResponse> {
     match response.json().await {
         Ok(json_resp) => Ok(json_resp),
         Err(e) => {
@@ -280,8 +280,8 @@ async fn parse_json_response(
     }
 }
 
-/// Convert `BrpResponse` to `BrpResult`
-fn convert_to_brp_result(brp_response: BrpResponse, method: &str) -> BrpClientResult {
+/// Convert `BrpClientResponse` to `BrpClientResult`
+fn convert_to_brp_result(brp_response: BrpClientResponse, method: &str) -> BrpClientResult {
     if let Some(error) = brp_response.error {
         warn!(
             "BRP execute_brp_method: BRP returned error - code={}, message={}",
