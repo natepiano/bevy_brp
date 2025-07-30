@@ -82,7 +82,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                 let result = match crate::brp_tools::execute_static_brp_call::<
                                     #params_ident,
                                     #result_type,
-                                >(crate::tool::BrpMethod::#variant_name, params)
+                                >(crate::tool::BrpMethod::#variant_name, port, params)
                                 .await {
                                     Ok(r) => r,
                                     Err(e) => {
@@ -103,15 +103,6 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                     params,
                                 })
                             })
-                        }
-                    }
-                });
-
-                // Generate trait implementations once for both cases
-                tool_impls.push(quote! {
-                    impl crate::brp_tools::HasPortField for #params_ident {
-                        fn port(&self) -> crate::brp_tools::Port {
-                            self.port
                         }
                     }
                 });

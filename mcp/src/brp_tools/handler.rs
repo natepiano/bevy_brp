@@ -15,11 +15,6 @@ use super::{FormatCorrectionStatus, Port};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
-/// Trait for parameter structs that have a port field
-pub trait HasPortField {
-    fn port(&self) -> Port;
-}
-
 /// Convert a `FormatCorrection` to JSON representation with metadata
 pub fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     let mut correction_json = json!({
@@ -350,11 +345,7 @@ where
 }
 
 /// Extract common parameter processing logic used by both execution paths
-fn prepare_brp_params<T: serde::Serialize + HasPortField>(
-    params: T,
-) -> Result<(Port, Option<Value>)> {
-    let port = params.port();
-
+fn prepare_brp_params<T: serde::Serialize>(params: T) -> Result<Option<Value>> {
     let mut params_json = serde_json::to_value(params)
         .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
 
@@ -372,13 +363,13 @@ fn prepare_brp_params<T: serde::Serialize + HasPortField>(
         Some(params_json)
     };
 
-    Ok((port, brp_params))
+    Ok(brp_params)
 }
 
 /// Unified BRP call handler that routes based on result type's format discovery support
-pub async fn execute_static_brp_call<P, R>(method: BrpMethod, params: P) -> Result<R>
+pub async fn execute_static_brp_call<P, R>(method: BrpMethod, port: Port, params: P) -> Result<R>
 where
-    P: serde::Serialize + HasPortField + Send + 'static,
+    P: serde::Serialize + Send + 'static,
     R: ResultStructBrpExt<
             Args = (
                 Option<Value>,
@@ -394,7 +385,7 @@ where
     let params_clone = serde_json::to_value(&params).unwrap_or(Value::Null);
 
     // Use shared parameter processing
-    let (port, brp_params) = prepare_brp_params(params)?;
+    let brp_params = prepare_brp_params(params)?;
 
     match R::brp_tool_execute_mode() {
         ExecuteMode::WithFormatDiscovery => {
