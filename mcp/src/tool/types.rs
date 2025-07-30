@@ -21,9 +21,10 @@ use std::pin::Pin;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
+use super::response_builder::ResponseBuilder;
 use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::tool::{ParamStruct, ResponseBuilder};
+use crate::tool::ParamStruct;
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,

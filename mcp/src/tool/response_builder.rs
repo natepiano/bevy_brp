@@ -2,8 +2,9 @@ use rmcp::model::{CallToolResult, Content};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::field_placement::FieldPlacement;
+use super::{HandlerContext, ParamStruct, ResultStruct};
 use crate::error::{Error, Result};
-use crate::tool::{FieldPlacement, HandlerContext, ParamStruct, ResultStruct};
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,6 +85,51 @@ impl JsonResponse {
     /// Creates a `CallToolResult` from this `JsonResponse`
     pub fn to_call_tool_result(&self) -> CallToolResult {
         CallToolResult::success(vec![Content::text(self.to_json_fallback())])
+    }
+}
+
+/// High-level response creation API
+///
+/// This provides a cleaner, more ergonomic interface for creating responses
+/// compared to using ResponseBuilder directly.
+pub struct Response;
+
+impl Response {
+    /// Create a success response from a ResultStruct
+    pub fn success<R: ResultStruct + ?Sized, P: ParamStruct>(
+        result: &R,
+        params: Option<P>,
+        call_info: CallInfo,
+        context: &HandlerContext,
+    ) -> Result<JsonResponse> {
+        ResponseBuilder::success(call_info).build_with_result_struct(result, params, context)
+    }
+
+    /// Create an error response from a ResultStruct (for structured errors)
+    pub fn error<R: ResultStruct + ?Sized, P: ParamStruct>(
+        error_result: &R,
+        params: Option<P>,
+        call_info: CallInfo,
+        context: &HandlerContext,
+    ) -> Result<JsonResponse> {
+        ResponseBuilder::error(call_info).build_with_result_struct(error_result, params, context)
+    }
+
+    /// Create a simple error response with just a message
+    pub fn error_message(message: impl Into<String>, call_info: CallInfo) -> JsonResponse {
+        ResponseBuilder::error(call_info).message(message).build()
+    }
+
+    /// Create an error response with message and optional details
+    pub fn error_with_details(
+        message: impl Into<String>,
+        details: Option<&Value>,
+        call_info: CallInfo,
+    ) -> JsonResponse {
+        ResponseBuilder::error(call_info)
+            .message(message)
+            .add_optional_details(details)
+            .build()
     }
 }
 

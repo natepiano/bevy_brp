@@ -9,6 +9,13 @@ use bevy_brp_mcp_macros::{BrpTools, ToolDescription};
 use rmcp::model::CallToolResult;
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
+use super::annotations::{Annotation, EnvironmentImpact, ToolCategory};
+use super::response_builder::{CallInfo, JsonResponse, Response};
+use super::types::ErasedToolFn;
+use super::{
+    HandlerContext, LargeResponseConfig, ParamStruct, ResultStruct, ToolResult,
+    handle_large_response, parameters,
+};
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
     ListBrpApps, Shutdown, ShutdownParams, Status, StatusParams,
@@ -30,12 +37,6 @@ use crate::error::Error;
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
     ReadLogParams, SetTracingLevel, SetTracingLevelParams,
-};
-use crate::tool::annotations::{Annotation, EnvironmentImpact, ToolCategory};
-use crate::tool::types::ErasedToolFn;
-use crate::tool::{
-    CallInfo, HandlerContext, JsonResponse, LargeResponseConfig, ParamStruct, ResponseBuilder,
-    ResultStruct, ToolResult, handle_large_response, parameters,
 };
 
 /// Tool names enum with automatic `snake_case` serialization
@@ -532,29 +533,29 @@ impl ToolName {
 
         match tool_result.result {
             Ok(data) => {
-                // Keep existing error handling logic but use build_with_result_struct
-                let response = match ResponseBuilder::success(call_info.clone())
-                    .build_with_result_struct(&data, tool_result.params, handler_context)
-                {
+                let response = match Response::success(
+                    &data,
+                    tool_result.params,
+                    call_info.clone(),
+                    handler_context,
+                ) {
                     Ok(response) => response,
-                    Err(e) => {
-                        // If building the response fails, return an error response
-                        ResponseBuilder::error(call_info)
-                            .message(format!("Failed to build response: {}", e.current_context()))
-                            .build()
-                    }
+                    Err(e) => Response::error_message(
+                        format!("Failed to build response: {}", e.current_context()),
+                        call_info,
+                    ),
                 };
                 Self::handle_large_response(response, self)
             }
             Err(report) => match report.current_context() {
                 Error::Structured { result } => {
                     tracing::debug!("Processing structured error with result type");
-                    let response = match ResponseBuilder::error(call_info.clone())
-                        .build_with_result_struct(
-                            result.as_ref(),
-                            tool_result.params,
-                            handler_context,
-                        ) {
+                    let response = match Response::error(
+                        result.as_ref(),
+                        tool_result.params,
+                        call_info.clone(),
+                        handler_context,
+                    ) {
                         Ok(response) => {
                             tracing::debug!("Successfully built structured error response");
                             response
@@ -565,25 +566,23 @@ impl ToolName {
                                 "Failed to build structured error response: {}",
                                 e.current_context()
                             );
-                            ResponseBuilder::error(call_info)
-                                .message(format!(
-                                    "Failed to build error response: {}",
-                                    e.current_context()
-                                ))
-                                .build()
+                            Response::error_message(
+                                format!("Failed to build error response: {}", e.current_context()),
+                                call_info,
+                            )
                         }
                     };
                     Self::handle_large_response(response, self)
                 }
-                Error::ToolCall { message, details } => ResponseBuilder::error(call_info)
-                    .message(message)
-                    .add_optional_details(details.as_ref())
-                    .build()
-                    .to_call_tool_result(),
-                _ => ResponseBuilder::error(call_info)
-                    .message(format!("Internal error: {}", report.current_context()))
-                    .build()
-                    .to_call_tool_result(),
+                Error::ToolCall { message, details } => {
+                    Response::error_with_details(message, details.as_ref(), call_info)
+                        .to_call_tool_result()
+                }
+                _ => Response::error_message(
+                    format!("Internal error: {}", report.current_context()),
+                    call_info,
+                )
+                .to_call_tool_result(),
             },
         }
     }
@@ -602,10 +601,11 @@ impl ToolName {
         // Framework errors use the standard call info
         let call_info = self.get_call_info();
 
-        ResponseBuilder::error(call_info)
-            .message(format!("Framework error: {}", error.current_context()))
-            .build()
-            .to_call_tool_result()
+        Response::error_message(
+            format!("Framework error: {}", error.current_context()),
+            call_info,
+        )
+        .to_call_tool_result()
     }
 
     /// large response processing - this would possibly be where we would implement pagination
@@ -615,13 +615,11 @@ impl ToolName {
             Ok(processed_response) => processed_response.to_call_tool_result(),
             Err(e) => {
                 // If large response handling fails, return an error response
-                ResponseBuilder::error(tool_name.get_call_info())
-                    .message(format!(
-                        "Failed to process response: {}",
-                        e.current_context()
-                    ))
-                    .build()
-                    .to_call_tool_result()
+                Response::error_message(
+                    format!("Failed to process response: {}", e.current_context()),
+                    tool_name.get_call_info(),
+                )
+                .to_call_tool_result()
             }
         }
     }
