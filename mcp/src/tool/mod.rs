@@ -12,7 +12,6 @@ mod types;
 pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement};
 //
 pub use handler_context::HandlerContext;
-pub use large_response::{LargeResponseConfig, handle_large_response};
 pub use parameters::{JsonFieldAccess, ParamStruct, ParameterName};
 //
 // exported for mcp_macros

@@ -18,7 +18,9 @@ pub enum FieldPlacement {
 
 /// Information about where a field should be placed in the response
 ///
-/// Note: appears unused but is actually used by the `FieldPlacement` derive macro
+/// Note: The ParamStruct and ResultStruct derive macros generate implementations that use
+/// `crate::tool::FieldPlacementInfo` and`crate::tool::HasFieldPlacement` - so we need
+/// #[allow(dead_code)] to avoid warnings in builds
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct FieldPlacementInfo {
@@ -34,7 +36,7 @@ pub struct FieldPlacementInfo {
 
 /// Trait for types that have field placement information
 ///
-/// Note: appears unused but is actually used by the `FieldPlacement` derive macro
+/// Note: see note on `FieldPlacementInfo`
 #[allow(dead_code)]
 pub trait HasFieldPlacement {
     /// Get the field placement information for this type

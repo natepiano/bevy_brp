@@ -24,6 +24,29 @@ pub struct JsonResponse {
     pub brp_extras_debug_info: Option<Value>,
 }
 
+impl JsonResponse {
+    /// Convert to JSON string with error-stack context
+    pub fn to_json(&self) -> Result<String> {
+        use error_stack::ResultExt;
+
+        serde_json::to_string_pretty(self).change_context(Error::General(
+            "Failed to serialize JSON response".to_string(),
+        ))
+    }
+
+    /// Convert to JSON string with fallback on error
+    pub fn to_json_fallback(&self) -> String {
+        self.to_json().unwrap_or_else(|_| {
+            r#"{"status":"error","message":"Failed to serialize response"}"#.to_string()
+        })
+    }
+
+    /// Creates a `CallToolResult` from this `JsonResponse`
+    pub fn to_call_tool_result(&self) -> CallToolResult {
+        CallToolResult::success(vec![Content::text(self.to_json_fallback())])
+    }
+}
+
 /// Response status types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -62,29 +85,6 @@ impl CallInfo {
             mcp_tool,
             brp_method,
         }
-    }
-}
-
-impl JsonResponse {
-    /// Convert to JSON string with error-stack context
-    pub fn to_json(&self) -> Result<String> {
-        use error_stack::ResultExt;
-
-        serde_json::to_string_pretty(self).change_context(Error::General(
-            "Failed to serialize JSON response".to_string(),
-        ))
-    }
-
-    /// Convert to JSON string with fallback on error
-    pub fn to_json_fallback(&self) -> String {
-        self.to_json().unwrap_or_else(|_| {
-            r#"{"status":"error","message":"Failed to serialize response"}"#.to_string()
-        })
-    }
-
-    /// Creates a `CallToolResult` from this `JsonResponse`
-    pub fn to_call_tool_result(&self) -> CallToolResult {
-        CallToolResult::success(vec![Content::text(self.to_json_fallback())])
     }
 }
 

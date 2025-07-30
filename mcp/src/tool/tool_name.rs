@@ -10,12 +10,10 @@ use rmcp::model::CallToolResult;
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
 use super::annotations::{Annotation, EnvironmentImpact, ToolCategory};
+use super::large_response::{LargeResponseConfig, handle_large_response};
 use super::response_builder::{CallInfo, JsonResponse, Response};
 use super::types::ErasedToolFn;
-use super::{
-    HandlerContext, LargeResponseConfig, ParamStruct, ResultStruct, ToolResult,
-    handle_large_response, parameters,
-};
+use super::{HandlerContext, ParamStruct, ResultStruct, ToolResult, parameters};
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
     ListBrpApps, Shutdown, ShutdownParams, Status, StatusParams,
