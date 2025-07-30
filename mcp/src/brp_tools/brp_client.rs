@@ -235,7 +235,7 @@ async fn send_http_request(
     method: &str,
     port: Port,
 ) -> Result<reqwest::Response> {
-    let client = super::http_client::get_client();
+    let client = reqwest::Client::new();
 
     let response = client
         .post(url)

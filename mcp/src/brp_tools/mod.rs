@@ -4,7 +4,6 @@ mod constants;
 mod format_correction_fields;
 mod format_discovery;
 pub mod handler;
-mod http_client;
 mod json_rpc_builder;
 mod port;
 pub mod tools;

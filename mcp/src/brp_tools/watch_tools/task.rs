@@ -6,7 +6,7 @@ use futures::StreamExt;
 use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
-use super::super::{BrpJsonRpcBuilder, http_client};
+use super::super::BrpJsonRpcBuilder;
 use super::logger::BufferedWatchLogger;
 use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools::{BrpClient, Port};
@@ -446,7 +446,9 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
 
     // Create HTTP client for streaming with no timeout
     let url = BrpClient::build_brp_url(conn_params.port);
-    let client = http_client::create_watch_client(Some(0)); // 0 = no timeout for watches
+    let client = reqwest::Client::builder()
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
 
     // Build JSON-RPC request for watching
     let request_body = BrpJsonRpcBuilder::new(&conn_params.brp_method)
