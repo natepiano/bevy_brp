@@ -68,10 +68,10 @@ impl WatchManager {
             .map(|(info, _)| info.clone())
             .collect()
     }
-}
 
-/// Initialize the watch manager
-pub async fn initialize_watch_manager() {
-    // Force initialization of the lazy static
-    let _ = WATCH_MANAGER.lock().await;
+    /// Initialize the watch manager
+    pub async fn initialize_watch_manager() {
+        // Force initialization of the lazy static
+        let _ = WATCH_MANAGER.lock().await;
+    }
 }

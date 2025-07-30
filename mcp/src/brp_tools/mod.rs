@@ -43,8 +43,8 @@ pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
 //
 // Export watch tools
-pub use watch_tools::bevy_get_watch::{BevyGetWatch, GetWatchParams};
-pub use watch_tools::bevy_list_watch::{BevyListWatch, ListWatchParams};
-pub use watch_tools::brp_list_active::BrpListActiveWatches;
-pub use watch_tools::brp_stop_watch::{BrpStopWatch, StopWatchParams};
-pub use watch_tools::manager::initialize_watch_manager;
+pub use watch_tools::{BevyGetWatch, GetWatchParams};
+pub use watch_tools::{
+    BevyListWatch, BrpListActiveWatches, BrpStopWatch, ListWatchParams, StopWatchParams,
+    WatchManager,
+};
