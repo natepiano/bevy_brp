@@ -19,12 +19,6 @@ pub trait HasPortField {
     fn port(&self) -> Port;
 }
 
-/// Trait for BRP tools to provide their method at compile time
-pub trait HasBrpMethod {
-    /// Returns the BRP method for this tool
-    fn brp_method() -> BrpMethod;
-}
-
 /// Trait for converting BRP responses to result types
 pub trait FromBrpValue: Sized {
     type Args;
@@ -313,16 +307,15 @@ where
     .into())
 }
 
-fn create_format_discovery_error<Tool, R>(
+fn create_format_discovery_error<R>(
+    method: BrpMethod,
     err: &BrpClientError,
     enhanced_result: &EnhancedBrpResult,
     params_value: Value,
 ) -> Result<R>
 where
-    Tool: HasBrpMethod,
     R: Send + 'static,
 {
-    let method = Tool::brp_method();
     let enhanced_message = enhance_error_message(err, enhanced_result);
     let format_corrections = prepare_format_corrections(enhanced_result);
 
@@ -393,9 +386,8 @@ fn prepare_brp_params<T: serde::Serialize + HasPortField>(
 }
 
 /// Unified BRP call handler that routes based on result type's format discovery support
-pub async fn execute_static_brp_call<Tool, P, R>(params: P) -> Result<R>
+pub async fn execute_static_brp_call<P, R>(method: BrpMethod, params: P) -> Result<R>
 where
-    Tool: HasBrpMethod,
     P: serde::Serialize + HasPortField + Send + 'static,
     R: FromBrpValue<
             Args = (
@@ -414,7 +406,6 @@ where
 
     // Use shared parameter processing
     let (port, brp_params) = prepare_brp_params(params)?;
-    let method = Tool::brp_method();
 
     if R::HAS_FORMAT_DISCOVERY {
         // Execute with format discovery
@@ -445,7 +436,7 @@ where
             }
             BrpClientResult::Error(ref err) => {
                 // Return error with full context
-                create_format_discovery_error::<Tool, R>(err, &enhanced_result, params_clone)
+                create_format_discovery_error::<R>(method, err, &enhanced_result, params_clone)
             }
         }
     } else {
