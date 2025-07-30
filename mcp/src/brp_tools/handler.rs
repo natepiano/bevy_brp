@@ -451,7 +451,7 @@ where
                 ))
             }
             BrpClientResult::Error(ref err) => {
-                // Return structured error with full context
+                // Return error with full context
                 create_format_discovery_error::<Tool, R>(err, &enhanced_result, params_clone)
             }
         }

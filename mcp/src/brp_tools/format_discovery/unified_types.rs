@@ -106,7 +106,7 @@ pub struct CorrectionInfo {
     pub hint:              String,
     /// Component or resource name for error reporting
     pub target_type:       String,
-    /// Structured format information for error responses (usage, `valid_values`, examples)
+    /// format information for error responses (usage, `valid_values`, examples)
     pub corrected_format:  Option<Value>,
     /// Type information discovered during correction (if available)
     pub type_info:         Option<UnifiedTypeInfo>,

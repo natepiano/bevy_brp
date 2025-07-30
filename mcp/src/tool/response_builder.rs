@@ -380,7 +380,7 @@ impl ResponseBuilder {
         handler_context: &HandlerContext,
     ) -> Option<String> {
         tracing::debug!("Looking for placeholder: '{}'", placeholder);
-        // First check error_info (for structured error fields)
+        // First check error_info (for error fields)
         if let Some(Value::Object(error_info)) = &builder.error_info {
             tracing::debug!(
                 "Error info contains: {:?}",

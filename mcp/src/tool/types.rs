@@ -94,7 +94,7 @@ impl<T: ToolFn> ErasedToolFn for T {
     }
 }
 
-/// Trait for types that can be used as structured results
+/// Trait for types that can be used as results
 ///
 /// This trait is automatically implemented by the `ResultStruct` derive macro.
 ///

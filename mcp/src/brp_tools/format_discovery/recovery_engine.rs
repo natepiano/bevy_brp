@@ -293,7 +293,7 @@ fn execute_level_3_pattern_transformations(
         } else {
             debug!("Level 3: No pattern-based correction found for '{type_name}'");
 
-            // Create a failure correction to provide structured feedback
+            // Create a failure correction to provide feedback
             let failure_correction = if let Some(existing_type_info) = type_info.cloned() {
                 // Type was discovered but couldn't be corrected
                 CorrectionResult::CannotCorrect {

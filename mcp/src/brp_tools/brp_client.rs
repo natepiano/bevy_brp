@@ -2,7 +2,7 @@
 //!
 //! This module provides a clean interface for communicating with BRP servers
 //! without the MCP-specific formatting concerns. It handles raw BRP protocol
-//! communication and returns structured results that can be formatted by
+//! communication and returns a BrpClientResult that can be formatted by
 //! higher-level tools.
 
 use std::time::Duration;
@@ -86,7 +86,7 @@ pub fn build_brp_url(port: Port) -> String {
     format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
 }
 
-/// Execute a BRP method and return structured result
+/// Execute a BRP
 pub async fn execute_brp_method(
     method: BrpMethod,
     params: Option<Value>,
@@ -107,7 +107,7 @@ pub async fn execute_brp_method(
     // Parse JSON-RPC response
     let brp_response = parse_json_response(response, method_str, port).await?;
 
-    // Convert to structured result
+    // Convert to BrpClientResult
     Ok(convert_to_brp_result(brp_response, method_str))
 }
 
