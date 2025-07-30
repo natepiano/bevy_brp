@@ -458,7 +458,6 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
         .post(&url)
         .header("Content-Type", "application/json")
         .body(request_body)
-        // Don't set timeout for streaming connections
         .send()
         .await
     {

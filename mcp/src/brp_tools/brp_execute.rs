@@ -67,13 +67,12 @@ impl ToolFn for BrpExecute {
                 });
             };
 
-            let brp_result = match super::brp_client::execute_brp_method(
+            let client = super::BrpClient::new(
                 brp_method,            // Parsed BRP method
-                params.params.clone(), // User-provided params (already Option<Value>)
                 port,                  // Use typed port parameter
-            )
-            .await
-            {
+                params.params.clone(), // User-provided params (already Option<Value>)
+            );
+            let brp_result = match client.execute().await {
                 Ok(result) => result,
                 Err(e) => {
                     return Ok(ToolResult {

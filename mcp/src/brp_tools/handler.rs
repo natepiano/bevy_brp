@@ -457,7 +457,8 @@ where
         }
     } else {
         // Direct BRP execution without format discovery
-        let result = crate::brp_tools::execute_brp_method(method, brp_params, port).await?;
+        let client = crate::brp_tools::BrpClient::new(method, port, brp_params);
+        let result = client.execute().await?;
 
         match result {
             BrpClientResult::Success(data) => {

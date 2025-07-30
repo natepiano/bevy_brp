@@ -939,8 +939,8 @@ async fn build_recovery_success(
                 debug!("Recovery Engine: Built corrected parameters, executing retry");
 
                 // Execute the retry asynchronously
-                let retry_result =
-                    brp_client::execute_brp_method(method, corrected_params, port).await;
+                let client = brp_client::BrpClient::new(method, port, corrected_params);
+                let retry_result = client.execute().await;
 
                 match retry_result {
                     Ok(success_result) => {

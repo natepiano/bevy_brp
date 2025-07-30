@@ -184,7 +184,8 @@ pub async fn check_multiple_types_registry_status(
 
     debug!("Registry Integration: Batch call with params: {params}");
 
-    match brp_tools::execute_brp_method(BrpMethod::BevyRegistrySchema, Some(params), port).await {
+    let client = brp_tools::BrpClient::new(BrpMethod::BevyRegistrySchema, port, Some(params));
+    match client.execute().await {
         Ok(BrpClientResult::Success(Some(response_data))) => {
             debug!("Registry Integration: Received successful batch response");
 

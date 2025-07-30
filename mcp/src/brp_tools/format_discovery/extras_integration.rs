@@ -29,9 +29,8 @@ pub async fn discover_type_format(
         "Extras Integration: Calling brp_extras/discover_format on port {port} with params: {params}"
     );
 
-    match brp_tools::execute_brp_method(BrpMethod::BrpExtrasDiscoverFormat, Some(params), port)
-        .await
-    {
+    let client = brp_tools::BrpClient::new(BrpMethod::BrpExtrasDiscoverFormat, port, Some(params));
+    match client.execute().await {
         Ok(BrpClientResult::Success(Some(response_data))) => {
             debug!("Extras Integration: Received successful response from brp_extras");
 

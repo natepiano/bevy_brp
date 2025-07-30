@@ -45,9 +45,7 @@ use tracing::{debug, trace};
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::unified_types::CorrectionInfo;
 use super::{UnifiedTypeInfo, recovery_engine, registry_integration};
-use crate::brp_tools::{
-    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpClientResult, Port, execute_brp_method,
-};
+use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpClient, BrpClientResult, Port};
 use crate::error::Result;
 use crate::tool::BrpMethod;
 
@@ -92,7 +90,8 @@ async fn execute_level_1(
     port: Port,
 ) -> Result<BrpRequestResult> {
     // Direct BRP execution - no format discovery overhead
-    let result = execute_brp_method(method, params.clone(), port).await?;
+    let client = BrpClient::new(method, port, params.clone());
+    let result = client.execute().await?;
 
     match result {
         BrpClientResult::Success(_) => {

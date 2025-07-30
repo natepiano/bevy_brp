@@ -22,6 +22,53 @@ use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
+/// Build a BRP URL for the given port
+///
+/// This is a utility function for cases where you need just the URL
+/// without executing a full BRP request (e.g., for streaming connections)
+pub fn build_brp_url(port: Port) -> String {
+    format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
+}
+
+/// Client for executing a BRP operation
+pub struct BrpClient {
+    method: BrpMethod,
+    port:   Port,
+    params: Option<Value>,
+}
+
+impl BrpClient {
+    /// Create a new BRP client for the given method, port, and parameters
+    pub const fn new(method: BrpMethod, port: Port, params: Option<Value>) -> Self {
+        Self {
+            method,
+            port,
+            params,
+        }
+    }
+
+    /// Execute the BRP request
+    pub async fn execute(self) -> Result<BrpClientResult> {
+        let url = build_brp_url(self.port);
+        let method_str = self.method.as_str();
+
+        // Build JSON-RPC request body
+        let request_body = build_request_body(method_str, self.params);
+
+        // Send HTTP request
+        let response = send_http_request(&url, request_body, method_str, self.port).await?;
+
+        // Check HTTP status
+        check_http_status(&response, method_str, self.port)?;
+
+        // Parse JSON-RPC response
+        let brp_response = parse_json_response(response, method_str, self.port).await?;
+
+        // Convert to BrpClientResult
+        Ok(convert_to_brp_result(brp_response, method_str))
+    }
+}
+
 /// Result of a BRP operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BrpClientResult {
@@ -77,38 +124,6 @@ struct JsonRpcError {
     message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     data:    Option<Value>,
-}
-
-/// Build a BRP URL for the given port
-///
-/// Constructs the full URL using standard BRP constants for consistent formatting
-pub fn build_brp_url(port: Port) -> String {
-    format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
-}
-
-/// Execute a BRP
-pub async fn execute_brp_method(
-    method: BrpMethod,
-    params: Option<Value>,
-    port: Port,
-) -> Result<BrpClientResult> {
-    let url = build_brp_url(port);
-    let method_str = method.as_str();
-
-    // Build JSON-RPC request body
-    let request_body = build_request_body(method_str, params);
-
-    // Send HTTP request
-    let response = send_http_request(&url, request_body, method_str, port).await?;
-
-    // Check HTTP status
-    check_http_status(&response, method_str, port)?;
-
-    // Parse JSON-RPC response
-    let brp_response = parse_json_response(response, method_str, port).await?;
-
-    // Convert to BrpClientResult
-    Ok(convert_to_brp_result(brp_response, method_str))
 }
 
 /// Build the JSON-RPC request body
