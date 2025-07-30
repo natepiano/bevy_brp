@@ -76,6 +76,19 @@ impl BufferedWatchLogger {
             Ok(())
         }
     }
+
+    /// Get the log file path for a watch (same as before)
+    pub fn get_watch_log_path(watch_id: u32, entity_id: u64, watch_type: &str) -> PathBuf {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+
+        let filename =
+            format!("bevy_brp_mcp_watch_{watch_id}_{watch_type}_{entity_id}_{timestamp}.log");
+
+        std::env::temp_dir().join(filename)
+    }
 }
 
 impl Drop for BufferedWatchLogger {
@@ -169,17 +182,4 @@ async fn write_task(
     debug!("Watch logger write task shutting down cleanly");
 
     Ok(())
-}
-
-/// Get the log file path for a watch (same as before)
-pub fn get_watch_log_path(watch_id: u32, entity_id: u64, watch_type: &str) -> PathBuf {
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-
-    let filename =
-        format!("bevy_brp_mcp_watch_{watch_id}_{watch_type}_{entity_id}_{timestamp}.log");
-
-    std::env::temp_dir().join(filename)
 }

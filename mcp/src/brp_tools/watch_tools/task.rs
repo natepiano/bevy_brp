@@ -7,9 +7,9 @@ use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
 use super::super::{BrpJsonRpcBuilder, http_client};
-use super::logger::{self as watch_logger, BufferedWatchLogger};
+use super::logger::BufferedWatchLogger;
 use super::manager::{WATCH_MANAGER, WatchInfo};
-use crate::brp_tools::{self, Port};
+use crate::brp_tools::{BrpClient, Port};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -445,7 +445,7 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
     let start_time = std::time::Instant::now();
 
     // Create HTTP client for streaming with no timeout
-    let url = brp_tools::build_brp_url(conn_params.port);
+    let url = BrpClient::build_brp_url(conn_params.port);
     let client = http_client::create_watch_client(Some(0)); // 0 = no timeout for watches
 
     // Build JSON-RPC request for watching
@@ -544,7 +544,7 @@ async fn start_watch_task(
     let watch_id = manager.next_id();
 
     // Create log path and logger
-    let log_path = watch_logger::get_watch_log_path(watch_id, entity_id, watch_type);
+    let log_path = BufferedWatchLogger::get_watch_log_path(watch_id, entity_id, watch_type);
     let logger = BufferedWatchLogger::new(log_path.clone());
 
     // Create initial log entry

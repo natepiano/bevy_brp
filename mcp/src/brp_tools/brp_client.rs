@@ -22,14 +22,6 @@ use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
-/// Build a BRP URL for the given port
-///
-/// This is a utility function for cases where you need just the URL
-/// without executing a full BRP request (e.g., for streaming connections)
-pub fn build_brp_url(port: Port) -> String {
-    format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
-}
-
 /// Client for executing a BRP operation
 pub struct BrpClient {
     method: BrpMethod,
@@ -49,7 +41,7 @@ impl BrpClient {
 
     /// Execute the BRP request
     pub async fn execute(self) -> Result<BrpClientResult> {
-        let url = build_brp_url(self.port);
+        let url = Self::build_brp_url(self.port);
         let method_str = self.method.as_str();
 
         // Build JSON-RPC request body
@@ -66,6 +58,14 @@ impl BrpClient {
 
         // Convert to BrpClientResult
         Ok(convert_to_brp_result(brp_response, method_str))
+    }
+
+    /// Build a BRP URL for the given port
+    ///
+    /// This is a utility function for cases where you need just the URL
+    /// without executing a full BRP request (e.g., for streaming connections)
+    pub fn build_brp_url(port: Port) -> String {
+        format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
     }
 }
 
