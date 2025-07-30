@@ -425,7 +425,16 @@ fn generate_from_brp_client_response(
             });
         } else if field_name == "warning" && type_str.contains("Option < String >") {
             field_initializers.push(quote! {
-                warning: crate::brp_tools::generate_format_warning(format_corrections.as_ref())
+                warning: format_corrections.as_ref().and_then(|corrections| {
+                    if corrections.is_empty() {
+                        None
+                    } else {
+                        Some(format!(
+                            "Operation succeeded with {} format correction(s) applied. See format_corrections field for details.",
+                            corrections.len()
+                        ))
+                    }
+                })
             });
         } else if let Some((template_field_name, template_default)) = message_template_field {
             if field_name == template_field_name {

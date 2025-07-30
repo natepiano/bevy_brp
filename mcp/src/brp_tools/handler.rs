@@ -51,20 +51,6 @@ pub fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
-/// Generate warning message when format corrections were applied
-pub fn generate_format_warning(format_corrections: Option<&Vec<Value>>) -> Option<String> {
-    format_corrections.and_then(|corrections| {
-        if corrections.is_empty() {
-            None
-        } else {
-            Some(format!(
-                "Operation succeeded with {} format correction(s) applied. See format_corrections field for details.",
-                corrections.len()
-            ))
-        }
-    })
-}
-
 /// Enhance error message with format discovery insights
 fn enhance_error_message(err: &BrpClientError, enhanced_result: &EnhancedBrpResult) -> String {
     // Check if the enhanced result has a different error message

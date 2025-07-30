@@ -19,7 +19,7 @@ pub use constants::{
 };
 pub use format_discovery::FormatCorrectionStatus;
 // Re-export handler items needed by macros
-pub use handler::{execute_static_brp_call, generate_format_warning};
+pub use handler::execute_static_brp_call;
 use json_rpc_builder::BrpJsonRpcBuilder;
 pub use port::Port;
 //
