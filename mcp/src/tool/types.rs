@@ -58,7 +58,7 @@ pub trait ToolFn: Send + Sync {
 /// Without some kind of type erasure, we can't use the associated types on `ToolFn`
 /// If retaining the type info is deemed unnecessary, we could serialize result, get rid of
 /// the type erasure and and simplify the call flow a bit.
-pub trait ErasedUnifiedToolFn: Send + Sync {
+pub trait ErasedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
         ctx: HandlerContext,
@@ -67,7 +67,7 @@ pub trait ErasedUnifiedToolFn: Send + Sync {
 }
 
 /// Blanket implementation to convert typed `ToolFn`s to erased ones
-impl<T: ToolFn> ErasedUnifiedToolFn for T {
+impl<T: ToolFn> ErasedToolFn for T {
     fn call_erased<'a>(
         &'a self,
         ctx: HandlerContext,

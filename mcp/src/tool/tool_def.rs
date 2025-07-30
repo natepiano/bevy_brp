@@ -10,7 +10,7 @@ use super::HandlerContext;
 use super::annotations::Annotation;
 use super::parameters::ParameterBuilder;
 use super::tool_name::ToolName;
-use super::types::ErasedUnifiedToolFn;
+use super::types::ErasedToolFn;
 
 /// Unified tool definition that can handle both BRP and Local tools
 #[derive(Clone)]
@@ -20,7 +20,7 @@ pub struct ToolDef {
     /// Tool annotations
     pub annotations: Annotation,
     /// Handler function
-    pub handler:     Arc<dyn ErasedUnifiedToolFn>,
+    pub handler:     Arc<dyn ErasedToolFn>,
     /// Function to build parameters for MCP registration
     pub parameters:  Option<fn() -> ParameterBuilder>,
 }
