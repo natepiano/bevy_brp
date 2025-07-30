@@ -6,18 +6,18 @@ use futures::StreamExt;
 use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
-/// Maximum size for a single chunk in the SSE stream (1MB)
-const MAX_CHUNK_SIZE: usize = 1024 * 1024;
-
-/// Maximum size for the total buffer when processing incomplete lines (10MB)
-const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
-
 use super::super::{BrpJsonRpcBuilder, http_client};
 use super::logger::{self as watch_logger, BufferedWatchLogger};
 use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools::{self, Port};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
+
+/// Maximum size for a single chunk in the SSE stream (1MB)
+const MAX_CHUNK_SIZE: usize = 1024 * 1024;
+
+/// Maximum size for the total buffer when processing incomplete lines (10MB)
+const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
 
 /// Parameters for a watch connection
 struct WatchConnectionParams {
