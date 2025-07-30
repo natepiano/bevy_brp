@@ -30,9 +30,9 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 
 **VALIDATION CRITERIA FOR SUCCESS:**
 - Response MUST have `status: "error"` 
-- Response metadata MUST contain `format_corrected: "attempted_but_failed"`
+- Response error_info MUST contain `format_corrections` array with at least one correction
 - Error message MUST mention format type mismatch (containing text like "map" and "sequence" or similar)
-- Response metadata SHOULD have a `hint` field (any hint text is acceptable)
+- Response error_info.format_corrections[0] SHOULD have a `hint` field (any hint text is acceptable)
 
 **SUCCESS DETERMINATION:**
 - If ALL four criteria above are met, this test step PASSES
@@ -65,7 +65,7 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - ✅ BRP extras methods return helpful installation guidance
 - ✅ Error messages are consistent across extras methods
 - ✅ Shutdown falls back to process termination with warning
-- ✅ Transform spawn MUST: Have error status AND contain `format_corrected: "attempted_but_failed"` AND mention format type issue
+- ✅ Transform spawn MUST: Have error status AND error_info contains `format_corrections` array AND mention format type issue
 - ✅ Basic BRP functionality works without extras
 - ✅ Spawn with non-serializable components fails with helpful error mentioning missing traits
 - ✅ Error messages provide standard guidance for adding Serialize/Deserialize traits (generic message applies to all components)

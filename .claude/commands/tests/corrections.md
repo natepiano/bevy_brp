@@ -34,6 +34,7 @@ mcp__brp__bevy_insert with parameters:
 
 **Expected Result**: 
 - ✅ Success with format_corrected: "succeeded"
+- ✅ Warning field in metadata when corrections applied
 - ✅ Message: "Request succeeded with format correction applied"
 - ✅ Object format {x,y,z} automatically converted to array [x,y,z]
 
@@ -55,7 +56,7 @@ mcp__brp__bevy_insert with parameters:
 ```
 
 **Expected Result**:
-- ❌ Error with format_corrected: "not_attempted" or "attempted_but_failed"
+- ❌ Error with error_info containing format_corrected: "not_attempted" or "attempted_but_failed"
 - ❌ Guidance message with correct format example
 - ❌ No invented values - system should not guess what user intended
 
@@ -102,6 +103,7 @@ mcp__brp__bevy_spawn with parameters:
 
 **Expected Result**:
 - ✅ Success with format_corrected: "succeeded"
+- ✅ Warning field in metadata when corrections applied
 - ✅ Message: "Request succeeded with format correction applied"  
 - ✅ Returns new entity ID
 
@@ -136,7 +138,7 @@ mcp__brp__bevy_spawn with parameters:
   - Value: {}
 - Verify error response includes:
   - Error message mentioning variant access issue
-  - Error data with:
+  - Error info with:
     - "hint" field explaining empty path requirement
     - "valid_values" array listing all variants
     - "examples" showing correct usage

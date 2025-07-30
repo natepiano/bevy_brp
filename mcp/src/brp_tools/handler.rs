@@ -4,6 +4,11 @@ use super::brp_client::{BrpClientError, BrpClientResult};
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
+use super::tools::bevy_insert::InsertFormatError;
+use super::tools::bevy_insert_resource::InsertResourceFormatError;
+use super::tools::bevy_mutate_component::MutateComponentFormatError;
+use super::tools::bevy_mutate_resource::MutateResourceFormatError;
+use super::tools::bevy_spawn::SpawnFormatError;
 use super::{FormatCorrectionStatus, Port};
 use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
@@ -67,6 +72,20 @@ pub fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
+/// Generate warning message when format corrections were applied
+pub fn generate_format_warning(format_corrections: Option<&Vec<Value>>) -> Option<String> {
+    format_corrections.and_then(|corrections| {
+        if corrections.is_empty() {
+            None
+        } else {
+            Some(format!(
+                "Operation succeeded with {} format correction(s) applied. See format_corrections field for details.",
+                corrections.len()
+            ))
+        }
+    })
+}
+
 /// Enhance error message with format discovery insights
 fn enhance_error_message(err: &BrpClientError, enhanced_result: &EnhancedBrpResult) -> String {
     // Check if the enhanced result has a different error message
@@ -87,6 +106,271 @@ fn enhance_error_message(err: &BrpClientError, enhanced_result: &EnhancedBrpResu
 
     // Use original message
     err.message.clone()
+}
+
+/// Helper function to prepare format corrections from enhanced result
+fn prepare_format_corrections(enhanced_result: &EnhancedBrpResult) -> Option<Vec<Value>> {
+    if enhanced_result.format_corrections.is_empty() {
+        None
+    } else {
+        Some(
+            enhanced_result
+                .format_corrections
+                .iter()
+                .map(format_correction_to_json)
+                .collect(),
+        )
+    }
+}
+
+/// Helper function to create structured error result
+fn create_structured_error<T, R>(error: T) -> Result<R>
+where
+    T: crate::tool::ResultStruct + 'static,
+    R: Send + 'static,
+{
+    Err(Error::Structured {
+        result: Box::new(error),
+    }
+    .into())
+}
+
+/// Create spawn format discovery error
+fn create_spawn_error<R>(
+    err: &BrpClientError,
+    enhanced_message: String,
+    format_corrections: Option<Vec<Value>>,
+    params_value: &Value,
+) -> Result<R>
+where
+    R: Send + 'static,
+{
+    let components = params_value
+        .get("components")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let message = if enhanced_message == err.message {
+        format!("Failed to spawn entity with components: {}", err.message)
+    } else {
+        enhanced_message
+    };
+    let error = SpawnFormatError::new(
+        components,
+        format_corrections,
+        err.code,
+        Some(err.message.clone()),
+    )
+    .with_message_template(message);
+    create_structured_error(error)
+}
+
+/// Create insert format discovery error
+fn create_insert_error<R>(
+    err: &BrpClientError,
+    enhanced_message: String,
+    format_corrections: Option<Vec<Value>>,
+    params_value: &Value,
+) -> Result<R>
+where
+    R: Send + 'static,
+{
+    let entity = params_value
+        .get("entity")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let components = params_value
+        .get("components")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let message = if enhanced_message == err.message {
+        format!(
+            "Failed to insert components into entity {entity}: {}",
+            err.message
+        )
+    } else {
+        enhanced_message
+    };
+    let error = InsertFormatError::new(
+        entity,
+        components,
+        format_corrections,
+        err.code,
+        Some(err.message.clone()),
+    )
+    .with_message_template(message);
+    create_structured_error(error)
+}
+
+/// Create mutate component format discovery error
+fn create_mutate_component_error<R>(
+    err: &BrpClientError,
+    enhanced_message: String,
+    format_corrections: Option<Vec<Value>>,
+    params_value: &Value,
+) -> Result<R>
+where
+    R: Send + 'static,
+{
+    let entity = params_value
+        .get("entity")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    let component = params_value
+        .get("component")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let path = params_value
+        .get("path")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let value = params_value.get("value").cloned().unwrap_or(Value::Null);
+    let message = if enhanced_message == err.message {
+        path.as_ref().map_or_else(
+            || {
+                format!(
+                    "Failed to mutate component on entity {entity}: {}",
+                    err.message
+                )
+            },
+            |p| {
+                format!(
+                    "Failed to mutate component field {p} on entity {entity}: {}",
+                    err.message
+                )
+            },
+        )
+    } else {
+        enhanced_message
+    };
+    let error = MutateComponentFormatError::new(
+        entity,
+        component,
+        path,
+        value,
+        format_corrections,
+        err.code,
+        Some(err.message.clone()),
+    )
+    .with_message_template(message);
+    create_structured_error(error)
+}
+
+/// Create mutate resource format discovery error
+fn create_mutate_resource_error<R>(
+    err: &BrpClientError,
+    enhanced_message: String,
+    format_corrections: Option<Vec<Value>>,
+    params_value: &Value,
+) -> Result<R>
+where
+    R: Send + 'static,
+{
+    let resource = params_value
+        .get("resource")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let path = params_value
+        .get("path")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let value = params_value.get("value").cloned().unwrap_or(Value::Null);
+    let message = if enhanced_message == err.message {
+        path.as_ref().map_or_else(
+            || format!("Failed to mutate resource: {}", err.message),
+            |p| format!("Failed to mutate resource field {p}: {}", err.message),
+        )
+    } else {
+        enhanced_message
+    };
+    let error = MutateResourceFormatError::new(
+        resource,
+        path,
+        value,
+        format_corrections,
+        err.code,
+        Some(err.message.clone()),
+    )
+    .with_message_template(message);
+    create_structured_error(error)
+}
+
+/// Create insert resource format discovery error
+fn create_insert_resource_error<R>(
+    err: &BrpClientError,
+    enhanced_message: String,
+    format_corrections: Option<Vec<Value>>,
+    params_value: &Value,
+) -> Result<R>
+where
+    R: Send + 'static,
+{
+    let resource = params_value
+        .get("resource")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let value = params_value.get("value").cloned().unwrap_or(Value::Null);
+    let message = if enhanced_message == err.message {
+        format!("Failed to insert resource: {}", err.message)
+    } else {
+        enhanced_message
+    };
+    let error = InsertResourceFormatError::new(
+        resource,
+        value,
+        format_corrections,
+        err.code,
+        Some(err.message.clone()),
+    )
+    .with_message_template(message);
+    create_structured_error(error)
+}
+
+/// Create fallback error for tools that don't have format discovery errors
+fn create_fallback_error<R>(err: &BrpClientError, enhanced_message: String) -> Result<R>
+where
+    R: Send + 'static,
+{
+    Err(Error::tool_call_failed_with_details(
+        enhanced_message,
+        err.data.clone().unwrap_or(Value::Null),
+    )
+    .into())
+}
+
+fn create_format_discovery_error<Tool, R>(
+    err: &BrpClientError,
+    enhanced_result: &EnhancedBrpResult,
+    params_value: Value,
+) -> Result<R>
+where
+    Tool: HasBrpMethod,
+    R: Send + 'static,
+{
+    let method = Tool::brp_method();
+    let enhanced_message = enhance_error_message(err, enhanced_result);
+    let format_corrections = prepare_format_corrections(enhanced_result);
+
+    match method {
+        BrpMethod::BevySpawn => {
+            create_spawn_error(err, enhanced_message, format_corrections, &params_value)
+        }
+        BrpMethod::BevyInsert => {
+            create_insert_error(err, enhanced_message, format_corrections, &params_value)
+        }
+        BrpMethod::BevyMutateComponent => {
+            create_mutate_component_error(err, enhanced_message, format_corrections, &params_value)
+        }
+        BrpMethod::BevyMutateResource => {
+            create_mutate_resource_error(err, enhanced_message, format_corrections, &params_value)
+        }
+        BrpMethod::BevyInsertResource => {
+            create_insert_resource_error(err, enhanced_message, format_corrections, &params_value)
+        }
+        _ => create_fallback_error(err, enhanced_message),
+    }
 }
 
 /// Extract common parameter processing logic used by both execution paths
@@ -126,9 +410,14 @@ where
                 Option<Vec<Value>>,
                 Option<FormatCorrectionStatus>,
             ),
-        > + HasFormatDiscoveryFields,
+        > + HasFormatDiscoveryFields
+        + Send
+        + 'static,
 {
     tracing::debug!("execute_static_brp_call with extracted params");
+
+    // Clone params for error handling (they get moved in prepare_brp_params)
+    let params_clone = serde_json::to_value(&params).unwrap_or(Value::Null);
 
     // Use shared parameter processing
     let (port, brp_params) = prepare_brp_params(params)?;
@@ -162,19 +451,8 @@ where
                 ))
             }
             BrpClientResult::Error(ref err) => {
-                // NOTE: Error handling kept as-is - will be converted to StructuredError pattern
-                // in the subsequent format discovery migration
-                let enhanced_message = enhance_error_message(err, &enhanced_result);
-                let error_details = json!({
-                    "code": err.code,
-                    "error_data": err.data,
-                    "format_corrections": enhanced_result.format_corrections.iter()
-                        .map(format_correction_to_json)
-                        .collect::<Vec<_>>(),
-                    "format_corrected": enhanced_result.format_corrected
-                });
-
-                Err(Error::tool_call_failed_with_details(enhanced_message, error_details).into())
+                // Return structured error with full context
+                create_format_discovery_error::<Tool, R>(err, &enhanced_result, params_clone)
             }
         }
     } else {

@@ -387,7 +387,7 @@ fn generate_from_brp_value(
                 format_corrections: if format_corrections.as_ref().map_or(true, |v| v.is_empty()) {
                     None
                 } else {
-                    format_corrections
+                    format_corrections.clone()
                 }
             });
         } else if field_name == "format_corrected" {
@@ -396,6 +396,10 @@ fn generate_from_brp_value(
                     Some(crate::brp_tools::FormatCorrectionStatus::NotAttempted) | None => None,
                     other => other,
                 }
+            });
+        } else if field_name == "warning" && type_str.contains("Option < String >") {
+            field_initializers.push(quote! {
+                warning: crate::brp_tools::handler::generate_format_warning(format_corrections.as_ref())
             });
         } else if let Some((template_field_name, template_default)) = message_template_field {
             if field_name == template_field_name {

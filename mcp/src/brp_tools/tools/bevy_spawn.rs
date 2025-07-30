@@ -43,7 +43,31 @@ pub struct SpawnResult {
     #[to_metadata(skip_if_none)]
     pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
 
+    /// Warning message when format corrections were applied
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[to_metadata(skip_if_none)]
+    pub warning: Option<String>,
+
     /// Message template for formatting responses
     #[to_message(message_template = "Spawned entity {entity}")]
     pub message_template: String,
+}
+
+/// Error type for spawn format discovery failures
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+pub struct SpawnFormatError {
+    #[to_error_info]
+    pub components: Value,
+
+    #[to_error_info(skip_if_none)]
+    pub format_corrections: Option<Vec<Value>>,
+
+    #[to_error_info]
+    pub brp_error_code: i32,
+
+    #[to_error_info(skip_if_none)]
+    pub original_error: Option<String>,
+
+    #[to_message]
+    pub message_template: Option<String>,
 }

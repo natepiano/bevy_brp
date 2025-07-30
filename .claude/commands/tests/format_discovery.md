@@ -24,6 +24,7 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Execute `mcp__brp__bevy_spawn` with intentionally wrong Transform format:
   - Use object fields instead of arrays: `{"translation": {"x": 1.0, "y": 2.0, "z": 3.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "scale": {"x": 1.0, "y": 1.0, "z": 1.0}}`
 - Verify spawn succeeds with format correction to arrays
+- Verify metadata includes warning field when correction succeeds
 - Verify the correction response includes rich metadata:
   - `supported_operations` field populated
   - `mutation_paths` field with paths like `.translation.x`
@@ -57,16 +58,16 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
   - **Test 1 - Transform with bare array**: Use `{"bevy_transform::components::transform::Transform": [1.0, 2.0, 3.0]}`
     - Verify error includes:
       - Error message explaining the type mismatch
-      - `format_corrected: "not_attempted"` in error data
-      - `hint` field with correct format example
+      - error_info containing format_corrected: "not_attempted"
+      - error_info containing hint field with correct format example
   - **Test 2 - Transform with partial object**: Use `{"bevy_transform::components::transform::Transform": {"x": 1.0, "y": 2.0, "z": 3.0}}`
     - Verify error includes:
       - Error message about missing required fields
-      - `format_corrected: "not_attempted"` in error data
-      - `hint` field with correct format example
+      - error_info containing format_corrected: "not_attempted"
+      - error_info containing hint field with correct format example
   - **Test 3 - Name with wrong type**: Use `{"bevy_ecs::name::Name": 123}`
     - Verify error provides guidance about Name expecting a string value
-    - Verify error includes `format_corrected: "not_attempted"` in error data
+    - Verify error includes error_info containing format_corrected: "not_attempted"
 - Verify all responses demonstrate that ambiguous formats cannot be auto-corrected
 - Confirm each response includes educational guidance via error messages and hints
 
