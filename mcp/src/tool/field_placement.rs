@@ -5,9 +5,6 @@
 //! - Direct field access without JSON serialization
 //! - Automatic `CallInfo` generation
 
-use super::ResponseBuilder;
-use crate::error::Result;
-
 /// Specifies where a response field should be placed in the output JSON
 #[derive(Clone, Debug)]
 pub enum FieldPlacement {
@@ -42,10 +39,4 @@ pub struct FieldPlacementInfo {
 pub trait HasFieldPlacement {
     /// Get the field placement information for this type
     fn field_placements() -> Vec<FieldPlacementInfo>;
-}
-
-/// Trait for adding response fields directly to the builder
-pub trait ResponseData {
-    /// Add all response fields to the builder
-    fn add_response_fields(&self, builder: ResponseBuilder) -> Result<ResponseBuilder>;
 }

@@ -2,18 +2,18 @@
 //!
 //! This module provides a two-layer trait system:
 //!
-//! 1. **Typed traits** (`LocalToolFn`, etc.) - Preserve concrete return types
-//!    - Each handler specifies its own `Output` type
+//! 1. **Typed traits** (`ToolFn`) - Preserve concrete return types
+//!    - Each handler specifies its own `Output` and `Params` types
 //!    - Provides type safety at implementation site
 //!
-//! 2. **Erased traits** (`ErasedLocalToolFn`, etc.) - Hide type information
+//! 2. **Erased traits** (`ErasedToolFn`) - Hide type information
 //!    - Return a uniform `CallToolResult` type
 //!    - Allow different handlers to be stored in the same collection
 //!
-//! The blanket implementations automatically convert typed handlers to erased ones,
+//! The blanket implementation automatically converts typed handlers to erased ones,
 //! calling the typed handler internally and formatting the result. This allows
-//! `HandlerFn` enum to store `Arc<dyn ErasedLocalToolFn>` while handlers only
-//! implement the simpler typed interface.
+//! collections to store `Arc<dyn ErasedToolFn>` while handlers only need to
+//! implement the simpler typed `ToolFn` interface.
 
 use std::future::Future;
 use std::pin::Pin;
@@ -23,7 +23,7 @@ use rmcp::model::CallToolResult;
 use super::handler_context::HandlerContext;
 use super::tool_name::ToolName;
 use crate::error::Result;
-use crate::tool::{ParamStruct, ResponseData, ResultStruct};
+use crate::tool::{ParamStruct, ResponseBuilder};
 
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
@@ -31,6 +31,7 @@ use crate::tool::{ParamStruct, ResponseData, ResultStruct};
 pub type HandlerResult<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
 /// Business logic result wrapper that includes parameters.
+/// Allows for heterogeneous results and parameters that are optional (unit struct for optional)
 #[derive(Debug)]
 pub struct ToolResult<T, P = ()> {
     /// The actual result of the tool's business logic
@@ -42,11 +43,11 @@ pub struct ToolResult<T, P = ()> {
 /// Unified trait for all tool handlers (local and BRP)
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
-    type Output: ResponseData + MessageTemplateProvider + ResultStruct + Send + Sync;
+    type Output: ResultStruct + Send + Sync;
     /// The parameter type for this handler
     type Params: ParamStruct;
 
-    /// Handle the request and return `ToolResult` with optional port
+    /// Handle the request and return `ToolResult`
     fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>>;
 }
 
@@ -93,15 +94,16 @@ impl<T: ToolFn> ErasedToolFn for T {
     }
 }
 
-/// Trait for types that can provide dynamic message templates
+/// Trait for types that can be used as structured results
 ///
-/// This trait is automatically implemented by the `ResultStruct` derive macro
-/// for structs that have a field with `#[to_message(message_template = "...")]`.
+/// This trait is automatically implemented by the `ResultStruct` derive macro.
 ///
 /// **Important**: When this trait is implemented via the macro:
 /// - All struct fields become private
 /// - A `::new()` constructor is generated
-/// - The struct can ONLY be constructed via `::new()` to ensure the message template is set
+/// - The struct can ONLY be constructed via `::new()` to ensure proper initialization
+/// - Fields with `#[to_message(message_template = "...")]` provide the message template
+/// - Fields with `#[to_metadata]` or `#[to_result]` are added to the response
 ///
 /// # Example
 /// ```ignore
@@ -117,7 +119,10 @@ impl<T: ToolFn> ErasedToolFn for T {
 /// // Can only construct via:
 /// let result = MyResult::new(42);
 /// ```
-pub trait MessageTemplateProvider {
+pub trait ResultStruct: Send + Sync {
+    /// Add all response fields to the builder
+    fn add_response_fields(&self, builder: ResponseBuilder) -> Result<ResponseBuilder>;
+
     /// Get the message template for this response
     fn get_message_template(&self) -> Result<&str>;
 }

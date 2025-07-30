@@ -87,6 +87,40 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
     let message_template_field = extraction_result.message_template_field;
 
     // Generate MessageTemplateProvider and constructor methods
+    // Extract the get_template_impl logic here for use in ResultStruct
+    let get_template_impl = if let Some((field_name, _)) = &message_template_field {
+        let message_field_type = fields
+            .iter()
+            .find(|f| f.ident.as_ref() == Some(field_name))
+            .map(|f| &f.ty);
+
+        let is_option_type = message_field_type
+            .map(|ty| quote!(#ty).to_string().contains("Option <"))
+            .unwrap_or(false);
+
+        if is_option_type {
+            quote! {
+                self.#field_name.as_ref()
+                    .map(|s| s.as_str())
+                    .ok_or_else(|| {
+                        error_stack::Report::new(crate::error::Error::MissingMessageTemplate(
+                            "Message template not set. Use .with_message_template() to provide a template.".to_string()
+                        ))
+                    })
+            }
+        } else {
+            quote! {
+                Ok(self.#field_name.as_str())
+            }
+        }
+    } else {
+        quote! {
+            Err(error_stack::Report::new(crate::error::Error::MissingMessageTemplate(
+                "No message template field defined".to_string()
+            )))
+        }
+    };
+
     let message_template_impl = generate_message_template_provider(
         struct_name,
         &message_template_field,
@@ -128,16 +162,17 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl crate::tool::ResponseData for #struct_name {
+        impl crate::tool::ResultStruct for #struct_name {
             fn add_response_fields(&self, builder: crate::tool::ResponseBuilder) -> crate::error::Result<crate::tool::ResponseBuilder> {
                 let mut builder = builder;
                 #(#response_data_fields)*
                 Ok(builder)
             }
-        }
 
-        // Add this new implementation
-        impl crate::tool::ResultStruct for #struct_name {}
+            fn get_message_template(&self) -> crate::error::Result<&str> {
+                #get_template_impl
+            }
+        }
 
         #from_brp_value_impl
 
@@ -227,21 +262,7 @@ fn generate_message_template_provider(
             .map(|ty| quote!(#ty).to_string().contains("Option <"))
             .unwrap_or(false);
 
-        let get_template_impl = if is_option_type {
-            quote! {
-                self.#field_name.as_ref()
-                    .map(|s| s.as_str())
-                    .ok_or_else(|| {
-                        error_stack::Report::new(crate::error::Error::MissingMessageTemplate(
-                            "Message template not set. Use .with_message_template() to provide a template.".to_string()
-                        ))
-                    })
-            }
-        } else {
-            quote! {
-                Ok(self.#field_name.as_str())
-            }
-        };
+        // get_template_impl is now generated in the main macro body
 
         let with_template_impl = if is_option_type {
             quote! {
@@ -300,12 +321,6 @@ fn generate_message_template_provider(
             }
 
             quote! {
-                impl crate::tool::MessageTemplateProvider for #struct_name {
-                    fn get_message_template(&self) -> crate::error::Result<&str> {
-                        #get_template_impl
-                    }
-                }
-
                 pub struct #builder_name {
                     #(#builder_fields,)*
                 }
@@ -339,12 +354,6 @@ fn generate_message_template_provider(
             }
         } else {
             quote! {
-                impl crate::tool::MessageTemplateProvider for #struct_name {
-                    fn get_message_template(&self) -> crate::error::Result<&str> {
-                        #get_template_impl
-                    }
-                }
-
                 impl #struct_name {
                     /// Create a new instance with default message template
                     #[allow(clippy::too_many_arguments)]

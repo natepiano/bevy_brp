@@ -234,9 +234,8 @@ use crate::error::{Error, Result};
 use crate::tool::annotations::{Annotation, EnvironmentImpact, ToolCategory};
 use crate::tool::types::ErasedToolFn;
 use crate::tool::{
-    CallInfo, HandlerContext, JsonResponse, LargeResponseConfig, MessageTemplateProvider,
-    ParamStruct, ResponseBuilder, ResponseData, ResultStruct, ToolResult, handle_large_response,
-    parameters,
+    CallInfo, HandlerContext, JsonResponse, LargeResponseConfig, ParamStruct, ResponseBuilder,
+    ResultStruct, ToolResult, handle_large_response, parameters,
 };
 
 impl ToolName {
@@ -512,7 +511,7 @@ impl ToolName {
         handler_context: &HandlerContext,
     ) -> CallToolResult
     where
-        T: ResponseData + MessageTemplateProvider + ResultStruct,
+        T: ResultStruct,
         P: ParamStruct,
     {
         // Create CallInfo using self
