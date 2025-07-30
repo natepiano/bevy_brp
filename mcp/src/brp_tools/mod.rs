@@ -3,10 +3,11 @@ mod brp_execute;
 mod constants;
 mod format_correction_fields;
 mod format_discovery;
-pub mod handler;
+mod handler;
 mod json_rpc_builder;
 mod port;
-pub mod tools;
+mod tools;
+mod types;
 mod watch_tools;
 
 // Public exports
@@ -17,6 +18,8 @@ pub use constants::{
     BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 pub use format_discovery::FormatCorrectionStatus;
+// Re-export handler items needed by macros
+pub use handler::{HasPortField, execute_static_brp_call, generate_format_warning};
 use json_rpc_builder::BrpJsonRpcBuilder;
 pub use port::Port;
 //
@@ -40,6 +43,7 @@ pub use tools::bevy_spawn::{SpawnParams, SpawnResult};
 pub use tools::brp_extras_discover_format::{DiscoverFormatParams, DiscoverFormatResult};
 pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
+pub use types::{ExecuteMode, ResultStructBrpExt};
 //
 // Export watch tools
 pub use watch_tools::{BevyGetWatch, GetWatchParams};

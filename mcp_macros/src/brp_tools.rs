@@ -79,7 +79,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                 let port = params.port;
                                 let params_json = serde_json::to_value(&params).ok();
 
-                                let result = match crate::brp_tools::handler::execute_static_brp_call::<
+                                let result = match crate::brp_tools::execute_static_brp_call::<
                                     #params_ident,
                                     #result_type,
                                 >(crate::tool::BrpMethod::#variant_name, params)
@@ -109,7 +109,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
 
                 // Generate trait implementations once for both cases
                 tool_impls.push(quote! {
-                    impl crate::brp_tools::handler::HasPortField for #params_ident {
+                    impl crate::brp_tools::HasPortField for #params_ident {
                         fn port(&self) -> crate::brp_tools::Port {
                             self.port
                         }

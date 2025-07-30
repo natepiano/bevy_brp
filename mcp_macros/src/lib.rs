@@ -138,7 +138,7 @@ pub fn derive_param_struct(input: TokenStream) -> TokenStream {
 /// - `HasFieldPlacement` - provides field placement information
 /// - `ResponseData` - for building MCP responses
 /// - `MessageTemplateProvider` - for message template handling
-/// - `::new()` constructor and `::from_brp_value()` method
+/// - `::new()` constructor and `::from_brp_client_response()` method
 #[proc_macro_derive(
     ResultStruct,
     attributes(

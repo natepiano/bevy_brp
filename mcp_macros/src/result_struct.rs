@@ -128,9 +128,9 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         &computed_fields,
     );
 
-    // Generate from_brp_value method only if #[brp_result] is present
-    let from_brp_value_impl = if brp_attrs.is_some() {
-        generate_from_brp_value(
+    // Generate from_brp_client_response method only if #[brp_result] is present
+    let from_brp_client_response_impl = if brp_attrs.is_some() {
+        generate_from_brp_client_response(
             struct_name,
             &regular_fields,
             &computed_fields,
@@ -140,12 +140,29 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    // Generate HasFormatDiscoveryFields trait implementation if #[brp_result] is present
-    let format_discovery_impl = if let Some(ref attrs) = brp_attrs {
-        let has_format_discovery = attrs.format_discovery;
+    // Generate ResultStructBrpExt trait implementation if #[brp_result] is present
+    let result_struct_brp_ext_impl = if let Some(ref attrs) = brp_attrs {
+        let execute_mode = if attrs.format_discovery {
+            quote! { crate::brp_tools::ExecuteMode::WithFormatDiscovery }
+        } else {
+            quote! { crate::brp_tools::ExecuteMode::Standard }
+        };
+
         quote! {
-            impl crate::brp_tools::handler::HasFormatDiscoveryFields for #struct_name {
-                const HAS_FORMAT_DISCOVERY: bool = #has_format_discovery;
+            impl crate::brp_tools::ResultStructBrpExt for #struct_name {
+                type Args = (
+                    Option<serde_json::Value>,
+                    Option<Vec<serde_json::Value>>,
+                    Option<crate::brp_tools::FormatCorrectionStatus>,
+                );
+
+                fn brp_tool_execute_mode() -> crate::brp_tools::ExecuteMode {
+                    #execute_mode
+                }
+
+                fn from_brp_client_response(args: Self::Args) -> crate::error::Result<Self> {
+                    Self::from_brp_client_response(args.0, args.1, args.2)
+                }
             }
         }
     } else {
@@ -174,9 +191,9 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        #from_brp_value_impl
+        #from_brp_client_response_impl
 
-        #format_discovery_impl
+        #result_struct_brp_ext_impl
 
         #message_template_impl
     };
@@ -376,8 +393,8 @@ fn generate_message_template_provider(
     }
 }
 
-/// Generate from_brp_value method
-fn generate_from_brp_value(
+/// Generate from_brp_client_response method
+fn generate_from_brp_client_response(
     struct_name: &syn::Ident,
     regular_fields: &[(syn::Ident, syn::Type)],
     computed_fields: &[ComputedField],
@@ -408,7 +425,7 @@ fn generate_from_brp_value(
             });
         } else if field_name == "warning" && type_str.contains("Option < String >") {
             field_initializers.push(quote! {
-                warning: crate::brp_tools::handler::generate_format_warning(format_corrections.as_ref())
+                warning: crate::brp_tools::generate_format_warning(format_corrections.as_ref())
             });
         } else if let Some((template_field_name, template_default)) = message_template_field {
             if field_name == template_field_name {
@@ -589,23 +606,13 @@ fn generate_from_brp_value(
     quote! {
         impl #struct_name {
             /// Create from BRP response value
-            pub fn from_brp_value(#params) -> crate::error::Result<Self> {
+            pub fn from_brp_client_response(#params) -> crate::error::Result<Self> {
                 Ok(Self {
                     #(#field_initializers,)*
                 })
             }
         }
 
-        impl crate::brp_tools::handler::FromBrpValue for #struct_name {
-            type Args = (
-                Option<serde_json::Value>,
-                Option<Vec<serde_json::Value>>,
-                Option<crate::brp_tools::FormatCorrectionStatus>,
-            );
-
-            fn from_brp_value(args: Self::Args) -> crate::error::Result<Self> {
-                Self::from_brp_value(args.0, args.1, args.2)
-            }
-        }
+        // Note: ResultStructBrpExt implementation is now generated separately above
     }
 }
