@@ -232,7 +232,7 @@ fn generate_message_template_provider(
                 self.#field_name.as_ref()
                     .map(|s| s.as_str())
                     .ok_or_else(|| {
-                        error_stack::Report::new(crate::error::Error::Configuration(
+                        error_stack::Report::new(crate::error::Error::MissingMessageTemplate(
                             "Message template not set. Use .with_message_template() to provide a template.".to_string()
                         ))
                     })
