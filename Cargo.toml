@@ -23,7 +23,7 @@ proc-macro2 = "1.0.95"
 quote = "1.0.40"
 regex = "1.11.1"
 reqwest = { version = "0.12", features = ["blocking", "json", "stream"] }
-rmcp = { version = "0.3.0", features = ["server", "transport-io"] }
+rmcp = { version = "0.3.1", features = ["server", "transport-io"] }
 schemars = "1.0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.141"
