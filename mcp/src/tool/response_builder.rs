@@ -1,101 +1,20 @@
-use rmcp::model::{CallToolResult, Content};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 
 use super::field_placement::FieldPlacement;
+use super::json_response::{JsonResponse, ResponseStatus};
+use super::tool_name::CallInfo;
 use super::{HandlerContext, ParamStruct, ResultStruct};
 use crate::error::{Error, Result};
-
-/// Standard JSON response structure for all tools
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonResponse {
-    pub status:                ResponseStatus,
-    pub message:               String,
-    pub call_info:             CallInfo,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata:              Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters:            Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub result:                Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_info:            Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub brp_extras_debug_info: Option<Value>,
-}
-
-impl JsonResponse {
-    /// Convert to JSON string with error-stack context
-    pub fn to_json(&self) -> Result<String> {
-        use error_stack::ResultExt;
-
-        serde_json::to_string_pretty(self).change_context(Error::General(
-            "Failed to serialize JSON response".to_string(),
-        ))
-    }
-
-    /// Convert to JSON string with fallback on error
-    pub fn to_json_fallback(&self) -> String {
-        self.to_json().unwrap_or_else(|_| {
-            r#"{"status":"error","message":"Failed to serialize response"}"#.to_string()
-        })
-    }
-
-    /// Creates a `CallToolResult` from this `JsonResponse`
-    pub fn to_call_tool_result(&self) -> CallToolResult {
-        CallToolResult::success(vec![Content::text(self.to_json_fallback())])
-    }
-}
-
-/// Response status types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ResponseStatus {
-    Success,
-    Error,
-}
-
-/// Call information for tracking tool execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum CallInfo {
-    /// Local tool execution (no BRP involved)
-    Local {
-        /// The MCP tool name (e.g., "`brp_status`")
-        mcp_tool: String,
-    },
-    /// BRP tool execution (calls Bevy Remote Protocol)
-    Brp {
-        /// The MCP tool name (e.g., "`bevy_spawn`")
-        mcp_tool:   String,
-        /// The BRP method name (e.g., "bevy/spawn")
-        brp_method: String,
-    },
-}
-
-impl CallInfo {
-    /// Create `CallInfo` for a local tool
-    pub const fn local(mcp_tool: String) -> Self {
-        Self::Local { mcp_tool }
-    }
-
-    /// Create `CallInfo` for a BRP tool
-    pub const fn brp(mcp_tool: String, brp_method: String) -> Self {
-        Self::Brp {
-            mcp_tool,
-            brp_method,
-        }
-    }
-}
 
 /// High-level response creation API
 ///
 /// This provides a cleaner, more ergonomic interface for creating responses
-/// compared to using ResponseBuilder directly.
+/// compared to using `ResponseBuilder` directly.
 pub struct Response;
 
 impl Response {
-    /// Create a success response from a ResultStruct
+    /// Create a success response from a `ResultStruct`
     pub fn success<R: ResultStruct + ?Sized, P: ParamStruct>(
         result: &R,
         params: Option<P>,
@@ -105,7 +24,7 @@ impl Response {
         ResponseBuilder::success(call_info).build_with_result_struct(result, params, context)
     }
 
-    /// Create an error response from a ResultStruct (for structured errors)
+    /// Create an error response from a `ResultStruct`
     pub fn error<R: ResultStruct + ?Sized, P: ParamStruct>(
         error_result: &R,
         params: Option<P>,

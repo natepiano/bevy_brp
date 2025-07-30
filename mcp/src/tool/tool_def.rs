@@ -39,7 +39,7 @@ impl ToolDef {
         let ctx = HandlerContext::new(self.clone(), request, roots);
 
         // Tools now always return CallToolResult - errors are already formatted as responses
-        Ok(self.handler.call_erased(ctx, self.tool_name).await)
+        Ok(self.handler.call_erased(ctx).await)
     }
 
     /// Convert to MCP Tool for registration

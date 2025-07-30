@@ -18,9 +18,9 @@ pub enum FieldPlacement {
 
 /// Information about where a field should be placed in the response
 ///
-/// Note: The ParamStruct and ResultStruct derive macros generate implementations that use
-/// `crate::tool::FieldPlacementInfo` and`crate::tool::HasFieldPlacement` - so we need
-/// #[allow(dead_code)] to avoid warnings in builds
+/// Note: The `ParamStruct` and `ResultStruct` derive macros generate implementations that use
+/// `crate::tool::FieldPlacementInfo` and `crate::tool::HasFieldPlacement`
+/// but no code within `mcp/src` calls this so we use the allow
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct FieldPlacementInfo {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use itertools::Itertools;
 use rmcp::model::{
     CallToolRequestParam, CallToolResult, ListToolsResult, PaginatedRequestParam,
     ServerCapabilities, Tool,
@@ -8,7 +9,7 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData as McpError, Peer, RoleServer, ServerHandler};
 
-use crate::tool::{self, ToolDef};
+use crate::tool::{ToolDef, ToolName};
 
 /// MCP service implementation for Bevy Remote Protocol integration.
 ///
@@ -23,19 +24,27 @@ pub struct McpService {
 
 impl McpService {
     pub fn new() -> Self {
-        let all_defs = tool::get_all_tool_definitions();
+        let all_defs = ToolName::get_all_tool_definitions();
+
+        // Initialize tool_defs HashMap
         let tool_defs = all_defs
             .iter()
-            .map(|def| (def.name().to_string(), def.clone()))
+            .map(|tool_def| (tool_def.name().to_string(), tool_def.clone()))
             .collect();
-        let mut tools: Vec<_> = all_defs.iter().map(ToolDef::to_tool).collect();
-        tools.sort_by_key(|tool| {
-            tool.annotations
-                .as_ref()
-                .and_then(|ann| ann.title.as_ref())
-                .map_or(tool.name.as_ref(), String::as_str)
-                .to_string()
-        });
+
+        // initialize vec of tools
+        // sort it once for subsequent list operations - it's a cheap pre-optimization
+        let tools: Vec<_> = all_defs
+            .iter()
+            .map(ToolDef::to_tool)
+            .sorted_by_key(|tool| {
+                tool.annotations
+                    .as_ref()
+                    .and_then(|ann| ann.title.as_ref())
+                    .map_or(tool.name.as_ref(), String::as_str)
+                    .to_string()
+            })
+            .collect();
 
         Self { tool_defs, tools }
     }

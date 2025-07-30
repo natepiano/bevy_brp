@@ -1,6 +1,7 @@
 mod brp_client;
 mod brp_execute;
 mod constants;
+mod format_correction_fields;
 mod format_discovery;
 pub mod handler;
 mod http_client;
@@ -14,8 +15,7 @@ pub use brp_client::{BrpClientError, BrpClientResult, build_brp_url, execute_brp
 // Export special case tools that don't follow the standard pattern
 pub use brp_execute::{BrpExecute, ExecuteParams};
 pub use constants::{
-    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BRP_PORT_ENV_VAR, FormatCorrectionField,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND,
+    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 pub use format_discovery::FormatCorrectionStatus;
 use json_rpc_builder::BrpJsonRpcBuilder;

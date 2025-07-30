@@ -22,7 +22,6 @@ use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
 use super::response_builder::ResponseBuilder;
-use super::tool_name::ToolName;
 use crate::error::Result;
 use crate::tool::ParamStruct;
 
@@ -64,7 +63,6 @@ pub trait ErasedToolFn: Send + Sync {
     fn call_erased<'a>(
         &'a self,
         ctx: HandlerContext,
-        tool_name: ToolName,
     ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>>;
 }
 
@@ -73,23 +71,14 @@ impl<T: ToolFn> ErasedToolFn for T {
     fn call_erased<'a>(
         &'a self,
         ctx: HandlerContext,
-        tool_name: ToolName,
     ) -> Pin<Box<dyn Future<Output = CallToolResult> + Send + 'a>> {
         Box::pin(async move {
             // we're making a judgement call that we passed a reference to call()
 
             let result = self.call(ctx.clone()).await;
             match result {
-                Ok(tool_result) => {
-                    // Pass tool_result to format_result, which will create CallInfo internally
-                    // This now returns CallToolResult directly, not Result<CallToolResult>
-                    tool_name.format_result(tool_result, &ctx)
-                }
-                Err(e) => {
-                    // Framework error - can't extract parameters or other infrastructure issue
-                    // This also returns CallToolResult directly
-                    tool_name.format_framework_error(e, &ctx)
-                }
+                Ok(tool_result) => ctx.format_result(tool_result),
+                Err(e) => ctx.format_framework_error(e),
             }
         })
     }

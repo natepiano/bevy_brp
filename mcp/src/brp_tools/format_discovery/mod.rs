@@ -68,10 +68,5 @@ pub use self::engine::{
     execute_brp_method_with_format_discovery,
 };
 // Types will be publicly exposed once the refactoring is complete
-#[allow(unused_imports)]
-pub use self::flow_types::{BrpRequestResult, CorrectionResult, FormatRecoveryResult};
-#[allow(unused_imports)]
-pub use self::unified_types::{
-    CorrectionInfo, CorrectionMethod, DiscoverySource, FormatInfo, RegistryStatus,
-    SerializationSupport, UnifiedTypeInfo,
-};
+pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};
+use super::format_correction_fields::FormatCorrectionField;

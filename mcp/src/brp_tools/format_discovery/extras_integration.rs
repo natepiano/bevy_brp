@@ -6,10 +6,11 @@
 use serde_json::{Value, json};
 use tracing::debug;
 
+use super::super::format_correction_fields::FormatCorrectionField;
 use super::adapters;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
-use crate::brp_tools::{self, BrpClientResult, FormatCorrectionField, Port};
+use crate::brp_tools::{self, BrpClientResult, Port};
 use crate::tool::BrpMethod;
 
 /// Discover type format via `bevy_brp_extras/discover_format`
@@ -253,8 +254,7 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::brp_tools::format_discovery::DiscoverySource;
-    use crate::brp_tools::format_discovery::unified_types::TypeCategory;
+    use crate::brp_tools::format_discovery::unified_types::{DiscoverySource, TypeCategory};
 
     #[test]
     fn test_find_type_in_response_direct_object() {

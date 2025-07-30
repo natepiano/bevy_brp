@@ -6,14 +6,12 @@
 use std::sync::Arc;
 
 use bevy_brp_mcp_macros::{BrpTools, ToolDescription};
-use rmcp::model::CallToolResult;
+use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
 use super::annotations::{Annotation, EnvironmentImpact, ToolCategory};
-use super::large_response::{LargeResponseConfig, handle_large_response};
-use super::response_builder::{CallInfo, JsonResponse, Response};
+use super::parameters;
 use super::types::ErasedToolFn;
-use super::{HandlerContext, ParamStruct, ResultStruct, ToolResult, parameters};
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
     ListBrpApps, Shutdown, ShutdownParams, Status, StatusParams,
@@ -31,11 +29,43 @@ use crate::brp_tools::{
     ReparentParams, ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
     ScreenshotResult, SendKeysParams, SendKeysResult, SpawnParams, SpawnResult, StopWatchParams,
 };
-use crate::error::Error;
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
     ReadLogParams, SetTracingLevel, SetTracingLevelParams,
 };
+
+/// Call information for tracking tool execution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CallInfo {
+    /// Local tool execution (no BRP involved)
+    Local {
+        /// The MCP tool name (e.g., "`brp_status`")
+        mcp_tool: String,
+    },
+    /// BRP tool execution (calls Bevy Remote Protocol)
+    Brp {
+        /// The MCP tool name (e.g., "`bevy_spawn`")
+        mcp_tool:   String,
+        /// The BRP method name (e.g., "bevy/spawn")
+        brp_method: String,
+    },
+}
+
+impl CallInfo {
+    /// Create `CallInfo` for a local tool
+    pub const fn local(mcp_tool: String) -> Self {
+        Self::Local { mcp_tool }
+    }
+
+    /// Create `CallInfo` for a BRP tool
+    pub const fn brp(mcp_tool: String, brp_method: String) -> Self {
+        Self::Brp {
+            mcp_tool,
+            brp_method,
+        }
+    }
+}
 
 /// Tool names enum with automatic `snake_case` serialization
 #[derive(
@@ -236,8 +266,7 @@ pub enum ToolName {
 }
 
 impl ToolName {
-    /// call_info is a field on the final JsonResponse that just shows the tool name, and
-    /// optionally, the method name if it is a BRP tool call
+    /// Get call info for this tool
     ///
     /// This method creates the appropriate `CallInfo` variant based on the tool type:
     /// - BRP tools get `CallInfo::Brp`
@@ -245,8 +274,13 @@ impl ToolName {
     pub fn get_call_info(self) -> CallInfo {
         let tool_name = self.to_string();
         match self.to_brp_method() {
-            Some(brp_method) => CallInfo::brp(tool_name, brp_method.as_str().to_string()),
-            None => CallInfo::local(tool_name),
+            Some(brp_method) => CallInfo::Brp {
+                mcp_tool:   tool_name,
+                brp_method: brp_method.as_str().to_string(),
+            },
+            None => CallInfo::Local {
+                mcp_tool: tool_name,
+            },
         }
     }
 
@@ -443,7 +477,7 @@ impl ToolName {
 
     /// Get parameter builder function for this tool
     /// thought about having the macro construct this but at this point
-    /// the macro only constructs brp tool ToolFn implementations as there is no way
+    /// the macro only constructs brp tool `ToolFn` implementations as there is no way
     /// i could think of to easily have it construct the custom implementations - although i suppose
     /// its possible it could have created a shell and we implement the rest manually
     /// but there's already enough indirection going on and so this is fine.
@@ -515,113 +549,6 @@ impl ToolName {
         }
     }
 
-    /// Type-safe formatter that allows for working with our typed ResultStruct and ParamStruct
-    /// instances - pretty neat.
-    pub fn format_result<T, P>(
-        self,
-        tool_result: ToolResult<T, P>,
-        handler_context: &HandlerContext,
-    ) -> CallToolResult
-    where
-        T: ResultStruct,
-        P: ParamStruct,
-    {
-        // call_info is just tool name / method name object on the final JsonResponse
-        let call_info = self.get_call_info();
-
-        match tool_result.result {
-            Ok(data) => {
-                let response = match Response::success(
-                    &data,
-                    tool_result.params,
-                    call_info.clone(),
-                    handler_context,
-                ) {
-                    Ok(response) => response,
-                    Err(e) => Response::error_message(
-                        format!("Failed to build response: {}", e.current_context()),
-                        call_info,
-                    ),
-                };
-                Self::handle_large_response(response, self)
-            }
-            Err(report) => match report.current_context() {
-                Error::Structured { result } => {
-                    tracing::debug!("Processing structured error with result type");
-                    let response = match Response::error(
-                        result.as_ref(),
-                        tool_result.params,
-                        call_info.clone(),
-                        handler_context,
-                    ) {
-                        Ok(response) => {
-                            tracing::debug!("Successfully built structured error response");
-                            response
-                        }
-                        Err(e) => {
-                            // If building the error response fails, return a fallback error
-                            tracing::error!(
-                                "Failed to build structured error response: {}",
-                                e.current_context()
-                            );
-                            Response::error_message(
-                                format!("Failed to build error response: {}", e.current_context()),
-                                call_info,
-                            )
-                        }
-                    };
-                    Self::handle_large_response(response, self)
-                }
-                Error::ToolCall { message, details } => {
-                    Response::error_with_details(message, details.as_ref(), call_info)
-                        .to_call_tool_result()
-                }
-                _ => Response::error_message(
-                    format!("Internal error: {}", report.current_context()),
-                    call_info,
-                )
-                .to_call_tool_result(),
-            },
-        }
-    }
-
-    /// Format framework errors (parameter extraction failures, etc)
-    pub fn format_framework_error(
-        self,
-        error: error_stack::Report<crate::error::Error>,
-        _handler_context: &HandlerContext,
-    ) -> CallToolResult {
-        tracing::debug!(
-            "format_framework_error called for tool: {}",
-            self.to_string()
-        );
-        tracing::trace!("Framework error details: {:#}", error);
-        // Framework errors use the standard call info
-        let call_info = self.get_call_info();
-
-        Response::error_message(
-            format!("Framework error: {}", error.current_context()),
-            call_info,
-        )
-        .to_call_tool_result()
-    }
-
-    /// large response processing - this would possibly be where we would implement pagination
-    fn handle_large_response(response: JsonResponse, tool_name: Self) -> CallToolResult {
-        // Check if response is too large and handle result field extraction
-        match handle_large_response(response, tool_name, LargeResponseConfig::default()) {
-            Ok(processed_response) => processed_response.to_call_tool_result(),
-            Err(e) => {
-                // If large response handling fails, return an error response
-                Response::error_message(
-                    format!("Failed to process response: {}", e.current_context()),
-                    tool_name.get_call_info(),
-                )
-                .to_call_tool_result()
-            }
-        }
-    }
-
     /// Create handler for this tool
     #[allow(clippy::too_many_lines)]
     pub fn create_handler(self) -> Arc<dyn ErasedToolFn> {
@@ -679,11 +606,11 @@ impl ToolName {
             parameters:  self.get_parameters(),
         }
     }
-}
 
-/// Get all tool definitions for registration with the MCP service
-pub fn get_all_tool_definitions() -> Vec<crate::tool::ToolDef> {
-    use strum::IntoEnumIterator;
+    /// Get all tool definitions for registration with the MCP service
+    pub fn get_all_tool_definitions() -> Vec<crate::tool::ToolDef> {
+        use strum::IntoEnumIterator;
 
-    ToolName::iter().map(ToolName::to_tool_def).collect()
+        Self::iter().map(Self::to_tool_def).collect()
+    }
 }

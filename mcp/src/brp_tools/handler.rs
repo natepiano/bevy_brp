@@ -1,6 +1,7 @@
 use serde_json::{Value, json};
 
 use super::brp_client::{BrpClientError, BrpClientResult};
+use super::format_correction_fields::FormatCorrectionField;
 use super::format_discovery::{
     EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
 };
@@ -10,7 +11,6 @@ use super::tools::bevy_mutate_component::MutateComponentFormatError;
 use super::tools::bevy_mutate_resource::MutateResourceFormatError;
 use super::tools::bevy_spawn::SpawnFormatError;
 use super::{FormatCorrectionStatus, Port};
-use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 

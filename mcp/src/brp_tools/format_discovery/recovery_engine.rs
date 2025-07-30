@@ -14,14 +14,14 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::detection::ErrorPattern;
-use super::extras_integration;
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::transformers::TransformerRegistry;
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
+use super::{FormatCorrectionField, extras_integration};
+use crate::brp_tools::Port;
 use crate::brp_tools::brp_client::{self, BrpClientError, BrpClientResult};
-use crate::brp_tools::{FormatCorrectionField, Port};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos

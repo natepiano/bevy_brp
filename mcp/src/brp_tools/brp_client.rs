@@ -2,7 +2,7 @@
 //!
 //! This module provides a clean interface for communicating with BRP servers
 //! without the MCP-specific formatting concerns. It handles raw BRP protocol
-//! communication and returns a BrpClientResult that can be formatted by
+//! communication and returns a `BrpClientResult` that can be formatted by
 //! higher-level tools.
 
 use std::time::Duration;
@@ -17,8 +17,8 @@ use super::constants::{
     BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH, JSON_RPC_ERROR_INTERNAL_ERROR,
     JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
+use super::format_correction_fields::FormatCorrectionField;
 use super::json_rpc_builder::BrpJsonRpcBuilder;
-use crate::brp_tools::FormatCorrectionField;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
