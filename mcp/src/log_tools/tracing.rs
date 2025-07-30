@@ -93,61 +93,61 @@ impl TracingLevel {
             Self::Trace => "trace",
         }
     }
-}
 
-/// Initialize file-based tracing with a fixed filename in temp directory
-/// Uses lazy file creation - file only created on first log write
-pub fn init_file_tracing() {
-    let log_path = get_trace_log_path();
+    /// Initialize file-based tracing with a fixed filename in temp directory
+    /// Uses lazy file creation - file only created on first log write
+    pub fn init_file_tracing() {
+        let log_path = Self::get_trace_log_path();
 
-    // Create lazy file writer that only creates file on first write
-    let lazy_writer = LazyFileWriter::new(log_path);
+        // Create lazy file writer that only creates file on first write
+        let lazy_writer = LazyFileWriter::new(log_path);
 
-    // Create the subscriber with dynamic filtering
-    let file_layer = tracing_subscriber::fmt::layer()
-        .with_writer(lazy_writer)
-        .with_ansi(false)
-        .with_target(true)
-        .with_file(true)
-        .with_line_number(true);
+        // Create the subscriber with dynamic filtering
+        let file_layer = tracing_subscriber::fmt::layer()
+            .with_writer(lazy_writer)
+            .with_ansi(false)
+            .with_target(true)
+            .with_file(true)
+            .with_line_number(true);
 
-    let subscriber = Registry::default().with(DynamicFilter).with(file_layer);
+        let subscriber = Registry::default().with(DynamicFilter).with(file_layer);
 
-    subscriber.init();
+        subscriber.init();
 
-    // Don't log anything here - it would create the file and violate "do no harm"
-    // The file should only be created when the user explicitly sets a tracing level
-}
-
-/// Set the current tracing level dynamically
-pub fn set_tracing_level(level: TracingLevel) {
-    CURRENT_LEVEL.store(level.as_u8(), Ordering::Relaxed);
-
-    // Log at the level that was just set
-    match level {
-        TracingLevel::Error => tracing::error!("Tracing level set to: error"),
-        TracingLevel::Warn => tracing::warn!("Tracing level set to: warn"),
-        TracingLevel::Info => tracing::info!("Tracing level set to: info"),
-        TracingLevel::Debug => tracing::debug!("Tracing level set to: debug"),
-        TracingLevel::Trace => tracing::trace!("Tracing level set to: trace"),
+        // Don't log anything here - it would create the file and violate "do no harm"
+        // The file should only be created when the user explicitly sets a tracing level
     }
-}
 
-/// Get the current tracing level
-pub fn get_current_tracing_level() -> TracingLevel {
-    match CURRENT_LEVEL.load(Ordering::Relaxed) {
-        0 => TracingLevel::Error,
-        2 => TracingLevel::Info,
-        3 => TracingLevel::Debug,
-        4 => TracingLevel::Trace,
-        _ => TracingLevel::Warn, // Default fallback (handles 1 and any invalid values)
+    /// Get the current tracing level
+    pub fn get_current_tracing_level() -> Self {
+        match CURRENT_LEVEL.load(Ordering::Relaxed) {
+            0 => Self::Error,
+            2 => Self::Info,
+            3 => Self::Debug,
+            4 => Self::Trace,
+            _ => Self::Warn, // Default fallback (handles 1 and any invalid values)
+        }
     }
-}
 
-/// Get the path to the trace log file
-/// Useful for testing and troubleshooting
-pub fn get_trace_log_path() -> std::path::PathBuf {
-    std::env::temp_dir().join("bevy_brp_mcp_trace.log")
+    /// Set the current tracing level dynamically
+    pub fn set_tracing_level(level: Self) {
+        CURRENT_LEVEL.store(level.as_u8(), Ordering::Relaxed);
+
+        // Log at the level that was just set
+        match level {
+            Self::Error => tracing::error!("Tracing level set to: error"),
+            Self::Warn => tracing::warn!("Tracing level set to: warn"),
+            Self::Info => tracing::info!("Tracing level set to: info"),
+            Self::Debug => tracing::debug!("Tracing level set to: debug"),
+            Self::Trace => tracing::trace!("Tracing level set to: trace"),
+        }
+    }
+
+    /// Get the path to the trace log file
+    /// Useful for testing and troubleshooting
+    pub fn get_trace_log_path() -> std::path::PathBuf {
+        std::env::temp_dir().join("bevy_brp_mcp_trace.log")
+    }
 }
 
 #[cfg(test)]

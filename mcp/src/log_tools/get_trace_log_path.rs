@@ -1,7 +1,7 @@
 use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 
-use super::tracing::get_trace_log_path;
+use super::TracingLevel;
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Result from getting the trace log path
@@ -31,7 +31,8 @@ impl ToolFn for GetTraceLogPath {
     fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
         Box::pin(async move {
             // Get the trace log path
-            let log_path = get_trace_log_path();
+            let log_path = TracingLevel::get_trace_log_path();
+
             let log_path_str = log_path.to_string_lossy().to_string();
 
             // Check if the file exists and get its size

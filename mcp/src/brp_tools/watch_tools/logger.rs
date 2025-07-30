@@ -8,6 +8,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::{mpsc, oneshot};
 use tracing::{debug, error};
 
+use crate::log_tools::TracingLevel;
+
 /// Log entry to be written
 #[derive(Debug)]
 pub struct LogEntry {
@@ -66,8 +68,8 @@ impl BufferedWatchLogger {
         data: serde_json::Value,
     ) -> Result<(), String> {
         if matches!(
-            crate::log_tools::get_current_tracing_level(),
-            crate::log_tools::TracingLevel::Debug | crate::log_tools::TracingLevel::Trace
+            TracingLevel::get_current_tracing_level(),
+            TracingLevel::Debug | TracingLevel::Trace
         ) {
             self.write_update(update_type, data).await
         } else {

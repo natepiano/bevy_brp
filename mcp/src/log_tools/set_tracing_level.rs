@@ -4,7 +4,7 @@ use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::tracing::{TracingLevel, get_trace_log_path, set_tracing_level};
+use super::tracing::TracingLevel;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -61,10 +61,10 @@ fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult> {
     };
 
     // Update the tracing level
-    set_tracing_level(tracing_level);
+    TracingLevel::set_tracing_level(tracing_level);
 
     // Get the actual trace log path
-    let log_path = get_trace_log_path();
+    let log_path = TracingLevel::get_trace_log_path();
     let log_path_str = log_path.to_string_lossy().to_string();
 
     Ok(SetTracingLevelResult::new(
