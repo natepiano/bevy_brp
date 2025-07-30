@@ -54,14 +54,11 @@ pub struct InsertResourceResult {
 /// Error type for insert resource format discovery failures
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct InsertResourceFormatError {
-    #[to_error_info]
-    pub resource: String,
-
-    #[to_error_info]
-    pub value: Value,
-
     #[to_error_info(skip_if_none)]
     pub format_corrections: Option<Vec<Value>>,
+
+    #[to_error_info(skip_if_none)]
+    pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
 
     #[to_error_info]
     pub brp_error_code: i32,

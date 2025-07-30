@@ -103,8 +103,7 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/insert",
         params = "InsertParams",
-        result = "InsertResult",
-        format_discovery = true
+        result = "InsertResult"
     )]
     BevyInsert,
     /// `bevy_remove` - Remove components from entities
@@ -132,8 +131,7 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/insert_resource",
         params = "InsertResourceParams",
-        result = "InsertResourceResult",
-        format_discovery = true
+        result = "InsertResourceResult"
     )]
     BevyInsertResource,
     /// `bevy_remove_resource` - Remove resources
@@ -147,16 +145,14 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/mutate_resource",
         params = "MutateResourceParams",
-        result = "MutateResourceResult",
-        format_discovery = true
+        result = "MutateResourceResult"
     )]
     BevyMutateResource,
     /// `bevy_mutate_component` - Mutate component fields
     #[brp_tool(
         brp_method = "bevy/mutate_component",
         params = "MutateComponentParams",
-        result = "MutateComponentResult",
-        format_discovery = true
+        result = "MutateComponentResult"
     )]
     BevyMutateComponent,
     /// `bevy_rpc_discover` - Discover available BRP methods
@@ -177,8 +173,7 @@ pub enum ToolName {
     #[brp_tool(
         brp_method = "bevy/spawn",
         params = "SpawnParams",
-        result = "SpawnResult",
-        format_discovery = true
+        result = "SpawnResult"
     )]
     BevySpawn,
     /// `bevy_registry_schema` - Get type schemas

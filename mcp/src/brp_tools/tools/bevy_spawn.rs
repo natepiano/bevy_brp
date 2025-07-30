@@ -56,11 +56,11 @@ pub struct SpawnResult {
 /// Error type for spawn format discovery failures
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
 pub struct SpawnFormatError {
-    #[to_error_info]
-    pub components: Value,
-
     #[to_error_info(skip_if_none)]
     pub format_corrections: Option<Vec<Value>>,
+
+    #[to_error_info(skip_if_none)]
+    pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
 
     #[to_error_info]
     pub brp_error_code: i32,

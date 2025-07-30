@@ -58,11 +58,11 @@ pub struct InsertFormatError {
     #[to_error_info]
     pub entity: u64,
 
-    #[to_error_info]
-    pub components: Value,
-
     #[to_error_info(skip_if_none)]
     pub format_corrections: Option<Vec<Value>>,
+
+    #[to_error_info(skip_if_none)]
+    pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
 
     #[to_error_info]
     pub brp_error_code: i32,

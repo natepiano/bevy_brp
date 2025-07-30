@@ -140,23 +140,20 @@ fn create_spawn_error<R>(
     err: &BrpClientError,
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
-    params_value: &Value,
+    format_corrected: Option<FormatCorrectionStatus>,
+    _params_value: &Value,
 ) -> Result<R>
 where
     R: Send + 'static,
 {
-    let components = params_value
-        .get("components")
-        .cloned()
-        .unwrap_or(Value::Null);
     let message = if enhanced_message == err.message {
         format!("Failed to spawn entity with components: {}", err.message)
     } else {
         enhanced_message
     };
     let error = SpawnFormatError::new(
-        components,
         format_corrections,
+        format_corrected,
         err.code,
         Some(err.message.clone()),
     )
@@ -169,6 +166,7 @@ fn create_insert_error<R>(
     err: &BrpClientError,
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
+    format_corrected: Option<FormatCorrectionStatus>,
     params_value: &Value,
 ) -> Result<R>
 where
@@ -178,10 +176,6 @@ where
         .get("entity")
         .and_then(serde_json::Value::as_u64)
         .unwrap_or(0);
-    let components = params_value
-        .get("components")
-        .cloned()
-        .unwrap_or(Value::Null);
     let message = if enhanced_message == err.message {
         format!(
             "Failed to insert components into entity {entity}: {}",
@@ -192,8 +186,8 @@ where
     };
     let error = InsertFormatError::new(
         entity,
-        components,
         format_corrections,
+        format_corrected,
         err.code,
         Some(err.message.clone()),
     )
@@ -206,6 +200,7 @@ fn create_mutate_component_error<R>(
     err: &BrpClientError,
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
+    format_corrected: Option<FormatCorrectionStatus>,
     params_value: &Value,
 ) -> Result<R>
 where
@@ -215,16 +210,10 @@ where
         .get("entity")
         .and_then(serde_json::Value::as_u64)
         .unwrap_or(0);
-    let component = params_value
-        .get("component")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
     let path = params_value
         .get("path")
         .and_then(|v| v.as_str())
         .map(String::from);
-    let value = params_value.get("value").cloned().unwrap_or(Value::Null);
     let message = if enhanced_message == err.message {
         path.as_ref().map_or_else(
             || {
@@ -244,11 +233,8 @@ where
         enhanced_message
     };
     let error = MutateComponentFormatError::new(
-        entity,
-        component,
-        path,
-        value,
         format_corrections,
+        format_corrected,
         err.code,
         Some(err.message.clone()),
     )
@@ -261,21 +247,16 @@ fn create_mutate_resource_error<R>(
     err: &BrpClientError,
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
+    format_corrected: Option<FormatCorrectionStatus>,
     params_value: &Value,
 ) -> Result<R>
 where
     R: Send + 'static,
 {
-    let resource = params_value
-        .get("resource")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
     let path = params_value
         .get("path")
         .and_then(|v| v.as_str())
         .map(String::from);
-    let value = params_value.get("value").cloned().unwrap_or(Value::Null);
     let message = if enhanced_message == err.message {
         path.as_ref().map_or_else(
             || format!("Failed to mutate resource: {}", err.message),
@@ -285,10 +266,8 @@ where
         enhanced_message
     };
     let error = MutateResourceFormatError::new(
-        resource,
-        path,
-        value,
         format_corrections,
+        format_corrected,
         err.code,
         Some(err.message.clone()),
     )
@@ -301,26 +280,20 @@ fn create_insert_resource_error<R>(
     err: &BrpClientError,
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
-    params_value: &Value,
+    format_corrected: Option<FormatCorrectionStatus>,
+    _params_value: &Value,
 ) -> Result<R>
 where
     R: Send + 'static,
 {
-    let resource = params_value
-        .get("resource")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown")
-        .to_string();
-    let value = params_value.get("value").cloned().unwrap_or(Value::Null);
     let message = if enhanced_message == err.message {
         format!("Failed to insert resource: {}", err.message)
     } else {
         enhanced_message
     };
     let error = InsertResourceFormatError::new(
-        resource,
-        value,
         format_corrections,
+        format_corrected,
         err.code,
         Some(err.message.clone()),
     )
@@ -354,21 +327,41 @@ where
     let format_corrections = prepare_format_corrections(enhanced_result);
 
     match method {
-        BrpMethod::BevySpawn => {
-            create_spawn_error(err, enhanced_message, format_corrections, &params_value)
-        }
-        BrpMethod::BevyInsert => {
-            create_insert_error(err, enhanced_message, format_corrections, &params_value)
-        }
-        BrpMethod::BevyMutateComponent => {
-            create_mutate_component_error(err, enhanced_message, format_corrections, &params_value)
-        }
-        BrpMethod::BevyMutateResource => {
-            create_mutate_resource_error(err, enhanced_message, format_corrections, &params_value)
-        }
-        BrpMethod::BevyInsertResource => {
-            create_insert_resource_error(err, enhanced_message, format_corrections, &params_value)
-        }
+        BrpMethod::BevySpawn => create_spawn_error(
+            err,
+            enhanced_message,
+            format_corrections,
+            Some(enhanced_result.format_corrected.clone()),
+            &params_value,
+        ),
+        BrpMethod::BevyInsert => create_insert_error(
+            err,
+            enhanced_message,
+            format_corrections,
+            Some(enhanced_result.format_corrected.clone()),
+            &params_value,
+        ),
+        BrpMethod::BevyMutateComponent => create_mutate_component_error(
+            err,
+            enhanced_message,
+            format_corrections,
+            Some(enhanced_result.format_corrected.clone()),
+            &params_value,
+        ),
+        BrpMethod::BevyMutateResource => create_mutate_resource_error(
+            err,
+            enhanced_message,
+            format_corrections,
+            Some(enhanced_result.format_corrected.clone()),
+            &params_value,
+        ),
+        BrpMethod::BevyInsertResource => create_insert_resource_error(
+            err,
+            enhanced_message,
+            format_corrections,
+            Some(enhanced_result.format_corrected.clone()),
+            &params_value,
+        ),
         _ => create_fallback_error(err, enhanced_message),
     }
 }
