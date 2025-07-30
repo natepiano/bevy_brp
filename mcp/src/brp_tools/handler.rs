@@ -12,6 +12,7 @@ use super::tools::bevy_mutate_resource::MutateResourceFormatError;
 use super::tools::bevy_spawn::SpawnFormatError;
 use super::types::{ExecuteMode, ResultStructBrpExt};
 use super::{FormatCorrectionStatus, Port};
+use crate::brp_tools::BrpClient;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -409,7 +410,7 @@ where
         }
         ExecuteMode::Standard => {
             // Direct BRP execution without format discovery
-            let client = crate::brp_tools::BrpClient::new(method, port, brp_params);
+            let client = BrpClient::new(method, port, brp_params);
             let result = client.execute().await?;
 
             match result {

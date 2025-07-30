@@ -6,7 +6,7 @@ use futures::StreamExt;
 use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
-use super::super::BrpJsonRpcBuilder;
+use super::super::json_rpc_builder::BrpJsonRpcBuilder;
 use super::logger::BufferedWatchLogger;
 use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools::{BrpClient, Port};

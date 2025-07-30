@@ -1,5 +1,4 @@
 mod brp_client;
-mod brp_execute;
 mod constants;
 mod format_correction_fields;
 mod format_discovery;
@@ -12,15 +11,15 @@ mod watch_tools;
 
 // Public exports
 pub use brp_client::{BrpClient, BrpClientError, BrpClientResult};
-// Export special case tools that don't follow the standard pattern
-pub use brp_execute::{BrpExecute, ExecuteParams};
-pub use constants::{
-    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND,
-};
+pub use constants::{BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND};
+//
+// needed by result_struct macro
 pub use format_discovery::FormatCorrectionStatus;
-// Re-export handler items needed by macros
+//
+// Re-export handler items needed by macro
 pub use handler::execute_static_brp_call;
-use json_rpc_builder::BrpJsonRpcBuilder;
+//
+// Port needed by many
 pub use port::Port;
 //
 // Export all parameter and result structs by name
@@ -40,6 +39,9 @@ pub use tools::bevy_remove_resource::{RemoveResourceParams, RemoveResourceResult
 pub use tools::bevy_reparent::{ReparentParams, ReparentResult};
 pub use tools::bevy_rpc_discover::{RpcDiscoverParams, RpcDiscoverResult};
 pub use tools::bevy_spawn::{SpawnParams, SpawnResult};
+//
+// Export special case tools that don't follow the standard pattern
+pub use tools::brp_execute::{BrpExecute, ExecuteParams};
 pub use tools::brp_extras_discover_format::{DiscoverFormatParams, DiscoverFormatResult};
 pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};

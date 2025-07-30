@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::Port;
+use crate::brp_tools::{BrpClient, BrpClientResult, Port};
 use crate::error::Error;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -60,7 +60,7 @@ impl ToolFn for BrpExecute {
                 });
             };
 
-            let client = super::BrpClient::new(
+            let client = BrpClient::new(
                 brp_method,            // Parsed BRP method
                 port,                  // Use typed port parameter
                 params.params.clone(), // User-provided params (already Option<Value>)
@@ -77,11 +77,11 @@ impl ToolFn for BrpExecute {
 
             // Convert BRP result to ToolResult
             match brp_result {
-                super::brp_client::BrpClientResult::Success(data) => Ok(ToolResult {
+                BrpClientResult::Success(data) => Ok(ToolResult {
                     result: Ok(ExecuteResult::new(data)),
                     params: Some(params),
                 }),
-                super::brp_client::BrpClientResult::Error(err) => Ok(ToolResult {
+                BrpClientResult::Error(err) => Ok(ToolResult {
                     result: Err(Error::tool_call_failed(err.message).into()),
                     params: Some(params),
                 }),

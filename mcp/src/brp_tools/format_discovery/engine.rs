@@ -45,7 +45,8 @@ use tracing::{debug, trace};
 use super::flow_types::{BrpRequestResult, FormatRecoveryResult};
 use super::unified_types::CorrectionInfo;
 use super::{UnifiedTypeInfo, recovery_engine, registry_integration};
-use crate::brp_tools::{BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, BrpClient, BrpClientResult, Port};
+use crate::brp_tools::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
+use crate::brp_tools::{BrpClient, BrpClientResult, Port};
 use crate::error::Result;
 use crate::tool::BrpMethod;
 
