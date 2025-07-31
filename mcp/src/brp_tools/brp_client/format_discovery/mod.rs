@@ -67,7 +67,7 @@ pub use self::engine::{FormatCorrection, FormatCorrectionStatus};
 pub use self::flow_types::FormatRecoveryResult;
 // Types will be publicly exposed once the refactoring is complete
 pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};
-use super::super::format_correction_fields::FormatCorrectionField;
+use super::format_correction_fields::FormatCorrectionField;
 
 // New function for format recovery
 pub async fn try_format_recovery_and_retry(

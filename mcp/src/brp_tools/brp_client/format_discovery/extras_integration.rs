@@ -6,7 +6,7 @@
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::super::super::format_correction_fields::FormatCorrectionField;
+use super::super::format_correction_fields::FormatCorrectionField;
 use super::adapters;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};

@@ -1,6 +1,5 @@
 mod brp_client;
 mod constants;
-mod format_correction_fields;
 mod port;
 mod tools;
 mod types;
