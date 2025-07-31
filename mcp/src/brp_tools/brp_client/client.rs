@@ -22,12 +22,12 @@ use super::super::constants::{
     JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::format_discovery::{
+use super::super::types::{ExecuteMode, ResultStructBrpExt};
+use super::constants::{BRP_DEFAULT_HOST, BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
+use super::format_discovery::{
     CorrectionInfo, FormatCorrection, FormatCorrectionStatus, FormatRecoveryResult,
     try_format_recovery_and_retry,
 };
-use super::super::types::{ExecuteMode, ResultStructBrpExt};
-use super::constants::{BRP_DEFAULT_HOST, BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};

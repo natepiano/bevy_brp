@@ -1,20 +1,14 @@
 mod brp_client;
 mod constants;
 mod format_correction_fields;
-mod format_discovery;
 mod port;
 mod tools;
 mod types;
 mod watch_tools;
 
 // Public exports
-pub use brp_client::{BrpClient, BrpClientError, BrpClientResult};
+pub use brp_client::{BrpClient, BrpClientError, BrpClientResult, FormatCorrectionStatus};
 pub use constants::{BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND};
-//
-// needed by result_struct macro
-pub use format_discovery::FormatCorrectionStatus;
-//
-// Port needed by many
 pub use port::Port;
 //
 // Export all parameter and result structs by name

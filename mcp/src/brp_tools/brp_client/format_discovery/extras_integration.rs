@@ -6,7 +6,7 @@
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::super::format_correction_fields::FormatCorrectionField;
+use super::super::super::format_correction_fields::FormatCorrectionField;
 use super::adapters;
 use super::flow_types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
@@ -253,7 +253,9 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::brp_tools::format_discovery::unified_types::{DiscoverySource, TypeCategory};
+    use crate::brp_tools::brp_client::format_discovery::unified_types::{
+        DiscoverySource, TypeCategory,
+    };
 
     #[test]
     fn test_find_type_in_response_direct_object() {

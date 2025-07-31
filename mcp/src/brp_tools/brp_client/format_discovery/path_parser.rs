@@ -130,7 +130,7 @@ pub fn parse_generic_enum_field_access(path: &str) -> Option<String> {
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use crate::brp_tools::format_discovery::types::{ColorField, Field, MathField};
+    use crate::brp_tools::brp_client::format_discovery::types::{ColorField, Field, MathField};
 
     #[test]
     fn test_parse_path_to_field_access() {
