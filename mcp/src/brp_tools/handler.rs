@@ -14,7 +14,7 @@ use super::types::{ExecuteMode, ResultStructBrpExt};
 use super::{FormatCorrectionStatus, Port};
 use crate::brp_tools::BrpClient;
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::{BrpMethod, ParameterName, ResultStruct};
 
 /// Convert a `FormatCorrection` to JSON representation with metadata
 pub fn format_correction_to_json(correction: &FormatCorrection) -> Value {
@@ -92,7 +92,7 @@ fn prepare_format_corrections(enhanced_result: &EnhancedBrpResult) -> Option<Vec
 /// Helper function to create structured error result
 fn create_structured_error<T, R>(error: T) -> Result<R>
 where
-    T: crate::tool::ResultStruct + 'static,
+    T: ResultStruct + 'static,
     R: Send + 'static,
 {
     Err(Error::Structured {
@@ -107,7 +107,6 @@ fn create_spawn_error<R>(
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
     format_corrected: Option<FormatCorrectionStatus>,
-    _params_value: &Value,
 ) -> Result<R>
 where
     R: Send + 'static,
@@ -247,7 +246,6 @@ fn create_insert_resource_error<R>(
     enhanced_message: String,
     format_corrections: Option<Vec<Value>>,
     format_corrected: Option<FormatCorrectionStatus>,
-    _params_value: &Value,
 ) -> Result<R>
 where
     R: Send + 'static,
@@ -297,7 +295,6 @@ where
             enhanced_message,
             format_corrections,
             Some(enhanced_result.format_corrected.clone()),
-            &params_value,
         ),
         BrpMethod::BevyInsert => create_insert_error(
             err,
@@ -325,7 +322,6 @@ where
             enhanced_message,
             format_corrections,
             Some(enhanced_result.format_corrected.clone()),
-            &params_value,
         ),
         _ => create_fallback_error(err, enhanced_message),
     }
