@@ -2,11 +2,13 @@ mod brp_client;
 mod constants;
 mod port;
 mod tools;
-mod types;
 mod watch_tools;
 
 // Public exports
-pub use brp_client::{BrpClient, BrpClientError, BrpClientResult, FormatCorrectionStatus};
+pub use brp_client::{
+    BrpClient, BrpClientError, BrpClientResult, ExecuteMode, FormatCorrectionStatus,
+    ResultStructBrpExt,
+};
 pub use constants::{BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 pub use port::Port;
 //
@@ -33,7 +35,6 @@ pub use tools::brp_execute::{BrpExecute, ExecuteParams};
 pub use tools::brp_extras_discover_format::{DiscoverFormatParams, DiscoverFormatResult};
 pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
-pub use types::{ExecuteMode, ResultStructBrpExt};
 //
 // Export watch tools
 pub use watch_tools::{BevyGetWatch, GetWatchParams};
