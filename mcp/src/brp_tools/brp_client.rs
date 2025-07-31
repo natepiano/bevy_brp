@@ -104,6 +104,42 @@ impl BrpClient {
         self.execute_direct_internal().await
     }
 
+    /// Execute the BRP request and return a streaming response
+    ///
+    /// This method is designed for watch operations that need to handle
+    /// Server-Sent Events (SSE) streams. Unlike `execute()`, it:
+    /// - Uses no timeout (streaming connections stay open)
+    /// - Returns the raw response for the caller to process
+    /// - Provides the same rich error context as other `BrpClient` methods
+    pub async fn execute_streaming(self) -> Result<reqwest::Response> {
+        let url = Self::build_brp_url(self.port);
+        let method_str = self.method.as_str();
+
+        // Build JSON-RPC request body (reuse existing function)
+        let request_body = build_request_body(method_str, self.params);
+
+        // Create client with no timeout for streaming
+        let client = reqwest::Client::builder()
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
+        // Send HTTP request
+        match client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .body(request_body.clone())
+            .send()
+            .await
+        {
+            Ok(response) => {
+                // Check HTTP status
+                check_http_status(&response, method_str, self.port)?;
+                Ok(response)
+            }
+            Err(e) => handle_http_error(e, &url, &request_body, method_str, self.port),
+        }
+    }
+
     /// Build a BRP URL for the given port
     ///
     /// This is a utility function for cases where you need just the URL

@@ -6,7 +6,6 @@ use futures::StreamExt;
 use serde_json::Value;
 use tracing::{debug, error, info, warn};
 
-use super::super::json_rpc_builder::BrpJsonRpcBuilder;
 use super::logger::BufferedWatchLogger;
 use super::manager::{WATCH_MANAGER, WatchInfo};
 use crate::brp_tools::{BrpClient, Port};
@@ -24,7 +23,7 @@ struct WatchConnectionParams {
     watch_id:   u32,
     entity_id:  u64,
     watch_type: String,
-    brp_method: String,
+    brp_method: BrpMethod,
     params:     Value,
     port:       Port,
 }
@@ -410,7 +409,7 @@ async fn process_watch_stream(
 
 /// Handle connection errors and log appropriately
 async fn handle_connection_error(
-    error: reqwest::Error,
+    error: error_stack::Report<Error>,
     conn_params: &WatchConnectionParams,
     logger: &BufferedWatchLogger,
     start_time: std::time::Instant,
@@ -444,25 +443,14 @@ async fn run_watch_connection(conn_params: WatchConnectionParams, logger: Buffer
     // Track start time for timeout detection
     let start_time = std::time::Instant::now();
 
-    // Create HTTP client for streaming with no timeout
-    let url = BrpClient::build_brp_url(conn_params.port);
-    let client = reqwest::Client::builder()
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
+    // Create BRP client
+    let brp_client = BrpClient::new(
+        conn_params.brp_method,
+        conn_params.port,
+        Some(conn_params.params.clone()),
+    );
 
-    // Build JSON-RPC request for watching
-    let request_body = BrpJsonRpcBuilder::new(&conn_params.brp_method)
-        .params(conn_params.params.clone())
-        .build()
-        .to_string();
-
-    match client
-        .post(&url)
-        .header("Content-Type", "application/json")
-        .body(request_body)
-        .send()
-        .await
-    {
+    match brp_client.execute_streaming().await {
         Ok(response) => {
             // Log initial HTTP response
             let _ = logger.write_debug_update(
@@ -537,7 +525,7 @@ async fn start_watch_task(
 ) -> Result<(u32, PathBuf)> {
     // Prepare all data that doesn't require the watch_id
     let watch_type_owned = watch_type.to_string();
-    let brp_method_owned = brp_method.as_str().to_string();
+    let brp_method_owned = brp_method;
 
     // Perform all operations within a single lock to ensure atomicity
     let mut manager = WATCH_MANAGER.lock().await;
