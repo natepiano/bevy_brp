@@ -3,7 +3,6 @@ mod constants;
 mod format_correction_fields;
 mod format_discovery;
 mod handler;
-mod json_rpc_builder;
 mod port;
 mod tools;
 mod types;

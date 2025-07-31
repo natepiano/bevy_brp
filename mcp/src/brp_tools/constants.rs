@@ -51,15 +51,3 @@ pub const JSON_RPC_ERROR_METHOD_NOT_FOUND: i32 = -32601;
 pub const JSON_RPC_ERROR_INVALID_PARAMS: i32 = -32602;
 /// "Internal error" (JSON-RPC standard)
 pub const JSON_RPC_ERROR_INTERNAL_ERROR: i32 = -32603;
-
-// ============================================================================
-// JSON-RPC CONSTANTS
-// ============================================================================
-
-/// JSON-RPC protocol constants
-pub const JSONRPC_VERSION: &str = "2.0";
-pub const JSONRPC_DEFAULT_ID: u64 = 1;
-pub const JSONRPC_FIELD: &str = "jsonrpc";
-pub const JSONRPC_FIELD_ID: &str = "id";
-pub const JSONRPC_FIELD_METHOD: &str = "method";
-pub const JSONRPC_FIELD_PARAMS: &str = "params";
