@@ -57,22 +57,3 @@ pub struct MutateComponentResult {
     #[to_message(message_template = "Mutated {component} for entity {entity}")]
     pub message_template: String,
 }
-
-/// Error type for mutate component format discovery failures
-#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct MutateComponentFormatError {
-    #[to_error_info(skip_if_none)]
-    pub format_corrections: Option<Vec<Value>>,
-
-    #[to_error_info(skip_if_none)]
-    pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
-
-    #[to_error_info]
-    pub brp_error_code: i32,
-
-    #[to_error_info(skip_if_none)]
-    pub original_error: Option<String>,
-
-    #[to_message]
-    pub message_template: Option<String>,
-}

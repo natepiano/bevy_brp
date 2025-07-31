@@ -16,32 +16,8 @@
 //! - Level 2: Direct discovery via `bevy_brp_extras`
 //! - Level 3: Pattern-based transformations
 
-use std::collections::HashMap;
-
 use super::{CorrectionInfo, UnifiedTypeInfo};
 use crate::brp_tools::BrpClientResult;
-use crate::tool::BrpMethod;
-
-/// Result of a BRP request attempt, determining whether to enter format recovery
-#[derive(Debug, Clone)]
-pub enum BrpRequestResult {
-    /// Request succeeded - no format discovery needed
-    Success(BrpClientResult),
-    /// Request failed with recoverable format error - enter exception path
-    FormatError {
-        error:           BrpClientResult,
-        method:          BrpMethod,
-        original_params: Option<serde_json::Value>,
-        type_infos:      HashMap<String, UnifiedTypeInfo>,
-    },
-    /// Request failed with missing Serialize/Deserialize traits - return educational message
-    SerDeError {
-        error:               BrpClientResult,
-        educational_message: String,
-    },
-    /// Request failed with non-recoverable error - return immediately
-    OtherError(BrpClientResult),
-}
 
 /// Result of format error recovery attempt in the exception path
 #[derive(Debug, Clone)]
@@ -52,15 +28,11 @@ pub enum FormatRecoveryResult {
         corrections:      Vec<CorrectionInfo>,
     },
     /// Recovery not possible but guidance available
-    NotRecoverable {
-        original_error: BrpClientResult,
-        corrections:    Vec<CorrectionInfo>,
-    },
+    NotRecoverable { corrections: Vec<CorrectionInfo> },
     /// Recovery attempted but correction was insufficient
     CorrectionFailed {
-        original_error: BrpClientResult,
-        retry_error:    BrpClientResult,
-        corrections:    Vec<CorrectionInfo>,
+        retry_error: BrpClientResult,
+        corrections: Vec<CorrectionInfo>,
     },
 }
 

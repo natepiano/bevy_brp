@@ -185,7 +185,7 @@ async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResult> {
 async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> {
     debug!("Starting graceful shutdown attempt on port {port}");
     let client = BrpClient::new(BrpMethod::BrpShutdown, port, None);
-    match client.execute_direct().await {
+    match client.execute_raw().await {
         Ok(BrpClientResult::Success(result)) => {
             // Graceful shutdown succeeded
             debug!("BRP extras shutdown successful: {result:?}");

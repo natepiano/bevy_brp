@@ -2,7 +2,6 @@ mod brp_client;
 mod constants;
 mod format_correction_fields;
 mod format_discovery;
-mod handler;
 mod port;
 mod tools;
 mod types;
@@ -14,9 +13,6 @@ pub use constants::{BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 //
 // needed by result_struct macro
 pub use format_discovery::FormatCorrectionStatus;
-//
-// Re-export handler items needed by macro
-pub use handler::execute_static_brp_call;
 //
 // Port needed by many
 pub use port::Port;

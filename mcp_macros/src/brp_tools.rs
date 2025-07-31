@@ -79,11 +79,15 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
                                 let port = params.port;
                                 let params_json = serde_json::to_value(&params).ok();
 
-                                let result = match crate::brp_tools::execute_static_brp_call::<
-                                    #params_ident,
-                                    #result_type,
-                                >(crate::tool::BrpMethod::#variant_name, port, params)
-                                .await {
+                                // Use BrpClient::prepare_params to filter out nulls and port
+                                let brp_params = crate::brp_tools::BrpClient::prepare_params(&params)?;
+                                // Create BrpClient and execute
+                                let client = crate::brp_tools::BrpClient::new(
+                                    crate::tool::BrpMethod::#variant_name,
+                                    port,
+                                    brp_params,
+                                );
+                                let result = match client.execute::<#result_type>().await {
                                     Ok(r) => r,
                                     Err(e) => {
                                         let params = params_json

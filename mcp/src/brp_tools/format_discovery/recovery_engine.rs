@@ -43,8 +43,7 @@ pub async fn attempt_format_recovery_with_type_infos(
     if type_names.is_empty() {
         debug!("Recovery Engine: No type names found in parameters, cannot recover");
         return FormatRecoveryResult::NotRecoverable {
-            original_error: error,
-            corrections:    Vec::new(),
+            corrections: Vec::new(),
         };
     }
 
@@ -94,8 +93,7 @@ pub async fn attempt_format_recovery_with_type_infos(
             // This shouldn't happen as we only call recovery on errors
             debug!("Recovery Engine: Warning - Level 3 called with success result");
             return FormatRecoveryResult::NotRecoverable {
-                original_error: error,
-                corrections:    Vec::new(),
+                corrections: Vec::new(),
             };
         }
     };
@@ -115,8 +113,7 @@ pub async fn attempt_format_recovery_with_type_infos(
         LevelResult::Continue(_) => {
             debug!("Recovery Engine: All levels exhausted, no recovery possible");
             FormatRecoveryResult::NotRecoverable {
-                original_error: error,
-                corrections:    Vec::new(),
+                corrections: Vec::new(),
             }
         }
     }
@@ -882,7 +879,7 @@ async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: BrpMethod,
     original_params: Option<&Value>,
-    original_error: &BrpClientResult,
+    _original_error: &BrpClientResult,
     port: Port,
 ) -> FormatRecoveryResult {
     let mut corrections = Vec::new();
@@ -922,8 +919,7 @@ async fn build_recovery_success(
     if corrections.is_empty() {
         debug!("Recovery Engine: No corrections found, returning original error");
         return FormatRecoveryResult::NotRecoverable {
-            original_error: original_error.clone(),
-            corrections:    Vec::new(),
+            corrections: Vec::new(),
         };
     }
 
@@ -940,7 +936,7 @@ async fn build_recovery_success(
 
                 // Execute the retry asynchronously
                 let client = brp_client::BrpClient::new(method, port, corrected_params);
-                let retry_result = client.execute_direct().await;
+                let retry_result = client.execute_raw().await;
 
                 match retry_result {
                     Ok(success_result) => {
@@ -960,7 +956,6 @@ async fn build_recovery_success(
                         });
                         // Return correction failed with both original and retry errors
                         FormatRecoveryResult::CorrectionFailed {
-                            original_error: original_error.clone(),
                             retry_error: retry_brp_error,
                             corrections,
                         }
@@ -973,19 +968,13 @@ async fn build_recovery_success(
                     e
                 );
                 // Return original error - we can't fix this
-                FormatRecoveryResult::NotRecoverable {
-                    original_error: original_error.clone(),
-                    corrections:    Vec::new(),
-                }
+                FormatRecoveryResult::NotRecoverable { corrections }
             }
         }
     } else {
         debug!("Recovery Engine: No fixable corrections, returning error with guidance");
         // We have corrections but they're not fixable (like the enum case)
         // Return the original error - the handler will add format_corrections to it
-        FormatRecoveryResult::NotRecoverable {
-            original_error: original_error.clone(),
-            corrections,
-        }
+        FormatRecoveryResult::NotRecoverable { corrections }
     }
 }
