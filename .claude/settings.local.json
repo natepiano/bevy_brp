@@ -41,10 +41,8 @@
       "mcp__brp__brp_stop_watch",
       "Bash(mkdir:*)",
       "Bash(grep:*)",
-      "Bash(./target/debug/test_duplicate_app:*)",
       "Bash(find:*)",
       "Bash(rg:*)",
-      "Bash(mcp__brp__brp_list_bevy_examples:*)",
       "mcp__brp__brp_execute",
       "Bash(pkill:*)",
       "Bash(rustc:*)",
@@ -55,17 +53,16 @@
       "Bash(echo:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(./.claude/commands/test_runner.sh:*)",
       "mcp__brp__brp_shutdown",
       "mcp__brp__bevy_remove_resource",
-      "Bash(.claude/commands/tests/all:*)",
       "Bash(cat:*)",
       "mcp__brp__brp_get_trace_log_path",
       "mcp__brp__brp_set_tracing_level",
       "Bash(ps:*)",
       "WebFetch(domain:status.anthropic.com)",
       "mcp__brp__brp_delete_logs",
-      "mcp__brp__brp_delete_logs"
+      "mcp__brp__brp_delete_logs",
+      "Bash(bash -c \"rg:*\")"
     ],
     "deny": []
   }

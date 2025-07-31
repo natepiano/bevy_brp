@@ -536,40 +536,37 @@ fn create_format_discovery_error(
     corrections: &[CorrectionInfo],
 ) -> Error {
     // Build format corrections array with metadata
-    let format_corrections = if corrections.is_empty() {
-        None
-    } else {
-        Some(
-            corrections
-                .iter()
-                .map(|c| {
-                    let correction = FormatCorrection {
-                        component:            c.type_name.clone(),
-                        original_format:      c.original_value.clone(),
-                        corrected_format:     c.corrected_value.clone(),
-                        hint:                 c.hint.clone(),
-                        supported_operations: c
-                            .type_info
-                            .as_ref()
-                            .map(|ti| ti.supported_operations.clone()),
-                        mutation_paths:       c.type_info.as_ref().and_then(|ti| {
-                            let paths = &ti.format_info.mutation_paths;
-                            if paths.is_empty() {
-                                None
-                            } else {
-                                Some(paths.keys().cloned().collect())
-                            }
-                        }),
-                        type_category:        c.type_info.as_ref().map(|ti| {
-                            // Use debug format since TypeCategory is not publicly accessible
-                            format!("{:?}", ti.type_category)
-                        }),
-                    };
-                    format_correction_to_json(&correction)
-                })
-                .collect(),
-        )
-    };
+    // Always include the array (even if empty) to meet test expectations
+    let format_corrections = Some(
+        corrections
+            .iter()
+            .map(|c| {
+                let correction = FormatCorrection {
+                    component:            c.type_name.clone(),
+                    original_format:      c.original_value.clone(),
+                    corrected_format:     c.corrected_value.clone(),
+                    hint:                 c.hint.clone(),
+                    supported_operations: c
+                        .type_info
+                        .as_ref()
+                        .map(|ti| ti.supported_operations.clone()),
+                    mutation_paths:       c.type_info.as_ref().and_then(|ti| {
+                        let paths = &ti.format_info.mutation_paths;
+                        if paths.is_empty() {
+                            None
+                        } else {
+                            Some(paths.keys().cloned().collect())
+                        }
+                    }),
+                    type_category:        c.type_info.as_ref().map(|ti| {
+                        // Use debug format since TypeCategory is not publicly accessible
+                        format!("{:?}", ti.type_category)
+                    }),
+                };
+                format_correction_to_json(&correction)
+            })
+            .collect(),
+    );
 
     // Build hint message from corrections
     let hint = if corrections.is_empty() {
