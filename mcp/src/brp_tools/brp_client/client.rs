@@ -114,13 +114,9 @@ impl BrpClient {
                     && matches!(R::brp_tool_execute_mode(), ExecuteMode::WithFormatDiscovery)
                 {
                     // Try format discovery and maybe retry with corrected format
-                    let recovery_result = try_format_recovery_and_retry(
-                        method,
-                        params_for_discovery.clone(),
-                        port,
-                        &err,
-                    )
-                    .await?;
+                    let recovery_result =
+                        try_format_recovery_and_retry(method, params_for_discovery, port, &err)
+                            .await?;
                     // Transform recovery result to appropriate error or success
                     transform_recovery_result::<R>(recovery_result, &err)
                 } else {

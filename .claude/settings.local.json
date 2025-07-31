@@ -62,7 +62,8 @@
       "WebFetch(domain:status.anthropic.com)",
       "mcp__brp__brp_delete_logs",
       "mcp__brp__brp_delete_logs",
-      "Bash(bash -c \"rg:*\")"
+      "Bash(bash -c \"rg:*\")",
+      "Bash(od:*)"
     ],
     "deny": []
   }
