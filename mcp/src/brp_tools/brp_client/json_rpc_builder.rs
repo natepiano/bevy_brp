@@ -1,12 +1,9 @@
 use serde_json::{Value, json};
 
-// JSON-RPC 2.0 constants
-const JSONRPC_VERSION: &str = "2.0";
-const JSONRPC_DEFAULT_ID: u64 = 1;
-const JSONRPC_FIELD: &str = "jsonrpc";
-const JSONRPC_FIELD_ID: &str = "id";
-const JSONRPC_FIELD_METHOD: &str = "method";
-const JSONRPC_FIELD_PARAMS: &str = "params";
+use super::constants::{JSONRPC_DEFAULT_ID, JSONRPC_FIELD_PARAMS};
+use crate::brp_tools::brp_client::constants::{
+    JSONRPC_FIELD, JSONRPC_FIELD_ID, JSONRPC_FIELD_METHOD, JSONRPC_VERSION,
+};
 
 /// Builder for constructing raw JSON-RPC 2.0 requests
 ///

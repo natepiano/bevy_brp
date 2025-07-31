@@ -4,16 +4,6 @@ use std::ops::RangeInclusive;
 // NETWORK CONSTANTS
 // ============================================================================
 
-/// JSON-RPC path for BRP requests
-pub const BRP_JSONRPC_PATH: &str = "/jsonrpc";
-
-/// Default host for BRP connections
-/// Using IPv4 address directly to avoid IPv6 connection issues
-pub const BRP_DEFAULT_HOST: &str = "127.0.0.1";
-
-/// HTTP protocol for BRP connections
-pub const BRP_HTTP_PROTOCOL: &str = "http";
-
 /// Network/Port Constants
 pub const DEFAULT_BRP_PORT: u16 = 15702;
 
@@ -24,9 +14,6 @@ pub const BRP_PORT_ENV_VAR: &str = "BRP_PORT";
 pub const MIN_VALID_PORT: u16 = 1024; // Non-privileged ports start here
 pub const MAX_VALID_PORT: u16 = 65534; // Leave room for calculations
 pub const VALID_PORT_RANGE: RangeInclusive<u16> = MIN_VALID_PORT..=MAX_VALID_PORT;
-
-/// `bevy_brp_extras` prefix
-pub const BRP_EXTRAS_PREFIX: &str = "brp_extras/";
 
 // ============================================================================
 // ERROR CONSTANTS
