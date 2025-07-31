@@ -18,15 +18,19 @@ use super::constants::{
     JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
 use super::format_correction_fields::FormatCorrectionField;
+use super::format_discovery::{
+    EnhancedBrpResult, FormatCorrectionStatus, execute_brp_method_with_format_discovery,
+};
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Client for executing a BRP operation
 pub struct BrpClient {
-    method: BrpMethod,
-    port:   Port,
-    params: Option<Value>,
+    method:           BrpMethod,
+    port:             Port,
+    params:           Option<Value>,
+    format_discovery: bool,
 }
 
 impl BrpClient {
@@ -36,11 +40,36 @@ impl BrpClient {
             method,
             port,
             params,
+            format_discovery: false,
         }
     }
 
-    /// Execute the BRP request
-    pub async fn execute(self) -> Result<BrpClientResult> {
+    /// Enable format discovery for this request (builder pattern)
+    pub const fn with_format_discovery(mut self) -> Self {
+        self.format_discovery = true;
+        self
+    }
+
+    /// Execute the BRP request and return enhanced result with format discovery information
+    pub async fn execute(self) -> Result<EnhancedBrpResult> {
+        if self.format_discovery {
+            // Clone params for potential retry attempts
+            let params_for_retry = self.params.clone();
+            self.execute_with_format_discovery_internal(params_for_retry)
+                .await
+        } else {
+            // Execute directly and wrap in EnhancedBrpResult
+            let result = self.execute_direct_internal().await?;
+            Ok(EnhancedBrpResult {
+                result,
+                format_corrections: Vec::new(),
+                format_corrected: FormatCorrectionStatus::NotApplicable,
+            })
+        }
+    }
+
+    /// Internal direct execution (current `execute()` logic moved here)
+    async fn execute_direct_internal(self) -> Result<BrpClientResult> {
         let url = Self::build_brp_url(self.port);
         let method_str = self.method.as_str();
 
@@ -56,8 +85,23 @@ impl BrpClient {
         // Parse JSON-RPC response
         let brp_response = parse_json_response(response, method_str, self.port).await?;
 
-        // Convert to BrpClientResult
+        // Convert to BrpClientResult with special handling for bevy_brp_extras
         Ok(convert_to_brp_result(brp_response, method_str))
+    }
+
+    /// Internal format discovery execution
+    async fn execute_with_format_discovery_internal(
+        self,
+        _params_for_retry: Option<Value>,
+    ) -> Result<EnhancedBrpResult> {
+        // Delegate to existing engine (format discovery stays as sibling module)
+        execute_brp_method_with_format_discovery(self.method, self.params, self.port).await
+    }
+
+    /// Execute the BRP request without format discovery (legacy compatibility)
+    /// Returns just the `BrpClientResult` without enhanced information
+    pub async fn execute_direct(self) -> Result<BrpClientResult> {
+        self.execute_direct_internal().await
     }
 
     /// Build a BRP URL for the given port

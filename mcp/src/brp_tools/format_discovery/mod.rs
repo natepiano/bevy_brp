@@ -63,10 +63,16 @@ mod unified_types;
 #[cfg(test)]
 mod tests;
 
-pub use self::engine::{
-    EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus,
-    execute_brp_method_with_format_discovery,
-};
+pub use self::engine::{EnhancedBrpResult, FormatCorrection, FormatCorrectionStatus};
 // Types will be publicly exposed once the refactoring is complete
 pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};
 use super::format_correction_fields::FormatCorrectionField;
+
+// Internal function for BrpClient to use
+pub async fn execute_brp_method_with_format_discovery(
+    method: crate::tool::BrpMethod,
+    params: Option<serde_json::Value>,
+    port: super::Port,
+) -> crate::error::Result<EnhancedBrpResult> {
+    engine::execute_brp_method_with_format_discovery(method, params, port).await
+}

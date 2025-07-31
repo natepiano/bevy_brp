@@ -307,7 +307,7 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
 async fn check_brp_on_port(port: Port) -> Result<bool> {
     // Try a simple BRP request to check connectivity using bevy/list
     let client = brp_tools::BrpClient::new(BrpMethod::BevyList, port, None);
-    match client.execute().await {
+    match client.execute_direct().await {
         Ok(BrpClientResult::Success(_)) => {
             // BRP is responding and working
             Ok(true)

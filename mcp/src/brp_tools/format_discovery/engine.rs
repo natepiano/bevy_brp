@@ -35,6 +35,14 @@
 //! Pattern: Vec3 object→array conversion, enum variant access
 //! Result: Corrected format with transformation hints
 //! ```
+//! Succinct call flow notes:
+//! The format discovery engine makes the initial attempt at the BRP call. This MUST use
+//! `execute_direct()` to avoid infinite recursion since it's part of the format discovery flow
+//! itself.
+//! - `format_discovery/engine.rs` - Makes the initial BRP call attempt
+//! - `format_discovery/registry_integration.rs` - Queries registry for type info
+//! - `format_discovery/extras_integration.rs` - Calls discovery endpoint
+//! - `format_discovery/recovery_engine.rs` - Retries with corrected params
 
 use std::collections::HashMap;
 
@@ -68,6 +76,8 @@ impl FormatCorrection {}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FormatCorrectionStatus {
+    /// Format discovery was not enabled for this request
+    NotApplicable,
     /// No format correction was attempted
     NotAttempted,
     /// Format correction was applied and the operation succeeded
@@ -92,7 +102,7 @@ async fn execute_level_1(
 ) -> Result<BrpRequestResult> {
     // Direct BRP execution - no format discovery overhead
     let client = BrpClient::new(method, port, params.clone());
-    let result = client.execute().await?;
+    let result = client.execute_direct().await?;
 
     match result {
         BrpClientResult::Success(_) => {
@@ -187,7 +197,7 @@ async fn execute_exception_path(
 }
 
 /// Execute a BRP method with automatic format discovery using the new flow architecture
-pub async fn execute_brp_method_with_format_discovery(
+pub(super) async fn execute_brp_method_with_format_discovery(
     method: BrpMethod,
     params: Option<Value>,
     port: Port,

@@ -940,7 +940,7 @@ async fn build_recovery_success(
 
                 // Execute the retry asynchronously
                 let client = brp_client::BrpClient::new(method, port, corrected_params);
-                let retry_result = client.execute().await;
+                let retry_result = client.execute_direct().await;
 
                 match retry_result {
                     Ok(success_result) => {

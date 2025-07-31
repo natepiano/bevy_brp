@@ -2,9 +2,7 @@ use serde_json::{Value, json};
 
 use super::brp_client::{BrpClientError, BrpClientResult};
 use super::format_correction_fields::FormatCorrectionField;
-use super::format_discovery::{
-    EnhancedBrpResult, FormatCorrection, execute_brp_method_with_format_discovery,
-};
+use super::format_discovery::{EnhancedBrpResult, FormatCorrection};
 use super::tools::bevy_insert::InsertFormatError;
 use super::tools::bevy_insert_resource::InsertResourceFormatError;
 use super::tools::bevy_mutate_component::MutateComponentFormatError;
@@ -349,7 +347,7 @@ fn prepare_brp_params<T: serde::Serialize>(params: T) -> Result<Option<Value>> {
     Ok(brp_params)
 }
 
-/// Unified BRP call handler that routes based on result type's format discovery support
+/// Unified BRP call handler using the enhanced `BrpClient` API
 pub async fn execute_static_brp_call<P, R>(method: BrpMethod, port: Port, params: P) -> Result<R>
 where
     P: serde::Serialize + Send + 'static,
@@ -364,57 +362,47 @@ where
 {
     tracing::debug!("execute_static_brp_call with extracted params");
 
-    // Clone params for error handling (they get moved in prepare_brp_params)
-    let params_clone = serde_json::to_value(&params).unwrap_or(Value::Null);
-
-    // Use shared parameter processing
+    // Prepare parameters once
     let brp_params = prepare_brp_params(params)?;
 
-    match R::brp_tool_execute_mode() {
-        ExecuteMode::WithFormatDiscovery => {
-            // Execute with format discovery
-            let enhanced_result =
-                execute_brp_method_with_format_discovery(method, brp_params, port).await?;
+    // Create client with appropriate configuration
+    let client = BrpClient::new(method, port, brp_params);
+    let client = match R::brp_tool_execute_mode() {
+        ExecuteMode::WithFormatDiscovery => client.with_format_discovery(),
+        ExecuteMode::Standard => client,
+    };
 
-            match enhanced_result.result {
-                BrpClientResult::Success(client_json_response) => {
-                    // Format discovery tools know how to convert from enhanced result
-                    let format_corrections = if enhanced_result.format_corrections.is_empty() {
-                        None
-                    } else {
-                        Some(
-                            enhanced_result
-                                .format_corrections
-                                .iter()
-                                .map(format_correction_to_json)
-                                .collect(),
-                        )
-                    };
+    // Execute and get unified result
+    let enhanced_result = client.execute().await?;
 
-                    // Call from_brp_client_response with all 3 parameters
-                    R::from_brp_client_response((
-                        client_json_response,
-                        format_corrections,
-                        Some(enhanced_result.format_corrected),
-                    ))
-                }
-                BrpClientResult::Error(ref err) => {
-                    // Return error with full context
-                    create_format_discovery_error::<R>(method, err, &enhanced_result, params_clone)
-                }
-            }
+    // Transform to tool-specific result type
+    match enhanced_result.result {
+        BrpClientResult::Success(data) => {
+            let format_corrections = if enhanced_result.format_corrections.is_empty() {
+                None
+            } else {
+                Some(
+                    enhanced_result
+                        .format_corrections
+                        .iter()
+                        .map(format_correction_to_json)
+                        .collect(),
+                )
+            };
+
+            R::from_brp_client_response((
+                data,
+                format_corrections,
+                Some(enhanced_result.format_corrected),
+            ))
         }
-        ExecuteMode::Standard => {
-            // Direct BRP execution without format discovery
-            let client = BrpClient::new(method, port, brp_params);
-            let result = client.execute().await?;
-
-            match result {
-                BrpClientResult::Success(client_json_response) => {
-                    // Call with None for format correction fields
-                    R::from_brp_client_response((client_json_response, None, None))
-                }
-                BrpClientResult::Error(err) => Err(Error::tool_call_failed(err.message).into()),
+        BrpClientResult::Error(ref err) => {
+            if enhanced_result.format_corrected == FormatCorrectionStatus::NotApplicable {
+                // Simple error - format discovery was disabled
+                Err(Error::tool_call_failed(err.message.clone()).into())
+            } else {
+                // Enhanced error with format discovery context
+                create_format_discovery_error::<R>(method, err, &enhanced_result, Value::Null)
             }
         }
     }
