@@ -88,8 +88,8 @@
     "expected_shutdown_method": "clean_shutdown"
   },
   {
-    "test_name": "watch_commands",
-    "test_file": ".claude/commands/tests/watch_commands.md",
+    "test_name": "watch",
+    "test_file": ".claude/commands/tests/watch.md",
     "port": 20109,
     "app_name": "extras_plugin",
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20109",
