@@ -939,13 +939,25 @@ async fn build_recovery_success(
                 let retry_result = client.execute_raw().await;
 
                 match retry_result {
-                    Ok(success_result) => {
-                        debug!("Recovery Engine: Retry succeeded with corrected parameters");
-                        FormatRecoveryResult::Recovered {
-                            corrected_result: success_result,
-                            corrections,
+                    Ok(brp_result) => match brp_result {
+                        BrpClientResult::Success(value) => {
+                            debug!("Recovery Engine: Retry succeeded with corrected parameters");
+                            FormatRecoveryResult::Recovered {
+                                corrected_result: BrpClientResult::Success(value),
+                                corrections,
+                            }
                         }
-                    }
+                        BrpClientResult::Error(brp_err) => {
+                            debug!(
+                                "Recovery Engine: Retry failed with BRP error: {}",
+                                brp_err.message
+                            );
+                            FormatRecoveryResult::CorrectionFailed {
+                                retry_error: BrpClientResult::Error(brp_err),
+                                corrections,
+                            }
+                        }
+                    },
                     Err(retry_error) => {
                         debug!("Recovery Engine: Retry failed: {}", retry_error);
                         // Convert error to BrpResult::Error
