@@ -5,11 +5,14 @@ mod tools;
 mod watch_tools;
 
 // Public exports
+//
+// We export `JSON_RPC_ERROR_METHOD_NOT_FOUND` so that the `brp_shutdown` tool can determine if
+// `brp_mcp_extras` is available
 pub use brp_client::{
-    BrpClient, BrpClientError, BrpClientResult, ExecuteMode, FormatCorrectionStatus,
-    ResultStructBrpExt,
+    BrpClient, BrpClientError, ExecuteMode, FormatCorrectionStatus,
+    JSON_RPC_ERROR_METHOD_NOT_FOUND, ResponseStatus, ResultStructBrpExt,
 };
-pub use constants::{BRP_PORT_ENV_VAR, JSON_RPC_ERROR_METHOD_NOT_FOUND};
+pub use constants::BRP_PORT_ENV_VAR;
 pub use port::Port;
 //
 // Export all parameter and result structs by name

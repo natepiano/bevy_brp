@@ -17,21 +17,21 @@
 //! - Level 3: Pattern-based transformations
 
 use super::{CorrectionInfo, UnifiedTypeInfo};
-use crate::brp_tools::BrpClientResult;
+use crate::brp_tools::ResponseStatus;
 
 /// Result of format error recovery attempt in the exception path
 #[derive(Debug, Clone)]
 pub enum FormatRecoveryResult {
     /// Recovery successful with corrections applied
     Recovered {
-        corrected_result: BrpClientResult,
+        corrected_result: ResponseStatus,
         corrections:      Vec<CorrectionInfo>,
     },
     /// Recovery not possible but guidance available
     NotRecoverable { corrections: Vec<CorrectionInfo> },
     /// Recovery attempted but correction was insufficient
     CorrectionFailed {
-        retry_error: BrpClientResult,
+        retry_error: ResponseStatus,
         corrections: Vec<CorrectionInfo>,
     },
 }

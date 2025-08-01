@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::{BrpClient, BrpClientResult, Port};
+use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Error;
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -77,11 +77,11 @@ impl ToolFn for BrpExecute {
 
             // Convert BRP result to ToolResult
             match brp_result {
-                BrpClientResult::Success(data) => Ok(ToolResult {
+                ResponseStatus::Success(data) => Ok(ToolResult {
                     result: Ok(ExecuteResult::new(data)),
                     params: Some(params),
                 }),
-                BrpClientResult::Error(err) => Ok(ToolResult {
+                ResponseStatus::Error(err) => Ok(ToolResult {
                     result: Err(Error::tool_call_failed(err.message).into()),
                     params: Some(params),
                 }),

@@ -6,7 +6,7 @@ use error_stack::ResultExt;
 use rmcp::model::{CallToolRequestParam, CallToolResult};
 use serde_json::{Value, json};
 
-use super::json_response::JsonResponse;
+use super::json_response::ToolCallJsonResponse;
 use crate::error::{Error, Result};
 use crate::tool::large_response::{CHARS_PER_TOKEN, LargeResponseConfig};
 use crate::tool::response_builder::Response;
@@ -155,7 +155,10 @@ impl HandlerContext {
     }
 
     /// Handle large responses if needed
-    fn handle_large_response_if_needed(&self, response: JsonResponse) -> Result<JsonResponse> {
+    fn handle_large_response_if_needed(
+        &self,
+        response: ToolCallJsonResponse,
+    ) -> Result<ToolCallJsonResponse> {
         let config = LargeResponseConfig::default();
 
         // Check size and handle

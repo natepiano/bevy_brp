@@ -21,14 +21,14 @@ use super::unified_types::{
 };
 use super::{FormatCorrectionField, extras_integration};
 use crate::brp_tools::Port;
-use crate::brp_tools::brp_client::{self, BrpClientError, BrpClientResult};
+use crate::brp_tools::brp_client::{self, BrpClientError, ResponseStatus};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
 pub async fn attempt_format_recovery_with_type_infos(
     method: BrpMethod,
     original_params: Value,
-    error: BrpClientResult,
+    error: ResponseStatus,
     registry_type_info: HashMap<String, UnifiedTypeInfo>,
     port: Port,
 ) -> FormatRecoveryResult {
@@ -82,8 +82,8 @@ pub async fn attempt_format_recovery_with_type_infos(
 
     // Extract the BrpError from the error result to pass to Level 3
     let brp_error = match &error {
-        BrpClientResult::Error(brp_error) => brp_error,
-        BrpClientResult::Success(_) => {
+        ResponseStatus::Error(brp_error) => brp_error,
+        ResponseStatus::Success(_) => {
             // This shouldn't happen as we only call recovery on errors
             debug!("Recovery Engine: Warning - Level 3 called with success result");
             return FormatRecoveryResult::NotRecoverable {
@@ -864,7 +864,7 @@ async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: BrpMethod,
     original_params: &Value,
-    _original_error: &BrpClientResult,
+    _original_error: &ResponseStatus,
     port: Port,
 ) -> FormatRecoveryResult {
     let mut corrections = Vec::new();
@@ -928,20 +928,20 @@ async fn build_recovery_success(
 
                 match retry_result {
                     Ok(brp_result) => match brp_result {
-                        BrpClientResult::Success(value) => {
+                        ResponseStatus::Success(value) => {
                             debug!("Recovery Engine: Retry succeeded with corrected parameters");
                             FormatRecoveryResult::Recovered {
-                                corrected_result: BrpClientResult::Success(value),
+                                corrected_result: ResponseStatus::Success(value),
                                 corrections,
                             }
                         }
-                        BrpClientResult::Error(brp_err) => {
+                        ResponseStatus::Error(brp_err) => {
                             debug!(
                                 "Recovery Engine: Retry failed with BRP error: {}",
                                 brp_err.message
                             );
                             FormatRecoveryResult::CorrectionFailed {
-                                retry_error: BrpClientResult::Error(brp_err),
+                                retry_error: ResponseStatus::Error(brp_err),
                                 corrections,
                             }
                         }
@@ -949,7 +949,7 @@ async fn build_recovery_success(
                     Err(retry_error) => {
                         debug!("Recovery Engine: Retry failed: {}", retry_error);
                         // Convert error to BrpResult::Error
-                        let retry_brp_error = BrpClientResult::Error(BrpClientError {
+                        let retry_brp_error = ResponseStatus::Error(BrpClientError {
                             code:    -1, // Generic error code
                             message: retry_error.to_string(),
                             data:    None,

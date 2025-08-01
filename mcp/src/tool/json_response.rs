@@ -8,7 +8,7 @@ use crate::error::{Error, Result};
 
 /// Standard JSON response structure for all tools
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JsonResponse {
+pub struct ToolCallJsonResponse {
     pub status:                ResponseStatus,
     pub message:               String,
     pub call_info:             CallInfo,
@@ -24,7 +24,7 @@ pub struct JsonResponse {
     pub brp_extras_debug_info: Option<Value>,
 }
 
-impl JsonResponse {
+impl ToolCallJsonResponse {
     /// Convert to JSON string with error-stack context
     pub fn to_json(&self) -> Result<String> {
         use error_stack::ResultExt;

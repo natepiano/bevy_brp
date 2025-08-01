@@ -2,7 +2,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::field_placement::FieldPlacement;
-use super::json_response::{JsonResponse, ResponseStatus};
+use super::json_response::{ResponseStatus, ToolCallJsonResponse};
 use super::tool_name::CallInfo;
 use super::{HandlerContext, ParamStruct, ResultStruct};
 use crate::error::{Error, Result};
@@ -20,7 +20,7 @@ impl Response {
         params: Option<P>,
         call_info: CallInfo,
         context: &HandlerContext,
-    ) -> Result<JsonResponse> {
+    ) -> Result<ToolCallJsonResponse> {
         ResponseBuilder::success(call_info).build_with_result_struct(result, params, context)
     }
 
@@ -30,12 +30,12 @@ impl Response {
         params: Option<P>,
         call_info: CallInfo,
         context: &HandlerContext,
-    ) -> Result<JsonResponse> {
+    ) -> Result<ToolCallJsonResponse> {
         ResponseBuilder::error(call_info).build_with_result_struct(error_result, params, context)
     }
 
     /// Create a simple error response with just a message
-    pub fn error_message(message: impl Into<String>, call_info: CallInfo) -> JsonResponse {
+    pub fn error_message(message: impl Into<String>, call_info: CallInfo) -> ToolCallJsonResponse {
         ResponseBuilder::error(call_info).message(message).build()
     }
 
@@ -44,7 +44,7 @@ impl Response {
         message: impl Into<String>,
         details: Option<&Value>,
         call_info: CallInfo,
-    ) -> JsonResponse {
+    ) -> ToolCallJsonResponse {
         ResponseBuilder::error(call_info)
             .message(message)
             .add_optional_details(details)
@@ -192,8 +192,8 @@ impl ResponseBuilder {
         Ok(self)
     }
 
-    pub fn build(self) -> JsonResponse {
-        JsonResponse {
+    pub fn build(self) -> ToolCallJsonResponse {
+        ToolCallJsonResponse {
             status:                self.status,
             message:               self.message,
             call_info:             self.call_info,
@@ -274,7 +274,7 @@ impl ResponseBuilder {
         result: &R,
         params: Option<P>,
         handler_context: &HandlerContext,
-    ) -> Result<JsonResponse> {
+    ) -> Result<ToolCallJsonResponse> {
         // Add response fields
         self = result
             .add_response_fields(self)

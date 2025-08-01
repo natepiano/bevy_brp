@@ -49,7 +49,7 @@ use serde_json::Value;
 
 use super::flow_types::FormatRecoveryResult;
 use super::{recovery_engine, registry_integration};
-use crate::brp_tools::{BrpClientError, BrpClientResult, Port};
+use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
 use crate::error::Result;
 use crate::tool::BrpMethod;
 
@@ -104,7 +104,7 @@ pub(in super::super) async fn try_format_recovery_and_retry(
     let flow_result = recovery_engine::attempt_format_recovery_with_type_infos(
         method,
         params,
-        BrpClientResult::Error(original_error.clone()),
+        ResponseStatus::Error(original_error.clone()),
         registry_type_info,
         port,
     )

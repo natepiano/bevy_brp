@@ -17,17 +17,18 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use super::super::Port;
-use super::super::constants::{
-    BRP_ERROR_ACCESS_ERROR, BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE, JSON_RPC_ERROR_INTERNAL_ERROR,
-    JSON_RPC_ERROR_INVALID_PARAMS, JSON_RPC_ERROR_METHOD_NOT_FOUND,
+use super::constants::{
+    BRP_DEFAULT_HOST, BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH,
+    JSON_RPC_ERROR_METHOD_NOT_FOUND,
 };
-use super::constants::{BRP_DEFAULT_HOST, BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
 use super::format_correction_fields::FormatCorrectionField;
 use super::format_discovery::{
     CorrectionInfo, FormatCorrection, FormatCorrectionStatus, FormatRecoveryResult,
 };
 use super::json_rpc_builder::BrpJsonRpcBuilder;
-use super::types::{ExecuteMode, ResultStructBrpExt};
+use super::types::{
+    BrpClientCallJsonResponse, BrpClientError, ExecuteMode, ResponseStatus, ResultStructBrpExt,
+};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
@@ -99,7 +100,7 @@ impl BrpClient {
         let direct_result = self.execute_direct_internal().await?;
 
         match direct_result {
-            BrpClientResult::Success(data) => {
+            ResponseStatus::Success(data) => {
                 // Success - no format discovery needed
                 R::from_brp_client_response((
                     data,
@@ -107,7 +108,7 @@ impl BrpClient {
                     Some(FormatCorrectionStatus::NotAttempted),
                 ))
             }
-            BrpClientResult::Error(err) => {
+            ResponseStatus::Error(err) => {
                 // Only try format discovery if: 1) format error, 2) type supports it
                 if err.is_format_error()
                     && matches!(R::brp_tool_execute_mode(), ExecuteMode::WithFormatDiscovery)
@@ -129,7 +130,7 @@ impl BrpClient {
     /// can distinguish a canned call generated for a `ToolFn` by our macro, and the `execute_raw()`
     /// version we still allow to be called by bespoke tools like `brp_shutdown` and `brp_status`
     /// and the like.
-    async fn execute_direct_internal(self) -> Result<BrpClientResult> {
+    async fn execute_direct_internal(self) -> Result<ResponseStatus> {
         let url = Self::build_brp_url(self.port);
         let method_str = self.method.as_str();
 
@@ -159,7 +160,7 @@ impl BrpClient {
     /// - Debugging tools that need raw BRP responses (`brp_execute`)
     /// - Format discovery engine internal operations
     /// - Testing and diagnostic scenarios
-    pub async fn execute_raw(self) -> Result<BrpClientResult> {
+    pub async fn execute_raw(self) -> Result<ResponseStatus> {
         self.execute_direct_internal().await
     }
 
@@ -230,63 +231,6 @@ impl BrpClient {
         )
         .await
     }
-}
-
-/// Result of a BRP operation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum BrpClientResult {
-    /// Successful operation with optional data
-    Success(Option<Value>),
-    /// Error with code, message and optional data
-    Error(BrpClientError),
-}
-
-/// Error information from BRP operations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BrpClientError {
-    pub code:    i32,
-    pub message: String,
-    pub data:    Option<Value>,
-}
-
-impl BrpClientError {
-    /// Check if this error indicates a format issue that can be recovered
-    /// This function was constructed through trial and error via vibe coding with claude
-    /// There is a bug in `bevy_remote` right now that we get a spurious "Unknown component type"
-    /// when a Component doesn't have Serialize/Deserialize traits - this doesn't affect
-    /// Resources so the first section is probably correct.
-    /// the second section I think is less correct but it will take some time to validate that
-    /// moving to an "error codes only" approach doesn't have other issues
-    pub const fn is_format_error(&self) -> bool {
-        // Common format error codes that indicate type issues
-        matches!(
-            self.code,
-            JSON_RPC_ERROR_INVALID_PARAMS
-                | JSON_RPC_ERROR_INTERNAL_ERROR
-                | BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE
-                | BRP_ERROR_ACCESS_ERROR
-        )
-    }
-}
-
-/// Raw BRP JSON-RPC response structure
-#[derive(Debug, Serialize, Deserialize)]
-struct BrpClientResponse {
-    jsonrpc: String,
-    id:      u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    result:  Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error:   Option<JsonRpcError>,
-}
-
-/// Raw BRP error structure from JSON-RPC response
-#[derive(Debug, Serialize, Deserialize)]
-struct JsonRpcError {
-    code:    i32,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    data:    Option<Value>,
 }
 
 /// Build the JSON-RPC request body
@@ -443,7 +387,7 @@ async fn parse_json_response(
     response: reqwest::Response,
     method: &str,
     port: Port,
-) -> Result<BrpClientResponse> {
+) -> Result<BrpClientCallJsonResponse> {
     match response.json().await {
         Ok(json_resp) => Ok(json_resp),
         Err(e) => {
@@ -459,7 +403,7 @@ async fn parse_json_response(
 }
 
 /// Convert `BrpClientResponse` to `BrpClientResult`
-fn convert_to_brp_result(brp_response: BrpClientResponse, method: &str) -> BrpClientResult {
+fn convert_to_brp_result(brp_response: BrpClientCallJsonResponse, method: &str) -> ResponseStatus {
     if let Some(error) = brp_response.error {
         warn!(
             "BRP execute_brp_method: BRP returned error - code={}, message={}",
@@ -478,7 +422,7 @@ fn convert_to_brp_result(brp_response: BrpClientResponse, method: &str) -> BrpCl
             error.message
         };
 
-        let result = BrpClientResult::Error(BrpClientError {
+        let result = ResponseStatus::Error(BrpClientError {
             code:    error.code,
             message: enhanced_message,
             data:    error.data,
@@ -488,7 +432,7 @@ fn convert_to_brp_result(brp_response: BrpClientResponse, method: &str) -> BrpCl
 
         result
     } else {
-        BrpClientResult::Success(brp_response.result)
+        ResponseStatus::Success(brp_response.result)
     }
 }
 
@@ -661,7 +605,7 @@ where
             // Successfully recovered with format corrections
             // Extract the success value from corrected_result
             match corrected_result {
-                BrpClientResult::Success(value) => {
+                ResponseStatus::Success(value) => {
                     // Convert CorrectionInfo to FormatCorrection if needed
                     let format_corrections = convert_corrections(corrections);
                     R::from_brp_client_response((
@@ -675,7 +619,7 @@ where
                         Some(FormatCorrectionStatus::Succeeded),
                     ))
                 }
-                BrpClientResult::Error(err) => {
+                ResponseStatus::Error(err) => {
                     // Recovery succeeded but result contains error - shouldn't happen
                     Err(Error::tool_call_failed(format!(
                         "Format recovery succeeded but result contains error: {}",
@@ -700,8 +644,8 @@ where
         } => {
             // Format discovery tried but the correction failed
             let retry_error_msg = match retry_error {
-                BrpClientResult::Error(ref err) => &err.message,
-                BrpClientResult::Success(_) => "Unknown error",
+                ResponseStatus::Error(ref err) => &err.message,
+                ResponseStatus::Success(_) => "Unknown error",
             };
             let enhanced_error = create_format_discovery_error(
                 original_error,
