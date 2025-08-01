@@ -11,8 +11,6 @@
 
 use std::time::Duration;
 
-use bevy_brp_mcp_macros::ResultStruct;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{debug, warn};
 
@@ -27,7 +25,8 @@ use super::format_discovery::{
 };
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use super::types::{
-    BrpClientCallJsonResponse, BrpClientError, ExecuteMode, ResponseStatus, ResultStructBrpExt,
+    BrpClientCallJsonResponse, BrpClientError, ExecuteMode, FormatDiscoveryError, ResponseStatus,
+    ResultStructBrpExt,
 };
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
@@ -472,25 +471,6 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
     correction_json
 }
 
-/// Structured error for format discovery failures
-#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct FormatDiscoveryError {
-    #[to_error_info]
-    format_corrected: String,
-
-    #[to_error_info]
-    hint: String,
-
-    #[to_error_info(skip_if_none)]
-    format_corrections: Option<Vec<Value>>,
-
-    #[to_error_info(skip_if_none)]
-    original_error_code: Option<i32>,
-
-    #[to_message]
-    message: Option<String>,
-}
-
 /// Create enhanced error for format discovery failures
 fn create_format_discovery_error(
     original_error: &BrpClientError,
@@ -548,17 +528,18 @@ fn create_format_discovery_error(
             .join("\n")
     };
 
-    let format_discovery_error = FormatDiscoveryError {
-        format_corrected: "not_attempted".to_string(),
-        hint: if hint.is_empty() {
+    let format_discovery_error = FormatDiscoveryError::new(
+        "not_attempted".to_string(),
+        if hint.is_empty() {
             "Format discovery found issues but could not provide specific guidance.".to_string()
         } else {
             hint
         },
         format_corrections,
-        original_error_code: Some(original_error.code),
-        message: Some(format!("{}: {}", reason, original_error.message)),
-    };
+        Some(original_error.code),
+        reason.to_string(),
+        original_error.message.clone(),
+    );
 
     Error::Structured {
         result: Box::new(format_discovery_error),

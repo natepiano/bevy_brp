@@ -1,5 +1,6 @@
 //! Common types for BRP tools
 
+use bevy_brp_mcp_macros::ResultStruct;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -66,6 +67,31 @@ pub enum ExecuteMode {
     WithFormatDiscovery,
     /// Standard processing without format discovery
     Standard,
+}
+
+/// Structured error for format discovery failures
+#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+pub struct FormatDiscoveryError {
+    #[to_error_info]
+    format_corrected: String,
+
+    #[to_error_info]
+    hint: String,
+
+    #[to_error_info(skip_if_none)]
+    format_corrections: Option<Vec<Value>>,
+
+    #[to_error_info(skip_if_none)]
+    error_code: Option<i32>,
+
+    #[to_error_info]
+    reason: String,
+
+    #[to_error_info]
+    error_message: String,
+
+    #[to_message(message_template = "{reason}: {error_message}")]
+    message_template: String,
 }
 
 /// Raw BRP error structure from JSON-RPC response
