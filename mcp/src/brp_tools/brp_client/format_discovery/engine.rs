@@ -82,9 +82,9 @@ pub enum FormatCorrectionStatus {
 }
 
 /// Try format recovery and retry with corrected format
-pub(super) async fn try_format_recovery_and_retry(
+pub(in super::super) async fn try_format_recovery_and_retry(
     method: BrpMethod,
-    params: Option<Value>,
+    params: Value,
     port: Port,
     original_error: &BrpClientError,
 ) -> Result<FormatRecoveryResult> {
@@ -98,7 +98,7 @@ pub(super) async fn try_format_recovery_and_retry(
 
     // Get type information only when needed for error handling
     let registry_type_info =
-        registry_integration::get_registry_type_info(method, params.as_ref(), port).await;
+        registry_integration::get_registry_type_info(method, &params, port).await;
 
     // Continue with Level 2+ logic using the recovery engine directly
     let flow_result = recovery_engine::attempt_format_recovery_with_type_infos(

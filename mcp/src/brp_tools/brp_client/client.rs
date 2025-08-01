@@ -25,7 +25,6 @@ use super::constants::{BRP_DEFAULT_HOST, BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, B
 use super::format_correction_fields::FormatCorrectionField;
 use super::format_discovery::{
     CorrectionInfo, FormatCorrection, FormatCorrectionStatus, FormatRecoveryResult,
-    try_format_recovery_and_retry,
 };
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use super::types::{ExecuteMode, ResultStructBrpExt};
@@ -91,10 +90,10 @@ impl BrpClient {
             > + Send
             + 'static,
     {
-        // Store params for potential format discovery
-        let params_for_discovery = self.params.clone();
+        // Store values we'll need for potential format discovery before self is moved
         let method = self.method;
         let port = self.port;
+        let params = self.params.clone();
 
         // ALWAYS execute direct first
         let direct_result = self.execute_direct_internal().await?;
@@ -115,8 +114,7 @@ impl BrpClient {
                 {
                     // Try format discovery and maybe retry with corrected format
                     let recovery_result =
-                        try_format_recovery_and_retry(method, params_for_discovery, port, &err)
-                            .await?;
+                        Self::try_format_recovery_and_retry(method, port, params, &err).await?;
                     // Transform recovery result to appropriate error or success
                     transform_recovery_result::<R>(recovery_result, &err)
                 } else {
@@ -207,6 +205,30 @@ impl BrpClient {
     /// without executing a full BRP request (e.g., for streaming connections)
     pub fn build_brp_url(port: Port) -> String {
         format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
+    }
+
+    /// Try format recovery and retry with corrected format
+    async fn try_format_recovery_and_retry(
+        method: BrpMethod,
+        port: Port,
+        params: Option<Value>,
+        original_error: &BrpClientError,
+    ) -> Result<FormatRecoveryResult> {
+        // Validate that parameters exist for format discovery
+        let Some(params) = params else {
+            return Err(Error::InvalidArgument(
+                "Format discovery requires parameters to extract type information".to_string(),
+            )
+            .into());
+        };
+
+        super::format_discovery::engine::try_format_recovery_and_retry(
+            method,
+            params,
+            port,
+            original_error,
+        )
+        .await
     }
 }
 

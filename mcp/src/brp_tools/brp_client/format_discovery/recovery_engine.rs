@@ -27,7 +27,7 @@ use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 /// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
 pub async fn attempt_format_recovery_with_type_infos(
     method: BrpMethod,
-    original_params: Option<Value>,
+    original_params: Value,
     error: BrpClientResult,
     registry_type_info: HashMap<String, UnifiedTypeInfo>,
     port: Port,
@@ -39,7 +39,7 @@ pub async fn attempt_format_recovery_with_type_infos(
     );
 
     // Extract type names from the parameters for recovery attempts
-    let type_names = extract_type_names_from_params(method, original_params.as_ref());
+    let type_names = extract_type_names_from_params(method, &original_params);
     if type_names.is_empty() {
         debug!("Recovery Engine: No type names found in parameters, cannot recover");
         return FormatRecoveryResult::NotRecoverable {
@@ -58,21 +58,15 @@ pub async fn attempt_format_recovery_with_type_infos(
         &type_names,
         method,
         &registry_type_info,
-        original_params.as_ref(),
+        &original_params,
         port,
     )
     .await
     {
         LevelResult::Success(corrections) => {
             debug!("Recovery Engine: Level 2 succeeded with direct discovery");
-            return build_recovery_success(
-                corrections,
-                method,
-                original_params.as_ref(),
-                &error,
-                port,
-            )
-            .await;
+            return build_recovery_success(corrections, method, &original_params, &error, port)
+                .await;
         }
         LevelResult::Continue(type_infos) => {
             debug!(
@@ -101,14 +95,13 @@ pub async fn attempt_format_recovery_with_type_infos(
     match execute_level_3_pattern_transformations(
         &type_names,
         method,
-        original_params.as_ref(),
+        &original_params,
         brp_error,
         &level_2_type_infos,
     ) {
         LevelResult::Success(corrections) => {
             debug!("Recovery Engine: Level 3 succeeded with pattern-based corrections");
-            build_recovery_success(corrections, method, original_params.as_ref(), &error, port)
-                .await
+            build_recovery_success(corrections, method, &original_params, &error, port).await
         }
         LevelResult::Continue(_) => {
             debug!("Recovery Engine: All levels exhausted, no recovery possible");
@@ -133,7 +126,7 @@ async fn execute_level_2_direct_discovery(
     type_names: &[String],
     method: BrpMethod,
     registry_type_info: &HashMap<String, UnifiedTypeInfo>,
-    original_params: Option<&Value>,
+    original_params: &Value,
     port: Port,
 ) -> LevelResult {
     debug!(
@@ -197,8 +190,8 @@ async fn execute_level_2_direct_discovery(
                     corrections.push(correction);
                 } else {
                     // Extract the original value for this component
-                    let original_component_value = original_params
-                        .and_then(|params| extract_component_value(method, params, type_name));
+                    let original_component_value =
+                        extract_component_value(method, original_params, type_name);
 
                     // Create a correction from the discovered type information with original value
                     let correction = super::extras_integration::create_correction_from_discovery(
@@ -239,7 +232,7 @@ async fn execute_level_2_direct_discovery(
 fn execute_level_3_pattern_transformations(
     type_names: &[String],
     method: BrpMethod,
-    original_params: Option<&Value>,
+    original_params: &Value,
     original_error: &BrpClientError,
     type_infos: &HashMap<String, UnifiedTypeInfo>,
 ) -> LevelResult {
@@ -261,7 +254,7 @@ fn execute_level_3_pattern_transformations(
         BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
     ) {
         original_params
-            .and_then(|p| p.get(FormatCorrectionField::Path.as_ref()))
+            .get(FormatCorrectionField::Path.as_ref())
             .and_then(|v| v.as_str())
     } else {
         None
@@ -527,9 +520,7 @@ fn attempt_pattern_based_correction(
 }
 
 /// Extract original values from BRP method parameters for transformer use
-fn extract_type_values_from_params(method: BrpMethod, params: Option<&Value>) -> Option<&Value> {
-    let params = params?;
-
+fn extract_type_values_from_params(method: BrpMethod, params: &Value) -> Option<&Value> {
     match method {
         BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
             // Return the components object containing type values
@@ -678,11 +669,7 @@ fn create_enhanced_enum_guidance(
 }
 
 /// Extract type names from BRP method parameters based on method type
-fn extract_type_names_from_params(method: BrpMethod, params: Option<&Value>) -> Vec<String> {
-    let Some(params) = params else {
-        return Vec::new();
-    };
-
+fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<String> {
     let mut type_names = Vec::new();
 
     match method {
@@ -721,10 +708,10 @@ fn extract_type_names_from_params(method: BrpMethod, params: Option<&Value>) -> 
 fn can_retry_with_corrections(
     _method: &str,
     corrections: &[CorrectionInfo],
-    original_params: Option<&Value>,
+    _original_params: &Value,
 ) -> bool {
-    // Only retry if we have original params and corrections with actual values
-    if original_params.is_none() || corrections.is_empty() {
+    // Only retry if we have corrections with actual values
+    if corrections.is_empty() {
         return false;
     }
 
@@ -819,12 +806,10 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: Brp
 /// Build corrected parameters from corrections
 fn build_corrected_params(
     method: BrpMethod,
-    original_params: Option<&Value>,
+    original_params: &Value,
     corrections: &[CorrectionInfo],
 ) -> Result<Option<Value>, String> {
-    let mut params = original_params
-        .cloned()
-        .unwrap_or_else(|| serde_json::json!({}));
+    let mut params = original_params.clone();
 
     for correction in corrections {
         match method {
@@ -878,7 +863,7 @@ fn build_corrected_params(
 async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: BrpMethod,
-    original_params: Option<&Value>,
+    original_params: &Value,
     _original_error: &BrpClientResult,
     port: Port,
 ) -> FormatRecoveryResult {
@@ -901,9 +886,12 @@ async fn build_recovery_success(
                 // Create a CorrectionInfo from metadata-only result to provide guidance
                 let correction_info = CorrectionInfo {
                     type_name:         type_info.type_name.clone(),
-                    original_value:    original_params
-                        .and_then(|p| extract_component_value(method, p, &type_info.type_name))
-                        .unwrap_or_else(|| serde_json::json!({})),
+                    original_value:    extract_component_value(
+                        method,
+                        original_params,
+                        &type_info.type_name,
+                    )
+                    .unwrap_or_else(|| serde_json::json!({})),
                     corrected_value:   build_corrected_value_from_type_info(&type_info, method),
                     hint:              reason,
                     target_type:       type_info.type_name.clone(),

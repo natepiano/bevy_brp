@@ -69,7 +69,7 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
 /// Get registry type information for format discovery methods
 pub async fn get_registry_type_info(
     method: BrpMethod,
-    params: Option<&serde_json::Value>,
+    params: &serde_json::Value,
     port: Port,
 ) -> std::collections::HashMap<String, UnifiedTypeInfo> {
     // This function is only called for methods that support format discovery
@@ -111,15 +111,7 @@ pub async fn get_registry_type_info(
 }
 
 /// Extract type names (components/resources) from BRP request parameters
-fn extract_type_names_from_params(
-    method: BrpMethod,
-    params: Option<&serde_json::Value>,
-) -> Vec<String> {
-    let Some(params) = params else {
-        debug!("extract_type_names_from_params: No params provided");
-        return Vec::new();
-    };
-
+fn extract_type_names_from_params(method: BrpMethod, params: &serde_json::Value) -> Vec<String> {
     debug!(
         "extract_type_names_from_params: Processing method {} with params keys: {params_keys:?}",
         method.as_str(),

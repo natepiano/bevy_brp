@@ -49,7 +49,7 @@
 mod adapters;
 mod constants;
 mod detection;
-mod engine;
+pub(super) mod engine;
 mod extras_integration;
 mod field_mapper;
 mod flow_types;
@@ -68,13 +68,3 @@ pub use self::flow_types::FormatRecoveryResult;
 // Types will be publicly exposed once the refactoring is complete
 pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};
 use super::format_correction_fields::FormatCorrectionField;
-
-// New function for format recovery
-pub async fn try_format_recovery_and_retry(
-    method: crate::tool::BrpMethod,
-    params: Option<serde_json::Value>,
-    port: super::super::Port,
-    original_error: &super::BrpClientError,
-) -> crate::error::Result<flow_types::FormatRecoveryResult> {
-    engine::try_format_recovery_and_retry(method, params, port, original_error).await
-}
