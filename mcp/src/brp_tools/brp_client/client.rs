@@ -16,7 +16,8 @@ use super::super::Port;
 use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use super::format_correction_fields::FormatCorrectionField;
 use super::format_discovery::{
-    CorrectionInfo, FormatCorrection, FormatCorrectionStatus, FormatRecoveryResult,
+    CorrectionInfo, FormatCorrection, FormatCorrectionStatus, FormatDiscoveryEngine,
+    FormatRecoveryResult,
 };
 use super::http_client::BrpHttpClient;
 use super::types::{
@@ -181,7 +182,7 @@ impl BrpClient {
             .into());
         };
 
-        let engine = super::format_discovery::FormatDiscoveryEngine::new(self.method, self.port);
+        let engine = FormatDiscoveryEngine::new(self.method, self.port);
         let recovery_result = engine
             .try_recovery_and_retry(params, original_error)
             .await?;
@@ -360,14 +361,36 @@ fn convert_corrections(corrections: Vec<CorrectionInfo>) -> Vec<FormatCorrection
     corrections
         .into_iter()
         .map(|info| {
+            // Extract rich metadata from type_info if available
+            let (supported_operations, mutation_paths, type_category) = info
+                .type_info
+                .as_ref()
+                .map_or((None, None, None), |type_info| {
+                    (
+                        Some(type_info.supported_operations.clone()),
+                        Some(
+                            type_info
+                                .format_info
+                                .mutation_paths
+                                .keys()
+                                .cloned()
+                                .collect(),
+                        ),
+                        // Convert TypeCategory to string using serde serialization
+                        serde_json::to_value(&type_info.type_category)
+                            .ok()
+                            .and_then(|v| v.as_str().map(ToString::to_string)),
+                    )
+                });
+
             FormatCorrection {
-                component:            info.type_name,
-                original_format:      info.original_value, // Fixed: was original_format
-                corrected_format:     info.corrected_value, // Fixed: was corrected_format
-                hint:                 info.hint,
-                supported_operations: None, // Not available in CorrectionInfo
-                mutation_paths:       None, // Not available in CorrectionInfo
-                type_category:        None, // Not available in CorrectionInfo
+                component: info.type_name,
+                original_format: info.original_value,
+                corrected_format: info.corrected_value,
+                hint: info.hint,
+                supported_operations,
+                mutation_paths,
+                type_category,
             }
         })
         .collect()
@@ -444,5 +467,73 @@ where
             );
             Err(enhanced_error.into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    // Note: We can't directly test convert_corrections because CorrectionInfo creation
+    // requires private types. The integration tests in format_discovery.md will verify
+    // the full flow. Here we test the JSON serialization which is what the API returns.
+
+    #[test]
+    #[allow(clippy::expect_used)]
+    fn test_format_correction_to_json() {
+        // Test that format_correction_to_json properly includes metadata when available
+        let correction_with_metadata = FormatCorrection {
+            component:            "bevy_transform::components::transform::Transform".to_string(),
+            original_format:      json!({"translation": {"x": 1.0, "y": 2.0, "z": 3.0}}),
+            corrected_format:     json!({"translation": [1.0, 2.0, 3.0]}),
+            hint:                 "Transformed to array format".to_string(),
+            supported_operations: Some(vec!["spawn".to_string(), "insert".to_string()]),
+            mutation_paths:       Some(vec![
+                ".translation.x".to_string(),
+                ".translation.y".to_string(),
+            ]),
+            type_category:        Some("Component".to_string()),
+        };
+
+        let json_output = format_correction_to_json(&correction_with_metadata);
+
+        // Verify all fields are present
+        assert_eq!(
+            json_output["component"],
+            "bevy_transform::components::transform::Transform"
+        );
+        assert_eq!(json_output["hint"], "Transformed to array format");
+        assert_eq!(
+            json_output["supported_operations"],
+            json!(["spawn", "insert"])
+        );
+        assert_eq!(
+            json_output["mutation_paths"],
+            json!([".translation.x", ".translation.y"])
+        );
+        assert_eq!(json_output["type_category"], "Component");
+
+        // Test without metadata
+        let correction_without_metadata = FormatCorrection {
+            component:            "TestType".to_string(),
+            original_format:      json!({}),
+            corrected_format:     json!({}),
+            hint:                 "Test".to_string(),
+            supported_operations: None,
+            mutation_paths:       None,
+            type_category:        None,
+        };
+
+        let json_output = format_correction_to_json(&correction_without_metadata);
+
+        // Verify metadata fields are not present when None
+        let json_obj = json_output
+            .as_object()
+            .expect("JSON output should be an object");
+        assert!(!json_obj.contains_key("supported_operations"));
+        assert!(!json_obj.contains_key("mutation_paths"));
+        assert!(!json_obj.contains_key("type_category"));
     }
 }
