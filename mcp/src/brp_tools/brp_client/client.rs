@@ -9,27 +9,22 @@
 //! All BRP logic is centralized in this client, eliminating the need for scattered execution
 //! functions.
 
-use std::time::Duration;
-
 use serde_json::Value;
 use tracing::{debug, warn};
 
 use super::super::Port;
-use super::constants::{
-    BRP_DEFAULT_HOST, BRP_EXTRAS_PREFIX, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND,
-};
+use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
 use super::format_correction_fields::FormatCorrectionField;
 use super::format_discovery::{
     CorrectionInfo, FormatCorrection, FormatCorrectionStatus, FormatRecoveryResult,
 };
-use super::json_rpc_builder::BrpJsonRpcBuilder;
+use super::http_client::BrpHttpClient;
 use super::types::{
     BrpClientCallJsonResponse, BrpClientError, ExecuteMode, FormatDiscoveryError, ResponseStatus,
     ResultStructBrpExt,
 };
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Client for executing a BRP operation
 pub struct BrpClient {
@@ -130,17 +125,13 @@ impl BrpClient {
     /// version we still allow to be called by bespoke tools like `brp_shutdown` and `brp_status`
     /// and the like.
     async fn execute_direct_internal(self) -> Result<ResponseStatus> {
-        let url = Self::build_brp_url(self.port);
         let method_str = self.method.as_str();
 
-        // Build JSON-RPC request body
-        let request_body = build_request_body(method_str, self.params);
+        // Create HTTP client with our data
+        let http_client = BrpHttpClient::new(self.method, self.port, self.params);
 
-        // Send HTTP request
-        let response = send_http_request(&url, request_body, method_str, self.port).await?;
-
-        // Check HTTP status
-        check_http_status(&response, method_str, self.port)?;
+        // Send HTTP request (includes status check)
+        let response = http_client.send_request().await?;
 
         // Parse JSON-RPC response
         let brp_response = parse_json_response(response, method_str, self.port).await?;
@@ -171,40 +162,13 @@ impl BrpClient {
     /// - Returns the raw response for the caller to process
     /// - Provides the same rich error context as other `BrpClient` methods
     pub async fn execute_streaming(self) -> Result<reqwest::Response> {
-        let url = Self::build_brp_url(self.port);
-        let method_str = self.method.as_str();
+        // Create HTTP client with our data
+        let http_client = BrpHttpClient::new(self.method, self.port, self.params);
 
-        // Build JSON-RPC request body (reuse existing function)
-        let request_body = build_request_body(method_str, self.params);
+        // Send HTTP request using streaming version (no timeout, includes status check)
+        let response = http_client.send_streaming_request().await?;
 
-        // Create client with no timeout for streaming
-        let client = reqwest::Client::builder()
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
-
-        // Send HTTP request
-        match client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .body(request_body.clone())
-            .send()
-            .await
-        {
-            Ok(response) => {
-                // Check HTTP status
-                check_http_status(&response, method_str, self.port)?;
-                Ok(response)
-            }
-            Err(e) => handle_http_error(e, &url, &request_body, method_str, self.port),
-        }
-    }
-
-    /// Build a BRP URL for the given port
-    ///
-    /// This is a utility function for cases where you need just the URL
-    /// without executing a full BRP request (e.g., for streaming connections)
-    pub fn build_brp_url(port: Port) -> String {
-        format!("{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{port}{BRP_JSONRPC_PATH}")
+        Ok(response)
     }
 
     /// Try format recovery and retry with corrected format
@@ -230,155 +194,6 @@ impl BrpClient {
         )
         .await
     }
-}
-
-/// Build the JSON-RPC request body
-fn build_request_body(method: &str, params: Option<Value>) -> String {
-    let mut builder = BrpJsonRpcBuilder::new(method);
-    if let Some(params) = params {
-        debug!(
-            "BRP execute_brp_method: Added params - {}",
-            serde_json::to_string(&params)
-                .unwrap_or_else(|_| "Failed to serialize params".to_string())
-        );
-        builder = builder.params(params);
-    }
-    let request_body = builder.build().to_string();
-
-    debug!("BRP execute_brp_method: Request body - {}", request_body);
-
-    request_body
-}
-
-/// Send the HTTP request to the BRP server
-fn handle_http_error(
-    e: reqwest::Error,
-    url: &str,
-    request_body: &str,
-    method: &str,
-    port: Port,
-) -> Result<reqwest::Response> {
-    // Always log HTTP errors to help debug intermittent failures
-    warn!("BRP execute_brp_method: HTTP request failed - error={}", e);
-
-    let error_details = format!(
-        "HTTP Error at {}\nMethod: {}\nPort: {}\nURL: {}\nError: {:?}\n",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_secs())
-            .unwrap_or(0),
-        method,
-        port,
-        url,
-        e
-    );
-    if let Some(temp_dir) = std::env::temp_dir().to_str() {
-        let error_file = format!(
-            "{}/bevy_brp_http_error_{}.log",
-            temp_dir,
-            std::process::id()
-        );
-        let _ = std::fs::write(&error_file, &error_details);
-        debug!("HTTP error details written to: {}", error_file);
-    }
-
-    // Extract additional context from the request body for better error reporting
-    let mut context_info = vec![
-        format!("Method: {method}"),
-        format!("Port: {port}"),
-        format!("URL: {url}"),
-    ];
-
-    // Try to parse request body to extract component/entity info for mutations
-    if let Ok(body_json) = serde_json::from_str::<Value>(request_body) {
-        if let Some(params) = ParameterName::Params.get_from(&body_json) {
-            if let Some(entity) = ParameterName::Entity.get_from(params) {
-                context_info.push(format!("Entity: {entity}"));
-            }
-            if let Some(component) = FormatCorrectionField::Component.get_str_from(params) {
-                context_info.push(format!("Component: {component}"));
-            }
-            if let Some(path) = ParameterName::Path.get_str_from(params) {
-                context_info.push(format!("Path: {path}"));
-            }
-        }
-    }
-
-    // Determine error type and details
-    let error_type = if e.is_timeout() {
-        "Timeout"
-    } else if e.is_connect() {
-        "Connection failed"
-    } else if e.is_request() {
-        "Request error"
-    } else if e.is_body() {
-        "Body error"
-    } else if e.is_decode() {
-        "Decode error"
-    } else {
-        "Unknown error type"
-    };
-
-    context_info.push(format!("Error type: {error_type}"));
-
-    // Add port info
-    context_info.push(format!("Port: ({port})"));
-
-    let error_msg = format!("HTTP request failed for {method} operation - {error_type}: {e}");
-
-    Err(error_stack::Report::new(Error::JsonRpc(error_msg))
-        .attach_printable(context_info.join(", "))
-        .attach_printable(format!("Full error: {e:?}"))
-        .attach_printable(format!(
-            "Request body (first 500 chars): {}",
-            &request_body.chars().take(500).collect::<String>()
-        )))
-}
-
-async fn send_http_request(
-    url: &str,
-    request_body: String,
-    method: &str,
-    port: Port,
-) -> Result<reqwest::Response> {
-    let client = reqwest::Client::new();
-
-    let response = client
-        .post(url)
-        .header("Content-Type", "application/json")
-        .body(request_body.clone())
-        .timeout(Duration::from_secs(30))
-        .send()
-        .await;
-
-    match response {
-        Ok(resp) => Ok(resp),
-        Err(e) => handle_http_error(e, url, &request_body, method, port),
-    }
-}
-
-/// Check if the HTTP response status is successful
-fn check_http_status(response: &reqwest::Response, method: &str, port: Port) -> Result<()> {
-    if !response.status().is_success() {
-        warn!(
-            "BRP execute_brp_method: HTTP status error - status={}",
-            response.status()
-        );
-        return Err(
-            error_stack::Report::new(Error::JsonRpc("HTTP error".to_string()))
-                .attach_printable(format!(
-                    "BRP server returned HTTP error {}: {}",
-                    response.status(),
-                    response
-                        .status()
-                        .canonical_reason()
-                        .unwrap_or("Unknown error")
-                ))
-                .attach_printable(format!("Method: {method}, Port: {port}")),
-        );
-    }
-
-    Ok(())
 }
 
 /// Parse the JSON response from the BRP server

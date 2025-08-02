@@ -2,6 +2,7 @@ mod client;
 mod constants;
 mod format_correction_fields;
 mod format_discovery;
+mod http_client;
 mod json_rpc_builder;
 mod types;
 
