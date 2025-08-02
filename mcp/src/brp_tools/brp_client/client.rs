@@ -10,7 +10,7 @@
 //! functions.
 
 use serde_json::Value;
-use tracing::{debug, warn};
+use tracing::warn;
 
 use super::super::Port;
 use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
@@ -120,26 +120,6 @@ impl BrpClient {
         }
     }
 
-    /// Internal direct execution - does the actual http call - we wanted the internal vresion so we
-    /// can distinguish a canned call generated for a `ToolFn` by our macro, and the `execute_raw()`
-    /// version we still allow to be called by bespoke tools like `brp_shutdown` and `brp_status`
-    /// and the like.
-    async fn execute_direct_internal(self) -> Result<ResponseStatus> {
-        let method_str = self.method.as_str();
-
-        // Create HTTP client with our data
-        let http_client = BrpHttpClient::new(self.method, self.port, self.params);
-
-        // Send HTTP request (includes status check)
-        let response = http_client.send_request().await?;
-
-        // Parse JSON-RPC response
-        let brp_response = parse_json_response(response, method_str, self.port).await?;
-
-        // Convert to BrpClientResult with special handling for bevy_brp_extras
-        Ok(convert_to_brp_result(brp_response, method_str))
-    }
-
     /// Low-level BRP execution without format discovery or result transformation
     ///
     /// This method provides direct access to BRP communication without any automatic
@@ -163,12 +143,30 @@ impl BrpClient {
     /// - Provides the same rich error context as other `BrpClient` methods
     pub async fn execute_streaming(self) -> Result<reqwest::Response> {
         // Create HTTP client with our data
-        let http_client = BrpHttpClient::new(self.method, self.port, self.params);
+        let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
 
         // Send HTTP request using streaming version (no timeout, includes status check)
         let response = http_client.send_streaming_request().await?;
 
         Ok(response)
+    }
+
+    /// Internal direct execution - does the actual http call - we wanted the internal vresion so we
+    /// can distinguish a canned call generated for a `ToolFn` by our macro, and the `execute_raw()`
+    /// version we still allow to be called by bespoke tools like `brp_shutdown` and `brp_status`
+    /// and the like.
+    async fn execute_direct_internal(&self) -> Result<ResponseStatus> {
+        // Create HTTP client with our data
+        let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
+
+        // Send HTTP request (includes status check)
+        let response = http_client.send_request().await?;
+
+        // Parse JSON-RPC response
+        let brp_response = self.parse_json_response(response).await?;
+
+        // Convert to BrpClientResult with special handling for bevy_brp_extras
+        Ok(self.to_response_status(brp_response))
     }
 
     /// Try format recovery and retry with corrected format
@@ -194,59 +192,58 @@ impl BrpClient {
         )
         .await
     }
-}
 
-/// Parse the JSON response from the BRP server
-async fn parse_json_response(
-    response: reqwest::Response,
-    method: &str,
-    port: Port,
-) -> Result<BrpClientCallJsonResponse> {
-    match response.json().await {
-        Ok(json_resp) => Ok(json_resp),
-        Err(e) => {
-            warn!("BRP execute_brp_method: JSON parsing failed - error={}", e);
-            Err(
-                error_stack::Report::new(Error::JsonRpc("JSON parsing failed".to_string()))
-                    .attach_printable("Failed to parse BRP response JSON")
-                    .attach_printable(format!("Method: {method}, Port: {port}"))
-                    .attach_printable(format!("Error: {e}")),
-            )
+    /// Parse the JSON response from the BRP server
+    async fn parse_json_response(
+        &self,
+        response: reqwest::Response,
+    ) -> Result<BrpClientCallJsonResponse> {
+        match response.json().await {
+            Ok(json_resp) => Ok(json_resp),
+            Err(e) => {
+                warn!("BRP execute_brp_method: JSON parsing failed - error={}", e);
+                Err(
+                    error_stack::Report::new(Error::JsonRpc("JSON parsing failed".to_string()))
+                        .attach_printable("Failed to parse BRP response JSON")
+                        .attach_printable(format!(
+                            "Method: {}, Port: {}",
+                            self.method.as_str(),
+                            self.port
+                        ))
+                        .attach_printable(format!("Error: {e}")),
+                )
+            }
         }
     }
-}
 
-/// Convert `BrpClientResponse` to `BrpClientResult`
-fn convert_to_brp_result(brp_response: BrpClientCallJsonResponse, method: &str) -> ResponseStatus {
-    if let Some(error) = brp_response.error {
-        warn!(
-            "BRP execute_brp_method: BRP returned error - code={}, message={}",
-            error.code, error.message
-        );
+    /// Convert `BrpClientResponse` to `BrpClientResult`
+    fn to_response_status(&self, brp_response_json: BrpClientCallJsonResponse) -> ResponseStatus {
+        if let Some(error) = brp_response_json.error {
+            warn!(
+                "BRP execute_brp_method: BRP returned error - code={}, message={}",
+                error.code, error.message
+            );
 
-        // Check if this is a bevy_brp_extras method that's not found
-        let enhanced_message = if error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND
-            && method.starts_with(BRP_EXTRAS_PREFIX)
-        {
-            format!(
-                "{}. This method requires the bevy_brp_extras crate to be added to your Bevy app with the BrpExtrasPlugin",
+            // Check if this is a bevy_brp_extras method that's not found
+            let enhanced_message = if error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND
+                && self.method.as_str().starts_with(BRP_EXTRAS_PREFIX)
+            {
+                format!(
+                    "{}. This method requires the bevy_brp_extras crate to be added to your Bevy app with the BrpExtrasPlugin",
+                    error.message
+                )
+            } else {
                 error.message
-            )
+            };
+
+            ResponseStatus::Error(BrpClientError {
+                code:    error.code,
+                message: enhanced_message,
+                data:    error.data,
+            })
         } else {
-            error.message
-        };
-
-        let result = ResponseStatus::Error(BrpClientError {
-            code:    error.code,
-            message: enhanced_message,
-            data:    error.data,
-        });
-
-        debug!("BRP execute_brp_method: Returning BrpResult::Error");
-
-        result
-    } else {
-        ResponseStatus::Success(brp_response.result)
+            ResponseStatus::Success(brp_response_json.result)
+        }
     }
 }
 
