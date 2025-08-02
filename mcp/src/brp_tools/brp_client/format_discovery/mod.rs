@@ -56,6 +56,7 @@ mod flow_types;
 mod path_parser;
 mod recovery_engine;
 pub mod registry_integration;
+mod result_transformer;
 mod transformers;
 pub mod types;
 mod unified_types;
@@ -64,7 +65,7 @@ mod unified_types;
 mod tests;
 
 pub use self::engine::{FormatCorrection, FormatCorrectionStatus, FormatDiscoveryEngine};
-pub use self::flow_types::FormatRecoveryResult;
+pub(super) use self::result_transformer::transform_recovery_result;
 // Types will be publicly exposed once the refactoring is complete
 pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};
 use super::format_correction_fields::FormatCorrectionField;

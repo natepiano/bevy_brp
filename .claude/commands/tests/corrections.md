@@ -35,7 +35,7 @@ mcp__brp__bevy_insert with parameters:
 **Expected Result**: 
 - ✅ Success with format_corrected: "succeeded"
 - ✅ Warning field in metadata when corrections applied
-- ✅ Message: "Request succeeded with format correction applied"
+- ✅ Message: "Operation succeeded with 1 format correction(s) applied. See format_corrections field for details."
 - ✅ Object format {x,y,z} automatically converted to array [x,y,z]
 
 ### 2. Transform Format Correction - Non-Transformable Input
@@ -104,7 +104,7 @@ mcp__brp__bevy_spawn with parameters:
 **Expected Result**:
 - ✅ Success with format_corrected: "succeeded"
 - ✅ Warning field in metadata when corrections applied
-- ✅ Message: "Request succeeded with format correction applied"  
+- ✅ Message: "Operation succeeded with 1 format correction(s) applied. See format_corrections field for details."  
 - ✅ Returns new entity ID
 
 ### 5. Component Without Serialize/Deserialize - Spawn Test
@@ -151,7 +151,7 @@ mcp__brp__bevy_spawn with parameters:
 - ✅ **Transformable input succeeds**: Object format {x,y,z} → array [x,y,z] with format_corrected: "succeeded"
 - ✅ **Non-transformable input fails**: Integers/invalid data returns error with guidance, format_corrected: "not_attempted" or "attempted_but_failed"
 - ✅ **No value invention**: System never creates fake data when transformation fails
-- ✅ **Clear success messaging**: "Request succeeded with format correction applied" when corrected
+- ✅ **Clear success messaging**: "Operation succeeded with N format correction(s) applied. See format_corrections field for details." when corrected
 - ✅ **Spawn and insert both work**: Format correction applies to both operations
 
 ### Registry Behavior  

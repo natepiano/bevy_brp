@@ -44,11 +44,16 @@
 //! - `format_discovery/extras_integration.rs` - Calls discovery endpoint
 //! - `format_discovery/recovery_engine.rs` - Retries with corrected params
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::debug;
 
-use super::flow_types::FormatRecoveryResult;
-use super::{recovery_engine, registry_integration};
+use super::flow_types::{CorrectionResult, FormatRecoveryResult};
+use super::recovery_engine::{self, LevelResult};
+use super::registry_integration;
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -58,34 +63,32 @@ use crate::tool::BrpMethod;
 /// Encapsulates the multi-tiered format discovery system that intelligently
 /// corrects type serialization errors in BRP operations.
 pub struct FormatDiscoveryEngine {
-    method: BrpMethod,
-    port:   Port,
+    method:         BrpMethod,
+    port:           Port,
+    params:         Value,
+    original_error: BrpClientError,
 }
 
 impl FormatDiscoveryEngine {
     /// Create a new format discovery engine for a specific method and port
-    pub const fn new(method: BrpMethod, port: Port) -> Self {
-        Self { method, port }
+    pub fn new(
+        method: BrpMethod,
+        port: Port,
+        params: Value,
+        original_error: BrpClientError,
+    ) -> Self {
+        Self {
+            method,
+            port,
+            params,
+            original_error,
+        }
     }
 
-    /// Try format recovery and retry with corrected format
-    pub async fn try_recovery_and_retry(
-        &self,
-        params: Value,
-        original_error: &BrpClientError,
-    ) -> Result<FormatRecoveryResult> {
-        self.try_format_recovery_and_retry_impl(params, original_error)
-            .await
-    }
-
-    async fn try_format_recovery_and_retry_impl(
-        &self,
-        params: Value,
-        original_error: &BrpClientError,
-    ) -> Result<FormatRecoveryResult> {
+    pub async fn attempt_discovery(&self) -> Result<FormatRecoveryResult> {
         // Skip Level 1 - we already failed
         // Check if error is format-related
-        if !original_error.is_format_error() {
+        if !self.original_error.is_format_error() {
             return Ok(FormatRecoveryResult::NotRecoverable {
                 corrections: Vec::new(),
             });
@@ -93,20 +96,125 @@ impl FormatDiscoveryEngine {
 
         // Get type information only when needed for error handling
         let registry_type_info =
-            registry_integration::get_registry_type_info(self.method, &params, self.port).await;
+            registry_integration::get_registry_type_info(self.method, &self.params, self.port)
+                .await;
 
-        // Continue with Level 2+ logic using the recovery engine directly
-        let flow_result = recovery_engine::attempt_format_recovery_with_type_infos(
+        // Execute the discovery process
+        let flow_result = self
+            .attempt_format_discovery_with_type_infos(registry_type_info)
+            .await;
+
+        Ok(flow_result)
+    }
+
+    /// Execute format discovery using the 3-level decision tree
+    async fn attempt_format_discovery_with_type_infos(
+        &self,
+        registry_type_info: HashMap<String, UnifiedTypeInfo>,
+    ) -> FormatRecoveryResult {
+        debug!(
+            "FormatDiscoveryEngine: Starting multi-level discovery for method '{}' with {} pre-fetched type info(s)",
             self.method,
-            params,
-            ResponseStatus::Error(original_error.clone()),
+            registry_type_info.len()
+        );
+
+        // Extract type names from the parameters for recovery attempts
+        let type_names = recovery_engine::extract_type_names_from_params(self.method, &self.params);
+        if type_names.is_empty() {
+            debug!("FormatDiscoveryEngine: No type names found in parameters, cannot recover");
+            return FormatRecoveryResult::NotRecoverable {
+                corrections: Vec::new(),
+            };
+        }
+
+        debug!(
+            "FormatDiscoveryEngine: Found {} type names to process",
+            type_names.len()
+        );
+
+        // Level 2: Direct Discovery via bevy_brp_extras
+        debug!("FormatDiscoveryEngine: Beginning Level 2 - Direct discovery");
+        let level_2_type_infos = match self
+            .execute_level_2_direct_discovery(&type_names, &registry_type_info)
+            .await
+        {
+            LevelResult::Success(corrections) => {
+                debug!("FormatDiscoveryEngine: Level 2 succeeded with direct discovery");
+                return self.build_recovery_success(corrections).await;
+            }
+            LevelResult::Continue(type_infos) => {
+                debug!(
+                    "FormatDiscoveryEngine: Level 2 complete, proceeding to Level 3 with {} type infos",
+                    type_infos.len()
+                );
+                type_infos
+            }
+        };
+
+        // Level 3: Pattern-Based Transformations
+        debug!("FormatDiscoveryEngine: Level 3 - Pattern-based transformations");
+
+        match self.execute_level_3_pattern_transformations(&type_names, &level_2_type_infos) {
+            LevelResult::Success(corrections) => {
+                debug!("FormatDiscoveryEngine: Level 3 succeeded with pattern-based corrections");
+                self.build_recovery_success(corrections).await
+            }
+            LevelResult::Continue(_) => {
+                debug!("FormatDiscoveryEngine: All levels exhausted, no recovery possible");
+                FormatRecoveryResult::NotRecoverable {
+                    corrections: Vec::new(),
+                }
+            }
+        }
+    }
+
+    /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
+    async fn execute_level_2_direct_discovery(
+        &self,
+        type_names: &[String],
+        registry_type_info: &HashMap<String, UnifiedTypeInfo>,
+    ) -> LevelResult {
+        // TODO: Move implementation from recovery_engine
+        recovery_engine::execute_level_2_direct_discovery(
+            type_names,
+            self.method,
             registry_type_info,
+            &self.params,
             self.port,
         )
-        .await;
+        .await
+    }
 
-        // FormatRecoveryResult is already the correct type
-        Ok(flow_result)
+    /// Level 3: Pattern-based transformations
+    fn execute_level_3_pattern_transformations(
+        &self,
+        type_names: &[String],
+        level_2_type_infos: &HashMap<String, UnifiedTypeInfo>,
+    ) -> LevelResult {
+        // TODO: Move implementation from recovery_engine
+        recovery_engine::execute_level_3_pattern_transformations(
+            type_names,
+            self.method,
+            &self.params,
+            &self.original_error,
+            level_2_type_infos,
+        )
+    }
+
+    /// Build a successful recovery result
+    async fn build_recovery_success(
+        &self,
+        corrections: Vec<CorrectionResult>,
+    ) -> FormatRecoveryResult {
+        // TODO: Move implementation from recovery_engine
+        recovery_engine::build_recovery_success(
+            corrections,
+            self.method,
+            &self.params,
+            &ResponseStatus::Error(self.original_error.clone()),
+            self.port,
+        )
+        .await
     }
 }
 

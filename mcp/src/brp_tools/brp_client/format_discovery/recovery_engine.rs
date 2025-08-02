@@ -24,97 +24,9 @@ use crate::brp_tools::Port;
 use crate::brp_tools::brp_client::{self, BrpClientError, ResponseStatus};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
-/// Execute format error recovery using the 3-level decision tree with pre-fetched type infos
-pub async fn attempt_format_recovery_with_type_infos(
-    method: BrpMethod,
-    original_params: Value,
-    error: ResponseStatus,
-    registry_type_info: HashMap<String, UnifiedTypeInfo>,
-    port: Port,
-) -> FormatRecoveryResult {
-    debug!("Recovery Engine: FUNCTION ENTRY - attempt_format_recovery_with_type_infos called");
-    debug!(
-        "Recovery Engine: Starting multi-level recovery for method '{method}' with {} pre-fetched type info(s)",
-        registry_type_info.len()
-    );
-
-    // Extract type names from the parameters for recovery attempts
-    let type_names = extract_type_names_from_params(method, &original_params);
-    if type_names.is_empty() {
-        debug!("Recovery Engine: No type names found in parameters, cannot recover");
-        return FormatRecoveryResult::NotRecoverable {
-            corrections: Vec::new(),
-        };
-    }
-
-    debug!(
-        "Recovery Engine: Found {} type names to process",
-        type_names.len()
-    );
-
-    // Level 2: Direct Discovery via bevy_brp_extras
-    debug!("Recovery Engine: beginning level 2 direct discovery");
-    let level_2_type_infos = match execute_level_2_direct_discovery(
-        &type_names,
-        method,
-        &registry_type_info,
-        &original_params,
-        port,
-    )
-    .await
-    {
-        LevelResult::Success(corrections) => {
-            debug!("Recovery Engine: Level 2 succeeded with direct discovery");
-            return build_recovery_success(corrections, method, &original_params, &error, port)
-                .await;
-        }
-        LevelResult::Continue(type_infos) => {
-            debug!(
-                "Recovery Engine: Level 2 complete, proceeding to Level 3 with {} type infos",
-                type_infos.len()
-            );
-            type_infos
-        }
-    };
-
-    // Level 3: Pattern-Based Transformations
-    debug!("Recovery Engine: Level 3 - Pattern-based transformations");
-
-    // Extract the BrpError from the error result to pass to Level 3
-    let brp_error = match &error {
-        ResponseStatus::Error(brp_error) => brp_error,
-        ResponseStatus::Success(_) => {
-            // This shouldn't happen as we only call recovery on errors
-            debug!("Recovery Engine: Warning - Level 3 called with success result");
-            return FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            };
-        }
-    };
-
-    match execute_level_3_pattern_transformations(
-        &type_names,
-        method,
-        &original_params,
-        brp_error,
-        &level_2_type_infos,
-    ) {
-        LevelResult::Success(corrections) => {
-            debug!("Recovery Engine: Level 3 succeeded with pattern-based corrections");
-            build_recovery_success(corrections, method, &original_params, &error, port).await
-        }
-        LevelResult::Continue(_) => {
-            debug!("Recovery Engine: All levels exhausted, no recovery possible");
-            FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            }
-        }
-    }
-}
-
 /// Result of a recovery level attempt
 #[derive(Debug)]
-enum LevelResult {
+pub enum LevelResult {
     /// Level succeeded and produced corrections
     Success(Vec<CorrectionResult>),
     /// Level completed but recovery should continue to next level
@@ -122,7 +34,7 @@ enum LevelResult {
 }
 
 /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
-async fn execute_level_2_direct_discovery(
+pub async fn execute_level_2_direct_discovery(
     type_names: &[String],
     method: BrpMethod,
     registry_type_info: &HashMap<String, UnifiedTypeInfo>,
@@ -229,7 +141,7 @@ async fn execute_level_2_direct_discovery(
 }
 
 /// Level 3: Apply pattern-based transformations for known errors
-fn execute_level_3_pattern_transformations(
+pub fn execute_level_3_pattern_transformations(
     type_names: &[String],
     method: BrpMethod,
     original_params: &Value,
@@ -669,7 +581,7 @@ fn create_enhanced_enum_guidance(
 }
 
 /// Extract type names from BRP method parameters based on method type
-fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<String> {
+pub fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<String> {
     let mut type_names = Vec::new();
 
     match method {
@@ -860,7 +772,7 @@ fn build_corrected_params(
 }
 
 /// Convert correction results into final recovery result
-async fn build_recovery_success(
+pub async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: BrpMethod,
     original_params: &Value,
