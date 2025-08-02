@@ -74,7 +74,7 @@ impl BrpClient {
     /// Format discovery is only attempted for result types with `ExecuteMode::WithFormatDiscovery`.
     /// Result types with `ExecuteMode::DirectOnly` will return errors immediately without
     /// discovery.
-    pub async fn execute<R>(self) -> Result<R>
+    pub async fn execute<R>(&self) -> Result<R>
     where
         R: ResultStructBrpExt<
                 Args = (
@@ -85,11 +85,6 @@ impl BrpClient {
             > + Send
             + 'static,
     {
-        // Store values we'll need for potential format discovery before self is moved
-        let method = self.method;
-        let port = self.port;
-        let params = self.params.clone();
-
         // ALWAYS execute direct first
         let direct_result = self.execute_direct_internal().await?;
 
@@ -108,8 +103,7 @@ impl BrpClient {
                     && matches!(R::brp_tool_execute_mode(), ExecuteMode::WithFormatDiscovery)
                 {
                     // Try format discovery and maybe retry with corrected format
-                    let recovery_result =
-                        Self::try_format_recovery_and_retry(method, port, params, &err).await?;
+                    let recovery_result = self.try_format_recovery(&err).await?;
                     // Transform recovery result to appropriate error or success
                     transform_recovery_result::<R>(recovery_result, &err)
                 } else {
@@ -130,7 +124,7 @@ impl BrpClient {
     /// - Debugging tools that need raw BRP responses (`brp_execute`)
     /// - Format discovery engine internal operations
     /// - Testing and diagnostic scenarios
-    pub async fn execute_raw(self) -> Result<ResponseStatus> {
+    pub async fn execute_raw(&self) -> Result<ResponseStatus> {
         self.execute_direct_internal().await
     }
 
@@ -141,7 +135,7 @@ impl BrpClient {
     /// - Uses no timeout (streaming connections stay open)
     /// - Returns the raw response for the caller to process
     /// - Provides the same rich error context as other `BrpClient` methods
-    pub async fn execute_streaming(self) -> Result<reqwest::Response> {
+    pub async fn execute_streaming(&self) -> Result<reqwest::Response> {
         // Create HTTP client with our data
         let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
 
@@ -170,14 +164,12 @@ impl BrpClient {
     }
 
     /// Try format recovery and retry with corrected format
-    async fn try_format_recovery_and_retry(
-        method: BrpMethod,
-        port: Port,
-        params: Option<Value>,
+    async fn try_format_recovery(
+        &self,
         original_error: &BrpClientError,
     ) -> Result<FormatRecoveryResult> {
         // Validate that parameters exist for format discovery
-        let Some(params) = params else {
+        let Some(params) = self.params.clone() else {
             return Err(Error::InvalidArgument(
                 "Format discovery requires parameters to extract type information".to_string(),
             )
@@ -185,9 +177,9 @@ impl BrpClient {
         };
 
         super::format_discovery::engine::try_format_recovery_and_retry(
-            method,
+            self.method,
             params,
-            port,
+            self.port,
             original_error,
         )
         .await
