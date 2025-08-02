@@ -177,7 +177,7 @@ impl BrpClient {
 
         let engine =
             FormatDiscoveryEngine::new(self.method, self.port, params, original_error.clone());
-        let recovery_result = engine.attempt_discovery().await?;
+        let recovery_result = engine.attempt_discovery_with_recovery().await?;
 
         // Transform recovery result to appropriate error or success
         transform_recovery_result::<R>(recovery_result, original_error)

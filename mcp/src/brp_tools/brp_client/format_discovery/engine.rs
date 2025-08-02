@@ -85,7 +85,7 @@ impl FormatDiscoveryEngine {
         }
     }
 
-    pub async fn attempt_discovery(&self) -> Result<FormatRecoveryResult> {
+    pub async fn attempt_discovery_with_recovery(&self) -> Result<FormatRecoveryResult> {
         // Skip Level 1 - we already failed
         // Check if error is format-related
         if !self.original_error.is_format_error() {
@@ -95,9 +95,7 @@ impl FormatDiscoveryEngine {
         }
 
         // Get type information only when needed for error handling
-        let registry_type_info =
-            registry_integration::get_registry_type_info(self.method, &self.params, self.port)
-                .await;
+        let registry_type_info = self.get_registry_type_info().await;
 
         // Execute the discovery process
         let flow_result = self
@@ -215,6 +213,29 @@ impl FormatDiscoveryEngine {
             self.port,
         )
         .await
+    }
+
+    /// Get type information from the registry for all types in the parameters
+    async fn get_registry_type_info(&self) -> HashMap<String, UnifiedTypeInfo> {
+        // This function is only called for methods that support format discovery
+        debug!(
+            "FormatDiscoveryEngine: Method {} supports format discovery, extracting component types",
+            self.method.as_str()
+        );
+        
+        let type_names = recovery_engine::extract_type_names_from_params(self.method, &self.params);
+        debug!(
+            "FormatDiscoveryEngine: Extracted {} type names: {type_names:?}",
+            type_names.len()
+        );
+        
+        if type_names.is_empty() {
+            debug!("FormatDiscoveryEngine: No type names found, skipping pre-fetching");
+            return HashMap::new();
+        }
+
+        // Delegate to registry_integration for the actual work
+        registry_integration::get_registry_type_info(self.method, &self.params, self.port).await
     }
 }
 
