@@ -103,9 +103,7 @@ impl BrpClient {
                     && matches!(R::brp_tool_execute_mode(), ExecuteMode::WithFormatDiscovery)
                 {
                     // Try format discovery and maybe retry with corrected format
-                    let recovery_result = self.try_format_recovery(&err).await?;
-                    // Transform recovery result to appropriate error or success
-                    transform_recovery_result::<R>(recovery_result, &err)
+                    self.try_format_recovery::<R>(&err).await
                 } else {
                     // Regular error - no format discovery
                     Err(Error::tool_call_failed(err.message).into())
@@ -164,10 +162,17 @@ impl BrpClient {
     }
 
     /// Try format recovery and retry with corrected format
-    async fn try_format_recovery(
-        &self,
-        original_error: &BrpClientError,
-    ) -> Result<FormatRecoveryResult> {
+    async fn try_format_recovery<R>(&self, original_error: &BrpClientError) -> Result<R>
+    where
+        R: ResultStructBrpExt<
+                Args = (
+                    Option<Value>,
+                    Option<Vec<Value>>,
+                    Option<FormatCorrectionStatus>,
+                ),
+            > + Send
+            + 'static,
+    {
         // Validate that parameters exist for format discovery
         let Some(params) = self.params.clone() else {
             return Err(Error::InvalidArgument(
@@ -176,13 +181,13 @@ impl BrpClient {
             .into());
         };
 
-        super::format_discovery::engine::try_format_recovery_and_retry(
-            self.method,
-            params,
-            self.port,
-            original_error,
-        )
-        .await
+        let engine = super::format_discovery::FormatDiscoveryEngine::new(self.method, self.port);
+        let recovery_result = engine
+            .try_recovery_and_retry(params, original_error)
+            .await?;
+
+        // Transform recovery result to appropriate error or success
+        transform_recovery_result::<R>(recovery_result, original_error)
     }
 
     /// Parse the JSON response from the BRP server

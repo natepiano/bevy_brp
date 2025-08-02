@@ -53,6 +53,63 @@ use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
 use crate::error::Result;
 use crate::tool::BrpMethod;
 
+/// Engine for format discovery and correction
+///
+/// Encapsulates the multi-tiered format discovery system that intelligently
+/// corrects type serialization errors in BRP operations.
+pub struct FormatDiscoveryEngine {
+    method: BrpMethod,
+    port:   Port,
+}
+
+impl FormatDiscoveryEngine {
+    /// Create a new format discovery engine for a specific method and port
+    pub const fn new(method: BrpMethod, port: Port) -> Self {
+        Self { method, port }
+    }
+
+    /// Try format recovery and retry with corrected format
+    pub async fn try_recovery_and_retry(
+        &self,
+        params: Value,
+        original_error: &BrpClientError,
+    ) -> Result<FormatRecoveryResult> {
+        self.try_format_recovery_and_retry_impl(params, original_error)
+            .await
+    }
+
+    async fn try_format_recovery_and_retry_impl(
+        &self,
+        params: Value,
+        original_error: &BrpClientError,
+    ) -> Result<FormatRecoveryResult> {
+        // Skip Level 1 - we already failed
+        // Check if error is format-related
+        if !original_error.is_format_error() {
+            return Ok(FormatRecoveryResult::NotRecoverable {
+                corrections: Vec::new(),
+            });
+        }
+
+        // Get type information only when needed for error handling
+        let registry_type_info =
+            registry_integration::get_registry_type_info(self.method, &params, self.port).await;
+
+        // Continue with Level 2+ logic using the recovery engine directly
+        let flow_result = recovery_engine::attempt_format_recovery_with_type_infos(
+            self.method,
+            params,
+            ResponseStatus::Error(original_error.clone()),
+            registry_type_info,
+            self.port,
+        )
+        .await;
+
+        // FormatRecoveryResult is already the correct type
+        Ok(flow_result)
+    }
+}
+
 /// Format correction information for a type (component or resource)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormatCorrection {
@@ -79,37 +136,4 @@ pub enum FormatCorrectionStatus {
     Succeeded,
     /// Format correction was attempted but the operation still failed
     AttemptedButFailed,
-}
-
-/// Try format recovery and retry with corrected format
-pub(in super::super) async fn try_format_recovery_and_retry(
-    method: BrpMethod,
-    params: Value,
-    port: Port,
-    original_error: &BrpClientError,
-) -> Result<FormatRecoveryResult> {
-    // Skip Level 1 - we already failed
-    // Check if error is format-related
-    if !original_error.is_format_error() {
-        return Ok(FormatRecoveryResult::NotRecoverable {
-            corrections: Vec::new(),
-        });
-    }
-
-    // Get type information only when needed for error handling
-    let registry_type_info =
-        registry_integration::get_registry_type_info(method, &params, port).await;
-
-    // Continue with Level 2+ logic using the recovery engine directly
-    let flow_result = recovery_engine::attempt_format_recovery_with_type_infos(
-        method,
-        params,
-        ResponseStatus::Error(original_error.clone()),
-        registry_type_info,
-        port,
-    )
-    .await;
-
-    // FormatRecoveryResult is already the correct type
-    Ok(flow_result)
 }

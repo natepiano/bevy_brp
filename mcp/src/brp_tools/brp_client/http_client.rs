@@ -36,7 +36,7 @@ impl BrpHttpClient {
     /// Build the BRP URL for this client's port
     fn build_url(&self) -> String {
         format!(
-            "{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{}:{BRP_JSONRPC_PATH}",
+            "{BRP_HTTP_PROTOCOL}://{BRP_DEFAULT_HOST}:{}{BRP_JSONRPC_PATH}",
             self.port
         )
     }
@@ -89,9 +89,7 @@ impl BrpHttpClient {
         let url = self.build_url();
         let body = self.build_request_body();
         // Create client with no timeout for streaming
-        let client = reqwest::Client::builder()
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
+        let client = reqwest::Client::new();
 
         let response = client
             .post(&url)
