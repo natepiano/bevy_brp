@@ -52,7 +52,8 @@ use tracing::debug;
 
 use super::discovery_context::DiscoveryContext;
 use super::recovery_engine::{self, LevelResult};
-use super::types::{CorrectionResult, FormatRecoveryResult};
+use super::recovery_result::FormatRecoveryResult;
+use super::types::CorrectionResult;
 use super::unified_types::{DiscoverySource, UnifiedTypeInfo};
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
 use crate::error::{Error, Result};
