@@ -78,7 +78,7 @@ Validate path parameter handling when multiple apps or examples with the same na
 ## Special Notes
 - If no path conflicts exist for apps, app-related sub-tests will be marked as SKIPPED
 - **IMPORTANT**: Missing duplicate examples is a FAILED test, not SKIPPED - the test environment should provide duplicate examples for comprehensive testing
-- Tests adapt to available path configurations  
+- Tests adapt to available path configurations
 - Focus is on error handling and path disambiguation logic
 - The path parameter accepts: full relative paths and partial paths (if unambiguous)
 

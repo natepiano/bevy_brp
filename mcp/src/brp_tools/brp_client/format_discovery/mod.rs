@@ -49,24 +49,23 @@
 mod adapters;
 mod constants;
 mod detection;
-pub(super) mod engine;
+mod discovery_context;
+mod engine;
 mod extras_integration;
 mod field_mapper;
 mod flow_types;
+mod format_correction_fields;
 mod path_parser;
 mod recovery_engine;
-pub mod registry_integration;
+mod registry_integration;
 mod result_transformer;
 mod transformers;
-mod type_discovery_context;
-pub mod types;
+mod types;
 mod unified_types;
 
 #[cfg(test)]
 mod tests;
 
 pub use self::engine::{FormatCorrection, FormatCorrectionStatus, FormatDiscoveryEngine};
-pub(super) use self::result_transformer::transform_recovery_result;
 // Types will be publicly exposed once the refactoring is complete
 pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};
-use super::format_correction_fields::FormatCorrectionField;

@@ -2,9 +2,9 @@
 
 use serde_json::Value;
 
-use super::super::FormatCorrectionField;
 use super::super::constants::{FIELD_LABEL, FIELD_NAME, FIELD_TEXT};
 use super::super::detection::ErrorPattern;
+use super::super::format_correction_fields::FormatCorrectionField;
 use super::super::unified_types::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};

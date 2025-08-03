@@ -11,7 +11,7 @@ use tracing::warn;
 
 use super::super::Port;
 use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
-use super::format_discovery::{FormatDiscoveryEngine, transform_recovery_result};
+use super::format_discovery::FormatDiscoveryEngine;
 use super::http_client::BrpHttpClient;
 use super::types::{
     BrpClientCallJsonResponse, BrpClientError, ExecuteMode, ResponseStatus, ResultStructBrpExt,
@@ -167,20 +167,19 @@ impl BrpClient {
             > + Send
             + 'static,
     {
-        // Validate that parameters exist for format discovery
-        let Some(params) = self.params.clone() else {
-            return Err(Error::InvalidArgument(
-                "Format discovery requires parameters to extract type information".to_string(),
-            )
-            .into());
-        };
+        // Create engine with parameter validation
+        let engine = FormatDiscoveryEngine::new(
+            self.method,
+            self.port,
+            self.params.clone(),
+            original_error.clone(),
+        )?;
 
-        let engine =
-            FormatDiscoveryEngine::new(self.method, self.port, params, original_error.clone());
-        let recovery_result = engine.attempt_discovery_with_recovery().await?;
-
-        // Transform recovery result to appropriate error or success
-        transform_recovery_result::<R>(recovery_result, original_error)
+        // Execute discovery and recovery, then transform to typed result
+        engine
+            .attempt_discovery_with_recovery()
+            .await?
+            .into_typed_result::<R>(original_error)
     }
 
     /// Parse the JSON response from the BRP call to a running bevy app

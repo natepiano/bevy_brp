@@ -14,12 +14,13 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::detection::ErrorPattern;
+use super::discovery_context::DiscoveryContext;
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
+use super::format_correction_fields::FormatCorrectionField;
 use super::transformers::TransformerRegistry;
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };
-use super::{FormatCorrectionField, extras_integration};
 use crate::brp_tools::Port;
 use crate::brp_tools::brp_client::{self, BrpClientError, ResponseStatus};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
@@ -46,81 +47,66 @@ pub async fn execute_level_2_direct_discovery(
         type_names.len()
     );
 
-    // Start with type infos from Level 1
-    let mut enhanced_type_info = registry_type_info.clone();
+    // Create mutable context from registry info
+    let mut type_context = DiscoveryContext::from_registry_info(port, registry_type_info.clone());
 
-    // Attempt direct discovery for each type using bevy_brp_extras
+    // Enrich with extras discovery (don't fail if enrichment fails)
+    if let Err(e) = type_context.enrich_with_extras().await {
+        debug!("Level 2: Enrichment failed: {}", e);
+        // Continue with registry-only info
+    }
+
+    // Use enriched context
+    let enhanced_type_info = type_context.as_hashmap();
+
+    // Attempt direct discovery for each type
     let mut corrections = Vec::new();
 
     for type_name in type_names {
-        debug!("Level 2: Attempting direct discovery for '{type_name}'");
+        debug!("Level 2: Processing corrections for '{type_name}'");
 
-        // Call extras_integration to discover the type format
-        match extras_integration::discover_type_format(type_name, port).await {
-            Ok(Some(mut discovered_info)) => {
-                debug!("Level 2: Successfully discovered type information for '{type_name}'");
+        // Get the enriched type info (may have data from both registry and extras)
+        if let Some(discovered_info) = enhanced_type_info.get(type_name) {
+            debug!("Level 2: Found enriched type information for '{type_name}'");
 
-                // Merge with existing type info from Level 1 if available
-                if let Some(existing_info) = registry_type_info.get(type_name) {
-                    // Preserve registry information but enhance with discovery data
-                    discovered_info.registry_status = existing_info.registry_status.clone();
-                    if discovered_info.type_category == TypeCategory::Unknown
-                        && existing_info.type_category != TypeCategory::Unknown
-                    {
-                        discovered_info
-                            .type_category
-                            .clone_from(&existing_info.type_category);
-                    }
+            // Check if this is a mutation method and we have mutation paths
+            if matches!(
+                method,
+                BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+            ) && discovered_info.supports_mutation()
+            {
+                debug!(
+                    "Level 2: Type '{}' supports mutation with {} paths",
+                    type_name,
+                    discovered_info.get_mutation_paths().len()
+                );
+
+                // Create a mutation-specific correction with available paths
+                let mut hint = format!("Type '{type_name}' supports mutation. Available paths:\n");
+                for (path, description) in discovered_info.get_mutation_paths() {
+                    let _ = writeln!(hint, "  {path} - {description}");
                 }
 
-                // Update the enhanced type infos
-                enhanced_type_info.insert(type_name.clone(), discovered_info.clone());
+                let correction = CorrectionResult::CannotCorrect {
+                    type_info: discovered_info.clone(),
+                    reason:    hint,
+                };
+                corrections.push(correction);
+            } else {
+                // Extract the original value for this component
+                let original_component_value =
+                    extract_component_value(method, original_params, type_name);
 
-                // Check if this is a mutation method and we have mutation paths
-                if matches!(
-                    method,
-                    BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-                ) && discovered_info.supports_mutation()
-                {
-                    debug!(
-                        "Level 2: Type '{}' supports mutation with {} paths",
-                        type_name,
-                        discovered_info.get_mutation_paths().len()
-                    );
-
-                    // Create a mutation-specific correction with available paths
-                    let mut hint =
-                        format!("Type '{type_name}' supports mutation. Available paths:\n");
-                    for (path, description) in discovered_info.get_mutation_paths() {
-                        let _ = writeln!(hint, "  {path} - {description}");
-                    }
-
-                    let correction = CorrectionResult::CannotCorrect {
-                        type_info: discovered_info,
-                        reason:    hint,
-                    };
-                    corrections.push(correction);
-                } else {
-                    // Extract the original value for this component
-                    let original_component_value =
-                        extract_component_value(method, original_params, type_name);
-
-                    // Create a correction from the discovered type information with original value
-                    let correction = super::extras_integration::create_correction_from_discovery(
-                        discovered_info,
-                        original_component_value,
-                    );
-                    corrections.push(correction);
-                }
+                // Create a correction from the discovered type information with original value
+                let correction = super::extras_integration::create_correction_from_discovery(
+                    discovered_info.clone(),
+                    original_component_value,
+                );
+                corrections.push(correction);
             }
-            Ok(None) => {
-                debug!("Level 2: No type information found for '{type_name}' via direct discovery");
-                // Keep the registry info from Level 1
-            }
-            Err(e) => {
-                debug!("Level 2: Direct discovery failed for '{type_name}': {e}");
-                // Keep the registry info from Level 1
-            }
+        } else {
+            debug!("Level 2: No type information found for '{type_name}'");
+            // Type was not found in registry or extras discovery
         }
     }
 
@@ -130,7 +116,7 @@ pub async fn execute_level_2_direct_discovery(
             "Level 2: Direct discovery complete, proceeding to Level 3 with {} type infos",
             enhanced_type_info.len()
         );
-        LevelResult::Continue(enhanced_type_info)
+        LevelResult::Continue(enhanced_type_info.clone())
     } else {
         debug!(
             "Level 2: Found {} corrections from direct discovery",
@@ -578,42 +564,6 @@ fn create_enhanced_enum_guidance(
         type_info,
         reason: "Enhanced enum guidance with variant information and usage examples".to_string(),
     }
-}
-
-/// Extract type names from BRP method parameters based on method type
-pub fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<String> {
-    let mut type_names = Vec::new();
-
-    match method {
-        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
-            // Types are keys in the "components" object
-            if let Some(components) = ParameterName::Components.get_object_from(params) {
-                for type_name in components.keys() {
-                    type_names.push(type_name.clone());
-                }
-            }
-        }
-        BrpMethod::BevyMutateComponent => {
-            // Single type in "component" field
-            if let Some(component) = params
-                .get(FormatCorrectionField::Component.as_ref())
-                .and_then(|c| c.as_str())
-            {
-                type_names.push(component.to_string());
-            }
-        }
-        BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
-            // Single type in "resource" field
-            if let Some(resource) = ParameterName::Resource.get_str_from(params) {
-                type_names.push(resource.to_string());
-            }
-        }
-        _ => {
-            // For other methods, we don't currently support type extraction
-        }
-    }
-
-    type_names
 }
 
 /// Check if corrections can be applied for a retry

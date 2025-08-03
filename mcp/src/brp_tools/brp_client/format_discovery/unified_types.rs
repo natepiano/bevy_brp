@@ -127,6 +127,8 @@ pub enum DiscoverySource {
     BuiltinTypes,
     /// Manually provided or hardcoded information
     Manual,
+    /// Information combined from registry and extras sources
+    RegistryPlusExtras,
 }
 
 /// Method used to correct a format error

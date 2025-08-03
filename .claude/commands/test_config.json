@@ -22,8 +22,8 @@
     "expected_shutdown_method": "clean_shutdown"
   },
   {
-    "test_name": "discovery",
-    "test_file": ".claude/commands/tests/discovery.md",
+    "test_name": "list",
+    "test_file": ".claude/commands/tests/list.md",
     "port": "N/A",
     "app_name": "N/A",
     "log_file_prefix": "N/A",
@@ -99,8 +99,8 @@
     "expected_shutdown_method": "clean_shutdown"
   },
   {
-    "test_name": "path_disambiguation",
-    "test_file": ".claude/commands/tests/path_disambiguation.md",
+    "test_name": "path",
+    "test_file": ".claude/commands/tests/path.md",
     "port": 20110,
     "app_name": "various",
     "log_file_prefix": "bevy_brp_mcp_*_port20110",
@@ -132,8 +132,8 @@
     "expected_shutdown_method": "clean_shutdown"
   },
   {
-    "test_name": "status_shutdown",
-    "test_file": ".claude/commands/tests/status_shutdown.md",
+    "test_name": "shutdown",
+    "test_file": ".claude/commands/tests/shutdown.md",
     "port": 20113,
     "app_name": "various",
     "log_file_prefix": "bevy_brp_mcp_*_port20113",

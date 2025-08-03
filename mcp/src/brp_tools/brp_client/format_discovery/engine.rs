@@ -50,13 +50,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
+use super::discovery_context::DiscoveryContext;
 use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::recovery_engine::{self, LevelResult};
-use super::type_discovery_context::TypeDiscoveryContext;
 use super::unified_types::{DiscoverySource, UnifiedTypeInfo};
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
-use crate::error::Result;
-use crate::tool::BrpMethod;
+use crate::error::{Error, Result};
+use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
 /// Engine for format discovery and correction
 ///
@@ -71,23 +71,37 @@ pub struct FormatDiscoveryEngine {
 
 impl FormatDiscoveryEngine {
     /// Create a new format discovery engine for a specific method and port
-    pub const fn new(
+    ///
+    /// Returns an error if the parameters are invalid for format discovery
+    /// (e.g., None when format discovery requires parameters)
+    pub fn new(
         method: BrpMethod,
         port: Port,
-        params: Value,
+        params: Option<Value>,
         original_error: BrpClientError,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        // Validate that parameters exist for format discovery
+        // they actually have to or they wouldn't be methods called
+        // `ExecuteMode::WithFormatDiscovery` however we want to take them out of the Option
+        // here so we can stop Option wrangling. it is an Option until now because Other tools
+        // don't require parameters.
+        let params = params.ok_or_else(|| {
+            Error::InvalidArgument(
+                "Format discovery requires parameters to extract type information".to_string(),
+            )
+        })?;
+
+        Ok(Self {
             method,
             port,
             params,
             original_error,
-        }
+        })
     }
 
     pub async fn attempt_discovery_with_recovery(&self) -> Result<FormatRecoveryResult> {
-        // Skip Level 1 - we already failed
-        // Check if error is format-related
+        // if we're here, it's because we DID have an error, however format recovery can only handle
+        // format errors, the rest are "Not Recoverable"
         if !self.original_error.is_format_error() {
             return Ok(FormatRecoveryResult::NotRecoverable {
                 corrections: Vec::new(),
@@ -95,7 +109,7 @@ impl FormatDiscoveryEngine {
         }
 
         // Extract type names once for reuse
-        let type_names = recovery_engine::extract_type_names_from_params(self.method, &self.params);
+        let type_names = extract_type_names_from_params(self.method, &self.params);
 
         // Early exit if no types to process
         if type_names.is_empty() {
@@ -107,7 +121,7 @@ impl FormatDiscoveryEngine {
 
         // Create discovery context
         let type_context =
-            TypeDiscoveryContext::fetch_from_registry(self.port, type_names.clone()).await?;
+            DiscoveryContext::fetch_from_registry(self.port, type_names.clone()).await?;
 
         // Execute the discovery process
         let flow_result = self
@@ -136,7 +150,7 @@ impl FormatDiscoveryEngine {
 
         // Level 1 (added back): Check for serialization issues
         if let Some(educational_message) =
-            self.check_serialization_support(&type_names, &registry_type_info)
+            self.check_serialization_support(&type_names, registry_type_info)
         {
             debug!("FormatDiscoveryEngine: Level 1 detected serialization issue");
             let corrections = type_names
@@ -164,7 +178,7 @@ impl FormatDiscoveryEngine {
         // Level 2: Direct Discovery via bevy_brp_extras
         debug!("FormatDiscoveryEngine: Beginning Level 2 - Direct discovery");
         let level_2_type_infos = match self
-            .execute_level_2_direct_discovery(&type_names, &registry_type_info)
+            .execute_level_2_direct_discovery(&type_names, registry_type_info)
             .await
         {
             LevelResult::Success(corrections) => {
@@ -325,6 +339,42 @@ pub enum FormatCorrectionStatus {
     AttemptedButFailed,
 }
 
+/// Extract type names from BRP method parameters based on method type
+fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<String> {
+    let mut type_names = Vec::new();
+
+    match method {
+        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
+            // Types are keys in the "components" object
+            if let Some(components) = ParameterName::Components.get_object_from(params) {
+                for type_name in components.keys() {
+                    type_names.push(type_name.clone());
+                }
+            }
+        }
+        BrpMethod::BevyMutateComponent => {
+            // Single type in "component" field
+            if let Some(component) = params
+                .get(ParameterName::Component.as_ref())
+                .and_then(|c| c.as_str())
+            {
+                type_names.push(component.to_string());
+            }
+        }
+        BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
+            // Single type in "resource" field
+            if let Some(resource) = ParameterName::Resource.get_str_from(params) {
+                type_names.push(resource.to_string());
+            }
+        }
+        _ => {
+            // For other methods, we don't currently support type extraction
+        }
+    }
+
+    type_names
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -334,20 +384,23 @@ mod tests {
     use crate::brp_tools::brp_client::format_discovery::unified_types::DiscoverySource;
 
     fn create_test_engine(method: BrpMethod, error_message: &str) -> FormatDiscoveryEngine {
-        FormatDiscoveryEngine {
+        let params = Some(serde_json::json!({
+            "components": {
+                "bevy_render::view::visibility::Visibility": "Hidden"
+            }
+        }));
+
+        FormatDiscoveryEngine::new(
             method,
-            port: Port(15702),
-            params: serde_json::json!({
-                "components": {
-                    "bevy_render::view::visibility::Visibility": "Hidden"
-                }
-            }),
-            original_error: BrpClientError {
+            Port(15702),
+            params,
+            BrpClientError {
                 code:    -23402,
                 message: error_message.to_string(),
                 data:    None,
             },
-        }
+        )
+        .expect("Test engine creation should succeed")
     }
 
     fn create_type_info_without_serialization(type_name: &str) -> UnifiedTypeInfo {

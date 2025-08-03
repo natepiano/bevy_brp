@@ -6,8 +6,8 @@
 use serde_json::Value;
 
 use super::flow_types::FormatRecoveryResult;
+use super::format_correction_fields::FormatCorrectionField;
 use super::{CorrectionInfo, FormatCorrection, FormatCorrectionStatus};
-use crate::brp_tools::brp_client::format_correction_fields::FormatCorrectionField;
 use crate::brp_tools::brp_client::types::{
     BrpClientError, FormatDiscoveryError, ResponseStatus, ResultStructBrpExt,
 };

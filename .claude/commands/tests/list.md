@@ -1,7 +1,7 @@
 # Discovery Tests
 
 ## Objective
-Validate discovery functionality for BRP-enabled applications and examples in the workspace.
+Validate list functionality for BRP-enabled applications and examples in the workspace.
 
 ## Test Steps
 
@@ -12,18 +12,18 @@ Validate discovery functionality for BRP-enabled applications and examples in th
 - Check for presence of `test_duplicate_app` (may appear in multiple directories)
 - Verify `bevy_brp_mcp` is NOT included (should be filtered out)
 
-### 2. List Bevy Examples  
+### 2. List Bevy Examples
 - Execute `mcp__brp__brp_list_bevy_examples`
 - Verify examples are organized by package
 - Check for presence of `extras_plugin` and `no_extras_plugin` examples
 
 ### 3. List BRP Apps
-- Execute `mcp__brp__brp_list_brp_apps` 
+- Execute `mcp__brp__brp_list_brp_apps`
 - Verify only BRP-enabled apps are listed
 - Check build status and BRP confirmation
 
 ## Expected Results
-- ✅ All discovery methods return valid responses
+- ✅ All list methods return valid responses
 - ✅ Expected apps found: `test_extras_plugin_app` and `test_duplicate_app` (bevy_brp_mcp excluded)
 - ✅ Both `extras_plugin` and `no_extras_plugin` found in examples list
 - ✅ Response formats are consistent and complete
@@ -31,4 +31,4 @@ Validate discovery functionality for BRP-enabled applications and examples in th
 - ✅ Build status information is accurate
 
 ## Failure Criteria
-STOP if: Discovery methods return errors, expected apps/examples are missing, or response formats are malformed.
+STOP if: List methods return errors, expected apps/examples are missing, or response formats are malformed.

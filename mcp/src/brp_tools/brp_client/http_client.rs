@@ -10,7 +10,6 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use super::constants::{BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
-use super::format_correction_fields::FormatCorrectionField;
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
@@ -180,7 +179,7 @@ impl BrpHttpClient {
                 if let Some(entity) = ParameterName::Entity.get_from(params) {
                     context_info.push(format!("Entity: {entity}"));
                 }
-                if let Some(component) = FormatCorrectionField::Component.get_str_from(params) {
+                if let Some(component) = ParameterName::Component.get_str_from(params) {
                     context_info.push(format!("Component: {component}"));
                 }
                 if let Some(path) = ParameterName::Path.get_str_from(params) {
