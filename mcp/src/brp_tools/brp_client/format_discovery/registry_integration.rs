@@ -10,7 +10,7 @@ use tracing::debug;
 use super::adapters;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{self, Port, ResponseStatus};
-use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
+use crate::tool::BrpMethod;
 
 /// Find type in registry response (handles various response formats)
 fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
@@ -64,86 +64,6 @@ fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Opt
 
     debug!("Registry Integration: Type '{type_name}' not found in any expected format");
     None
-}
-
-/// Get registry type information for format discovery methods
-pub async fn get_registry_type_info(
-    method: BrpMethod,
-    params: &serde_json::Value,
-    port: Port,
-) -> std::collections::HashMap<String, UnifiedTypeInfo> {
-    // This function is only called for methods that support format discovery
-
-    debug!(
-        "get_registry_type_info: Method {} supports format discovery, extracting component types",
-        method.as_str()
-    );
-
-    let type_names = extract_type_names_from_params(method, params);
-    debug!(
-        "get_registry_type_info: Extracted {} type names: {type_names:?}",
-        type_names.len()
-    );
-
-    if type_names.is_empty() {
-        debug!("get_registry_type_info: No type names found, skipping pre-fetching");
-        return std::collections::HashMap::new();
-    }
-
-    debug!(
-        "get_registry_type_info: Pre-fetching type information for {} types: {type_names:?}",
-        type_names.len()
-    );
-
-    let registry_results = check_multiple_types_registry_status(&type_names, port).await;
-    debug!(
-        "get_registry_type_info: Registry results: {} successful lookups",
-        registry_results
-            .iter()
-            .filter(|(_, info)| info.is_some())
-            .count()
-    );
-
-    registry_results
-        .into_iter()
-        .filter_map(|(name, info)| info.map(|i| (name, i)))
-        .collect()
-}
-
-/// Extract type names (components/resources) from BRP request parameters
-fn extract_type_names_from_params(method: BrpMethod, params: &serde_json::Value) -> Vec<String> {
-    debug!(
-        "extract_type_names_from_params: Processing method {} with params keys: {params_keys:?}",
-        method.as_str(),
-        params_keys = params
-            .as_object()
-            .map(|obj| obj.keys().collect::<Vec<_>>())
-            .unwrap_or_default()
-    );
-
-    // For spawn/insert operations, look for "components" (plural)
-    if let Some(components) = ParameterName::Components.get_object_from(params) {
-        let types: Vec<String> = components.keys().cloned().collect();
-        debug!("extract_type_names_from_params: Found components (plural): {types:?}");
-        return types;
-    }
-
-    // For mutate operations, look for "component" (singular)
-    if let Some(component) = ParameterName::Component.get_str_from(params) {
-        let types = vec![component.to_string()];
-        debug!("extract_type_names_from_params: Found component (singular): {types:?}");
-        return types;
-    }
-
-    // For resource operations, look for "resource"
-    if let Some(resource) = ParameterName::Resource.get_str_from(params) {
-        let types = vec![resource.to_string()];
-        debug!("extract_type_names_from_params: Found resource: {types:?}");
-        return types;
-    }
-
-    debug!("extract_type_names_from_params: No component/resource types found in params");
-    Vec::new()
 }
 
 /// Batch check multiple types in a single registry call

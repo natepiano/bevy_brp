@@ -58,6 +58,7 @@ mod recovery_engine;
 pub mod registry_integration;
 mod result_transformer;
 mod transformers;
+mod type_discovery_context;
 pub mod types;
 mod unified_types;
 
