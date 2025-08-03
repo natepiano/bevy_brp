@@ -1,0 +1,233 @@
+[
+  {
+    "id": "impl_1",
+    "content": "Add RegistryPlusExtras variant to DiscoverySource enum in unified_types.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_2",
+    "content": "Run cargo build and fix any enum-related errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_3",
+    "content": "Add port field to TypeDiscoveryContext struct",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_4",
+    "content": "Update fetch_from_registry constructor to store port field",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_5",
+    "content": "Run cargo build and fix struct/constructor errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_6",
+    "content": "Add required imports to type_discovery_context.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_7",
+    "content": "Add from_registry_info() constructor to TypeDiscoveryContext",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_8",
+    "content": "Run cargo build after adding constructor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_9",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_10",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_11",
+    "content": "Move discover_type_format logic into discover_type_via_extras method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_12",
+    "content": "Move process_discovery_response as private method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_13",
+    "content": "Move find_type_in_response as private method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_14",
+    "content": "Run cargo build after moving discovery methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_15",
+    "content": "Implement merge_discovered_info helper method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_16",
+    "content": "Implement enrich_with_extras() public method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_17",
+    "content": "Run cargo build after implementing enrichment methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_18",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_19",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_20",
+    "content": "Update Level 2 in recovery_engine.rs to use TypeDiscoveryContext",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_21",
+    "content": "Update extras_integration.rs to delegate to TypeDiscoveryContext",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_22",
+    "content": "Run cargo build after updating integration points",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_23",
+    "content": "Add unit tests for from_registry_info constructor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_24",
+    "content": "Add unit test for enrich_with_extras connection failure",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_25",
+    "content": "Add unit test for discovery source tracking",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_26",
+    "content": "Add unit test for existing constructor with port",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl_27",
+    "content": "Run cargo build after adding tests",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "val_1",
+    "content": "Run cargo +nightly fmt",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "val_2",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "val_3",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "review_1",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "review_2",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "review_3",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
