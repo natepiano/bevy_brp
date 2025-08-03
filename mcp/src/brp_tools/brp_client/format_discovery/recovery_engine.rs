@@ -15,9 +15,9 @@ use tracing::debug;
 
 use super::detection::ErrorPattern;
 use super::discovery_context::DiscoveryContext;
-use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::format_correction_fields::FormatCorrectionField;
 use super::transformers::TransformerRegistry;
+use super::types::{CorrectionResult, FormatRecoveryResult};
 use super::unified_types::{
     CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
 };

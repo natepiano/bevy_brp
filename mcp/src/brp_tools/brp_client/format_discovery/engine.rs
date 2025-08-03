@@ -51,8 +51,8 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::discovery_context::DiscoveryContext;
-use super::flow_types::{CorrectionResult, FormatRecoveryResult};
 use super::recovery_engine::{self, LevelResult};
+use super::types::{CorrectionResult, FormatRecoveryResult};
 use super::unified_types::{DiscoverySource, UnifiedTypeInfo};
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
 use crate::error::{Error, Result};
@@ -67,6 +67,7 @@ pub struct FormatDiscoveryEngine {
     port:           Port,
     params:         Value,
     original_error: BrpClientError,
+    type_names:     Vec<String>,
 }
 
 impl FormatDiscoveryEngine {
@@ -91,28 +92,29 @@ impl FormatDiscoveryEngine {
             )
         })?;
 
+        // Extract type names once for reuse
+        let type_names = extract_type_names_from_params(method, &params);
+
         Ok(Self {
             method,
             port,
             params,
             original_error,
+            type_names,
         })
     }
 
+    /// Entry point for the work of format discovery
     pub async fn attempt_discovery_with_recovery(&self) -> Result<FormatRecoveryResult> {
-        // if we're here, it's because we DID have an error, however format recovery can only handle
-        // format errors, the rest are "Not Recoverable"
+        // Check if we can recover from this error type
         if !self.original_error.is_format_error() {
             return Ok(FormatRecoveryResult::NotRecoverable {
                 corrections: Vec::new(),
             });
         }
 
-        // Extract type names once for reuse
-        let type_names = extract_type_names_from_params(self.method, &self.params);
-
         // Early exit if no types to process
-        if type_names.is_empty() {
+        if self.type_names.is_empty() {
             debug!("FormatDiscoveryEngine: No type names found in parameters, cannot recover");
             return Ok(FormatRecoveryResult::NotRecoverable {
                 corrections: Vec::new(),
@@ -120,23 +122,11 @@ impl FormatDiscoveryEngine {
         }
 
         // Create discovery context
-        let type_context =
-            DiscoveryContext::fetch_from_registry(self.port, type_names.clone()).await?;
+        let discovery_context =
+            DiscoveryContext::fetch_from_registry(self.port, self.type_names.clone()).await?;
 
-        // Execute the discovery process
-        let flow_result = self
-            .attempt_format_discovery_with_type_infos(type_context.as_hashmap(), type_names)
-            .await;
+        let registry_type_info = discovery_context.as_hashmap();
 
-        Ok(flow_result)
-    }
-
-    /// Execute format discovery using the 3-level decision tree
-    async fn attempt_format_discovery_with_type_infos(
-        &self,
-        registry_type_info: &HashMap<String, UnifiedTypeInfo>,
-        type_names: Vec<String>,
-    ) -> FormatRecoveryResult {
         debug!(
             "FormatDiscoveryEngine: Starting multi-level discovery for method '{}' with {} pre-fetched type info(s)",
             self.method,
@@ -145,20 +135,21 @@ impl FormatDiscoveryEngine {
 
         debug!(
             "FormatDiscoveryEngine: Found {} type names to process",
-            type_names.len()
+            self.type_names.len()
         );
 
         // Level 1 (added back): Check for serialization issues
         if let Some(educational_message) =
-            self.check_serialization_support(&type_names, registry_type_info)
+            self.check_serialization_support(&self.type_names, registry_type_info)
         {
             debug!("FormatDiscoveryEngine: Level 1 detected serialization issue");
-            let corrections = type_names
-                .into_iter()
+            let corrections = self
+                .type_names
+                .iter()
                 .map(|type_name| {
                     let type_info =
                         registry_type_info
-                            .get(&type_name)
+                            .get(type_name)
                             .cloned()
                             .unwrap_or_else(|| {
                                 UnifiedTypeInfo::new(
@@ -172,18 +163,18 @@ impl FormatDiscoveryEngine {
                     }
                 })
                 .collect();
-            return self.build_recovery_success(corrections).await;
+            return Ok(self.build_recovery_success(corrections).await);
         }
 
         // Level 2: Direct Discovery via bevy_brp_extras
         debug!("FormatDiscoveryEngine: Beginning Level 2 - Direct discovery");
         let level_2_type_infos = match self
-            .execute_level_2_direct_discovery(&type_names, registry_type_info)
+            .execute_level_2_direct_discovery(&self.type_names, registry_type_info)
             .await
         {
             LevelResult::Success(corrections) => {
                 debug!("FormatDiscoveryEngine: Level 2 succeeded with direct discovery");
-                return self.build_recovery_success(corrections).await;
+                return Ok(self.build_recovery_success(corrections).await);
             }
             LevelResult::Continue(type_infos) => {
                 debug!(
@@ -197,16 +188,16 @@ impl FormatDiscoveryEngine {
         // Level 3: Pattern-Based Transformations
         debug!("FormatDiscoveryEngine: Level 3 - Pattern-based transformations");
 
-        match self.execute_level_3_pattern_transformations(&type_names, &level_2_type_infos) {
+        match self.execute_level_3_pattern_transformations(&self.type_names, &level_2_type_infos) {
             LevelResult::Success(corrections) => {
                 debug!("FormatDiscoveryEngine: Level 3 succeeded with pattern-based corrections");
-                self.build_recovery_success(corrections).await
+                Ok(self.build_recovery_success(corrections).await)
             }
             LevelResult::Continue(_) => {
                 debug!("FormatDiscoveryEngine: All levels exhausted, no recovery possible");
-                FormatRecoveryResult::NotRecoverable {
+                Ok(FormatRecoveryResult::NotRecoverable {
                     corrections: Vec::new(),
-                }
+                })
             }
         }
     }

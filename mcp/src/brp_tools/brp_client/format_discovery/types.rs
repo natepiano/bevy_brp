@@ -1,4 +1,63 @@
 //! Type definitions for format discovery system
+//!
+//! This module contains all type definitions for the format discovery system,
+//! including flow control types that manage the recovery process and component
+//! field types for pattern matching.
+
+use super::{CorrectionInfo, UnifiedTypeInfo};
+use crate::brp_tools::ResponseStatus;
+
+/// Result of format error recovery attempt in the exception path
+#[derive(Debug, Clone)]
+pub enum FormatRecoveryResult {
+    /// Recovery successful with corrections applied
+    Recovered {
+        corrected_result: ResponseStatus,
+        corrections:      Vec<CorrectionInfo>,
+    },
+    /// Recovery not possible but guidance available
+    NotRecoverable { corrections: Vec<CorrectionInfo> },
+    /// Recovery attempted but correction was insufficient
+    CorrectionFailed {
+        retry_error: ResponseStatus,
+        corrections: Vec<CorrectionInfo>,
+    },
+}
+
+impl FormatRecoveryResult {
+    /// Transform this recovery result into a typed result for the client
+    ///
+    /// This method converts the internal recovery result into the final typed
+    /// response expected by the BRP client, including error enhancement and
+    /// correction metadata.
+    pub fn into_typed_result<R>(
+        self,
+        original_error: &crate::brp_tools::BrpClientError,
+    ) -> crate::error::Result<R>
+    where
+        R: crate::brp_tools::brp_client::types::ResultStructBrpExt<
+                Args = (
+                    Option<serde_json::Value>,
+                    Option<Vec<serde_json::Value>>,
+                    Option<crate::brp_tools::brp_client::FormatCorrectionStatus>,
+                ),
+            >,
+    {
+        super::result_transformer::transform_recovery_result(self, original_error)
+    }
+}
+
+/// Result of individual correction attempts during recovery
+#[derive(Debug, Clone)]
+pub enum CorrectionResult {
+    /// Correction was successfully applied
+    Corrected { correction_info: CorrectionInfo },
+    /// Correction could not be applied but metadata was discovered
+    CannotCorrect {
+        type_info: UnifiedTypeInfo,
+        reason:    String,
+    },
+}
 
 /// Represents color component fields
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

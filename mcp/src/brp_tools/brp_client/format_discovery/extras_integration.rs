@@ -3,8 +3,8 @@
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::flow_types::CorrectionResult;
 use super::format_correction_fields::FormatCorrectionField;
+use super::types::CorrectionResult;
 use super::unified_types::{CorrectionInfo, CorrectionMethod, UnifiedTypeInfo};
 
 /// Create correction from discovered type info
