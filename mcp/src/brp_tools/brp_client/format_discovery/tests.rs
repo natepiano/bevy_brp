@@ -232,7 +232,7 @@ fn test_format_correction_rich_fields() {
 
 #[test]
 fn test_type_discovery_response_to_unified_type_info_conversion() {
-    use super::adapters::from_type_discovery_response_json;
+    use super::unified_types::UnifiedTypeInfo;
 
     // Simulate a TypeDiscoveryResponse JSON with full metadata
     let discovery_response = json!({
@@ -263,7 +263,7 @@ fn test_type_discovery_response_to_unified_type_info_conversion() {
         }
     });
 
-    let unified_info = from_type_discovery_response_json(&discovery_response);
+    let unified_info = UnifiedTypeInfo::from_discovery_response(&discovery_response);
     assert!(unified_info.is_some(), "Conversion should succeed");
 
     let info = unified_info.unwrap();
@@ -317,7 +317,7 @@ fn test_type_discovery_response_to_unified_type_info_conversion() {
 
 #[test]
 fn test_mutation_paths_preservation_edge_cases() {
-    use super::adapters::from_type_discovery_response_json;
+    use super::unified_types::UnifiedTypeInfo;
 
     // Test with minimal TypeDiscoveryResponse (edge case)
     let minimal_response = json!({
@@ -327,7 +327,7 @@ fn test_mutation_paths_preservation_edge_cases() {
         "has_deserialize": false
     });
 
-    let unified_info = from_type_discovery_response_json(&minimal_response);
+    let unified_info = UnifiedTypeInfo::from_discovery_response(&minimal_response);
     assert!(unified_info.is_some(), "Minimal conversion should succeed");
 
     let info = unified_info.unwrap();
@@ -351,7 +351,7 @@ fn test_mutation_paths_preservation_edge_cases() {
         }
     });
 
-    let unified_info = from_type_discovery_response_json(&complex_response);
+    let unified_info = UnifiedTypeInfo::from_discovery_response(&complex_response);
     assert!(unified_info.is_some(), "Complex conversion should succeed");
 
     let info = unified_info.unwrap();
@@ -382,7 +382,7 @@ fn test_mutation_paths_preservation_edge_cases() {
 
 #[test]
 fn test_registry_schema_to_unified_type_info_conversion() {
-    use super::adapters::from_registry_schema;
+    use super::unified_types::UnifiedTypeInfo;
 
     // Simulate registry schema response
     let schema_data = json!({
@@ -415,7 +415,8 @@ fn test_registry_schema_to_unified_type_info_conversion() {
         }
     });
 
-    let unified_info = from_registry_schema("bevy_render::color::Color", &schema_data);
+    let unified_info =
+        UnifiedTypeInfo::from_registry_schema("bevy_render::color::Color", &schema_data);
 
     // Verify type information from registry
     assert_eq!(unified_info.type_name, "bevy_render::color::Color");

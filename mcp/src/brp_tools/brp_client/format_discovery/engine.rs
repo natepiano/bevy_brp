@@ -54,7 +54,7 @@ use super::discovery_context::DiscoveryContext;
 use super::format_correction_fields::FormatCorrectionField;
 use super::recovery_engine;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::{Correction, CorrectionInfo, CorrectionMethod, DiscoverySource};
+use super::types::{Correction, CorrectionInfo, CorrectionMethod};
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
@@ -248,8 +248,7 @@ impl FormatDiscoveryEngine {
                         Self::extract_component_value(self.method, &self.params, type_name);
 
                     // Create a correction from the discovered type information with original value
-                    let mut discovered_info_mut = discovered_info.clone();
-                    let correction = discovered_info_mut.to_correction(original_component_value);
+                    let correction = discovered_info.to_correction(original_component_value);
                     corrections.push(correction);
                 }
             } else {
@@ -459,25 +458,20 @@ impl FormatDiscoveryEngine {
                         self.method.as_str()
                     );
 
-                    let corrections = self
-                        .type_names
-                        .iter()
-                        .map(|type_name| {
-                            let type_info = registry_type_info
-                                .get(type_name)
-                                .cloned()
-                                .unwrap_or_else(|| {
-                                    UnifiedTypeInfo::new(
-                                        type_name.clone(),
-                                        DiscoverySource::TypeRegistry,
-                                    )
-                                });
-                            Correction::Uncorrectable {
-                                type_info,
-                                reason: educational_message.clone(),
-                            }
-                        })
-                        .collect();
+                    let corrections =
+                        self.type_names
+                            .iter()
+                            .map(|type_name| {
+                                let type_info =
+                                    registry_type_info.get(type_name).cloned().unwrap_or_else(
+                                        || UnifiedTypeInfo::for_pattern_matching(type_name.clone()),
+                                    );
+                                Correction::Uncorrectable {
+                                    type_info,
+                                    reason: educational_message.clone(),
+                                }
+                            })
+                            .collect();
                     return Some(corrections);
                 }
             }
@@ -535,12 +529,8 @@ fn can_retry_with_corrections(corrections: &[CorrectionInfo]) -> bool {
 
 /// Build a corrected value from type info for guidance
 fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: BrpMethod) -> Value {
-    // Clone the type info so we can call ensure_examples on it
-    let mut type_info_copy = type_info.clone();
-    type_info_copy.ensure_examples();
-
     // Check if we have examples for this method
-    if let Some(example) = type_info_copy.format_info.examples.get(method.as_str()) {
+    if let Some(example) = type_info.format_info.examples.get(method.as_str()) {
         return example.clone();
     }
 
@@ -549,8 +539,8 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: Brp
         method,
         BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
     ) {
-        // Check if we have a mutate example after ensure_examples
-        if let Some(mutate_example) = type_info_copy.format_info.examples.get("mutate") {
+        // Check if we have a mutate example
+        if let Some(mutate_example) = type_info.format_info.examples.get("mutate") {
             return mutate_example.clone();
         }
 
@@ -690,7 +680,6 @@ mod tests {
 
     use serde_json::json;
 
-    use super::super::types::{DiscoverySource, TypeCategory};
     use super::*;
 
     async fn create_test_engine(method: BrpMethod, error_message: &str) -> FormatDiscoveryEngine {
@@ -715,21 +704,21 @@ mod tests {
     }
 
     fn create_type_info_without_serialization(type_name: &str) -> UnifiedTypeInfo {
-        let mut info = UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::TypeRegistry);
-        info.registry_status.in_registry = true;
-        info.serialization.has_serialize = false;
-        info.serialization.has_deserialize = false;
-        info.serialization.brp_compatible = false;
-        info
+        let mut type_info = UnifiedTypeInfo::for_pattern_matching(type_name.to_string());
+        type_info.registry_status.in_registry = true;
+        type_info.serialization.has_serialize = false;
+        type_info.serialization.has_deserialize = false;
+        type_info.serialization.brp_compatible = false;
+        type_info
     }
 
     fn create_type_info_with_serialization(type_name: &str) -> UnifiedTypeInfo {
-        let mut info = UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::TypeRegistry);
-        info.registry_status.in_registry = true;
-        info.serialization.has_serialize = true;
-        info.serialization.has_deserialize = true;
-        info.serialization.brp_compatible = true;
-        info
+        let mut type_info = UnifiedTypeInfo::for_pattern_matching(type_name.to_string());
+        type_info.registry_status.in_registry = true;
+        type_info.serialization.has_serialize = true;
+        type_info.serialization.has_deserialize = true;
+        type_info.serialization.brp_compatible = true;
+        type_info
     }
 
     #[tokio::test]

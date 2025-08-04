@@ -17,8 +17,8 @@ use super::engine::LevelResult;
 use super::format_correction_fields::FormatCorrectionField;
 use super::transformers::TransformerRegistry;
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
-    TransformationResult, TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
+    TypeCategory,
 };
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::brp_client::BrpClientError;
@@ -174,9 +174,9 @@ fn handle_mutation_specific_errors(
             );
 
             // Use the existing type_info if available, or create a new one
-            let final_type_info = type_info.cloned().unwrap_or_else(|| {
-                UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching)
-            });
+            let final_type_info = type_info
+                .cloned()
+                .unwrap_or_else(|| UnifiedTypeInfo::for_pattern_matching(type_name.to_string()));
 
             Some(Correction::Uncorrectable {
                 type_info: final_type_info,
@@ -356,10 +356,7 @@ fn transform_result_to_correction(result: TransformationResult, type_name: &str)
 
 /// Create basic type info for transformer use
 fn create_basic_type_info(type_name: &str) -> UnifiedTypeInfo {
-    super::unified_types::UnifiedTypeInfo::new(
-        type_name.to_string(),
-        DiscoverySource::PatternMatching,
-    )
+    UnifiedTypeInfo::for_pattern_matching(type_name.to_string())
 }
 
 /// Fallback to the original pattern-based correction for well-known types
@@ -373,14 +370,7 @@ fn fallback_pattern_based_correction(type_name: &str) -> Option<Correction> {
         {
             debug!("Level 3: Detected math type '{t}', providing array format guidance");
 
-            let mut type_info =
-                UnifiedTypeInfo::new(t.to_string(), DiscoverySource::PatternMatching);
-
-            // Set type category
-            type_info.type_category = TypeCategory::MathType;
-
-            // Ensure examples are generated
-            type_info.ensure_examples();
+            let type_info = UnifiedTypeInfo::for_math_type(t.to_string());
 
             let reason = if t.contains("Quat") {
                 format!(

@@ -30,7 +30,6 @@
 //! - Last resort before giving up on format correction
 //! - Provides minimal hints when successfulå
 
-mod adapters;
 mod constants;
 mod detection;
 mod discovery_context;

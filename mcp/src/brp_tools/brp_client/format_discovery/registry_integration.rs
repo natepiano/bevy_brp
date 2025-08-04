@@ -7,7 +7,6 @@
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::adapters;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{self, Port, ResponseStatus};
 use crate::tool::BrpMethod;
@@ -106,7 +105,7 @@ pub async fn check_multiple_types_registry_status(
             for type_name in type_names {
                 if let Some(schema_data) = find_type_in_registry_response(type_name, &response_data)
                 {
-                    let type_info = adapters::from_registry_schema(type_name, &schema_data);
+                    let type_info = UnifiedTypeInfo::from_registry_schema(type_name, &schema_data);
                     results.push((type_name.clone(), Some(type_info)));
                 } else {
                     debug!("Registry Integration: Type '{type_name}' not found in batch response");

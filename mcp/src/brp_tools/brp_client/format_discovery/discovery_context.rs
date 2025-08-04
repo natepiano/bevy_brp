@@ -31,9 +31,9 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use super::super::{BrpClient, ResponseStatus};
+use super::registry_integration;
 use super::types::DiscoverySource;
 use super::unified_types::UnifiedTypeInfo;
-use super::{adapters, registry_integration};
 use crate::brp_tools::Port;
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -218,8 +218,8 @@ impl DiscoveryContext {
         }, |type_data| {
             debug!("TypeDiscoveryContext: Found type data for '{type_name}'");
 
-            // Use the schema adapter to convert TypeDiscoveryResponse → UnifiedTypeInfo
-            if let Some(unified_info) = adapters::from_type_discovery_response_json(type_data) {
+            // Use the constructor to convert TypeDiscoveryResponse → UnifiedTypeInfo
+            if let Some(unified_info) = UnifiedTypeInfo::from_discovery_response(type_data) {
                 debug!(
                     "TypeDiscoveryContext: Successfully converted to UnifiedTypeInfo with {} mutation paths, {} examples",
                     unified_info.format_info.mutation_paths.len(),

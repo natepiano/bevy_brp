@@ -5,7 +5,7 @@ use tracing::debug;
 
 use super::super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use super::super::detection::ErrorPattern;
-use super::super::types::{DiscoverySource, TransformationResult, TypeCategory};
+use super::super::types::TransformationResult;
 use super::super::unified_types::UnifiedTypeInfo;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
@@ -63,9 +63,7 @@ impl MathTypeTransformer {
     /// Use `UnifiedTypeInfo` to transform math types
     fn try_unified_transform(type_name: &str, value: &Value) -> Option<TransformationResult> {
         // Create a UnifiedTypeInfo for the math type
-        let mut type_info =
-            UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching);
-        type_info.type_category = TypeCategory::MathType;
+        let type_info = UnifiedTypeInfo::for_math_type(type_name.to_string());
 
         // Try transformation using UnifiedTypeInfo
         type_info.transform_value(value).map(|transformed| {
@@ -168,22 +166,7 @@ impl MathTypeTransformer {
         );
 
         // First try using UnifiedTypeInfo for Transform
-        let mut type_info = UnifiedTypeInfo::new(
-            actual_type_name.to_string(),
-            DiscoverySource::PatternMatching,
-        );
-        type_info.type_category = TypeCategory::Struct;
-
-        // Add child types for Transform
-        type_info
-            .child_types
-            .insert("translation".to_string(), "glam::Vec3".to_string());
-        type_info
-            .child_types
-            .insert("rotation".to_string(), "glam::Quat".to_string());
-        type_info
-            .child_types
-            .insert("scale".to_string(), "glam::Vec3".to_string());
+        let type_info = UnifiedTypeInfo::for_transform_type(actual_type_name.to_string());
 
         if let Some(transformed) = type_info.transform_value(transform_data) {
             let hint = format!("`{actual_type_name}` Transform converted to proper array format");

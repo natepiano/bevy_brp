@@ -4,9 +4,7 @@ use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::types::{
-    DiscoverySource, EnumInfo, EnumVariant, TransformationResult, TypeCategory,
-};
+use super::super::types::{EnumInfo, TransformationResult};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
@@ -265,27 +263,7 @@ impl EnumVariantTransformer {
         let variants = Self::extract_enum_variants(error_message);
 
         // Create a UnifiedTypeInfo with the extracted variants
-        let mut type_info =
-            UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching);
-
-        // Set it as an enum type
-        type_info.type_category = TypeCategory::Enum;
-
-        // Add enum info if we have variants
-        if !variants.is_empty() {
-            type_info.enum_info = Some(EnumInfo {
-                variants: variants
-                    .into_iter()
-                    .map(|name| EnumVariant {
-                        name,
-                        variant_type: "Unit".to_string(),
-                    })
-                    .collect(),
-            });
-        }
-
-        // Ensure examples are generated
-        type_info.ensure_examples();
+        let type_info = UnifiedTypeInfo::for_enum_type(type_name.to_string(), variants);
 
         // Get the enum example or use fallback
         let format_info = if let Some(example) = type_info.get_example("mutate") {
