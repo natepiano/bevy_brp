@@ -33,6 +33,12 @@ This file contains an array of test configurations with the following structure:
 
 **IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches PARALLEL_TESTS.
 
+**CRITICAL COUNTING INSTRUCTION**: You MUST use the following command to count tests accurately:
+```bash
+jq '. | length' .claude/commands/test_config.json
+```
+Use this exact count in your final summary. Do NOT manually count or assume any number.
+
 ## Shutdown Validation
 
 All tests that launch apps must validate the shutdown method matches the expected behavior:
@@ -283,7 +289,8 @@ After the Task completes, simply present the test results as returned by the sub
 **CRITICAL PARALLEL EXECUTION REQUIREMENT**: When executing multiple tests "at a time", you MUST invoke multiple Task tools in a SINGLE message. Sequential execution (one Task per message) is NOT parallel execution.
 
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
-   - **Count the test objects** in the JSON array to determine the actual total number of tests
+   - **FIRST**: Run `jq '. | length' .claude/commands/test_config.json` to get the exact test count
+   - **USE THIS COUNT** in all summaries and reports - do NOT manually count
 2. **Initialize Execution State**:
    - Create queue of all test configurations
    - Track running tests (max PARALLEL_TESTS at a time)
