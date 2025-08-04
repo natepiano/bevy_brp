@@ -1,192 +1,135 @@
 [
   {
-    "id": "phase1-infra-1",
-    "content": "Phase 1: Add regenerate_all_examples() private method to UnifiedTypeInfo",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "id": "1",
+    "content": "Add get_type() method to DiscoveryContext",
+    "status": "completed",
+    "priority": "high"
   },
   {
-    "id": "phase1-infra-2",
-    "content": "Phase 1: Remove redundant generate_insert_example() method from UnifiedTypeInfo",
+    "id": "2",
+    "content": "Remove as_hashmap() method from DiscoveryContext",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase1-infra-3",
-    "content": "Phase 1: Add debug assertion to to_correction() and remove ensure_examples() call",
+    "id": "3",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors after removing as_hashmap()",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase1-build",
-    "content": "Run cargo build and fix any Phase 1 errors",
+    "id": "4",
+    "content": "Update LevelResult enum - change Continue variant from HashMap to String",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-adapter-1",
-    "content": "Phase 2: Update from_type_discovery_response_json to call regenerate_all_examples()",
+    "id": "5",
+    "content": "Update engine.rs attempt_discovery_with_recovery to handle String Continue variant",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-adapter-2",
-    "content": "Phase 2: Update from_registry_schema to call regenerate_all_examples()",
+    "id": "6",
+    "content": "Update Level 2 execute_level_2_direct_discovery to return String in Continue",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-build-1",
-    "content": "Run cargo build and fix adapter errors",
+    "id": "7",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors after LevelResult changes",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-recovery",
-    "content": "Phase 2: Update fallback_pattern_based_correction in recovery_engine.rs",
+    "id": "8",
+    "content": "Add transformer registry singleton function to transformers.rs",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-enum",
-    "content": "Phase 2: Update handle_enum_unit_variant_error in enum_variant.rs",
+    "id": "9",
+    "content": "Move execute_level_3_pattern_transformations from recovery_engine.rs to engine.rs",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-build-2",
-    "content": "Run cargo build and fix recovery/enum errors",
+    "id": "10",
+    "content": "Update Level 3 implementation to use self.discovery_context.get_type() instead of HashMap",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-tests",
-    "content": "Phase 2: Update tests in unified_types.rs to use regenerate_all_examples()",
+    "id": "11",
+    "content": "Move all helper functions from recovery_engine.rs to engine.rs as private methods",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase2-build-3",
-    "content": "Run cargo build and verify Phase 2 complete",
+    "id": "12",
+    "content": "Update Level 3 to use transformer_registry() singleton instead of local creation",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "clippy-1",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "id": "13",
+    "content": "Remove recovery_engine.rs dependency from engine.rs",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "clippy-fix-1",
+    "id": "14",
+    "content": "Delete recovery_engine.rs file completely",
+    "status": "pending",
+    "priority": "high"
+  },
+  {
+    "id": "15",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors after recovery_engine deletion",
+    "status": "pending",
+    "priority": "high"
+  },
+  {
+    "id": "16",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "high"
+  },
+  {
+    "id": "17",
     "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase3-remove",
-    "content": "Phase 3: Remove ensure_examples() method from UnifiedTypeInfo",
+    "id": "18",
+    "content": "Run `cargo nextest run`",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "phase3-signature",
-    "content": "Phase 3: Change to_correction signature from &mut self to &self",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3-engine-1",
-    "content": "Phase 3: Update engine.rs line ~252 to remove clone and mut",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3-engine-2",
-    "content": "Phase 3: Simplify build_corrected_value_from_type_info in engine.rs",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3-build",
-    "content": "Run cargo build and fix all Phase 3 errors",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "clippy-2",
-    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "clippy-fix-2",
-    "content": "Fix all final clippy issues",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "fmt",
-    "content": "Run cargo +nightly fmt",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "tests",
-    "content": "Run cargo nextest run",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "test-review",
+    "id": "19",
     "content": "STOP if test failures - review with user",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "subagent-stop",
+    "id": "20",
     "content": "Subagent: STOP and return control",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "code-review",
+    "id": "21",
     "content": "Main: Task new subagent for code review (read-only)",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   },
   {
-    "id": "review-user",
+    "id": "22",
     "content": "Review suggestions with user",
     "status": "pending",
-    "priority": "high",
-    "notes": ""
+    "priority": "high"
   }
 ]
 EOF < /dev/null
