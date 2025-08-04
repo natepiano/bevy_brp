@@ -66,8 +66,8 @@ use super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
 use super::transformers;
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
-    TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
+    TransformationResult, TypeCategory,
 };
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
@@ -179,13 +179,20 @@ impl DiscoveryEngine {
             debug!("Level 2: Enrichment failed: {}", e);
         }
 
-        // Process each type into corrections - value is already in UnifiedTypeInfo
+        // Process only types that were enriched with extras information
         let corrections: Vec<Correction> = self
             .discovery_context
             .types()
+            .filter(|type_info| {
+                // Only process types that got information from extras
+                matches!(
+                    type_info.discovery_source,
+                    DiscoverySource::DirectDiscovery | DiscoverySource::RegistryPlusExtras
+                )
+            })
             .map(|type_info| {
                 debug!(
-                    "Level 2: Found enriched type information for '{}'",
+                    "Level 2: Processing extras-enriched type '{}'",
                     type_info.type_name
                 );
                 type_info.to_correction_for_method(self.method)
@@ -194,13 +201,13 @@ impl DiscoveryEngine {
 
         if corrections.is_empty() {
             debug!(
-                "Level 2: Direct discovery complete, proceeding to Level 3 with {} type infos",
+                "Level 2: No extras-based corrections found, proceeding to Level 3 with {} type infos",
                 self.discovery_context.type_names().len()
             );
             None
         } else {
             debug!(
-                "Level 2: Found {} corrections from direct discovery",
+                "Level 2: Found {} corrections from extras discovery",
                 corrections.len()
             );
             Some(corrections)
