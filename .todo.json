@@ -1,0 +1,135 @@
+[
+  {
+    "id": "1",
+    "content": "Update UnifiedTypeInfo struct to include original_value field",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build && cargo +nightly fmt after UnifiedTypeInfo changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Update UnifiedTypeInfo constructors to accept optional original_value parameter",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run cargo build && cargo +nightly fmt after constructor updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Add extract_types_with_values method to DiscoveryContext (private)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run cargo build && cargo +nightly fmt after adding extract method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Implement from_params constructor in DiscoveryContext",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build && cargo +nightly fmt after from_params implementation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Add helper methods (types(), type_names()) to DiscoveryContext",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo build && cargo +nightly fmt after helper methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Update to_correction_for_method to use self.original_value first",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run cargo build && cargo +nightly fmt after to_correction_for_method update",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
