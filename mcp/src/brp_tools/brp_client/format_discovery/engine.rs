@@ -54,8 +54,8 @@ use super::discovery_context::DiscoveryContext;
 use super::format_correction_fields::FormatCorrectionField;
 use super::recovery_engine;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::CorrectionResult;
-use super::unified_types::{CorrectionInfo, CorrectionMethod, DiscoverySource, UnifiedTypeInfo};
+use super::types::{CorrectionInfo, CorrectionMethod, CorrectionResult, DiscoverySource};
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
@@ -792,7 +792,7 @@ mod tests {
 
     use serde_json::json;
 
-    use super::super::unified_types::{DiscoverySource, TypeCategory};
+    use super::super::types::{DiscoverySource, TypeCategory};
     use super::*;
 
     async fn create_test_engine(method: BrpMethod, error_message: &str) -> FormatDiscoveryEngine {

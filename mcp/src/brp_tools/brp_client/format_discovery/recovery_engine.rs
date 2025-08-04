@@ -16,10 +16,11 @@ use super::detection::ErrorPattern;
 use super::engine::LevelResult;
 use super::format_correction_fields::FormatCorrectionField;
 use super::transformers::TransformerRegistry;
-use super::types::CorrectionResult;
-use super::unified_types::{
-    CorrectionInfo, CorrectionMethod, TransformationResult, TypeCategory, UnifiedTypeInfo,
+use super::types::{
+    CorrectionInfo, CorrectionMethod, CorrectionResult, DiscoverySource, EnumInfo, EnumVariant,
+    TransformationResult, TypeCategory,
 };
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::brp_client::BrpClientError;
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
@@ -174,10 +175,7 @@ fn handle_mutation_specific_errors(
 
             // Use the existing type_info if available, or create a new one
             let final_type_info = type_info.cloned().unwrap_or_else(|| {
-                super::unified_types::UnifiedTypeInfo::new(
-                    type_name.to_string(),
-                    super::unified_types::DiscoverySource::PatternMatching,
-                )
+                UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching)
             });
 
             Some(CorrectionResult::CannotCorrect {
@@ -345,7 +343,7 @@ fn transform_result_to_correction(
     } = result;
 
     // Create correction info
-    let correction_info = super::unified_types::CorrectionInfo {
+    let correction_info = CorrectionInfo {
         type_name: type_name.to_string(),
         original_value: serde_json::Value::Null, // Will be filled by caller if available
         corrected_value,
@@ -353,17 +351,17 @@ fn transform_result_to_correction(
         target_type: type_name.to_string(),
         corrected_format: None,
         type_info: None,
-        correction_method: super::unified_types::CorrectionMethod::DirectReplacement,
+        correction_method: CorrectionMethod::DirectReplacement,
     };
 
     CorrectionResult::Corrected { correction_info }
 }
 
 /// Create basic type info for transformer use
-fn create_basic_type_info(type_name: &str) -> super::unified_types::UnifiedTypeInfo {
+fn create_basic_type_info(type_name: &str) -> UnifiedTypeInfo {
     super::unified_types::UnifiedTypeInfo::new(
         type_name.to_string(),
-        super::unified_types::DiscoverySource::PatternMatching,
+        DiscoverySource::PatternMatching,
     )
 }
 
@@ -378,10 +376,8 @@ fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult
         {
             debug!("Level 3: Detected math type '{t}', providing array format guidance");
 
-            let mut type_info = UnifiedTypeInfo::new(
-                t.to_string(),
-                super::unified_types::DiscoverySource::PatternMatching,
-            );
+            let mut type_info =
+                UnifiedTypeInfo::new(t.to_string(), DiscoverySource::PatternMatching);
 
             // Set type category
             type_info.type_category = TypeCategory::MathType;
@@ -440,16 +436,16 @@ fn create_enhanced_enum_guidance(
     };
 
     // Create basic enum info for Level 3 fallback
-    let variants: Vec<super::unified_types::EnumVariant> = valid_values
+    let variants: Vec<EnumVariant> = valid_values
         .into_iter()
-        .map(|name| super::unified_types::EnumVariant {
+        .map(|name| EnumVariant {
             name,
             variant_type: "Unit".to_string(),
         })
         .collect();
 
     if !variants.is_empty() {
-        type_info.enum_info = Some(super::unified_types::EnumInfo { variants });
+        type_info.enum_info = Some(EnumInfo { variants });
     }
     type_info.supported_operations = vec![
         "spawn".to_string(),

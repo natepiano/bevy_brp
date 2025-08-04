@@ -5,9 +5,8 @@ use tracing::debug;
 
 use super::super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use super::super::detection::ErrorPattern;
-use super::super::unified_types::{
-    DiscoverySource, TransformationResult, TypeCategory, UnifiedTypeInfo,
-};
+use super::super::types::{DiscoverySource, TransformationResult, TypeCategory};
+use super::super::unified_types::UnifiedTypeInfo;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::BrpClientError;

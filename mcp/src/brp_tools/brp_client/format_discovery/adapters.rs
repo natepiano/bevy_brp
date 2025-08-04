@@ -8,10 +8,11 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use super::unified_types::{
+use super::types::{
     DiscoverySource, EnumInfo, EnumVariant, FormatInfo, RegistryStatus, SerializationSupport,
-    TypeCategory, UnifiedTypeInfo,
+    TypeCategory,
 };
+use super::unified_types::UnifiedTypeInfo;
 
 /// Parse a type category string to the corresponding enum variant
 fn parse_type_category(category_str: &str) -> TypeCategory {

@@ -4,10 +4,13 @@ use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::unified_types::{TransformationResult, TypeCategory, UnifiedTypeInfo};
+use super::super::types::{
+    DiscoverySource, EnumInfo, EnumVariant, TransformationResult, TypeCategory,
+};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
+use crate::brp_tools::brp_client::format_discovery::unified_types::UnifiedTypeInfo;
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types
@@ -262,20 +265,18 @@ impl EnumVariantTransformer {
         let variants = Self::extract_enum_variants(error_message);
 
         // Create a UnifiedTypeInfo with the extracted variants
-        let mut type_info = UnifiedTypeInfo::new(
-            type_name.to_string(),
-            super::super::unified_types::DiscoverySource::PatternMatching,
-        );
+        let mut type_info =
+            UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching);
 
         // Set it as an enum type
         type_info.type_category = TypeCategory::Enum;
 
         // Add enum info if we have variants
         if !variants.is_empty() {
-            type_info.enum_info = Some(super::super::unified_types::EnumInfo {
+            type_info.enum_info = Some(EnumInfo {
                 variants: variants
                     .into_iter()
-                    .map(|name| super::super::unified_types::EnumVariant {
+                    .map(|name| EnumVariant {
                         name,
                         variant_type: "Unit".to_string(),
                     })
@@ -342,7 +343,7 @@ impl EnumVariantTransformer {
         type_name: &str,
         expected_variant_type: &str,
         actual_variant_type: &str,
-        enum_info: &super::super::unified_types::EnumInfo,
+        enum_info: &EnumInfo,
     ) -> TransformationResult {
         // Use actual enum variants from type information
         let valid_values: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
@@ -440,7 +441,7 @@ impl EnumVariantTransformer {
         value: &Value,
         error: &BrpClientError,
         type_name: &str,
-        enum_info: &super::super::unified_types::EnumInfo,
+        enum_info: &EnumInfo,
     ) -> Option<TransformationResult> {
         // For now, fall back to basic pattern matching
         // This can be enhanced in the future to use the rich enum_info data

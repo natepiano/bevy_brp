@@ -31,6 +31,7 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use super::super::{BrpClient, ResponseStatus};
+use super::types::DiscoverySource;
 use super::unified_types::UnifiedTypeInfo;
 use super::{adapters, registry_integration};
 use crate::brp_tools::Port;
@@ -237,8 +238,7 @@ impl DiscoveryContext {
         // Preserve existing registry status if available
         if let Some(existing_info) = self.type_info.get(&type_name) {
             discovered_info.registry_status = existing_info.registry_status.clone();
-            discovered_info.discovery_source =
-                super::unified_types::DiscoverySource::RegistryPlusExtras;
+            discovered_info.discovery_source = DiscoverySource::RegistryPlusExtras;
         }
         // discovered_info already has DirectDiscovery source if new
         self.type_info.insert(type_name, discovered_info);
