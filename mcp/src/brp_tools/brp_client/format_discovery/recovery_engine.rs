@@ -727,7 +727,6 @@ pub async fn build_recovery_success(
     correction_results: Vec<CorrectionResult>,
     method: BrpMethod,
     original_params: &Value,
-    _original_error: &ResponseStatus,
     port: Port,
 ) -> FormatRecoveryResult {
     let mut corrections = Vec::new();

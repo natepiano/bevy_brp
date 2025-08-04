@@ -54,7 +54,7 @@ use super::recovery_engine::{self, LevelResult};
 use super::recovery_result::FormatRecoveryResult;
 use super::types::CorrectionResult;
 use super::unified_types::{DiscoverySource, UnifiedTypeInfo};
-use crate::brp_tools::{BrpClientError, Port, ResponseStatus};
+use crate::brp_tools::{BrpClientError, Port};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
@@ -218,14 +218,8 @@ impl FormatDiscoveryEngine {
         corrections: Vec<CorrectionResult>,
     ) -> FormatRecoveryResult {
         // TODO: Move implementation from recovery_engine
-        recovery_engine::build_recovery_success(
-            corrections,
-            self.method,
-            &self.params,
-            &ResponseStatus::Error(self.original_error.clone()),
-            self.port,
-        )
-        .await
+        recovery_engine::build_recovery_success(corrections, self.method, &self.params, self.port)
+            .await
     }
 
     /// Detect serialization issues and return corrections explaining the problems
