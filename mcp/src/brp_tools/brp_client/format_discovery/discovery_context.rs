@@ -5,11 +5,11 @@
 //! This abstraction replaces direct `HashMap` passing and provides better
 //! encapsulation of type discovery logic.
 //!
-//! # Current Implementation (Phase 1)
+//! # Current Implementation (Phase 3b Complete)
 //!
-//! Currently wraps registry lookups only with minimal API surface.
-//! Only includes methods with identified usage in the current codebase.
-//! Future phases will add more methods as needed.
+//! Provides encapsulated access to type information through the `get_type()` method.
+//! All discovery levels use this controlled interface instead of direct HashMap access.
+//! Supports enrichment with extras discovery for comprehensive type information.
 //!
 //! # Example
 //!
@@ -18,11 +18,9 @@
 //! let context = TypeDiscoveryContext::fetch_from_registry(port, type_names).await?;
 //!
 //! if let Some(transform_info) = context.get_type("Transform") {
-//!     // Use type information
+//!     // Use type information - HashMap is fully encapsulated
+//!     println!("Found type: {}", transform_info.type_name);
 //! }
-//!
-//! // For compatibility with existing code:
-//! let type_info_map = context.as_hashmap();
 //! ```
 
 use std::collections::HashMap;
