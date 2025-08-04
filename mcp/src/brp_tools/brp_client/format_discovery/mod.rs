@@ -19,7 +19,7 @@
 //! - Validates format quality to avoid placeholder values like `["example_Color"]`
 //! - Falls back to legacy format for backward compatibility
 //!
-//! ### Tier 3: Smart Pattern Matching
+//! ### Tier 3: Pattern Matching
 //! - Uses transformer-based system to apply deterministic pattern fixes
 //! - Handles common errors like Vec3 object→array conversion, enum variant access
 //! - Leverages error message analysis to identify specific transformation needs
@@ -28,30 +28,13 @@
 //! ### Tier 4: Generic Fallback
 //! - Attempts basic format transformations when pattern matching fails
 //! - Last resort before giving up on format correction
-//! - Provides minimal hints when successful
-//!
-//! ## Key Components
-//!
-//! - **Engine**: Main orchestration with `execute_brp_method_with_format_discovery()`
-//! - **Detection**: Error pattern analysis and quality assessment
-//! - **Transformers**: Trait-based format transformation system
-//! - **Path Suggestions**: Mutation path guidance for complex types
-//! - **Phases**: Modular tier execution with comprehensive debug logging
-//!
-//! ## Design Principles
-//!
-//! 1. **Zero Boilerplate**: Tools don't need format-specific code
-//! 2. **Factual Information**: Never return placeholders or made-up examples
-//! 3. **Graceful Degradation**: Each tier has fallback strategies
-//! 4. **Comprehensive Debugging**: Full visibility into discovery process
-//! 5. **Maintainable Architecture**: Clean separation of concerns
+//! - Provides minimal hints when successfulå
 
 mod adapters;
 mod constants;
 mod detection;
 mod discovery_context;
 mod engine;
-mod extras_integration;
 mod field_mapper;
 mod format_correction_fields;
 mod path_parser;
