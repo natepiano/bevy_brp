@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Some Tool responses now include a `error_info` field showing structured error details
 
 ### Changed
-- Migrated to rmcp 0.3.1 for improved MCP server functionality
+- Migrated to rmcp 0.3.2 for improved MCP server functionality
 - Improved error messages when duplicate app/example names are found across workspaces
 - All tools will return a pointer to a file in the local temp directory if the response is too large to return to coding agent. Hard coded using heuristics to fit within claude code limits.
 - `bevy_get_watch` parameter: Renamed parameter from `components` to `types` for consistency with other BRP tools
