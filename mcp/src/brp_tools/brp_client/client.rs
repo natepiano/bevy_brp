@@ -168,12 +168,13 @@ impl BrpClient {
             + 'static,
     {
         // Create engine with parameter validation
-        let engine = FormatDiscoveryEngine::new(
+        let mut engine = FormatDiscoveryEngine::new(
             self.method,
             self.port,
             self.params.clone(),
             original_error.clone(),
-        )?;
+        )
+        .await?;
 
         // Execute discovery and recovery, then transform to typed result
         engine

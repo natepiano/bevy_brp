@@ -105,17 +105,6 @@ impl DiscoveryContext {
         Ok(Self { port, type_info })
     }
 
-    /// Create context from existing registry information
-    ///
-    /// This constructor is used when the registry information has already been fetched
-    /// and we want to create a context for further enrichment (e.g., with extras discovery).
-    pub const fn from_registry_info(
-        port: Port,
-        type_info: HashMap<String, UnifiedTypeInfo>,
-    ) -> Self {
-        Self { port, type_info }
-    }
-
     /// Enrich existing type information with data from `bevy_brp_extras`
     ///
     /// This method attempts to discover additional format information for all types
@@ -295,7 +284,6 @@ fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Optio
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::brp_tools::brp_client::format_discovery::unified_types::DiscoverySource;
 
     #[tokio::test]
     async fn test_empty_type_names() {
@@ -314,116 +302,6 @@ mod tests {
 
         // Should return empty HashMap when no types provided
         assert!(context.as_hashmap().is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_from_registry_info() {
-        let port = Port(15702);
-        let mut type_info = HashMap::new();
-        type_info.insert(
-            "TestType".to_string(),
-            UnifiedTypeInfo::new("TestType".to_string(), DiscoverySource::TypeRegistry),
-        );
-
-        let context = DiscoveryContext::from_registry_info(port, type_info);
-        assert_eq!(context.port.0, port.0); // Compare the inner u16 values
-        assert_eq!(context.type_info.len(), 1);
-        assert!(context.type_info.contains_key("TestType"));
-
-        // Verify the type info is accessible via as_hashmap
-        assert_eq!(context.as_hashmap().len(), 1);
-        assert!(context.as_hashmap().contains_key("TestType"));
-    }
-
-    #[tokio::test]
-    async fn test_enrich_with_extras_connection_failure() {
-        // Create test registry info
-        let mut type_info = HashMap::new();
-        type_info.insert(
-            "TestType".to_string(),
-            UnifiedTypeInfo::new("TestType".to_string(), DiscoverySource::TypeRegistry),
-        );
-
-        // Test behavior when BRP connection fails
-        let mut context = DiscoveryContext::from_registry_info(
-            Port(65534), // Invalid port (high port unlikely to be in use)
-            type_info,
-        );
-
-        // Should not fail even if enrichment fails
-        assert!(context.enrich_with_extras().await.is_ok());
-
-        // Registry info should be preserved
-        assert_eq!(context.type_info.len(), 1);
-        assert!(context.type_info.contains_key("TestType"));
-
-        // Discovery source should remain unchanged since enrichment failed
-        let test_type = context.type_info.get("TestType").unwrap();
-        assert!(matches!(
-            test_type.discovery_source,
-            DiscoverySource::TypeRegistry
-        ));
-    }
-
-    #[tokio::test]
-    async fn test_discovery_source_tracking() {
-        // Test the logic of merge_discovered_info by creating contexts with different discovery
-        // sources
-        let port = Port(15702);
-
-        // Test 1: Registry type info should preserve its source when enrichment fails
-        let mut registry_info = HashMap::new();
-        registry_info.insert(
-            "RegistryType".to_string(),
-            UnifiedTypeInfo::new("RegistryType".to_string(), DiscoverySource::TypeRegistry),
-        );
-
-        let context = DiscoveryContext::from_registry_info(port, registry_info);
-        let registry_type = context.type_info.get("RegistryType").unwrap();
-        assert!(matches!(
-            registry_type.discovery_source,
-            DiscoverySource::TypeRegistry
-        ));
-
-        // Test 2: Manual discovery source should be preserved
-        let mut manual_info = HashMap::new();
-        manual_info.insert(
-            "ManualType".to_string(),
-            UnifiedTypeInfo::new("ManualType".to_string(), DiscoverySource::Manual),
-        );
-
-        let context = DiscoveryContext::from_registry_info(port, manual_info);
-        let manual_type = context.type_info.get("ManualType").unwrap();
-        assert!(matches!(
-            manual_type.discovery_source,
-            DiscoverySource::Manual
-        ));
-
-        // Test 3: Verify context preserves multiple types with different sources
-        let mut mixed_info = HashMap::new();
-        mixed_info.insert(
-            "RegistryType".to_string(),
-            UnifiedTypeInfo::new("RegistryType".to_string(), DiscoverySource::TypeRegistry),
-        );
-        mixed_info.insert(
-            "PatternType".to_string(),
-            UnifiedTypeInfo::new("PatternType".to_string(), DiscoverySource::PatternMatching),
-        );
-
-        let context = DiscoveryContext::from_registry_info(port, mixed_info);
-        assert_eq!(context.type_info.len(), 2);
-
-        let registry_type = context.type_info.get("RegistryType").unwrap();
-        assert!(matches!(
-            registry_type.discovery_source,
-            DiscoverySource::TypeRegistry
-        ));
-
-        let pattern_type = context.type_info.get("PatternType").unwrap();
-        assert!(matches!(
-            pattern_type.discovery_source,
-            DiscoverySource::PatternMatching
-        ));
     }
 
     #[tokio::test]
@@ -448,9 +326,6 @@ mod tests {
         } else {
             // If BRP connection fails, that's okay for this unit test
             // We're primarily testing the constructor logic, not the BRP connection
-            // In this case, create a context manually to verify the structure
-            let context = DiscoveryContext::from_registry_info(port, HashMap::new());
-            assert_eq!(context.port.0, port.0);
         }
     }
 
