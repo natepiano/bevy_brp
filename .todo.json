@@ -1,184 +1,192 @@
 [
   {
-    "id": "phase3a-1-add-field",
-    "content": "Add DiscoveryContext field to FormatDiscoveryEngine struct in engine.rs",
+    "id": "phase1-infra-1",
+    "content": "Phase 1: Add regenerate_all_examples() private method to UnifiedTypeInfo",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-2-build-check-field",
-    "content": "Run cargo build and fix any errors from adding DiscoveryContext field",
+    "id": "phase1-infra-2",
+    "content": "Phase 1: Remove redundant generate_insert_example() method from UnifiedTypeInfo",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-3-async-constructor",
-    "content": "Make FormatDiscoveryEngine::new() async and create DiscoveryContext in constructor",
+    "id": "phase1-infra-3",
+    "content": "Phase 1: Add debug assertion to to_correction() and remove ensure_examples() call",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-4-build-check-async",
-    "content": "Run cargo build and fix any errors from async constructor changes",
+    "id": "phase1-build",
+    "content": "Run cargo build and fix any Phase 1 errors",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-5-update-client-caller",
-    "content": "Update client.rs try_format_recovery to handle async engine constructor with .await",
+    "id": "phase2-adapter-1",
+    "content": "Phase 2: Update from_type_discovery_response_json to call regenerate_all_examples()",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-6-build-check-client",
-    "content": "Run cargo build and fix any errors from client.rs updates",
+    "id": "phase2-adapter-2",
+    "content": "Phase 2: Update from_registry_schema to call regenerate_all_examples()",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-7-clippy-check-1",
+    "id": "phase2-build-1",
+    "content": "Run cargo build and fix adapter errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase2-recovery",
+    "content": "Phase 2: Update fallback_pattern_based_correction in recovery_engine.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase2-enum",
+    "content": "Phase 2: Update handle_enum_unit_variant_error in enum_variant.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase2-build-2",
+    "content": "Run cargo build and fix recovery/enum errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase2-tests",
+    "content": "Phase 2: Update tests in unified_types.rs to use regenerate_all_examples()",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase2-build-3",
+    "content": "Run cargo build and verify Phase 2 complete",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "clippy-1",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-8-fix-clippy-1",
-    "content": "Fix all clippy issues following warning rules",
+    "id": "clippy-fix-1",
+    "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-9-move-level2-logic",
-    "content": "Move execute_level_2_direct_discovery implementation from recovery_engine.rs to engine.rs",
+    "id": "phase3-remove",
+    "content": "Phase 3: Remove ensure_examples() method from UnifiedTypeInfo",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-10-build-check-level2",
-    "content": "Run cargo build and fix any errors from moving Level 2 logic",
+    "id": "phase3-signature",
+    "content": "Phase 3: Change to_correction signature from &mut self to &self",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-11-move-extract-component",
-    "content": "Move extract_component_value helper function from recovery_engine.rs to engine.rs if needed",
+    "id": "phase3-engine-1",
+    "content": "Phase 3: Update engine.rs line ~252 to remove clone and mut",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-12-build-check-extract",
-    "content": "Run cargo build and fix any errors from moving helper functions",
+    "id": "phase3-engine-2",
+    "content": "Phase 3: Simplify build_corrected_value_from_type_info in engine.rs",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-13-move-build-result",
-    "content": "Move build_recovery_success from recovery_engine.rs to engine.rs as build_recovery_result",
+    "id": "phase3-build",
+    "content": "Run cargo build and fix all Phase 3 errors",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-14-build-check-build-result",
-    "content": "Run cargo build and fix any errors from moving build_recovery_result",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3a-15-clippy-check-2",
+    "id": "clippy-2",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-16-fix-clippy-2",
-    "content": "Fix all clippy issues following warning rules",
+    "id": "clippy-fix-2",
+    "content": "Fix all final clippy issues",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-17-update-attempt-discovery",
-    "content": "Update attempt_discovery_with_recovery to use &mut self and access context field",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3a-18-build-check-attempt",
-    "content": "Run cargo build and fix any errors from updating attempt_discovery_with_recovery",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3a-19-add-level2-tests",
-    "content": "Add comprehensive tests for Level 2 with context field in engine.rs tests module",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3a-20-build-check-tests",
-    "content": "Run cargo build and fix any errors from adding tests",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "phase3a-21-format",
+    "id": "fmt",
     "content": "Run cargo +nightly fmt",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-22-run-tests",
+    "id": "tests",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-23-stop-if-failures",
+    "id": "test-review",
     "content": "STOP if test failures - review with user",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-24-stop-control",
+    "id": "subagent-stop",
     "content": "Subagent: STOP and return control",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-25-code-review",
-    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "id": "code-review",
+    "content": "Main: Task new subagent for code review (read-only)",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "phase3a-26-review-suggestions",
+    "id": "review-user",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "high",
     "notes": ""
   }
 ]
+EOF < /dev/null
