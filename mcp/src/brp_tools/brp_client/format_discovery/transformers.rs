@@ -29,7 +29,7 @@ pub use self::tuple_struct::TupleStructTransformer;
 ///
 /// Updated for Phase 3 to work with `UnifiedTypeInfo` which provides comprehensive
 /// type information including registry status, serialization support, and format examples.
-pub trait FormatTransformer {
+pub trait FormatTransformer: Send + Sync {
     /// Check if this transformer can handle the given error pattern
     fn can_handle(&self, error_pattern: &ErrorPattern) -> bool;
 
@@ -167,6 +167,18 @@ impl Default for TransformerRegistry {
     }
 }
 
+/// Get a singleton transformer registry with default transformers
+///
+/// This function provides a global, thread-safe registry instance that is
+/// created once and reused for all format discovery operations. This
+/// eliminates the allocation overhead of creating new registries for
+/// each error and ensures consistent transformer behavior.
+pub fn transformer_registry() -> &'static TransformerRegistry {
+    static REGISTRY: std::sync::LazyLock<TransformerRegistry> =
+        std::sync::LazyLock::new(TransformerRegistry::with_defaults);
+    &REGISTRY
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,6 +195,20 @@ mod tests {
         let registry = TransformerRegistry::new();
         let names = registry.transformer_names();
         assert!(names.is_empty());
+    }
+
+    #[test]
+    fn test_transformer_registry_singleton() {
+        // Test that the singleton returns the same instance
+        let registry1 = transformer_registry();
+        let registry2 = transformer_registry();
+
+        // Both should point to the same instance
+        assert!(std::ptr::eq(registry1, registry2));
+
+        // Should have default transformers
+        assert!(!registry1.is_empty());
+        assert_eq!(registry1.len(), 4); // math, string, tuple_struct, enum_variant
     }
 
     // More tests will be added as transformers are implemented

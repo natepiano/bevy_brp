@@ -37,7 +37,6 @@ mod engine;
 mod field_mapper;
 mod format_correction_fields;
 mod path_parser;
-mod recovery_engine;
 mod recovery_result;
 mod registry_integration;
 mod transformers;

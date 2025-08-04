@@ -244,11 +244,13 @@ impl DiscoveryContext {
         self.type_info.insert(type_name, discovered_info);
     }
 
-    /// Get the underlying `HashMap` (temporary for compatibility)
-    /// This method will be removed in Phase 4 when all discovery levels
-    /// are updated to work directly with `TypeDiscoveryContext`
-    pub const fn as_hashmap(&self) -> &HashMap<String, UnifiedTypeInfo> {
-        &self.type_info
+    /// Get type information for a specific type name
+    ///
+    /// Returns `None` if the type is not found in the context.
+    /// This replaces direct `HashMap` access and provides controlled
+    /// access to type information.
+    pub fn get_type(&self, type_name: &str) -> Option<&UnifiedTypeInfo> {
+        self.type_info.get(type_name)
     }
 }
 
@@ -290,18 +292,18 @@ mod tests {
         let context = DiscoveryContext::fetch_from_registry(Port(15702), vec![])
             .await
             .unwrap();
-        assert!(context.as_hashmap().is_empty());
+        assert!(context.type_info.is_empty());
     }
 
     #[tokio::test]
-    async fn test_as_hashmap() {
+    async fn test_get_type() {
         let port = Port(15702);
         let context = DiscoveryContext::fetch_from_registry(port, vec![])
             .await
             .unwrap();
 
-        // Should return empty HashMap when no types provided
-        assert!(context.as_hashmap().is_empty());
+        // Should return None for any type when no types provided
+        assert!(context.get_type("SomeType").is_none());
     }
 
     #[tokio::test]
