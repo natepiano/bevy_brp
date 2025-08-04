@@ -1,7 +1,7 @@
 //! Error detection and pattern matching logic for format discovery
 //!
 //! This module provides simplified error detection focused on the core functionality
-//! needed by the new 3-level recovery architecture. Complex tier management has been
+//! needed by the 3-level recovery architecture. Complex tier management has been
 //! removed in favor of straightforward pattern matching and registry checks.
 
 use super::constants::{

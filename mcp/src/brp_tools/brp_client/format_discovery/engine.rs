@@ -40,8 +40,7 @@
 //! `execute_direct()` to avoid infinite recursion since it's part of the format discovery flow
 //! itself.
 //! - `format_discovery/engine.rs` - Makes the initial BRP call attempt, implements all recovery
-//!   levels
-//! - `format_discovery/registry_integration.rs` - Queries registry for type info
+//!   levels including registry queries and direct discovery
 //! - `format_discovery/extras_integration.rs` - Calls discovery endpoint
 
 use std::fmt::Write;
