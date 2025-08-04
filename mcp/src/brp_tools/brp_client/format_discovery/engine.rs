@@ -98,6 +98,8 @@ impl DiscoveryEngine {
         original_error: BrpClientError,
     ) -> Result<Self> {
         // Check if we can recover from this error type
+        // if it is a format_error and we have to use pattern matching, we
+        // will use this error information to construct our response
         if !original_error.is_format_error() {
             return Err(Error::InvalidArgument(
                 "Format discovery can only be used with format errors".to_string(),
