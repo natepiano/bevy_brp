@@ -163,13 +163,13 @@ pub enum CorrectionMethod {
     FieldMapping,
 }
 
-/// Result of individual correction attempts during recovery
+/// Can we use this data to attempt a correction
 #[derive(Debug, Clone)]
-pub enum CorrectionResult {
-    /// Correction was successfully applied
-    Corrected { correction_info: CorrectionInfo },
-    /// Correction could not be applied but metadata was discovered
-    CannotCorrect {
+pub enum Correction {
+    /// Correction can be successfully applied
+    Candidate { correction_info: CorrectionInfo },
+    /// Correction cannot be applied but metadata was discovered
+    Uncorrectable {
         type_info: UnifiedTypeInfo,
         reason:    String,
     },

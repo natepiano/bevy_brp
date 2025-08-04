@@ -17,7 +17,7 @@ use super::engine::LevelResult;
 use super::format_correction_fields::FormatCorrectionField;
 use super::transformers::TransformerRegistry;
 use super::types::{
-    CorrectionInfo, CorrectionMethod, CorrectionResult, DiscoverySource, EnumInfo, EnumVariant,
+    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
     TransformationResult, TypeCategory,
 };
 use super::unified_types::UnifiedTypeInfo;
@@ -82,7 +82,7 @@ pub fn execute_level_3_pattern_transformations(
             // Create a failure correction to provide feedback
             let failure_correction = if let Some(existing_type_info) = type_info.cloned() {
                 // Type was discovered but couldn't be corrected
-                CorrectionResult::CannotCorrect {
+                Correction::Uncorrectable {
                     type_info: existing_type_info,
                     reason:    format!(
                         "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern. This may indicate a limitation in the current transformation logic or an unsupported format combination."
@@ -119,7 +119,7 @@ fn handle_mutation_specific_errors(
     error_pattern: &ErrorPattern,
     type_name: &str,
     type_info: Option<&UnifiedTypeInfo>,
-) -> Option<CorrectionResult> {
+) -> Option<Correction> {
     if !matches!(
         method,
         BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
@@ -178,7 +178,7 @@ fn handle_mutation_specific_errors(
                 UnifiedTypeInfo::new(type_name.to_string(), DiscoverySource::PatternMatching)
             });
 
-            Some(CorrectionResult::CannotCorrect {
+            Some(Correction::Uncorrectable {
                 type_info: final_type_info,
                 reason:    hint,
             })
@@ -196,7 +196,7 @@ fn attempt_pattern_based_correction(
     method: BrpMethod,
     mutation_path: Option<&str>,
     type_info: Option<&UnifiedTypeInfo>,
-) -> Option<CorrectionResult> {
+) -> Option<Correction> {
     debug!("Level 3: Attempting pattern correction for type '{type_name}'");
 
     // Step 1: Analyze the error pattern
@@ -259,7 +259,7 @@ fn attempt_pattern_based_correction(
                 correction_method: CorrectionMethod::ObjectToArray,
             };
 
-            return Some(CorrectionResult::Corrected { correction_info });
+            return Some(Correction::Candidate { correction_info });
         }
     }
 
@@ -275,7 +275,7 @@ fn attempt_pattern_based_correction(
             transform_result_to_correction(transformation_result, type_name);
 
         // Add the original value to the correction info
-        if let CorrectionResult::Corrected {
+        if let Correction::Candidate {
             ref mut correction_info,
         } = correction_result
         {
@@ -295,7 +295,7 @@ fn attempt_pattern_based_correction(
             transform_result_to_correction(transformation_result, type_name);
 
         // Add the original value to the correction info
-        if let CorrectionResult::Corrected {
+        if let Correction::Candidate {
             ref mut correction_info,
         } = correction_result
         {
@@ -333,10 +333,7 @@ fn extract_type_values_from_params(method: BrpMethod, params: &Value) -> Option<
 }
 
 /// Convert transformer output to `CorrectionResult`
-fn transform_result_to_correction(
-    result: TransformationResult,
-    type_name: &str,
-) -> CorrectionResult {
+fn transform_result_to_correction(result: TransformationResult, type_name: &str) -> Correction {
     let TransformationResult {
         corrected_value,
         hint: description,
@@ -354,7 +351,7 @@ fn transform_result_to_correction(
         correction_method: CorrectionMethod::DirectReplacement,
     };
 
-    CorrectionResult::Corrected { correction_info }
+    Correction::Candidate { correction_info }
 }
 
 /// Create basic type info for transformer use
@@ -366,7 +363,7 @@ fn create_basic_type_info(type_name: &str) -> UnifiedTypeInfo {
 }
 
 /// Fallback to the original pattern-based correction for well-known types
-fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult> {
+fn fallback_pattern_based_correction(type_name: &str) -> Option<Correction> {
     match type_name {
         // Math types - common object vs array issues
         t if t.contains("Vec2")
@@ -395,7 +392,7 @@ fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult
                 )
             };
 
-            Some(CorrectionResult::CannotCorrect { type_info, reason })
+            Some(Correction::Uncorrectable { type_info, reason })
         }
 
         // Other types - no specific patterns yet
@@ -407,10 +404,7 @@ fn fallback_pattern_based_correction(type_name: &str) -> Option<CorrectionResult
 }
 
 /// Create enhanced guidance for enum types when we can't transform but can provide format info
-fn create_enhanced_enum_guidance(
-    type_name: &str,
-    error_pattern: &ErrorPattern,
-) -> CorrectionResult {
+fn create_enhanced_enum_guidance(type_name: &str, error_pattern: &ErrorPattern) -> Correction {
     debug!("Level 3: Creating enhanced enum guidance for type '{type_name}'");
 
     let mut type_info = create_basic_type_info(type_name);
@@ -453,7 +447,7 @@ fn create_enhanced_enum_guidance(
         "mutate".to_string(),
     ];
 
-    CorrectionResult::CannotCorrect {
+    Correction::Uncorrectable {
         type_info,
         reason: "Enhanced enum guidance with variant information and usage examples".to_string(),
     }

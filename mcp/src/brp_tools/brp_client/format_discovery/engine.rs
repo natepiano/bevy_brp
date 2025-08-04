@@ -47,14 +47,14 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
-use serde_json::{Value, json};
+use serde_json::Value;
 use tracing::debug;
 
 use super::discovery_context::DiscoveryContext;
 use super::format_correction_fields::FormatCorrectionField;
 use super::recovery_engine;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::{CorrectionInfo, CorrectionMethod, CorrectionResult, DiscoverySource};
+use super::types::{Correction, CorrectionInfo, CorrectionMethod, DiscoverySource};
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
@@ -64,7 +64,7 @@ use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 #[derive(Debug)]
 pub enum LevelResult {
     /// Level succeeded and produced corrections
-    Success(Vec<CorrectionResult>),
+    Success(Vec<Correction>),
     /// Level completed but recovery should continue to next level
     Continue(std::collections::HashMap<String, UnifiedTypeInfo>),
 }
@@ -237,7 +237,7 @@ impl FormatDiscoveryEngine {
                         let _ = writeln!(hint, "  {path} - {description}");
                     }
 
-                    let correction = CorrectionResult::CannotCorrect {
+                    let correction = Correction::Uncorrectable {
                         type_info: discovered_info.clone(),
                         reason:    hint,
                     };
@@ -248,10 +248,9 @@ impl FormatDiscoveryEngine {
                         Self::extract_component_value(self.method, &self.params, type_name);
 
                     // Create a correction from the discovered type information with original value
-                    let correction = create_correction_from_discovery(
-                        discovered_info.clone(),
-                        original_component_value,
-                    );
+                    let mut discovered_info_mut = discovered_info.clone();
+                    let correction =
+                        discovered_info_mut.to_correction_result(original_component_value);
                     corrections.push(correction);
                 }
             } else {
@@ -295,20 +294,20 @@ impl FormatDiscoveryEngine {
     #[allow(clippy::too_many_lines)]
     async fn build_recovery_result(
         &self,
-        correction_results: Vec<CorrectionResult>,
+        correction_results: Vec<Correction>,
     ) -> FormatRecoveryResult {
         let mut corrections = Vec::new();
         let mut has_applied_corrections = false;
 
         for correction_result in correction_results {
             match correction_result {
-                CorrectionResult::Corrected { correction_info } => {
+                Correction::Candidate { correction_info } => {
                     let type_name = correction_info.type_name.clone();
                     corrections.push(correction_info);
                     has_applied_corrections = true;
                     debug!("Recovery Engine: Applied correction for type '{type_name}'");
                 }
-                CorrectionResult::CannotCorrect { type_info, reason } => {
+                Correction::Uncorrectable { type_info, reason } => {
                     debug!(
                         "Recovery Engine: Found metadata for type '{}' but no correction: {}",
                         type_info.type_name, reason
@@ -420,7 +419,7 @@ impl FormatDiscoveryEngine {
     fn detect_serialization_issues(
         &self,
         registry_type_info: &HashMap<String, UnifiedTypeInfo>,
-    ) -> Option<Vec<CorrectionResult>> {
+    ) -> Option<Vec<Correction>> {
         // Only check for spawn/insert methods with UnknownComponentType errors
         if !matches!(self.method, BrpMethod::BevySpawn | BrpMethod::BevyInsert) {
             return None;
@@ -474,7 +473,7 @@ impl FormatDiscoveryEngine {
                                         DiscoverySource::TypeRegistry,
                                     )
                                 });
-                            CorrectionResult::CannotCorrect {
+                            Correction::Uncorrectable {
                                 type_info,
                                 reason: educational_message.clone(),
                             }
@@ -508,106 +507,6 @@ impl FormatDiscoveryEngine {
             _ => None,
         }
     }
-}
-
-/// Create correction from discovered type info
-pub fn create_correction_from_discovery(
-    mut type_info: UnifiedTypeInfo,
-    original_value: Option<Value>,
-) -> CorrectionResult {
-    // Ensure examples are generated
-    type_info.ensure_examples();
-
-    // Check if this is an enum with variants - create enum-specific correction
-    if let Some(enum_info) = &type_info.enum_info {
-        let variant_names: Vec<String> =
-            enum_info.variants.iter().map(|v| v.name.clone()).collect();
-
-        let corrected_format = json!({
-            FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
-            FormatCorrectionField::ValidValues.as_ref(): variant_names,
-            FormatCorrectionField::Examples.as_ref(): variant_names.iter().take(2).map(|variant| json!({
-                FormatCorrectionField::Path.as_ref(): "",
-                FormatCorrectionField::Value.as_ref(): variant
-            })).collect::<Vec<_>>()
-        });
-
-        let correction_info = CorrectionInfo {
-            type_name:         type_info.type_name.clone(),
-            original_value:    original_value.unwrap_or(json!(null)),
-            corrected_value:   corrected_format.clone(),
-            corrected_format:  Some(corrected_format),
-            hint:              format!(
-                "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}",
-                type_info
-                    .type_name
-                    .split("::")
-                    .last()
-                    .unwrap_or(&type_info.type_name),
-                variant_names.join(", ")
-            ),
-            target_type:       type_info.type_name.clone(),
-            type_info:         Some(type_info),
-            correction_method: CorrectionMethod::DirectReplacement,
-        };
-
-        return CorrectionResult::Corrected { correction_info };
-    }
-
-    // Check if we can actually transform the original input
-    if let Some(original_value) = original_value {
-        debug!(
-            "Extras Integration: Attempting to transform original value: {}",
-            serde_json::to_string(&original_value).unwrap_or_else(|_| "invalid json".to_string())
-        );
-        if let Some(transformed_value) = type_info.transform_value(&original_value) {
-            debug!(
-                "Extras Integration: Successfully transformed value to: {}",
-                serde_json::to_string(&transformed_value)
-                    .unwrap_or_else(|_| "invalid json".to_string())
-            );
-            // We can transform the input - return Corrected with actual transformation
-            let correction_info = CorrectionInfo {
-                type_name:         type_info.type_name.clone(),
-                original_value:    original_value.clone(),
-                corrected_value:   transformed_value,
-                hint:              format!(
-                    "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
-                    if original_value.is_object() {
-                        "object"
-                    } else {
-                        "value"
-                    },
-                    type_info.type_name
-                ),
-                target_type:       type_info.type_name.clone(),
-                corrected_format:  None,
-                type_info:         Some(type_info),
-                correction_method: CorrectionMethod::ObjectToArray,
-            };
-
-            return CorrectionResult::Corrected { correction_info };
-        }
-        debug!("Extras Integration: transform_value() returned None - cannot transform input");
-    } else {
-        debug!("Extras Integration: No original value provided for transformation");
-    }
-
-    // Cannot transform input - provide guidance with examples
-    let reason = if let Some(spawn_example) = type_info.get_example("spawn") {
-        format!(
-            "Cannot transform input for type '{}'. Use this format: {}",
-            type_info.type_name,
-            serde_json::to_string(&spawn_example).unwrap_or_else(|_| "correct format".to_string())
-        )
-    } else {
-        format!(
-            "Cannot transform input for type '{}'. Type discovered but no format example available.",
-            type_info.type_name
-        )
-    };
-
-    CorrectionResult::CannotCorrect { type_info, reason }
 }
 
 /// Check if corrections can be applied for a retry
@@ -834,63 +733,6 @@ mod tests {
         info
     }
 
-    #[test]
-    fn test_create_correction_from_discovery_with_example() {
-        let mut type_info = UnifiedTypeInfo::new(
-            "bevy_transform::components::transform::Transform".to_string(),
-            DiscoverySource::DirectDiscovery,
-        );
-        type_info.type_category = TypeCategory::Struct;
-        type_info.format_info.examples.insert(
-            "spawn".to_string(),
-            json!({
-                "translation": [0.0, 0.0, 0.0],
-                "rotation": [0.0, 0.0, 0.0, 1.0],
-                "scale": [1.0, 1.0, 1.0]
-            }),
-        );
-
-        let original = json!({"translation": {"x": 0.0, "y": 0.0, "z": 0.0}});
-        let result = create_correction_from_discovery(type_info, Some(original.clone()));
-
-        match result {
-            CorrectionResult::Corrected { correction_info } => {
-                assert_eq!(correction_info.original_value, original);
-                assert!(correction_info.corrected_value.get("translation").is_some());
-                assert_eq!(
-                    correction_info.correction_method,
-                    CorrectionMethod::ObjectToArray
-                );
-            }
-            CorrectionResult::CannotCorrect { .. } => {
-                unreachable!("Expected Applied correction result")
-            }
-        }
-    }
-
-    #[test]
-    fn test_create_correction_from_discovery_metadata_only() {
-        let type_info = UnifiedTypeInfo::new(
-            "bevy_transform::components::transform::Transform".to_string(),
-            DiscoverySource::DirectDiscovery,
-        );
-
-        let result = create_correction_from_discovery(type_info, None);
-
-        match result {
-            CorrectionResult::CannotCorrect { type_info, reason } => {
-                assert_eq!(
-                    type_info.type_name,
-                    "bevy_transform::components::transform::Transform"
-                );
-                assert!(reason.contains("no format example"));
-            }
-            CorrectionResult::Corrected { .. } => {
-                unreachable!("Expected MetadataOnly correction result")
-            }
-        }
-    }
-
     #[tokio::test]
     async fn test_detect_serialization_issues_missing_traits() {
         let engine = create_test_engine(
@@ -910,7 +752,7 @@ mod tests {
 
         let corrections = result.unwrap();
         assert!(!corrections.is_empty());
-        if let CorrectionResult::CannotCorrect { reason, .. } = &corrections[0] {
+        if let Correction::Uncorrectable { reason, .. } = &corrections[0] {
             assert!(reason.contains("lacks Serialize and Deserialize traits"));
             assert!(reason.contains("bevy_render::view::visibility::Visibility"));
             assert!(reason.contains("Add #[derive(Serialize, Deserialize)]"));
@@ -1053,7 +895,7 @@ mod tests {
 
         let corrections = result.unwrap();
         assert!(!corrections.is_empty());
-        if let CorrectionResult::CannotCorrect { reason, .. } = &corrections[0] {
+        if let Correction::Uncorrectable { reason, .. } = &corrections[0] {
             assert!(reason.contains("lacks Serialize and Deserialize traits"));
             assert!(reason.contains("insert operations")); // Should say "insert" not "spawn"
         } else {
