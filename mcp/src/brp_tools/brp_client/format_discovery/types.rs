@@ -178,8 +178,6 @@ pub enum Correction {
 /// Method used to discover or correct a type format
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum DiscoverySource {
-    /// Information from `bevy_brp_extras` direct discovery
-    DirectDiscovery,
     /// Information from Bevy's type registry
     TypeRegistry,
     /// Information inferred from error patterns

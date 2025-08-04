@@ -22,7 +22,6 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use super::super::{BrpClient, ResponseStatus};
-use super::types::DiscoverySource;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
@@ -88,145 +87,80 @@ impl DiscoveryContext {
     /// Returns Ok(()) even if some discoveries fail - individual failures are logged
     /// but don't prevent the overall enrichment process from completing.
     pub async fn enrich_with_extras(&mut self) -> Result<()> {
-        let type_names: Vec<String> = self.type_info.keys().cloned().collect();
+        // 1. Call bevy_brp_extras/discover_format for all types at once
+        let response = self.call_extras_discover_format().await?;
+
         let mut enriched_count = 0;
-        let mut error_count = 0;
 
         debug!(
             "TypeDiscoveryContext: Starting enrichment for {} types",
-            type_names.len()
+            self.type_info.len()
         );
 
-        for type_name in type_names {
-            // Get the original value from existing type info
-            let original_value = self
-                .type_info
-                .get(&type_name)
-                .and_then(|info| info.original_value.clone());
-
-            match self
-                .discover_type_via_extras(&type_name, original_value)
-                .await
-            {
-                Ok(Some(discovered_info)) => {
-                    self.merge_discovered_info(type_name, discovered_info);
-                    enriched_count += 1;
-                }
-                Ok(None) => {
-                    debug!(
-                        "TypeDiscoveryContext: No extras info found for type: {}",
-                        type_name
-                    );
-                }
-                Err(e) => {
-                    debug!(
-                        "TypeDiscoveryContext: Extras discovery failed for type {}: {}",
-                        type_name, e
-                    );
-                    error_count += 1;
-                }
+        // 2. For each type in our context, enrich if data exists
+        for (type_name, type_info) in &mut self.type_info {
+            if let Some(extras_data) = find_type_in_response(type_name, &response) {
+                type_info.enrich_from_extras(extras_data);
+                enriched_count += 1;
+                debug!(
+                    "TypeDiscoveryContext: Enriched type '{}' with extras data",
+                    type_name
+                );
+            } else {
+                debug!(
+                    "TypeDiscoveryContext: No extras info found for type: {}",
+                    type_name
+                );
             }
         }
 
         debug!(
-            "TypeDiscoveryContext: Enrichment complete: {} enriched, {} errors",
-            enriched_count, error_count
+            "TypeDiscoveryContext: Enrichment complete: {} enriched",
+            enriched_count
         );
+
         Ok(())
     }
 
-    /// Discover type format via `bevy_brp_extras/discover_format`
-    async fn discover_type_via_extras(
-        &self,
-        type_name: &str,
-        original_value: Option<Value>,
-    ) -> Result<Option<UnifiedTypeInfo>> {
-        debug!("TypeDiscoveryContext: Starting extras discovery for type '{type_name}'");
+    /// Call `bevy_brp_extras/discover_format` for all types
+    async fn call_extras_discover_format(&self) -> Result<Value> {
+        let type_names: Vec<String> = self.type_info.keys().cloned().collect();
 
-        // Call brp_extras/discover_format directly
         let params = json!({
-            "types": [type_name]
+            "types": type_names
         });
 
         debug!(
-            "TypeDiscoveryContext: Calling brp_extras/discover_format on port {} with params: {params}",
-            self.port.0
+            "TypeDiscoveryContext: Calling brp_extras/discover_format on port {} with {} types",
+            self.port.0,
+            type_names.len()
         );
 
         let client = BrpClient::new(BrpMethod::BrpExtrasDiscoverFormat, self.port, Some(params));
         match client.execute_raw().await {
             Ok(ResponseStatus::Success(Some(response_data))) => {
                 debug!("TypeDiscoveryContext: Received successful response from brp_extras");
-
-                // Process the response to extract type information
-                Self::process_discovery_response(type_name, &response_data, original_value)
+                Ok(response_data)
             }
             Ok(ResponseStatus::Success(None)) => {
                 debug!("TypeDiscoveryContext: Received empty success response");
-                Ok(None)
+                Ok(json!({}))
             }
             Ok(ResponseStatus::Error(error)) => {
                 debug!(
-                    "TypeDiscoveryContext: brp_extras/discover_format failed: {} - {}",
-                    error.code, error.message
+                    "TypeDiscoveryContext: brp_extras returned error: {:?}",
+                    error
                 );
-                Ok(None) // Return None instead of Err - this just means brp_extras is not available
+                Err(error_stack::Report::new(Error::BrpCommunication(format!(
+                    "brp_extras/discover_format failed: {} - {}",
+                    error.code, error.message
+                ))))
             }
             Err(e) => {
-                debug!(
-                    "TypeDiscoveryContext: Connection error calling brp_extras/discover_format: {e}"
-                );
-                Ok(None) // Return None instead of Err - this just means brp_extras is not available
+                debug!("TypeDiscoveryContext: Failed to call brp_extras: {}", e);
+                Err(e)
             }
         }
-    }
-
-    /// Convert discovery response to `UnifiedTypeInfo`
-    fn process_discovery_response(
-        type_name: &str,
-        response_data: &Value,
-        original_value: Option<Value>,
-    ) -> Result<Option<UnifiedTypeInfo>> {
-        debug!("TypeDiscoveryContext: Processing discovery response for '{type_name}'");
-        debug!(
-            "TypeDiscoveryContext: Full response data: {}",
-            serde_json::to_string_pretty(response_data)
-                .unwrap_or_else(|_| "Failed to serialize".to_string())
-        );
-
-        // The response should contain type information, possibly as an array or object
-        // We need to find the entry for our specific type
-
-        find_type_in_response(type_name, response_data).map_or_else(|| {
-            debug!("TypeDiscoveryContext: Type '{type_name}' not found in discovery response");
-            Ok(None)
-        }, |type_data| {
-            debug!("TypeDiscoveryContext: Found type data for '{type_name}'");
-
-            // Use the constructor to convert TypeDiscoveryResponse → UnifiedTypeInfo
-            if let Some(unified_info) = UnifiedTypeInfo::from_discovery_response(type_data, original_value) {
-                debug!(
-                    "TypeDiscoveryContext: Successfully converted to UnifiedTypeInfo with {} mutation paths, {} examples",
-                    unified_info.format_info.mutation_paths.len(),
-                    unified_info.format_info.examples.len()
-                );
-                Ok(Some(unified_info))
-            } else {
-                debug!("TypeDiscoveryContext: Failed to convert response to UnifiedTypeInfo");
-                Ok(None) // Return None instead of error to match the behavior in extras_integration
-            }
-        })
-    }
-
-    /// Merge discovered information with existing registry information
-    fn merge_discovered_info(&mut self, type_name: String, mut discovered_info: UnifiedTypeInfo) {
-        // Preserve existing registry status if available
-        if let Some(existing_info) = self.type_info.get(&type_name) {
-            discovered_info.registry_status = existing_info.registry_status.clone();
-            discovered_info.discovery_source = DiscoverySource::RegistryPlusExtras;
-        }
-        // discovered_info already has DirectDiscovery source if new
-        self.type_info.insert(type_name, discovered_info);
     }
 
     /// Get all types as an iterator

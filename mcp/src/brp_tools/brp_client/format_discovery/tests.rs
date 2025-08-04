@@ -231,16 +231,17 @@ fn test_format_correction_rich_fields() {
 // and mutation_paths preservation (Phase 5)
 
 #[test]
-fn test_type_discovery_response_to_unified_type_info_conversion() {
+fn test_enrich_from_extras_full_enrichment() {
+    use super::types::DiscoverySource;
     use super::unified_types::UnifiedTypeInfo;
 
-    // Simulate a TypeDiscoveryResponse JSON with full metadata
-    let discovery_response = json!({
+    // Simulate extras discovery response JSON with full metadata
+    let extras_response = json!({
         "type_name": "bevy_transform::components::transform::Transform",
         "in_registry": true,
         "has_serialize": true,
         "has_deserialize": true,
-        "type_category": "Component",
+        "type_category": "Struct",
         "supported_operations": ["spawn", "insert", "mutate"],
         "example_values": {
             "spawn": {
@@ -263,40 +264,41 @@ fn test_type_discovery_response_to_unified_type_info_conversion() {
         }
     });
 
-    let unified_info = UnifiedTypeInfo::from_discovery_response(&discovery_response, None);
-    assert!(unified_info.is_some(), "Conversion should succeed");
+    // Start with a registry-based UnifiedTypeInfo
+    let mut info = UnifiedTypeInfo::for_transform_type(
+        "bevy_transform::components::transform::Transform".to_string(),
+        None,
+    );
 
-    let info = unified_info.unwrap();
+    // Verify initial state
+    assert_eq!(info.discovery_source, DiscoverySource::PatternMatching);
+    assert!(info.format_info.examples.is_empty() || info.format_info.examples.len() <= 2);
+    let initial_mutation_count = info.format_info.mutation_paths.len();
 
-    // Verify basic type information is preserved
+    // Enrich with extras data
+    info.enrich_from_extras(&extras_response);
+
+    // Verify enrichment occurred
+    assert_eq!(info.discovery_source, DiscoverySource::RegistryPlusExtras);
+
+    // Verify basic type information is preserved from original
     assert_eq!(
         info.type_name,
         "bevy_transform::components::transform::Transform"
     );
-    assert_eq!(info.supported_operations, vec!["spawn", "insert", "mutate"]);
-    assert_eq!(info.type_category, TypeCategory::Component);
+    assert_eq!(info.type_category, TypeCategory::Struct); // for_transform_type creates Struct category
 
-    // Verify registry status is preserved
-    assert!(info.registry_status.in_registry);
-    assert!(info.registry_status.has_reflect);
-    assert_eq!(
-        info.registry_status.type_path.unwrap(),
-        "bevy_transform::components::transform::Transform"
-    );
+    // Note: Registry status, serialization, and supported_operations are not enriched by extras
+    // They remain as set by the original constructor
 
-    // Verify serialization support is preserved
-    assert!(info.serialization.has_serialize);
-    assert!(info.serialization.has_deserialize);
-    assert!(info.serialization.brp_compatible);
-
-    // Critical: Verify mutation_paths are preserved (this was the original bug)
+    // Critical: Verify mutation_paths are enriched from extras (additive merge)
+    let final_mutation_count = info.format_info.mutation_paths.len();
     assert!(
-        !info.format_info.mutation_paths.is_empty(),
-        "Mutation paths should be preserved"
+        final_mutation_count > initial_mutation_count,
+        "Mutation paths should be added from extras"
     );
-    assert_eq!(info.format_info.mutation_paths.len(), 5);
 
-    // Verify specific mutation paths
+    // Verify specific mutation paths from extras are added
     assert_eq!(
         info.format_info.mutation_paths.get(".translation.x"),
         Some(&"X component of translation vector".to_string())
@@ -306,7 +308,7 @@ fn test_type_discovery_response_to_unified_type_info_conversion() {
         Some(&"W component of rotation quaternion".to_string())
     );
 
-    // Verify example values are preserved
+    // Verify example values are enriched from extras
     assert!(
         !info.format_info.examples.is_empty(),
         "Examples should be preserved"
@@ -316,10 +318,11 @@ fn test_type_discovery_response_to_unified_type_info_conversion() {
 }
 
 #[test]
-fn test_mutation_paths_preservation_edge_cases() {
+fn test_enrich_from_extras_edge_cases() {
+    use super::types::DiscoverySource;
     use super::unified_types::UnifiedTypeInfo;
 
-    // Test with minimal TypeDiscoveryResponse (edge case)
+    // Test 1: Enrichment with empty extras response (no example_values or mutation_paths)
     let minimal_response = json!({
         "type_name": "bevy_ecs::name::Name",
         "in_registry": false,
@@ -327,22 +330,25 @@ fn test_mutation_paths_preservation_edge_cases() {
         "has_deserialize": false
     });
 
-    let unified_info = UnifiedTypeInfo::from_discovery_response(&minimal_response, None);
-    assert!(unified_info.is_some(), "Minimal conversion should succeed");
+    let mut info = UnifiedTypeInfo::for_pattern_matching("bevy_ecs::name::Name".to_string(), None);
+    let initial_source = info.discovery_source.clone();
 
-    let info = unified_info.unwrap();
+    // This should not enrich anything since no example_values or mutation_paths
+    info.enrich_from_extras(&minimal_response);
+
+    // Discovery source should remain unchanged since no enrichment occurred
+    assert_eq!(info.discovery_source, initial_source);
     assert_eq!(info.type_name, "bevy_ecs::name::Name");
-    assert!(
-        info.format_info.mutation_paths.is_empty(),
-        "No mutation paths expected for minimal response"
-    );
 
-    // Test with complex nested mutation paths
+    // Test 2: Enrichment with complex nested mutation paths
     let complex_response = json!({
         "type_name": "custom::ComplexType",
         "in_registry": true,
         "has_serialize": true,
         "has_deserialize": true,
+        "example_values": {
+            "spawn": {"value": 42}
+        },
         "mutation_paths": {
             ".outer.inner.deep.value": "Deeply nested value",
             ".array[0].field": "First array element field",
@@ -351,12 +357,13 @@ fn test_mutation_paths_preservation_edge_cases() {
         }
     });
 
-    let unified_info = UnifiedTypeInfo::from_discovery_response(&complex_response, None);
-    assert!(unified_info.is_some(), "Complex conversion should succeed");
+    let mut info = UnifiedTypeInfo::for_pattern_matching("custom::ComplexType".to_string(), None);
+    info.enrich_from_extras(&complex_response);
 
-    let info = unified_info.unwrap();
+    // Verify enrichment occurred
+    assert_eq!(info.discovery_source, DiscoverySource::RegistryPlusExtras);
 
-    // Verify all complex mutation paths are preserved
+    // Verify all complex mutation paths are added
     assert_eq!(info.format_info.mutation_paths.len(), 4);
     assert!(
         info.format_info
@@ -378,6 +385,9 @@ fn test_mutation_paths_preservation_edge_cases() {
             .mutation_paths
             .contains_key(".map['key'].nested")
     );
+
+    // Verify example was added
+    assert!(info.format_info.examples.contains_key("spawn"));
 }
 
 #[test]

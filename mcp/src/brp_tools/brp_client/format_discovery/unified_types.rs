@@ -78,111 +78,6 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Create `UnifiedTypeInfo` from a `TypeDiscoveryResponse` JSON
-    ///
-    /// Preserves all fields including `mutation_paths` and metadata.
-    /// Automatically generates examples before returning.
-    pub fn from_discovery_response(
-        response_json: &Value,
-        original_value: Option<Value>,
-    ) -> Option<Self> {
-        let obj = response_json.as_object()?;
-        let type_name = obj.get("type_name")?.as_str()?.to_string();
-
-        // Extract registry status
-        let in_registry = obj.get("in_registry")?.as_bool().unwrap_or(false);
-        let registry_status = RegistryStatus {
-            in_registry,
-            has_reflect: true, // If we got a response, reflection is working
-            type_path: Some(type_name.clone()),
-        };
-
-        // Extract serialization support
-        let has_serialize = obj.get("has_serialize")?.as_bool().unwrap_or(false);
-        let has_deserialize = obj.get("has_deserialize")?.as_bool().unwrap_or(false);
-        let serialization = SerializationSupport {
-            has_serialize,
-            has_deserialize,
-            brp_compatible: has_serialize && has_deserialize,
-        };
-
-        // Convert example_values to format examples
-        let mut examples = HashMap::new();
-        if let Some(example_values) = obj.get("example_values").and_then(Value::as_object) {
-            for (operation, example) in example_values {
-                examples.insert(operation.clone(), example.clone());
-            }
-        }
-
-        // Extract mutation paths
-        let mut mutation_paths = HashMap::new();
-        if let Some(paths) = obj.get("mutation_paths").and_then(Value::as_object) {
-            for (path, description) in paths {
-                if let Some(desc_str) = description.as_str() {
-                    mutation_paths.insert(path.clone(), desc_str.to_string());
-                }
-            }
-        }
-
-        // Create format info with mutation paths preserved
-        let format_info = FormatInfo {
-            examples,
-            mutation_paths,
-            original_format: None,
-            corrected_format: None,
-        };
-
-        // Extract supported operations
-        let supported_operations = obj
-            .get("supported_operations")
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(Value::as_str)
-                    .map(String::from)
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // Extract type category
-        let type_category = obj
-            .get("type_category")
-            .and_then(Value::as_str)
-            .map_or(TypeCategory::Unknown, Self::parse_type_category);
-
-        // Extract child types
-        let mut child_types = HashMap::new();
-        if let Some(children) = obj.get("child_types").and_then(Value::as_object) {
-            for (name, type_path) in children {
-                if let Some(path_str) = type_path.as_str() {
-                    child_types.insert(name.clone(), path_str.to_string());
-                }
-            }
-        }
-
-        // Extract enum info and convert to proper structure
-        let enum_info = obj
-            .get("enum_info")
-            .and_then(Self::convert_enum_info_from_discovery);
-
-        let mut unified_info = Self {
-            type_name,
-            original_value,
-            registry_status,
-            serialization,
-            format_info,
-            supported_operations,
-            type_category,
-            child_types,
-            enum_info,
-            discovery_source: DiscoverySource::DirectDiscovery,
-        };
-
-        // Generate examples before returning
-        unified_info.regenerate_all_examples();
-        Some(unified_info)
-    }
-
     /// Create `UnifiedTypeInfo` for pattern matching error handling
     ///
     /// Used when creating error corrections from pattern analysis.
@@ -247,6 +142,93 @@ impl UnifiedTypeInfo {
 
         info.regenerate_all_examples();
         info
+    }
+
+    /// Enrich this type info with data from `bevy_brp_extras` discovery
+    ///
+    /// This method is infallible - if extras data is malformed or missing,
+    /// the type info remains unchanged. The `discovery_source` is only updated
+    /// to `RegistryPlusExtras` if actual enrichment occurs.
+    pub fn enrich_from_extras(&mut self, extras_response: &Value) {
+        let mut enriched = false;
+
+        // Extract and merge format examples from extras_response
+        if let Some(examples) = Self::extract_examples_from_extras(extras_response) {
+            // REPLACE: format_info.examples (extras data takes precedence)
+            // This matches the old behavior where extras completely replaced registry format info
+            self.format_info.examples.extend(examples);
+            enriched = true;
+        }
+
+        // Extract and merge mutation paths from extras_response
+        if let Some(mutation_paths) = Self::extract_mutation_paths_from_extras(extras_response) {
+            // REPLACE: format_info.mutation_paths (extras data takes precedence)
+            // This matches the old behavior where extras completely replaced registry format info
+            self.format_info.mutation_paths.extend(mutation_paths);
+            enriched = true;
+        }
+
+        // Extract and update type category from extras_response if available
+        if let Some(type_category) = extras_response.get("type_category").and_then(Value::as_str) {
+            let new_category = Self::parse_type_category(type_category);
+            if new_category != TypeCategory::Unknown {
+                self.type_category = new_category;
+                enriched = true;
+            }
+        }
+
+        // UPDATE: discovery_source to RegistryPlusExtras (only if ANY enrichment occurred)
+        if enriched {
+            self.discovery_source = DiscoverySource::RegistryPlusExtras;
+        }
+    }
+
+    /// Extract format examples from `bevy_brp_extras` response
+    fn extract_examples_from_extras(extras_response: &Value) -> Option<HashMap<String, Value>> {
+        let mut examples = HashMap::new();
+
+        // Look for example_values field in the response
+        if let Some(example_values) = extras_response
+            .get("example_values")
+            .and_then(Value::as_object)
+        {
+            for (operation, example) in example_values {
+                examples.insert(operation.clone(), example.clone());
+            }
+        }
+
+        // Only return if we found at least one example
+        if examples.is_empty() {
+            None
+        } else {
+            Some(examples)
+        }
+    }
+
+    /// Extract mutation paths from `bevy_brp_extras` response
+    fn extract_mutation_paths_from_extras(
+        extras_response: &Value,
+    ) -> Option<HashMap<String, String>> {
+        let mut mutation_paths = HashMap::new();
+
+        // Look for mutation_paths field in the response
+        if let Some(paths) = extras_response
+            .get("mutation_paths")
+            .and_then(Value::as_object)
+        {
+            for (path, description) in paths {
+                if let Some(desc_str) = description.as_str() {
+                    mutation_paths.insert(path.clone(), desc_str.to_string());
+                }
+            }
+        }
+
+        // Only return if we found at least one mutation path
+        if mutation_paths.is_empty() {
+            None
+        } else {
+            Some(mutation_paths)
+        }
     }
 
     /// Create `UnifiedTypeInfo` from Bevy registry schema
@@ -597,7 +579,14 @@ impl UnifiedTypeInfo {
             TypeCategory::MathType => self.transform_math_value(value),
             TypeCategory::Struct => self.transform_struct_value(value),
             TypeCategory::Enum => self.transform_enum_value(value),
-            _ => None,
+            _ => {
+                tracing::debug!(
+                    "No transformation available for type_category={:?} (type='{}')",
+                    self.type_category,
+                    self.type_name
+                );
+                None
+            }
         }
     }
 
@@ -730,33 +719,6 @@ impl UnifiedTypeInfo {
             "Component" => TypeCategory::Component,
             _ => TypeCategory::Unknown,
         }
-    }
-
-    /// Convert `enum_info` from type discovery response to `EnumInfo` structure
-    fn convert_enum_info_from_discovery(enum_obj: &Value) -> Option<EnumInfo> {
-        enum_obj
-            .get("variants")
-            .and_then(Value::as_array)
-            .map(|variants_array| {
-                let variants = variants_array
-                    .iter()
-                    .filter_map(|variant| {
-                        if let Some(variant_obj) = variant.as_object() {
-                            let name = variant_obj.get("name")?.as_str()?.to_string();
-                            let variant_type = variant_obj
-                                .get("type")
-                                .and_then(Value::as_str)
-                                .unwrap_or("Unit")
-                                .to_string();
-                            Some(EnumVariant { name, variant_type })
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                EnumInfo { variants }
-            })
     }
 
     /// Extract enum variant information from registry schema

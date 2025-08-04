@@ -119,7 +119,13 @@ impl DiscoveryEngine {
         })?;
 
         // NEW: Single call to create context with all data (types, values, registry info)
-        let discovery_context = DiscoveryContext::from_params(method, port, Some(&params)).await?;
+        let mut discovery_context =
+            DiscoveryContext::from_params(method, port, Some(&params)).await?;
+
+        // Enrich context with extras discovery upfront (don't fail if enrichment fails)
+        if let Err(e) = discovery_context.enrich_with_extras().await {
+            debug!("Constructor: Enrichment failed: {}", e);
+        }
 
         Ok(Self {
             method,
@@ -150,7 +156,7 @@ impl DiscoveryEngine {
 
         // Level 2: Direct Discovery via bevy_brp_extras
         debug!("DiscoveryEngine: Beginning Level 2 - Direct discovery");
-        if let Some(corrections) = self.execute_level_2_direct_discovery().await {
+        if let Some(corrections) = self.execute_level_2_direct_discovery() {
             debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
             return Ok(self.build_recovery_result(corrections).await);
         }
@@ -170,16 +176,11 @@ impl DiscoveryEngine {
     }
 
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
-    async fn execute_level_2_direct_discovery(&mut self) -> Option<Vec<Correction>> {
+    fn execute_level_2_direct_discovery(&self) -> Option<Vec<Correction>> {
         debug!(
             "Level 2: Attempting direct discovery for {} types",
             self.discovery_context.type_names().len()
         );
-
-        // Enrich context with extras discovery (don't fail if enrichment fails)
-        if let Err(e) = self.discovery_context.enrich_with_extras().await {
-            debug!("Level 2: Enrichment failed: {}", e);
-        }
 
         // Process only types that were enriched with extras information
         let corrections: Vec<Correction> = self
@@ -189,7 +190,7 @@ impl DiscoveryEngine {
                 // Only process types that got information from extras
                 matches!(
                     type_info.discovery_source,
-                    DiscoverySource::DirectDiscovery | DiscoverySource::RegistryPlusExtras
+                    DiscoverySource::RegistryPlusExtras
                 )
             })
             .map(|type_info| {
