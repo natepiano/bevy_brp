@@ -9,12 +9,4 @@ pub trait JsonFieldAccess: AsRef<str> {
     fn get_str_from<'a>(&self, value: &'a serde_json::Value) -> Option<&'a str> {
         value.get(self.as_ref()).and_then(|v| v.as_str())
     }
-
-    /// Get field value as object from a JSON object
-    fn get_object_from<'a>(
-        &self,
-        value: &'a serde_json::Value,
-    ) -> Option<&'a serde_json::Map<String, serde_json::Value>> {
-        value.get(self.as_ref()).and_then(|v| v.as_object())
-    }
 }

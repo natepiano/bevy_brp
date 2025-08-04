@@ -35,13 +35,27 @@
 //! Pattern: Vec3 object→array conversion, enum variant access
 //! Result: Corrected format with transformation hints
 //! ```
+//!
+//! # Value Propagation Architecture
+//!
+//! The engine uses `UnifiedTypeInfo` as the central data structure that combines:
+//! - Type name and registry information
+//! - Original values from BRP method parameters
+//! - Discovery metadata from `bevy_brp_extras`
+//! - Format transformation capabilities
+//!
+//! This eliminates repeated value lookups and ensures consistent access to original data
+//! throughout the discovery process. The `DiscoveryContext` automatically extracts and
+//! propagates values during construction via `from_params()`.
+//!
 //! Succinct call flow notes:
 //! The format discovery engine makes the initial attempt at the BRP call. This MUST use
 //! `execute_direct()` to avoid infinite recursion since it's part of the format discovery flow
 //! itself.
 //! - `format_discovery/engine.rs` - Makes the initial BRP call attempt, implements all recovery
 //!   levels including registry queries and direct discovery
-//! - `format_discovery/extras_integration.rs` - Calls discovery endpoint
+//! - `format_discovery/discovery_context.rs` - Manages unified type information and value
+//!   propagation
 
 use serde_json::Value;
 use tracing::debug;
@@ -58,7 +72,7 @@ use super::types::{
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Engine for format discovery and correction
 ///
@@ -69,7 +83,6 @@ pub struct DiscoveryEngine {
     port:              Port,
     params:            Value,
     original_error:    BrpClientError,
-    type_names:        Vec<String>,
     discovery_context: DiscoveryContext,
 }
 
@@ -103,19 +116,14 @@ impl DiscoveryEngine {
             )
         })?;
 
-        // Extract type names once for reuse
-        let type_names = extract_type_names_from_params(method, &params)?;
-
-        // Create discovery context with proper registry information
-        let discovery_context =
-            DiscoveryContext::fetch_from_registry(port, type_names.clone()).await?;
+        // NEW: Single call to create context with all data (types, values, registry info)
+        let discovery_context = DiscoveryContext::from_params(method, port, Some(&params)).await?;
 
         Ok(Self {
             method,
             port,
             params,
             original_error,
-            type_names,
             discovery_context,
         })
     }
@@ -123,15 +131,13 @@ impl DiscoveryEngine {
     /// Entry point for the work of format discovery
     pub async fn attempt_discovery_with_recovery(&mut self) -> Result<FormatRecoveryResult> {
         // Use discovery context created in constructor
-        let registry_type_count = self
-            .discovery_context
-            .count_types_with_info(&self.type_names);
+        let registry_type_count = self.discovery_context.types().count();
 
         debug!(
             "DiscoveryEngine: Starting discovery for method '{}' - found {}/{} passed-in types in the registry",
             self.method,
             registry_type_count,
-            self.type_names.len()
+            self.discovery_context.type_names().len()
         );
 
         // Level 1: Check for serialization issues
@@ -164,8 +170,8 @@ impl DiscoveryEngine {
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
     async fn execute_level_2_direct_discovery(&mut self) -> Option<Vec<Correction>> {
         debug!(
-            "Level 2: Attempting direct discovery for {} passed-in types",
-            self.type_names.len()
+            "Level 2: Attempting direct discovery for {} types",
+            self.discovery_context.type_names().len()
         );
 
         // Enrich context with extras discovery (don't fail if enrichment fails)
@@ -173,24 +179,23 @@ impl DiscoveryEngine {
             debug!("Level 2: Enrichment failed: {}", e);
         }
 
-        // Process each type into corrections
+        // Process each type into corrections - value is already in UnifiedTypeInfo
         let corrections: Vec<Correction> = self
-            .type_names
-            .iter()
-            .filter_map(|type_name| {
-                let discovered_info = self.discovery_context.get_type(type_name)?;
-                debug!("Level 2: Found enriched type information for '{type_name}'");
-
-                let original_value = self.extract_component_value(type_name);
-                Some(discovered_info.to_correction_for_method(self.method, original_value))
+            .discovery_context
+            .types()
+            .map(|type_info| {
+                debug!(
+                    "Level 2: Found enriched type information for '{}'",
+                    type_info.type_name
+                );
+                type_info.to_correction_for_method(self.method)
             })
             .collect();
 
         if corrections.is_empty() {
             debug!(
                 "Level 2: Direct discovery complete, proceeding to Level 3 with {} type infos",
-                self.discovery_context
-                    .count_types_with_info(&self.type_names)
+                self.discovery_context.type_names().len()
             );
             None
         } else {
@@ -204,44 +209,37 @@ impl DiscoveryEngine {
 
     /// Level 3: Pattern-based transformations
     fn execute_level_3_pattern_transformations(&self) -> Option<Vec<Correction>> {
+        let type_names = self.discovery_context.type_names();
         debug!(
             "Level 3: Applying pattern transformations for {} types",
-            self.type_names.len()
+            type_names.len()
         );
 
-        // Use singleton transformer registry - no allocation overhead
         let transformer_registry = transformers::transformer_registry();
         let mut corrections = Vec::new();
 
-        // Extract original values from parameters for transformation
-        let original_values = self.extract_type_values_from_params();
-
-        // For mutation methods, also extract the path that was attempted
+        // For mutation methods, extract the path
         let mutation_path = if matches!(
             self.method,
             BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
         ) {
-            self.params
-                .get(FormatCorrectionField::Path.as_ref())
-                .and_then(|v| v.as_str())
+            self.params.get("path").and_then(|p| p.as_str())
         } else {
             None
         };
 
-        // Process each type name
-        for type_name in &self.type_names {
-            debug!("Level 3: Checking transformation patterns for '{type_name}'");
+        // Process each type
+        for type_info in self.discovery_context.types() {
+            let type_name = &type_info.type_name;
 
-            // Get the type info from context
-            let type_info = self.discovery_context.get_type(type_name);
+            debug!("Level 3: Checking transformation patterns for '{type_name}'");
 
             // Try to generate format corrections using the transformer registry
             if let Some(correction) = self.attempt_pattern_based_correction(
                 type_name,
                 transformer_registry,
-                original_values,
                 mutation_path,
-                type_info,
+                Some(type_info),
             ) {
                 debug!("Level 3: Found pattern-based correction for '{type_name}'");
                 corrections.push(correction);
@@ -249,14 +247,12 @@ impl DiscoveryEngine {
                 debug!("Level 3: No pattern-based correction found for '{type_name}'");
 
                 // Handle uncorrectable types with discovered info
-                if let Some(existing_type_info) = type_info {
-                    corrections.push(Correction::Uncorrectable {
-                        type_info: existing_type_info.clone(),
-                        reason: format!(
-                            "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern."
-                        ),
-                    });
-                }
+                corrections.push(Correction::Uncorrectable {
+                    type_info: type_info.clone(),
+                    reason: format!(
+                        "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern."
+                    ),
+                });
             }
         }
 
@@ -272,32 +268,11 @@ impl DiscoveryEngine {
         }
     }
 
-    /// Extract original values from parameters for transformation
-    fn extract_type_values_from_params(&self) -> Option<&Value> {
-        match self.method {
-            BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
-                // Return the components object containing type values
-                ParameterName::Components.get_from(&self.params)
-            }
-            BrpMethod::BevyMutateComponent
-            | BrpMethod::BevyInsertResource
-            | BrpMethod::BevyMutateResource => {
-                // Return the value field
-                self.params.get(FormatCorrectionField::Value.as_ref())
-            }
-            _ => {
-                // For other methods, we don't currently support value extraction
-                None
-            }
-        }
-    }
-
     /// Attempt pattern-based correction for a specific type
     fn attempt_pattern_based_correction(
         &self,
         type_name: &str,
         transformer_registry: &transformers::TransformerRegistry,
-        original_values: Option<&Value>,
         mutation_path: Option<&str>,
         type_info: Option<&UnifiedTypeInfo>,
     ) -> Option<Correction> {
@@ -322,8 +297,8 @@ impl DiscoveryEngine {
             return Some(result);
         }
 
-        // Step 2: Extract the specific component value if available
-        let original_value = original_values.and_then(|_| self.extract_component_value(type_name));
+        // Step 2: Get original value from type_info if available
+        let original_value = type_info.and_then(|info| info.original_value.clone());
 
         let Some(original_value) = original_value else {
             debug!("Level 3: No original value available for transformation");
@@ -342,7 +317,7 @@ impl DiscoveryEngine {
         };
 
         // Step 3: Use type info from registry or create basic one as fallback
-        let type_info_owned = Self::create_basic_type_info(type_name);
+        let type_info_owned = Self::create_basic_type_info(type_name, Some(original_value.clone()));
         let type_info_ref = type_info.unwrap_or(&type_info_owned);
 
         // Step 3.5: Try UnifiedTypeInfo's transform_value() first if available
@@ -451,8 +426,9 @@ impl DiscoveryEngine {
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
                         type_name:         type_info.type_name.clone(),
-                        original_value:    self
-                            .extract_component_value(&type_info.type_name)
+                        original_value:    type_info
+                            .original_value
+                            .clone()
                             .unwrap_or_else(|| serde_json::json!({})),
                         corrected_value:   build_corrected_value_from_type_info(
                             &type_info,
@@ -569,69 +545,39 @@ impl DiscoveryEngine {
         debug!("Checking for serialization errors in registry type infos");
 
         // Check each type for serialization support
-        for type_name in &self.type_names {
-            if let Some(type_info) = self.discovery_context.get_type(type_name) {
+        for type_info in self.discovery_context.types() {
+            debug!(
+                "Component '{}' found in registry, brp_compatible={}",
+                type_info.type_name, type_info.serialization.brp_compatible
+            );
+
+            // Component is registered but lacks serialization - short circuit
+            if type_info.registry_status.in_registry && !type_info.serialization.brp_compatible {
                 debug!(
-                    "Component '{}' found in registry, brp_compatible={}",
-                    type_name, type_info.serialization.brp_compatible
+                    "Component '{}' lacks serialization, building corrections",
+                    type_info.type_name
+                );
+                let educational_message = format!(
+                    "Component '{}' is registered but lacks Serialize and Deserialize traits required for {} operations. \
+                    Add #[derive(Serialize, Deserialize)] to the component definition.",
+                    type_info.type_name,
+                    self.method.as_str()
                 );
 
-                // Component is registered but lacks serialization - short circuit
-                if type_info.registry_status.in_registry && !type_info.serialization.brp_compatible
-                {
-                    debug!(
-                        "Component '{}' lacks serialization, building corrections",
-                        type_name
-                    );
-                    let educational_message = format!(
-                        "Component '{}' is registered but lacks Serialize and Deserialize traits required for {} operations. \
-                        Add #[derive(Serialize, Deserialize)] to the component definition.",
-                        type_name,
-                        self.method.as_str()
-                    );
-
-                    let corrections = self
-                        .type_names
-                        .iter()
-                        .map(|type_name| {
-                            let type_info = self
-                                .discovery_context
-                                .get_type(type_name)
-                                .cloned()
-                                .unwrap_or_else(|| {
-                                    UnifiedTypeInfo::for_pattern_matching(type_name.clone())
-                                });
-                            Correction::Uncorrectable {
-                                type_info,
-                                reason: educational_message.clone(),
-                            }
-                        })
-                        .collect();
-                    return Some(corrections);
-                }
+                let corrections = self
+                    .discovery_context
+                    .types()
+                    .map(|type_info| Correction::Uncorrectable {
+                        type_info: type_info.clone(),
+                        reason:    educational_message.clone(),
+                    })
+                    .collect();
+                return Some(corrections);
             }
         }
 
         debug!("All components have serialization support or are not in registry");
         None
-    }
-
-    /// Extract component value from method parameters
-    fn extract_component_value(&self, type_name: &str) -> Option<Value> {
-        match self.method {
-            BrpMethod::BevySpawn | BrpMethod::BevyInsert => self
-                .params
-                .get("components")
-                .and_then(|c| c.get(type_name))
-                .cloned(),
-            BrpMethod::BevyInsertResource
-            | BrpMethod::BevyMutateComponent
-            | BrpMethod::BevyMutateResource => self
-                .params
-                .get(FormatCorrectionField::Value.as_ref())
-                .cloned(),
-            _ => None,
-        }
     }
 
     /// Handle mutation-specific errors
@@ -697,7 +643,7 @@ impl DiscoveryEngine {
 
                 // Use the existing type_info if available, or create a new one
                 let final_type_info = type_info.cloned().unwrap_or_else(|| {
-                    UnifiedTypeInfo::for_pattern_matching(type_name.to_string())
+                    UnifiedTypeInfo::for_pattern_matching(type_name.to_string(), None)
                 });
 
                 Some(Correction::Uncorrectable {
@@ -713,7 +659,7 @@ impl DiscoveryEngine {
     fn create_enhanced_enum_guidance(type_name: &str, error_pattern: &ErrorPattern) -> Correction {
         debug!("Level 3: Creating enhanced enum guidance for type '{type_name}'");
 
-        let mut type_info = Self::create_basic_type_info(type_name);
+        let mut type_info = Self::create_basic_type_info(type_name, None);
         type_info.type_category = TypeCategory::Enum;
 
         // Extract variant information from the error pattern
@@ -761,8 +707,8 @@ impl DiscoveryEngine {
     }
 
     /// Create basic type info for transformer use
-    fn create_basic_type_info(type_name: &str) -> UnifiedTypeInfo {
-        UnifiedTypeInfo::for_pattern_matching(type_name.to_string())
+    fn create_basic_type_info(type_name: &str, original_value: Option<Value>) -> UnifiedTypeInfo {
+        UnifiedTypeInfo::for_pattern_matching(type_name.to_string(), original_value)
     }
 
     /// Convert transformer output to `Correction`
@@ -798,7 +744,7 @@ impl DiscoveryEngine {
             {
                 debug!("Level 3: Detected math type '{t}', providing array format guidance");
 
-                let type_info = UnifiedTypeInfo::for_math_type(t.to_string());
+                let type_info = UnifiedTypeInfo::for_math_type(t.to_string(), None);
 
                 let reason = if t.contains("Quat") {
                     format!(
@@ -957,49 +903,6 @@ fn build_corrected_params(
     Ok(Some(params))
 }
 
-/// Extract type names from BRP method parameters based on method type
-fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Result<Vec<String>> {
-    let mut type_names = Vec::new();
-
-    match method {
-        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
-            // Types are keys in the "components" object
-            if let Some(components) = ParameterName::Components.get_object_from(params) {
-                for type_name in components.keys() {
-                    type_names.push(type_name.clone());
-                }
-            }
-        }
-        BrpMethod::BevyMutateComponent => {
-            // Single type in "component" field
-            if let Some(component) = params
-                .get(ParameterName::Component.as_ref())
-                .and_then(|c| c.as_str())
-            {
-                type_names.push(component.to_string());
-            }
-        }
-        BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
-            // Single type in "resource" field
-            if let Some(resource) = ParameterName::Resource.get_str_from(params) {
-                type_names.push(resource.to_string());
-            }
-        }
-        _ => {
-            // For other methods, we don't currently support type extraction
-        }
-    }
-
-    if type_names.is_empty() {
-        return Err(Error::InvalidArgument(
-            "No type names found in parameters, cannot perform format discovery".to_string(),
-        )
-        .into());
-    }
-
-    Ok(type_names)
-}
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -1031,7 +934,7 @@ mod tests {
     }
 
     fn create_type_info_without_serialization(type_name: &str) -> UnifiedTypeInfo {
-        let mut type_info = UnifiedTypeInfo::for_pattern_matching(type_name.to_string());
+        let mut type_info = UnifiedTypeInfo::for_pattern_matching(type_name.to_string(), None);
         type_info.registry_status.in_registry = true;
         type_info.serialization.has_serialize = false;
         type_info.serialization.has_deserialize = false;
@@ -1040,7 +943,7 @@ mod tests {
     }
 
     fn create_type_info_with_serialization(type_name: &str) -> UnifiedTypeInfo {
-        let mut type_info = UnifiedTypeInfo::for_pattern_matching(type_name.to_string());
+        let mut type_info = UnifiedTypeInfo::for_pattern_matching(type_name.to_string(), None);
         type_info.registry_status.in_registry = true;
         type_info.serialization.has_serialize = true;
         type_info.serialization.has_deserialize = true;

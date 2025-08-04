@@ -23,6 +23,8 @@ use crate::tool::BrpMethod;
 pub struct UnifiedTypeInfo {
     /// The fully-qualified type name
     pub type_name:            String,
+    /// The original value from parameters
+    pub original_value:       Option<Value>,
     /// Registry and reflection information
     pub registry_status:      RegistryStatus,
     /// Serialization support information
@@ -44,9 +46,14 @@ pub struct UnifiedTypeInfo {
 impl UnifiedTypeInfo {
     /// Create a new `UnifiedTypeInfo` with minimal required information
     /// This is now private - use specialized constructors instead
-    fn new(type_name: String, discovery_source: DiscoverySource) -> Self {
+    fn new(
+        type_name: String,
+        original_value: Option<Value>,
+        discovery_source: DiscoverySource,
+    ) -> Self {
         Self {
             type_name,
+            original_value,
             registry_status: RegistryStatus {
                 in_registry: false,
                 has_reflect: false,
@@ -75,7 +82,10 @@ impl UnifiedTypeInfo {
     ///
     /// Preserves all fields including `mutation_paths` and metadata.
     /// Automatically generates examples before returning.
-    pub fn from_discovery_response(response_json: &Value) -> Option<Self> {
+    pub fn from_discovery_response(
+        response_json: &Value,
+        original_value: Option<Value>,
+    ) -> Option<Self> {
         let obj = response_json.as_object()?;
         let type_name = obj.get("type_name")?.as_str()?.to_string();
 
@@ -157,6 +167,7 @@ impl UnifiedTypeInfo {
 
         let mut unified_info = Self {
             type_name,
+            original_value,
             registry_status,
             serialization,
             format_info,
@@ -176,8 +187,8 @@ impl UnifiedTypeInfo {
     ///
     /// Used when creating error corrections from pattern analysis.
     /// Automatically generates examples before returning.
-    pub fn for_pattern_matching(type_name: String) -> Self {
-        let mut info = Self::new(type_name, DiscoverySource::PatternMatching);
+    pub fn for_pattern_matching(type_name: String, original_value: Option<Value>) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.regenerate_all_examples();
         info
     }
@@ -186,8 +197,8 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
     /// Sets appropriate type category and generates examples.
-    pub fn for_math_type(type_name: String) -> Self {
-        let mut info = Self::new(type_name, DiscoverySource::PatternMatching);
+    pub fn for_math_type(type_name: String, original_value: Option<Value>) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::MathType;
         info.regenerate_all_examples();
         info
@@ -197,8 +208,12 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies an enum with specific variants.
     /// Sets appropriate type category, enum info, and generates examples.
-    pub fn for_enum_type(type_name: String, variant_names: Vec<String>) -> Self {
-        let mut info = Self::new(type_name, DiscoverySource::PatternMatching);
+    pub fn for_enum_type(
+        type_name: String,
+        variant_names: Vec<String>,
+        original_value: Option<Value>,
+    ) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::Enum;
         if !variant_names.is_empty() {
             let variants = variant_names
@@ -218,8 +233,8 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies a Transform component.
     /// Sets appropriate type category, child types, and generates examples.
-    pub fn for_transform_type(type_name: String) -> Self {
-        let mut info = Self::new(type_name, DiscoverySource::PatternMatching);
+    pub fn for_transform_type(type_name: String, original_value: Option<Value>) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::Struct;
 
         // Add child types for Transform components
@@ -238,7 +253,11 @@ impl UnifiedTypeInfo {
     ///
     /// Extracts registry status, reflection traits, and serialization support.
     /// Automatically generates examples before returning.
-    pub fn from_registry_schema(type_name: &str, schema_data: &Value) -> Self {
+    pub fn from_registry_schema(
+        type_name: &str,
+        schema_data: &Value,
+        original_value: Option<Value>,
+    ) -> Self {
         // Extract reflect types
         let reflect_types = schema_data
             .get("reflectTypes")
@@ -309,6 +328,7 @@ impl UnifiedTypeInfo {
 
         let mut unified_info = Self {
             type_name: type_name.to_string(),
+            original_value,
             registry_status,
             serialization,
             format_info: FormatInfo {
@@ -479,11 +499,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Create appropriate correction based on the method and context
-    pub fn to_correction_for_method(
-        &self,
-        method: BrpMethod,
-        original_value: Option<Value>,
-    ) -> Correction {
+    pub fn to_correction_for_method(&self, method: BrpMethod) -> Correction {
         // Check if this is a mutation method and we have mutation paths
         if matches!(
             method,
@@ -504,8 +520,8 @@ impl UnifiedTypeInfo {
                 reason:    hint,
             }
         } else {
-            // Use existing correction logic
-            self.to_correction(original_value)
+            // Use existing correction logic with stored original_value
+            self.to_correction(self.original_value.clone())
         }
     }
 
@@ -880,6 +896,7 @@ mod tests {
     fn test_to_correction_result_metadata_only() {
         let type_info = UnifiedTypeInfo::for_pattern_matching(
             "bevy_transform::components::transform::Transform".to_string(),
+            None,
         );
 
         let result = type_info.to_correction(None);
@@ -902,6 +919,7 @@ mod tests {
     fn test_to_correction_result_with_example() {
         let mut type_info = UnifiedTypeInfo::for_pattern_matching(
             "bevy_transform::components::transform::Transform".to_string(),
+            None,
         );
         type_info.type_category = TypeCategory::Struct;
 

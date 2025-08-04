@@ -33,8 +33,8 @@
     "expected_shutdown_method": "N/A"
   },
   {
-    "test_name": "format_discovery",
-    "test_file": ".claude/commands/tests/format_discovery.md",
+    "test_name": "discovery",
+    "test_file": ".claude/commands/tests/discovery.md",
     "port": 20105,
     "app_name": "extras_plugin",
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20105",

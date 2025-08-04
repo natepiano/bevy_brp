@@ -62,8 +62,8 @@ impl MathTypeTransformer {
 
     /// Use `UnifiedTypeInfo` to transform math types
     fn try_unified_transform(type_name: &str, value: &Value) -> Option<TransformationResult> {
-        // Create a UnifiedTypeInfo for the math type
-        let type_info = UnifiedTypeInfo::for_math_type(type_name.to_string());
+        // Create a UnifiedTypeInfo for the math type with the original value
+        let type_info = UnifiedTypeInfo::for_math_type(type_name.to_string(), Some(value.clone()));
 
         // Try transformation using UnifiedTypeInfo
         type_info.transform_value(value).map(|transformed| {
@@ -165,8 +165,11 @@ impl MathTypeTransformer {
             transform_data
         );
 
-        // First try using UnifiedTypeInfo for Transform
-        let type_info = UnifiedTypeInfo::for_transform_type(actual_type_name.to_string());
+        // First try using UnifiedTypeInfo for Transform with the original value
+        let type_info = UnifiedTypeInfo::for_transform_type(
+            actual_type_name.to_string(),
+            Some(transform_data.clone()),
+        );
 
         if let Some(transformed) = type_info.transform_value(transform_data) {
             let hint = format!("`{actual_type_name}` Transform converted to proper array format");
