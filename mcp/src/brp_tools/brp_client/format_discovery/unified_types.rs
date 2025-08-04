@@ -6,6 +6,7 @@
 //! Core types: `UnifiedTypeInfo`, `FormatInfo`, `RegistryStatus`, `SerializationSupport`
 
 use std::collections::HashMap;
+use std::fmt::Write;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -15,6 +16,7 @@ use super::types::{
     FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
 };
 use crate::brp_tools::brp_client::format_discovery::format_correction_fields::FormatCorrectionField;
+use crate::tool::BrpMethod;
 
 /// Comprehensive type information unified across all discovery sources
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -473,6 +475,37 @@ impl UnifiedTypeInfo {
         Correction::Uncorrectable {
             type_info: self.clone(),
             reason,
+        }
+    }
+
+    /// Create appropriate correction based on the method and context
+    pub fn to_correction_for_method(
+        &self,
+        method: BrpMethod,
+        original_value: Option<Value>,
+    ) -> Correction {
+        // Check if this is a mutation method and we have mutation paths
+        if matches!(
+            method,
+            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+        ) && self.supports_mutation()
+        {
+            // Create mutation guidance
+            let mut hint = format!(
+                "Type '{}' supports mutation. Available paths:\n",
+                self.type_name
+            );
+            for (path, description) in self.get_mutation_paths() {
+                let _ = writeln!(hint, "  {path} - {description}");
+            }
+
+            Correction::Uncorrectable {
+                type_info: self.clone(),
+                reason:    hint,
+            }
+        } else {
+            // Use existing correction logic
+            self.to_correction(original_value)
         }
     }
 

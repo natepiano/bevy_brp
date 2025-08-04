@@ -43,8 +43,6 @@
 //!   levels including registry queries and direct discovery
 //! - `format_discovery/extras_integration.rs` - Calls discovery endpoint
 
-use std::fmt::Write;
-
 use serde_json::Value;
 use tracing::debug;
 
@@ -163,6 +161,15 @@ impl DiscoveryEngine {
         }
     }
 
+    /// Process a single type into a correction
+    fn process_type_to_correction(&self, type_name: &str) -> Option<Correction> {
+        let discovered_info = self.discovery_context.get_type(type_name)?;
+        debug!("Level 2: Found enriched type information for '{type_name}'");
+
+        let original_value = Self::extract_component_value(self.method, &self.params, type_name);
+        Some(discovered_info.to_correction_for_method(self.method, original_value))
+    }
+
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
     async fn execute_level_2_direct_discovery(&mut self) -> Option<Vec<Correction>> {
         debug!(
@@ -173,66 +180,20 @@ impl DiscoveryEngine {
         // Enrich context with extras discovery (don't fail if enrichment fails)
         if let Err(e) = self.discovery_context.enrich_with_extras().await {
             debug!("Level 2: Enrichment failed: {}", e);
-            // Continue with registry-only info
         }
 
-        // Attempt direct discovery for each type
-        let mut corrections = Vec::new();
+        // Process each type into corrections
+        let corrections: Vec<Correction> = self
+            .type_names
+            .iter()
+            .filter_map(|type_name| self.process_type_to_correction(type_name))
+            .collect();
 
-        for type_name in &self.type_names {
-            debug!("Level 2: Processing corrections for '{type_name}'");
-
-            // Get the enriched type info (may have data from both registry and extras)
-            if let Some(discovered_info) = self.discovery_context.get_type(type_name) {
-                debug!("Level 2: Found enriched type information for '{type_name}'");
-
-                // Check if this is a mutation method and we have mutation paths
-                if matches!(
-                    self.method,
-                    BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-                ) && discovered_info.supports_mutation()
-                {
-                    debug!(
-                        "Level 2: Type '{}' supports mutation with {} paths",
-                        type_name,
-                        discovered_info.get_mutation_paths().len()
-                    );
-
-                    // Create a mutation-specific correction with available paths
-                    let mut hint =
-                        format!("Type '{type_name}' supports mutation. Available paths:\n");
-                    for (path, description) in discovered_info.get_mutation_paths() {
-                        let _ = writeln!(hint, "  {path} - {description}");
-                    }
-
-                    let correction = Correction::Uncorrectable {
-                        type_info: discovered_info.clone(),
-                        reason:    hint,
-                    };
-                    corrections.push(correction);
-                } else {
-                    // Extract the original value for this component
-                    let original_component_value =
-                        Self::extract_component_value(self.method, &self.params, type_name);
-
-                    // Create a correction from the discovered type information with original value
-                    let correction = discovered_info.to_correction(original_component_value);
-                    corrections.push(correction);
-                }
-            } else {
-                debug!("Level 2: No type information found for '{type_name}'");
-                // Type was not found in registry or extras discovery
-            }
-        }
-
-        // Determine the level result based on what we discovered
         if corrections.is_empty() {
-            let type_count = self
-                .discovery_context
-                .count_types_with_info(&self.type_names);
             debug!(
                 "Level 2: Direct discovery complete, proceeding to Level 3 with {} type infos",
-                type_count
+                self.discovery_context
+                    .count_types_with_info(&self.type_names)
             );
             None
         } else {
