@@ -115,15 +115,7 @@ impl DiscoveryEngine {
         })?;
 
         // Extract type names once for reuse
-        let type_names = extract_type_names_from_params(method, &params);
-
-        // Early exit if no types to process
-        if type_names.is_empty() {
-            return Err(Error::InvalidArgument(
-                "No type names found in parameters, cannot perform format discovery".to_string(),
-            )
-            .into());
-        }
+        let type_names = extract_type_names_from_params(method, &params)?;
 
         // Create discovery context with proper registry information
         let discovery_context =
@@ -1038,7 +1030,7 @@ fn build_corrected_params(
 }
 
 /// Extract type names from BRP method parameters based on method type
-fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<String> {
+fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Result<Vec<String>> {
     let mut type_names = Vec::new();
 
     match method {
@@ -1070,7 +1062,14 @@ fn extract_type_names_from_params(method: BrpMethod, params: &Value) -> Vec<Stri
         }
     }
 
-    type_names
+    if type_names.is_empty() {
+        return Err(Error::InvalidArgument(
+            "No type names found in parameters, cannot perform format discovery".to_string(),
+        )
+        .into());
+    }
+
+    Ok(type_names)
 }
 
 #[cfg(test)]
