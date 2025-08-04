@@ -137,7 +137,7 @@ impl DiscoveryEngine {
     }
 
     /// Entry point for the work of format discovery
-    pub async fn attempt_discovery_with_recovery(&mut self) -> Result<FormatRecoveryResult> {
+    pub async fn attempt_discovery_with_recovery(&self) -> Result<FormatRecoveryResult> {
         // Use discovery context created in constructor
         let registry_type_count = self.discovery_context.types().count();
 
@@ -668,6 +668,7 @@ impl DiscoveryEngine {
     /// Create enhanced guidance for enum types when we can't transform but can provide format info
     fn create_enhanced_enum_guidance(type_name: &str, error_pattern: &ErrorPattern) -> Correction {
         debug!("Level 3: Creating enhanced enum guidance for type '{type_name}'");
+        debug!("Level 3: Error pattern: {:?}", error_pattern);
 
         let mut type_info = Self::create_basic_type_info(type_name, None);
         type_info.type_category = TypeCategory::Enum;
@@ -700,7 +701,14 @@ impl DiscoveryEngine {
             })
             .collect();
 
-        if !variants.is_empty() {
+        if variants.is_empty() {
+            debug!("Level 3: No variants extracted from error pattern");
+        } else {
+            debug!(
+                "Level 3: Setting enum_info with {} variants: {:?}",
+                variants.len(),
+                variants
+            );
             type_info.enum_info = Some(EnumInfo { variants });
         }
         type_info.supported_operations = vec![
@@ -805,20 +813,47 @@ fn can_retry_with_corrections(corrections: &[CorrectionInfo]) -> bool {
 
 /// Build a corrected value from type info for guidance
 fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: BrpMethod) -> Value {
+    debug!(
+        "build_corrected_value_from_type_info: Building for type '{}' with method '{}', enum_info present: {}",
+        type_info.type_name,
+        method.as_str(),
+        type_info.enum_info.is_some()
+    );
+
     // Check if we have examples for this method
     if let Some(example) = type_info.format_info.examples.get(method.as_str()) {
+        debug!("build_corrected_value_from_type_info: Found example for method, returning it");
         return example.clone();
     }
 
     // For mutations, provide mutation path guidance
+    debug!(
+        "build_corrected_value_from_type_info: Checking mutation method match - method: {:?}",
+        method
+    );
     if matches!(
         method,
         BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
     ) {
+        debug!(
+            "build_corrected_value_from_type_info: Method matches mutation, proceeding with guidance"
+        );
         // Check if we have a mutate example
+        debug!(
+            "build_corrected_value_from_type_info: Checking for mutate example, examples keys: {:?}",
+            type_info.format_info.examples.keys().collect::<Vec<_>>()
+        );
         if let Some(mutate_example) = type_info.format_info.examples.get("mutate") {
+            debug!(
+                "build_corrected_value_from_type_info: Found mutate example, returning early: {}",
+                serde_json::to_string_pretty(mutate_example)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string())
+            );
             return mutate_example.clone();
         }
+        debug!(
+            "build_corrected_value_from_type_info: No mutate example found, proceeding to generate guidance"
+        );
 
         let mut guidance = serde_json::json!({
             FormatCorrectionField::Hint.as_ref(): "Use appropriate path and value for mutation"
@@ -837,6 +872,11 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: Brp
         // Add enum-specific guidance if this is an enum
         if let Some(enum_info) = &type_info.enum_info {
             let variants: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
+            debug!(
+                "build_corrected_value_from_type_info: Adding enum guidance with {} variants: {:?}",
+                variants.len(),
+                variants
+            );
             guidance[FormatCorrectionField::ValidValues.as_ref()] = serde_json::json!(variants);
             guidance[FormatCorrectionField::Hint.as_ref()] =
                 serde_json::json!("Use empty path with variant name as value");
@@ -844,12 +884,25 @@ fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: Brp
                 {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
                 {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}
             ]);
+            debug!(
+                "build_corrected_value_from_type_info: Final guidance with enum fields: {}",
+                serde_json::to_string_pretty(&guidance)
+                    .unwrap_or_else(|_| "Failed to serialize".to_string())
+            );
+        } else {
+            debug!(
+                "build_corrected_value_from_type_info: No enum_info found, not adding enum guidance"
+            );
         }
 
         return guidance;
     }
+    debug!(
+        "build_corrected_value_from_type_info: Method does not match mutation, returning empty object"
+    );
 
     // Default to empty object
+    debug!("build_corrected_value_from_type_info: Returning default empty object");
     serde_json::json!({})
 }
 
@@ -1098,8 +1151,6 @@ mod tests {
         )
         .await
         .expect("Test engine creation should succeed");
-
-        let _registry_info: HashMap<String, UnifiedTypeInfo> = HashMap::new(); // Empty registry
 
         let result = engine.detect_serialization_issues();
 

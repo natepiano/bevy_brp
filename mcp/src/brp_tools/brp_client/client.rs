@@ -168,7 +168,7 @@ impl BrpClient {
             + 'static,
     {
         // Create engine with parameter validation
-        let mut engine = DiscoveryEngine::new(
+        let engine = DiscoveryEngine::new(
             self.method,
             self.port,
             self.params.clone(),

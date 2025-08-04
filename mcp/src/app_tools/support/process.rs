@@ -1,4 +1,6 @@
 use std::fs::File;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Stdio;
 
@@ -48,17 +50,32 @@ pub fn launch_detached_process(
         .stdout(Stdio::from(log_file))
         .stderr(Stdio::from(log_file_for_stderr));
 
+    // Create new process group for true detachment (Unix only)
+    #[cfg(unix)]
+    new_cmd.process_group(0);
+
     // Spawn the process
     tracing::debug!("Preparing to spawn process: {process_name}");
     tracing::debug!("Command: {:?}", new_cmd);
     tracing::debug!("Working directory: {}", working_dir.display());
 
     match new_cmd.spawn() {
-        Ok(child) => {
+        Ok(mut child) => {
             // Get the PID
             let pid = child.id();
 
             tracing::debug!("Process spawned successfully: {process_name} (PID: {pid})");
+
+            // Spawn a background thread to reap the child when it exits
+            // This prevents zombie processes
+            std::thread::spawn(move || match child.wait() {
+                Ok(status) => {
+                    tracing::debug!("Child process {pid} exited with status: {status:?}");
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to wait for child process {pid}: {e}");
+                }
+            });
 
             Ok(pid)
         }

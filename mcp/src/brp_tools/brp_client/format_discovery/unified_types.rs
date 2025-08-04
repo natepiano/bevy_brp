@@ -10,6 +10,7 @@ use std::fmt::Write;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::debug;
 
 use super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
@@ -177,6 +178,22 @@ impl UnifiedTypeInfo {
             }
         }
 
+        // Extract and update enum_info from extras_response if available
+        if let Some(enum_info) = Self::extract_enum_info_from_extras(extras_response) {
+            debug!(
+                "enrich_from_extras: Found enum_info with {} variants for type '{}'",
+                enum_info.variants.len(),
+                self.type_name
+            );
+            self.enum_info = Some(enum_info);
+            enriched = true;
+        } else {
+            debug!(
+                "enrich_from_extras: No enum_info found in extras response for type '{}'",
+                self.type_name
+            );
+        }
+
         // UPDATE: discovery_source to RegistryPlusExtras (only if ANY enrichment occurred)
         if enriched {
             self.discovery_source = DiscoverySource::RegistryPlusExtras;
@@ -229,6 +246,41 @@ impl UnifiedTypeInfo {
         } else {
             Some(mutation_paths)
         }
+    }
+
+    /// Extract enum info from `bevy_brp_extras` response
+    fn extract_enum_info_from_extras(extras_response: &Value) -> Option<EnumInfo> {
+        debug!(
+            "extract_enum_info_from_extras: Processing response: {}",
+            serde_json::to_string_pretty(extras_response)
+                .unwrap_or_else(|_| "Failed to serialize".to_string())
+        );
+
+        extras_response.get("enum_info").and_then(|enum_obj| {
+            enum_obj
+                .get("variants")
+                .and_then(Value::as_array)
+                .map(|variants_array| {
+                    let variants = variants_array
+                        .iter()
+                        .filter_map(|variant| {
+                            if let Some(variant_obj) = variant.as_object() {
+                                let name = variant_obj.get("name")?.as_str()?.to_string();
+                                let variant_type = variant_obj
+                                    .get("type")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or("Unit")
+                                    .to_string();
+                                Some(EnumVariant { name, variant_type })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    EnumInfo { variants }
+                })
+        })
     }
 
     /// Create `UnifiedTypeInfo` from Bevy registry schema
@@ -389,6 +441,16 @@ impl UnifiedTypeInfo {
 
     /// Convert this type info to a `Correction`
     pub fn to_correction(&self, original_value: Option<Value>) -> Correction {
+        debug!(
+            "to_correction: Converting type '{}' with enum_info: {}",
+            self.type_name,
+            if self.enum_info.is_some() {
+                "present"
+            } else {
+                "missing"
+            }
+        );
+
         // Check if this is an enum with variants - create enum-specific correction
         if let Some(enum_info) = &self.enum_info {
             let variant_names: Vec<String> =
@@ -834,11 +896,11 @@ impl UnifiedTypeInfo {
             }
             _ => {
                 // For other types (enums, values), mutation typically replaces the whole value
+                // NOTE: For enums, we don't add mutation paths here because the enum guidance
+                // system in build_corrected_value_from_type_info generates better guidance
+                // with valid_values and examples
                 if kind == "Enum" {
-                    paths.insert(
-                        String::new(),
-                        "Replace the entire enum value (use empty path)".to_string(),
-                    );
+                    // Skip adding mutation path for enums
                 }
             }
         }

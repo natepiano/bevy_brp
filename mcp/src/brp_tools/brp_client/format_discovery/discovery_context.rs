@@ -22,6 +22,7 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use super::super::{BrpClient, ResponseStatus};
+use super::types::BrpTypeName;
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
@@ -31,7 +32,7 @@ pub struct DiscoveryContext {
     /// Port for BRP connections when making direct discovery calls
     port:      Port,
     /// Type information from Bevy's registry
-    type_info: HashMap<String, UnifiedTypeInfo>,
+    type_info: HashMap<BrpTypeName, UnifiedTypeInfo>,
 }
 
 impl DiscoveryContext {
@@ -64,12 +65,12 @@ impl DiscoveryContext {
         {
             if let Some(unified_info) = registry_info {
                 // Registry info already has value from updated from_registry_schema constructor
-                type_info.insert(type_name.clone(), unified_info.clone());
+                type_info.insert(type_name.clone().into(), unified_info.clone());
             } else {
                 // Create basic info with value for types not in registry
                 let basic_info =
                     UnifiedTypeInfo::for_pattern_matching(type_name.clone(), value.clone());
-                type_info.insert(type_name.clone(), basic_info);
+                type_info.insert(type_name.clone().into(), basic_info);
             }
         }
 
@@ -99,7 +100,7 @@ impl DiscoveryContext {
 
         // 2. For each type in our context, enrich if data exists
         for (type_name, type_info) in &mut self.type_info {
-            if let Some(extras_data) = find_type_in_response(type_name, &response) {
+            if let Some(extras_data) = find_type_in_response(type_name.as_str(), &response) {
                 type_info.enrich_from_extras(extras_data);
                 enriched_count += 1;
                 debug!(
@@ -124,7 +125,11 @@ impl DiscoveryContext {
 
     /// Call `bevy_brp_extras/discover_format` for all types
     async fn call_extras_discover_format(&self) -> Result<Value> {
-        let type_names: Vec<String> = self.type_info.keys().cloned().collect();
+        let type_names: Vec<String> = self
+            .type_info
+            .keys()
+            .map(|k| k.as_str().to_string())
+            .collect();
 
         let params = json!({
             "types": type_names
@@ -170,7 +175,10 @@ impl DiscoveryContext {
 
     /// Get type names for compatibility
     pub fn type_names(&self) -> Vec<String> {
-        self.type_info.keys().cloned().collect()
+        self.type_info
+            .keys()
+            .map(|k| k.as_str().to_string())
+            .collect()
     }
 
     /// Extract type names and their values from method parameters
