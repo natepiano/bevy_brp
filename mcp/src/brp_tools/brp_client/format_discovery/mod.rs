@@ -65,6 +65,8 @@ mod unified_types;
 #[cfg(test)]
 mod tests;
 
-pub use self::engine::{FormatCorrection, FormatCorrectionStatus, FormatDiscoveryEngine};
+pub use types::FormatCorrectionStatus;
+
+pub use self::engine::FormatDiscoveryEngine;
 // Types will be publicly exposed once the refactoring is complete
 pub use self::unified_types::{CorrectionInfo, UnifiedTypeInfo};

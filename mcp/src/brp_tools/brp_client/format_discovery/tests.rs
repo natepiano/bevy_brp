@@ -5,9 +5,9 @@
 use serde_json::json;
 
 use super::detection::{ErrorPattern, analyze_error_pattern};
-use super::engine::FormatCorrection;
 // Legacy types imported for backward compatibility during tests
 use super::transformers::TransformerRegistry;
+use super::types::FormatCorrection;
 use super::unified_types::TypeCategory;
 use crate::brp_tools::BrpClientError;
 use crate::brp_tools::brp_client::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;

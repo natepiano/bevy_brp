@@ -6,7 +6,8 @@
 use serde_json::Value;
 
 use super::format_correction_fields::FormatCorrectionField;
-use super::{CorrectionInfo, FormatCorrection, FormatCorrectionStatus};
+use super::types::FormatCorrection;
+use super::{CorrectionInfo, FormatCorrectionStatus};
 use crate::brp_tools::brp_client::types::{BrpClientError, FormatDiscoveryError, ResponseStatus};
 use crate::error::Error;
 
@@ -58,7 +59,7 @@ impl FormatRecoveryResult {
                         // Convert CorrectionInfo to FormatCorrection if needed
                         let format_corrections = self.convert_corrections();
                         R::from_brp_client_response((
-                            value,
+                            value.clone(),
                             Some(
                                 format_corrections
                                     .into_iter()

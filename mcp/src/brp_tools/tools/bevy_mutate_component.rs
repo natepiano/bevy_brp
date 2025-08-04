@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::Port;
+use crate::brp_tools::{FormatCorrectionStatus, Port};
 
 /// Parameters for the `bevy/mutate_component` tool
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -46,7 +46,7 @@ pub struct MutateComponentResult {
     /// Whether format discovery was applied
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_metadata(skip_if_none)]
-    pub format_corrected: Option<crate::brp_tools::FormatCorrectionStatus>,
+    pub format_corrected: Option<FormatCorrectionStatus>,
 
     /// Warning message when format corrections were applied
     #[serde(skip_serializing_if = "Option::is_none")]

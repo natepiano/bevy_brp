@@ -46,7 +46,6 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::debug;
 
@@ -75,13 +74,21 @@ impl FormatDiscoveryEngine {
     /// Create a new format discovery engine for a specific method and port
     ///
     /// Returns an error if the parameters are invalid for format discovery
-    /// (e.g., None when format discovery requires parameters)
+    /// (e.g., None when format discovery requires parameters, or error is not a format error)
     pub fn new(
         method: BrpMethod,
         port: Port,
         params: Option<Value>,
         original_error: BrpClientError,
     ) -> Result<Self> {
+        // Check if we can recover from this error type
+        if !original_error.is_format_error() {
+            return Err(Error::InvalidArgument(
+                "Format discovery can only be used with format errors".to_string(),
+            )
+            .into());
+        }
+
         // Validate that parameters exist for format discovery
         // they actually have to or they wouldn't be methods called
         // `ExecuteMode::WithFormatDiscovery` however we want to take them out of the Option
@@ -96,6 +103,14 @@ impl FormatDiscoveryEngine {
         // Extract type names once for reuse
         let type_names = extract_type_names_from_params(method, &params);
 
+        // Early exit if no types to process
+        if type_names.is_empty() {
+            return Err(Error::InvalidArgument(
+                "No type names found in parameters, cannot perform format discovery".to_string(),
+            )
+            .into());
+        }
+
         Ok(Self {
             method,
             port,
@@ -107,21 +122,6 @@ impl FormatDiscoveryEngine {
 
     /// Entry point for the work of format discovery
     pub async fn attempt_discovery_with_recovery(&self) -> Result<FormatRecoveryResult> {
-        // Check if we can recover from this error type
-        if !self.original_error.is_format_error() {
-            return Ok(FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            });
-        }
-
-        // Early exit if no types to process
-        if self.type_names.is_empty() {
-            debug!("FormatDiscoveryEngine: No type names found in parameters, cannot recover");
-            return Ok(FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            });
-        }
-
         // Create discovery context
         let discovery_context =
             DiscoveryContext::fetch_from_registry(self.port, self.type_names.clone()).await?;
@@ -139,43 +139,21 @@ impl FormatDiscoveryEngine {
             self.type_names.len()
         );
 
-        // Level 1 (added back): Check for serialization issues
-        if let Some(educational_message) =
-            self.check_serialization_support(&self.type_names, registry_type_info)
-        {
+        // Level 1: Check for serialization issues
+        if let Some(corrections) = self.detect_serialization_issues(registry_type_info) {
             debug!("FormatDiscoveryEngine: Level 1 detected serialization issue");
-            let corrections = self
-                .type_names
-                .iter()
-                .map(|type_name| {
-                    let type_info =
-                        registry_type_info
-                            .get(type_name)
-                            .cloned()
-                            .unwrap_or_else(|| {
-                                UnifiedTypeInfo::new(
-                                    type_name.clone(),
-                                    DiscoverySource::TypeRegistry,
-                                )
-                            });
-                    CorrectionResult::CannotCorrect {
-                        type_info,
-                        reason: educational_message.clone(),
-                    }
-                })
-                .collect();
-            return Ok(self.build_recovery_success(corrections).await);
+            return Ok(self.build_recovery_result(corrections).await);
         }
 
         // Level 2: Direct Discovery via bevy_brp_extras
         debug!("FormatDiscoveryEngine: Beginning Level 2 - Direct discovery");
         let level_2_type_infos = match self
-            .execute_level_2_direct_discovery(&self.type_names, registry_type_info)
+            .execute_level_2_direct_discovery(registry_type_info)
             .await
         {
             LevelResult::Success(corrections) => {
                 debug!("FormatDiscoveryEngine: Level 2 succeeded with direct discovery");
-                return Ok(self.build_recovery_success(corrections).await);
+                return Ok(self.build_recovery_result(corrections).await);
             }
             LevelResult::Continue(type_infos) => {
                 debug!(
@@ -189,10 +167,10 @@ impl FormatDiscoveryEngine {
         // Level 3: Pattern-Based Transformations
         debug!("FormatDiscoveryEngine: Level 3 - Pattern-based transformations");
 
-        match self.execute_level_3_pattern_transformations(&self.type_names, &level_2_type_infos) {
+        match self.execute_level_3_pattern_transformations(&level_2_type_infos) {
             LevelResult::Success(corrections) => {
                 debug!("FormatDiscoveryEngine: Level 3 succeeded with pattern-based corrections");
-                Ok(self.build_recovery_success(corrections).await)
+                Ok(self.build_recovery_result(corrections).await)
             }
             LevelResult::Continue(_) => {
                 debug!("FormatDiscoveryEngine: All levels exhausted, no recovery possible");
@@ -206,12 +184,11 @@ impl FormatDiscoveryEngine {
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
     async fn execute_level_2_direct_discovery(
         &self,
-        type_names: &[String],
         registry_type_info: &HashMap<String, UnifiedTypeInfo>,
     ) -> LevelResult {
         // TODO: Move implementation from recovery_engine
         recovery_engine::execute_level_2_direct_discovery(
-            type_names,
+            &self.type_names,
             self.method,
             registry_type_info,
             &self.params,
@@ -223,12 +200,11 @@ impl FormatDiscoveryEngine {
     /// Level 3: Pattern-based transformations
     fn execute_level_3_pattern_transformations(
         &self,
-        type_names: &[String],
         level_2_type_infos: &HashMap<String, UnifiedTypeInfo>,
     ) -> LevelResult {
         // TODO: Move implementation from recovery_engine
         recovery_engine::execute_level_3_pattern_transformations(
-            type_names,
+            &self.type_names,
             self.method,
             &self.params,
             &self.original_error,
@@ -236,8 +212,8 @@ impl FormatDiscoveryEngine {
         )
     }
 
-    /// Build a successful recovery result
-    async fn build_recovery_success(
+    /// Build a recovery result from corrections
+    async fn build_recovery_result(
         &self,
         corrections: Vec<CorrectionResult>,
     ) -> FormatRecoveryResult {
@@ -252,17 +228,22 @@ impl FormatDiscoveryEngine {
         .await
     }
 
-    /// Check if any types lack serialization support
-    fn check_serialization_support(
+    /// Detect serialization issues and return corrections explaining the problems
+    ///
+    /// Returns `Some(corrections)` if serialization issues are found,
+    /// `None` if no issues are detected.
+    fn detect_serialization_issues(
         &self,
-        type_names: &[String],
         registry_type_info: &HashMap<String, UnifiedTypeInfo>,
-    ) -> Option<String> {
+    ) -> Option<Vec<CorrectionResult>> {
         // Only check for spawn/insert methods with UnknownComponentType errors
         if !matches!(self.method, BrpMethod::BevySpawn | BrpMethod::BevyInsert) {
             return None;
         }
 
+        // we allow continuing through the serialization detection if the error is
+        // Unknown component type due to a bug in bevy where it will throw an error with this
+        // when a component does have serialization support that is required for the mutation
         if !self
             .original_error
             .message
@@ -274,7 +255,7 @@ impl FormatDiscoveryEngine {
         debug!("Checking for serialization errors in registry type infos");
 
         // Check each type for serialization support
-        for type_name in type_names {
+        for type_name in &self.type_names {
             if let Some(type_info) = registry_type_info.get(type_name) {
                 debug!(
                     "Component '{}' found in registry, brp_compatible={}",
@@ -285,15 +266,36 @@ impl FormatDiscoveryEngine {
                 if type_info.registry_status.in_registry && !type_info.serialization.brp_compatible
                 {
                     debug!(
-                        "Component '{}' lacks serialization, returning educational message",
+                        "Component '{}' lacks serialization, building corrections",
                         type_name
                     );
-                    return Some(format!(
+                    let educational_message = format!(
                         "Component '{}' is registered but lacks Serialize and Deserialize traits required for {} operations. \
                         Add #[derive(Serialize, Deserialize)] to the component definition.",
                         type_name,
                         self.method.as_str()
-                    ));
+                    );
+
+                    let corrections = self
+                        .type_names
+                        .iter()
+                        .map(|type_name| {
+                            let type_info = registry_type_info
+                                .get(type_name)
+                                .cloned()
+                                .unwrap_or_else(|| {
+                                    UnifiedTypeInfo::new(
+                                        type_name.clone(),
+                                        DiscoverySource::TypeRegistry,
+                                    )
+                                });
+                            CorrectionResult::CannotCorrect {
+                                type_info,
+                                reason: educational_message.clone(),
+                            }
+                        })
+                        .collect();
+                    return Some(corrections);
                 }
             }
         }
@@ -301,34 +303,6 @@ impl FormatDiscoveryEngine {
         debug!("All components have serialization support or are not in registry");
         None
     }
-}
-
-/// Format correction information for a type (component or resource)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FormatCorrection {
-    pub component:            String, // Keep field name for API compatibility
-    pub original_format:      Value,
-    pub corrected_format:     Value,
-    pub hint:                 String,
-    pub supported_operations: Option<Vec<String>>,
-    pub mutation_paths:       Option<Vec<String>>,
-    pub type_category:        Option<String>,
-}
-
-impl FormatCorrection {}
-
-/// Status of format correction attempts
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FormatCorrectionStatus {
-    /// Format discovery was not enabled for this request
-    NotApplicable,
-    /// No format correction was attempted
-    NotAttempted,
-    /// Format correction was applied and the operation succeeded
-    Succeeded,
-    /// Format correction was attempted but the operation still failed
-    AttemptedButFailed,
 }
 
 /// Extract type names from BRP method parameters based on method type
@@ -414,121 +388,166 @@ mod tests {
     }
 
     #[test]
-    fn test_check_serialization_support_missing_traits() {
+    fn test_detect_serialization_issues_missing_traits() {
         let engine = create_test_engine(
             BrpMethod::BevySpawn,
             "Unknown component type: `bevy_reflect::DynamicEnum`",
         );
 
-        let type_names = vec!["bevy_render::view::visibility::Visibility".to_string()];
+        // Create registry info for the type that the engine extracted from its parameters
         let mut registry_info = HashMap::new();
         registry_info.insert(
             "bevy_render::view::visibility::Visibility".to_string(),
             create_type_info_without_serialization("bevy_render::view::visibility::Visibility"),
         );
 
-        let result = engine.check_serialization_support(&type_names, &registry_info);
+        let result = engine.detect_serialization_issues(&registry_info);
 
-        let message = result.unwrap();
-        assert!(message.contains("lacks Serialize and Deserialize traits"));
-        assert!(message.contains("bevy_render::view::visibility::Visibility"));
-        assert!(message.contains("Add #[derive(Serialize, Deserialize)]"));
+        let corrections = result.unwrap();
+        assert!(!corrections.is_empty());
+        if let CorrectionResult::CannotCorrect { reason, .. } = &corrections[0] {
+            assert!(reason.contains("lacks Serialize and Deserialize traits"));
+            assert!(reason.contains("bevy_render::view::visibility::Visibility"));
+            assert!(reason.contains("Add #[derive(Serialize, Deserialize)]"));
+        } else {
+            panic!("Expected CannotCorrect result");
+        }
     }
 
     #[test]
-    fn test_check_serialization_support_with_traits() {
-        let engine = create_test_engine(
-            BrpMethod::BevySpawn,
-            "Unknown component type: `bevy_reflect::DynamicEnum`",
-        );
+    fn test_detect_serialization_issues_with_traits() {
+        // Create engine with Transform component parameters
+        let params = Some(serde_json::json!({
+            "components": {
+                "bevy_transform::components::transform::Transform": {}
+            }
+        }));
 
-        let type_names = vec!["bevy_transform::components::transform::Transform".to_string()];
+        let engine = FormatDiscoveryEngine::new(
+            BrpMethod::BevySpawn,
+            Port(15702),
+            params,
+            BrpClientError {
+                code:    -23402,
+                message: "Unknown component type: `bevy_reflect::DynamicEnum`".to_string(),
+                data:    None,
+            },
+        )
+        .expect("Test engine creation should succeed");
+
         let mut registry_info = HashMap::new();
         registry_info.insert(
             "bevy_transform::components::transform::Transform".to_string(),
             create_type_info_with_serialization("bevy_transform::components::transform::Transform"),
         );
 
-        let result = engine.check_serialization_support(&type_names, &registry_info);
+        let result = engine.detect_serialization_issues(&registry_info);
 
         // Should return None because type has serialization support
         assert!(result.is_none());
     }
 
     #[test]
-    fn test_check_serialization_support_non_spawn_method() {
-        let engine = create_test_engine(
-            BrpMethod::BevyQuery, // Not spawn/insert
-            "Unknown component type: `bevy_reflect::DynamicEnum`",
-        );
+    fn test_detect_serialization_issues_non_spawn_method() {
+        // Test with MutateComponent which extracts type names but is not spawn/insert
+        let params = Some(serde_json::json!({
+            "component": "bevy_render::view::visibility::Visibility"
+        }));
 
-        let type_names = vec!["bevy_render::view::visibility::Visibility".to_string()];
+        let engine = FormatDiscoveryEngine::new(
+            BrpMethod::BevyMutateComponent, // Not spawn/insert
+            Port(15702),
+            params,
+            BrpClientError {
+                code:    -23402,
+                message: "Unknown component type: `bevy_reflect::DynamicEnum`".to_string(),
+                data:    None,
+            },
+        )
+        .expect("Test engine creation should succeed");
+
         let mut registry_info = HashMap::new();
         registry_info.insert(
             "bevy_render::view::visibility::Visibility".to_string(),
             create_type_info_without_serialization("bevy_render::view::visibility::Visibility"),
         );
 
-        let result = engine.check_serialization_support(&type_names, &registry_info);
+        let result = engine.detect_serialization_issues(&registry_info);
 
         // Should return None because it's not a spawn/insert method
         assert!(result.is_none());
     }
 
     #[test]
-    fn test_check_serialization_support_different_error() {
+    fn test_detect_serialization_issues_different_error() {
         let engine = create_test_engine(
             BrpMethod::BevySpawn,
             "Some other error message", // Not UnknownComponentType
         );
 
-        let type_names = vec!["bevy_render::view::visibility::Visibility".to_string()];
         let mut registry_info = HashMap::new();
         registry_info.insert(
             "bevy_render::view::visibility::Visibility".to_string(),
             create_type_info_without_serialization("bevy_render::view::visibility::Visibility"),
         );
 
-        let result = engine.check_serialization_support(&type_names, &registry_info);
+        let result = engine.detect_serialization_issues(&registry_info);
 
         // Should return None because error message doesn't match
         assert!(result.is_none());
     }
 
     #[test]
-    fn test_check_serialization_support_type_not_in_registry() {
-        let engine = create_test_engine(
-            BrpMethod::BevySpawn,
-            "Unknown component type: `bevy_reflect::DynamicEnum`",
-        );
+    fn test_detect_serialization_issues_type_not_in_registry() {
+        // Create engine with a component that won't be in the registry
+        let params = Some(serde_json::json!({
+            "components": {
+                "my_game::MyComponent": {}
+            }
+        }));
 
-        let type_names = vec!["my_game::MyComponent".to_string()];
+        let engine = FormatDiscoveryEngine::new(
+            BrpMethod::BevySpawn,
+            Port(15702),
+            params,
+            BrpClientError {
+                code:    -23402,
+                message: "Unknown component type: `bevy_reflect::DynamicEnum`".to_string(),
+                data:    None,
+            },
+        )
+        .expect("Test engine creation should succeed");
+
         let registry_info = HashMap::new(); // Empty registry
 
-        let result = engine.check_serialization_support(&type_names, &registry_info);
+        let result = engine.detect_serialization_issues(&registry_info);
 
         // Should return None because type is not in registry
         assert!(result.is_none());
     }
 
     #[test]
-    fn test_check_serialization_support_insert_method() {
+    fn test_detect_serialization_issues_insert_method() {
         let engine = create_test_engine(
             BrpMethod::BevyInsert, // Also should work for insert
             "Unknown component type: `bevy_reflect::DynamicEnum`",
         );
 
-        let type_names = vec!["bevy_render::view::visibility::Visibility".to_string()];
         let mut registry_info = HashMap::new();
         registry_info.insert(
             "bevy_render::view::visibility::Visibility".to_string(),
             create_type_info_without_serialization("bevy_render::view::visibility::Visibility"),
         );
 
-        let result = engine.check_serialization_support(&type_names, &registry_info);
+        let result = engine.detect_serialization_issues(&registry_info);
 
-        let message = result.unwrap();
-        assert!(message.contains("lacks Serialize and Deserialize traits"));
-        assert!(message.contains("insert operations")); // Should say "insert" not "spawn"
+        let corrections = result.unwrap();
+        assert!(!corrections.is_empty());
+        if let CorrectionResult::CannotCorrect { reason, .. } = &corrections[0] {
+            assert!(reason.contains("lacks Serialize and Deserialize traits"));
+            assert!(reason.contains("insert operations")); // Should say "insert" not "spawn"
+        } else {
+            panic!("Expected CannotCorrect result");
+        }
     }
 }
