@@ -1,42 +1,42 @@
 [
   {
     "id": "1",
-    "content": "Update ALL UnifiedTypeInfo constructors to accept original_value parameter",
+    "content": "Update DiscoveryEngine constructor to use DiscoveryContext::from_params",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "2",
-    "content": "Run cargo build && cargo +nightly fmt after constructor updates",
+    "content": "Run cargo build && cargo +nightly fmt after DiscoveryEngine constructor update",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "3",
-    "content": "Add with_original_value method to UnifiedTypeInfo",
+    "content": "Update execute_level_2_direct_discovery to use discovery_context.types()",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "4",
-    "content": "Run cargo build && cargo +nightly fmt after adding with_original_value",
+    "content": "Run cargo build && cargo +nightly fmt after level 2 discovery update",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "5",
-    "content": "Update all call sites that create UnifiedTypeInfo to pass None",
+    "content": "Update execute_level_3_pattern_transformations to use discovery_context.types()",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "6",
-    "content": "Run cargo build && cargo +nightly fmt after updating call sites",
+    "content": "Run cargo build && cargo +nightly fmt after level 3 transformations update",
     "status": "pending",
     "priority": "high",
     "notes": ""
@@ -57,56 +57,56 @@
   },
   {
     "id": "9",
-    "content": "Add check_multiple_types_registry_status_with_values method to DiscoveryContext",
+    "content": "Update try_transform_type to get original_value from type_info",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "10",
-    "content": "Run cargo build && cargo +nightly fmt after adding registry method",
+    "content": "Run cargo build && cargo +nightly fmt after try_transform_type update",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "11",
-    "content": "Update DiscoveryContext::from_params to use new registry method",
+    "content": "Update all other methods that use discovery_context to use new API",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "12",
-    "content": "Run cargo build && cargo +nightly fmt after updating from_params",
+    "content": "Run cargo build && cargo +nightly fmt after updating remaining methods",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
     "id": "13",
-    "content": "Update to_correction_for_method to remove original_value parameter",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "14",
-    "content": "Run cargo build && cargo +nightly fmt after updating to_correction_for_method",
-    "status": "pending",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "15",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "16",
+    "id": "14",
     "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Run integration tests to ensure no regressions",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "STOP if integration test failures - review with user",
     "status": "pending",
     "priority": "high",
     "notes": ""
