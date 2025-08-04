@@ -14,6 +14,7 @@ use super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, FormatInfo,
     RegistryStatus, SerializationSupport, TypeCategory,
 };
+use crate::brp_tools::brp_client::format_discovery::format_correction_fields::FormatCorrectionField;
 
 /// Comprehensive type information unified across all discovery sources
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +110,106 @@ impl UnifiedTypeInfo {
                     .examples
                     .insert("mutate".to_string(), example);
             }
+        }
+    }
+
+    /// Convert this type info to a `Correction`
+    pub fn to_correction(&mut self, original_value: Option<Value>) -> Correction {
+        // Ensure examples are generated
+        self.ensure_examples();
+
+        // Check if this is an enum with variants - create enum-specific correction
+        if let Some(enum_info) = &self.enum_info {
+            let variant_names: Vec<String> =
+                enum_info.variants.iter().map(|v| v.name.clone()).collect();
+
+            let corrected_format = serde_json::json!({
+                FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
+                FormatCorrectionField::ValidValues.as_ref(): variant_names,
+                FormatCorrectionField::Examples.as_ref(): variant_names.iter().take(2).map(|variant| serde_json::json!({
+                    FormatCorrectionField::Path.as_ref(): "",
+                    FormatCorrectionField::Value.as_ref(): variant
+                })).collect::<Vec<_>>()
+            });
+
+            let correction_info = CorrectionInfo {
+                type_name:         self.type_name.clone(),
+                original_value:    original_value.unwrap_or(serde_json::json!(null)),
+                corrected_value:   corrected_format.clone(),
+                corrected_format:  Some(corrected_format),
+                hint:              format!(
+                    "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}",
+                    self.type_name.split("::").last().unwrap_or(&self.type_name),
+                    variant_names.join(", ")
+                ),
+                target_type:       self.type_name.clone(),
+                type_info:         Some(self.clone()),
+                correction_method: CorrectionMethod::DirectReplacement,
+            };
+
+            return Correction::Candidate { correction_info };
+        }
+
+        // Check if we can actually transform the original input
+        if let Some(original_value) = original_value {
+            tracing::debug!(
+                "Extras Integration: Attempting to transform original value: {}",
+                serde_json::to_string(&original_value)
+                    .unwrap_or_else(|_| "invalid json".to_string())
+            );
+            if let Some(transformed_value) = self.transform_value(&original_value) {
+                tracing::debug!(
+                    "Extras Integration: Successfully transformed value to: {}",
+                    serde_json::to_string(&transformed_value)
+                        .unwrap_or_else(|_| "invalid json".to_string())
+                );
+                // We can transform the input - return Corrected with actual transformation
+                let correction_info = CorrectionInfo {
+                    type_name:         self.type_name.clone(),
+                    original_value:    original_value.clone(),
+                    corrected_value:   transformed_value,
+                    hint:              format!(
+                        "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
+                        if original_value.is_object() {
+                            "object"
+                        } else {
+                            "value"
+                        },
+                        self.type_name
+                    ),
+                    target_type:       self.type_name.clone(),
+                    corrected_format:  None,
+                    type_info:         Some(self.clone()),
+                    correction_method: CorrectionMethod::ObjectToArray,
+                };
+
+                return Correction::Candidate { correction_info };
+            }
+            tracing::debug!(
+                "Extras Integration: transform_value() returned None - cannot transform input"
+            );
+        } else {
+            tracing::debug!("Extras Integration: No original value provided for transformation");
+        }
+
+        // Cannot transform input - provide guidance with examples
+        let reason = if let Some(spawn_example) = self.get_example("spawn") {
+            format!(
+                "Cannot transform input for type '{}'. Use this format: {}",
+                self.type_name,
+                serde_json::to_string(spawn_example)
+                    .unwrap_or_else(|_| "correct format".to_string())
+            )
+        } else {
+            format!(
+                "Cannot transform input for type '{}'. Type discovered but no format example available.",
+                self.type_name
+            )
+        };
+
+        Correction::Uncorrectable {
+            type_info: self.clone(),
+            reason,
         }
     }
 
@@ -311,108 +412,6 @@ impl UnifiedTypeInfo {
         }
         None
     }
-
-    /// Convert this type info to a correction result
-    pub fn to_correction_result(&mut self, original_value: Option<Value>) -> Correction {
-        use tracing::debug;
-
-        use super::format_correction_fields::FormatCorrectionField;
-
-        // Ensure examples are generated
-        self.ensure_examples();
-
-        // Check if this is an enum with variants - create enum-specific correction
-        if let Some(enum_info) = &self.enum_info {
-            let variant_names: Vec<String> =
-                enum_info.variants.iter().map(|v| v.name.clone()).collect();
-
-            let corrected_format = serde_json::json!({
-                FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
-                FormatCorrectionField::ValidValues.as_ref(): variant_names,
-                FormatCorrectionField::Examples.as_ref(): variant_names.iter().take(2).map(|variant| serde_json::json!({
-                    FormatCorrectionField::Path.as_ref(): "",
-                    FormatCorrectionField::Value.as_ref(): variant
-                })).collect::<Vec<_>>()
-            });
-
-            let correction_info = CorrectionInfo {
-                type_name:         self.type_name.clone(),
-                original_value:    original_value.unwrap_or(serde_json::json!(null)),
-                corrected_value:   corrected_format.clone(),
-                corrected_format:  Some(corrected_format),
-                hint:              format!(
-                    "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}",
-                    self.type_name.split("::").last().unwrap_or(&self.type_name),
-                    variant_names.join(", ")
-                ),
-                target_type:       self.type_name.clone(),
-                type_info:         Some(self.clone()),
-                correction_method: CorrectionMethod::DirectReplacement,
-            };
-
-            return Correction::Candidate { correction_info };
-        }
-
-        // Check if we can actually transform the original input
-        if let Some(original_value) = original_value {
-            debug!(
-                "Extras Integration: Attempting to transform original value: {}",
-                serde_json::to_string(&original_value)
-                    .unwrap_or_else(|_| "invalid json".to_string())
-            );
-            if let Some(transformed_value) = self.transform_value(&original_value) {
-                debug!(
-                    "Extras Integration: Successfully transformed value to: {}",
-                    serde_json::to_string(&transformed_value)
-                        .unwrap_or_else(|_| "invalid json".to_string())
-                );
-                // We can transform the input - return Corrected with actual transformation
-                let correction_info = CorrectionInfo {
-                    type_name:         self.type_name.clone(),
-                    original_value:    original_value.clone(),
-                    corrected_value:   transformed_value,
-                    hint:              format!(
-                        "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
-                        if original_value.is_object() {
-                            "object"
-                        } else {
-                            "value"
-                        },
-                        self.type_name
-                    ),
-                    target_type:       self.type_name.clone(),
-                    corrected_format:  None,
-                    type_info:         Some(self.clone()),
-                    correction_method: CorrectionMethod::ObjectToArray,
-                };
-
-                return Correction::Candidate { correction_info };
-            }
-            debug!("Extras Integration: transform_value() returned None - cannot transform input");
-        } else {
-            debug!("Extras Integration: No original value provided for transformation");
-        }
-
-        // Cannot transform input - provide guidance with examples
-        let reason = if let Some(spawn_example) = self.get_example("spawn") {
-            format!(
-                "Cannot transform input for type '{}'. Use this format: {}",
-                self.type_name,
-                serde_json::to_string(spawn_example)
-                    .unwrap_or_else(|_| "correct format".to_string())
-            )
-        } else {
-            format!(
-                "Cannot transform input for type '{}'. Type discovered but no format example available.",
-                self.type_name
-            )
-        };
-
-        Correction::Uncorrectable {
-            type_info: self.clone(),
-            reason,
-        }
-    }
 }
 
 #[cfg(test)]
@@ -429,7 +428,7 @@ mod tests {
             DiscoverySource::DirectDiscovery,
         );
 
-        let result = type_info.to_correction_result(None);
+        let result = type_info.to_correction(None);
 
         match result {
             Correction::Uncorrectable { type_info, reason } => {
@@ -462,7 +461,7 @@ mod tests {
         );
 
         let original = json!({"translation": {"x": 0.0, "y": 0.0, "z": 0.0}});
-        let result = type_info.to_correction_result(Some(original.clone()));
+        let result = type_info.to_correction(Some(original.clone()));
 
         match result {
             Correction::Candidate { correction_info } => {

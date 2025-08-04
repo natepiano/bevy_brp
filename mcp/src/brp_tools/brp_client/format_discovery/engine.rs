@@ -249,8 +249,7 @@ impl FormatDiscoveryEngine {
 
                     // Create a correction from the discovered type information with original value
                     let mut discovered_info_mut = discovered_info.clone();
-                    let correction =
-                        discovered_info_mut.to_correction_result(original_component_value);
+                    let correction = discovered_info_mut.to_correction(original_component_value);
                     corrections.push(correction);
                 }
             } else {
