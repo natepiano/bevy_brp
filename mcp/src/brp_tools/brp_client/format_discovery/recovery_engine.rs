@@ -190,7 +190,7 @@ fn handle_mutation_specific_errors(
 /// Try to generate pattern-based corrections for well-known types
 fn attempt_pattern_based_correction(
     type_name: &str,
-    transformer_registry: &super::transformers::TransformerRegistry,
+    transformer_registry: &TransformerRegistry,
     original_value: Option<&Value>,
     error: &BrpClientError,
     method: BrpMethod,
