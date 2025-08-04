@@ -161,15 +161,6 @@ impl DiscoveryEngine {
         }
     }
 
-    /// Process a single type into a correction
-    fn process_type_to_correction(&self, type_name: &str) -> Option<Correction> {
-        let discovered_info = self.discovery_context.get_type(type_name)?;
-        debug!("Level 2: Found enriched type information for '{type_name}'");
-
-        let original_value = Self::extract_component_value(self.method, &self.params, type_name);
-        Some(discovered_info.to_correction_for_method(self.method, original_value))
-    }
-
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
     async fn execute_level_2_direct_discovery(&mut self) -> Option<Vec<Correction>> {
         debug!(
@@ -186,7 +177,13 @@ impl DiscoveryEngine {
         let corrections: Vec<Correction> = self
             .type_names
             .iter()
-            .filter_map(|type_name| self.process_type_to_correction(type_name))
+            .filter_map(|type_name| {
+                let discovered_info = self.discovery_context.get_type(type_name)?;
+                debug!("Level 2: Found enriched type information for '{type_name}'");
+
+                let original_value = self.extract_component_value(type_name);
+                Some(discovered_info.to_correction_for_method(self.method, original_value))
+            })
             .collect();
 
         if corrections.is_empty() {
@@ -326,8 +323,7 @@ impl DiscoveryEngine {
         }
 
         // Step 2: Extract the specific component value if available
-        let original_value = original_values
-            .and_then(|values| Self::extract_component_value(self.method, values, type_name));
+        let original_value = original_values.and_then(|_| self.extract_component_value(type_name));
 
         let Some(original_value) = original_value else {
             debug!("Level 3: No original value available for transformation");
@@ -455,12 +451,9 @@ impl DiscoveryEngine {
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
                         type_name:         type_info.type_name.clone(),
-                        original_value:    Self::extract_component_value(
-                            self.method,
-                            &self.params,
-                            &type_info.type_name,
-                        )
-                        .unwrap_or_else(|| serde_json::json!({})),
+                        original_value:    self
+                            .extract_component_value(&type_info.type_name)
+                            .unwrap_or_else(|| serde_json::json!({})),
                         corrected_value:   build_corrected_value_from_type_info(
                             &type_info,
                             self.method,
@@ -624,21 +617,19 @@ impl DiscoveryEngine {
     }
 
     /// Extract component value from method parameters
-    fn extract_component_value(
-        method: BrpMethod,
-        params: &Value,
-        type_name: &str,
-    ) -> Option<Value> {
-        match method {
-            BrpMethod::BevySpawn | BrpMethod::BevyInsert => params
+    fn extract_component_value(&self, type_name: &str) -> Option<Value> {
+        match self.method {
+            BrpMethod::BevySpawn | BrpMethod::BevyInsert => self
+                .params
                 .get("components")
                 .and_then(|c| c.get(type_name))
                 .cloned(),
             BrpMethod::BevyInsertResource
             | BrpMethod::BevyMutateComponent
-            | BrpMethod::BevyMutateResource => {
-                params.get(FormatCorrectionField::Value.as_ref()).cloned()
-            }
+            | BrpMethod::BevyMutateResource => self
+                .params
+                .get(FormatCorrectionField::Value.as_ref())
+                .cloned(),
             _ => None,
         }
     }
