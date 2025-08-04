@@ -44,5 +44,5 @@ mod unified_types;
 #[cfg(test)]
 mod tests;
 
-pub use engine::FormatDiscoveryEngine;
+pub use engine::DiscoveryEngine;
 pub use types::FormatCorrectionStatus;

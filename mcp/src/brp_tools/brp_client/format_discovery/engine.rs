@@ -75,7 +75,7 @@ pub enum LevelResult {
 ///
 /// Encapsulates the multi-tiered format discovery system that intelligently
 /// corrects type serialization errors in BRP operations.
-pub struct FormatDiscoveryEngine {
+pub struct DiscoveryEngine {
     method:            BrpMethod,
     port:              Port,
     params:            Value,
@@ -84,7 +84,7 @@ pub struct FormatDiscoveryEngine {
     discovery_context: DiscoveryContext,
 }
 
-impl FormatDiscoveryEngine {
+impl DiscoveryEngine {
     /// Create a new format discovery engine for a specific method and port
     ///
     /// Returns an error if the parameters are invalid for format discovery
@@ -149,44 +149,44 @@ impl FormatDiscoveryEngine {
             .count();
 
         debug!(
-            "FormatDiscoveryEngine: Starting multi-level discovery for method '{}' with {} pre-fetched type info(s)",
+            "DiscoveryEngine: Starting multi-level discovery for method '{}' with {} pre-fetched type info(s)",
             self.method, registry_type_count
         );
 
         debug!(
-            "FormatDiscoveryEngine: Found {} type names to process",
+            "DiscoveryEngine: Found {} type names to process",
             self.type_names.len()
         );
 
         // Level 1: Check for serialization issues
         if let Some(corrections) = self.detect_serialization_issues() {
-            debug!("FormatDiscoveryEngine: Level 1 detected serialization issue");
+            debug!("DiscoveryEngine: Level 1 detected serialization issue");
             return Ok(self.build_recovery_result(corrections).await);
         }
 
         // Level 2: Direct Discovery via bevy_brp_extras
-        debug!("FormatDiscoveryEngine: Beginning Level 2 - Direct discovery");
+        debug!("DiscoveryEngine: Beginning Level 2 - Direct discovery");
         match self.execute_level_2_direct_discovery().await {
             LevelResult::Success(corrections) => {
-                debug!("FormatDiscoveryEngine: Level 2 succeeded with direct discovery");
+                debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
                 return Ok(self.build_recovery_result(corrections).await);
             }
             LevelResult::Continue(reason) => {
-                debug!("FormatDiscoveryEngine: Level 2 discovery: {}", reason);
+                debug!("DiscoveryEngine: Level 2 discovery: {}", reason);
                 // No HashMap to extract - Level 3 will use self.discovery_context
             }
         }
 
         // Level 3: Pattern-Based Transformations
-        debug!("FormatDiscoveryEngine: Level 3 - Pattern-based transformations");
+        debug!("DiscoveryEngine: Level 3 - Pattern-based transformations");
 
         match self.execute_level_3_pattern_transformations() {
             LevelResult::Success(corrections) => {
-                debug!("FormatDiscoveryEngine: Level 3 succeeded with pattern-based corrections");
+                debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
                 Ok(self.build_recovery_result(corrections).await)
             }
             LevelResult::Continue(_) => {
-                debug!("FormatDiscoveryEngine: All levels exhausted, no recovery possible");
+                debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
                 Ok(FormatRecoveryResult::NotRecoverable {
                     corrections: Vec::new(),
                 })
@@ -1082,14 +1082,14 @@ mod tests {
 
     use super::*;
 
-    async fn create_test_engine(method: BrpMethod, error_message: &str) -> FormatDiscoveryEngine {
+    async fn create_test_engine(method: BrpMethod, error_message: &str) -> DiscoveryEngine {
         let params = Some(serde_json::json!({
             "components": {
                 "bevy_render::view::visibility::Visibility": "Hidden"
             }
         }));
 
-        FormatDiscoveryEngine::new(
+        DiscoveryEngine::new(
             method,
             Port(15702),
             params,
@@ -1157,7 +1157,7 @@ mod tests {
             }
         }));
 
-        let engine = FormatDiscoveryEngine::new(
+        let engine = DiscoveryEngine::new(
             BrpMethod::BevySpawn,
             Port(15702),
             params,
@@ -1190,7 +1190,7 @@ mod tests {
             "component": "bevy_render::view::visibility::Visibility"
         }));
 
-        let engine = FormatDiscoveryEngine::new(
+        let engine = DiscoveryEngine::new(
             BrpMethod::BevyMutateComponent, // Not spawn/insert
             Port(15702),
             params,
@@ -1246,7 +1246,7 @@ mod tests {
             }
         }));
 
-        let engine = FormatDiscoveryEngine::new(
+        let engine = DiscoveryEngine::new(
             BrpMethod::BevySpawn,
             Port(15702),
             params,
@@ -1295,7 +1295,7 @@ mod tests {
     #[tokio::test]
     async fn test_async_engine_constructor() {
         // Test that constructor is now async (key structural change for Phase 3a)
-        let result = FormatDiscoveryEngine::new(
+        let result = DiscoveryEngine::new(
             BrpMethod::BevySpawn,
             Port(15702),
             Some(json!({"components": {"Transform": {}}})),

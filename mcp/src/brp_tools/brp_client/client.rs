@@ -11,7 +11,7 @@ use tracing::warn;
 
 use super::super::Port;
 use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
-use super::format_discovery::FormatDiscoveryEngine;
+use super::format_discovery::DiscoveryEngine;
 use super::http_client::BrpHttpClient;
 use super::types::{
     BrpClientCallJsonResponse, BrpClientError, ExecuteMode, ResponseStatus, ResultStructBrpExt,
@@ -168,7 +168,7 @@ impl BrpClient {
             + 'static,
     {
         // Create engine with parameter validation
-        let mut engine = FormatDiscoveryEngine::new(
+        let mut engine = DiscoveryEngine::new(
             self.method,
             self.port,
             self.params.clone(),
