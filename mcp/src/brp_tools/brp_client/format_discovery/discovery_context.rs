@@ -229,6 +229,14 @@ impl DiscoveryContext {
         self.type_info.get(type_name)
     }
 
+    /// Count how many of the given type names have registry information
+    pub fn count_types_with_info(&self, type_names: &[String]) -> usize {
+        type_names
+            .iter()
+            .filter(|name| self.type_info.contains_key(name.as_str()))
+            .count()
+    }
+
     /// Batch check multiple types in a single registry call
     async fn check_multiple_types_registry_status(
         type_names: &[String],

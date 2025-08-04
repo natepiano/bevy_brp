@@ -62,15 +62,6 @@ use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
 
-/// Result of a recovery level attempt
-#[derive(Debug)]
-pub enum LevelResult {
-    /// Level succeeded and produced corrections
-    Success(Vec<Correction>),
-    /// Level completed but recovery should continue to next level
-    Continue(String),
-}
-
 /// Engine for format discovery and correction
 ///
 /// Encapsulates the multi-tiered format discovery system that intelligently
@@ -135,18 +126,13 @@ impl DiscoveryEngine {
     pub async fn attempt_discovery_with_recovery(&mut self) -> Result<FormatRecoveryResult> {
         // Use discovery context created in constructor
         let registry_type_count = self
-            .type_names
-            .iter()
-            .filter_map(|name| self.discovery_context.get_type(name))
-            .count();
+            .discovery_context
+            .count_types_with_info(&self.type_names);
 
         debug!(
-            "DiscoveryEngine: Starting multi-level discovery for method '{}' with {} pre-fetched type info(s)",
-            self.method, registry_type_count
-        );
-
-        debug!(
-            "DiscoveryEngine: Found {} type names to process",
+            "DiscoveryEngine: Starting discovery for method '{}' - found {}/{} passed-in types in the registry",
+            self.method,
+            registry_type_count,
             self.type_names.len()
         );
 
@@ -158,38 +144,29 @@ impl DiscoveryEngine {
 
         // Level 2: Direct Discovery via bevy_brp_extras
         debug!("DiscoveryEngine: Beginning Level 2 - Direct discovery");
-        match self.execute_level_2_direct_discovery().await {
-            LevelResult::Success(corrections) => {
-                debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
-                return Ok(self.build_recovery_result(corrections).await);
-            }
-            LevelResult::Continue(reason) => {
-                debug!("DiscoveryEngine: Level 2 discovery: {}", reason);
-                // No HashMap to extract - Level 3 will use self.discovery_context
-            }
+        if let Some(corrections) = self.execute_level_2_direct_discovery().await {
+            debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
+            return Ok(self.build_recovery_result(corrections).await);
         }
 
         // Level 3: Pattern-Based Transformations
         debug!("DiscoveryEngine: Level 3 - Pattern-based transformations");
 
-        match self.execute_level_3_pattern_transformations() {
-            LevelResult::Success(corrections) => {
-                debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
-                Ok(self.build_recovery_result(corrections).await)
-            }
-            LevelResult::Continue(_) => {
-                debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
-                Ok(FormatRecoveryResult::NotRecoverable {
-                    corrections: Vec::new(),
-                })
-            }
+        if let Some(corrections) = self.execute_level_3_pattern_transformations() {
+            debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
+            Ok(self.build_recovery_result(corrections).await)
+        } else {
+            debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
+            Ok(FormatRecoveryResult::NotRecoverable {
+                corrections: Vec::new(),
+            })
         }
     }
 
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
-    async fn execute_level_2_direct_discovery(&mut self) -> LevelResult {
+    async fn execute_level_2_direct_discovery(&mut self) -> Option<Vec<Correction>> {
         debug!(
-            "Level 2: Attempting direct discovery for {} types",
+            "Level 2: Attempting direct discovery for {} passed-in types",
             self.type_names.len()
         );
 
@@ -251,26 +228,24 @@ impl DiscoveryEngine {
         // Determine the level result based on what we discovered
         if corrections.is_empty() {
             let type_count = self
-                .type_names
-                .iter()
-                .filter_map(|name| self.discovery_context.get_type(name))
-                .count();
+                .discovery_context
+                .count_types_with_info(&self.type_names);
             debug!(
                 "Level 2: Direct discovery complete, proceeding to Level 3 with {} type infos",
                 type_count
             );
-            LevelResult::Continue("Direct discovery found no corrections".to_string())
+            None
         } else {
             debug!(
                 "Level 2: Found {} corrections from direct discovery",
                 corrections.len()
             );
-            LevelResult::Success(corrections)
+            Some(corrections)
         }
     }
 
     /// Level 3: Pattern-based transformations
-    fn execute_level_3_pattern_transformations(&self) -> LevelResult {
+    fn execute_level_3_pattern_transformations(&self) -> Option<Vec<Correction>> {
         debug!(
             "Level 3: Applying pattern transformations for {} types",
             self.type_names.len()
@@ -328,13 +303,14 @@ impl DiscoveryEngine {
         }
 
         if corrections.is_empty() {
-            LevelResult::Continue("No pattern-based corrections found".to_string())
+            debug!("Level 3: No pattern-based corrections found");
+            None
         } else {
             debug!(
                 "Level 3: Found {} pattern-based corrections",
                 corrections.len()
             );
-            LevelResult::Success(corrections)
+            Some(corrections)
         }
     }
 
