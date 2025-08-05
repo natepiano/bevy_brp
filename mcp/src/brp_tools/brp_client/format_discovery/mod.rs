@@ -36,6 +36,7 @@ mod discovery_context;
 mod engine;
 mod field_mapper;
 mod format_correction_fields;
+mod orchestrator;
 mod recovery_result;
 mod transformers;
 mod types;
@@ -44,5 +45,5 @@ mod unified_types;
 #[cfg(test)]
 mod tests;
 
-pub use engine::DiscoveryEngine;
+pub use orchestrator::discover_format_with_recovery;
 pub use types::FormatCorrectionStatus;
