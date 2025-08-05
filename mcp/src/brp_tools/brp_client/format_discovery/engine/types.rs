@@ -186,6 +186,12 @@ impl CorrectionInfo {
                     FormatCorrectionField::TypeCategory.as_ref().to_string(),
                     serde_json::json!(format!("{:?}", type_info.type_category)),
                 );
+
+                // Extract discovery_source
+                obj.insert(
+                    FormatCorrectionField::DiscoverySource.as_ref().to_string(),
+                    serde_json::json!(format!("{:?}", type_info.discovery_source)),
+                );
             }
         }
 

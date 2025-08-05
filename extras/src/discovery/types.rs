@@ -212,10 +212,6 @@ where
 ///     }
 ///   },
 ///   "type_category": "Enum",
-///   "child_types": {
-///     "Srgba": "bevy_color::srgba::Srgba",
-///     "LinearRgba": "bevy_color::linear_rgba::LinearRgba"
-///   }
 /// }
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,8 +232,6 @@ pub struct TypeDiscoveryResponse {
     pub example_values:       HashMap<String, Value>,
     /// Type category for clarity
     pub type_category:        String,
-    /// Child type information for complex types
-    pub child_types:          HashMap<String, String>,
     /// Enum variant information (only populated for enum types)
     pub enum_info:            Option<serde_json::Map<String, Value>>,
     /// Error message when type discovery fails

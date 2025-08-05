@@ -85,7 +85,6 @@ pub fn discover_type_as_response(
             mutation_paths:       HashMap::new(),
             example_values:       HashMap::new(),
             type_category:        "Unknown".to_string(),
-            child_types:          HashMap::new(),
             enum_info:            None,
             error:                Some("Type not found in registry".to_string()),
         };
@@ -110,7 +109,6 @@ pub fn discover_type_as_response(
     );
 
     let type_category = determine_type_category(type_info_opt.as_ref());
-    let child_types = extract_child_types(type_info_opt.as_ref());
     let enum_info = extract_enum_information(type_info_opt.as_ref());
 
     TypeDiscoveryResponse {
@@ -122,7 +120,6 @@ pub fn discover_type_as_response(
         mutation_paths,
         example_values,
         type_category,
-        child_types,
         enum_info,
         error: None,
     }
@@ -226,33 +223,6 @@ fn determine_type_category(type_info_opt: Option<&bevy::reflect::TypeInfo>) -> S
         || "Unknown".to_string(),
         |type_info| format!("{:?}", analyze_type_info(type_info)),
     )
-}
-
-/// Extract child types for complex types like structs and tuples
-fn extract_child_types(type_info_opt: Option<&bevy::reflect::TypeInfo>) -> HashMap<String, String> {
-    use bevy::reflect::TypeInfo;
-
-    use super::types::{cast_type_info, extract_struct_fields, extract_tuple_struct_fields};
-
-    type_info_opt.map_or_else(HashMap::new, |type_info| match type_info {
-        TypeInfo::Struct(_) => cast_type_info(type_info, TypeInfo::as_struct, "StructInfo")
-            .map_or_else(
-                |_| HashMap::new(),
-                |struct_info| extract_struct_fields(struct_info).into_iter().collect(),
-            ),
-        TypeInfo::TupleStruct(_) => {
-            cast_type_info(type_info, TypeInfo::as_tuple_struct, "TupleStructInfo").map_or_else(
-                |_| HashMap::new(),
-                |tuple_info| {
-                    extract_tuple_struct_fields(tuple_info)
-                        .into_iter()
-                        .map(|(idx, type_path)| (format!(".{idx}"), type_path))
-                        .collect()
-                },
-            )
-        }
-        _ => HashMap::new(),
-    })
 }
 
 /// Extract enum variant information

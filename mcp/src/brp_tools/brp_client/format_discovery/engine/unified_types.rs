@@ -36,8 +36,6 @@ pub struct UnifiedTypeInfo {
     pub supported_operations: Vec<String>,
     /// Type category for quick identification
     pub type_category:        TypeCategory,
-    /// Child type information for complex types (enums, generics)
-    pub child_types:          HashMap<String, String>,
     /// Enum variant information (only populated for enum types)
     pub enum_info:            Option<EnumInfo>,
     /// Source of this type information for debugging
@@ -73,7 +71,6 @@ impl UnifiedTypeInfo {
             },
             supported_operations: Vec::new(),
             type_category: TypeCategory::Unknown,
-            child_types: HashMap::new(),
             enum_info: None,
             discovery_source,
         }
@@ -138,14 +135,6 @@ impl UnifiedTypeInfo {
     ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::Struct;
-
-        // Add child types for Transform components
-        info.child_types
-            .insert("translation".to_string(), "glam::Vec3".to_string());
-        info.child_types
-            .insert("rotation".to_string(), "glam::Quat".to_string());
-        info.child_types
-            .insert("scale".to_string(), "glam::Vec3".to_string());
 
         info.regenerate_all_examples();
         info
@@ -380,7 +369,6 @@ impl UnifiedTypeInfo {
             },
             supported_operations,
             type_category,
-            child_types: HashMap::new(),
             enum_info,
             discovery_source: DiscoverySource::TypeRegistry,
         };

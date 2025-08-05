@@ -66,25 +66,31 @@ mcp__brp__bevy_insert with parameters:
 - Use data: {"components": ["bevy_render::view::visibility::Visibility"]}
 - Use filter: {"with": ["bevy_render::view::visibility::Visibility"]}
 
-**STEP 2**: Execute mutation WITH THESE EXACT PARAMETERS:
-- Tool: mcp__brp__bevy_mutate_component
-- Parameters: As specified in the `<MutationCall>` example
+**STEP 2**: Execute this EXACT tool call:
 
-<MutationCall>
-```
-mcp__brp__bevy_mutate_component with parameters:
-{
-  "entity": [USE_ENTITY_ID_FROM_QUERY],
-  "component": "bevy_render::view::visibility::Visibility",
-  "path": "",
-  "value": "Visible",
-  "port": {{PORT}}
-}
-```
-</MutationCall>
+Execute this EXACT tool call:
+- Tool: mcp__brp__bevy_mutate_component  
+- entity: [ENTITY_ID_FROM_QUERY]
+- component: bevy_render::view::visibility::Visibility
+- path: (empty string - pass exactly: "")
+- value: Visible  
+- port: {{PORT}}
 
-**CRITICAL**: You MUST include ALL parameters shown above. The port parameter MUST be {{PORT}}.
-**WARNING**: If you do not include the port parameter, the tool will use 15702 and fail.
+**CRITICAL PATH PARAMETER**: The path must be an empty string "". This is NOT:
+- null
+- undefined  
+- missing entirely
+- the word "empty"
+It is literally two quotation marks with nothing between them: ""
+
+Before calling the tool, verify:
+- [ ] entity is a number (not string)
+- [ ] component is the exact string: bevy_render::view::visibility::Visibility
+- [ ] path is empty string "" (not null, not undefined, not missing)
+- [ ] value is the string "Visible"
+- [ ] port is the number {{PORT}}
+
+If any parameter fails this check, STOP and report the parameter validation failure.
 
 **STEP 3**: After success, test other variants using the SAME parameter structure:
 - Call again with "value": "Hidden" (keep all other parameters the same)
