@@ -13,8 +13,8 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
-    FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
+    BrpTypeName, Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo,
+    EnumVariant, FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
 };
 use crate::brp_tools::brp_client::format_discovery::format_correction_fields::FormatCorrectionField;
 use crate::tool::BrpMethod;
@@ -23,7 +23,7 @@ use crate::tool::BrpMethod;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnifiedTypeInfo {
     /// The fully-qualified type name
-    pub type_name:            String,
+    pub type_name:            BrpTypeName,
     /// The original value from parameters
     pub original_value:       Option<Value>,
     /// Registry and reflection information
@@ -48,12 +48,12 @@ impl UnifiedTypeInfo {
     /// Create a new `UnifiedTypeInfo` with minimal required information
     /// This is now private - use specialized constructors instead
     fn new(
-        type_name: String,
+        type_name: impl Into<BrpTypeName>,
         original_value: Option<Value>,
         discovery_source: DiscoverySource,
     ) -> Self {
         Self {
-            type_name,
+            type_name: type_name.into(),
             original_value,
             registry_status: RegistryStatus {
                 in_registry: false,
@@ -83,7 +83,10 @@ impl UnifiedTypeInfo {
     ///
     /// Used when creating error corrections from pattern analysis.
     /// Automatically generates examples before returning.
-    pub fn for_pattern_matching(type_name: String, original_value: Option<Value>) -> Self {
+    pub fn for_pattern_matching(
+        type_name: impl Into<BrpTypeName>,
+        original_value: Option<Value>,
+    ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.regenerate_all_examples();
         info
@@ -93,7 +96,7 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
     /// Sets appropriate type category and generates examples.
-    pub fn for_math_type(type_name: String, original_value: Option<Value>) -> Self {
+    pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Option<Value>) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::MathType;
         info.regenerate_all_examples();
@@ -105,7 +108,7 @@ impl UnifiedTypeInfo {
     /// Used when pattern matching identifies an enum with specific variants.
     /// Sets appropriate type category, enum info, and generates examples.
     pub fn for_enum_type(
-        type_name: String,
+        type_name: impl Into<BrpTypeName>,
         variant_names: Vec<String>,
         original_value: Option<Value>,
     ) -> Self {
@@ -129,7 +132,10 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies a Transform component.
     /// Sets appropriate type category, child types, and generates examples.
-    pub fn for_transform_type(type_name: String, original_value: Option<Value>) -> Self {
+    pub fn for_transform_type(
+        type_name: impl Into<BrpTypeName>,
+        original_value: Option<Value>,
+    ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::Struct;
 
@@ -288,10 +294,11 @@ impl UnifiedTypeInfo {
     /// Extracts registry status, reflection traits, and serialization support.
     /// Automatically generates examples before returning.
     pub fn from_registry_schema(
-        type_name: &str,
+        type_name: impl Into<BrpTypeName>,
         schema_data: &Value,
         original_value: Option<Value>,
     ) -> Self {
+        let type_name = type_name.into();
         // Extract reflect types
         let reflect_types = schema_data
             .get("reflectTypes")
@@ -312,7 +319,7 @@ impl UnifiedTypeInfo {
             in_registry: true, // If we have schema data, it's in the registry
             has_reflect: reflect_types.contains(&"Default".to_string())
                 || !reflect_types.is_empty(),
-            type_path:   Some(type_name.to_string()),
+            type_path:   Some(type_name.as_str().to_string()),
         };
 
         let serialization = SerializationSupport {
@@ -361,7 +368,7 @@ impl UnifiedTypeInfo {
         let mutation_paths = Self::generate_mutation_paths_from_schema(schema_data);
 
         let mut unified_info = Self {
-            type_name: type_name.to_string(),
+            type_name,
             original_value,
             registry_status,
             serialization,
@@ -472,10 +479,14 @@ impl UnifiedTypeInfo {
                 corrected_format:  Some(corrected_format),
                 hint:              format!(
                     "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}",
-                    self.type_name.split("::").last().unwrap_or(&self.type_name),
+                    self.type_name
+                        .as_str()
+                        .split("::")
+                        .last()
+                        .unwrap_or(self.type_name.as_str()),
                     variant_names.join(", ")
                 ),
-                target_type:       self.type_name.clone(),
+                target_type:       self.type_name.as_str().to_string(),
                 type_info:         Some(self.clone()),
                 correction_method: CorrectionMethod::DirectReplacement,
             };
@@ -510,7 +521,7 @@ impl UnifiedTypeInfo {
                         },
                         self.type_name
                     ),
-                    target_type:       self.type_name.clone(),
+                    target_type:       self.type_name.as_str().to_string(),
                     corrected_format:  None,
                     type_info:         Some(self.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
@@ -700,7 +711,7 @@ impl UnifiedTypeInfo {
     /// Transform struct values - only transform if input is valid and transformable
     fn transform_struct_value(&self, value: &Value) -> Option<Value> {
         // Check if this is a Transform type with child math types that can be transformed
-        if self.type_name.contains("Transform") {
+        if self.type_name.as_str().contains("Transform") {
             // Try to transform object format to array format for math fields
             if let Some(obj) = value.as_object() {
                 let mut result = serde_json::Map::new();

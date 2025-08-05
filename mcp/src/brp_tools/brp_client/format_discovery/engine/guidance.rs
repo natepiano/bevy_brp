@@ -33,7 +33,8 @@ impl DiscoveryEngine<Guidance> {
                 Correction::Uncorrectable { type_info, reason } => {
                     debug!(
                         "Guidance Engine: Found metadata for type '{}' but no correction: {}",
-                        type_info.type_name, reason
+                        type_info.type_name.as_str(),
+                        reason
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
@@ -47,7 +48,7 @@ impl DiscoveryEngine<Guidance> {
                             self.method,
                         ),
                         hint:              reason,
-                        target_type:       type_info.type_name.clone(),
+                        target_type:       type_info.type_name.as_str().to_string(),
                         corrected_format:  None,
                         type_info:         Some(type_info),
                         correction_method: CorrectionMethod::DirectReplacement,
@@ -77,7 +78,7 @@ impl DiscoveryEngine<Guidance> {
 fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: BrpMethod) -> Value {
     debug!(
         "build_corrected_value_from_type_info: Building for type '{}' with method '{}', enum_info present: {}",
-        type_info.type_name,
+        type_info.type_name.as_str(),
         method.as_str(),
         type_info.enum_info.is_some()
     );

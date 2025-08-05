@@ -80,7 +80,7 @@ impl DiscoveryEngine<SerializationCheck> {
             .map(|type_info| {
                 debug!(
                     "SerializationCheck: Component '{}' lacks serialization, building correction",
-                    type_info.type_name
+                    type_info.type_name.as_str()
                 );
                 let correction_info = CorrectionInfo {
                     type_name:         type_info.type_name.clone(),
@@ -90,7 +90,7 @@ impl DiscoveryEngine<SerializationCheck> {
                         .unwrap_or_else(|| json!({})),
                     corrected_value:   json!({}), // Empty object for educational guidance
                     hint:              educational_message.clone(),
-                    target_type:       type_info.type_name.clone(),
+                    target_type:       type_info.type_name.as_str().to_string(),
                     corrected_format:  None,
                     type_info:         Some(type_info.clone()),
                     correction_method: CorrectionMethod::DirectReplacement,

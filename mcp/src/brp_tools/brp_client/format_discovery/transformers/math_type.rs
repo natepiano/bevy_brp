@@ -5,7 +5,7 @@ use tracing::debug;
 
 use super::super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use super::super::detection::ErrorPattern;
-use super::super::engine::{TransformationResult, UnifiedTypeInfo};
+use super::super::engine::{BrpTypeName, TransformationResult, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::BrpClientError;
@@ -60,13 +60,19 @@ impl MathTypeTransformer {
     }
 
     /// Use `UnifiedTypeInfo` to transform math types
-    fn try_unified_transform(type_name: &str, value: &Value) -> Option<TransformationResult> {
+    fn try_unified_transform(
+        type_name: impl Into<BrpTypeName>,
+        value: &Value,
+    ) -> Option<TransformationResult> {
         // Create a UnifiedTypeInfo for the math type with the original value
-        let type_info = UnifiedTypeInfo::for_math_type(type_name.to_string(), Some(value.clone()));
+        let type_info = UnifiedTypeInfo::for_math_type(type_name, Some(value.clone()));
 
         // Try transformation using UnifiedTypeInfo
         type_info.transform_value(value).map(|transformed| {
-            let hint = format!("Transformed {type_name} using UnifiedTypeInfo");
+            let hint = format!(
+                "Transformed {} using UnifiedTypeInfo",
+                type_info.type_name.as_str()
+            );
             TransformationResult {
                 corrected_value: transformed,
                 hint,
@@ -94,7 +100,7 @@ impl MathTypeTransformer {
     ) -> Option<TransformationResult> {
         // First try UnifiedTypeInfo transformation
         if let Some(result) =
-            Self::try_unified_transform(&format!("glam::{math_type}"), original_value)
+            Self::try_unified_transform(format!("glam::{math_type}"), original_value)
         {
             return Some(result);
         }
@@ -165,10 +171,8 @@ impl MathTypeTransformer {
         );
 
         // First try using UnifiedTypeInfo for Transform with the original value
-        let type_info = UnifiedTypeInfo::for_transform_type(
-            actual_type_name.to_string(),
-            Some(transform_data.clone()),
-        );
+        let type_info =
+            UnifiedTypeInfo::for_transform_type(actual_type_name, Some(transform_data.clone()));
 
         if let Some(transformed) = type_info.transform_value(transform_data) {
             let hint = format!("`{actual_type_name}` Transform converted to proper array format");
@@ -245,8 +249,7 @@ impl FormatTransformer for MathTypeTransformer {
     fn transform(&self, value: &Value) -> Option<TransformationResult> {
         // Try different math type conversions using UnifiedTypeInfo first
         for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
-            if let Some(result) = Self::try_unified_transform(&format!("glam::{math_type}"), value)
-            {
+            if let Some(result) = Self::try_unified_transform(format!("glam::{math_type}"), value) {
                 return Some(result);
             }
         }

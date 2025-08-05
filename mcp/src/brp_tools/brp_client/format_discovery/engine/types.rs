@@ -15,7 +15,8 @@ use super::unified_types::UnifiedTypeInfo;
 /// This type provides documentation and type safety for strings that represent
 /// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
 /// when used as keys in type information maps.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct BrpTypeName(String);
 
 impl BrpTypeName {
@@ -34,6 +35,12 @@ impl From<&str> for BrpTypeName {
 impl From<String> for BrpTypeName {
     fn from(s: String) -> Self {
         Self(s)
+    }
+}
+
+impl From<&String> for BrpTypeName {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
     }
 }
 
@@ -120,7 +127,7 @@ pub enum FormatCorrectionStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrectionInfo {
     /// The type that was corrected
-    pub type_name:         String,
+    pub type_name:         BrpTypeName,
     /// Original value that needed correction
     pub original_value:    Value,
     /// Corrected value to use
@@ -141,7 +148,7 @@ impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
     pub fn to_json(&self) -> Value {
         let mut correction_json = serde_json::json!({
-            FormatCorrectionField::Component.as_ref(): self.type_name,
+            FormatCorrectionField::Component.as_ref(): self.type_name.as_str(),
             FormatCorrectionField::OriginalFormat.as_ref(): self.original_value,
             FormatCorrectionField::CorrectedFormat.as_ref(): self.corrected_value,
             FormatCorrectionField::Hint.as_ref(): self.hint

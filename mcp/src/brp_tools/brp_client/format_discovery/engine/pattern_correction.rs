@@ -11,8 +11,8 @@ use super::super::detection::ErrorPattern;
 use super::super::transformers;
 use super::state::{DiscoveryEngine, Guidance, PatternCorrection, Retry};
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
-    TypeCategory, are_corrections_retryable,
+    BrpTypeName, Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant,
+    TransformationResult, TypeCategory, are_corrections_retryable,
 };
 use super::unified_types::UnifiedTypeInfo;
 use crate::tool::BrpMethod;
@@ -95,7 +95,7 @@ impl DiscoveryEngine<PatternCorrection> {
 
         // Process each type
         for type_info in self.state.types() {
-            let type_name = &type_info.type_name;
+            let type_name = type_info.type_name.as_str();
 
             debug!("Level 3: Checking transformation patterns for '{type_name}'");
 
@@ -193,7 +193,7 @@ impl DiscoveryEngine<PatternCorrection> {
                 );
 
                 let correction_info = CorrectionInfo {
-                    type_name:         type_name.to_string(),
+                    type_name:         type_name.into(),
                     original_value:    original_value.clone(),
                     corrected_value:   corrected_value.clone(),
                     hint:              format!(
@@ -205,7 +205,7 @@ impl DiscoveryEngine<PatternCorrection> {
                         },
                         type_name
                     ),
-                    target_type:       type_name.to_string(),
+                    target_type:       type_name.into(),
                     corrected_format:  Some(corrected_value),
                     type_info:         Some(type_info.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
@@ -335,11 +335,11 @@ impl DiscoveryEngine<PatternCorrection> {
                 );
 
                 let correction_info = CorrectionInfo {
-                    type_name: type_name.to_string(),
+                    type_name: type_name.into(),
                     original_value: serde_json::json!({}),
                     corrected_value,
                     hint,
-                    target_type: type_name.to_string(),
+                    target_type: type_name.into(),
                     corrected_format: None,
                     type_info: Some(type_info_ref),
                     correction_method: CorrectionMethod::DirectReplacement,
@@ -414,8 +414,11 @@ impl DiscoveryEngine<PatternCorrection> {
     }
 
     /// Create basic type info for pattern matching
-    fn create_basic_type_info(type_name: &str, original_value: Option<Value>) -> UnifiedTypeInfo {
-        UnifiedTypeInfo::for_pattern_matching(type_name.to_string(), original_value)
+    fn create_basic_type_info(
+        type_name: impl Into<BrpTypeName>,
+        original_value: Option<Value>,
+    ) -> UnifiedTypeInfo {
+        UnifiedTypeInfo::for_pattern_matching(type_name, original_value)
     }
 
     /// Convert transformer output to `Correction`
@@ -427,11 +430,11 @@ impl DiscoveryEngine<PatternCorrection> {
 
         // Create correction info
         let correction_info = CorrectionInfo {
-            type_name: type_name.to_string(),
+            type_name: type_name.into(),
             original_value: serde_json::Value::Null, // Will be filled by caller if available
             corrected_value,
             hint: description,
-            target_type: type_name.to_string(),
+            target_type: type_name.into(),
             corrected_format: None,
             type_info: None,
             correction_method: CorrectionMethod::DirectReplacement,
@@ -451,7 +454,7 @@ impl DiscoveryEngine<PatternCorrection> {
             {
                 debug!("Level 3: Detected math type '{t}', providing array format guidance");
 
-                let type_info = UnifiedTypeInfo::for_math_type(t.to_string(), None);
+                let type_info = UnifiedTypeInfo::for_math_type(t, None);
 
                 let reason = if t.contains("Quat") {
                     format!(

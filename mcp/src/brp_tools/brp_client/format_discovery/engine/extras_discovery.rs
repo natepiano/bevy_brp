@@ -44,7 +44,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             .map(|type_info| {
                 debug!(
                     "ExtrasDiscovery: Processing extras-enriched type '{}'",
-                    type_info.type_name
+                    type_info.type_name.as_str()
                 );
                 type_info.to_correction_for_method(self.method)
             })

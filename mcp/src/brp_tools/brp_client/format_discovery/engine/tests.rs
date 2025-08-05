@@ -57,7 +57,7 @@ async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
             // Verify the correction contains Transform information
             let transform_correction = corrections
                 .iter()
-                .find(|c| c.type_name.contains("Transform"));
+                .find(|c| c.type_name.as_str().contains("Transform"));
             assert!(
                 transform_correction.is_some(),
                 "Should have Transform correction"
@@ -304,7 +304,7 @@ fn test_enrich_from_extras_full_enrichment() {
 
     // Start with a registry-based UnifiedTypeInfo
     let mut info = UnifiedTypeInfo::for_transform_type(
-        "bevy_transform::components::transform::Transform".to_string(),
+        "bevy_transform::components::transform::Transform",
         None,
     );
 
@@ -321,7 +321,7 @@ fn test_enrich_from_extras_full_enrichment() {
 
     // Verify basic type information is preserved from original
     assert_eq!(
-        info.type_name,
+        info.type_name.as_str(),
         "bevy_transform::components::transform::Transform"
     );
     assert_eq!(info.type_category, TypeCategory::Struct); // for_transform_type creates Struct category
@@ -365,7 +365,7 @@ fn test_enrich_from_extras_edge_cases() {
         "has_deserialize": false
     });
 
-    let mut info = UnifiedTypeInfo::for_pattern_matching("bevy_ecs::name::Name".to_string(), None);
+    let mut info = UnifiedTypeInfo::for_pattern_matching("bevy_ecs::name::Name", None);
     let initial_source = info.discovery_source.clone();
 
     // This should not enrich anything since no example_values or mutation_paths
@@ -373,7 +373,7 @@ fn test_enrich_from_extras_edge_cases() {
 
     // Discovery source should remain unchanged since no enrichment occurred
     assert_eq!(info.discovery_source, initial_source);
-    assert_eq!(info.type_name, "bevy_ecs::name::Name");
+    assert_eq!(info.type_name.as_str(), "bevy_ecs::name::Name");
 
     // Test 2: Enrichment with complex nested mutation paths
     let complex_response = json!({
@@ -392,7 +392,7 @@ fn test_enrich_from_extras_edge_cases() {
         }
     });
 
-    let mut info = UnifiedTypeInfo::for_pattern_matching("custom::ComplexType".to_string(), None);
+    let mut info = UnifiedTypeInfo::for_pattern_matching("custom::ComplexType", None);
     info.enrich_from_extras(&complex_response);
 
     // Verify enrichment occurred
@@ -462,7 +462,7 @@ fn test_registry_schema_to_unified_type_info_conversion() {
         UnifiedTypeInfo::from_registry_schema("bevy_render::color::Color", &schema_data, None);
 
     // Verify type information from registry
-    assert_eq!(unified_info.type_name, "bevy_render::color::Color");
+    assert_eq!(unified_info.type_name.as_str(), "bevy_render::color::Color");
 
     // Verify registry status is correctly set
     assert!(unified_info.registry_status.in_registry);

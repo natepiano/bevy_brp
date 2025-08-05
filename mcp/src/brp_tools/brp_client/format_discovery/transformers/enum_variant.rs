@@ -263,11 +263,8 @@ impl EnumVariantTransformer {
         let variants = Self::extract_enum_variants(error_message);
 
         // Create a UnifiedTypeInfo with the extracted variants and original value
-        let type_info = UnifiedTypeInfo::for_enum_type(
-            type_name.to_string(),
-            variants,
-            original_value.cloned(),
-        );
+        let type_info =
+            UnifiedTypeInfo::for_enum_type(type_name, variants, original_value.cloned());
 
         // Get the enum example or use fallback
         let format_info = if let Some(example) = type_info.get_example("mutate") {
@@ -585,7 +582,7 @@ impl FormatTransformer for EnumVariantTransformer {
             ) = pattern
             {
                 return Some(Self::handle_enum_unit_variant_error_with_type_info(
-                    type_name,
+                    type_name.as_str(),
                     &expected_variant_type,
                     &actual_variant_type,
                     enum_info,
@@ -593,9 +590,12 @@ impl FormatTransformer for EnumVariantTransformer {
             }
 
             // Use enum information from type discovery for other variant transformations
-            if let Some(result) =
-                Self::transform_enum_with_discovered_info(value, error, type_name, enum_info)
-            {
+            if let Some(result) = Self::transform_enum_with_discovered_info(
+                value,
+                error,
+                type_name.as_str(),
+                enum_info,
+            ) {
                 return Some(result);
             }
         }
