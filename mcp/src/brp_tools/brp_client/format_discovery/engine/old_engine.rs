@@ -60,16 +60,16 @@
 use serde_json::Value;
 use tracing::debug;
 
-use super::detection::ErrorPattern;
-use super::discovery_context::DiscoveryContext;
-use super::format_correction_fields::FormatCorrectionField;
-use super::recovery_result::FormatRecoveryResult;
-use super::transformers;
-use super::types::{
+use super::super::detection::ErrorPattern;
+use super::super::discovery_context::DiscoveryContext;
+use super::super::format_correction_fields::FormatCorrectionField;
+use super::super::recovery_result::FormatRecoveryResult;
+use super::super::transformers;
+use super::super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
     TransformationResult, TypeCategory,
 };
-use super::unified_types::UnifiedTypeInfo;
+use super::super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
@@ -289,7 +289,7 @@ impl DiscoveryEngine {
         debug!("Level 3: Attempting pattern correction for type '{type_name}'");
 
         // Step 1: Analyze the error pattern
-        let error_analysis = super::detection::analyze_error_pattern(&self.original_error);
+        let error_analysis = super::super::detection::analyze_error_pattern(&self.original_error);
         let Some(error_pattern) = error_analysis.pattern else {
             debug!("Level 3: No recognizable error pattern found for type '{type_name}'");
             return None;
@@ -315,8 +315,8 @@ impl DiscoveryEngine {
             // For enum types, we might be able to return enhanced format info
             if matches!(
                 error_pattern,
-                super::detection::ErrorPattern::EnumUnitVariantMutation { .. }
-                    | super::detection::ErrorPattern::EnumUnitVariantAccessError { .. }
+                super::super::detection::ErrorPattern::EnumUnitVariantMutation { .. }
+                    | super::super::detection::ErrorPattern::EnumUnitVariantAccessError { .. }
             ) {
                 return Some(Self::create_enhanced_enum_guidance(
                     type_name,
