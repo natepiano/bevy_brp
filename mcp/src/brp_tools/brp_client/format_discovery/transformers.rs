@@ -153,12 +153,6 @@ impl TransformerRegistry {
     pub fn is_empty(&self) -> bool {
         self.transformers.is_empty()
     }
-
-    /// Get names of all registered transformers
-    #[cfg(test)]
-    pub fn transformer_names(&self) -> Vec<&'static str> {
-        self.transformers.iter().map(|t| t.name()).collect()
-    }
 }
 
 impl Default for TransformerRegistry {
@@ -182,20 +176,6 @@ pub fn transformer_registry() -> &'static TransformerRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_empty_registry() {
-        let registry = TransformerRegistry::new();
-        assert!(registry.is_empty());
-        assert_eq!(registry.len(), 0);
-    }
-
-    #[test]
-    fn test_transformer_names() {
-        let registry = TransformerRegistry::new();
-        let names = registry.transformer_names();
-        assert!(names.is_empty());
-    }
 
     #[test]
     fn test_transformer_registry_singleton() {

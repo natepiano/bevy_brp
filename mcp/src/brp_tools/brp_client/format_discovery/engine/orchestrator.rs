@@ -4,6 +4,7 @@
 //! complexity of the type state pattern behind a single function.
 
 use either::Either;
+use serde_json::Value;
 
 use super::recovery_result::FormatRecoveryResult;
 use super::types::DiscoveryEngine;
@@ -22,7 +23,7 @@ use crate::tool::BrpMethod;
 pub async fn discover_format_with_recovery(
     method: BrpMethod,
     port: Port,
-    params: Option<serde_json::Value>,
+    params: Option<Value>,
     error: BrpClientError,
 ) -> Result<FormatRecoveryResult> {
     // Create engine in `TypeDiscovery` state, then initialize it to transition to

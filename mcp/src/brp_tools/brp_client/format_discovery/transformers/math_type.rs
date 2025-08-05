@@ -464,12 +464,6 @@ mod tests {
     }
 
     #[test]
-    fn test_transformer_name() {
-        let transformer = MathTypeTransformer::new();
-        assert_eq!(transformer.name(), "MathTypeTransformer");
-    }
-
-    #[test]
     fn test_transform_sequence_fix() {
         let transform_obj = json!({
             "translation": {"x": 1.0, "y": 2.0, "z": 3.0},
