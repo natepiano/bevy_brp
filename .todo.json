@@ -1,1 +1,149 @@
-[{"id": "1", "content": "Add ExtrasDiscovery struct to engine/types.rs", "status": "pending", "priority": "medium"}, {"id": "2", "content": "Run cargo build && cargo +nightly fmt after adding ExtrasDiscovery type", "status": "pending", "priority": "medium"}, {"id": "3", "content": "Create engine/extras_discovery.rs file with module structure", "status": "pending", "priority": "medium"}, {"id": "4", "content": "Add extras_discovery module to engine/mod.rs", "status": "pending", "priority": "medium"}, {"id": "5", "content": "Run cargo build && cargo +nightly fmt after module setup", "status": "pending", "priority": "medium"}, {"id": "6", "content": "Implement build_extras_corrections() method in extras_discovery.rs", "status": "pending", "priority": "medium"}, {"id": "7", "content": "Extract extras discovery logic from execute_level_2_direct_discovery in old_engine", "status": "pending", "priority": "medium"}, {"id": "8", "content": "Run cargo build && cargo +nightly fmt after implementing extras discovery", "status": "pending", "priority": "medium"}, {"id": "9", "content": "Add continue_after_extras_discovery method to old_engine.rs", "status": "pending", "priority": "medium"}, {"id": "10", "content": "Run cargo build && cargo +nightly fmt after adding continuation method", "status": "pending", "priority": "medium"}, {"id": "11", "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings", "status": "pending", "priority": "medium"}, {"id": "12", "content": "Fix all clippy issues following warning rules", "status": "pending", "priority": "medium"}, {"id": "13", "content": "Update orchestrator.rs to handle ExtrasDiscovery state", "status": "pending", "priority": "medium"}, {"id": "14", "content": "Run cargo build && cargo +nightly fmt after orchestrator update", "status": "pending", "priority": "medium"}, {"id": "15", "content": "Add integration tests for all three orchestrator paths", "status": "pending", "priority": "medium"}, {"id": "16", "content": "Run cargo build && cargo +nightly fmt after adding tests", "status": "pending", "priority": "medium"}, {"id": "17", "content": "Run cargo nextest run", "status": "pending", "priority": "medium"}, {"id": "18", "content": "STOP if test failures - review with user", "status": "pending", "priority": "medium"}, {"id": "19", "content": "Subagent: STOP and return control", "status": "pending", "priority": "medium"}, {"id": "20", "content": "Main: Task new subagent for code review (read-only)", "status": "pending", "priority": "medium"}, {"id": "21", "content": "Review suggestions with user", "status": "pending", "priority": "medium"}]
+[
+  {
+    "id": "1",
+    "content": "Add ExtrasDiscovery struct to engine/types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build && cargo +nightly fmt after adding ExtrasDiscovery type",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Create engine/extras_discovery.rs file with module structure",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Add extras_discovery module to engine/mod.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Run cargo build && cargo +nightly fmt after module setup",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Implement build_extras_corrections() method in extras_discovery.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Extract extras discovery logic from execute_level_2_direct_discovery in old_engine",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build && cargo +nightly fmt after implementing extras discovery",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Add continue_after_extras_discovery method to old_engine.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Run cargo build && cargo +nightly fmt after adding continuation method",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Update orchestrator.rs to handle ExtrasDiscovery state",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run cargo build && cargo +nightly fmt after orchestrator update",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Add integration tests for all three orchestrator paths",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run cargo build && cargo +nightly fmt after adding tests",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
