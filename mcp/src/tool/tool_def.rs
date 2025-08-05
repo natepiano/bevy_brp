@@ -5,9 +5,11 @@ use std::sync::Arc;
 
 use rmcp::ErrorData;
 use rmcp::model::{CallToolRequestParam, CallToolResult};
+use schemars::schema_for;
 
 use super::HandlerContext;
 use super::annotations::Annotation;
+use super::json_response::ToolCallJsonResponse;
 use super::parameters::ParameterBuilder;
 use super::tool_name::ToolName;
 use super::types::ErasedToolFn;
@@ -42,6 +44,21 @@ impl ToolDef {
         Ok(self.handler.call_erased(ctx).await)
     }
 
+    /// Generate unified output schema from the actual `ToolCallJsonResponse` struct
+    fn generate_output_schema() -> Arc<rmcp::model::JsonObject> {
+        let schema = schema_for!(ToolCallJsonResponse);
+        let Ok(schema_value) = serde_json::to_value(schema) else {
+            // Fallback to empty schema if serialization fails
+            return Arc::new(rmcp::model::JsonObject::new());
+        };
+
+        let schema_object = schema_value
+            .as_object()
+            .map_or_else(rmcp::model::JsonObject::new, |obj| obj.clone());
+
+        Arc::new(schema_object)
+    }
+
     /// Convert to MCP Tool for registration
     pub fn to_tool(&self) -> rmcp::model::Tool {
         // Build parameters using the provided builder function, or create empty builder
@@ -65,10 +82,11 @@ impl ToolDef {
         };
 
         rmcp::model::Tool {
-            name:         <&'static str>::from(self.tool_name).into(),
-            description:  Some(self.tool_name.description().into()),
-            input_schema: builder.build(),
-            annotations:  Some(enhanced_annotations.into()),
+            name:          <&'static str>::from(self.tool_name).into(),
+            description:   Some(self.tool_name.description().into()),
+            input_schema:  builder.build(),
+            output_schema: Some(Self::generate_output_schema()),
+            annotations:   Some(enhanced_annotations.into()),
         }
     }
 }

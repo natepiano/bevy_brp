@@ -1,5 +1,6 @@
 //! `JsonResponse` and conversion methods
 use rmcp::model::{CallToolResult, Content};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -7,7 +8,7 @@ use super::tool_name::CallInfo;
 use crate::error::{Error, Result};
 
 /// Standard JSON response structure for all tools
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ToolCallJsonResponse {
     pub status:                ResponseStatus,
     pub message:               String,
@@ -48,7 +49,7 @@ impl ToolCallJsonResponse {
 }
 
 /// Response status types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum ResponseStatus {
     Success,

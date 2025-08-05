@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use bevy_brp_mcp_macros::{BrpTools, ToolDescription};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
@@ -35,7 +36,7 @@ use crate::log_tools::{
 };
 
 /// Call information for tracking tool execution
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum CallInfo {
     /// Local tool execution (no BRP involved)
