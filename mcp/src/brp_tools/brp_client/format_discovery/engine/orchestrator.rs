@@ -6,10 +6,11 @@
 use either::Either;
 use serde_json::Value;
 
+use super::discovery_context::DiscoveryContext;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::DiscoveryEngine;
+use super::types::{DiscoveryEngine, SerializationCheck, TypeDiscovery};
 use crate::brp_tools::{BrpClientError, Port};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
 
 /// Main entry point for format discovery with error recovery
@@ -51,5 +52,68 @@ pub async fn discover_format_with_recovery(
     match terminal_engine {
         Either::Left(retry_engine) => Ok(retry_engine.apply_corrections_and_retry().await),
         Either::Right(guidance_engine) => Ok(guidance_engine.provide_guidance()),
+    }
+}
+
+impl DiscoveryEngine<TypeDiscovery> {
+    /// Create a new format discovery engine for a specific method and port
+    ///
+    /// Returns an error if the parameters are invalid for format discovery
+    /// (e.g., None when format discovery requires parameters, or error is not a format error)
+    pub fn new(
+        method: BrpMethod,
+        port: Port,
+        params: Option<Value>,
+        original_error: BrpClientError,
+    ) -> Result<Self> {
+        // Check if we can recover from this error type
+        // Format discovery can only work with specific error types
+        if !original_error.is_format_error() {
+            return Err(Error::InvalidArgument(
+                "Format discovery can only be used with format errors".to_string(),
+            )
+            .into());
+        }
+
+        // Validate that parameters exist for format discovery
+        // Format discovery requires parameters to extract type information
+        let params = params.ok_or_else(|| {
+            Error::InvalidArgument(
+                "Format discovery requires parameters to extract type information".to_string(),
+            )
+        })?;
+
+        Ok(Self {
+            method,
+            port,
+            params,
+            original_error,
+            state: TypeDiscovery,
+        })
+    }
+
+    /// Initialize the discovery process by creating a discovery context
+    ///
+    /// This method extracts type information from the method parameters,
+    /// creates a `DiscoveryContext` by calling the registry and optional extras plugin,
+    /// and returns a `SerializationCheck` state containing the context.
+    pub async fn initialize(self) -> Result<DiscoveryEngine<SerializationCheck>> {
+        // Create discovery context from method parameters
+        let mut discovery_context =
+            DiscoveryContext::from_params(self.method, self.port, Some(&self.params)).await?;
+
+        // Enrich context with extras discovery upfront (don't fail if enrichment fails)
+        if let Err(e) = discovery_context.enrich_with_extras().await {
+            tracing::debug!("TypeDiscovery: Failed to enrich with extras: {e:?}");
+        }
+
+        // Return SerializationCheck state with the context
+        Ok(DiscoveryEngine {
+            method:         self.method,
+            port:           self.port,
+            params:         self.params,
+            original_error: self.original_error,
+            state:          SerializationCheck(discovery_context),
+        })
     }
 }

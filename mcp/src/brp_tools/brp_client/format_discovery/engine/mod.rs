@@ -8,13 +8,11 @@
 mod discovery_context;
 mod extras_discovery;
 mod guidance;
-mod new;
 mod orchestrator;
 mod pattern_correction;
 mod recovery_result;
 mod retry;
 mod serialization_check;
-mod type_discovery;
 mod types;
 mod unified_types;
 

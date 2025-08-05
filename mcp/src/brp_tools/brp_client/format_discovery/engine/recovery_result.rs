@@ -55,7 +55,12 @@ impl FormatRecoveryResult {
                         // Convert CorrectionInfo to JSON directly
                         R::from_brp_client_response((
                             value.clone(),
-                            Some(self.corrections().iter().map(CorrectionInfo::to_json).collect()),
+                            Some(
+                                self.corrections()
+                                    .iter()
+                                    .map(CorrectionInfo::to_json)
+                                    .collect(),
+                            ),
                             Some(FormatCorrectionStatus::Succeeded),
                         ))
                     }
