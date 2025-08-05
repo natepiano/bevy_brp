@@ -1,31 +1,35 @@
 //! `TypeDiscovery` state implementation
 //!
 //! This module implements the `TypeDiscovery` state for the discovery engine.
-//! In Phase 2, this simply delegates to the existing engine implementation.
+//! This state creates the discovery context by calling the registry and optional extras plugin.
 
-use super::super::recovery_result::FormatRecoveryResult;
-use super::new::DiscoveryEngine;
-use super::old_engine;
-use super::types::TypeDiscovery;
+use super::super::discovery_context::DiscoveryContext;
+use super::types::{DiscoveryEngine, SerializationCheck, TypeDiscovery};
 use crate::error::Result;
 
 impl DiscoveryEngine<TypeDiscovery> {
-    /// Initialize the discovery process by delegating to the existing engine
+    /// Initialize the discovery process by creating a discovery context
     ///
-    /// In Phase 2, this method simply creates an old-style engine and delegates
-    /// to `attempt_discovery_with_recovery()`. In later phases, this will be
-    /// refactored to only handle context creation and return a `SerializationCheck` state.
-    pub async fn initialize(self) -> Result<FormatRecoveryResult> {
-        // Create an old-style engine and delegate the work
-        let old_engine = old_engine::DiscoveryEngine::new(
-            self.method,
-            self.port,
-            Some(self.params),
-            self.original_error,
-        )
-        .await?;
+    /// This method extracts type information from the method parameters,
+    /// creates a `DiscoveryContext` by calling the registry and optional extras plugin,
+    /// and returns a `SerializationCheck` state containing the context.
+    pub async fn initialize(self) -> Result<DiscoveryEngine<SerializationCheck>> {
+        // Create discovery context from method parameters
+        let mut discovery_context =
+            DiscoveryContext::from_params(self.method, self.port, Some(&self.params)).await?;
 
-        // Delegate to existing implementation
-        old_engine.attempt_discovery_with_recovery().await
+        // Enrich context with extras discovery upfront (don't fail if enrichment fails)
+        if let Err(e) = discovery_context.enrich_with_extras().await {
+            tracing::debug!("TypeDiscovery: Failed to enrich with extras: {e:?}");
+        }
+
+        // Return SerializationCheck state with the context
+        Ok(DiscoveryEngine {
+            method:         self.method,
+            port:           self.port,
+            params:         self.params,
+            original_error: self.original_error,
+            state:          SerializationCheck(discovery_context),
+        })
     }
 }

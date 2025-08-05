@@ -63,13 +63,13 @@ use tracing::debug;
 use super::super::detection::ErrorPattern;
 use super::super::discovery_context::DiscoveryContext;
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::recovery_result::FormatRecoveryResult;
 use super::super::transformers;
 use super::super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
     TransformationResult, TypeCategory,
 };
 use super::super::unified_types::UnifiedTypeInfo;
+use super::recovery_result::FormatRecoveryResult;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
@@ -87,6 +87,26 @@ pub struct DiscoveryEngine {
 }
 
 impl DiscoveryEngine {
+    /// Create engine from existing discovery context (for continuing from new engine)
+    ///
+    /// This is used when the new type state engine has already created a discovery context
+    /// and checked for serialization issues, allowing us to continue from Level 2.
+    pub fn from_context(
+        method: BrpMethod,
+        port: Port,
+        params: Value,
+        original_error: BrpClientError,
+        discovery_context: DiscoveryContext,
+    ) -> Self {
+        Self {
+            method,
+            port,
+            params,
+            original_error,
+            discovery_context,
+        }
+    }
+
     /// Create a new format discovery engine for a specific method and port
     ///
     /// Returns an error if the parameters are invalid for format discovery
@@ -156,6 +176,34 @@ impl DiscoveryEngine {
 
         // Level 2: Direct Discovery via bevy_brp_extras
         debug!("DiscoveryEngine: Beginning Level 2 - Direct discovery");
+        if let Some(corrections) = self.execute_level_2_direct_discovery() {
+            debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
+            return Ok(self.build_recovery_result(corrections).await);
+        }
+
+        // Level 3: Pattern-Based Transformations
+        debug!("DiscoveryEngine: Level 3 - Pattern-based transformations");
+
+        if let Some(corrections) = self.execute_level_3_pattern_transformations() {
+            debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
+            Ok(self.build_recovery_result(corrections).await)
+        } else {
+            debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
+            Ok(FormatRecoveryResult::NotRecoverable {
+                corrections: Vec::new(),
+            })
+        }
+    }
+
+    /// Continue discovery from after serialization check
+    ///
+    /// This method is used when the new type state engine has already performed
+    /// the serialization check (Level 1) and we need to continue with Level 2 and beyond.
+    pub async fn continue_after_serialization_check(&self) -> Result<FormatRecoveryResult> {
+        // Level 2: Direct Discovery via bevy_brp_extras
+        debug!(
+            "DiscoveryEngine: Beginning Level 2 - Direct discovery (continuing from new engine)"
+        );
         if let Some(corrections) = self.execute_level_2_direct_discovery() {
             debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
             return Ok(self.build_recovery_result(corrections).await);

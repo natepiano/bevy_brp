@@ -5,23 +5,10 @@
 
 use serde_json::Value;
 
-use super::types::TypeDiscovery;
+use super::types::{DiscoveryEngine, TypeDiscovery};
 use crate::brp_tools::{BrpClientError, Port};
 use crate::error::Result;
 use crate::tool::BrpMethod;
-
-/// Generic discovery engine with type state validation
-///
-/// The `State` parameter ensures that only valid operations can be called
-/// for the current discovery phase.
-pub struct DiscoveryEngine<State> {
-    pub method:         BrpMethod,
-    pub port:           Port,
-    pub params:         Value,
-    pub original_error: BrpClientError,
-    #[allow(dead_code)] // Used in future phases when State contains data
-    pub state: State,
-}
 
 impl DiscoveryEngine<TypeDiscovery> {
     /// Create a new format discovery engine for a specific method and port
