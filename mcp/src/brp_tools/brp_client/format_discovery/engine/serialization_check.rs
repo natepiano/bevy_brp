@@ -35,6 +35,9 @@ impl DiscoveryEngine<SerializationCheck> {
         }
 
         // Check if error message indicates a serialization issue
+        // This is a known spurious response when we try to spawn or insert a component that does
+        // exist but didn't derive serialization - so we know we need to be seeing this particular
+        // error to continue on to build a Correction
         if !self
             .original_error
             .message
@@ -83,14 +86,12 @@ impl DiscoveryEngine<SerializationCheck> {
                     type_info.type_name.as_str()
                 );
                 let correction_info = CorrectionInfo {
-                    type_name:         type_info.type_name.clone(),
                     original_value:    type_info
                         .original_value
                         .clone()
                         .unwrap_or_else(|| json!({})),
                     corrected_value:   json!({}), // Empty object for educational guidance
                     hint:              educational_message.clone(),
-                    target_type:       type_info.type_name.as_str().to_string(),
                     corrected_format:  None,
                     type_info:         type_info.clone(),
                     correction_method: CorrectionMethod::DirectReplacement,

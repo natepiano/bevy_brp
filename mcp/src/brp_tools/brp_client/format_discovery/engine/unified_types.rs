@@ -461,7 +461,6 @@ impl UnifiedTypeInfo {
             });
 
             let correction_info = CorrectionInfo {
-                type_name:         self.type_name.clone(),
                 original_value:    original_value.unwrap_or(serde_json::json!(null)),
                 corrected_value:   corrected_format.clone(),
                 corrected_format:  Some(corrected_format),
@@ -474,7 +473,6 @@ impl UnifiedTypeInfo {
                         .unwrap_or(self.type_name.as_str()),
                     variant_names.join(", ")
                 ),
-                target_type:       self.type_name.as_str().to_string(),
                 type_info:         self.clone(),
                 correction_method: CorrectionMethod::DirectReplacement,
             };
@@ -497,7 +495,6 @@ impl UnifiedTypeInfo {
                 );
                 // We can transform the input - return Corrected with actual transformation
                 let correction_info = CorrectionInfo {
-                    type_name:         self.type_name.clone(),
                     original_value:    original_value.clone(),
                     corrected_value:   transformed_value,
                     hint:              format!(
@@ -509,7 +506,6 @@ impl UnifiedTypeInfo {
                         },
                         self.type_name
                     ),
-                    target_type:       self.type_name.as_str().to_string(),
                     corrected_format:  None,
                     type_info:         self.clone(),
                     correction_method: CorrectionMethod::ObjectToArray,

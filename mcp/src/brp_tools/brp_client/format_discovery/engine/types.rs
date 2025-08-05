@@ -126,16 +126,12 @@ pub enum FormatCorrectionStatus {
 /// Information about a format correction applied during recovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CorrectionInfo {
-    /// The type that was corrected
-    pub type_name:         BrpTypeName,
     /// Original value that needed correction
     pub original_value:    Value,
     /// Corrected value to use
     pub corrected_value:   Value,
     /// Human-readable explanation of the correction
     pub hint:              String,
-    /// Component or resource name for error reporting
-    pub target_type:       String,
     /// format information for error responses (usage, `valid_values`, examples)
     pub corrected_format:  Option<Value>,
     /// Type information discovered during correction
@@ -148,7 +144,7 @@ impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
     pub fn to_json(&self) -> Value {
         let mut correction_json = serde_json::json!({
-            FormatCorrectionField::TypeName.as_ref(): self.type_name.as_str(),
+            FormatCorrectionField::TypeName.as_ref(): self.type_info.type_name.as_str(),
             FormatCorrectionField::OriginalFormat.as_ref(): self.original_value,
             FormatCorrectionField::CorrectedFormat.as_ref(): self.corrected_value,
             FormatCorrectionField::Hint.as_ref(): self.hint

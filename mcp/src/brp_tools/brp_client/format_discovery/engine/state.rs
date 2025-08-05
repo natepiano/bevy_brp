@@ -33,13 +33,11 @@ pub struct SerializationCheck(pub DiscoveryContext);
 /// State type for the `ExtrasDiscovery` state.
 /// This state holds a discovery context and is responsible for building
 /// corrections from extras data when no serialization issues are found.
-#[allow(dead_code)]
 pub struct ExtrasDiscovery(pub DiscoveryContext);
 
 /// State type for the `PatternCorrection` state.
 /// This state holds a discovery context and is responsible for applying
 /// pattern-based corrections when extras discovery is unavailable or fails.
-#[allow(dead_code)]
 pub struct PatternCorrection(pub DiscoveryContext);
 
 /// Terminal state for retryable corrections.

@@ -38,7 +38,6 @@ impl DiscoveryEngine<Guidance> {
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
-                        type_name: type_info.type_name.clone(),
                         original_value: type_info
                             .original_value
                             .clone()
@@ -48,7 +47,6 @@ impl DiscoveryEngine<Guidance> {
                             self.method,
                         ),
                         hint: reason,
-                        target_type: type_info.type_name.as_str().to_string(),
                         corrected_format: None,
                         type_info,
                         correction_method: CorrectionMethod::DirectReplacement,

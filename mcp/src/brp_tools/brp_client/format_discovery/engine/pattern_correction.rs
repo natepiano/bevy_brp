@@ -186,7 +186,6 @@ impl DiscoveryEngine<PatternCorrection> {
             );
 
             let correction_info = CorrectionInfo {
-                type_name:         type_name.into(),
                 original_value:    original_value.clone(),
                 corrected_value:   corrected_value.clone(),
                 hint:              format!(
@@ -198,7 +197,6 @@ impl DiscoveryEngine<PatternCorrection> {
                     },
                     type_name
                 ),
-                target_type:       type_name.into(),
                 corrected_format:  Some(corrected_value),
                 type_info:         type_info.clone(),
                 correction_method: CorrectionMethod::ObjectToArray,
@@ -217,7 +215,6 @@ impl DiscoveryEngine<PatternCorrection> {
             debug!("Level 3: Successfully transformed value for type '{type_name}'");
             let correction_result = Self::transform_result_to_correction(
                 transformation_result,
-                type_name,
                 type_info,
                 original_value.clone(),
             );
@@ -287,11 +284,9 @@ impl DiscoveryEngine<PatternCorrection> {
                 let corrected_value = serde_json::json!({}); // Simple guidance placeholder
 
                 let correction_info = CorrectionInfo {
-                    type_name: type_name.into(),
                     original_value: serde_json::json!({}),
                     corrected_value,
                     hint,
-                    target_type: type_name.into(),
                     corrected_format: None,
                     type_info: type_info.clone(),
                     correction_method: CorrectionMethod::DirectReplacement,
@@ -376,7 +371,6 @@ impl DiscoveryEngine<PatternCorrection> {
     /// Convert transformer output to `Correction`
     fn transform_result_to_correction(
         result: TransformationResult,
-        type_name: &str,
         type_info: &UnifiedTypeInfo,
         original_value: Value,
     ) -> Correction {
@@ -387,11 +381,9 @@ impl DiscoveryEngine<PatternCorrection> {
 
         // Create correction info
         let correction_info = CorrectionInfo {
-            type_name: type_name.into(),
             original_value,
             corrected_value,
             hint: description,
-            target_type: type_name.into(),
             corrected_format: None,
             type_info: type_info.clone(),
             correction_method: CorrectionMethod::DirectReplacement,

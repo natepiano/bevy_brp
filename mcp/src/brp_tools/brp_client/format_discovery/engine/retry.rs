@@ -108,7 +108,7 @@ fn build_corrected_params(
                 if let Some(components) = ParameterName::Components.get_object_mut_from(&mut params)
                 {
                     components.insert(
-                        correction.type_name.as_str().to_string(),
+                        correction.type_info.type_name.as_str().to_string(),
                         correction.corrected_value.clone(),
                     );
                 }
