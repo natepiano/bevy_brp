@@ -52,7 +52,8 @@ pub async fn discover_format_with_recovery(
                         pattern_engine.port,
                         pattern_engine.params,
                         pattern_engine.original_error,
-                        pattern_engine.state.0, // Extract DiscoveryContext from PatternCorrection
+                        pattern_engine.state.into_inner(), /* Extract DiscoveryContext from
+                                                            * PatternCorrection */
                     );
                     old_engine.continue_after_extras_discovery().await
                 }

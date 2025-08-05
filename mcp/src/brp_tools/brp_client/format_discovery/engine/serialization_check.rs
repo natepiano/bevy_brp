@@ -47,7 +47,7 @@ impl DiscoveryEngine<SerializationCheck> {
         debug!("SerializationCheck: Checking for serialization errors in registry type infos");
 
         // Check each type for serialization support
-        for type_info in self.state.0.types() {
+        for type_info in self.state.types() {
             debug!(
                 "SerializationCheck: Component '{}' found, brp_compatible={}",
                 type_info.type_name, type_info.serialization.brp_compatible
@@ -69,7 +69,6 @@ impl DiscoveryEngine<SerializationCheck> {
 
                 let corrections: Vec<CorrectionInfo> = self
                     .state
-                    .0
                     .types()
                     .map(|type_info| CorrectionInfo {
                         type_name:         type_info.type_name.clone(),
@@ -106,7 +105,7 @@ impl DiscoveryEngine<SerializationCheck> {
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,
-            state:          ExtrasDiscovery(self.state.0),
+            state:          ExtrasDiscovery(self.state.into_inner()),
         }
     }
 }

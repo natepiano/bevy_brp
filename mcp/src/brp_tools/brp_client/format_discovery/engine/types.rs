@@ -2,6 +2,8 @@
 //!
 //! These marker types ensure compile-time state validation for the discovery process.
 
+use std::ops::Deref;
+
 use serde_json::Value;
 
 use super::super::discovery_context::DiscoveryContext;
@@ -42,3 +44,47 @@ pub struct ExtrasDiscovery(pub DiscoveryContext);
 /// pattern-based corrections when extras discovery is unavailable or fails.
 #[allow(dead_code)]
 pub struct PatternCorrection(pub DiscoveryContext);
+
+// Implement Deref for states that wrap DiscoveryContext
+impl Deref for SerializationCheck {
+    type Target = DiscoveryContext;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for ExtrasDiscovery {
+    type Target = DiscoveryContext;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for PatternCorrection {
+    type Target = DiscoveryContext;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// Provide methods to extract the inner DiscoveryContext
+impl SerializationCheck {
+    pub fn into_inner(self) -> DiscoveryContext {
+        self.0
+    }
+}
+
+impl ExtrasDiscovery {
+    pub fn into_inner(self) -> DiscoveryContext {
+        self.0
+    }
+}
+
+impl PatternCorrection {
+    pub fn into_inner(self) -> DiscoveryContext {
+        self.0
+    }
+}

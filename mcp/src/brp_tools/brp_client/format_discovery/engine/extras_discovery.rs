@@ -25,13 +25,12 @@ impl DiscoveryEngine<ExtrasDiscovery> {
     ) -> Either<FormatRecoveryResult, DiscoveryEngine<PatternCorrection>> {
         debug!(
             "ExtrasDiscovery: Attempting direct discovery for {} types",
-            self.state.0.type_names().len()
+            self.state.type_names().len()
         );
 
         // Process only types that were enriched with extras information
         let corrections: Vec<Correction> = self
             .state
-            .0
             .types()
             .filter(|type_info| {
                 // Only process types that got information from extras
@@ -53,7 +52,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
         if corrections.is_empty() {
             debug!(
                 "ExtrasDiscovery: No extras-based corrections found, proceeding to PatternCorrection with {} type infos",
-                self.state.0.type_names().len()
+                self.state.type_names().len()
             );
         } else {
             debug!(
@@ -76,7 +75,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,
-            state:          PatternCorrection(self.state.0),
+            state:          PatternCorrection(self.state.into_inner()),
         }
     }
 }
