@@ -4,15 +4,13 @@
 //! This state applies pattern-based corrections when extras discovery is unavailable
 //! or fails. This is the terminal state of the discovery process.
 
-use serde_json::Value;
 use tracing::debug;
 
 use super::super::detection::ErrorPattern;
 use super::super::transformers;
 use super::state::{DiscoveryEngine, Guidance, PatternCorrection, Retry};
 use super::types::{
-    BrpTypeName, Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant,
-    TransformationResult, TypeCategory, are_corrections_retryable,
+    Correction, CorrectionInfo, CorrectionMethod, TransformationResult, are_corrections_retryable,
 };
 use super::unified_types::UnifiedTypeInfo;
 use crate::tool::BrpMethod;
@@ -162,22 +160,8 @@ impl DiscoveryEngine<PatternCorrection> {
             return Some(result);
         }
 
-        // Step 2: Get original value from type_info
-        let Some(original_value) = type_info.original_value.clone() else {
-            debug!("Level 3: No original value available for transformation");
-            // For enum types, we might be able to return enhanced format info
-            if matches!(
-                error_pattern,
-                super::super::detection::ErrorPattern::EnumUnitVariantMutation { .. }
-                    | super::super::detection::ErrorPattern::EnumUnitVariantAccessError { .. }
-            ) {
-                return Some(Self::create_enhanced_enum_guidance(
-                    type_name,
-                    &error_pattern,
-                ));
-            }
-            return None;
-        };
+        // Step 2: Get original value from type_info (now guaranteed to exist)
+        let original_value = type_info.original_value.clone();
 
         // Step 3.5: Try UnifiedTypeInfo's transform_value() first
         if let Some(corrected_value) = type_info.transform_value(&original_value) {
@@ -186,7 +170,6 @@ impl DiscoveryEngine<PatternCorrection> {
             );
 
             let correction_info = CorrectionInfo {
-                original_value:    original_value.clone(),
                 corrected_value:   corrected_value.clone(),
                 hint:              format!(
                     "Transformed {} format for type '{}'",
@@ -213,11 +196,8 @@ impl DiscoveryEngine<PatternCorrection> {
             type_info,
         ) {
             debug!("Level 3: Successfully transformed value for type '{type_name}'");
-            let correction_result = Self::transform_result_to_correction(
-                transformation_result,
-                type_info,
-                original_value.clone(),
-            );
+            let correction_result =
+                Self::transform_result_to_correction(transformation_result, type_info);
 
             return Some(correction_result);
         }
@@ -284,7 +264,6 @@ impl DiscoveryEngine<PatternCorrection> {
                 let corrected_value = serde_json::json!({}); // Simple guidance placeholder
 
                 let correction_info = CorrectionInfo {
-                    original_value: serde_json::json!({}),
                     corrected_value,
                     hint,
                     corrected_format: None,
@@ -301,78 +280,10 @@ impl DiscoveryEngine<PatternCorrection> {
         }
     }
 
-    /// Create enhanced enum guidance from error patterns
-    fn create_enhanced_enum_guidance(type_name: &str, error_pattern: &ErrorPattern) -> Correction {
-        debug!("Level 3: Creating enhanced enum guidance for type '{type_name}'");
-        debug!("Level 3: Error pattern: {:?}", error_pattern);
-
-        let mut type_info = Self::create_basic_type_info(type_name, None);
-        type_info.type_category = TypeCategory::Enum;
-
-        // Extract variant information from the error pattern
-        let valid_values = match error_pattern {
-            ErrorPattern::EnumUnitVariantMutation {
-                expected_variant_type,
-                actual_variant_type: _,
-            }
-            | ErrorPattern::EnumUnitVariantAccessError {
-                expected_variant_type,
-                actual_variant_type: _,
-                ..
-            } => {
-                vec![expected_variant_type.clone()]
-            }
-            _ => {
-                // General enum guidance
-                Vec::new()
-            }
-        };
-
-        // Create basic enum info for Level 3 fallback
-        let variants: Vec<EnumVariant> = valid_values
-            .into_iter()
-            .map(|name| EnumVariant {
-                name,
-                variant_type: "Unit".to_string(),
-            })
-            .collect();
-
-        if variants.is_empty() {
-            debug!("Level 3: No variants extracted from error pattern");
-        } else {
-            debug!(
-                "Level 3: Setting enum_info with {} variants: {:?}",
-                variants.len(),
-                variants
-            );
-            type_info.enum_info = Some(EnumInfo { variants });
-        }
-        type_info.supported_operations = vec![
-            "spawn".to_string(),
-            "insert".to_string(),
-            "mutate".to_string(),
-        ];
-
-        Correction::Uncorrectable {
-            type_info,
-            reason: "Enhanced enum guidance with variant information and usage examples"
-                .to_string(),
-        }
-    }
-
-    /// Create basic type info for pattern matching
-    fn create_basic_type_info(
-        type_name: impl Into<BrpTypeName>,
-        original_value: Option<Value>,
-    ) -> UnifiedTypeInfo {
-        UnifiedTypeInfo::for_pattern_matching(type_name, original_value)
-    }
-
     /// Convert transformer output to `Correction`
     fn transform_result_to_correction(
         result: TransformationResult,
         type_info: &UnifiedTypeInfo,
-        original_value: Value,
     ) -> Correction {
         let TransformationResult {
             corrected_value,
@@ -381,7 +292,6 @@ impl DiscoveryEngine<PatternCorrection> {
 
         // Create correction info
         let correction_info = CorrectionInfo {
-            original_value,
             corrected_value,
             hint: description,
             corrected_format: None,
@@ -403,7 +313,8 @@ impl DiscoveryEngine<PatternCorrection> {
             {
                 debug!("Level 3: Detected math type '{t}', providing array format guidance");
 
-                let type_info = UnifiedTypeInfo::for_math_type(t, None);
+                // For fallback math type guidance, provide empty object as placeholder
+                let type_info = UnifiedTypeInfo::for_math_type(t, serde_json::json!({}));
 
                 let reason = if t.contains("Quat") {
                     format!(

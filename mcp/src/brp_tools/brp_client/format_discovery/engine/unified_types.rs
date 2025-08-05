@@ -25,7 +25,7 @@ pub struct UnifiedTypeInfo {
     /// The fully-qualified type name
     pub type_name:            BrpTypeName,
     /// The original value from parameters
-    pub original_value:       Option<Value>,
+    pub original_value:       Value,
     /// Registry and reflection information
     pub registry_status:      RegistryStatus,
     /// Serialization support information
@@ -47,7 +47,7 @@ impl UnifiedTypeInfo {
     /// This is now private - use specialized constructors instead
     fn new(
         type_name: impl Into<BrpTypeName>,
-        original_value: Option<Value>,
+        original_value: Value,
         discovery_source: DiscoverySource,
     ) -> Self {
         Self {
@@ -80,10 +80,7 @@ impl UnifiedTypeInfo {
     ///
     /// Used when creating error corrections from pattern analysis.
     /// Automatically generates examples before returning.
-    pub fn for_pattern_matching(
-        type_name: impl Into<BrpTypeName>,
-        original_value: Option<Value>,
-    ) -> Self {
+    pub fn for_pattern_matching(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.regenerate_all_examples();
         info
@@ -93,7 +90,7 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
     /// Sets appropriate type category and generates examples.
-    pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Option<Value>) -> Self {
+    pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::MathType;
         info.regenerate_all_examples();
@@ -107,7 +104,7 @@ impl UnifiedTypeInfo {
     pub fn for_enum_type(
         type_name: impl Into<BrpTypeName>,
         variant_names: Vec<String>,
-        original_value: Option<Value>,
+        original_value: Value,
     ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::Enum;
@@ -129,10 +126,7 @@ impl UnifiedTypeInfo {
     ///
     /// Used when pattern matching identifies a Transform component.
     /// Sets appropriate type category, child types, and generates examples.
-    pub fn for_transform_type(
-        type_name: impl Into<BrpTypeName>,
-        original_value: Option<Value>,
-    ) -> Self {
+    pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
         info.type_category = TypeCategory::Struct;
 
@@ -285,7 +279,7 @@ impl UnifiedTypeInfo {
     pub fn from_registry_schema(
         type_name: impl Into<BrpTypeName>,
         schema_data: &Value,
-        original_value: Option<Value>,
+        original_value: Value,
     ) -> Self {
         let type_name = type_name.into();
         // Extract reflect types
@@ -435,7 +429,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Convert this type info to a `Correction`
-    pub fn to_correction(&self, original_value: Option<Value>) -> Correction {
+    pub fn to_correction(&self) -> Correction {
         debug!(
             "to_correction: Converting type '{}' with enum_info: {}",
             self.type_name,
@@ -461,7 +455,6 @@ impl UnifiedTypeInfo {
             });
 
             let correction_info = CorrectionInfo {
-                original_value:    original_value.unwrap_or(serde_json::json!(null)),
                 corrected_value:   corrected_format.clone(),
                 corrected_format:  Some(corrected_format),
                 hint:              format!(
@@ -481,44 +474,39 @@ impl UnifiedTypeInfo {
         }
 
         // Check if we can actually transform the original input
-        if let Some(original_value) = original_value {
+        tracing::debug!(
+            "Extras Integration: Attempting to transform original value: {}",
+            serde_json::to_string(&self.original_value)
+                .unwrap_or_else(|_| "invalid json".to_string())
+        );
+        if let Some(transformed_value) = self.transform_value(&self.original_value) {
             tracing::debug!(
-                "Extras Integration: Attempting to transform original value: {}",
-                serde_json::to_string(&original_value)
+                "Extras Integration: Successfully transformed value to: {}",
+                serde_json::to_string(&transformed_value)
                     .unwrap_or_else(|_| "invalid json".to_string())
             );
-            if let Some(transformed_value) = self.transform_value(&original_value) {
-                tracing::debug!(
-                    "Extras Integration: Successfully transformed value to: {}",
-                    serde_json::to_string(&transformed_value)
-                        .unwrap_or_else(|_| "invalid json".to_string())
-                );
-                // We can transform the input - return Corrected with actual transformation
-                let correction_info = CorrectionInfo {
-                    original_value:    original_value.clone(),
-                    corrected_value:   transformed_value,
-                    hint:              format!(
-                        "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
-                        if original_value.is_object() {
-                            "object"
-                        } else {
-                            "value"
-                        },
-                        self.type_name
-                    ),
-                    corrected_format:  None,
-                    type_info:         self.clone(),
-                    correction_method: CorrectionMethod::ObjectToArray,
-                };
+            // We can transform the input - return Corrected with actual transformation
+            let correction_info = CorrectionInfo {
+                corrected_value:   transformed_value,
+                hint:              format!(
+                    "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
+                    if self.original_value.is_object() {
+                        "object"
+                    } else {
+                        "value"
+                    },
+                    self.type_name
+                ),
+                corrected_format:  None,
+                type_info:         self.clone(),
+                correction_method: CorrectionMethod::ObjectToArray,
+            };
 
-                return Correction::Candidate { correction_info };
-            }
-            tracing::debug!(
-                "Extras Integration: transform_value() returned None - cannot transform input"
-            );
-        } else {
-            tracing::debug!("Extras Integration: No original value provided for transformation");
+            return Correction::Candidate { correction_info };
         }
+        tracing::debug!(
+            "Extras Integration: transform_value() returned None - cannot transform input"
+        );
 
         // Cannot transform input - provide guidance with examples
         let reason = self.get_example("spawn").map_or_else(|| format!(
@@ -561,7 +549,7 @@ impl UnifiedTypeInfo {
             }
         } else {
             // Use existing correction logic with stored original_value
-            self.to_correction(self.original_value.clone())
+            self.to_correction()
         }
     }
 

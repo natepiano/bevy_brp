@@ -65,7 +65,7 @@ impl MathTypeTransformer {
         value: &Value,
     ) -> Option<TransformationResult> {
         // Create a UnifiedTypeInfo for the math type with the original value
-        let type_info = UnifiedTypeInfo::for_math_type(type_name, Some(value.clone()));
+        let type_info = UnifiedTypeInfo::for_math_type(type_name, value.clone());
 
         // Try transformation using UnifiedTypeInfo
         type_info.transform_value(value).map(|transformed| {
@@ -172,7 +172,7 @@ impl MathTypeTransformer {
 
         // First try using UnifiedTypeInfo for Transform with the original value
         let type_info =
-            UnifiedTypeInfo::for_transform_type(actual_type_name, Some(transform_data.clone()));
+            UnifiedTypeInfo::for_transform_type(actual_type_name, transform_data.clone());
 
         if let Some(transformed) = type_info.transform_value(transform_data) {
             let hint = format!("`{actual_type_name}` Transform converted to proper array format");

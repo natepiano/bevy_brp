@@ -50,7 +50,7 @@ impl DiscoveryContext {
 
         // Need to pass values to registry check so they can be included in UnifiedTypeInfo
         let registry_results =
-            Self::check_multiple_types_registry_status_with_values(&type_value_pairs, port).await;
+            Self::check_multiple_types_registry_status_with_values(&type_value_pairs, port).await?;
 
         // Build type_info HashMap with values included
         let mut type_info = HashMap::new();
@@ -63,8 +63,13 @@ impl DiscoveryContext {
                 type_info.insert(type_name.clone().into(), unified_info.clone());
             } else {
                 // Create basic info with value for types not in registry
+                let Some(concrete_value) = value.clone() else {
+                    return Err(Error::InvalidArgument(format!(
+                        "Type '{type_name}' requires a value but none was provided. This should be impossible for mutation operations."
+                    )).into());
+                };
                 let basic_info =
-                    UnifiedTypeInfo::for_pattern_matching(type_name.clone(), value.clone());
+                    UnifiedTypeInfo::for_pattern_matching(type_name.clone(), concrete_value);
                 type_info.insert(type_name.clone().into(), basic_info);
             }
         }
@@ -319,7 +324,7 @@ impl DiscoveryContext {
     async fn check_multiple_types_registry_status_with_values(
         type_value_pairs: &[(String, Option<Value>)],
         port: Port,
-    ) -> Vec<(String, Option<UnifiedTypeInfo>)> {
+    ) -> Result<Vec<(String, Option<UnifiedTypeInfo>)>> {
         debug!(
             "Registry Integration: Batch checking {} types with values",
             type_value_pairs.len()
@@ -357,10 +362,15 @@ impl DiscoveryContext {
                         Self::find_type_in_registry_response(type_name, &response_data)
                     {
                         // Pass the value to from_registry_schema
+                        let Some(concrete_value) = value.clone() else {
+                            return Err(Error::InvalidArgument(format!(
+                                "Type '{type_name}' requires a value but none was provided. This should be impossible for mutation operations."
+                            )).into());
+                        };
                         let type_info = UnifiedTypeInfo::from_registry_schema(
                             type_name,
                             &schema_data,
-                            value.clone(),
+                            concrete_value,
                         );
                         results.push((type_name.clone(), Some(type_info)));
                     } else {
@@ -370,14 +380,14 @@ impl DiscoveryContext {
                         results.push((type_name.clone(), None));
                     }
                 }
-                results
+                Ok(results)
             }
             Ok(ResponseStatus::Success(None) | ResponseStatus::Error(_)) | Err(_) => {
                 debug!("Registry Integration: Batch registry check failed");
-                type_value_pairs
+                Ok(type_value_pairs
                     .iter()
                     .map(|(name, _)| (name.clone(), None))
-                    .collect()
+                    .collect())
             }
         }
     }

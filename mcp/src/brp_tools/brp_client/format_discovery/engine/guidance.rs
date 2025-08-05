@@ -38,10 +38,6 @@ impl DiscoveryEngine<Guidance> {
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
-                        original_value: type_info
-                            .original_value
-                            .clone()
-                            .unwrap_or_else(|| serde_json::json!({})),
                         corrected_value: build_corrected_value_from_type_info(
                             &type_info,
                             self.method,

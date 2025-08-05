@@ -263,8 +263,10 @@ impl EnumVariantTransformer {
         let variants = Self::extract_enum_variants(error_message);
 
         // Create a UnifiedTypeInfo with the extracted variants and original value
-        let type_info =
-            UnifiedTypeInfo::for_enum_type(type_name, variants, original_value.cloned());
+        let concrete_value = original_value
+            .cloned()
+            .unwrap_or_else(|| serde_json::json!({}));
+        let type_info = UnifiedTypeInfo::for_enum_type(type_name, variants, concrete_value);
 
         // Get the enum example or use fallback
         let format_info = if let Some(example) = type_info.get_example("mutate") {

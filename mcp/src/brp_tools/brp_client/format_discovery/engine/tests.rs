@@ -57,7 +57,7 @@ async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
             // Verify the correction contains Transform information
             let transform_correction = corrections
                 .iter()
-                .find(|c| c.type_name.as_str().contains("Transform"));
+                .find(|c| c.type_info.type_name.as_str().contains("Transform"));
             assert!(
                 transform_correction.is_some(),
                 "Should have Transform correction"
@@ -305,7 +305,7 @@ fn test_enrich_from_extras_full_enrichment() {
     // Start with a registry-based UnifiedTypeInfo
     let mut info = UnifiedTypeInfo::for_transform_type(
         "bevy_transform::components::transform::Transform",
-        None,
+        serde_json::json!({}),
     );
 
     // Verify initial state
@@ -365,7 +365,8 @@ fn test_enrich_from_extras_edge_cases() {
         "has_deserialize": false
     });
 
-    let mut info = UnifiedTypeInfo::for_pattern_matching("bevy_ecs::name::Name", None);
+    let mut info =
+        UnifiedTypeInfo::for_pattern_matching("bevy_ecs::name::Name", serde_json::json!({}));
     let initial_source = info.discovery_source.clone();
 
     // This should not enrich anything since no example_values or mutation_paths
@@ -392,7 +393,8 @@ fn test_enrich_from_extras_edge_cases() {
         }
     });
 
-    let mut info = UnifiedTypeInfo::for_pattern_matching("custom::ComplexType", None);
+    let mut info =
+        UnifiedTypeInfo::for_pattern_matching("custom::ComplexType", serde_json::json!({}));
     info.enrich_from_extras(&complex_response);
 
     // Verify enrichment occurred
@@ -458,8 +460,11 @@ fn test_registry_schema_to_unified_type_info_conversion() {
         }
     });
 
-    let unified_info =
-        UnifiedTypeInfo::from_registry_schema("bevy_render::color::Color", &schema_data, None);
+    let unified_info = UnifiedTypeInfo::from_registry_schema(
+        "bevy_render::color::Color",
+        &schema_data,
+        serde_json::json!({}),
+    );
 
     // Verify type information from registry
     assert_eq!(unified_info.type_name.as_str(), "bevy_render::color::Color");

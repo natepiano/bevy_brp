@@ -86,10 +86,6 @@ impl DiscoveryEngine<SerializationCheck> {
                     type_info.type_name.as_str()
                 );
                 let correction_info = CorrectionInfo {
-                    original_value:    type_info
-                        .original_value
-                        .clone()
-                        .unwrap_or_else(|| json!({})),
                     corrected_value:   json!({}), // Empty object for educational guidance
                     hint:              educational_message.clone(),
                     corrected_format:  None,
