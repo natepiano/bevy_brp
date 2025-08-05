@@ -19,8 +19,6 @@ pub enum FormatCorrectionField {
     Component,
     /// Corrected format to use instead
     CorrectedFormat,
-    /// TypeRegistry, ExtrasPlugin or PatternMatching
-    CorrectionSource,
     /// Error data in error responses
     ErrorData,
     /// Examples of valid usage

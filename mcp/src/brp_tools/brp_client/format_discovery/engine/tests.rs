@@ -108,7 +108,7 @@ async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
 
     // Verify the result structure
     assert!(result.is_ok(), "Orchestrator should return a result");
-    let recovery_result = result.unwrap();
+    let recovery_result = result.expect("Expected successful orchestrator result");
 
     // The result should be NotRecoverable because we can't connect to bevy_brp_extras
     // and pattern matching alone doesn't produce retryable corrections
@@ -129,17 +129,15 @@ async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
                 "Should have Transform correction"
             );
 
-            let correction = transform_correction.unwrap();
+            let correction =
+                transform_correction.expect("Expected Transform correction to be present");
             assert!(!correction.hint.is_empty(), "Should have helpful hint");
 
             println!("Pattern correction test completed successfully");
             println!("Correction hint: {}", correction.hint);
         }
         other => {
-            panic!(
-                "Expected NotRecoverable result for disconnected test, got: {:?}",
-                other
-            );
+            unreachable!("Expected NotRecoverable result for disconnected test, got: {other:?}");
         }
     }
 }
@@ -202,7 +200,7 @@ async fn test_orchestrator_mutation_path_error() {
         "Orchestrator should handle mutation path errors"
     );
 
-    match result.unwrap() {
+    match result.expect("Expected successful pattern correction result") {
         super::recovery_result::FormatRecoveryResult::NotRecoverable { corrections } => {
             assert!(
                 !corrections.is_empty(),

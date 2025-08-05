@@ -18,9 +18,9 @@ bevy = { workspace = true, features = ["bevy_remote"] }
 anyhow.workspace              = true
 async-trait.workspace         = true
 bevy_brp_mcp_macros.workspace = true
-either.workspace              = true
 cargo_metadata.workspace      = true
 chrono.workspace              = true
+either.workspace              = true
 error-stack.workspace         = true
 futures.workspace             = true
 itertools.workspace           = true

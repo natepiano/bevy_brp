@@ -13,8 +13,8 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, CorrectionSource, DiscoverySource, EnumInfo,
-    EnumVariant, FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
+    FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
 };
 use crate::brp_tools::brp_client::format_discovery::format_correction_fields::FormatCorrectionField;
 use crate::tool::BrpMethod;
@@ -478,7 +478,6 @@ impl UnifiedTypeInfo {
                 target_type:       self.type_name.clone(),
                 type_info:         Some(self.clone()),
                 correction_method: CorrectionMethod::DirectReplacement,
-                correction_source: CorrectionSource::ExtrasPlugin,
             };
 
             return Correction::Candidate { correction_info };
@@ -515,7 +514,6 @@ impl UnifiedTypeInfo {
                     corrected_format:  None,
                     type_info:         Some(self.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
-                    correction_source: CorrectionSource::ExtrasPlugin,
                 };
 
                 return Correction::Candidate { correction_info };
@@ -545,7 +543,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Create appropriate correction based on the method and context
-    /// Only called from extras discovery so this indicates the correction_source
+    /// Only called from extras discovery so this indicates the `correction_source`
     pub fn to_correction_for_method(&self, method: BrpMethod) -> Correction {
         // Check if this is a mutation method and we have mutation paths
         if matches!(

@@ -8,42 +8,69 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::super::detection::ErrorPattern;
-use super::super::format_correction_fields::FormatCorrectionField;
 use super::super::transformers;
 use super::super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, CorrectionSource, EnumInfo, EnumVariant,
-    TransformationResult, TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
+    TypeCategory,
 };
 use super::super::unified_types::UnifiedTypeInfo;
-use super::recovery_result::FormatRecoveryResult;
-use super::types::{DiscoveryEngine, PatternCorrection};
-use crate::brp_tools::{BrpClientError, ResponseStatus, brp_client};
-use crate::error::Result;
-use crate::tool::{BrpMethod, ParameterName};
+use super::types::{
+    DiscoveryEngine, Guidance, PatternCorrection, Retry, are_corrections_retryable,
+};
+use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<PatternCorrection> {
-    /// Apply pattern-based corrections (terminal state)
+    /// Try to apply pattern-based corrections (terminal state)
     ///
     /// This method implements Level 3: Pattern-Based Transformations from the old engine.
     /// It processes types using transformer registry and pattern matching to generate
     /// corrections when possible.
     ///
-    /// Returns `Result<FormatRecoveryResult>` as this is a terminal state.
-    pub async fn apply_pattern_corrections(self) -> Result<FormatRecoveryResult> {
+    /// Returns `Either<Retry, Guidance>` based on correction evaluation.
+    pub fn try_pattern_corrections(
+        self,
+    ) -> either::Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>> {
         debug!(
             "PatternCorrection: Applying pattern transformations for {} types",
             self.state.type_names().len()
         );
 
         // Execute Level 3: Pattern-Based Transformations
-        if let Some(corrections) = self.execute_level_3_pattern_transformations() {
-            debug!("PatternCorrection: Level 3 succeeded with pattern-based corrections");
-            Ok(self.build_recovery_result(corrections).await)
+        let corrections = self
+            .execute_level_3_pattern_transformations()
+            .unwrap_or_default();
+
+        debug!(
+            "PatternCorrection: Found {} corrections from pattern transformations",
+            corrections.len()
+        );
+
+        // Extract the discovery context for terminal state creation
+        let discovery_context = self.state.into_inner();
+
+        // Evaluate whether corrections are retryable or guidance-only
+        if are_corrections_retryable(&corrections) {
+            debug!("PatternCorrection: Corrections are retryable, creating Retry state");
+            let retry_state = Retry::new(discovery_context, corrections);
+            let retry_engine = DiscoveryEngine {
+                method:         self.method,
+                port:           self.port,
+                params:         self.params,
+                original_error: self.original_error,
+                state:          retry_state,
+            };
+            either::Either::Left(retry_engine)
         } else {
-            debug!("PatternCorrection: All levels exhausted, no recovery possible");
-            Ok(FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            })
+            debug!("PatternCorrection: Corrections are guidance-only, creating Guidance state");
+            let guidance_state = Guidance::new(discovery_context, corrections);
+            let guidance_engine = DiscoveryEngine {
+                method:         self.method,
+                port:           self.port,
+                params:         self.params,
+                original_error: self.original_error,
+                state:          guidance_state,
+            };
+            either::Either::Right(guidance_engine)
         }
     }
 
@@ -184,7 +211,6 @@ impl DiscoveryEngine<PatternCorrection> {
                     corrected_format:  Some(corrected_value),
                     type_info:         Some(type_info.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
-                    correction_source: CorrectionSource::PatternMatching,
                 };
 
                 return Some(Correction::Candidate { correction_info });
@@ -240,127 +266,6 @@ impl DiscoveryEngine<PatternCorrection> {
             "Level 3: No transformer could handle the error pattern, falling back to pattern matching"
         );
         Self::fallback_pattern_based_correction(type_name)
-    }
-
-    /// Build a recovery result from corrections
-    #[allow(clippy::too_many_lines)]
-    async fn build_recovery_result(
-        &self,
-        correction_results: Vec<Correction>,
-    ) -> FormatRecoveryResult {
-        let mut corrections = Vec::new();
-        let mut has_applied_corrections = false;
-
-        for correction_result in correction_results {
-            match correction_result {
-                Correction::Candidate { correction_info } => {
-                    let type_name = correction_info.type_name.clone();
-                    corrections.push(correction_info);
-                    has_applied_corrections = true;
-                    debug!("Recovery Engine: Applied correction for type '{type_name}'");
-                }
-                Correction::Uncorrectable { type_info, reason } => {
-                    debug!(
-                        "Recovery Engine: Found metadata for type '{}' but no correction: {}",
-                        type_info.type_name, reason
-                    );
-                    // Create a CorrectionInfo from metadata-only result to provide guidance
-                    let correction_info = CorrectionInfo {
-                        type_name:         type_info.type_name.clone(),
-                        original_value:    type_info
-                            .original_value
-                            .clone()
-                            .unwrap_or_else(|| serde_json::json!({})),
-                        corrected_value:   build_corrected_value_from_type_info(
-                            &type_info,
-                            self.method,
-                        ),
-                        hint:              reason,
-                        target_type:       type_info.type_name.clone(),
-                        corrected_format:  None,
-                        type_info:         Some(type_info),
-                        correction_method: CorrectionMethod::DirectReplacement,
-                        correction_source: CorrectionSource::PatternMatching,
-                    };
-                    corrections.push(correction_info);
-                }
-            }
-        }
-
-        if corrections.is_empty() {
-            debug!("Recovery Engine: No corrections found, returning original error");
-            return FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            };
-        }
-
-        // Check if we can actually apply the corrections (i.e., we have fixable corrections)
-        if has_applied_corrections && can_retry_with_corrections(&corrections) {
-            debug!("Recovery Engine: Attempting to retry operation with corrected parameters");
-
-            // Build corrected parameters
-            if let Some(corrected_params) =
-                build_corrected_params(self.method, &self.params, &corrections)
-            {
-                debug!("Recovery Engine: Built corrected parameters, executing retry");
-
-                // Execute the retry asynchronously
-                let client =
-                    brp_client::BrpClient::new(self.method, self.port, Some(corrected_params));
-                let retry_result = client.execute_raw().await;
-
-                match retry_result {
-                    Ok(brp_result) => match brp_result {
-                        ResponseStatus::Success(value) => {
-                            debug!("Recovery Engine: Retry succeeded with corrected parameters");
-                            FormatRecoveryResult::Recovered {
-                                corrected_result: ResponseStatus::Success(value),
-                                corrections,
-                            }
-                        }
-                        ResponseStatus::Error(brp_err) => {
-                            debug!(
-                                "Recovery Engine: Retry failed with corrected parameters: {}",
-                                brp_err.message
-                            );
-                            FormatRecoveryResult::CorrectionFailed {
-                                retry_error: ResponseStatus::Error(brp_err),
-                                corrections,
-                            }
-                        }
-                    },
-                    Err(client_err) => {
-                        debug!(
-                            "Recovery Engine: Retry failed with client error: {}",
-                            client_err
-                        );
-                        FormatRecoveryResult::CorrectionFailed {
-                            retry_error: ResponseStatus::Error(BrpClientError {
-                                code:    -32603,
-                                message: format!("Client error during retry: {client_err}"),
-                                data:    None,
-                            }),
-                            corrections,
-                        }
-                    }
-                }
-            } else {
-                debug!("Recovery Engine: Failed to build corrected parameters");
-                FormatRecoveryResult::CorrectionFailed {
-                    retry_error: ResponseStatus::Error(BrpClientError {
-                        code:    -32602,
-                        message:
-                            "Parameter correction failed: could not build corrected parameters"
-                                .to_string(),
-                        data:    None,
-                    }),
-                    corrections,
-                }
-            }
-        } else {
-            debug!("Recovery Engine: Corrections available but not retryable, providing guidance");
-            FormatRecoveryResult::NotRecoverable { corrections }
-        }
     }
 
     /// Handle mutation-specific errors for invalid paths
@@ -424,10 +329,7 @@ impl DiscoveryEngine<PatternCorrection> {
                     },
                 );
 
-                let corrected_value = type_info.map_or_else(
-                    || serde_json::json!({}),
-                    |info| build_corrected_value_from_type_info(info, self.method),
-                );
+                let corrected_value = serde_json::json!({}); // Simple guidance placeholder
 
                 let type_info_ref = type_info.map_or_else(
                     || Self::create_basic_type_info(type_name, None),
@@ -443,7 +345,6 @@ impl DiscoveryEngine<PatternCorrection> {
                     corrected_format: None,
                     type_info: Some(type_info_ref),
                     correction_method: CorrectionMethod::DirectReplacement,
-                    correction_source: CorrectionSource::PatternMatching,
                 };
 
                 Some(Correction::Uncorrectable {
@@ -536,7 +437,6 @@ impl DiscoveryEngine<PatternCorrection> {
             corrected_format: None,
             type_info: None,
             correction_method: CorrectionMethod::DirectReplacement,
-            correction_source: CorrectionSource::PatternMatching,
         };
 
         Correction::Candidate { correction_info }
@@ -575,170 +475,4 @@ impl DiscoveryEngine<PatternCorrection> {
             }
         }
     }
-}
-
-/// Check if corrections can be applied for a retry
-fn can_retry_with_corrections(corrections: &[CorrectionInfo]) -> bool {
-    // Only retry if we have corrections with actual values
-    if corrections.is_empty() {
-        return false;
-    }
-
-    // Check if all corrections have valid corrected values
-    for correction in corrections {
-        // Skip if the corrected value is just a placeholder or metadata
-        if correction.corrected_value.is_null()
-            || (correction.corrected_value.is_object()
-                && correction.corrected_value.as_object().is_some_and(|o| {
-                    o.contains_key(FormatCorrectionField::Hint.as_ref())
-                        || o.contains_key(FormatCorrectionField::Examples.as_ref())
-                        || o.contains_key(FormatCorrectionField::ValidValues.as_ref())
-                }))
-        {
-            return false;
-        }
-    }
-
-    true
-}
-
-/// Build corrected value from type info for display purposes
-fn build_corrected_value_from_type_info(type_info: &UnifiedTypeInfo, method: BrpMethod) -> Value {
-    debug!(
-        "build_corrected_value_from_type_info: Building for type '{}' with method '{}', enum_info present: {}",
-        type_info.type_name,
-        method.as_str(),
-        type_info.enum_info.is_some()
-    );
-
-    // Check if we have examples for this method
-    if let Some(example) = type_info.format_info.examples.get(method.as_str()) {
-        debug!("build_corrected_value_from_type_info: Found example for method, returning it");
-        return example.clone();
-    }
-
-    // For mutations, provide mutation path guidance
-    debug!(
-        "build_corrected_value_from_type_info: Checking mutation method match - method: {:?}",
-        method
-    );
-    if matches!(
-        method,
-        BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-    ) {
-        debug!(
-            "build_corrected_value_from_type_info: Method matches mutation, proceeding with guidance"
-        );
-        // Check if we have a mutate example
-        debug!(
-            "build_corrected_value_from_type_info: Checking for mutate example, examples keys: {:?}",
-            type_info.format_info.examples.keys().collect::<Vec<_>>()
-        );
-        if let Some(mutate_example) = type_info.format_info.examples.get("mutate") {
-            debug!(
-                "build_corrected_value_from_type_info: Found mutate example, returning early: {}",
-                serde_json::to_string_pretty(mutate_example)
-                    .unwrap_or_else(|_| "Failed to serialize".to_string())
-            );
-            return mutate_example.clone();
-        }
-        debug!(
-            "build_corrected_value_from_type_info: No mutate example found, proceeding to generate guidance"
-        );
-
-        let mut guidance = serde_json::json!({
-            FormatCorrectionField::Hint.as_ref(): "Use appropriate path and value for mutation"
-        });
-
-        if !type_info.format_info.mutation_paths.is_empty() {
-            let paths: Vec<String> = type_info
-                .format_info
-                .mutation_paths
-                .keys()
-                .cloned()
-                .collect();
-            guidance[FormatCorrectionField::AvailablePaths.as_ref()] = serde_json::json!(paths);
-        }
-
-        // Add enum-specific guidance if this is an enum
-        if let Some(enum_info) = &type_info.enum_info {
-            let variants: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
-            debug!(
-                "build_corrected_value_from_type_info: Adding enum guidance with {} variants: {:?}",
-                variants.len(),
-                variants
-            );
-            guidance[FormatCorrectionField::ValidValues.as_ref()] = serde_json::json!(variants);
-            guidance[FormatCorrectionField::Hint.as_ref()] =
-                serde_json::json!("Use empty path with variant name as value");
-            guidance[FormatCorrectionField::Examples.as_ref()] = serde_json::json!([
-                {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
-                {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}
-            ]);
-            debug!(
-                "build_corrected_value_from_type_info: Final guidance with enum fields: {}",
-                serde_json::to_string_pretty(&guidance)
-                    .unwrap_or_else(|_| "Failed to serialize".to_string())
-            );
-        } else {
-            debug!(
-                "build_corrected_value_from_type_info: No enum_info found, not adding enum guidance"
-            );
-        }
-
-        return guidance;
-    }
-    debug!(
-        "build_corrected_value_from_type_info: Method does not match mutation, returning empty object"
-    );
-
-    // Default to empty object
-    debug!("build_corrected_value_from_type_info: Returning default empty object");
-    serde_json::json!({})
-}
-
-/// Build corrected parameters from corrections
-#[allow(clippy::unnecessary_wraps)]
-fn build_corrected_params(
-    method: BrpMethod,
-    original_params: &Value,
-    corrections: &[CorrectionInfo],
-) -> Option<Value> {
-    let mut params = original_params.clone();
-
-    for correction in corrections {
-        match method {
-            BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
-                // Update components
-                if let Some(components) = ParameterName::Components.get_object_mut_from(&mut params)
-                {
-                    components.insert(
-                        correction.type_name.clone(),
-                        correction.corrected_value.clone(),
-                    );
-                }
-            }
-            BrpMethod::BevyInsertResource => {
-                // Update value directly
-                if let Some(value) = ParameterName::Value.get_mut_from(&mut params) {
-                    *value = correction.corrected_value.clone();
-                }
-            }
-            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource => {
-                // Update value directly for mutation
-                if let Some(value) = ParameterName::Value.get_mut_from(&mut params) {
-                    *value = correction.corrected_value.clone();
-                }
-            }
-            _ => {
-                // Other methods - no specific parameter handling yet
-                debug!(
-                    "build_corrected_params: No specific handling for method {:?}",
-                    method
-                );
-            }
-        }
-    }
-
-    Some(params)
 }

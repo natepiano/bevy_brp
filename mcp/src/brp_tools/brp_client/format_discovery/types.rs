@@ -144,8 +144,6 @@ pub struct CorrectionInfo {
     pub type_info:         Option<UnifiedTypeInfo>,
     /// The correction method used
     pub correction_method: CorrectionMethod,
-    /// The source of the correction
-    pub correction_source: CorrectionSource,
 }
 
 /// Method used to correct a format error
@@ -163,17 +161,6 @@ pub enum CorrectionMethod {
     NestedCorrection,
     /// Field name mapping or aliasing
     FieldMapping,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum CorrectionSource {
-    /// provided by the `bevy_brp_extras` plugin
-    ExtrasPlugin,
-    /// From pattern matching on the error
-    PatternMatching,
-    /// TypeRegistry from call to registry schema brp method
-    TypeRegistry,
 }
 
 /// Can we use this data to attempt a correction
@@ -247,7 +234,6 @@ pub struct FormatCorrection {
     pub supported_operations: Option<Vec<String>>,
     pub mutation_paths:       Option<Vec<String>>,
     pub type_category:        Option<String>,
-    pub correction_source:    Option<CorrectionSource>,
 }
 
 impl FormatCorrection {}

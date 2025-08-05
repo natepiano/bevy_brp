@@ -8,21 +8,25 @@ use either::Either;
 use tracing::debug;
 
 use super::super::types::{Correction, DiscoverySource};
-use super::recovery_result::FormatRecoveryResult;
-use super::types::{DiscoveryEngine, ExtrasDiscovery, PatternCorrection};
+use super::types::{
+    DiscoveryEngine, ExtrasDiscovery, Guidance, PatternCorrection, Retry, are_corrections_retryable,
+};
 
 impl DiscoveryEngine<ExtrasDiscovery> {
-    /// Build corrections from extras data
+    /// Try to build corrections from extras data
     ///
     /// This method processes types that were enriched with extras information
     /// and builds corrections for them. Only types with `DiscoverySource::RegistryPlusExtras`
     /// are processed.
     ///
-    /// Returns `Either::Left(result)` if corrections are found and successfully built,
+    /// Returns `Either::Left(Either<Retry, Guidance>)` if corrections are found,
     /// or `Either::Right(engine)` to continue with `PatternCorrection`.
-    pub fn build_extras_corrections(
+    pub fn try_extras_corrections(
         self,
-    ) -> Either<FormatRecoveryResult, DiscoveryEngine<PatternCorrection>> {
+    ) -> Either<
+        Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>>,
+        DiscoveryEngine<PatternCorrection>,
+    > {
         debug!(
             "ExtrasDiscovery: Attempting direct discovery for {} types",
             self.state.type_names().len()
@@ -48,24 +52,47 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             })
             .collect();
 
-        // Log the discovery results
+        // Log the discovery results and evaluate corrections
         if corrections.is_empty() {
             debug!(
                 "ExtrasDiscovery: No extras-based corrections found, proceeding to PatternCorrection with {} type infos",
                 self.state.type_names().len()
             );
+            Either::Right(self.transition_to_pattern_correction())
         } else {
             debug!(
                 "ExtrasDiscovery: Found {} corrections from extras discovery",
                 corrections.len()
             );
-            // TODO: In Phase 5, when corrections are found, this will build and return
-            // a terminal FormatRecoveryResult instead of transitioning to PatternCorrection
-        }
 
-        // For Phase 4, we always transition to PatternCorrection and let the orchestrator
-        // handle calling the old engine's continuation method to build the actual result
-        Either::Right(self.transition_to_pattern_correction())
+            // Extract the discovery context for terminal state creation
+            let discovery_context = self.state.into_inner();
+
+            // Evaluate whether corrections are retryable or guidance-only
+            if are_corrections_retryable(&corrections) {
+                debug!("ExtrasDiscovery: Corrections are retryable, creating Retry state");
+                let retry_state = Retry::new(discovery_context, corrections);
+                let retry_engine = DiscoveryEngine {
+                    method:         self.method,
+                    port:           self.port,
+                    params:         self.params,
+                    original_error: self.original_error,
+                    state:          retry_state,
+                };
+                Either::Left(Either::Left(retry_engine))
+            } else {
+                debug!("ExtrasDiscovery: Corrections are guidance-only, creating Guidance state");
+                let guidance_state = Guidance::new(discovery_context, corrections);
+                let guidance_engine = DiscoveryEngine {
+                    method:         self.method,
+                    port:           self.port,
+                    params:         self.params,
+                    original_error: self.original_error,
+                    state:          guidance_state,
+                };
+                Either::Left(Either::Right(guidance_engine))
+            }
+        }
     }
 
     /// Transition to `PatternCorrection` state, preserving the discovery context

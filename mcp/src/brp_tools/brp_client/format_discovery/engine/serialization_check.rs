@@ -9,9 +9,11 @@ use either::Either;
 use serde_json::json;
 use tracing::debug;
 
-use super::super::types::{CorrectionInfo, CorrectionMethod, CorrectionSource};
-use super::recovery_result::FormatRecoveryResult;
-use super::types::{DiscoveryEngine, ExtrasDiscovery, SerializationCheck};
+use super::super::types::{Correction, CorrectionInfo, CorrectionMethod};
+use super::types::{
+    DiscoveryEngine, ExtrasDiscovery, Guidance, Retry, SerializationCheck,
+    are_corrections_retryable,
+};
 use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<SerializationCheck> {
@@ -21,11 +23,14 @@ impl DiscoveryEngine<SerializationCheck> {
     /// that are registered in the type registry but lack the required Serialize
     /// and Deserialize traits for BRP operations.
     ///
-    /// Returns `Either::Left(result)` if serialization issues are found,
+    /// Returns `Either::Left(Either<Retry, Guidance>)` if serialization issues are found,
     /// or `Either::Right(engine)` to continue with `ExtrasDiscovery`.
     pub fn check_serialization(
         self,
-    ) -> Either<FormatRecoveryResult, DiscoveryEngine<ExtrasDiscovery>> {
+    ) -> Either<
+        Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>>,
+        DiscoveryEngine<ExtrasDiscovery>,
+    > {
         // Only check for spawn/insert methods with UnknownComponentType errors
         if !matches!(self.method, BrpMethod::BevySpawn | BrpMethod::BevyInsert) {
             debug!("SerializationCheck: Not a spawn/insert method, proceeding to ExtrasDiscovery");
@@ -46,57 +51,84 @@ impl DiscoveryEngine<SerializationCheck> {
 
         debug!("SerializationCheck: Checking for serialization errors in registry type infos");
 
-        // Check each type for serialization support
-        for type_info in self.state.types() {
+        // First, check if any types have serialization issues before building corrections
+        let has_serialization_issues = self.state.types().any(|type_info| {
+            type_info.registry_status.in_registry && !type_info.serialization.brp_compatible
+        });
+
+        if !has_serialization_issues {
             debug!(
-                "SerializationCheck: Component '{}' found, brp_compatible={}",
-                type_info.type_name, type_info.serialization.brp_compatible
+                "SerializationCheck: All components have serialization support or are not in registry, proceeding to ExtrasDiscovery"
             );
-
-            // Component is registered but lacks serialization - create terminal result
-            if type_info.registry_status.in_registry && !type_info.serialization.brp_compatible {
-                debug!(
-                    "SerializationCheck: Component '{}' lacks serialization, building corrections",
-                    type_info.type_name
-                );
-
-                let educational_message = format!(
-                    "Component '{}' is registered but lacks Serialize and Deserialize traits required for {} operations. \
-                    Add #[derive(Serialize, Deserialize)] to the component definition.",
-                    type_info.type_name,
-                    self.method.as_str()
-                );
-
-                let corrections: Vec<CorrectionInfo> = self
-                    .state
-                    .types()
-                    .map(|type_info| CorrectionInfo {
-                        type_name:         type_info.type_name.clone(),
-                        original_value:    type_info
-                            .original_value
-                            .clone()
-                            .unwrap_or_else(|| json!({})),
-                        corrected_value:   json!({}),
-                        hint:              educational_message.clone(),
-                        target_type:       type_info.type_name.clone(),
-                        corrected_format:  None,
-                        type_info:         Some(type_info.clone()),
-                        correction_method: CorrectionMethod::DirectReplacement,
-                        correction_source: CorrectionSource::TypeRegistry,
-                    })
-                    .collect();
-
-                // Build terminal result for serialization issues
-                let recovery_result = FormatRecoveryResult::NotRecoverable { corrections };
-
-                return Either::Left(recovery_result);
-            }
+            return Either::Right(self.transition_to_extras_discovery());
         }
 
-        debug!(
-            "SerializationCheck: All components have serialization support or are not in registry, proceeding to ExtrasDiscovery"
+        // Build corrections for all types with serialization issues
+        debug!("SerializationCheck: Building corrections for serialization issues");
+
+        // Extract the discovery context since we know there are serialization issues
+        let discovery_context = self.state.into_inner();
+
+        let educational_message = format!(
+            "Component is registered but lacks Serialize and Deserialize traits required for {} operations. \
+            Add #[derive(Serialize, Deserialize)] to the component definition.",
+            self.method.as_str()
         );
-        Either::Right(self.transition_to_extras_discovery())
+
+        let corrections: Vec<Correction> = discovery_context
+            .types()
+            .filter(|type_info| {
+                type_info.registry_status.in_registry && !type_info.serialization.brp_compatible
+            })
+            .map(|type_info| {
+                debug!(
+                    "SerializationCheck: Component '{}' lacks serialization, building correction",
+                    type_info.type_name
+                );
+                let correction_info = CorrectionInfo {
+                    type_name:         type_info.type_name.clone(),
+                    original_value:    type_info
+                        .original_value
+                        .clone()
+                        .unwrap_or_else(|| json!({})),
+                    corrected_value:   json!({}), // Empty object for educational guidance
+                    hint:              educational_message.clone(),
+                    target_type:       type_info.type_name.clone(),
+                    corrected_format:  None,
+                    type_info:         Some(type_info.clone()),
+                    correction_method: CorrectionMethod::DirectReplacement,
+                };
+                // Since serialization issues can't be fixed by BRP calls, these are always
+                // guidance-only
+                Correction::Candidate { correction_info }
+            })
+            .collect();
+
+        // Evaluate whether corrections are retryable or guidance-only
+        // For serialization issues, corrections are always educational/guidance-only
+        if are_corrections_retryable(&corrections) {
+            // This shouldn't happen for serialization issues, but handle it just in case
+            let retry_state = Retry::new(discovery_context, corrections);
+            let retry_engine = DiscoveryEngine {
+                method:         self.method,
+                port:           self.port,
+                params:         self.params,
+                original_error: self.original_error,
+                state:          retry_state,
+            };
+            Either::Left(Either::Left(retry_engine))
+        } else {
+            // Create guidance state for educational corrections
+            let guidance_state = Guidance::new(discovery_context, corrections);
+            let guidance_engine = DiscoveryEngine {
+                method:         self.method,
+                port:           self.port,
+                params:         self.params,
+                original_error: self.original_error,
+                state:          guidance_state,
+            };
+            Either::Left(Either::Right(guidance_engine))
+        }
     }
 
     /// Transition to `ExtrasDiscovery` state, preserving the discovery context
