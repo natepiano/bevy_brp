@@ -272,6 +272,55 @@ pub struct CorrectionInfo {
     pub correction_method: CorrectionMethod,
 }
 
+impl CorrectionInfo {
+    /// Convert to JSON representation for API compatibility
+    pub fn to_json(&self) -> Value {
+        let mut correction_json = serde_json::json!({
+            FormatCorrectionField::Component.as_ref(): self.type_name,
+            FormatCorrectionField::OriginalFormat.as_ref(): self.original_value,
+            FormatCorrectionField::CorrectedFormat.as_ref(): self.corrected_value,
+            FormatCorrectionField::Hint.as_ref(): self.hint
+        });
+
+        // Add rich metadata fields if available
+        if let Some(obj) = correction_json.as_object_mut() {
+            if let Some(type_info) = &self.type_info {
+                // Extract supported_operations
+                if !type_info.supported_operations.is_empty() {
+                    obj.insert(
+                        FormatCorrectionField::SupportedOperations
+                            .as_ref()
+                            .to_string(),
+                        serde_json::json!(type_info.supported_operations),
+                    );
+                }
+
+                // Extract mutation_paths
+                if !type_info.format_info.mutation_paths.is_empty() {
+                    let paths: Vec<String> = type_info
+                        .format_info
+                        .mutation_paths
+                        .keys()
+                        .cloned()
+                        .collect();
+                    obj.insert(
+                        FormatCorrectionField::MutationPaths.as_ref().to_string(),
+                        serde_json::json!(paths),
+                    );
+                }
+
+                // Extract type_category
+                obj.insert(
+                    FormatCorrectionField::TypeCategory.as_ref().to_string(),
+                    serde_json::json!(format!("{:?}", type_info.type_category)),
+                );
+            }
+        }
+
+        correction_json
+    }
+}
+
 /// Method used to correct a format error
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CorrectionMethod {
@@ -302,18 +351,6 @@ pub enum DiscoverySource {
     Manual,
     /// Information combined from registry and extras sources
     RegistryPlusExtras,
-}
-
-/// Format correction information for a type (component or resource)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FormatCorrection {
-    pub component:            String, // Keep field name for API compatibility
-    pub original_format:      Value,
-    pub corrected_format:     Value,
-    pub hint:                 String,
-    pub supported_operations: Option<Vec<String>>,
-    pub mutation_paths:       Option<Vec<String>>,
-    pub type_category:        Option<String>,
 }
 
 /// Information about an enum variant
