@@ -61,7 +61,6 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::super::detection::ErrorPattern;
-use super::super::discovery_context::DiscoveryContext;
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::super::transformers;
 use super::super::types::{
@@ -69,6 +68,7 @@ use super::super::types::{
     TransformationResult, TypeCategory,
 };
 use super::super::unified_types::UnifiedTypeInfo;
+use super::discovery_context::DiscoveryContext;
 use super::recovery_result::FormatRecoveryResult;
 use crate::brp_tools::{BrpClientError, Port, ResponseStatus, brp_client};
 use crate::error::{Error, Result};

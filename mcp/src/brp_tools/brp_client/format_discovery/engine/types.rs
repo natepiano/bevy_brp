@@ -6,7 +6,7 @@ use std::ops::Deref;
 
 use serde_json::Value;
 
-use super::super::discovery_context::DiscoveryContext;
+use super::discovery_context::DiscoveryContext;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::BrpMethod;
 
@@ -80,5 +80,38 @@ impl SerializationCheck {
 impl ExtrasDiscovery {
     pub fn into_inner(self) -> DiscoveryContext {
         self.0
+    }
+}
+
+/// A newtype wrapper for BRP type names used as `HashMap` keys
+///
+/// This type provides documentation and type safety for strings that represent
+/// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
+/// when used as keys in type information maps.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BrpTypeName(String);
+
+impl BrpTypeName {
+    /// Get the underlying string reference
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for BrpTypeName {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl From<String> for BrpTypeName {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl std::fmt::Display for BrpTypeName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

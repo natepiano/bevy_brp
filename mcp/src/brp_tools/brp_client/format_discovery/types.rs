@@ -4,45 +4,11 @@
 //! including component field types for pattern matching.
 
 use std::collections::HashMap;
-use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::unified_types::UnifiedTypeInfo;
-
-/// A newtype wrapper for BRP type names used as `HashMap` keys
-///
-/// This type provides documentation and type safety for strings that represent
-/// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
-/// when used as keys in type information maps.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BrpTypeName(String);
-
-impl BrpTypeName {
-    /// Get the underlying string reference
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<&str> for BrpTypeName {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
-}
-
-impl From<String> for BrpTypeName {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
-}
-
-impl fmt::Display for BrpTypeName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 /// Represents color component fields
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

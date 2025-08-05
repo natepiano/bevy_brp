@@ -3,7 +3,7 @@
 //! This module implements the `TypeDiscovery` state for the discovery engine.
 //! This state creates the discovery context by calling the registry and optional extras plugin.
 
-use super::super::discovery_context::DiscoveryContext;
+use super::discovery_context::DiscoveryContext;
 use super::types::{DiscoveryEngine, SerializationCheck, TypeDiscovery};
 use crate::error::Result;
 
