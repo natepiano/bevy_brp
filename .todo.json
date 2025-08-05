@@ -1,0 +1,219 @@
+[
+  {
+    "id": "1",
+    "content": "Create Retry and Guidance terminal state types in engine/types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Create engine/retry.rs with DiscoveryEngine<Retry>::apply_corrections_and_retry()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Create engine/guidance.rs with DiscoveryEngine<Guidance>::provide_guidance()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Add are_corrections_retryable() helper function to determine terminal state",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Update serialization_check.rs check_serialization() to return Either<Either<Retry, Guidance>, ExtrasDiscovery>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Update extras_discovery.rs build_extras_corrections() to try_extras_corrections() returning Either<Either<Retry, Guidance>, PatternCorrection>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Update pattern_correction.rs apply_pattern_corrections() to try_pattern_corrections() returning Either<Retry, Guidance>",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Update orchestrator.rs to handle Either<Either<Retry, Guidance>, NextState> returns and terminal Either<Retry, Guidance> routing",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Update engine/mod.rs exports to include new retry and guidance modules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Remove continue_after_serialization_check and continue_after_extras_discovery from old_engine.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Run `cargo nextest run`",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
