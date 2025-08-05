@@ -462,6 +462,7 @@ dependencies = [
  "bevy_brp_mcp_macros",
  "cargo_metadata",
  "chrono",
+ "either",
  "error-stack",
  "futures",
  "itertools 0.14.0",
