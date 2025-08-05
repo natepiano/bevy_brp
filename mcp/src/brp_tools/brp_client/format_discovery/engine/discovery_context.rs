@@ -37,11 +37,7 @@ pub struct DiscoveryContext {
 impl DiscoveryContext {
     /// Create a new `DiscoveryContext` from BRP method parameters
     /// This combines type extraction, value extraction, and registry fetching
-    pub async fn from_params(
-        method: BrpMethod,
-        port: Port,
-        params: Option<&Value>,
-    ) -> Result<Self> {
+    pub async fn new(method: BrpMethod, port: Port, params: Option<&Value>) -> Result<Self> {
         // Extract type names and values together
         let type_value_pairs = Self::extract_types_with_values(method, params)?;
 
@@ -318,37 +314,7 @@ impl DiscoveryContext {
         debug!("Registry Integration: Type '{type_name}' not found in any expected format");
         None
     }
-}
 
-/// Find type information in the response from `bevy_brp_extras/discover_format`
-///
-/// The response format is always:
-/// ```json
-/// {
-///   "type_info": {
-///     "TypeName": { ... }
-///   }
-/// }
-/// ```
-fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Option<&'a Value> {
-    debug!("TypeDiscoveryContext: find_type_in_response looking for '{type_name}'");
-
-    // bevy_brp_extras always returns format: { "type_info": { "TypeName": {...} } }
-    response_data
-        .get("type_info")
-        .and_then(Value::as_object)
-        .and_then(|type_info| {
-            debug!(
-                "TypeDiscoveryContext: Found type_info field, checking keys: {:?}",
-                type_info.keys().collect::<Vec<_>>()
-            );
-            type_info.get(type_name).inspect(|_| {
-                debug!("TypeDiscoveryContext: Found type data for '{type_name}'");
-            })
-        })
-}
-
-impl DiscoveryContext {
     /// Batch check multiple types in registry and include their values
     async fn check_multiple_types_registry_status_with_values(
         type_value_pairs: &[(String, Option<Value>)],
@@ -417,6 +383,34 @@ impl DiscoveryContext {
     }
 }
 
+/// Find type information in the response from `bevy_brp_extras/discover_format`
+///
+/// The response format is always:
+/// ```json
+/// {
+///   "type_info": {
+///     "TypeName": { ... }
+///   }
+/// }
+/// ```
+fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Option<&'a Value> {
+    debug!("TypeDiscoveryContext: find_type_in_response looking for '{type_name}'");
+
+    // bevy_brp_extras always returns format: { "type_info": { "TypeName": {...} } }
+    response_data
+        .get("type_info")
+        .and_then(Value::as_object)
+        .and_then(|type_info| {
+            debug!(
+                "TypeDiscoveryContext: Found type_info field, checking keys: {:?}",
+                type_info.keys().collect::<Vec<_>>()
+            );
+            type_info.get(type_name).inspect(|_| {
+                debug!("TypeDiscoveryContext: Found type data for '{type_name}'");
+            })
+        })
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -431,8 +425,7 @@ mod tests {
             "components": {}
         });
 
-        let result =
-            DiscoveryContext::from_params(BrpMethod::BevySpawn, Port(15702), Some(&params)).await;
+        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), Some(&params)).await;
 
         // This should fail since no components are provided
         assert!(result.is_err());
@@ -451,8 +444,7 @@ mod tests {
             }
         });
 
-        let result =
-            DiscoveryContext::from_params(BrpMethod::BevySpawn, Port(15702), Some(&params)).await;
+        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), Some(&params)).await;
 
         // This may succeed or fail depending on BRP availability, but shouldn't crash
         assert!(result.is_ok() || result.is_err());

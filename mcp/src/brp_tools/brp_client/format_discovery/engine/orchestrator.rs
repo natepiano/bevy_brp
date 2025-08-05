@@ -107,7 +107,7 @@ impl DiscoveryEngine<TypeDiscovery> {
     pub async fn initialize(self) -> Result<DiscoveryEngine<SerializationCheck>> {
         // Create discovery context from method parameters
         let mut discovery_context =
-            DiscoveryContext::from_params(self.method, self.port, Some(&self.params)).await?;
+            DiscoveryContext::new(self.method, self.port, Some(&self.params)).await?;
 
         // Enrich context with extras discovery upfront (don't fail if enrichment fails)
         if let Err(e) = discovery_context.enrich_with_extras().await {
