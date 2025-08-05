@@ -1,146 +1,237 @@
 [
   {
-    "id": "1",
-    "content": "Add CorrectionInfo::to_json() method to engine/types.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Successfully added to_json() method to CorrectionInfo impl block. Method uses FormatCorrectionField enum for field names and handles optional rich metadata from type_info."
-  },
-  {
-    "id": "2",
-    "content": "Run cargo build && cargo +nightly fmt and fix errors",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Build successful, code formatted. Fixed import path issue by using existing FormatCorrectionField import. Got expected warning about unused to_json method."
-  },
-  {
-    "id": "3",
-    "content": "Update recovery_result.rs imports - remove FormatCorrection",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Removed FormatCorrection from imports. Build errors expected since code still uses FormatCorrection struct - will fix in next task."
-  },
-  {
-    "id": "4",
-    "content": "Replace format_correction_to_json calls with c.to_json() in recovery_result.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Replaced main usage calls with c.to_json() in lines 128 and 64. Still have function definition and test code using FormatCorrection - will be removed in tasks 8-9."
-  },
-  {
-    "id": "5",
-    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "id": "phase-1-1",
+    "content": "Phase 1.1: Extend ToolAttrs struct in mcp_macros/src/brp_tools.rs to include format_discovery field",
     "status": "pending",
     "priority": "high",
-    "notes": "Will run after removing unused functions"
+    "notes": ""
   },
   {
-    "id": "6",
+    "id": "phase-1-1-build",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors after extending ToolAttrs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-1-2",
+    "content": "Phase 1.2: Update extract_tool_attr function to parse format_discovery attribute with validation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-1-2-build",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors after updating attribute parsing",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-1-3",
+    "content": "Phase 1.3: Generate ResultStructBrpExt implementation in brp_tools macro for tools with format_discovery",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-1-3-build",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors after adding trait implementation generation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-1-clippy",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "7",
-    "content": "Fix all clippy issues following warning rules",
+    "id": "phase-1-clippy-fix",
+    "content": "Fix all clippy issues following WarningRules",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "8",
-    "content": "Remove convert_corrections() method from recovery_result.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Successfully removed convert_corrections method and its implementation that converted CorrectionInfo to FormatCorrection"
-  },
-  {
-    "id": "9",
-    "content": "Remove format_correction_to_json function from recovery_result.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Successfully removed format_correction_to_json function that converted FormatCorrection to JSON"
-  },
-  {
-    "id": "10",
-    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "id": "phase-2-1",
+    "content": "Phase 2.1: Add format_discovery = true to BevySpawn in mcp/src/tool/tool_name.rs",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "11",
-    "content": "Update test_format_correction_to_json to test_correction_info_to_json",
-    "status": "completed",
+    "id": "phase-2-2",
+    "content": "Phase 2.2: Add format_discovery = true to BevyInsert in mcp/src/tool/tool_name.rs",
+    "status": "pending",
     "priority": "high",
-    "notes": "Replaced complex test that used FormatCorrection with simpler comment explaining that integration tests will verify the functionality."
+    "notes": ""
   },
   {
-    "id": "12",
-    "content": "Run cargo build && cargo +nightly fmt and fix errors",
-    "status": "completed",
+    "id": "phase-2-3",
+    "content": "Phase 2.3: Add format_discovery = true to BevyInsertResource in mcp/src/tool/tool_name.rs",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful! Cleaned up unused imports. Ready to remove FormatCorrection struct."
+    "notes": ""
   },
   {
-    "id": "13",
-    "content": "Remove FormatCorrection struct from engine/types.rs",
-    "status": "completed",
+    "id": "phase-2-4",
+    "content": "Phase 2.4: Add format_discovery = true to BevyMutateComponent in mcp/src/tool/tool_name.rs",
+    "status": "pending",
     "priority": "high",
-    "notes": "Successfully removed FormatCorrection struct definition from types.rs"
+    "notes": ""
   },
   {
-    "id": "14",
-    "content": "Run cargo build && cargo +nightly fmt and fix errors",
-    "status": "completed",
+    "id": "phase-2-5",
+    "content": "Phase 2.5: Add format_discovery = true to BevyMutateResource in mcp/src/tool/tool_name.rs",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful! All FormatCorrection references removed successfully."
+    "notes": ""
   },
   {
-    "id": "15",
+    "id": "phase-2-build",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors after adding all format_discovery annotations",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-2-clippy",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Fixed unused import, redundant closures, and documentation markdown issues"
+    "notes": ""
   },
   {
-    "id": "16",
-    "content": "Fix all clippy issues following warning rules",
-    "status": "completed",
+    "id": "phase-2-clippy-fix",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
     "priority": "high",
-    "notes": "All clippy issues resolved: removed unused imports, used functional patterns for closures, updated documentation"
+    "notes": ""
   },
   {
-    "id": "17",
+    "id": "phase-3-1",
+    "content": "Phase 3.1: Remove #[brp_result(format_discovery = true)] from SpawnResult in mcp/src/brp_tools/tools/bevy_spawn.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-3-2",
+    "content": "Phase 3.2: Remove #[brp_result(format_discovery = true)] from InsertResult in mcp/src/brp_tools/tools/bevy_insert.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-3-3",
+    "content": "Phase 3.3: Remove #[brp_result(format_discovery = true)] from InsertResourceResult in mcp/src/brp_tools/tools/bevy_insert_resource.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-3-4",
+    "content": "Phase 3.4: Remove #[brp_result(format_discovery = true)] from MutateComponentResult in mcp/src/brp_tools/tools/bevy_mutate_component.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-3-5",
+    "content": "Phase 3.5: Remove #[brp_result(format_discovery = true)] from MutateResourceResult in mcp/src/brp_tools/tools/bevy_mutate_resource.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-3-6",
+    "content": "Phase 3.6: Remove ResultStructBrpExt generation logic from mcp_macros/src/result_struct.rs macro",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-3-build",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors after removing brp_result annotations and updating result_struct macro",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-4-1",
+    "content": "Phase 4.1: Simplify ResultStructBrpExt trait in mcp/src/brp_tools/brp_client/types.rs by removing brp_tool_execute_mode method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-4-2",
+    "content": "Phase 4.2: Update BrpClient::new in mcp/src/brp_tools/brp_client/client.rs to accept ExecuteMode parameter",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-4-3",
+    "content": "Phase 4.3: Update brp_tools macro generated code to pass ExecuteMode to BrpClient::new",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-4-build",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors after trait simplification and BrpClient updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-4-clippy",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase-4-clippy-fix",
+    "content": "Fix all clippy issues following WarningRules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "validation-tests",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "18",
+    "id": "validation-check",
     "content": "STOP if test failures - review with user",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "19",
+    "id": "subagent-stop",
     "content": "Subagent: STOP and return control",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "20",
-    "content": "Main: Task new subagent for code review (read-only)",
+    "id": "code-review",
+    "content": "Main: Task new subagent for code review (read-only) - Focus: duplication, complexity, plan adherence",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "21",
+    "id": "review-discussion",
     "content": "Review suggestions with user",
     "status": "pending",
     "priority": "high",
