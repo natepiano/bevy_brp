@@ -7,10 +7,8 @@
 use either::Either;
 use tracing::debug;
 
-use super::types::{
-    Correction, DiscoveryEngine, DiscoverySource, ExtrasDiscovery, Guidance, PatternCorrection,
-    Retry, are_corrections_retryable,
-};
+use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, PatternCorrection, Retry};
+use super::types::{Correction, DiscoverySource, are_corrections_retryable};
 
 impl DiscoveryEngine<ExtrasDiscovery> {
     /// Try to build corrections from extras data

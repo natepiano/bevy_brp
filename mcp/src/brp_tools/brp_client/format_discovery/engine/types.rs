@@ -3,13 +3,11 @@
 //! These marker types ensure compile-time state validation for the discovery process.
 
 use std::collections::HashMap;
-use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::discovery_context::DiscoveryContext;
 use super::unified_types::UnifiedTypeInfo;
 
 /// A newtype wrapper for BRP type names used as `HashMap` keys
