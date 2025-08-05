@@ -32,7 +32,7 @@ mcp__brp__bevy_insert with parameters:
 }
 ```
 
-**Expected Result**: 
+**Expected Result**:
 - ✅ Success with format_corrected: "succeeded"
 - ✅ Warning field in metadata when corrections applied
 - ✅ Message: "Operation succeeded with 1 format correction(s) applied. See format_corrections field for details."
@@ -47,7 +47,7 @@ mcp__brp__bevy_insert with parameters:
   "components": {
     "bevy_transform::components::transform::Transform": {
       "translation": 123,
-      "rotation": 456, 
+      "rotation": 456,
       "scale": 789
     }
   },
@@ -67,6 +67,10 @@ mcp__brp__bevy_insert with parameters:
 - Use filter: {"with": ["bevy_render::view::visibility::Visibility"]}
 
 **STEP 2**: Execute mutation WITH THESE EXACT PARAMETERS:
+- Tool: mcp__brp__bevy_mutate_component
+- Parameters: As specified in the `<MutationCall>` example
+
+<MutationCall>
 ```
 mcp__brp__bevy_mutate_component with parameters:
 {
@@ -77,6 +81,7 @@ mcp__brp__bevy_mutate_component with parameters:
   "port": {{PORT}}
 }
 ```
+</MutationCall>
 
 **CRITICAL**: You MUST include ALL parameters shown above. The port parameter MUST be {{PORT}}.
 **WARNING**: If you do not include the port parameter, the tool will use 15702 and fail.
@@ -104,7 +109,7 @@ mcp__brp__bevy_spawn with parameters:
 **Expected Result**:
 - ✅ Success with format_corrected: "succeeded"
 - ✅ Warning field in metadata when corrections applied
-- ✅ Message: "Operation succeeded with 1 format correction(s) applied. See format_corrections field for details."  
+- ✅ Message: "Operation succeeded with 1 format correction(s) applied. See format_corrections field for details."
 - ✅ Returns new entity ID
 
 ### 5. Component Without Serialize/Deserialize - Spawn Test
@@ -154,7 +159,7 @@ mcp__brp__bevy_spawn with parameters:
 - ✅ **Clear success messaging**: "Operation succeeded with N format correction(s) applied. See format_corrections field for details." when corrected
 - ✅ **Spawn and insert both work**: Format correction applies to both operations
 
-### Registry Behavior  
+### Registry Behavior
 - ✅ Spawn fails appropriately for components lacking Serialize/Deserialize
 - ✅ Insert fails appropriately for components lacking Serialize/Deserialize
 - ✅ Mutation works for reflection-registered components (even without Serialize/Deserialize)
@@ -163,7 +168,7 @@ mcp__brp__bevy_spawn with parameters:
 - ✅ Registration requirements are well explained
 
 ## Failure Criteria
-STOP if: 
+STOP if:
 - Transform correction invents values instead of failing gracefully
 - format_corrected field is missing or incorrect
 - Registry errors are unclear
