@@ -148,7 +148,7 @@ impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
     pub fn to_json(&self) -> Value {
         let mut correction_json = serde_json::json!({
-            FormatCorrectionField::Component.as_ref(): self.type_name.as_str(),
+            FormatCorrectionField::TypeName.as_ref(): self.type_name.as_str(),
             FormatCorrectionField::OriginalFormat.as_ref(): self.original_value,
             FormatCorrectionField::CorrectedFormat.as_ref(): self.corrected_value,
             FormatCorrectionField::Hint.as_ref(): self.hint

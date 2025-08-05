@@ -41,6 +41,8 @@ pub enum FormatCorrectionField {
     SupportedOperations,
     /// Category of the component type (e.g., "Component", "Resource")
     TypeCategory,
+    /// Full type name (path) of the type being corrected
+    TypeName,
     /// Valid values for enum fields
     ValidValues,
     /// Value for mutation operations
