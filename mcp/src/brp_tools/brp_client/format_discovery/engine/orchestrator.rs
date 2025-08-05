@@ -5,7 +5,6 @@
 
 use either::Either;
 
-use super::old_engine;
 use super::recovery_result::FormatRecoveryResult;
 use super::types::DiscoveryEngine;
 use crate::brp_tools::{BrpClientError, Port};
@@ -16,10 +15,10 @@ use crate::tool::BrpMethod;
 ///
 /// This orchestrates the entire discovery flow through the type state pattern:
 /// 1. Create engine in `TypeDiscovery` state
-/// 2. Initialize to gather discovery context
-/// 3. Check for serialization issues (Phase 3)
-/// 4. Try extras-based discovery (Phase 4)
-/// 5. Fall back to pattern-based corrections (Phase 5)
+/// 2. Initialize to gather discovery context (`SerializationCheck` state)
+/// 3. Check for serialization issues (terminal if issues found)
+/// 4. Try extras-based discovery (`ExtrasDiscovery` state, terminal if corrections found)
+/// 5. Apply pattern-based corrections (`PatternCorrection` state, terminal)
 pub async fn discover_format_with_recovery(
     method: BrpMethod,
     port: Port,
@@ -46,16 +45,8 @@ pub async fn discover_format_with_recovery(
                     Ok(result)
                 }
                 Either::Right(pattern_engine) => {
-                    // Create old engine with existing context and continue from Level 3
-                    let old_engine = old_engine::DiscoveryEngine::from_context(
-                        pattern_engine.method,
-                        pattern_engine.port,
-                        pattern_engine.params,
-                        pattern_engine.original_error,
-                        pattern_engine.state.into_inner(), /* Extract DiscoveryContext from
-                                                            * PatternCorrection */
-                    );
-                    old_engine.continue_after_extras_discovery().await
+                    // Phase 5: Apply pattern-based corrections (terminal state)
+                    pattern_engine.apply_pattern_corrections().await
                 }
             }
         }

@@ -196,57 +196,6 @@ impl DiscoveryEngine {
         }
     }
 
-    /// Continue discovery from after serialization check
-    ///
-    /// This method is used when the new type state engine has already performed
-    /// the serialization check (Level 1) and we need to continue with Level 2 and beyond.
-    pub async fn continue_after_serialization_check(&self) -> Result<FormatRecoveryResult> {
-        // Level 2: Direct Discovery via bevy_brp_extras
-        debug!(
-            "DiscoveryEngine: Beginning Level 2 - Direct discovery (continuing from new engine)"
-        );
-        if let Some(corrections) = self.execute_level_2_direct_discovery() {
-            debug!("DiscoveryEngine: Level 2 succeeded with direct discovery");
-            return Ok(self.build_recovery_result(corrections).await);
-        }
-
-        // Level 3: Pattern-Based Transformations
-        debug!("DiscoveryEngine: Level 3 - Pattern-based transformations");
-
-        if let Some(corrections) = self.execute_level_3_pattern_transformations() {
-            debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
-            Ok(self.build_recovery_result(corrections).await)
-        } else {
-            debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
-            Ok(FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            })
-        }
-    }
-
-    /// Continue discovery from after extras discovery
-    ///
-    /// This method is used when the new type state engine has already performed
-    /// the serialization check (Level 1) and extras discovery (Level 2), and we need
-    /// to continue with Level 3 (pattern-based transformations).
-    pub async fn continue_after_extras_discovery(&self) -> Result<FormatRecoveryResult> {
-        // Skip Level 1 (serialization) and Level 2 (extras)
-        // Start directly at Level 3: Pattern-Based Transformations
-        debug!(
-            "DiscoveryEngine: Level 3 - Pattern-based transformations (continuing from new engine)"
-        );
-
-        if let Some(corrections) = self.execute_level_3_pattern_transformations() {
-            debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
-            Ok(self.build_recovery_result(corrections).await)
-        } else {
-            debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
-            Ok(FormatRecoveryResult::NotRecoverable {
-                corrections: Vec::new(),
-            })
-        }
-    }
-
     /// Level 2: Direct discovery via `bevy_brp_extras/discover_format`
     fn execute_level_2_direct_discovery(&self) -> Option<Vec<Correction>> {
         debug!(

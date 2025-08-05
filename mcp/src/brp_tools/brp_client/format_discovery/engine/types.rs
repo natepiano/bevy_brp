@@ -82,9 +82,3 @@ impl ExtrasDiscovery {
         self.0
     }
 }
-
-impl PatternCorrection {
-    pub fn into_inner(self) -> DiscoveryContext {
-        self.0
-    }
-}

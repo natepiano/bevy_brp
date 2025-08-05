@@ -8,6 +8,7 @@
 mod extras_discovery;
 mod new;
 mod orchestrator;
+mod pattern_correction;
 mod recovery_result;
 mod serialization_check;
 mod type_discovery;
