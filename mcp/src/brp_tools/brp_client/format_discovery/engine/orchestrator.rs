@@ -33,7 +33,7 @@ pub async fn discover_format_with_recovery(
         .initialize()
         .await?;
 
-    // Check serialization and route to terminal states or continue discovery
+    // execute the engine against the varous possible terminal states
     let terminal_engine = match engine.check_serialization() {
         Either::Left(terminal) => terminal, // Either<Retry, Guidance> from serialization
         Either::Right(extras_engine) => {
@@ -55,6 +55,13 @@ pub async fn discover_format_with_recovery(
     }
 }
 
+/// `DiscoveryEngine<TypeDiscovery>` is the entry point to the engine. Having this state pattern is
+/// not only for type safety but also for readability. We use new as the only constructor and it
+/// does some initial validation and then returns a `TypeDiscovery` instance - on which the only
+/// thing you can do is initialize it to then move it into the `SerializationCheck`
+///
+/// Ultimately this starts the pipeline of discovery and retry process that is
+/// executed by the `orchestrator` method `discover_format_with_recovery`
 impl DiscoveryEngine<TypeDiscovery> {
     /// Create a new format discovery engine for a specific method and port
     ///
