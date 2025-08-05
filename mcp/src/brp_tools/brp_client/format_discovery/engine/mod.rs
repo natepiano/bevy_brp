@@ -5,6 +5,7 @@
 //! backward compatibility with the old engine.
 
 // Phase 2: New type state modules
+mod extras_discovery;
 mod new;
 mod orchestrator;
 mod recovery_result;

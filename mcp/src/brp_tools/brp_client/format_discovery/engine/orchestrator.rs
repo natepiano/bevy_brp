@@ -39,16 +39,24 @@ pub async fn discover_format_with_recovery(
             Ok(result)
         }
         Either::Right(extras_engine) => {
-            // TODO: For Phase 4, implement extras discovery
-            // For now, create old engine with existing context and continue from Level 2
-            let old_engine = old_engine::DiscoveryEngine::from_context(
-                extras_engine.method,
-                extras_engine.port,
-                extras_engine.params,
-                extras_engine.original_error,
-                extras_engine.state.0, // Extract DiscoveryContext from ExtrasDiscovery state
-            );
-            old_engine.continue_after_serialization_check().await
+            // Phase 4: Try extras-based discovery
+            match extras_engine.build_extras_corrections() {
+                Either::Left(result) => {
+                    // Terminal: extras discovery succeeded
+                    Ok(result)
+                }
+                Either::Right(pattern_engine) => {
+                    // Create old engine with existing context and continue from Level 3
+                    let old_engine = old_engine::DiscoveryEngine::from_context(
+                        pattern_engine.method,
+                        pattern_engine.port,
+                        pattern_engine.params,
+                        pattern_engine.original_error,
+                        pattern_engine.state.0, // Extract DiscoveryContext from PatternCorrection
+                    );
+                    old_engine.continue_after_extras_discovery().await
+                }
+            }
         }
     }
 }

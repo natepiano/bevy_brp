@@ -86,12 +86,13 @@ pub struct DiscoveryEngine {
     discovery_context: DiscoveryContext,
 }
 
+#[allow(dead_code)] // Methods used in different phases of migration
 impl DiscoveryEngine {
     /// Create engine from existing discovery context (for continuing from new engine)
     ///
     /// This is used when the new type state engine has already created a discovery context
     /// and checked for serialization issues, allowing us to continue from Level 2.
-    pub fn from_context(
+    pub const fn from_context(
         method: BrpMethod,
         port: Port,
         params: Value,
@@ -211,6 +212,29 @@ impl DiscoveryEngine {
 
         // Level 3: Pattern-Based Transformations
         debug!("DiscoveryEngine: Level 3 - Pattern-based transformations");
+
+        if let Some(corrections) = self.execute_level_3_pattern_transformations() {
+            debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
+            Ok(self.build_recovery_result(corrections).await)
+        } else {
+            debug!("DiscoveryEngine: All levels exhausted, no recovery possible");
+            Ok(FormatRecoveryResult::NotRecoverable {
+                corrections: Vec::new(),
+            })
+        }
+    }
+
+    /// Continue discovery from after extras discovery
+    ///
+    /// This method is used when the new type state engine has already performed
+    /// the serialization check (Level 1) and extras discovery (Level 2), and we need
+    /// to continue with Level 3 (pattern-based transformations).
+    pub async fn continue_after_extras_discovery(&self) -> Result<FormatRecoveryResult> {
+        // Skip Level 1 (serialization) and Level 2 (extras)
+        // Start directly at Level 3: Pattern-Based Transformations
+        debug!(
+            "DiscoveryEngine: Level 3 - Pattern-based transformations (continuing from new engine)"
+        );
 
         if let Some(corrections) = self.execute_level_3_pattern_transformations() {
             debug!("DiscoveryEngine: Level 3 succeeded with pattern-based corrections");
