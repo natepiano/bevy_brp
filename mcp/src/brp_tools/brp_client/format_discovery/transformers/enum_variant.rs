@@ -3,12 +3,11 @@
 use serde_json::{Value, json};
 
 use super::super::detection::ErrorPattern;
+use super::super::engine::{EnumInfo, TransformationResult, UnifiedTypeInfo};
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::types::{EnumInfo, TransformationResult};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
-use crate::brp_tools::brp_client::format_discovery::unified_types::UnifiedTypeInfo;
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types

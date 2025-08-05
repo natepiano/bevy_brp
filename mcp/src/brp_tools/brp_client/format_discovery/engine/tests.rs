@@ -7,6 +7,9 @@
 
 use serde_json::json;
 
+use super::orchestrator;
+use super::types::{DiscoverySource, TypeCategory};
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::BrpMethod;
 
@@ -14,8 +17,6 @@ use crate::tool::BrpMethod;
 
 #[tokio::test]
 async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
-    use super::orchestrator::discover_format_with_recovery;
-
     // Test orchestrator flow that goes through all states to pattern correction
     let method = BrpMethod::BevySpawn;
     let port = Port(15702); // Use test port that won't connect
@@ -36,7 +37,8 @@ async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
     };
 
     // Execute the full orchestrator flow
-    let result = discover_format_with_recovery(method, port, Some(params), error).await;
+    let result =
+        orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
     // Verify the result structure
     assert!(result.is_ok(), "Orchestrator should return a result");
@@ -76,8 +78,6 @@ async fn test_orchestrator_complete_flow_pattern_correction_terminal() {
 
 #[tokio::test]
 async fn test_orchestrator_serialization_check_terminal() {
-    use super::orchestrator::discover_format_with_recovery;
-
     // Test orchestrator flow that terminates at serialization check
     let method = BrpMethod::BevySpawn;
     let port = Port(15702);
@@ -93,7 +93,8 @@ async fn test_orchestrator_serialization_check_terminal() {
     };
 
     // Execute the orchestrator flow
-    let result = discover_format_with_recovery(method, port, Some(params), error).await;
+    let result =
+        orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
     // Should get a result (likely NotRecoverable due to no registry info)
     assert!(
@@ -106,8 +107,6 @@ async fn test_orchestrator_serialization_check_terminal() {
 
 #[tokio::test]
 async fn test_orchestrator_mutation_path_error() {
-    use super::orchestrator::discover_format_with_recovery;
-
     // Test orchestrator with mutation path error
     let method = BrpMethod::BevyMutateComponent;
     let port = Port(15702);
@@ -124,7 +123,8 @@ async fn test_orchestrator_mutation_path_error() {
     };
 
     // Execute the orchestrator flow
-    let result = discover_format_with_recovery(method, port, Some(params), error).await;
+    let result =
+        orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
     // Should provide guidance for mutation path errors
     assert!(
@@ -158,12 +158,6 @@ async fn test_orchestrator_mutation_path_error() {
 
 #[tokio::test]
 async fn test_orchestrator_serialization_issue_path() {
-    use serde_json::json;
-
-    use super::orchestrator::discover_format_with_recovery;
-    use crate::brp_tools::{BrpClientError, Port};
-    use crate::tool::BrpMethod;
-
     // Test the orchestrator with a serialization issue scenario
     let method = BrpMethod::BevySpawn;
     let port = Port(15702);
@@ -175,7 +169,8 @@ async fn test_orchestrator_serialization_issue_path() {
     };
 
     // Call the orchestrator - this should go through the full type state flow
-    let result = discover_format_with_recovery(method, port, Some(params), error).await;
+    let result =
+        orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
     // The important thing is that the orchestrator compiled and ran without panicking
     // The result may be an error due to no BRP server, but that's expected in unit tests
@@ -199,12 +194,6 @@ async fn test_orchestrator_serialization_issue_path() {
 
 #[tokio::test]
 async fn test_orchestrator_normal_flow() {
-    use serde_json::json;
-
-    use super::orchestrator::discover_format_with_recovery;
-    use crate::brp_tools::{BrpClientError, Port};
-    use crate::tool::BrpMethod;
-
     // Test the orchestrator with a normal flow (no serialization issues indicated)
     let method = BrpMethod::BevySpawn;
     let port = Port(15702);
@@ -216,7 +205,8 @@ async fn test_orchestrator_normal_flow() {
     };
 
     // Call the orchestrator - this should skip serialization check and proceed through flow
-    let result = discover_format_with_recovery(method, port, Some(params), error).await;
+    let result =
+        orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
     // The important thing is that the orchestrator compiled and ran without panicking
     match result {
@@ -238,12 +228,6 @@ async fn test_orchestrator_normal_flow() {
 
 #[tokio::test]
 async fn test_orchestrator_extras_discovery_path() {
-    use serde_json::json;
-
-    use super::orchestrator::discover_format_with_recovery;
-    use crate::brp_tools::{BrpClientError, Port};
-    use crate::tool::BrpMethod;
-
     // Test the orchestrator with extras discovery path
     // This test ensures the ExtrasDiscovery state is properly exercised
     let method = BrpMethod::BevySpawn;
@@ -262,7 +246,8 @@ async fn test_orchestrator_extras_discovery_path() {
     // 3. Call try_extras_corrections()
     // 4. Transition to PatternCorrection (fallback path)
     // 5. Process through pattern correction terminal state
-    let result = discover_format_with_recovery(method, port, Some(params), error).await;
+    let result =
+        orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
     // The important thing is that all code paths are exercised without panicking
     match result {
@@ -281,4 +266,210 @@ async fn test_orchestrator_extras_discovery_path() {
     // 2. The try_extras_corrections() method is callable and returns proper Either type
     // 3. The orchestrator properly handles ExtrasDiscovery -> PatternCorrection transitions
     // 4. All implementation is integrated and functional
+}
+
+// Integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion
+// and mutation_paths preservation (Phase 5)
+
+#[test]
+fn test_enrich_from_extras_full_enrichment() {
+    // Simulate extras discovery response JSON with full metadata
+    let extras_response = json!({
+        "type_name": "bevy_transform::components::transform::Transform",
+        "in_registry": true,
+        "has_serialize": true,
+        "has_deserialize": true,
+        "type_category": "Struct",
+        "supported_operations": ["spawn", "insert", "mutate"],
+        "example_values": {
+            "spawn": {
+                "translation": [1.0, 2.0, 3.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0],
+                "scale": [1.0, 1.0, 1.0]
+            },
+            "insert": {
+                "translation": [0.0, 0.0, 0.0],
+                "rotation": [0.0, 0.0, 0.0, 1.0],
+                "scale": [1.0, 1.0, 1.0]
+            }
+        },
+        "mutation_paths": {
+            ".translation.x": "X component of translation vector",
+            ".translation.y": "Y component of translation vector",
+            ".translation.z": "Z component of translation vector",
+            ".rotation.w": "W component of rotation quaternion",
+            ".scale.x": "X component of scale vector"
+        }
+    });
+
+    // Start with a registry-based UnifiedTypeInfo
+    let mut info = UnifiedTypeInfo::for_transform_type(
+        "bevy_transform::components::transform::Transform".to_string(),
+        None,
+    );
+
+    // Verify initial state
+    assert_eq!(info.discovery_source, DiscoverySource::PatternMatching);
+    assert!(info.format_info.examples.is_empty() || info.format_info.examples.len() <= 2);
+    let initial_mutation_count = info.format_info.mutation_paths.len();
+
+    // Enrich with extras data
+    info.enrich_from_extras(&extras_response);
+
+    // Verify enrichment occurred
+    assert_eq!(info.discovery_source, DiscoverySource::RegistryPlusExtras);
+
+    // Verify basic type information is preserved from original
+    assert_eq!(
+        info.type_name,
+        "bevy_transform::components::transform::Transform"
+    );
+    assert_eq!(info.type_category, TypeCategory::Struct); // for_transform_type creates Struct category
+
+    // Note: Registry status, serialization, and supported_operations are not enriched by extras
+    // They remain as set by the original constructor
+
+    // Critical: Verify mutation_paths are enriched from extras (additive merge)
+    let final_mutation_count = info.format_info.mutation_paths.len();
+    assert!(
+        final_mutation_count > initial_mutation_count,
+        "Mutation paths should be added from extras"
+    );
+
+    // Verify specific mutation paths from extras are added
+    assert_eq!(
+        info.format_info.mutation_paths.get(".translation.x"),
+        Some(&"X component of translation vector".to_string())
+    );
+    assert_eq!(
+        info.format_info.mutation_paths.get(".rotation.w"),
+        Some(&"W component of rotation quaternion".to_string())
+    );
+
+    // Verify example values are enriched from extras
+    assert!(
+        !info.format_info.examples.is_empty(),
+        "Examples should be preserved"
+    );
+    assert!(info.format_info.examples.contains_key("spawn"));
+    assert!(info.format_info.examples.contains_key("insert"));
+}
+
+#[test]
+fn test_enrich_from_extras_edge_cases() {
+    // Test 1: Enrichment with empty extras response (no example_values or mutation_paths)
+    let minimal_response = json!({
+        "type_name": "bevy_ecs::name::Name",
+        "in_registry": false,
+        "has_serialize": false,
+        "has_deserialize": false
+    });
+
+    let mut info = UnifiedTypeInfo::for_pattern_matching("bevy_ecs::name::Name".to_string(), None);
+    let initial_source = info.discovery_source.clone();
+
+    // This should not enrich anything since no example_values or mutation_paths
+    info.enrich_from_extras(&minimal_response);
+
+    // Discovery source should remain unchanged since no enrichment occurred
+    assert_eq!(info.discovery_source, initial_source);
+    assert_eq!(info.type_name, "bevy_ecs::name::Name");
+
+    // Test 2: Enrichment with complex nested mutation paths
+    let complex_response = json!({
+        "type_name": "custom::ComplexType",
+        "in_registry": true,
+        "has_serialize": true,
+        "has_deserialize": true,
+        "example_values": {
+            "spawn": {"value": 42}
+        },
+        "mutation_paths": {
+            ".outer.inner.deep.value": "Deeply nested value",
+            ".array[0].field": "First array element field",
+            ".variant.SomeVariant.data": "Enum variant data",
+            ".map['key'].nested": "Map value nested field"
+        }
+    });
+
+    let mut info = UnifiedTypeInfo::for_pattern_matching("custom::ComplexType".to_string(), None);
+    info.enrich_from_extras(&complex_response);
+
+    // Verify enrichment occurred
+    assert_eq!(info.discovery_source, DiscoverySource::RegistryPlusExtras);
+
+    // Verify all complex mutation paths are added
+    assert_eq!(info.format_info.mutation_paths.len(), 4);
+    assert!(
+        info.format_info
+            .mutation_paths
+            .contains_key(".outer.inner.deep.value")
+    );
+    assert!(
+        info.format_info
+            .mutation_paths
+            .contains_key(".array[0].field")
+    );
+    assert!(
+        info.format_info
+            .mutation_paths
+            .contains_key(".variant.SomeVariant.data")
+    );
+    assert!(
+        info.format_info
+            .mutation_paths
+            .contains_key(".map['key'].nested")
+    );
+
+    // Verify example was added
+    assert!(info.format_info.examples.contains_key("spawn"));
+}
+
+#[test]
+fn test_registry_schema_to_unified_type_info_conversion() {
+    // Simulate registry schema response
+    let schema_data = json!({
+        "typePath": "bevy_render::color::Color",
+        "shortPath": "Color",
+        "reflectTypes": ["Component", "Serialize", "Deserialize", "Default"],
+        "properties": {
+            "fields": [
+                {
+                    "name": "r",
+                    "type": "f32",
+                    "doc": "Red component"
+                },
+                {
+                    "name": "g",
+                    "type": "f32",
+                    "doc": "Green component"
+                },
+                {
+                    "name": "b",
+                    "type": "f32",
+                    "doc": "Blue component"
+                },
+                {
+                    "name": "a",
+                    "type": "f32",
+                    "doc": "Alpha component"
+                }
+            ]
+        }
+    });
+
+    let unified_info =
+        UnifiedTypeInfo::from_registry_schema("bevy_render::color::Color", &schema_data, None);
+
+    // Verify type information from registry
+    assert_eq!(unified_info.type_name, "bevy_render::color::Color");
+
+    // Verify registry status is correctly set
+    assert!(unified_info.registry_status.in_registry);
+    assert!(unified_info.registry_status.has_reflect);
+
+    // Verify serialization support from reflect traits
+    assert!(unified_info.serialization.has_serialize);
+    assert!(unified_info.serialization.has_deserialize);
+    assert!(unified_info.serialization.brp_compatible);
 }

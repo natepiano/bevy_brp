@@ -7,10 +7,9 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::types::{Correction, CorrectionInfo, CorrectionMethod};
-use super::super::unified_types::UnifiedTypeInfo;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::{DiscoveryEngine, Guidance};
+use super::types::{Correction, CorrectionInfo, CorrectionMethod, DiscoveryEngine, Guidance};
+use super::unified_types::UnifiedTypeInfo;
 use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<Guidance> {

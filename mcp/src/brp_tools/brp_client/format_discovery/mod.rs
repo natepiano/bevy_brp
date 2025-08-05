@@ -37,10 +37,8 @@ mod field_mapper;
 mod format_correction_fields;
 mod transformers;
 mod types;
-mod unified_types;
 
 #[cfg(test)]
 mod tests;
 
-pub use engine::discover_format_with_recovery;
-pub use types::FormatCorrectionStatus;
+pub use engine::{FormatCorrectionStatus, discover_format_with_recovery};

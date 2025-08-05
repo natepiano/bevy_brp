@@ -9,14 +9,11 @@ use tracing::debug;
 
 use super::super::detection::ErrorPattern;
 use super::super::transformers;
-use super::super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
-    TypeCategory,
-};
-use super::super::unified_types::UnifiedTypeInfo;
 use super::types::{
-    DiscoveryEngine, Guidance, PatternCorrection, Retry, are_corrections_retryable,
+    Correction, CorrectionInfo, CorrectionMethod, DiscoveryEngine, EnumInfo, EnumVariant, Guidance,
+    PatternCorrection, Retry, TransformationResult, TypeCategory, are_corrections_retryable,
 };
+use super::unified_types::UnifiedTypeInfo;
 use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<PatternCorrection> {

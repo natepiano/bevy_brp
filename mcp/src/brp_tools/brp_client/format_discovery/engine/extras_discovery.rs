@@ -7,9 +7,9 @@
 use either::Either;
 use tracing::debug;
 
-use super::super::types::{Correction, DiscoverySource};
 use super::types::{
-    DiscoveryEngine, ExtrasDiscovery, Guidance, PatternCorrection, Retry, are_corrections_retryable,
+    Correction, DiscoveryEngine, DiscoverySource, ExtrasDiscovery, Guidance, PatternCorrection,
+    Retry, are_corrections_retryable,
 };
 
 impl DiscoveryEngine<ExtrasDiscovery> {

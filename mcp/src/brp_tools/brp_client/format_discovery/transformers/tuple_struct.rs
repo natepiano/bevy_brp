@@ -3,8 +3,9 @@
 use serde_json::Value;
 
 use super::super::detection::ErrorPattern;
+use super::super::engine::TransformationResult;
 use super::super::field_mapper;
-use super::super::types::{ComponentType, FieldAccess, TransformationResult};
+use super::super::types::{ComponentType, FieldAccess};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
