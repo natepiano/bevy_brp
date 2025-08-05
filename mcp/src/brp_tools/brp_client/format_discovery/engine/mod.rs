@@ -13,6 +13,7 @@ mod pattern_correction;
 mod recovery_result;
 mod retry;
 mod serialization_check;
+mod state;
 mod types;
 mod unified_types;
 

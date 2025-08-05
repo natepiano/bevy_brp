@@ -8,9 +8,8 @@ use tracing::debug;
 
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::{
-    Correction, CorrectionInfo, DiscoveryEngine, Retry, can_retry_with_corrections,
-};
+use super::state::{DiscoveryEngine, Retry};
+use super::types::{Correction, CorrectionInfo, can_retry_with_corrections};
 use crate::brp_tools::{BrpClientError, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};

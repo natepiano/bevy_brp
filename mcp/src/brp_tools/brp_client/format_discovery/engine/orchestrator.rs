@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use super::discovery_context::DiscoveryContext;
 use super::recovery_result::FormatRecoveryResult;
-use super::types::{DiscoveryEngine, SerializationCheck, TypeDiscovery};
+use super::state::{DiscoveryEngine, SerializationCheck, TypeDiscovery};
 use crate::brp_tools::{BrpClientError, Port};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;

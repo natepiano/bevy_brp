@@ -9,10 +9,8 @@ use either::Either;
 use serde_json::json;
 use tracing::debug;
 
-use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoveryEngine, ExtrasDiscovery, Guidance,
-    Retry, SerializationCheck, are_corrections_retryable,
-};
+use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, Retry, SerializationCheck};
+use super::types::{Correction, CorrectionInfo, CorrectionMethod, are_corrections_retryable};
 use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<SerializationCheck> {

@@ -9,9 +9,10 @@ use tracing::debug;
 
 use super::super::detection::ErrorPattern;
 use super::super::transformers;
+use super::state::{DiscoveryEngine, Guidance, PatternCorrection, Retry};
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoveryEngine, EnumInfo, EnumVariant, Guidance,
-    PatternCorrection, Retry, TransformationResult, TypeCategory, are_corrections_retryable,
+    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
+    TypeCategory, are_corrections_retryable,
 };
 use super::unified_types::UnifiedTypeInfo;
 use crate::tool::BrpMethod;
