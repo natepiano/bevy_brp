@@ -17,9 +17,6 @@ mod serialization_check;
 mod type_discovery;
 mod types;
 
-// Phase 1: Old engine for backward compatibility and delegation
-mod old_engine;
-
 // Export new type state API
 pub use orchestrator::discover_format_with_recovery;
 
