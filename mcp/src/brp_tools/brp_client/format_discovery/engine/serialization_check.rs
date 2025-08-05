@@ -9,7 +9,7 @@ use either::Either;
 use serde_json::json;
 use tracing::debug;
 
-use super::super::types::{CorrectionInfo, CorrectionMethod};
+use super::super::types::{CorrectionInfo, CorrectionMethod, CorrectionSource};
 use super::recovery_result::FormatRecoveryResult;
 use super::types::{DiscoveryEngine, ExtrasDiscovery, SerializationCheck};
 use crate::tool::BrpMethod;
@@ -82,6 +82,7 @@ impl DiscoveryEngine<SerializationCheck> {
                         corrected_format:  None,
                         type_info:         Some(type_info.clone()),
                         correction_method: CorrectionMethod::DirectReplacement,
+                        correction_source: CorrectionSource::TypeRegistry,
                     })
                     .collect();
 

@@ -6,7 +6,9 @@
 use serde_json::Value;
 
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::super::types::{CorrectionInfo, FormatCorrection, FormatCorrectionStatus};
+use super::super::types::{
+    CorrectionInfo, CorrectionSource, FormatCorrection, FormatCorrectionStatus,
+};
 use crate::brp_tools::brp_client::types::{BrpClientError, FormatDiscoveryError, ResponseStatus};
 use crate::error::Error;
 
@@ -147,6 +149,7 @@ impl FormatRecoveryResult {
                             // Use debug format since TypeCategory is not publicly accessible
                             format!("{:?}", ti.type_category)
                         }),
+                        correction_source:    Some(c.correction_source.clone()),
                     };
                     format_correction_to_json(&correction)
                 })
@@ -224,6 +227,7 @@ impl FormatRecoveryResult {
                     supported_operations,
                     mutation_paths,
                     type_category,
+                    correction_source: Some(info.correction_source.clone()),
                 }
             })
             .collect()
@@ -260,6 +264,12 @@ fn format_correction_to_json(correction: &FormatCorrection) -> Value {
                 serde_json::json!(cat),
             );
         }
+        if let Some(source) = &correction.correction_source {
+            obj.insert(
+                FormatCorrectionField::CorrectionSource.as_ref().to_string(),
+                serde_json::to_value(source).unwrap_or(serde_json::Value::Null),
+            );
+        }
     }
     correction_json
 }
@@ -289,6 +299,7 @@ mod tests {
                 ".translation.y".to_string(),
             ]),
             type_category:        Some("Component".to_string()),
+            correction_source:    Some(CorrectionSource::PatternMatching),
         };
 
         let json_output = format_correction_to_json(&correction_with_metadata);
@@ -308,6 +319,7 @@ mod tests {
             json!([".translation.x", ".translation.y"])
         );
         assert_eq!(json_output["type_category"], "Component");
+        assert_eq!(json_output["correction_source"], "pattern_matching");
 
         // Test without metadata
         let correction_without_metadata = FormatCorrection {
@@ -318,6 +330,7 @@ mod tests {
             supported_operations: None,
             mutation_paths:       None,
             type_category:        None,
+            correction_source:    None,
         };
 
         let json_output = format_correction_to_json(&correction_without_metadata);
@@ -329,5 +342,6 @@ mod tests {
         assert!(!json_obj.contains_key("supported_operations"));
         assert!(!json_obj.contains_key("mutation_paths"));
         assert!(!json_obj.contains_key("type_category"));
+        assert!(!json_obj.contains_key("correction_source"));
     }
 }

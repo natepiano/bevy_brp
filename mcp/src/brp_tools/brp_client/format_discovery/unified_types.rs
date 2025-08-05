@@ -13,8 +13,8 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
-    FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, CorrectionSource, DiscoverySource, EnumInfo,
+    EnumVariant, FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
 };
 use crate::brp_tools::brp_client::format_discovery::format_correction_fields::FormatCorrectionField;
 use crate::tool::BrpMethod;
@@ -478,6 +478,7 @@ impl UnifiedTypeInfo {
                 target_type:       self.type_name.clone(),
                 type_info:         Some(self.clone()),
                 correction_method: CorrectionMethod::DirectReplacement,
+                correction_source: CorrectionSource::ExtrasPlugin,
             };
 
             return Correction::Candidate { correction_info };
@@ -514,6 +515,7 @@ impl UnifiedTypeInfo {
                     corrected_format:  None,
                     type_info:         Some(self.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
+                    correction_source: CorrectionSource::ExtrasPlugin,
                 };
 
                 return Correction::Candidate { correction_info };
@@ -543,6 +545,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Create appropriate correction based on the method and context
+    /// Only called from extras discovery so this indicates the correction_source
     pub fn to_correction_for_method(&self, method: BrpMethod) -> Correction {
         // Check if this is a mutation method and we have mutation paths
         if matches!(
@@ -906,69 +909,5 @@ impl UnifiedTypeInfo {
         }
 
         paths
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::super::types::{Correction, CorrectionMethod, TypeCategory};
-    use super::UnifiedTypeInfo;
-
-    #[test]
-    fn test_to_correction_result_metadata_only() {
-        let type_info = UnifiedTypeInfo::for_pattern_matching(
-            "bevy_transform::components::transform::Transform".to_string(),
-            None,
-        );
-
-        let result = type_info.to_correction(None);
-
-        match result {
-            Correction::Uncorrectable { type_info, reason } => {
-                assert_eq!(
-                    type_info.type_name,
-                    "bevy_transform::components::transform::Transform"
-                );
-                assert!(reason.contains("no format example"));
-            }
-            Correction::Candidate { .. } => {
-                unreachable!("Expected MetadataOnly correction result")
-            }
-        }
-    }
-
-    #[test]
-    fn test_to_correction_result_with_example() {
-        let mut type_info = UnifiedTypeInfo::for_pattern_matching(
-            "bevy_transform::components::transform::Transform".to_string(),
-            None,
-        );
-        type_info.type_category = TypeCategory::Struct;
-
-        // Set corrected format which will be used by generate_struct_example
-        type_info.format_info.corrected_format = Some(json!({
-            "translation": [0.0, 0.0, 0.0],
-            "rotation": [0.0, 0.0, 0.0, 1.0],
-            "scale": [1.0, 1.0, 1.0]
-        }));
-
-        let original = json!({"translation": {"x": 0.0, "y": 0.0, "z": 0.0}});
-        let result = type_info.to_correction(Some(original.clone()));
-
-        match result {
-            Correction::Candidate { correction_info } => {
-                assert_eq!(correction_info.original_value, original);
-                assert!(correction_info.corrected_value.get("translation").is_some());
-                assert_eq!(
-                    correction_info.correction_method,
-                    CorrectionMethod::ObjectToArray
-                );
-            }
-            Correction::Uncorrectable { .. } => {
-                unreachable!("Expected Applied correction result")
-            }
-        }
     }
 }

@@ -64,8 +64,8 @@ use super::super::detection::ErrorPattern;
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::super::transformers;
 use super::super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
-    TransformationResult, TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, CorrectionSource, DiscoverySource, EnumInfo,
+    EnumVariant, TransformationResult, TypeCategory,
 };
 use super::super::unified_types::UnifiedTypeInfo;
 use super::discovery_context::DiscoveryContext;
@@ -375,6 +375,7 @@ impl DiscoveryEngine {
                     corrected_format:  Some(corrected_value),
                     type_info:         Some(type_info.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
+                    correction_source: CorrectionSource::PatternMatching,
                 };
 
                 return Some(Correction::Candidate { correction_info });
@@ -470,6 +471,7 @@ impl DiscoveryEngine {
                         corrected_format:  None,
                         type_info:         Some(type_info),
                         correction_method: CorrectionMethod::DirectReplacement,
+                        correction_source: CorrectionSource::PatternMatching,
                     };
                     corrections.push(correction_info);
                 }
@@ -767,6 +769,7 @@ impl DiscoveryEngine {
             corrected_format: None,
             type_info: None,
             correction_method: CorrectionMethod::DirectReplacement,
+            correction_source: super::super::types::CorrectionSource::PatternMatching,
         };
 
         Correction::Candidate { correction_info }

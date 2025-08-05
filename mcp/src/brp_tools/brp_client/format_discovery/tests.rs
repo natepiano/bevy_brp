@@ -7,7 +7,7 @@ use serde_json::json;
 use super::detection::{ErrorPattern, analyze_error_pattern};
 // Legacy types imported for backward compatibility during tests
 use super::transformers::TransformerRegistry;
-use super::types::{FormatCorrection, TypeCategory};
+use super::types::{CorrectionSource, FormatCorrection, TypeCategory};
 use crate::brp_tools::BrpClientError;
 use crate::brp_tools::brp_client::constants::BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE;
 
@@ -204,6 +204,7 @@ fn test_format_correction_rich_fields() {
         supported_operations: Some(vec!["spawn".to_string(), "insert".to_string()]),
         mutation_paths:       Some(vec![".x".to_string(), ".y".to_string()]),
         type_category:        Some("Component".to_string()),
+        correction_source:    Some(CorrectionSource::PatternMatching),
     };
 
     // Verify all fields are accessible and contain expected data

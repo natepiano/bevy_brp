@@ -11,8 +11,8 @@ use super::super::detection::ErrorPattern;
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::super::transformers;
 use super::super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, EnumInfo, EnumVariant, TransformationResult,
-    TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, CorrectionSource, EnumInfo, EnumVariant,
+    TransformationResult, TypeCategory,
 };
 use super::super::unified_types::UnifiedTypeInfo;
 use super::recovery_result::FormatRecoveryResult;
@@ -184,6 +184,7 @@ impl DiscoveryEngine<PatternCorrection> {
                     corrected_format:  Some(corrected_value),
                     type_info:         Some(type_info.clone()),
                     correction_method: CorrectionMethod::ObjectToArray,
+                    correction_source: CorrectionSource::PatternMatching,
                 };
 
                 return Some(Correction::Candidate { correction_info });
@@ -279,6 +280,7 @@ impl DiscoveryEngine<PatternCorrection> {
                         corrected_format:  None,
                         type_info:         Some(type_info),
                         correction_method: CorrectionMethod::DirectReplacement,
+                        correction_source: CorrectionSource::PatternMatching,
                     };
                     corrections.push(correction_info);
                 }
@@ -441,6 +443,7 @@ impl DiscoveryEngine<PatternCorrection> {
                     corrected_format: None,
                     type_info: Some(type_info_ref),
                     correction_method: CorrectionMethod::DirectReplacement,
+                    correction_source: CorrectionSource::PatternMatching,
                 };
 
                 Some(Correction::Uncorrectable {
@@ -533,6 +536,7 @@ impl DiscoveryEngine<PatternCorrection> {
             corrected_format: None,
             type_info: None,
             correction_method: CorrectionMethod::DirectReplacement,
+            correction_source: CorrectionSource::PatternMatching,
         };
 
         Correction::Candidate { correction_info }

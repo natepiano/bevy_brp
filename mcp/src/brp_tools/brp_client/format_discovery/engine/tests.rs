@@ -210,9 +210,9 @@ async fn test_orchestrator_mutation_path_error() {
             );
 
             // Check that guidance mentions paths or field errors
-            let has_path_guidance = corrections
-                .iter()
-                .any(|c| c.hint.contains("path") || c.hint.contains("field") || c.hint.contains("invalid"));
+            let has_path_guidance = corrections.iter().any(|c| {
+                c.hint.contains("path") || c.hint.contains("field") || c.hint.contains("invalid")
+            });
             assert!(has_path_guidance, "Should provide path-related guidance");
         }
         _ => {
