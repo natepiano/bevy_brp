@@ -20,7 +20,6 @@ impl DiscoveryEngine<ExtrasDiscovery> {
     ///
     /// Returns `Either::Left(result)` if corrections are found and successfully built,
     /// or `Either::Right(engine)` to continue with `PatternCorrection`.
-    #[allow(dead_code)] // Used in orchestrator (not yet connected)
     pub fn build_extras_corrections(
         self,
     ) -> Either<FormatRecoveryResult, DiscoveryEngine<PatternCorrection>> {
