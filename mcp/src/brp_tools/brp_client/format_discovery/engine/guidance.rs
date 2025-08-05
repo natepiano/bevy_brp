@@ -38,19 +38,19 @@ impl DiscoveryEngine<Guidance> {
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
-                        type_name:         type_info.type_name.clone(),
-                        original_value:    type_info
+                        type_name: type_info.type_name.clone(),
+                        original_value: type_info
                             .original_value
                             .clone()
                             .unwrap_or_else(|| serde_json::json!({})),
-                        corrected_value:   build_corrected_value_from_type_info(
+                        corrected_value: build_corrected_value_from_type_info(
                             &type_info,
                             self.method,
                         ),
-                        hint:              reason,
-                        target_type:       type_info.type_name.as_str().to_string(),
-                        corrected_format:  None,
-                        type_info:         Some(type_info),
+                        hint: reason,
+                        target_type: type_info.type_name.as_str().to_string(),
+                        corrected_format: None,
+                        type_info,
                         correction_method: CorrectionMethod::DirectReplacement,
                     };
                     corrections.push(correction_info);

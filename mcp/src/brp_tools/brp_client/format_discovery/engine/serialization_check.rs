@@ -92,7 +92,7 @@ impl DiscoveryEngine<SerializationCheck> {
                     hint:              educational_message.clone(),
                     target_type:       type_info.type_name.as_str().to_string(),
                     corrected_format:  None,
-                    type_info:         Some(type_info.clone()),
+                    type_info:         type_info.clone(),
                     correction_method: CorrectionMethod::DirectReplacement,
                 };
                 // Since serialization issues can't be fixed by BRP calls, these are always

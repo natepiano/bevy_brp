@@ -104,7 +104,7 @@ impl DiscoveryEngine<PatternCorrection> {
                 type_name,
                 transformer_registry,
                 mutation_path,
-                Some(type_info),
+                type_info,
             ) {
                 debug!("Level 3: Found pattern-based correction for '{type_name}'");
                 corrections.push(correction);
@@ -139,7 +139,7 @@ impl DiscoveryEngine<PatternCorrection> {
         type_name: &str,
         transformer_registry: &transformers::TransformerRegistry,
         mutation_path: Option<&str>,
-        type_info: Option<&UnifiedTypeInfo>,
+        type_info: &UnifiedTypeInfo,
     ) -> Option<Correction> {
         debug!("Level 3: Attempting pattern correction for type '{type_name}'");
 
@@ -162,10 +162,8 @@ impl DiscoveryEngine<PatternCorrection> {
             return Some(result);
         }
 
-        // Step 2: Get original value from type_info if available
-        let original_value = type_info.and_then(|info| info.original_value.clone());
-
-        let Some(original_value) = original_value else {
+        // Step 2: Get original value from type_info
+        let Some(original_value) = type_info.original_value.clone() else {
             debug!("Level 3: No original value available for transformation");
             // For enum types, we might be able to return enhanced format info
             if matches!(
@@ -181,38 +179,32 @@ impl DiscoveryEngine<PatternCorrection> {
             return None;
         };
 
-        // Step 3: Use type info from registry or create basic one as fallback
-        let type_info_owned = Self::create_basic_type_info(type_name, Some(original_value.clone()));
-        let type_info_ref = type_info.unwrap_or(&type_info_owned);
+        // Step 3.5: Try UnifiedTypeInfo's transform_value() first
+        if let Some(corrected_value) = type_info.transform_value(&original_value) {
+            debug!(
+                "Level 3: Successfully transformed value using UnifiedTypeInfo.transform_value()"
+            );
 
-        // Step 3.5: Try UnifiedTypeInfo's transform_value() first if available
-        if let Some(type_info) = type_info {
-            if let Some(corrected_value) = type_info.transform_value(&original_value) {
-                debug!(
-                    "Level 3: Successfully transformed value using UnifiedTypeInfo.transform_value()"
-                );
+            let correction_info = CorrectionInfo {
+                type_name:         type_name.into(),
+                original_value:    original_value.clone(),
+                corrected_value:   corrected_value.clone(),
+                hint:              format!(
+                    "Transformed {} format for type '{}'",
+                    if original_value.is_object() {
+                        "object"
+                    } else {
+                        "value"
+                    },
+                    type_name
+                ),
+                target_type:       type_name.into(),
+                corrected_format:  Some(corrected_value),
+                type_info:         type_info.clone(),
+                correction_method: CorrectionMethod::ObjectToArray,
+            };
 
-                let correction_info = CorrectionInfo {
-                    type_name:         type_name.into(),
-                    original_value:    original_value.clone(),
-                    corrected_value:   corrected_value.clone(),
-                    hint:              format!(
-                        "Transformed {} format for type '{}'",
-                        if original_value.is_object() {
-                            "object"
-                        } else {
-                            "value"
-                        },
-                        type_name
-                    ),
-                    target_type:       type_name.into(),
-                    corrected_format:  Some(corrected_value),
-                    type_info:         Some(type_info.clone()),
-                    correction_method: CorrectionMethod::ObjectToArray,
-                };
-
-                return Some(Correction::Candidate { correction_info });
-            }
+            return Some(Correction::Candidate { correction_info });
         }
 
         // Step 4: Try transformation with type information
@@ -220,46 +212,20 @@ impl DiscoveryEngine<PatternCorrection> {
             &original_value,
             &error_pattern,
             &self.original_error,
-            type_info_ref,
+            type_info,
         ) {
             debug!("Level 3: Successfully transformed value for type '{type_name}'");
-            let mut correction_result =
-                Self::transform_result_to_correction(transformation_result, type_name);
-
-            // Add the original value to the correction info
-            if let Correction::Candidate {
-                ref mut correction_info,
-            } = correction_result
-            {
-                correction_info.original_value = original_value.clone();
-                correction_info.type_info = Some(type_info_ref.clone());
-            }
+            let correction_result = Self::transform_result_to_correction(
+                transformation_result,
+                type_name,
+                type_info,
+                original_value.clone(),
+            );
 
             return Some(correction_result);
         }
 
-        // Step 5: Fall back to error-only transformation
-        if let Some(transformation_result) = transformer_registry.transform_legacy(
-            &original_value,
-            &error_pattern,
-            &self.original_error,
-        ) {
-            debug!("Level 3: Successfully applied fallback transformation for type '{type_name}'");
-            let mut correction_result =
-                Self::transform_result_to_correction(transformation_result, type_name);
-
-            // Add the original value to the correction info
-            if let Correction::Candidate {
-                ref mut correction_info,
-            } = correction_result
-            {
-                correction_info.original_value = original_value.clone();
-            }
-
-            return Some(correction_result);
-        }
-
-        // Step 6: Fall back to old pattern-based approach for well-known types
+        // Step 5: Fall back to old pattern-based approach for well-known types
         debug!(
             "Level 3: No transformer could handle the error pattern, falling back to pattern matching"
         );
@@ -272,7 +238,7 @@ impl DiscoveryEngine<PatternCorrection> {
         mutation_path: Option<&str>,
         error_pattern: &ErrorPattern,
         type_name: &str,
-        type_info: Option<&UnifiedTypeInfo>,
+        type_info: &UnifiedTypeInfo,
     ) -> Option<Correction> {
         if !matches!(
             self.method,
@@ -292,47 +258,33 @@ impl DiscoveryEngine<PatternCorrection> {
                     "Level 3: Mutation path error - invalid path '{attempted_path}' (field: '{field_name}')"
                 );
 
-                // Use the registry type_info if available to provide better guidance
-                let hint = type_info.map_or_else(
-                    || {
-                        // No registry info available at all
+                // Use the registry type_info to provide better guidance
+                let hint = {
+                    let mutation_paths = type_info.get_mutation_paths();
+
+                    if mutation_paths.is_empty() {
+                        // No mutation paths available from registry
                         format!(
                             "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
                             The field '{field_name}' does not exist. \
                             Use bevy_brp_extras/discover_format to find valid mutation paths."
                         )
-                    },
-                    |registry_info| {
-                        let mutation_paths = registry_info.get_mutation_paths();
+                    } else {
+                        // We have valid paths from registry or discovery
+                        let paths_list: Vec<String> = mutation_paths
+                            .iter()
+                            .map(|(path, desc)| format!("{path} - {desc}"))
+                            .collect();
 
-                        if mutation_paths.is_empty() {
-                            // No mutation paths available from registry
-                            format!(
-                                "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
-                                The field '{field_name}' does not exist."
-                            )
-                        } else {
-                            // We have valid paths from registry or discovery
-                            let paths_list: Vec<String> = mutation_paths
-                                .iter()
-                                .map(|(path, desc)| format!("{path} - {desc}"))
-                                .collect();
-
-                            format!(
-                                "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
-                                The field '{field_name}' does not exist. Valid paths: {}",
-                                paths_list.join(", ")
-                            )
-                        }
-                    },
-                );
+                        format!(
+                            "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
+                            The field '{field_name}' does not exist. Valid paths: {}",
+                            paths_list.join(", ")
+                        )
+                    }
+                };
 
                 let corrected_value = serde_json::json!({}); // Simple guidance placeholder
-
-                let type_info_ref = type_info.map_or_else(
-                    || Self::create_basic_type_info(type_name, None),
-                    Clone::clone,
-                );
 
                 let correction_info = CorrectionInfo {
                     type_name: type_name.into(),
@@ -341,12 +293,12 @@ impl DiscoveryEngine<PatternCorrection> {
                     hint,
                     target_type: type_name.into(),
                     corrected_format: None,
-                    type_info: Some(type_info_ref),
+                    type_info: type_info.clone(),
                     correction_method: CorrectionMethod::DirectReplacement,
                 };
 
                 Some(Correction::Uncorrectable {
-                    type_info: correction_info.type_info.clone()?,
+                    type_info: type_info.clone(),
                     reason:    correction_info.hint,
                 })
             }
@@ -422,7 +374,12 @@ impl DiscoveryEngine<PatternCorrection> {
     }
 
     /// Convert transformer output to `Correction`
-    fn transform_result_to_correction(result: TransformationResult, type_name: &str) -> Correction {
+    fn transform_result_to_correction(
+        result: TransformationResult,
+        type_name: &str,
+        type_info: &UnifiedTypeInfo,
+        original_value: Value,
+    ) -> Correction {
         let TransformationResult {
             corrected_value,
             hint: description,
@@ -431,12 +388,12 @@ impl DiscoveryEngine<PatternCorrection> {
         // Create correction info
         let correction_info = CorrectionInfo {
             type_name: type_name.into(),
-            original_value: serde_json::Value::Null, // Will be filled by caller if available
+            original_value,
             corrected_value,
             hint: description,
             target_type: type_name.into(),
             corrected_format: None,
-            type_info: None,
+            type_info: type_info.clone(),
             correction_method: CorrectionMethod::DirectReplacement,
         };
 

@@ -475,7 +475,7 @@ impl UnifiedTypeInfo {
                     variant_names.join(", ")
                 ),
                 target_type:       self.type_name.as_str().to_string(),
-                type_info:         Some(self.clone()),
+                type_info:         self.clone(),
                 correction_method: CorrectionMethod::DirectReplacement,
             };
 
@@ -511,7 +511,7 @@ impl UnifiedTypeInfo {
                     ),
                     target_type:       self.type_name.as_str().to_string(),
                     corrected_format:  None,
-                    type_info:         Some(self.clone()),
+                    type_info:         self.clone(),
                     correction_method: CorrectionMethod::ObjectToArray,
                 };
 

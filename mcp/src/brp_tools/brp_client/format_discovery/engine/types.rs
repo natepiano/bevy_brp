@@ -138,8 +138,8 @@ pub struct CorrectionInfo {
     pub target_type:       String,
     /// format information for error responses (usage, `valid_values`, examples)
     pub corrected_format:  Option<Value>,
-    /// Type information discovered during correction (if available)
-    pub type_info:         Option<UnifiedTypeInfo>,
+    /// Type information discovered during correction
+    pub type_info:         UnifiedTypeInfo,
     /// The correction method used
     pub correction_method: CorrectionMethod,
 }
@@ -154,45 +154,44 @@ impl CorrectionInfo {
             FormatCorrectionField::Hint.as_ref(): self.hint
         });
 
-        // Add rich metadata fields if available
+        // Add rich metadata fields
         if let Some(obj) = correction_json.as_object_mut() {
-            if let Some(type_info) = &self.type_info {
-                // Extract supported_operations
-                if !type_info.supported_operations.is_empty() {
-                    obj.insert(
-                        FormatCorrectionField::SupportedOperations
-                            .as_ref()
-                            .to_string(),
-                        serde_json::json!(type_info.supported_operations),
-                    );
-                }
-
-                // Extract mutation_paths
-                if !type_info.format_info.mutation_paths.is_empty() {
-                    let paths: Vec<String> = type_info
-                        .format_info
-                        .mutation_paths
-                        .keys()
-                        .cloned()
-                        .collect();
-                    obj.insert(
-                        FormatCorrectionField::MutationPaths.as_ref().to_string(),
-                        serde_json::json!(paths),
-                    );
-                }
-
-                // Extract type_category
+            // Extract supported_operations
+            if !self.type_info.supported_operations.is_empty() {
                 obj.insert(
-                    FormatCorrectionField::TypeCategory.as_ref().to_string(),
-                    serde_json::json!(format!("{:?}", type_info.type_category)),
-                );
-
-                // Extract discovery_source
-                obj.insert(
-                    FormatCorrectionField::DiscoverySource.as_ref().to_string(),
-                    serde_json::json!(format!("{:?}", type_info.discovery_source)),
+                    FormatCorrectionField::SupportedOperations
+                        .as_ref()
+                        .to_string(),
+                    serde_json::json!(self.type_info.supported_operations),
                 );
             }
+
+            // Extract mutation_paths
+            if !self.type_info.format_info.mutation_paths.is_empty() {
+                let paths: Vec<String> = self
+                    .type_info
+                    .format_info
+                    .mutation_paths
+                    .keys()
+                    .cloned()
+                    .collect();
+                obj.insert(
+                    FormatCorrectionField::MutationPaths.as_ref().to_string(),
+                    serde_json::json!(paths),
+                );
+            }
+
+            // Extract type_category
+            obj.insert(
+                FormatCorrectionField::TypeCategory.as_ref().to_string(),
+                serde_json::json!(format!("{:?}", self.type_info.type_category)),
+            );
+
+            // Extract discovery_source (always present now)
+            obj.insert(
+                FormatCorrectionField::DiscoverySource.as_ref().to_string(),
+                serde_json::json!(format!("{:?}", self.type_info.discovery_source)),
+            );
         }
 
         correction_json

@@ -127,20 +127,6 @@ impl TransformerRegistry {
             .and_then(|transformer| transformer.transform_with_type_info(value, error, type_info))
     }
 
-    /// Try to transform the value using any applicable transformer (legacy method)
-    ///
-    /// This method is maintained for backward compatibility during the transition.
-    /// New code should use `transform_with_type_info()` instead.
-    pub fn transform_legacy(
-        &self,
-        value: &Value,
-        error_pattern: &ErrorPattern,
-        error: &BrpClientError,
-    ) -> Option<TransformationResult> {
-        self.find_transformer(error_pattern)
-            .and_then(|transformer| transformer.transform_with_error(value, error))
-    }
-
     /// Get the number of registered transformers
     #[cfg(test)]
     pub fn len(&self) -> usize {
