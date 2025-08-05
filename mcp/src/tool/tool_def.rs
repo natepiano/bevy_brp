@@ -54,7 +54,7 @@ impl ToolDef {
 
         let schema_object = schema_value
             .as_object()
-            .map_or_else(rmcp::model::JsonObject::new, |obj| obj.clone());
+            .map_or_else(rmcp::model::JsonObject::new, Clone::clone);
 
         Arc::new(schema_object)
     }
