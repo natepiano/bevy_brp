@@ -1,37 +1,26 @@
-//! Type discovery context for managing type information from multiple sources
+//! Core implementation of `DiscoveryContext`
 //!
-//! `DiscoveryContext` provides a unified interface for accessing type information
-//! discovered from various sources (registry, extras plugin, etc.). The context
-//! automatically extracts type names and their original values from BRP method
-//! parameters during construction, ensuring consistent value propagation throughout
-//! the discovery process.
-//!
-//! # Value Propagation
-//!
-//! The context combines three key operations:
-//! 1. Type extraction from method parameters (spawn components, mutation targets, etc.)
-//! 2. Value extraction to preserve original user input
-//! 3. Registry integration to fetch type metadata
-//!
-//! This unified approach eliminates repeated parameter parsing and ensures that
-//! original values are available for format transformations at every discovery level.
+//! This module contains the main logic for the `DiscoveryContext` struct.
 
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::types::BrpTypeName;
-use super::unified_types::UnifiedTypeInfo;
+use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::RegistryComparison;
+use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
+use crate::brp_tools::brp_client::format_discovery::engine::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
 
 pub struct DiscoveryContext {
     /// Port for BRP connections when making direct discovery calls
-    port:     Port,
+    port:                Port,
     /// Type information from Bevy's registry
-    type_map: HashMap<BrpTypeName, UnifiedTypeInfo>,
+    type_map:            HashMap<BrpTypeName, UnifiedTypeInfo>,
+    /// Registry comparison for parallel development
+    registry_comparison: Option<RegistryComparison>,
 }
 
 impl DiscoveryContext {
@@ -66,7 +55,11 @@ impl DiscoveryContext {
             type_map.insert(type_name, unified_info);
         }
 
-        Ok(Self { port, type_map })
+        Ok(Self {
+            port,
+            type_map,
+            registry_comparison: None,
+        })
     }
 
     /// Enrich existing type information with data from `bevy_brp_extras`
@@ -98,6 +91,18 @@ impl DiscoveryContext {
     /// Get all types as an iterator
     pub fn types(&self) -> impl Iterator<Item = &UnifiedTypeInfo> {
         self.type_map.values()
+    }
+
+    /// Get registry comparison if available
+    #[allow(dead_code)]
+    pub const fn registry_comparison(&self) -> Option<&RegistryComparison> {
+        self.registry_comparison.as_ref()
+    }
+
+    /// Set registry comparison
+    #[allow(dead_code)]
+    pub fn set_registry_comparison(&mut self, comparison: RegistryComparison) {
+        self.registry_comparison = Some(comparison);
     }
 
     /// Call `bevy_brp_extras/discover_format` for all types
