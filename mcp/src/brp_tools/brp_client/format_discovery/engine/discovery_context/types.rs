@@ -7,15 +7,32 @@ use std::time::Instant;
 
 use serde_json::Value;
 
-use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
+use super::super::types::BrpTypeName;
 
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
 pub struct BrpFormatKnowledge {
-    /// How this type should be serialized for BRP
-    pub serialization_format: SerializationFormat,
     /// Example value in the correct BRP format
     pub example_value:        Value,
+    /// How this type should be serialized for BRP
+    pub serialization_format: SerializationFormat,
+}
+
+/// Cached type information from registry
+#[derive(Debug, Clone)]
+pub struct CachedTypeInfo {
+    /// When this was cached
+    pub cached_at:            Instant,
+    /// Mutation paths available for this type
+    pub mutation_paths:       Vec<MutationPath>,
+    /// Raw registry schema response
+    pub registry_schema:      Value,
+    /// The serialization format for this type
+    pub serialization_format: SerializationFormat,
+    /// Full object format for spawn/insert
+    pub spawn_format:         Value,
+    /// Operations supported by this type in BRP
+    pub supported_operations: Vec<BrpSupportedOperation>,
 }
 
 /// Enum for serialization format (not bare strings)
@@ -31,90 +48,30 @@ pub enum SerializationFormat {
     Enum,
 }
 
-/// Enum for BRP operation context
+/// Enum for BRP supported operations
+/// Each operation has specific requirements based on type registration and traits
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BrpOperationContext {
-    /// Spawn operation
-    Spawn,
-    /// Insert operation
+pub enum BrpSupportedOperation {
+    /// Get operation - requires type in registry
+    Get,
+    /// Insert operation - requires Serialize + Deserialize traits
     Insert,
-    /// Mutate operation
+    /// Mutate operation - requires mutable type (struct/tuple)
     Mutate,
-    /// Resource operation
-    Resource,
-}
-
-/// Cached type information from registry
-#[derive(Debug, Clone)]
-pub struct CachedTypeInfo {
-    /// Raw registry schema response
-    pub registry_schema: Value,
-    /// BRP-formatted examples for different operations
-    pub brp_formats:     BrpFormats,
-    /// When this was cached
-    pub cached_at:       Instant,
-}
-
-/// BRP-specific format information
-#[derive(Debug, Clone)]
-pub struct BrpFormats {
-    /// Full object format for spawn/insert
-    pub spawn_format:         Value,
-    /// Mutation paths available for this type
-    pub mutation_paths:       Vec<MutationPath>,
-    /// The serialization format for this type
-    pub serialization_format: SerializationFormat,
+    /// Query operation - requires type in registry
+    Query,
+    /// Spawn operation - requires Serialize + Deserialize traits
+    Spawn,
 }
 
 /// Mutation path information
 #[derive(Debug, Clone)]
 pub struct MutationPath {
-    /// Path for mutation, e.g., ".translation.x"
-    pub path:          String,
     /// Example value for this path
     pub example_value: Value,
+    /// Path for mutation, e.g., ".translation.x"
+    pub path:          String,
     /// Type of the value at this path
     pub value_type:    BrpTypeName,
 }
 
-/// Comparison results between extras and registry formats
-#[derive(Debug, Clone)]
-pub struct RegistryComparison {
-    /// Format from extras plugin
-    pub extras_format:   Option<Value>,
-    /// Format derived from registry
-    pub registry_format: Option<Value>,
-    /// Differences found between formats
-    pub differences:     Vec<FormatDifference>,
-}
-
-/// Types of differences found during comparison
-#[derive(Debug, Clone)]
-pub enum FormatDifference {
-    /// Structure type mismatch (e.g., array vs object)
-    StructureType {
-        path:     String,
-        extras:   String,
-        registry: String,
-    },
-    /// Field missing in one source
-    MissingField {
-        path:   String,
-        source: ComparisonSource,
-    },
-    /// Value type mismatch
-    ValueType {
-        path:     String,
-        extras:   String,
-        registry: String,
-    },
-}
-
-/// Source of comparison data
-#[derive(Debug, Clone, Copy)]
-pub enum ComparisonSource {
-    /// From extras plugin
-    Extras,
-    /// From registry
-    Registry,
-}

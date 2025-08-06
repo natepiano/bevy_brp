@@ -67,7 +67,7 @@ mod tests {
 
     use super::*;
     use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::{
-        BrpFormats, SerializationFormat,
+        BrpSupportedOperation, SerializationFormat,
     };
 
     #[test]
@@ -80,13 +80,12 @@ mod tests {
 
         // Insert and retrieve
         let info = CachedTypeInfo {
-            registry_schema: json!({"test": "data"}),
-            brp_formats:     BrpFormats {
-                spawn_format:         json!({}),
-                mutation_paths:       vec![],
-                serialization_format: SerializationFormat::Object,
-            },
-            cached_at:       Instant::now(),
+            cached_at:            Instant::now(),
+            mutation_paths:       vec![],
+            registry_schema:      json!({"test": "data"}),
+            serialization_format: SerializationFormat::Object,
+            spawn_format:         json!({}),
+            supported_operations: vec![BrpSupportedOperation::Query, BrpSupportedOperation::Get],
         };
 
         cache.insert(type_name.clone(), info.clone());

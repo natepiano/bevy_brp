@@ -24,4 +24,5 @@ mod registry_cache;
 mod types;
 
 // Re-export main types
+pub use comparison::{ComparisonSource, FormatDifference, RegistryComparison};
 pub use context::DiscoveryContext;

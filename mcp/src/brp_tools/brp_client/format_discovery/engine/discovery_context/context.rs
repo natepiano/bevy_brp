@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 use tracing::debug;
 
-use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::RegistryComparison;
+use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::comparison::RegistryComparison;
 use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
 use crate::brp_tools::brp_client::format_discovery::engine::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};

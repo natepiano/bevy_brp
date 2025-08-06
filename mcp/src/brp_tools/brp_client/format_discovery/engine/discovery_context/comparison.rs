@@ -1,30 +1,73 @@
-//! Comparison logic for registry vs extras formats
+//! Comparison logic for local vs extras formats
 //!
 //! This module provides functionality to compare type formats derived
-//! from the registry with those from the extras plugin.
+//! from our local registry + hardcoded knowledge with those from the extras plugin.
 
 use serde_json::Value;
 
-use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::{
-    ComparisonSource, FormatDifference, RegistryComparison,
-};
+use super::types::SerializationFormat;
+
+/// Comparison results between extras and local formats
+#[derive(Debug, Clone)]
+pub struct RegistryComparison {
+    /// Differences found between formats
+    pub differences:   Vec<FormatDifference>,
+    /// Format from extras plugin
+    pub extras_format: Option<Value>,
+    /// Format derived from local registry + hardcoded knowledge
+    pub local_format:  Option<Value>,
+}
+
+/// Types of differences found during comparison
+#[derive(Debug, Clone)]
+pub enum FormatDifference {
+    /// Field missing in one source
+    MissingField {
+        path:   String,
+        source: ComparisonSource,
+    },
+    /// Structure type mismatch (e.g., array vs object)
+    StructureType {
+        extras: SerializationFormat,
+        local:  SerializationFormat,
+        path:   String,
+    },
+    /// Value mismatch - same structure but different JSON values
+    ValueMismatch {
+        extras: Value,
+        local:  Value,
+        path:   String,
+    },
+}
+
+/// Source of comparison data
+#[derive(Debug, Clone, Copy)]
+pub enum ComparisonSource {
+    /// From extras plugin
+    Extras,
+    /// From our local registry + hardcoded knowledge construction
+    Local,
+}
 
 impl RegistryComparison {
     /// Create a new comparison result
-    pub fn new(extras_format: Option<Value>, registry_format: Option<Value>) -> Self {
+    pub fn new(extras_format: Option<Value>, local_format: Option<Value>) -> Self {
         let mut comparison = Self {
             extras_format,
-            registry_format,
+            local_format,
             differences: Vec::new(),
         };
         comparison.compute_differences();
         comparison
     }
 
-    /// Compute differences between extras and registry formats
+    /// Compute differences between extras and local formats
     fn compute_differences(&mut self) {
         // Stub implementation - will be filled in Phase 2
         // This will compare the structure and values of the two formats
+        if let (Some(extras), Some(local)) = (&self.extras_format, &self.local_format) {
+            self.differences = compare_json_values("", extras, local);
+        }
     }
 
     /// Check if formats are equivalent
@@ -45,33 +88,37 @@ impl RegistryComparison {
 }
 
 /// Compare two JSON values and return differences
+/// Uses priority logic: 1) Check existence 2) Check structure type 3) Check values
 #[allow(dead_code)]
-pub fn compare_json_values(path: &str, extras: &Value, registry: &Value) -> Vec<FormatDifference> {
+pub fn compare_json_values(path: &str, extras: &Value, local: &Value) -> Vec<FormatDifference> {
     let mut differences = Vec::new();
 
-    // Check if types match
-    if !values_have_same_type(extras, registry) {
+    // Check if structure types match (SerializationFormat)
+    let extras_format = value_to_serialization_format(extras);
+    let local_format = value_to_serialization_format(local);
+
+    if extras_format != local_format {
         differences.push(FormatDifference::StructureType {
-            path:     path.to_string(),
-            extras:   value_type_name(extras),
-            registry: value_type_name(registry),
+            path:   path.to_string(),
+            extras: extras_format,
+            local:  local_format,
         });
-        return differences;
+        return differences; // Short-circuit - don't also report ValueMismatch
     }
 
-    // Compare based on type
-    match (extras, registry) {
-        (Value::Object(extras_obj), Value::Object(registry_obj)) => {
+    // Compare based on type (same SerializationFormat, now check values)
+    match (extras, local) {
+        (Value::Object(extras_obj), Value::Object(local_obj)) => {
             // Check for missing fields
             for key in extras_obj.keys() {
-                if !registry_obj.contains_key(key) {
+                if !local_obj.contains_key(key) {
                     differences.push(FormatDifference::MissingField {
                         path:   format!("{path}.{key}"),
-                        source: ComparisonSource::Registry,
+                        source: ComparisonSource::Local,
                     });
                 }
             }
-            for key in registry_obj.keys() {
+            for key in local_obj.keys() {
                 if !extras_obj.contains_key(key) {
                     differences.push(FormatDifference::MissingField {
                         path:   format!("{path}.{key}"),
@@ -82,35 +129,35 @@ pub fn compare_json_values(path: &str, extras: &Value, registry: &Value) -> Vec<
 
             // Recursively compare common fields
             for (key, extras_val) in extras_obj {
-                if let Some(registry_val) = registry_obj.get(key) {
+                if let Some(local_val) = local_obj.get(key) {
                     let sub_path = format!("{path}.{key}");
-                    differences.extend(compare_json_values(&sub_path, extras_val, registry_val));
+                    differences.extend(compare_json_values(&sub_path, extras_val, local_val));
                 }
             }
         }
-        (Value::Array(extras_arr), Value::Array(registry_arr)) => {
-            if extras_arr.len() != registry_arr.len() {
-                differences.push(FormatDifference::ValueType {
-                    path:     path.to_string(),
-                    extras:   format!("array[{}]", extras_arr.len()),
-                    registry: format!("array[{}]", registry_arr.len()),
+        (Value::Array(extras_arr), Value::Array(local_arr)) => {
+            if extras_arr.len() != local_arr.len() {
+                differences.push(FormatDifference::ValueMismatch {
+                    path:   path.to_string(),
+                    extras: extras.clone(),
+                    local:  local.clone(),
                 });
             } else {
-                for (i, (extras_val, registry_val)) in
-                    extras_arr.iter().zip(registry_arr.iter()).enumerate()
+                for (i, (extras_val, local_val)) in
+                    extras_arr.iter().zip(local_arr.iter()).enumerate()
                 {
                     let sub_path = format!("{path}[{i}]");
-                    differences.extend(compare_json_values(&sub_path, extras_val, registry_val));
+                    differences.extend(compare_json_values(&sub_path, extras_val, local_val));
                 }
             }
         }
         _ => {
             // For primitives, just check equality
-            if extras != registry {
-                differences.push(FormatDifference::ValueType {
-                    path:     path.to_string(),
-                    extras:   format!("{extras:?}"),
-                    registry: format!("{registry:?}"),
+            if extras != local {
+                differences.push(FormatDifference::ValueMismatch {
+                    path:   path.to_string(),
+                    extras: extras.clone(),
+                    local:  local.clone(),
                 });
             }
         }
@@ -119,66 +166,11 @@ pub fn compare_json_values(path: &str, extras: &Value, registry: &Value) -> Vec<
     differences
 }
 
-/// Check if two JSON values have the same type
-fn values_have_same_type(a: &Value, b: &Value) -> bool {
-    matches!(
-        (a, b),
-        (Value::Null, Value::Null)
-            | (Value::Bool(_), Value::Bool(_))
-            | (Value::Number(_), Value::Number(_))
-            | (Value::String(_), Value::String(_))
-            | (Value::Array(_), Value::Array(_))
-            | (Value::Object(_), Value::Object(_))
-    )
-}
-
-/// Get a string representation of a value's type
-fn value_type_name(val: &Value) -> String {
+/// Convert a JSON value to its corresponding SerializationFormat
+fn value_to_serialization_format(val: &Value) -> SerializationFormat {
     match val {
-        Value::Null => "null".to_string(),
-        Value::Bool(_) => "bool".to_string(),
-        Value::Number(_) => "number".to_string(),
-        Value::String(_) => "string".to_string(),
-        Value::Array(_) => "array".to_string(),
-        Value::Object(_) => "object".to_string(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::json;
-
-    use super::*;
-
-    #[test]
-    fn test_compare_identical_values() {
-        let val1 = json!({"x": 1.0, "y": 2.0});
-        let val2 = json!({"x": 1.0, "y": 2.0});
-        let differences = compare_json_values("root", &val1, &val2);
-        assert!(differences.is_empty());
-    }
-
-    #[test]
-    fn test_compare_different_types() {
-        let val1 = json!([1.0, 2.0, 3.0]);
-        let val2 = json!({"x": 1.0, "y": 2.0, "z": 3.0});
-        let differences = compare_json_values("root", &val1, &val2);
-        assert_eq!(differences.len(), 1);
-        assert!(matches!(
-            &differences[0],
-            FormatDifference::StructureType { .. }
-        ));
-    }
-
-    #[test]
-    fn test_compare_missing_fields() {
-        let val1 = json!({"x": 1.0, "y": 2.0});
-        let val2 = json!({"x": 1.0, "y": 2.0, "z": 3.0});
-        let differences = compare_json_values("root", &val1, &val2);
-        assert_eq!(differences.len(), 1);
-        assert!(matches!(
-            &differences[0],
-            FormatDifference::MissingField { .. }
-        ));
+        Value::Array(_) => SerializationFormat::Array,
+        Value::Object(_) => SerializationFormat::Object,
+        _ => SerializationFormat::Primitive, // null, bool, number, string
     }
 }

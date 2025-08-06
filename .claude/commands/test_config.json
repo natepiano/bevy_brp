@@ -141,5 +141,16 @@
     "shutdown_instruction": "Varies by test case",
     "test_objective": "Test all success and error cases for brp_status and brp_shutdown",
     "expected_shutdown_method": "varies"
+  },
+  {
+    "test_name": "comparison",
+    "test_file": ".claude/commands/tests/comparison.md",
+    "port": 20114,
+    "app_name": "various",
+    "log_file_prefix": "bevy_brp_mcp_*_port20114",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 for some tests",
+    "shutdown_instruction": "Varies by test case",
+    "test_objective": "Test all success and error cases for brp_status and brp_shutdown",
+    "expected_shutdown_method": "varies"
   }
 ]
