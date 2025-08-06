@@ -8,21 +8,9 @@
 
 use serde_json::Value;
 
-use super::detection::ErrorPattern;
-use super::engine::{TransformationResult, UnifiedTypeInfo};
+use super::super::detection::ErrorPattern;
+use super::super::engine::{TransformationResult, UnifiedTypeInfo};
 use crate::brp_tools::BrpClientError;
-
-// Import transformer implementations
-pub mod common;
-mod enum_variant;
-mod math_type;
-mod string_type;
-mod tuple_struct;
-
-pub use self::enum_variant::EnumVariantTransformer;
-pub use self::math_type::MathTypeTransformer;
-pub use self::string_type::StringTypeTransformer;
-pub use self::tuple_struct::TupleStructTransformer;
 
 /// Trait for format transformers that can handle specific error patterns
 ///
@@ -97,6 +85,10 @@ impl TransformerRegistry {
 
     /// Add all default transformers
     fn add_default_transformers(&mut self) {
+        use super::{
+            EnumVariantTransformer, MathTypeTransformer, StringTypeTransformer,
+            TupleStructTransformer,
+        };
         self.add_transformer(Box::new(MathTypeTransformer::new()));
         self.add_transformer(Box::new(StringTypeTransformer::new()));
         self.add_transformer(Box::new(TupleStructTransformer::new()));
