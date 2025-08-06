@@ -83,14 +83,17 @@ Execute this EXACT tool call:
 - the word "empty"
 It is literally two quotation marks with nothing between them: ""
 
-Before calling the tool, verify:
-- [ ] entity is a number (not string)
-- [ ] component is the exact string: bevy_render::view::visibility::Visibility
-- [ ] path is empty string "" (not null, not undefined, not missing)
-- [ ] value is the string "Visible"
-- [ ] port is the number {{PORT}}
+**MANDATORY: You MUST type out this exact verification before making the tool call:**
+"PARAMETER VERIFICATION:
+- entity: [TYPE THE ACTUAL NUMBER HERE] ✓ 
+- component: bevy_render::view::visibility::Visibility ✓
+- path: \"\" ✓ 
+- value: \"Visible\" ✓
+- port: {{PORT}} ✓"
 
-If any parameter fails this check, STOP and report the parameter validation failure.
+**CRITICAL**: If you cannot type this exact verification with actual values, STOP IMMEDIATELY and report "SUB-AGENT FAILED TO VALIDATE PARAMETERS - I am unable to execute the required tool call correctly"
+
+**AFTER the tool call, you MUST verify the response parameters section matches your verification above. If not, report "SUB-AGENT FAILED POST-CALL VERIFICATION - I passed incorrect parameters to the tool"**
 
 **STEP 3**: After success, test other variants using the SAME parameter structure:
 - Call again with "value": "Hidden" (keep all other parameters the same)
