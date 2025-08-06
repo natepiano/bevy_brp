@@ -27,17 +27,12 @@ pub async fn discover_format_with_recovery(
     params: Option<Value>,
     error: BrpClientError,
 ) -> Result<FormatRecoveryResult> {
-    // Create engine in `TypeDiscovery` state, then initialize it to transition to
-    // `SerializationCheck` state state
-    let engine = match DiscoveryEngine::new(method, port, params, error)?
-        .initialize()
-        .await
-    {
-        Ok(e) => e,
-        Err(err) => return handle_type_not_registered(err),
+    let engine = match initialize_discovery_engine(method, port, params, error).await? {
+        Either::Left(engine) => engine, // proceed with engine logic
+        Either::Right(early_result) => return Ok(early_result),
     };
 
-    // execute the engine against the varous possible terminal states
+    // execute the engine against the various possible terminal states
     let terminal_engine = match engine.check_serialization() {
         Either::Left(terminal) => terminal, // Either<Retry, Guidance> from serialization
         Either::Right(extras_engine) => {
@@ -103,12 +98,10 @@ impl DiscoveryEngine<TypeDiscovery> {
         })
     }
 
-    /// Initialize the discovery process by creating a discovery context
-    ///
     /// This method extracts type information from the method parameters,
     /// creates a `DiscoveryContext` by calling the registry and optional extras plugin,
-    /// and returns a `SerializationCheck` state containing the context.
-    pub async fn initialize(self) -> Result<DiscoveryEngine<SerializationCheck>> {
+    /// and returns a `SerializationCheck` state containing the context to allow further processing.
+    pub async fn initialize_context(self) -> Result<DiscoveryEngine<SerializationCheck>> {
         // Create discovery context from method parameters
         let mut discovery_context =
             DiscoveryContext::new(self.method, self.port, &self.params).await?;
@@ -129,17 +122,26 @@ impl DiscoveryEngine<TypeDiscovery> {
     }
 }
 
-/// Helper to convert `TypeNotRegistered` errors to `NotRecoverable`
-fn handle_type_not_registered(error: error_stack::Report<Error>) -> Result<FormatRecoveryResult> {
-    // Check if this is a TypeNotRegistered error
-    if matches!(error.current_context(), Error::TypeNotRegistered { .. }) {
-        // Convert to NotRecoverable with empty corrections
-        tracing::debug!("Converting TypeNotRegistered error to NotRecoverable");
-        Ok(FormatRecoveryResult::NotRecoverable {
-            corrections: Vec::new(),
-        })
-    } else {
-        // Pass through other errors unchanged
-        Err(error)
+/// Initialize discovery engine, handling TypeNotRegistered by returning early result
+async fn initialize_discovery_engine(
+    method: BrpMethod,
+    port: Port,
+    params: Option<Value>,
+    error: BrpClientError,
+) -> Result<Either<DiscoveryEngine<SerializationCheck>, FormatRecoveryResult>> {
+    match DiscoveryEngine::new(method, port, params, error)?
+        .initialize_context()
+        .await
+    {
+        Ok(engine) => Ok(Either::Left(engine)),
+
+        // special case handling for type not found in registry
+        Err(err) if matches!(err.current_context(), Error::TypeNotRegistered { .. }) => {
+            tracing::debug!("Converting TypeNotRegistered error to NotRecoverable");
+            Ok(Either::Right(FormatRecoveryResult::NotRecoverable {
+                corrections: Vec::new(),
+            }))
+        }
+        Err(err) => Err(err),
     }
 }
