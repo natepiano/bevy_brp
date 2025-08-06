@@ -73,11 +73,7 @@ impl DiscoveryEngine<Guidance> {
         );
 
         // Check if we have examples for this operation
-        if let Some(example) = type_info
-            .format_info
-            .examples
-            .get(&self.operation.to_string())
-        {
+        if let Some(example) = type_info.format_info.examples.get(&self.operation) {
             debug!(
                 "build_corrected_value_from_type_info: Found example for operation, returning it"
             );
@@ -98,12 +94,9 @@ impl DiscoveryEngine<Guidance> {
                 "build_corrected_value_from_type_info: Checking for mutate example, examples keys: {:?}",
                 type_info.format_info.examples.keys().collect::<Vec<_>>()
             );
-            if let Some(mutate_example) = type_info.format_info.examples.get(
-                &Operation::Mutate {
-                    parameter_name: ParameterName::Component,
-                }
-                .to_string(),
-            ) {
+            if let Some(mutate_example) = type_info.get_example_for_operation(Operation::Mutate {
+                parameter_name: ParameterName::Component,
+            }) {
                 debug!(
                     "build_corrected_value_from_type_info: Found mutate example, returning early: {}",
                     serde_json::to_string_pretty(&mutate_example)

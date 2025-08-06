@@ -256,11 +256,6 @@ impl UnifiedTypeInfo {
         &self.format_info.mutation_paths
     }
 
-    /// Get example value for a specific operation
-    pub fn get_example(&self, operation: &str) -> Option<&Value> {
-        self.format_info.examples.get(operation)
-    }
-
     /// Check if this type supports mutation operations
     pub fn supports_mutation(&self) -> bool {
         !self.format_info.mutation_paths.is_empty()
@@ -268,8 +263,7 @@ impl UnifiedTypeInfo {
 
     /// Get example for a specific operation
     pub fn get_example_for_operation(&self, operation: Operation) -> Option<&Value> {
-        // Use Display impl of Operation which uses serde's rename_all
-        self.format_info.examples.get(&operation.to_string())
+        self.format_info.examples.get(&operation)
     }
 
     /// Create appropriate correction based on the operation and context
@@ -294,12 +288,12 @@ impl UnifiedTypeInfo {
                 reason:    hint,
             }
         } else {
-            self.to_correction_internal()
+            self.to_spawn_insert_correction()
         }
     }
 
     /// Convert this type info to a `Correction`
-    fn to_correction_internal(&self) -> Correction {
+    fn to_spawn_insert_correction(&self) -> Correction {
         debug!(
             "to_correction: Converting type '{}' with enum_info: {}",
             self.type_name,
@@ -370,7 +364,11 @@ impl UnifiedTypeInfo {
         );
 
         // Cannot transform input - provide guidance with examples
-        let reason = self.get_example("spawn").map_or_else(|| format!(
+        // Note: to_correction_internal is only called for SpawnInsert operations (Mutate returns
+        // early)
+        let reason = self.get_example_for_operation(Operation::SpawnInsert {
+            parameter_name: ParameterName::Components,
+        }).map_or_else(|| format!(
                 "Cannot transform input for type '{}'. Type discovered but no format example available.",
                 self.type_name
             ), |spawn_example| format!(
@@ -387,7 +385,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Extract format examples from `bevy_brp_extras` response
-    fn extract_examples_from_extras(extras_response: &Value) -> Option<HashMap<String, Value>> {
+    fn extract_examples_from_extras(extras_response: &Value) -> Option<HashMap<Operation, Value>> {
         let mut examples = HashMap::new();
 
         // Look for example_values field in the response
@@ -395,8 +393,18 @@ impl UnifiedTypeInfo {
             .get("example_values")
             .and_then(Value::as_object)
         {
-            for (operation, example) in example_values {
-                examples.insert(operation.clone(), example.clone());
+            for (operation_str, example) in example_values {
+                // The extras code only generates "spawn" examples (see
+                // extras/src/discovery/core.rs:213) Map it to our Operation enum
+                if operation_str == "spawn" {
+                    examples.insert(
+                        Operation::SpawnInsert {
+                            parameter_name: ParameterName::Components,
+                        },
+                        example.clone(),
+                    );
+                }
+                // Ignore any other keys that don't map to our operations
             }
         }
 
@@ -479,8 +487,7 @@ impl UnifiedTypeInfo {
             self.format_info.examples.insert(
                 Operation::SpawnInsert {
                     parameter_name: ParameterName::Components,
-                }
-                .to_string(), // Will serialize as "spawn_insert"
+                },
                 example,
             );
         }
@@ -491,8 +498,7 @@ impl UnifiedTypeInfo {
                 self.format_info.examples.insert(
                     Operation::Mutate {
                         parameter_name: ParameterName::Component,
-                    }
-                    .to_string(), // Will serialize as "mutate"
+                    },
                     example,
                 );
             }

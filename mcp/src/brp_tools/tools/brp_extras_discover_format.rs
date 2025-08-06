@@ -32,10 +32,10 @@ pub struct DiscoverFormatResult {
     pub result: Option<Value>,
 
     /// Count of types discovered
-    #[to_metadata(result_operation = "count")]
+    #[to_metadata(result_operation = "count_type_info")]
     pub type_count: usize,
 
     /// Message template for formatting responses
-    #[to_message(message_template = "Discovered {type_count} formats")]
+    #[to_message(message_template = "Discovered {type_count} format(s)")]
     pub message_template: String,
 }

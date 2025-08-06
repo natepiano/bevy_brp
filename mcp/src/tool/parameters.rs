@@ -26,7 +26,16 @@ impl ParamStruct for () {}
 /// Entries are alphabetically sorted for easy maintenance
 /// serialized into parameter names provided to the rcmp mcp tool framework
 #[derive(
-    Display, EnumString, Clone, Copy, Debug, PartialEq, Eq, strum::AsRefStr, strum::IntoStaticStr,
+    Display,
+    EnumString,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::AsRefStr,
+    strum::IntoStaticStr,
 )]
 #[strum(serialize_all = "snake_case")]
 pub enum ParameterName {

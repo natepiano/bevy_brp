@@ -53,7 +53,7 @@ impl std::fmt::Display for BrpTypeName {
 }
 
 /// Type of BRP operation being performed
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Operation {
     /// Operations that create or replace entire components/resources
@@ -258,10 +258,10 @@ pub struct EnumInfo {
 }
 
 /// Format-specific information and examples
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FormatInfo {
     /// Real example values for different BRP operations
-    pub examples:         HashMap<String, Value>,
+    pub examples:         HashMap<Operation, Value>,
     /// Available mutation paths if the type supports mutation
     pub mutation_paths:   HashMap<String, String>,
     /// Original format that caused the error (if applicable)

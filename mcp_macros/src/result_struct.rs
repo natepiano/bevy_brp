@@ -255,7 +255,11 @@ fn generate_message_template_provider(
             let field_name = &computed.field_name;
             // Provide default values for computed fields
             let default_value = match computed.operation.as_str() {
-                "count" | "count_components" | "count_methods" | "count_query_components" => {
+                "count"
+                | "count_type_info"
+                | "count_components"
+                | "count_methods"
+                | "count_query_components" => {
                     quote! { 0 }
                 }
                 "count_errors" => quote! { None }, // count_errors is always optional
@@ -323,7 +327,11 @@ fn generate_message_template_provider(
             for computed in computed_fields {
                 let field_name = &computed.field_name;
                 let default_value = match computed.operation.as_str() {
-                    "count" | "count_components" | "count_methods" | "count_query_components" => {
+                    "count"
+                    | "count_type_info"
+                    | "count_components"
+                    | "count_methods"
+                    | "count_query_components" => {
                         quote! { 0 }
                     }
                     "count_errors" => quote! { None },
@@ -493,6 +501,15 @@ fn generate_from_brp_client_response(
                                 0
                             }
                         })
+                        .unwrap_or(0)
+                }
+            }
+            "count_type_info" => {
+                quote! {
+                    #source.as_ref()
+                        .and_then(|v| v.get("type_info"))
+                        .and_then(|v| v.as_object())
+                        .map(|obj| obj.len())
                         .unwrap_or(0)
                 }
             }

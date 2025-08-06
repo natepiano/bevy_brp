@@ -8,10 +8,10 @@
 use serde_json::json;
 
 use super::orchestrator;
-use super::types::{DiscoverySource, TypeCategory};
+use super::types::{DiscoverySource, Operation, TypeCategory};
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port};
-use crate::tool::BrpMethod;
+use crate::tool::{BrpMethod, ParameterName};
 
 // Complete orchestrator flow using new engine only
 // Note: The following tests require a running BRP server and have been removed:
@@ -216,8 +216,13 @@ fn test_enrich_from_extras_full_enrichment() {
         !info.format_info.examples.is_empty(),
         "Examples should be preserved"
     );
-    assert!(info.format_info.examples.contains_key("spawn"));
-    assert!(info.format_info.examples.contains_key("insert"));
+    assert!(
+        info.format_info
+            .examples
+            .contains_key(&Operation::SpawnInsert {
+                parameter_name: ParameterName::Components,
+            })
+    );
 }
 
 #[test]
