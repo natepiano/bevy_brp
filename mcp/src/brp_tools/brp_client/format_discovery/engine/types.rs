@@ -182,10 +182,6 @@ pub enum DiscoverySource {
     TypeRegistry,
     /// Information inferred from error patterns
     PatternMatching,
-    /// Information from built-in type knowledge
-    BuiltinTypes,
-    /// Manually provided or hardcoded information
-    Manual,
     /// Information combined from registry and extras sources
     RegistryPlusExtras,
 }

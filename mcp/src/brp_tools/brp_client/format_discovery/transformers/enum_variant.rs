@@ -2,7 +2,7 @@
 
 use serde_json::{Value, json};
 
-use super::super::detection::ErrorPattern;
+use super::super::detection::{self, ErrorPattern};
 use super::super::engine::{EnumInfo, TransformationResult, UnifiedTypeInfo};
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
@@ -506,7 +506,7 @@ impl FormatTransformer for EnumVariantTransformer {
             extract_type_name_from_error(error).unwrap_or_else(|| "unknown".to_string());
 
         // Analyze the error pattern
-        let pattern = super::super::detection::analyze_error_pattern(error).pattern;
+        let pattern = detection::analyze_error_pattern(error).pattern;
 
         // Handle specific error patterns
         match pattern {
