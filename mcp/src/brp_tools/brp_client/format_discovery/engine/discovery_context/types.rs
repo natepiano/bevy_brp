@@ -74,4 +74,3 @@ pub struct MutationPath {
     /// Type of the value at this path
     pub value_type:    BrpTypeName,
 }
-

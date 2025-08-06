@@ -7,9 +7,9 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 use tracing::debug;
 
-use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::comparison::RegistryComparison;
-use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
-use crate::brp_tools::brp_client::format_discovery::engine::unified_types::UnifiedTypeInfo;
+use super::super::types::BrpTypeName;
+use super::super::unified_types::UnifiedTypeInfo;
+use super::comparison::RegistryComparison;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -68,6 +68,9 @@ impl DiscoveryContext {
     /// currently in the context using `bevy_brp_extras`. It preserves existing registry
     /// information and marks enriched types with the `RegistryPlusExtras` source.
     ///
+    /// Phase 0.2: Now includes comparison infrastructure to establish baseline visibility
+    /// into extras responses vs our local implementation (currently empty).
+    ///
     /// # Errors
     ///
     /// Returns Ok(()) even if some discoveries fail - individual failures are logged
@@ -75,6 +78,18 @@ impl DiscoveryContext {
     pub async fn enrich_with_extras(&mut self) -> Result<()> {
         let response = self.call_extras_discover_format().await?;
 
+        // Phase 0.2: Compare with local (empty) format for baseline visibility
+        let comparison = Self::compare_with_local(&response);
+
+        // Log comparison results for each type we're processing
+        for type_name in self.type_map.keys() {
+            Self::log_comparison_results(type_name, &comparison);
+        }
+
+        // Store comparison for potential future analysis
+        self.registry_comparison = Some(comparison);
+
+        // Existing enrichment logic continues unchanged
         for (type_name, type_info) in &mut self.type_map {
             if let Some(extras_data) = find_type_in_extras_response(type_name, &response) {
                 type_info.enrich_from_extras(extras_data);
@@ -103,6 +118,55 @@ impl DiscoveryContext {
     #[allow(dead_code)]
     pub fn set_registry_comparison(&mut self, comparison: RegistryComparison) {
         self.registry_comparison = Some(comparison);
+    }
+
+    /// Compare local format (currently empty) with extras response format
+    ///
+    /// This method creates a `RegistryComparison` for baseline visibility into what
+    /// extras provides vs what we have locally (currently nothing). This establishes
+    /// Phase 0 comparison infrastructure before building any local formats.
+    ///
+    /// Expected behavior: Every type shows `MissingField` differences with source: `Local`
+    /// since we haven't implemented local format building yet.
+    fn compare_with_local(extras_response: &Value) -> RegistryComparison {
+        debug!("Creating baseline comparison with empty local format");
+
+        // For Phase 0.2, we create comparison with:
+        // - extras_format: Some(data from extras response)
+        // - local_format: None (we haven't built anything yet)
+        // This will show all fields as missing from Local side
+        let comparison = RegistryComparison::new(Some(extras_response.clone()), None);
+
+        debug!(
+            "Created baseline comparison - all differences will show as missing from Local side"
+        );
+
+        comparison
+    }
+
+    /// Log structured comparison results for debugging and analysis
+    ///
+    /// This function provides detailed tracing output showing comparison results
+    /// between local and extras formats. Essential for monitoring progress as
+    /// we implement local format building in future phases.
+    fn log_comparison_results(type_name: &BrpTypeName, comparison: &RegistryComparison) {
+        debug!(
+            type_name = %type_name,
+            comparison_result = ?comparison,
+            differences_count = comparison.differences.len(),
+            is_equivalent = comparison.is_equivalent(),
+            "Local vs Extras format comparison"
+        );
+
+        // Log individual differences for debugging
+        for (i, diff) in comparison.differences.iter().enumerate() {
+            debug!(
+                type_name = %type_name,
+                difference_index = i,
+                difference = ?diff,
+                "Format difference detail"
+            );
+        }
     }
 
     /// Call `bevy_brp_extras/discover_format` for all types

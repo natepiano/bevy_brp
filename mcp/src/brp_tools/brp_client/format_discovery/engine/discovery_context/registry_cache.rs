@@ -3,14 +3,15 @@
 //! This module provides a thread-safe global cache for registry-derived
 //! type information that persists across tool invocations.
 
+use std::sync::LazyLock;
+
 use dashmap::DashMap;
-use once_cell::sync::Lazy;
 
 use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::CachedTypeInfo;
 use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
 
 /// Global registry cache shared across all tool invocations
-static REGISTRY_CACHE: Lazy<RegistryCache> = Lazy::new(RegistryCache::new);
+static REGISTRY_CACHE: LazyLock<RegistryCache> = LazyLock::new(RegistryCache::new);
 
 /// Thread-safe cache for registry type information
 pub struct RegistryCache {
@@ -42,13 +43,11 @@ impl RegistryCache {
     }
 
     /// Get the number of cached types
-    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.types.len()
     }
 
     /// Check if the cache is empty
-    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.types.is_empty()
     }
@@ -88,7 +87,7 @@ mod tests {
             supported_operations: vec![BrpSupportedOperation::Query, BrpSupportedOperation::Get],
         };
 
-        cache.insert(type_name.clone(), info.clone());
+        cache.insert(type_name.clone(), info);
         let retrieved = cache.get(&type_name);
         assert!(retrieved.is_some());
 

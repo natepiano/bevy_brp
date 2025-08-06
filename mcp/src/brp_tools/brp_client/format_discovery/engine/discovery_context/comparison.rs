@@ -13,8 +13,10 @@ pub struct RegistryComparison {
     /// Differences found between formats
     pub differences:   Vec<FormatDifference>,
     /// Format from extras plugin
+    #[allow(dead_code)]
     pub extras_format: Option<Value>,
     /// Format derived from local registry + hardcoded knowledge
+    #[allow(dead_code)]
     pub local_format:  Option<Value>,
 }
 
@@ -23,19 +25,29 @@ pub struct RegistryComparison {
 pub enum FormatDifference {
     /// Field missing in one source
     MissingField {
+        #[allow(dead_code)]
         path:   String,
+        #[allow(dead_code)]
         source: ComparisonSource,
+        #[allow(dead_code)]
+        value:  Value,
     },
     /// Structure type mismatch (e.g., array vs object)
     StructureType {
+        #[allow(dead_code)]
         extras: SerializationFormat,
+        #[allow(dead_code)]
         local:  SerializationFormat,
+        #[allow(dead_code)]
         path:   String,
     },
     /// Value mismatch - same structure but different JSON values
     ValueMismatch {
+        #[allow(dead_code)]
         extras: Value,
+        #[allow(dead_code)]
         local:  Value,
+        #[allow(dead_code)]
         path:   String,
     },
 }
@@ -63,16 +75,33 @@ impl RegistryComparison {
 
     /// Compute differences between extras and local formats
     fn compute_differences(&mut self) {
-        // Stub implementation - will be filled in Phase 2
-        // This will compare the structure and values of the two formats
-        if let (Some(extras), Some(local)) = (&self.extras_format, &self.local_format) {
-            self.differences = compare_json_values("", extras, local);
+        match (&self.extras_format, &self.local_format) {
+            (Some(extras), Some(local)) => {
+                // Both formats present - compare them
+                self.differences = compare_json_values("", extras, local);
+            }
+            (Some(extras), None) => {
+                // Phase 0.2: Local format not built yet - extract type_info and create missing field entries
+                self.differences = create_missing_field_entries_from_extras(extras);
+            }
+            (None, Some(local)) => {
+                // Extras missing (shouldn't happen in practice)
+                self.differences = vec![FormatDifference::MissingField {
+                    path:   String::new(),
+                    source: ComparisonSource::Extras,
+                    value:  local.clone(),
+                }];
+            }
+            (None, None) => {
+                // Both formats missing - equivalent but useless
+                self.differences = Vec::new();
+            }
         }
     }
 
     /// Check if formats are equivalent
     #[allow(dead_code)]
-    pub fn is_equivalent(&self) -> bool {
+    pub const fn is_equivalent(&self) -> bool {
         self.differences.is_empty()
     }
 
@@ -110,19 +139,21 @@ pub fn compare_json_values(path: &str, extras: &Value, local: &Value) -> Vec<For
     match (extras, local) {
         (Value::Object(extras_obj), Value::Object(local_obj)) => {
             // Check for missing fields
-            for key in extras_obj.keys() {
+            for (key, value) in extras_obj {
                 if !local_obj.contains_key(key) {
                     differences.push(FormatDifference::MissingField {
                         path:   format!("{path}.{key}"),
                         source: ComparisonSource::Local,
+                        value:  value.clone(),
                     });
                 }
             }
-            for key in local_obj.keys() {
+            for (key, value) in local_obj {
                 if !extras_obj.contains_key(key) {
                     differences.push(FormatDifference::MissingField {
                         path:   format!("{path}.{key}"),
                         source: ComparisonSource::Extras,
+                        value:  value.clone(),
                     });
                 }
             }
@@ -136,19 +167,19 @@ pub fn compare_json_values(path: &str, extras: &Value, local: &Value) -> Vec<For
             }
         }
         (Value::Array(extras_arr), Value::Array(local_arr)) => {
-            if extras_arr.len() != local_arr.len() {
-                differences.push(FormatDifference::ValueMismatch {
-                    path:   path.to_string(),
-                    extras: extras.clone(),
-                    local:  local.clone(),
-                });
-            } else {
+            if extras_arr.len() == local_arr.len() {
                 for (i, (extras_val, local_val)) in
                     extras_arr.iter().zip(local_arr.iter()).enumerate()
                 {
                     let sub_path = format!("{path}[{i}]");
                     differences.extend(compare_json_values(&sub_path, extras_val, local_val));
                 }
+            } else {
+                differences.push(FormatDifference::ValueMismatch {
+                    path:   path.to_string(),
+                    extras: extras.clone(),
+                    local:  local.clone(),
+                });
             }
         }
         _ => {
@@ -166,11 +197,58 @@ pub fn compare_json_values(path: &str, extras: &Value, local: &Value) -> Vec<For
     differences
 }
 
-/// Convert a JSON value to its corresponding SerializationFormat
-fn value_to_serialization_format(val: &Value) -> SerializationFormat {
+/// Convert a JSON value to its corresponding `SerializationFormat`
+const fn value_to_serialization_format(val: &Value) -> SerializationFormat {
     match val {
         Value::Array(_) => SerializationFormat::Array,
         Value::Object(_) => SerializationFormat::Object,
         _ => SerializationFormat::Primitive, // null, bool, number, string
+    }
+}
+
+/// Create missing field entries from extras response (Phase 0.2)
+/// Extracts only the type_info portion and recursively creates MissingField entries
+fn create_missing_field_entries_from_extras(extras_response: &Value) -> Vec<FormatDifference> {
+    let mut differences = Vec::new();
+
+    // Extract the type_info portion from the extras response
+    if let Some(type_info) = extras_response.get("type_info") {
+        // Recursively traverse the type_info structure
+        add_missing_fields_recursive("", type_info, &mut differences);
+    }
+
+    differences
+}
+
+/// Recursively add MissingField entries for all fields in the JSON structure
+fn add_missing_fields_recursive(path: &str, value: &Value, differences: &mut Vec<FormatDifference>) {
+    // Add a MissingField entry for this path
+    differences.push(FormatDifference::MissingField {
+        path: path.to_string(),
+        source: ComparisonSource::Local,
+        value: value.clone(),
+    });
+
+    // Recursively process child fields
+    match value {
+        Value::Object(obj) => {
+            for (key, child_value) in obj {
+                let child_path = if path.is_empty() {
+                    key.clone()
+                } else {
+                    format!("{path}.{key}")
+                };
+                add_missing_fields_recursive(&child_path, child_value, differences);
+            }
+        }
+        Value::Array(arr) => {
+            for (index, child_value) in arr.iter().enumerate() {
+                let child_path = format!("{path}[{index}]");
+                add_missing_fields_recursive(&child_path, child_value, differences);
+            }
+        }
+        _ => {
+            // Primitives (string, number, bool, null) don't have child fields
+        }
     }
 }
