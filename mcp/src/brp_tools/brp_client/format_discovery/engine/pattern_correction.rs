@@ -28,13 +28,11 @@ impl DiscoveryEngine<PatternCorrection> {
     ) -> either::Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>> {
         debug!(
             "PatternCorrection: Applying pattern transformations for {} types",
-            self.state.type_names().len()
+            self.context.types().count()
         );
 
         // Execute Level 3: Pattern-Based Transformations
-        let corrections = self
-            .execute_level_3_pattern_transformations()
-            .unwrap_or_default();
+        let corrections = self.execute_pattern_transformations().unwrap_or_default();
 
         debug!(
             "PatternCorrection: Found {} corrections from pattern transformations",
@@ -42,7 +40,7 @@ impl DiscoveryEngine<PatternCorrection> {
         );
 
         // Extract the discovery context for terminal state creation
-        let discovery_context = self.state.into_inner();
+        let discovery_context = self.context.into_inner();
 
         // Evaluate whether corrections are retryable or guidance-only
         if are_corrections_retryable(&corrections) {
@@ -53,7 +51,7 @@ impl DiscoveryEngine<PatternCorrection> {
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
-                state:          retry_state,
+                context:        retry_state,
             };
             either::Either::Left(retry_engine)
         } else {
@@ -64,18 +62,17 @@ impl DiscoveryEngine<PatternCorrection> {
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
-                state:          guidance_state,
+                context:        guidance_state,
             };
             either::Either::Right(guidance_engine)
         }
     }
 
     /// Level 3: Pattern-based transformations
-    fn execute_level_3_pattern_transformations(&self) -> Option<Vec<Correction>> {
-        let type_names = self.state.type_names();
+    fn execute_pattern_transformations(&self) -> Option<Vec<Correction>> {
         debug!(
             "Level 3: Applying pattern transformations for {} types",
-            type_names.len()
+            self.context.types().count()
         );
 
         let transformer_registry = transformers::transformer_registry();
@@ -92,7 +89,7 @@ impl DiscoveryEngine<PatternCorrection> {
         };
 
         // Process each type
-        for type_info in self.state.types() {
+        for type_info in self.context.types() {
             let type_name = type_info.type_name.as_str();
 
             debug!("Level 3: Checking transformation patterns for '{type_name}'");

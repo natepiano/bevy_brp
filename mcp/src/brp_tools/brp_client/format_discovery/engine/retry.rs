@@ -24,7 +24,7 @@ impl DiscoveryEngine<Retry> {
 
         // Extract CorrectionInfo from Correction::Candidate variants
         let corrections: Vec<CorrectionInfo> = self
-            .state
+            .context
             .corrections
             .into_iter()
             .filter_map(|correction| match correction {

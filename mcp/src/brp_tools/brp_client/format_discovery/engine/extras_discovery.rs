@@ -27,12 +27,12 @@ impl DiscoveryEngine<ExtrasDiscovery> {
     > {
         debug!(
             "ExtrasDiscovery: Attempting direct discovery for {} types",
-            self.state.type_names().len()
+            self.context.types().count()
         );
 
         // Process only types that were enriched with extras information
         let corrections: Vec<Correction> = self
-            .state
+            .context
             .types()
             .filter(|type_info| {
                 // Only process types that got information from extras
@@ -54,7 +54,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
         if corrections.is_empty() {
             debug!(
                 "ExtrasDiscovery: No extras-based corrections found, proceeding to PatternCorrection with {} type infos",
-                self.state.type_names().len()
+                self.context.types().count()
             );
             Either::Right(self.transition_to_pattern_correction())
         } else {
@@ -64,7 +64,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             );
 
             // Extract the discovery context for terminal state creation
-            let discovery_context = self.state.into_inner();
+            let discovery_context = self.context.into_inner();
 
             // Evaluate whether corrections are retryable or guidance-only
             if are_corrections_retryable(&corrections) {
@@ -75,7 +75,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
                     port:           self.port,
                     params:         self.params,
                     original_error: self.original_error,
-                    state:          retry_state,
+                    context:        retry_state,
                 };
                 Either::Left(Either::Left(retry_engine))
             } else {
@@ -86,7 +86,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
                     port:           self.port,
                     params:         self.params,
                     original_error: self.original_error,
-                    state:          guidance_state,
+                    context:        guidance_state,
                 };
                 Either::Left(Either::Right(guidance_engine))
             }
@@ -100,7 +100,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,
-            state:          PatternCorrection(self.state.into_inner()),
+            context:        PatternCorrection(self.context.into_inner()),
         }
     }
 }

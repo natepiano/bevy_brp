@@ -10,14 +10,14 @@ use crate::tool::BrpMethod;
 /// Generic discovery engine with type state validation
 ///
 /// The `State` parameter ensures that only valid operations can be called
-/// for the current discovery phase.
+/// for the current discovery phase.  We call the field `context` because
+/// the field will deref to a `DiscoveryContext` when accessed.  Neat.
 pub struct DiscoveryEngine<State> {
     pub method:         BrpMethod,
     pub port:           Port,
     pub params:         Value,
     pub original_error: BrpClientError,
-    #[allow(dead_code)] // Used in future phases when State contains data
-    pub state: State,
+    pub context:        State,
 }
 
 /// Marker type for the `TypeDiscovery` state.

@@ -23,7 +23,7 @@ impl DiscoveryEngine<Guidance> {
 
         let mut corrections = Vec::new();
 
-        for correction_result in self.state.corrections {
+        for correction_result in self.context.corrections {
             match correction_result {
                 Correction::Candidate { correction_info } => {
                     // Include guidance-only candidates (those with metadata/hints but no real retry

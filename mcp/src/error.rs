@@ -54,6 +54,9 @@ pub enum Error {
     #[error("Structured error")] // Generic message, the real message comes from the ResultStruct
     Structured { result: Box<dyn ResultStruct> },
 
+    #[error("Type not registered: {type_name}")]
+    TypeNotRegistered { type_name: String },
+
     #[error("Tool call error: {message}")]
     ToolCall {
         message: String,
@@ -84,6 +87,10 @@ impl std::fmt::Debug for Error {
             Self::Structured { .. } => f
                 .debug_struct("Structured")
                 .field("result", &"<dyn ResultStruct>")
+                .finish(),
+            Self::TypeNotRegistered { type_name } => f
+                .debug_struct("TypeNotRegistered")
+                .field("type_name", type_name)
                 .finish(),
             Self::ToolCall { message, details } => f
                 .debug_struct("ToolCall")

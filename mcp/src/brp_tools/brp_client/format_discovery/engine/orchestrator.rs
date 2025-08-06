@@ -29,9 +29,13 @@ pub async fn discover_format_with_recovery(
 ) -> Result<FormatRecoveryResult> {
     // Create engine in `TypeDiscovery` state, then initialize it to transition to
     // `SerializationCheck` state state
-    let engine = DiscoveryEngine::new(method, port, params, error)?
+    let engine = match DiscoveryEngine::new(method, port, params, error)?
         .initialize()
-        .await?;
+        .await
+    {
+        Ok(e) => e,
+        Err(err) => return handle_type_not_registered(err),
+    };
 
     // execute the engine against the varous possible terminal states
     let terminal_engine = match engine.check_serialization() {
@@ -95,7 +99,7 @@ impl DiscoveryEngine<TypeDiscovery> {
             port,
             params,
             original_error,
-            state: TypeDiscovery,
+            context: TypeDiscovery,
         })
     }
 
@@ -107,7 +111,7 @@ impl DiscoveryEngine<TypeDiscovery> {
     pub async fn initialize(self) -> Result<DiscoveryEngine<SerializationCheck>> {
         // Create discovery context from method parameters
         let mut discovery_context =
-            DiscoveryContext::new(self.method, self.port, Some(&self.params)).await?;
+            DiscoveryContext::new(self.method, self.port, &self.params).await?;
 
         // Enrich context with extras discovery upfront (don't fail if enrichment fails)
         if let Err(e) = discovery_context.enrich_with_extras().await {
@@ -120,7 +124,22 @@ impl DiscoveryEngine<TypeDiscovery> {
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,
-            state:          SerializationCheck(discovery_context),
+            context:        SerializationCheck(discovery_context),
         })
+    }
+}
+
+/// Helper to convert `TypeNotRegistered` errors to `NotRecoverable`
+fn handle_type_not_registered(error: error_stack::Report<Error>) -> Result<FormatRecoveryResult> {
+    // Check if this is a TypeNotRegistered error
+    if matches!(error.current_context(), Error::TypeNotRegistered { .. }) {
+        // Convert to NotRecoverable with empty corrections
+        tracing::debug!("Converting TypeNotRegistered error to NotRecoverable");
+        Ok(FormatRecoveryResult::NotRecoverable {
+            corrections: Vec::new(),
+        })
+    } else {
+        // Pass through other errors unchanged
+        Err(error)
     }
 }

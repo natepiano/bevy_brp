@@ -76,16 +76,6 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Create `UnifiedTypeInfo` for pattern matching error handling
-    ///
-    /// Used when creating error corrections from pattern analysis.
-    /// Automatically generates examples before returning.
-    pub fn for_pattern_matching(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.regenerate_all_examples();
-        info
-    }
-
     /// Create `UnifiedTypeInfo` for a specific math type
     ///
     /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).

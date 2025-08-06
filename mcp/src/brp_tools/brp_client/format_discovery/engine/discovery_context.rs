@@ -29,45 +29,44 @@ use crate::tool::BrpMethod;
 
 pub struct DiscoveryContext {
     /// Port for BRP connections when making direct discovery calls
-    port:      Port,
+    port:     Port,
     /// Type information from Bevy's registry
-    type_info: HashMap<BrpTypeName, UnifiedTypeInfo>,
+    type_map: HashMap<BrpTypeName, UnifiedTypeInfo>,
 }
 
 impl DiscoveryContext {
     /// Create a new `DiscoveryContext` from BRP method parameters
     /// This combines type extraction, value extraction, and registry fetching
-    pub async fn new(method: BrpMethod, port: Port, params: Option<&Value>) -> Result<Self> {
+    pub async fn new(method: BrpMethod, port: Port, params: &Value) -> Result<Self> {
         // Extract type names and values together
         let type_value_pairs = Self::extract_types_with_values(method, params)?;
 
-        // Need to pass values to registry check so they can be included in UnifiedTypeInfo
-        let registry_results =
-            Self::check_multiple_types_registry_status_with_values(&type_value_pairs, port).await?;
+        debug!("fetching registry schema data");
+
+        // Fetch registry data for all types at once
+        let registry_data = Self::fetch_registry_schemas(&type_value_pairs, port).await?;
 
         // Build type_info HashMap with values included
-        let mut type_info = HashMap::new();
+        let mut type_map = HashMap::new();
 
-        for ((type_name, value), (_, registry_info)) in
-            type_value_pairs.iter().zip(registry_results.iter())
-        {
-            if let Some(unified_info) = registry_info {
-                // Registry info already has value from updated from_registry_schema constructor
-                type_info.insert(type_name.clone(), unified_info.clone());
-            } else {
-                // Create basic info with value for types not in registry
-                let Some(concrete_value) = value.clone() else {
-                    return Err(Error::InvalidArgument(format!(
-                        "Type '{type_name}' requires a value but none was provided. This should be impossible for mutation operations."
-                    )).into());
-                };
-                let basic_info =
-                    UnifiedTypeInfo::for_pattern_matching(type_name.as_str(), concrete_value);
-                type_info.insert(type_name.clone(), basic_info);
-            }
+        for (type_name, value) in type_value_pairs {
+            // Find type in registry response
+            let schema_data =
+                Self::find_type_in_registry_response(type_name.as_str(), &registry_data)
+                    .ok_or_else(|| {
+                        // Type not found in registry - it's not registered
+                        Error::TypeNotRegistered {
+                            type_name: type_name.to_string(),
+                        }
+                    })?;
+
+            // Create UnifiedTypeInfo from registry schema
+            let unified_info =
+                UnifiedTypeInfo::from_registry_schema(type_name.clone(), &schema_data, value);
+            type_map.insert(type_name, unified_info);
         }
 
-        Ok(Self { port, type_info })
+        Ok(Self { port, type_map })
     }
 
     /// Enrich existing type information with data from `bevy_brp_extras`
@@ -81,58 +80,44 @@ impl DiscoveryContext {
     /// Returns Ok(()) even if some discoveries fail - individual failures are logged
     /// but don't prevent the overall enrichment process from completing.
     pub async fn enrich_with_extras(&mut self) -> Result<()> {
-        // 1. Call bevy_brp_extras/discover_format for all types at once
         let response = self.call_extras_discover_format().await?;
 
-        let mut enriched_count = 0;
-
-        debug!(
-            "TypeDiscoveryContext: Starting enrichment for {} types",
-            self.type_info.len()
-        );
-
-        // 2. For each type in our context, enrich if data exists
-        for (type_name, type_info) in &mut self.type_info {
-            if let Some(extras_data) = find_type_in_response(type_name.as_str(), &response) {
+        for (type_name, type_info) in &mut self.type_map {
+            if let Some(extras_data) = find_type_in_extras_response(type_name, &response) {
                 type_info.enrich_from_extras(extras_data);
-                enriched_count += 1;
                 debug!(
                     "TypeDiscoveryContext: Enriched type '{}' with extras data",
-                    type_name
-                );
-            } else {
-                debug!(
-                    "TypeDiscoveryContext: No extras info found for type: {}",
                     type_name
                 );
             }
         }
 
-        debug!(
-            "TypeDiscoveryContext: Enrichment complete: {} enriched",
-            enriched_count
-        );
-
         Ok(())
+    }
+
+    /// Get all types as an iterator
+    pub fn types(&self) -> impl Iterator<Item = &UnifiedTypeInfo> {
+        self.type_map.values()
     }
 
     /// Call `bevy_brp_extras/discover_format` for all types
     async fn call_extras_discover_format(&self) -> Result<Value> {
         let type_names: Vec<String> = self
-            .type_info
+            .type_map
             .keys()
             .map(|k| k.as_str().to_string())
             .collect();
 
+        debug!(
+            "TypeDiscoveryContext: Calling brp_extras/discover_format on port {} with {} types",
+            self.port,
+            type_names.len()
+        );
+
+        // set of types to ask for format discovery
         let params = json!({
             "types": type_names
         });
-
-        debug!(
-            "TypeDiscoveryContext: Calling brp_extras/discover_format on port {} with {} types",
-            self.port.0,
-            type_names.len()
-        );
 
         let client = BrpClient::new(BrpMethod::BrpExtrasDiscoverFormat, self.port, Some(params));
         match client.execute_raw().await {
@@ -161,27 +146,11 @@ impl DiscoveryContext {
         }
     }
 
-    /// Get all types as an iterator
-    pub fn types(&self) -> impl Iterator<Item = &UnifiedTypeInfo> {
-        self.type_info.values()
-    }
-
-    /// Get type names for compatibility
-    pub fn type_names(&self) -> Vec<String> {
-        self.type_info
-            .keys()
-            .map(|k| k.as_str().to_string())
-            .collect()
-    }
-
     /// Extract type names and their values from method parameters
     fn extract_types_with_values(
         method: BrpMethod,
-        params: Option<&Value>,
-    ) -> Result<Vec<(BrpTypeName, Option<Value>)>> {
-        let params =
-            params.ok_or_else(|| Error::InvalidArgument("No parameters provided".to_string()))?;
-
+        params: &Value,
+    ) -> Result<Vec<(BrpTypeName, Value)>> {
         let mut pairs = Vec::new();
 
         match method {
@@ -205,7 +174,7 @@ impl DiscoveryContext {
                         )
                         .into());
                     }
-                    pairs.push((type_name.into(), Some(value.clone())));
+                    pairs.push((type_name.into(), value.clone()));
                 }
 
                 if pairs.is_empty() {
@@ -227,7 +196,10 @@ impl DiscoveryContext {
                     );
                 }
 
-                let value = params.get("value").cloned();
+                let value = params
+                    .get("value")
+                    .ok_or_else(|| Error::InvalidArgument("Missing 'value' field".to_string()))?
+                    .clone();
                 pairs.push((component.into(), value));
             }
             BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
@@ -245,7 +217,10 @@ impl DiscoveryContext {
                     );
                 }
 
-                let value = params.get("value").cloned();
+                let value = params
+                    .get("value")
+                    .ok_or_else(|| Error::InvalidArgument("Missing 'value' field".to_string()))?
+                    .clone();
                 pairs.push((resource.into(), value));
             }
             _ => {
@@ -313,13 +288,13 @@ impl DiscoveryContext {
         None
     }
 
-    /// Batch check multiple types in registry and include their values
-    async fn check_multiple_types_registry_status_with_values(
-        type_value_pairs: &[(BrpTypeName, Option<Value>)],
+    /// Fetch registry schemas for the given types
+    async fn fetch_registry_schemas(
+        type_value_pairs: &[(BrpTypeName, Value)],
         port: Port,
-    ) -> Result<Vec<(BrpTypeName, Option<UnifiedTypeInfo>)>> {
+    ) -> Result<Value> {
         debug!(
-            "Registry Integration: Batch checking {} types with values",
+            "Registry Integration: Fetching schemas for {} types",
             type_value_pairs.len()
         );
 
@@ -337,51 +312,37 @@ impl DiscoveryContext {
         crate_names.sort_unstable();
         crate_names.dedup();
 
-        // Call registry_schema with crate names
+        // Call registry_schema with crate names for filtering
         let params = json!({
             "with_crates": crate_names
         });
 
-        debug!("Registry Integration: Batch call with params: {params}");
+        debug!("Registry Integration: Calling registry with params: {params}");
 
         let client = BrpClient::new(BrpMethod::BevyRegistrySchema, port, Some(params));
         match client.execute_raw().await {
             Ok(ResponseStatus::Success(Some(response_data))) => {
-                debug!("Registry Integration: Received successful batch response");
-
-                // Process each type in the response WITH its value
-                let mut results = Vec::new();
-                for (type_name, value) in type_value_pairs {
-                    if let Some(schema_data) =
-                        Self::find_type_in_registry_response(type_name.as_str(), &response_data)
-                    {
-                        // Pass the value to from_registry_schema
-                        let Some(concrete_value) = value.clone() else {
-                            return Err(Error::InvalidArgument(format!(
-                                "Type '{type_name}' requires a value but none was provided. This should be impossible for mutation operations."
-                            )).into());
-                        };
-                        let type_info = UnifiedTypeInfo::from_registry_schema(
-                            type_name.as_str(),
-                            &schema_data,
-                            concrete_value,
-                        );
-                        results.push((type_name.clone(), Some(type_info)));
-                    } else {
-                        debug!(
-                            "Registry Integration: Type '{type_name}' not found in batch response"
-                        );
-                        results.push((type_name.clone(), None));
-                    }
-                }
-                Ok(results)
+                debug!("Registry Integration: Received successful response");
+                Ok(response_data)
             }
-            Ok(ResponseStatus::Success(None) | ResponseStatus::Error(_)) | Err(_) => {
-                debug!("Registry Integration: Batch registry check failed");
-                Ok(type_value_pairs
-                    .iter()
-                    .map(|(name, _)| (name.clone(), None))
-                    .collect())
+            Ok(ResponseStatus::Success(None)) => {
+                debug!("Registry Integration: Received unexpected empty success response");
+                Err(Error::BrpCommunication(
+                    "Registry returned success but no data - this shouldn't happen".to_string(),
+                )
+                .into())
+            }
+            Ok(ResponseStatus::Error(error)) => {
+                debug!("Registry Integration: Registry returned error: {:?}", error);
+                Err(Error::BrpCommunication(format!(
+                    "Registry query failed: {} - {}",
+                    error.code, error.message
+                ))
+                .into())
+            }
+            Err(e) => {
+                debug!("Registry Integration: Failed to call registry: {}", e);
+                Err(e)
             }
         }
     }
@@ -397,7 +358,10 @@ impl DiscoveryContext {
 ///   }
 /// }
 /// ```
-fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Option<&'a Value> {
+fn find_type_in_extras_response<'a>(
+    type_name: &BrpTypeName,
+    response_data: &'a Value,
+) -> Option<&'a Value> {
     debug!("TypeDiscoveryContext: find_type_in_response looking for '{type_name}'");
 
     // bevy_brp_extras always returns format: { "type_info": { "TypeName": {...} } }
@@ -409,7 +373,7 @@ fn find_type_in_response<'a>(type_name: &str, response_data: &'a Value) -> Optio
                 "TypeDiscoveryContext: Found type_info field, checking keys: {:?}",
                 type_info.keys().collect::<Vec<_>>()
             );
-            type_info.get(type_name).inspect(|_| {
+            type_info.get(type_name.as_str()).inspect(|_| {
                 debug!("TypeDiscoveryContext: Found type data for '{type_name}'");
             })
         })
@@ -429,7 +393,7 @@ mod tests {
             "components": {}
         });
 
-        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), Some(&params)).await;
+        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), &params).await;
 
         // This should fail since no components are provided
         assert!(result.is_err());
@@ -448,7 +412,7 @@ mod tests {
             }
         });
 
-        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), Some(&params)).await;
+        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), &params).await;
 
         // This may succeed or fail depending on BRP availability, but shouldn't crash
         assert!(result.is_ok() || result.is_err());

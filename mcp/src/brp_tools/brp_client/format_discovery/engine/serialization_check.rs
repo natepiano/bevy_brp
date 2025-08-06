@@ -52,7 +52,7 @@ impl DiscoveryEngine<SerializationCheck> {
         debug!("SerializationCheck: Checking for serialization errors in registry type infos");
 
         // First, check if any types have serialization issues before building corrections
-        let has_serialization_issues = self.state.types().any(|type_info| {
+        let has_serialization_issues = self.context.types().any(|type_info| {
             type_info.registry_status.in_registry && !type_info.serialization.brp_compatible
         });
 
@@ -67,7 +67,7 @@ impl DiscoveryEngine<SerializationCheck> {
         debug!("SerializationCheck: Building corrections for serialization issues");
 
         // Extract the discovery context since we know there are serialization issues
-        let discovery_context = self.state.into_inner();
+        let discovery_context = self.context.into_inner();
 
         let educational_message = format!(
             "Component is registered but lacks Serialize and Deserialize traits required for {} operations. \
@@ -108,7 +108,7 @@ impl DiscoveryEngine<SerializationCheck> {
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
-                state:          retry_state,
+                context:        retry_state,
             };
             Either::Left(Either::Left(retry_engine))
         } else {
@@ -119,7 +119,7 @@ impl DiscoveryEngine<SerializationCheck> {
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
-                state:          guidance_state,
+                context:        guidance_state,
             };
             Either::Left(Either::Right(guidance_engine))
         }
@@ -132,7 +132,7 @@ impl DiscoveryEngine<SerializationCheck> {
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,
-            state:          ExtrasDiscovery(self.state.into_inner()),
+            context:        ExtrasDiscovery(self.context.into_inner()),
         }
     }
 }
