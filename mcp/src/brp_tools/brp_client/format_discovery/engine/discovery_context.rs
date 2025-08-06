@@ -41,13 +41,6 @@ impl DiscoveryContext {
         // Extract type names and values together
         let type_value_pairs = Self::extract_types_with_values(method, params)?;
 
-        if type_value_pairs.is_empty() {
-            return Ok(Self {
-                port,
-                type_info: HashMap::new(),
-            });
-        }
-
         // Need to pass values to registry check so they can be included in UnifiedTypeInfo
         let registry_results =
             Self::check_multiple_types_registry_status_with_values(&type_value_pairs, port).await?;
@@ -60,7 +53,7 @@ impl DiscoveryContext {
         {
             if let Some(unified_info) = registry_info {
                 // Registry info already has value from updated from_registry_schema constructor
-                type_info.insert(type_name.clone().into(), unified_info.clone());
+                type_info.insert(type_name.clone(), unified_info.clone());
             } else {
                 // Create basic info with value for types not in registry
                 let Some(concrete_value) = value.clone() else {
@@ -69,8 +62,8 @@ impl DiscoveryContext {
                     )).into());
                 };
                 let basic_info =
-                    UnifiedTypeInfo::for_pattern_matching(type_name.clone(), concrete_value);
-                type_info.insert(type_name.clone().into(), basic_info);
+                    UnifiedTypeInfo::for_pattern_matching(type_name.as_str(), concrete_value);
+                type_info.insert(type_name.clone(), basic_info);
             }
         }
 
@@ -185,7 +178,7 @@ impl DiscoveryContext {
     fn extract_types_with_values(
         method: BrpMethod,
         params: Option<&Value>,
-    ) -> Result<Vec<(String, Option<Value>)>> {
+    ) -> Result<Vec<(BrpTypeName, Option<Value>)>> {
         let params =
             params.ok_or_else(|| Error::InvalidArgument("No parameters provided".to_string()))?;
 
@@ -212,7 +205,7 @@ impl DiscoveryContext {
                         )
                         .into());
                     }
-                    pairs.push((type_name.clone(), Some(value.clone())));
+                    pairs.push((type_name.into(), Some(value.clone())));
                 }
 
                 if pairs.is_empty() {
@@ -235,7 +228,7 @@ impl DiscoveryContext {
                 }
 
                 let value = params.get("value").cloned();
-                pairs.push((component.to_string(), value));
+                pairs.push((component.into(), value));
             }
             BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
                 let resource = params
@@ -253,7 +246,7 @@ impl DiscoveryContext {
                 }
 
                 let value = params.get("value").cloned();
-                pairs.push((resource.to_string(), value));
+                pairs.push((resource.into(), value));
             }
             _ => {
                 return Err(Error::InvalidArgument(format!(
@@ -322,9 +315,9 @@ impl DiscoveryContext {
 
     /// Batch check multiple types in registry and include their values
     async fn check_multiple_types_registry_status_with_values(
-        type_value_pairs: &[(String, Option<Value>)],
+        type_value_pairs: &[(BrpTypeName, Option<Value>)],
         port: Port,
-    ) -> Result<Vec<(String, Option<UnifiedTypeInfo>)>> {
+    ) -> Result<Vec<(BrpTypeName, Option<UnifiedTypeInfo>)>> {
         debug!(
             "Registry Integration: Batch checking {} types with values",
             type_value_pairs.len()
@@ -335,6 +328,7 @@ impl DiscoveryContext {
             .iter()
             .filter_map(|(type_name, _)| {
                 type_name
+                    .as_str()
                     .split("::")
                     .next()
                     .map(std::string::ToString::to_string)
@@ -359,7 +353,7 @@ impl DiscoveryContext {
                 let mut results = Vec::new();
                 for (type_name, value) in type_value_pairs {
                     if let Some(schema_data) =
-                        Self::find_type_in_registry_response(type_name, &response_data)
+                        Self::find_type_in_registry_response(type_name.as_str(), &response_data)
                     {
                         // Pass the value to from_registry_schema
                         let Some(concrete_value) = value.clone() else {
@@ -368,7 +362,7 @@ impl DiscoveryContext {
                             )).into());
                         };
                         let type_info = UnifiedTypeInfo::from_registry_schema(
-                            type_name,
+                            type_name.as_str(),
                             &schema_data,
                             concrete_value,
                         );
