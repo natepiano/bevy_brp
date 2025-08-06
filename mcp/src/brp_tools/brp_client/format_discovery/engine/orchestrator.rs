@@ -122,7 +122,7 @@ impl DiscoveryEngine<TypeDiscovery> {
     }
 }
 
-/// Initialize discovery engine, handling TypeNotRegistered by returning early result
+/// Initialize discovery engine, handling `TypeNotRegistered` by returning early result
 async fn initialize_discovery_engine(
     method: BrpMethod,
     port: Port,
