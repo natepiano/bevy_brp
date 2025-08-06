@@ -26,8 +26,7 @@ impl DiscoveryEngine<Guidance> {
         for correction_result in self.context.corrections {
             match correction_result {
                 Correction::Candidate { correction_info } => {
-                    // Include guidance-only candidates (those with metadata/hints but no real retry
-                    // values)
+                    // Include guidance-only candidates (with metadata/hints but no retry values)
                     corrections.push(correction_info);
                 }
                 Correction::Uncorrectable { type_info, reason } => {

@@ -3,7 +3,7 @@
 //! This module provides the public API for format discovery, hiding the
 //! complexity of the type state pattern behind a single function.
 
-use either::Either;
+use either::Either::{self, Left, Right};
 use serde_json::Value;
 
 use super::discovery_context::DiscoveryContext;
@@ -17,10 +17,11 @@ use crate::tool::BrpMethod;
 ///
 /// This orchestrates the entire discovery flow through the type state pattern:
 /// 1. Create engine in `TypeDiscovery` state
-/// 2. Initialize to gather discovery context (`SerializationCheck` state)
+/// 2. Initialize to gather discovery context (return `SerializationCheck` state)
 /// 3. Check for serialization issues (terminal if issues found)
 /// 4. Try extras-based discovery (`ExtrasDiscovery` state, terminal if corrections found)
-/// 5. Apply pattern-based corrections (`PatternCorrection` state, terminal)
+/// 5. Apply pattern-based corrections (`PatternCorrection` state, terminal) be it `Retry`
+///    or`Guidance`
 pub async fn discover_format_with_recovery(
     method: BrpMethod,
     port: Port,
@@ -28,29 +29,27 @@ pub async fn discover_format_with_recovery(
     error: BrpClientError,
 ) -> Result<FormatRecoveryResult> {
     let engine = match initialize_discovery_engine(method, port, params, error).await? {
-        Either::Left(engine) => engine, // proceed with engine logic
-        Either::Right(early_result) => return Ok(early_result),
+        Left(engine) => engine,
+        Right(early_result) => return Ok(early_result),
     };
 
-    // execute the engine against the various possible terminal states
-    let terminal_engine = match engine.check_serialization() {
-        Either::Left(terminal) => terminal, // Either<Retry, Guidance> from serialization
-        Either::Right(extras_engine) => {
-            // Try extras-based discovery
-            match extras_engine.try_extras_corrections() {
-                Either::Left(terminal) => terminal, // Either<Retry, Guidance> from extras
-                Either::Right(pattern_engine) => {
-                    // Apply pattern-based corrections (terminal state)
-                    pattern_engine.try_pattern_corrections() // Either<Retry, Guidance> from patterns
-                }
-            }
-        }
-    };
+    // Chain the discovery strategies - flatten the nested Either structure and walk through the
+    // states systematically - if it's terminal (including the final call totry_pattern_corrections)
+    // then it returns either `Retry` or `Guidance`
+    let terminal = engine.check_serialization().either(
+        |terminal| terminal,
+        |extras| {
+            extras.try_extras_corrections().either(
+                |terminal| terminal,
+                DiscoveryEngine::try_pattern_corrections,
+            )
+        },
+    );
 
     // Execute terminal state - either retry or provide guidance
-    match terminal_engine {
-        Either::Left(retry_engine) => Ok(retry_engine.apply_corrections_and_retry().await),
-        Either::Right(guidance_engine) => Ok(guidance_engine.provide_guidance()),
+    match terminal {
+        Left(retry) => Ok(retry.apply_corrections_and_retry().await),
+        Right(guidance) => Ok(guidance.provide_guidance()),
     }
 }
 

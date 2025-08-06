@@ -46,7 +46,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
                     "ExtrasDiscovery: Processing extras-enriched type '{}'",
                     type_info.type_name.as_str()
                 );
-                type_info.to_correction_for_method(self.method)
+                type_info.to_correction(self.method)
             })
             .collect();
 

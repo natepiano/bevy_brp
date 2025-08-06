@@ -75,54 +75,6 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Create `UnifiedTypeInfo` for a specific math type
-    ///
-    /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
-    /// Sets appropriate type category and generates examples.
-    pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category = TypeCategory::MathType;
-        info.regenerate_all_examples();
-        info
-    }
-
-    /// Create `UnifiedTypeInfo` for enum types with variant names
-    ///
-    /// Used when pattern matching identifies an enum with specific variants.
-    /// Sets appropriate type category, enum info, and generates examples.
-    pub fn for_enum_type(
-        type_name: impl Into<BrpTypeName>,
-        variant_names: Vec<String>,
-        original_value: Value,
-    ) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category = TypeCategory::Enum;
-        if !variant_names.is_empty() {
-            let variants = variant_names
-                .into_iter()
-                .map(|name| EnumVariant {
-                    name,
-                    variant_type: "Unit".to_string(),
-                })
-                .collect();
-            info.enum_info = Some(EnumInfo { variants });
-        }
-        info.regenerate_all_examples();
-        info
-    }
-
-    /// Create `UnifiedTypeInfo` for Transform types
-    ///
-    /// Used when pattern matching identifies a Transform component.
-    /// Sets appropriate type category, child types, and generates examples.
-    pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category = TypeCategory::Struct;
-
-        info.regenerate_all_examples();
-        info
-    }
-
     /// Enrich this type info with data from `bevy_brp_extras` discovery
     ///
     /// This method is infallible - if extras data is malformed or missing,
@@ -178,87 +130,52 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Extract format examples from `bevy_brp_extras` response
-    fn extract_examples_from_extras(extras_response: &Value) -> Option<HashMap<String, Value>> {
-        let mut examples = HashMap::new();
-
-        // Look for example_values field in the response
-        if let Some(example_values) = extras_response
-            .get("example_values")
-            .and_then(Value::as_object)
-        {
-            for (operation, example) in example_values {
-                examples.insert(operation.clone(), example.clone());
-            }
-        }
-
-        // Only return if we found at least one example
-        if examples.is_empty() {
-            None
-        } else {
-            Some(examples)
-        }
-    }
-
-    /// Extract mutation paths from `bevy_brp_extras` response
-    fn extract_mutation_paths_from_extras(
-        extras_response: &Value,
-    ) -> Option<HashMap<String, String>> {
-        let mut mutation_paths = HashMap::new();
-
-        // Look for mutation_paths field in the response
-        if let Some(paths) = extras_response
-            .get("mutation_paths")
-            .and_then(Value::as_object)
-        {
-            for (path, description) in paths {
-                if let Some(desc_str) = description.as_str() {
-                    mutation_paths.insert(path.clone(), desc_str.to_string());
-                }
-            }
-        }
-
-        // Only return if we found at least one mutation path
-        if mutation_paths.is_empty() {
-            None
-        } else {
-            Some(mutation_paths)
-        }
-    }
-
-    /// Extract enum info from `bevy_brp_extras` response
-    fn extract_enum_info_from_extras(extras_response: &Value) -> Option<EnumInfo> {
-        debug!(
-            "extract_enum_info_from_extras: Processing response: {}",
-            serde_json::to_string_pretty(extras_response)
-                .unwrap_or_else(|_| "Failed to serialize".to_string())
-        );
-
-        extras_response.get("enum_info").and_then(|enum_obj| {
-            enum_obj
-                .get("variants")
-                .and_then(Value::as_array)
-                .map(|variants_array| {
-                    let variants = variants_array
-                        .iter()
-                        .filter_map(|variant| {
-                            if let Some(variant_obj) = variant.as_object() {
-                                let name = variant_obj.get("name")?.as_str()?.to_string();
-                                let variant_type = variant_obj
-                                    .get("type")
-                                    .and_then(Value::as_str)
-                                    .unwrap_or("Unit")
-                                    .to_string();
-                                Some(EnumVariant { name, variant_type })
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    EnumInfo { variants }
+    /// Create `UnifiedTypeInfo` for enum types with variant names
+    ///
+    /// Used when pattern matching identifies an enum with specific variants.
+    /// Sets appropriate type category, enum info, and generates examples.
+    pub fn for_enum_type(
+        type_name: impl Into<BrpTypeName>,
+        variant_names: Vec<String>,
+        original_value: Value,
+    ) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
+        info.type_category = TypeCategory::Enum;
+        if !variant_names.is_empty() {
+            let variants = variant_names
+                .into_iter()
+                .map(|name| EnumVariant {
+                    name,
+                    variant_type: "Unit".to_string(),
                 })
-        })
+                .collect();
+            info.enum_info = Some(EnumInfo { variants });
+        }
+        info.generate_all_examples();
+        info
+    }
+
+    /// Create `UnifiedTypeInfo` for a specific math type
+    ///
+    /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
+    /// Sets appropriate type category and generates examples.
+    pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
+        info.type_category = TypeCategory::MathType;
+        info.generate_all_examples();
+        info
+    }
+
+    /// Create `UnifiedTypeInfo` for Transform types
+    ///
+    /// Used when pattern matching identifies a Transform component.
+    /// Sets appropriate type category, child types, and generates examples.
+    pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
+        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
+        info.type_category = TypeCategory::Struct;
+
+        info.generate_all_examples();
+        info
     }
 
     /// Create `UnifiedTypeInfo` from Bevy registry schema
@@ -357,13 +274,8 @@ impl UnifiedTypeInfo {
         };
 
         // Generate examples before returning
-        unified_info.regenerate_all_examples();
+        unified_info.generate_all_examples();
         unified_info
-    }
-
-    /// Check if this type supports mutation operations
-    pub fn supports_mutation(&self) -> bool {
-        !self.format_info.mutation_paths.is_empty()
     }
 
     /// Get the mutation paths for this type
@@ -376,49 +288,43 @@ impl UnifiedTypeInfo {
         self.format_info.examples.get(operation)
     }
 
-    /// Regenerate all examples based on current type information
-    fn regenerate_all_examples(&mut self) {
-        // Save any existing examples that we should preserve
-        let existing_spawn = self.format_info.examples.get("spawn").cloned();
-        let existing_insert = self.format_info.examples.get("insert").cloned();
+    /// Check if this type supports mutation operations
+    pub fn supports_mutation(&self) -> bool {
+        !self.format_info.mutation_paths.is_empty()
+    }
 
-        // Clear existing examples
-        self.format_info.examples.clear();
+    /// Create appropriate correction based on the method and context
+    /// Only called from extras discovery so this indicates the `correction_source`
+    /// We check if its a mutation method - given we are attempting to recover from an error
+    /// we can't predict the correct path to use so we provide guidance in an `Uncorectable`
+    /// Otherwise we continue to create a possible `Candidate`
+    pub fn to_correction(&self, method: BrpMethod) -> Correction {
+        // Check if this is a mutation method and we have mutation paths
+        if matches!(
+            method,
+            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
+        ) && self.supports_mutation()
+        {
+            // Create mutation guidance
+            let mut hint = format!(
+                "Type '{}' supports mutation. Available paths:\n",
+                self.type_name
+            );
+            for (path, description) in self.get_mutation_paths() {
+                let _ = writeln!(hint, "  {path} - {description}");
+            }
 
-        // Generate spawn/insert examples based on type category
-        if let Some(example) = self.generate_spawn_example() {
-            self.format_info
-                .examples
-                .insert("spawn".to_string(), example.clone());
-            self.format_info
-                .examples
-                .insert("insert".to_string(), example);
-        } else if self.type_category == TypeCategory::Component {
-            // For Component types, preserve existing examples from discovery
-            if let Some(spawn_example) = existing_spawn {
-                self.format_info
-                    .examples
-                    .insert("spawn".to_string(), spawn_example);
+            Correction::Uncorrectable {
+                type_info: self.clone(),
+                reason:    hint,
             }
-            if let Some(insert_example) = existing_insert {
-                self.format_info
-                    .examples
-                    .insert("insert".to_string(), insert_example);
-            }
-        }
-
-        // Generate mutation examples if we have mutation paths
-        if self.supports_mutation() {
-            if let Some(example) = self.generate_mutation_example() {
-                self.format_info
-                    .examples
-                    .insert("mutate".to_string(), example);
-            }
+        } else {
+            self.to_correction_internal()
         }
     }
 
     /// Convert this type info to a `Correction`
-    pub fn to_correction(&self) -> Correction {
+    fn to_correction_internal(&self) -> Correction {
         debug!(
             "to_correction: Converting type '{}' with enum_info: {}",
             self.type_name,
@@ -505,34 +411,129 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Create appropriate correction based on the method and context
-    /// Only called from extras discovery so this indicates the `correction_source`
-    pub fn to_correction_for_method(&self, method: BrpMethod) -> Correction {
-        // Check if this is a mutation method and we have mutation paths
-        if matches!(
-            method,
-            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-        ) && self.supports_mutation()
-        {
-            // Create mutation guidance
-            let mut hint = format!(
-                "Type '{}' supports mutation. Available paths:\n",
-                self.type_name
-            );
-            for (path, description) in self.get_mutation_paths() {
-                let _ = writeln!(hint, "  {path} - {description}");
-            }
+    /// Extract format examples from `bevy_brp_extras` response
+    fn extract_examples_from_extras(extras_response: &Value) -> Option<HashMap<String, Value>> {
+        let mut examples = HashMap::new();
 
-            Correction::Uncorrectable {
-                type_info: self.clone(),
-                reason:    hint,
+        // Look for example_values field in the response
+        if let Some(example_values) = extras_response
+            .get("example_values")
+            .and_then(Value::as_object)
+        {
+            for (operation, example) in example_values {
+                examples.insert(operation.clone(), example.clone());
             }
+        }
+
+        // Only return if we found at least one example
+        if examples.is_empty() {
+            None
         } else {
-            // Use existing correction logic with stored original_value
-            self.to_correction()
+            Some(examples)
         }
     }
 
+    /// Extract mutation paths from `bevy_brp_extras` response
+    fn extract_mutation_paths_from_extras(
+        extras_response: &Value,
+    ) -> Option<HashMap<String, String>> {
+        let mut mutation_paths = HashMap::new();
+
+        // Look for mutation_paths field in the response
+        if let Some(paths) = extras_response
+            .get("mutation_paths")
+            .and_then(Value::as_object)
+        {
+            for (path, description) in paths {
+                if let Some(desc_str) = description.as_str() {
+                    mutation_paths.insert(path.clone(), desc_str.to_string());
+                }
+            }
+        }
+
+        // Only return if we found at least one mutation path
+        if mutation_paths.is_empty() {
+            None
+        } else {
+            Some(mutation_paths)
+        }
+    }
+
+    /// Extract enum info from `bevy_brp_extras` response
+    fn extract_enum_info_from_extras(extras_response: &Value) -> Option<EnumInfo> {
+        debug!(
+            "extract_enum_info_from_extras: Processing response: {}",
+            serde_json::to_string_pretty(extras_response)
+                .unwrap_or_else(|_| "Failed to serialize".to_string())
+        );
+
+        extras_response.get("enum_info").and_then(|enum_obj| {
+            enum_obj
+                .get("variants")
+                .and_then(Value::as_array)
+                .map(|variants_array| {
+                    let variants = variants_array
+                        .iter()
+                        .filter_map(|variant| {
+                            if let Some(variant_obj) = variant.as_object() {
+                                let name = variant_obj.get("name")?.as_str()?.to_string();
+                                let variant_type = variant_obj
+                                    .get("type")
+                                    .and_then(Value::as_str)
+                                    .unwrap_or("Unit")
+                                    .to_string();
+                                Some(EnumVariant { name, variant_type })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    EnumInfo { variants }
+                })
+        })
+    }
+
+    /// Regenerate all examples based on current type information
+    fn generate_all_examples(&mut self) {
+        // Save any existing examples that we should preserve
+        let existing_spawn = self.format_info.examples.get("spawn").cloned();
+        let existing_insert = self.format_info.examples.get("insert").cloned();
+
+        // Clear existing examples
+        self.format_info.examples.clear();
+
+        // Generate spawn/insert examples based on type category
+        if let Some(example) = self.generate_spawn_example() {
+            self.format_info
+                .examples
+                .insert("spawn".to_string(), example.clone());
+            self.format_info
+                .examples
+                .insert("insert".to_string(), example);
+        } else if self.type_category == TypeCategory::Component {
+            // For Component types, preserve existing examples from discovery
+            if let Some(spawn_example) = existing_spawn {
+                self.format_info
+                    .examples
+                    .insert("spawn".to_string(), spawn_example);
+            }
+            if let Some(insert_example) = existing_insert {
+                self.format_info
+                    .examples
+                    .insert("insert".to_string(), insert_example);
+            }
+        }
+
+        // Generate mutation examples if we have mutation paths
+        if self.supports_mutation() {
+            if let Some(example) = self.generate_mutation_example() {
+                self.format_info
+                    .examples
+                    .insert("mutate".to_string(), example);
+            }
+        }
+    }
     /// Generate spawn example based on type structure
     fn generate_spawn_example(&self) -> Option<Value> {
         match self.type_category {
