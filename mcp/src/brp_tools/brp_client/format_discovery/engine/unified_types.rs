@@ -16,7 +16,6 @@ use super::types::{
     BrpTypeName, Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo,
     EnumVariant, FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
 };
-use crate::brp_tools::brp_client::format_discovery::format_correction_fields::FormatCorrectionField;
 use crate::tool::BrpMethod;
 
 /// Comprehensive type information unified across all discovery sources
@@ -430,37 +429,28 @@ impl UnifiedTypeInfo {
             }
         );
 
-        // Check if this is an enum with variants - create enum-specific correction
+        // Check if this is an enum with variants - provide guidance only
         if let Some(enum_info) = &self.enum_info {
             let variant_names: Vec<String> =
                 enum_info.variants.iter().map(|v| v.name.clone()).collect();
 
-            let corrected_format = serde_json::json!({
-                FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
-                FormatCorrectionField::ValidValues.as_ref(): variant_names,
-                FormatCorrectionField::Examples.as_ref(): variant_names.iter().take(2).map(|variant| serde_json::json!({
-                    FormatCorrectionField::Path.as_ref(): "",
-                    FormatCorrectionField::Value.as_ref(): variant
-                })).collect::<Vec<_>>()
-            });
+            let example_variant = variant_names.first().map_or("VariantName", String::as_str);
 
-            let correction_info = CorrectionInfo {
-                corrected_value:   corrected_format.clone(),
-                corrected_format:  Some(corrected_format),
-                hint:              format!(
-                    "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}",
-                    self.type_name
-                        .as_str()
-                        .split("::")
-                        .last()
-                        .unwrap_or(self.type_name.as_str()),
-                    variant_names.join(", ")
-                ),
-                type_info:         self.clone(),
-                correction_method: CorrectionMethod::DirectReplacement,
+            let reason = format!(
+                "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}. Use one of these values directly (e.g., \"{}\")",
+                self.type_name
+                    .as_str()
+                    .split("::")
+                    .last()
+                    .unwrap_or(self.type_name.as_str()),
+                variant_names.join(", "),
+                example_variant
+            );
+
+            return Correction::Uncorrectable {
+                type_info: self.clone(),
+                reason,
             };
-
-            return Correction::Candidate { correction_info };
         }
 
         // Check if we can actually transform the original input

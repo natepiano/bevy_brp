@@ -9,7 +9,7 @@ use tracing::debug;
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Retry};
-use super::types::{Correction, CorrectionInfo, can_retry_with_corrections};
+use super::types::{Correction, CorrectionInfo};
 use crate::brp_tools::{BrpClientError, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
@@ -33,9 +33,9 @@ impl DiscoveryEngine<Retry> {
             })
             .collect();
 
-        // Validate that we have retryable corrections
-        if !can_retry_with_corrections(&corrections) {
-            debug!("Retry Engine: Corrections are not retryable");
+        // All Candidate corrections should be retryable by definition
+        if corrections.is_empty() {
+            debug!("Retry Engine: No candidate corrections available");
             return FormatRecoveryResult::NotRecoverable { corrections };
         }
 

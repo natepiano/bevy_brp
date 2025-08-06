@@ -6,11 +6,10 @@
 //! components with proper serialization support.
 
 use either::Either;
-use serde_json::json;
 use tracing::debug;
 
 use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, Retry, SerializationCheck};
-use super::types::{Correction, CorrectionInfo, CorrectionMethod, are_corrections_retryable};
+use super::types::{Correction, are_corrections_retryable};
 use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<SerializationCheck> {
@@ -85,16 +84,17 @@ impl DiscoveryEngine<SerializationCheck> {
                     "SerializationCheck: Component '{}' lacks serialization, building correction",
                     type_info.type_name.as_str()
                 );
-                let correction_info = CorrectionInfo {
-                    corrected_value:   json!({}), // Empty object for educational guidance
-                    hint:              educational_message.clone(),
-                    corrected_format:  None,
-                    type_info:         type_info.clone(),
-                    correction_method: CorrectionMethod::DirectReplacement,
-                };
+                let reason = format!(
+                    "Component '{}' lacks serialization support. {}",
+                    type_info.type_name.as_str(),
+                    educational_message
+                );
                 // Since serialization issues can't be fixed by BRP calls, these are always
                 // guidance-only
-                Correction::Candidate { correction_info }
+                Correction::Uncorrectable {
+                    type_info: type_info.clone(),
+                    reason,
+                }
             })
             .collect();
 

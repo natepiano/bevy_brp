@@ -57,44 +57,10 @@ impl std::fmt::Display for BrpTypeName {
 /// Returns `true` if corrections contain actionable values that can be used for retrying the BRP
 /// call, `false` if corrections are educational/metadata only.
 pub fn are_corrections_retryable(corrections: &[Correction]) -> bool {
-    // Extract CorrectionInfo from Correction::Candidate variants and check if any can be retried
-    let correction_infos: Vec<CorrectionInfo> = corrections
+    // Any Candidate correction is retryable by definition
+    corrections
         .iter()
-        .filter_map(|correction| match correction {
-            Correction::Candidate { correction_info } => Some(correction_info.clone()),
-            Correction::Uncorrectable { .. } => None, // Uncorrectable are never retryable
-        })
-        .collect();
-
-    can_retry_with_corrections(&correction_infos)
-}
-
-/// Check if corrections can be applied for a retry
-///
-/// This is the core retry validation logic extracted from the old engine.
-/// Only retry if we have corrections with actual values (not just metadata/hints).
-pub fn can_retry_with_corrections(corrections: &[CorrectionInfo]) -> bool {
-    // Only retry if we have corrections with actual values
-    if corrections.is_empty() {
-        return false;
-    }
-
-    // Check if all corrections have valid corrected values
-    for correction in corrections {
-        // Skip if the corrected value is just a placeholder or metadata
-        if correction.corrected_value.is_null()
-            || (correction.corrected_value.is_object()
-                && correction.corrected_value.as_object().is_some_and(|o| {
-                    o.contains_key(FormatCorrectionField::Hint.as_ref())
-                        || o.contains_key(FormatCorrectionField::Examples.as_ref())
-                        || o.contains_key(FormatCorrectionField::ValidValues.as_ref())
-                }))
-        {
-            return false;
-        }
-    }
-
-    true
+        .any(|correction| matches!(correction, Correction::Candidate { .. }))
 }
 
 /// Can we use this data to attempt a correction
