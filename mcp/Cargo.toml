@@ -20,6 +20,7 @@ async-trait.workspace         = true
 bevy_brp_mcp_macros.workspace = true
 cargo_metadata.workspace      = true
 chrono.workspace              = true
+dashmap.workspace             = true
 either.workspace              = true
 error-stack.workspace         = true
 futures.workspace             = true
