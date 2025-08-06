@@ -1,0 +1,219 @@
+[
+  {
+    "id": "impl-01",
+    "content": "Add Operation enum with SpawnInsert/Mutate variants to engine/types.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-02",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-03",
+    "content": "Add operation field to DiscoveryEngine in engine/state.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-04",
+    "content": "Update DiscoveryEngine construction in orchestrator.rs TypeDiscovery::initialize()",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-05",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-06",
+    "content": "Replace method matching with operation in serialization_check.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-07",
+    "content": "Replace method matching with operation in pattern_correction.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-08",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-09",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-10",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-11",
+    "content": "Update retry.rs to use Operation with parameter_name field",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-12",
+    "content": "Update guidance.rs to use Operation instead of method matching",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-13",
+    "content": "Move build_corrected_value_from_type_info to DiscoveryEngine<Guidance>",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-14",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-15",
+    "content": "Update unified_types.rs to_correction() to take Operation parameter",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-16",
+    "content": "Update unified_types.rs example generation to use Operation keys",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-17",
+    "content": "Add get_example_for_operation() helper to UnifiedTypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-18",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-19",
+    "content": "Update supported_operations field type to Vec<Operation>",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-20",
+    "content": "Update supported_operations construction in from_registry_schema",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-21",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-22",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-23",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-24",
+    "content": "Update enum_variant.rs to use get_example_for_operation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-25",
+    "content": "Update extras_discovery.rs to pass Operation to to_correction",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-26",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-27",
+    "content": "Update any remaining state transitions to pass operation field",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-28",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-29",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-30",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "impl-31",
+    "content": "STOP and return control to user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
