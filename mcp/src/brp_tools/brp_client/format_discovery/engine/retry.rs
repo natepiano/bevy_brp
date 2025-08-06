@@ -6,13 +6,12 @@
 use serde_json::Value;
 use tracing::debug;
 
-use super::super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Retry};
-use super::types::{Correction, CorrectionInfo};
+use super::types::{Correction, CorrectionInfo, Operation};
 use crate::brp_tools::{BrpClientError, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::ParameterName;
 
 impl DiscoveryEngine<Retry> {
     /// Apply corrections and retry the original BRP call
@@ -40,7 +39,7 @@ impl DiscoveryEngine<Retry> {
         }
 
         // Build corrected parameters
-        match build_corrected_params(self.method, &self.params, &corrections) {
+        match build_corrected_params(self.operation, &self.params, &corrections) {
             Ok(corrected_params) => {
                 debug!("Retry Engine: Built corrected parameters, executing retry");
 
@@ -95,38 +94,55 @@ impl DiscoveryEngine<Retry> {
 
 /// Build corrected parameters from corrections
 fn build_corrected_params(
-    method: BrpMethod,
+    operation: Operation,
     original_params: &Value,
     corrections: &[CorrectionInfo],
 ) -> Result<Option<Value>> {
     let mut params = original_params.clone();
 
     for correction in corrections {
-        match method {
-            BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
-                // Update components
-                if let Some(components) = ParameterName::Components.get_object_mut_from(&mut params)
-                {
-                    components.insert(
-                        correction.type_info.type_name.as_str().to_string(),
-                        correction.corrected_value.clone(),
-                    );
+        match operation {
+            Operation::SpawnInsert { parameter_name } => {
+                // Use the parameter_name field to determine how to build params
+                match parameter_name {
+                    ParameterName::Value => {
+                        // For resources: update value directly
+                        params[ParameterName::Value.as_ref()] = correction.corrected_value.clone();
+                    }
+                    ParameterName::Components => {
+                        // For components: update components[type_name]
+                        if let Some(components) =
+                            ParameterName::Components.get_object_mut_from(&mut params)
+                        {
+                            components.insert(
+                                correction.type_info.type_name.as_str().to_string(),
+                                correction.corrected_value.clone(),
+                            );
+                        }
+                    }
+                    _ => {
+                        return Err(Error::InvalidArgument(
+                            "SpawnInsert only uses Value or Components parameters".to_string(),
+                        )
+                        .into());
+                    }
                 }
             }
-            BrpMethod::BevyInsertResource => {
-                // Update value directly
-                params[FormatCorrectionField::Value.as_ref()] = correction.corrected_value.clone();
-            }
-            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource => {
-                // For mutations, we need both path and value
+            Operation::Mutate { parameter_name } => {
+                // For mutations, we need the type parameter (component/resource), path, and value
+                // First, set the type-specific parameter with the type name
+                params[parameter_name.as_ref()] =
+                    Value::String(correction.type_info.type_name.as_str().to_string());
+
+                // Then set path and value from the correction
                 if correction.corrected_value.is_object() {
                     if let Some(obj) = correction.corrected_value.as_object() {
                         if let (Some(path), Some(value)) = (
-                            obj.get(FormatCorrectionField::Path.as_ref()),
-                            obj.get(FormatCorrectionField::Value.as_ref()),
+                            obj.get(ParameterName::Path.as_ref()),
+                            obj.get(ParameterName::Value.as_ref()),
                         ) {
-                            params[FormatCorrectionField::Path.as_ref()] = path.clone();
-                            params[FormatCorrectionField::Value.as_ref()] = value.clone();
+                            params[ParameterName::Path.as_ref()] = path.clone();
+                            params[ParameterName::Value.as_ref()] = value.clone();
                         } else {
                             return Err(Error::InvalidArgument(
                                 "Mutation correction missing path or value".to_string(),
@@ -134,11 +150,12 @@ fn build_corrected_params(
                             .into());
                         }
                     }
+                } else {
+                    // If corrected_value is not an object, it's just the value to set
+                    // Use empty path for direct replacement
+                    params[ParameterName::Path.as_ref()] = Value::String(String::new());
+                    params[ParameterName::Value.as_ref()] = correction.corrected_value.clone();
                 }
-            }
-            _ => {
-                // For other methods, assume simple value replacement
-                params = correction.corrected_value.clone();
             }
         }
     }

@@ -3,7 +3,7 @@ use std::ops::Deref;
 use serde_json::Value;
 
 use super::discovery_context::DiscoveryContext;
-use super::types::Correction;
+use super::types::{Correction, Operation};
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::BrpMethod;
 
@@ -14,6 +14,7 @@ use crate::tool::BrpMethod;
 /// the field will deref to a `DiscoveryContext` when accessed.  Neat.
 pub struct DiscoveryEngine<State> {
     pub method:         BrpMethod,
+    pub operation:      Operation,
     pub port:           Port,
     pub params:         Value,
     pub original_error: BrpClientError,

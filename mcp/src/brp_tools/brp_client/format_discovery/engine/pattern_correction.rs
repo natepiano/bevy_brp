@@ -10,10 +10,10 @@ use super::super::detection::ErrorPattern;
 use super::super::transformers;
 use super::state::{DiscoveryEngine, Guidance, PatternCorrection, Retry};
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, TransformationResult, are_corrections_retryable,
+    Correction, CorrectionInfo, CorrectionMethod, Operation, TransformationResult,
+    are_corrections_retryable,
 };
 use super::unified_types::UnifiedTypeInfo;
-use crate::tool::BrpMethod;
 
 impl DiscoveryEngine<PatternCorrection> {
     /// Try to apply pattern-based corrections (terminal state)
@@ -48,6 +48,7 @@ impl DiscoveryEngine<PatternCorrection> {
             let retry_state = Retry::new(discovery_context, corrections);
             let retry_engine = DiscoveryEngine {
                 method:         self.method,
+                operation:      self.operation,
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
@@ -59,6 +60,7 @@ impl DiscoveryEngine<PatternCorrection> {
             let guidance_state = Guidance::new(discovery_context, corrections);
             let guidance_engine = DiscoveryEngine {
                 method:         self.method,
+                operation:      self.operation,
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
@@ -79,10 +81,7 @@ impl DiscoveryEngine<PatternCorrection> {
         let mut corrections = Vec::new();
 
         // For mutation methods, extract the path
-        let mutation_path = if matches!(
-            self.method,
-            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-        ) {
+        let mutation_path = if matches!(self.operation, Operation::Mutate { .. }) {
             self.params.get("path").and_then(|p| p.as_str())
         } else {
             None
@@ -214,10 +213,7 @@ impl DiscoveryEngine<PatternCorrection> {
         type_name: &str,
         type_info: &UnifiedTypeInfo,
     ) -> Option<Correction> {
-        if !matches!(
-            self.method,
-            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-        ) {
+        if !matches!(self.operation, Operation::Mutate { .. }) {
             return None;
         }
 

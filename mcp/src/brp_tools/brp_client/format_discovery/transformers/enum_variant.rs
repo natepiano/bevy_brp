@@ -3,11 +3,12 @@
 use serde_json::{Value, json};
 
 use super::super::detection::{self, ErrorPattern};
-use super::super::engine::{EnumInfo, TransformationResult, UnifiedTypeInfo};
+use super::super::engine::{EnumInfo, Operation, TransformationResult, UnifiedTypeInfo};
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
+use crate::tool::ParameterName;
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types
@@ -269,7 +270,10 @@ impl EnumVariantTransformer {
         let type_info = UnifiedTypeInfo::for_enum_type(type_name, variants, concrete_value);
 
         // Get the enum example or use fallback
-        let format_info = if let Some(example) = type_info.get_example("mutate") {
+        let format_info = if let Some(example) =
+            type_info.get_example_for_operation(Operation::Mutate {
+                parameter_name: ParameterName::Component,
+            }) {
             example.clone()
         } else {
             // Fallback format if no example was generated

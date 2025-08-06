@@ -9,6 +9,7 @@ use serde_json::Value;
 use super::discovery_context::DiscoveryContext;
 use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, SerializationCheck, TypeDiscovery};
+use super::types::Operation;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -88,8 +89,11 @@ impl DiscoveryEngine<TypeDiscovery> {
             )
         })?;
 
+        let operation = Operation::try_from(method)?; // Compute once
+
         Ok(Self {
             method,
+            operation,
             port,
             params,
             original_error,
@@ -113,6 +117,7 @@ impl DiscoveryEngine<TypeDiscovery> {
         // Return SerializationCheck state with the context
         Ok(DiscoveryEngine {
             method:         self.method,
+            operation:      self.operation,
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,

@@ -9,6 +9,8 @@ use serde_json::Value;
 
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::unified_types::UnifiedTypeInfo;
+use crate::error::Error;
+use crate::tool::{BrpMethod, ParameterName};
 
 /// A newtype wrapper for BRP type names used as `HashMap` keys
 ///
@@ -47,6 +49,69 @@ impl From<&String> for BrpTypeName {
 impl std::fmt::Display for BrpTypeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+/// Type of BRP operation being performed
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Operation {
+    /// Operations that create or replace entire components/resources
+    /// Includes: `BevySpawn`, `BevyInsert`, `BevyInsertResource`
+    /// Serializes as: `spawn_insert`
+    SpawnInsert {
+        /// Which parameter name to use when building requests
+        /// Components for `BevySpawn`/`BevyInsert`, Value for `BevyInsertResource`
+        #[serde(skip)]
+        parameter_name: ParameterName,
+    },
+    /// Operations that modify specific fields
+    /// Includes: `BevyMutateComponent`, `BevyMutateResource`
+    /// Serializes as: `mutate`
+    Mutate {
+        /// Which parameter name to use when building requests
+        /// Component for `BevyMutateComponent`, Resource for `BevyMutateResource`
+        #[serde(skip)]
+        parameter_name: ParameterName,
+    },
+}
+
+impl std::fmt::Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Use consistent string representation for both variants
+        let s = match self {
+            Self::SpawnInsert { .. } => "spawn_insert",
+            Self::Mutate { .. } => "mutate",
+        };
+        write!(f, "{s}")
+    }
+}
+
+impl TryFrom<BrpMethod> for Operation {
+    type Error = Error;
+
+    fn try_from(method: BrpMethod) -> Result<Self, Self::Error> {
+        match method {
+            BrpMethod::BevySpawn | BrpMethod::BevyInsert => Ok(Self::SpawnInsert {
+                parameter_name: ParameterName::Components,
+            }),
+
+            BrpMethod::BevyInsertResource => Ok(Self::SpawnInsert {
+                parameter_name: ParameterName::Value,
+            }),
+
+            BrpMethod::BevyMutateComponent => Ok(Self::Mutate {
+                parameter_name: ParameterName::Component,
+            }),
+
+            BrpMethod::BevyMutateResource => Ok(Self::Mutate {
+                parameter_name: ParameterName::Resource,
+            }),
+
+            _ => Err(Error::InvalidArgument(format!(
+                "Method {method:?} is not supported for format discovery"
+            ))),
+        }
     }
 }
 
@@ -90,7 +155,7 @@ pub enum FormatCorrectionStatus {
 }
 
 /// Information about a format correction applied during recovery
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CorrectionInfo {
     /// Corrected value to use
     pub corrected_value:   Value,
@@ -116,16 +181,6 @@ impl CorrectionInfo {
 
         // Add rich metadata fields
         if let Some(obj) = correction_json.as_object_mut() {
-            // Extract supported_operations
-            if !self.type_info.supported_operations.is_empty() {
-                obj.insert(
-                    FormatCorrectionField::SupportedOperations
-                        .as_ref()
-                        .to_string(),
-                    serde_json::json!(self.type_info.supported_operations),
-                );
-            }
-
             // Extract mutation_paths
             if !self.type_info.format_info.mutation_paths.is_empty() {
                 let paths: Vec<String> = self

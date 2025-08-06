@@ -8,37 +8,35 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use tracing::debug;
 
 use super::types::{
     BrpTypeName, Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo,
-    EnumVariant, FormatInfo, RegistryStatus, SerializationSupport, TypeCategory,
+    EnumVariant, FormatInfo, Operation, RegistryStatus, SerializationSupport, TypeCategory,
 };
-use crate::tool::BrpMethod;
+use crate::tool::ParameterName;
 
 /// Comprehensive type information unified across all discovery sources
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct UnifiedTypeInfo {
     /// The fully-qualified type name
-    pub type_name:            BrpTypeName,
+    pub type_name:        BrpTypeName,
     /// The original value from parameters
-    pub original_value:       Value,
+    pub original_value:   Value,
     /// Registry and reflection information
-    pub registry_status:      RegistryStatus,
+    pub registry_status:  RegistryStatus,
     /// Serialization support information
-    pub serialization:        SerializationSupport,
+    pub serialization:    SerializationSupport,
     /// Format-specific data and examples
-    pub format_info:          FormatInfo,
-    /// List of supported BRP operations for this type
-    pub supported_operations: Vec<String>,
+    pub format_info:      FormatInfo,
     /// Type category for quick identification
-    pub type_category:        TypeCategory,
+    pub type_category:    TypeCategory,
     /// Enum variant information (only populated for enum types)
-    pub enum_info:            Option<EnumInfo>,
+    pub enum_info:        Option<EnumInfo>,
     /// Source of this type information for debugging
-    pub discovery_source:     DiscoverySource,
+    pub discovery_source: DiscoverySource,
 }
 
 impl UnifiedTypeInfo {
@@ -68,7 +66,6 @@ impl UnifiedTypeInfo {
                 original_format:  None,
                 corrected_format: None,
             },
-            supported_operations: Vec::new(),
             type_category: TypeCategory::Unknown,
             enum_info: None,
             discovery_source,
@@ -223,29 +220,6 @@ impl UnifiedTypeInfo {
             .and_then(Value::as_str)
             .map_or(TypeCategory::Unknown, Self::parse_type_category);
 
-        // Extract basic structure information for supported operations
-        let supported_operations = if serialization.brp_compatible {
-            match type_category {
-                TypeCategory::Struct | TypeCategory::TupleStruct => vec![
-                    "query".to_string(),
-                    "get".to_string(),
-                    "spawn".to_string(),
-                    "insert".to_string(),
-                    "mutate".to_string(),
-                ],
-                TypeCategory::Enum => vec![
-                    "query".to_string(),
-                    "get".to_string(),
-                    "spawn".to_string(),
-                    "insert".to_string(),
-                ],
-                _ => vec!["query".to_string(), "get".to_string()],
-            }
-        } else {
-            // Without serialization, only reflection-based operations work
-            vec!["query".to_string(), "get".to_string()]
-        };
-
         // Extract enum information if this is an enum
         let enum_info = if type_category == TypeCategory::Enum {
             Self::extract_enum_info_from_schema(schema_data)
@@ -267,7 +241,6 @@ impl UnifiedTypeInfo {
                 original_format: None,
                 corrected_format: None,
             },
-            supported_operations,
             type_category,
             enum_info,
             discovery_source: DiscoverySource::TypeRegistry,
@@ -293,18 +266,20 @@ impl UnifiedTypeInfo {
         !self.format_info.mutation_paths.is_empty()
     }
 
-    /// Create appropriate correction based on the method and context
+    /// Get example for a specific operation
+    pub fn get_example_for_operation(&self, operation: Operation) -> Option<&Value> {
+        // Use Display impl of Operation which uses serde's rename_all
+        self.format_info.examples.get(&operation.to_string())
+    }
+
+    /// Create appropriate correction based on the operation and context
     /// Only called from extras discovery so this indicates the `correction_source`
-    /// We check if its a mutation method - given we are attempting to recover from an error
-    /// we can't predict the correct path to use so we provide guidance in an `Uncorectable`
+    /// We check if its a mutation operation - given we are attempting to recover from an error
+    /// we can't predict the correct path to use so we provide guidance in an `Uncorrectable`
     /// Otherwise we continue to create a possible `Candidate`
-    pub fn to_correction(&self, method: BrpMethod) -> Correction {
-        // Check if this is a mutation method and we have mutation paths
-        if matches!(
-            method,
-            BrpMethod::BevyMutateComponent | BrpMethod::BevyMutateResource
-        ) && self.supports_mutation()
-        {
+    pub fn to_correction(&self, operation: Operation) -> Correction {
+        // Check if this is a mutation operation and we have mutation paths
+        if matches!(operation, Operation::Mutate { .. }) && self.supports_mutation() {
             // Create mutation guidance
             let mut hint = format!(
                 "Type '{}' supports mutation. Available paths:\n",
@@ -496,46 +471,35 @@ impl UnifiedTypeInfo {
 
     /// Regenerate all examples based on current type information
     fn generate_all_examples(&mut self) {
-        // Save any existing examples that we should preserve
-        let existing_spawn = self.format_info.examples.get("spawn").cloned();
-        let existing_insert = self.format_info.examples.get("insert").cloned();
-
         // Clear existing examples
         self.format_info.examples.clear();
 
-        // Generate spawn/insert examples based on type category
-        if let Some(example) = self.generate_spawn_example() {
-            self.format_info
-                .examples
-                .insert("spawn".to_string(), example.clone());
-            self.format_info
-                .examples
-                .insert("insert".to_string(), example);
-        } else if self.type_category == TypeCategory::Component {
-            // For Component types, preserve existing examples from discovery
-            if let Some(spawn_example) = existing_spawn {
-                self.format_info
-                    .examples
-                    .insert("spawn".to_string(), spawn_example);
-            }
-            if let Some(insert_example) = existing_insert {
-                self.format_info
-                    .examples
-                    .insert("insert".to_string(), insert_example);
-            }
+        // Generate spawn/insert example
+        if let Some(example) = self.generate_spawn_insert_example() {
+            self.format_info.examples.insert(
+                Operation::SpawnInsert {
+                    parameter_name: ParameterName::Components,
+                }
+                .to_string(), // Will serialize as "spawn_insert"
+                example,
+            );
         }
 
-        // Generate mutation examples if we have mutation paths
+        // Generate mutation example if type supports mutation
         if self.supports_mutation() {
             if let Some(example) = self.generate_mutation_example() {
-                self.format_info
-                    .examples
-                    .insert("mutate".to_string(), example);
+                self.format_info.examples.insert(
+                    Operation::Mutate {
+                        parameter_name: ParameterName::Component,
+                    }
+                    .to_string(), // Will serialize as "mutate"
+                    example,
+                );
             }
         }
     }
     /// Generate spawn example based on type structure
-    fn generate_spawn_example(&self) -> Option<Value> {
+    fn generate_spawn_insert_example(&self) -> Option<Value> {
         match self.type_category {
             TypeCategory::Struct => self.generate_struct_example(),
             TypeCategory::Enum => self.generate_enum_example(),

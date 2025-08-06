@@ -146,7 +146,6 @@ fn test_enrich_from_extras_full_enrichment() {
         "has_serialize": true,
         "has_deserialize": true,
         "type_category": "Struct",
-        "supported_operations": ["spawn", "insert", "mutate"],
         "example_values": {
             "spawn": {
                 "translation": [1.0, 2.0, 3.0],

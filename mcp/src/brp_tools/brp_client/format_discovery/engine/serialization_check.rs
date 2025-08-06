@@ -9,8 +9,7 @@ use either::Either;
 use tracing::debug;
 
 use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, Retry, SerializationCheck};
-use super::types::{Correction, are_corrections_retryable};
-use crate::tool::BrpMethod;
+use super::types::{Correction, Operation, are_corrections_retryable};
 
 impl DiscoveryEngine<SerializationCheck> {
     /// Check for serialization issues that prevent BRP operations
@@ -28,7 +27,7 @@ impl DiscoveryEngine<SerializationCheck> {
         DiscoveryEngine<ExtrasDiscovery>,
     > {
         // Only check for spawn/insert methods with UnknownComponentType errors
-        if !matches!(self.method, BrpMethod::BevySpawn | BrpMethod::BevyInsert) {
+        if !matches!(self.operation, Operation::SpawnInsert { .. }) {
             debug!("SerializationCheck: Not a spawn/insert method, proceeding to ExtrasDiscovery");
             return Either::Right(self.transition_to_extras_discovery());
         }
@@ -105,6 +104,7 @@ impl DiscoveryEngine<SerializationCheck> {
             let retry_state = Retry::new(discovery_context, corrections);
             let retry_engine = DiscoveryEngine {
                 method:         self.method,
+                operation:      self.operation,
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
@@ -116,6 +116,7 @@ impl DiscoveryEngine<SerializationCheck> {
             let guidance_state = Guidance::new(discovery_context, corrections);
             let guidance_engine = DiscoveryEngine {
                 method:         self.method,
+                operation:      self.operation,
                 port:           self.port,
                 params:         self.params,
                 original_error: self.original_error,
@@ -129,6 +130,7 @@ impl DiscoveryEngine<SerializationCheck> {
     fn transition_to_extras_discovery(self) -> DiscoveryEngine<ExtrasDiscovery> {
         DiscoveryEngine {
             method:         self.method,
+            operation:      self.operation,
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,

@@ -46,7 +46,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
                     "ExtrasDiscovery: Processing extras-enriched type '{}'",
                     type_info.type_name.as_str()
                 );
-                type_info.to_correction(self.method)
+                type_info.to_correction(self.operation)
             })
             .collect();
 
@@ -72,6 +72,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
                 let retry_state = Retry::new(discovery_context, corrections);
                 let retry_engine = DiscoveryEngine {
                     method:         self.method,
+                    operation:      self.operation,
                     port:           self.port,
                     params:         self.params,
                     original_error: self.original_error,
@@ -83,6 +84,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
                 let guidance_state = Guidance::new(discovery_context, corrections);
                 let guidance_engine = DiscoveryEngine {
                     method:         self.method,
+                    operation:      self.operation,
                     port:           self.port,
                     params:         self.params,
                     original_error: self.original_error,
@@ -97,6 +99,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
     fn transition_to_pattern_correction(self) -> DiscoveryEngine<PatternCorrection> {
         DiscoveryEngine {
             method:         self.method,
+            operation:      self.operation,
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,

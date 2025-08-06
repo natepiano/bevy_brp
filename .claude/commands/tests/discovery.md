@@ -16,7 +16,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Verify response includes:
   - `spawn_format` with proper array-based structure for Transform
   - `mutation_info` with available paths
-  - `supported_operations` array (e.g., ["spawn", "insert", "mutate"])
   - `type_category` field (e.g., "Component")
 - Check format shows proper array structure: translation/rotation/scale as arrays, not objects
 
@@ -26,7 +25,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Verify spawn succeeds with format correction to arrays
 - Verify metadata includes warning field when correction succeeds
 - Verify the correction response includes rich metadata:
-  - `supported_operations` field populated
   - `mutation_paths` field with paths like `.translation.x`
   - `type_category` indicating "Component"
 
@@ -35,7 +33,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Verify it IS registered and returns:
   - Format info showing enum variants
   - `type_category` field (likely "Enum")
-  - `supported_operations` array
 - Execute format discovery for `bevy_render::camera::clear_color::ClearColor`
 - Verify it IS registered but response includes:
   - `has_serialize: false` and/or `has_deserialize: false`
@@ -77,7 +74,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - Check each type includes:
   - `spawn_format` example
   - `mutation_paths` where applicable
-  - `supported_operations` array
   - `type_category` classification
 - Verify response structure is organized by type
 
@@ -90,7 +86,6 @@ Validate Tier 2 direct format discovery capabilities when bevy_brp_extras plugin
 - ✅ Multi-type discovery works correctly with full metadata
 - ✅ Format corrections include:
   - Helpful hints
-  - `supported_operations` field
   - `mutation_paths` field
   - `type_category` field
 
@@ -99,4 +94,4 @@ STOP if:
 - Format discovery fails to return rich metadata when bevy_brp_extras is available
 - Correctable formats don't auto-correct with enriched responses
 - Educational responses don't include available metadata fields
-- Rich response fields (supported_operations, mutation_paths, type_category) are missing when they should be present
+- Rich response fields (mutation_paths, type_category) are missing when they should be present

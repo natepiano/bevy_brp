@@ -40,8 +40,6 @@ pub enum FormatCorrectionField {
     OriginalFormat,
     /// Path for mutation operations
     Path,
-    /// Operations supported by this component type
-    SupportedOperations,
     /// Category of the component type (e.g., "Component", "Resource")
     TypeCategory,
     /// Full type name (path) of the type being corrected

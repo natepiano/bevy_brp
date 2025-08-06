@@ -156,7 +156,6 @@ All resource insertion errors should include:
 - Clear problem description mentioning the specific resource type
 - Guidance that this is a BRP requirement for insert_resource
 - Helpful suggestion to add the traits to the resource definition
-- Indication that mutation operations may still work
 
 ### 6. Non-Existent Resource Test
 **STEP 1**: Attempt to insert a non-existent resource:
