@@ -9,7 +9,6 @@ use tracing::{debug, info};
 use super::registry_cache::global_cache;
 use crate::brp_tools::Port;
 use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
-use crate::error::Result;
 
 /// Comparison results between extras and local formats
 #[derive(Debug, Clone)]
@@ -63,15 +62,11 @@ impl RegistryComparison {
     ///
     /// Phase 1: Build local format using registry + hardcoded knowledge and compare
     /// with extras response to measure progress.
-    pub async fn compare_with_local(
-        extras_response: &Value,
-        port: Port,
-        type_name: &str,
-    ) -> Result<Self> {
+    pub fn compare_with_local(extras_response: &Value, port: Port, type_name: &str) -> Self {
         debug!("Building local format for comparison with extras");
 
         // Build local format - checks cache first, builds if needed
-        let local_format = Self::build_extras_equivalent_response(port, type_name).await?;
+        let local_format = Self::build_extras_equivalent_response(port, type_name);
 
         debug!("Local format built: {:?}", local_format.is_some());
 
@@ -83,7 +78,7 @@ impl RegistryComparison {
             comparison.differences.len()
         );
 
-        Ok(comparison)
+        comparison
     }
 
     /// Log structured comparison results for debugging and analysis
@@ -91,6 +86,7 @@ impl RegistryComparison {
     /// This function provides detailed tracing output showing comparison results
     /// between local and extras formats. Essential for monitoring progress as
     /// we implement local format building in future phases.
+    #[allow(clippy::too_many_lines)]
     pub fn log_comparison_results(&self, type_name: &BrpTypeName) {
         // Categorize differences
         let missing_in_local: Vec<_> = self
@@ -132,7 +128,7 @@ impl RegistryComparison {
                     "extras": extras,
                     "local": local
                 })),
-                _ => None,
+                FormatDifference::MissingField { .. } => None,
             })
             .collect();
 
@@ -140,12 +136,12 @@ impl RegistryComparison {
         let extras_spawn = self
             .extras_format
             .as_ref()
-            .and_then(|ef| ef.pointer(&format!("/type_info/{}/example_values/spawn", type_name)));
+            .and_then(|ef| ef.pointer(&format!("/type_info/{type_name}/example_values/spawn")));
 
         let local_spawn = self
             .local_format
             .as_ref()
-            .and_then(|lf| lf.pointer(&format!("/type_info/{}/example_values/spawn", type_name)));
+            .and_then(|lf| lf.pointer(&format!("/type_info/{type_name}/example_values/spawn")));
 
         let spawn_match = match (extras_spawn, local_spawn) {
             (Some(e), Some(l)) => e == l,
@@ -179,7 +175,7 @@ impl RegistryComparison {
         let has_example_values = self
             .local_format
             .as_ref()
-            .and_then(|lf| lf.pointer(&format!("/type_info/{}/example_values", type_name)))
+            .and_then(|lf| lf.pointer(&format!("/type_info/{type_name}/example_values")))
             .is_some();
 
         let phase1_success = spawn_match && has_type_info && has_example_values;
@@ -203,7 +199,7 @@ impl RegistryComparison {
                 type_name
             );
         } else {
-            let preview_missing: Vec<_> = missing_in_local.iter().take(5).map(|s| *s).collect();
+            let preview_missing: Vec<_> = missing_in_local.iter().take(5).copied().collect();
             info!(
                 "❌ Phase 1 INCOMPLETE for {}: {} differences, missing: {:?}",
                 type_name,
@@ -231,10 +227,7 @@ impl RegistryComparison {
     /// 3. Assembles full extras-equivalent response with `type_info` wrapper
     ///
     /// Phase 1: Returns spawn format with metadata for Transform component
-    async fn build_extras_equivalent_response(
-        _port: Port,
-        type_name: &str,
-    ) -> Result<Option<Value>> {
+    fn build_extras_equivalent_response(_port: Port, type_name: &str) -> Option<Value> {
         debug!("Building extras-equivalent response for comparison");
 
         // Check cache first
@@ -248,7 +241,7 @@ impl RegistryComparison {
                 "Cache miss for {} - no local format available yet",
                 type_name
             );
-            return Ok(None);
+            return None;
         };
 
         // Use reflection flags directly from cached info
@@ -266,7 +259,6 @@ impl RegistryComparison {
         let mut mutation_paths_obj = serde_json::Map::new();
 
         // Group paths by base field to determine which are "entire" fields
-        let mut base_fields = std::collections::HashSet::new();
         let mut component_fields = std::collections::HashSet::new();
 
         for mutation_path in &cached_info.mutation_paths {
@@ -275,9 +267,7 @@ impl RegistryComparison {
                 .trim_start_matches('.')
                 .split('.')
                 .collect();
-            if path_parts.len() == 1 {
-                base_fields.insert(path_parts[0]);
-            } else if path_parts.len() == 2 {
+            if path_parts.len() == 2 {
                 component_fields.insert(path_parts[0]);
             }
         }
@@ -319,11 +309,20 @@ impl RegistryComparison {
             mutation_paths_obj.insert(mutation_path.path.clone(), json!(description));
         }
 
+        // Convert enum variants to strings using strum
+        let supported_ops: Vec<String> = cached_info
+            .supported_operations
+            .iter()
+            .map(|op| op.as_ref().to_string())
+            .collect();
+
         // Log Phase 2 status for test validation
         let phase_2_status = json!({
-            "success": !cached_info.mutation_paths.is_empty(),
+            "success": !cached_info.mutation_paths.is_empty() && !supported_ops.is_empty(),
             "has_mutation_paths": !cached_info.mutation_paths.is_empty(),
-            "mutation_paths_count": cached_info.mutation_paths.len()
+            "mutation_paths_count": cached_info.mutation_paths.len(),
+            "has_supported_operations": !supported_ops.is_empty(),
+            "supported_operations_count": supported_ops.len()
         });
         debug!("PHASE_2_STATUS: {}", phase_2_status);
 
@@ -331,22 +330,25 @@ impl RegistryComparison {
         let local_response = json!({
             "type_info": {
                 type_name: {
+                    "type_name": type_name,
+                    "in_registry": true,
+                    "type_category": cached_info.type_category,
+                    "has_serialize": has_serialize,
+                    "has_deserialize": has_deserialize,
+                    "supported_operations": supported_ops,
+                    "mutation_paths": mutation_paths_obj,
                     "example_values": {
                         "spawn": cached_info.spawn_format
                     },
-                    "mutation_paths": mutation_paths_obj,
-                    "type_category": "Struct",
-                    "has_serialize": has_serialize,
-                    "has_deserialize": has_deserialize,
-                    "in_registry": true
-                    // TODO Phase 2: Still missing supported_operations, enum_info, error, type_name
+                    "enum_info": null,
+                    "error": null
                 }
             }
         });
 
         debug!("Built extras-equivalent response: {:?}", local_response);
 
-        Ok(Some(local_response))
+        Some(local_response)
     }
 
     /// Compute differences between extras and local formats

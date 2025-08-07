@@ -318,3 +318,14 @@ pub enum TypeCategory {
     /// Component type
     Component,
 }
+
+impl From<&str> for TypeCategory {
+    fn from(s: &str) -> Self {
+        match s {
+            "Struct" => Self::Struct,
+            "TupleStruct" => Self::TupleStruct,
+            "Enum" => Self::Enum,
+            _ => Self::Unknown,
+        }
+    }
+}

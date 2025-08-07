@@ -37,11 +37,13 @@ Validate our local registry + hardcoded knowledge approach against the current e
   - `spawn_formats_match`: Should be `true` 
   - `has_core_structure`: Should be `true`
 - **NEW**: Look for `PHASE_2_STATUS:` entry and parse the JSON to check:
-  - `success`: Should be `true` for Phase 2 (mutation paths generated)
+  - `success`: Should be `true` for Phase 2 (mutation paths and supported operations generated)
   - `has_mutation_paths`: Should be `true`
-  - `mutation_paths_count`: Should be > 0 (should be 12 for Transform)
+  - `mutation_paths_count`: Should be > 0 (should be 13 for Transform)
+  - `has_supported_operations`: Should be `true`
+  - `supported_operations_count`: Should be > 0 (should be 5 for Transform: query, get, spawn, insert, mutate)
 - Look for `COMPARISON_RESULT:` entry and parse the JSON to verify:
-  - `missing_in_local`: List of fields we haven't implemented yet
+  - `missing_in_local`: Should be significantly reduced compared to Phase 1 (most Phase 2 fields now implemented)
   - `missing_in_extras`: Should be empty (extras has everything)
   - `value_mismatches`: Should be empty for spawn formats
   - `spawn_formats_match`: Should be `true` for Transform
@@ -55,9 +57,9 @@ Validate our local registry + hardcoded knowledge approach against the current e
 ## Expected Results
 - ✅ Comparison infrastructure runs in parallel without impacting existing flow
 - ✅ `PHASE_1_STATUS` shows `"success": true` for Transform
-- ✅ **NEW**: `PHASE_2_STATUS` shows `"success": true` and `"has_mutation_paths": true` with count > 0
+- ✅ **NEW**: `PHASE_2_STATUS` shows `"success": true`, `"has_mutation_paths": true`, and `"has_supported_operations": true` with counts > 0
 - ✅ `COMPARISON_RESULT` shows `"spawn_formats_match": true` for Transform
-- ✅ Missing fields only in wrapper/metadata (not in spawn format itself)
+- ✅ Missing fields significantly reduced - core Phase 2 fields (type_name, type_category, supported_operations, enum_info, error) now implemented
 - ✅ Human-friendly log shows "✅ Phase 1 SUCCESS for bevy_transform::components::transform::Transform"
 - ✅ Format discovery and correction continue to work normally
 - ✅ No impact on spawn/insert operations success rates

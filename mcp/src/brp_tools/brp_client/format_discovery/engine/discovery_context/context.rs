@@ -7,12 +7,12 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 use tracing::{debug, warn};
 
-use super::super::types::BrpTypeName;
+use super::super::types::{BrpTypeName, TypeCategory};
 use super::super::unified_types::UnifiedTypeInfo;
 use super::comparison::RegistryComparison;
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::registry_cache::global_cache;
-use super::types::{CachedTypeInfo, MutationPath};
+use super::types::{BrpSupportedOperation, CachedTypeInfo, MutationPath};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -80,16 +80,7 @@ impl DiscoveryContext {
         // Compare each type and log results
         for type_name in self.type_map.keys() {
             let comparison =
-                RegistryComparison::compare_with_local(&response, self.port, type_name.as_str())
-                    .await
-                    .unwrap_or_else(|e| {
-                        warn!(
-                            "Failed to compare '{}' with local: {}",
-                            type_name.as_str(),
-                            e
-                        );
-                        RegistryComparison::new(Some(response.clone()), None)
-                    });
+                RegistryComparison::compare_with_local(&response, self.port, type_name.as_str());
 
             // Log comparison results for this type
             comparison.log_comparison_results(type_name);
@@ -177,10 +168,23 @@ impl DiscoveryContext {
     fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
         debug!("Registry Integration: Searching for '{type_name}' in registry response");
 
+        // Try object format first (direct key lookup)
         if let Some(obj) = response_data.as_object() {
             if let Some(type_data) = obj.get(type_name) {
                 debug!("Registry Integration: Found '{type_name}' as direct key");
                 return Some(type_data.clone());
+            }
+        }
+
+        // Try array format (search by typePath field)
+        if let Some(arr) = response_data.as_array() {
+            for item in arr {
+                if let Some(type_path) = item.get("typePath").and_then(Value::as_str) {
+                    if type_path == type_name {
+                        debug!("Registry Integration: Found '{type_name}' in array format");
+                        return Some(item.clone());
+                    }
+                }
             }
         }
 
@@ -330,7 +334,7 @@ impl DiscoveryContext {
     /// 3. Building spawn format using hardcoded knowledge from `BRP_FORMAT_KNOWLEDGE`
     /// 4. Storing complete `CachedTypeInfo` in the global cache
     ///
-    /// Phase 1: Process all types in type_map with Vec3/Quat field types
+    /// Phase 1: Process all types in `type_map` with Vec3/Quat field types
     async fn build_local_type_info(&self) -> Result<()> {
         debug!("Building local type info for all types in context");
 
@@ -363,13 +367,23 @@ impl DiscoveryContext {
             let (spawn_format, mutation_paths) =
                 Self::build_spawn_format_and_mutation_paths(&type_schema, type_name_str);
 
+            // Determine supported operations based on reflection types
+            let supported_operations = Self::determine_supported_operations(&reflect_types);
+
+            // Extract type category from registry schema
+            let type_category: TypeCategory = type_schema
+                .get("kind")
+                .and_then(Value::as_str)
+                .map_or(TypeCategory::Unknown, Into::into);
+
             // Create complete CachedTypeInfo
             let cached_info = CachedTypeInfo {
                 mutation_paths,
                 registry_schema: type_schema,
                 reflect_types,
                 spawn_format: Value::Object(spawn_format),
-                supported_operations: vec![], // Phase 2+: populated
+                supported_operations,
+                type_category,
             };
 
             // Store in permanent cache
@@ -394,15 +408,6 @@ impl DiscoveryContext {
                     .collect::<Vec<String>>()
             })
             .unwrap_or_default()
-    }
-
-    /// Build spawn format from registry schema properties
-    ///
-    /// Phase 1: Uses hardcoded knowledge for known field types (Vec3, Quat)
-    /// Future phases: Will recursively build nested structures
-    fn build_spawn_format(type_schema: &Value, type_name: &str) -> serde_json::Map<String, Value> {
-        let (spawn_format, _) = Self::build_spawn_format_and_mutation_paths(type_schema, type_name);
-        spawn_format
     }
 
     /// Build spawn format and mutation paths from registry schema properties
@@ -434,23 +439,20 @@ impl DiscoveryContext {
                             debug!("Added field '{}' from hardcoded knowledge", field_name);
 
                             // Always generate base field mutation path
-                            let base_path = format!(".{}", field_name);
+                            let base_path = format!(".{field_name}");
                             mutation_paths.push(MutationPath {
                                 path:          base_path,
                                 example_value: hardcoded.example_value.clone(),
-                                value_type:    ft.into(),
                             });
 
                             // Generate component mutation paths if available
                             if let Some(component_paths) = &hardcoded.subfield_paths {
                                 for (component_name, example_value) in component_paths {
-                                    let component_path =
-                                        format!(".{}.{}", field_name, component_name);
+                                    let component_path = format!(".{field_name}.{component_name}");
 
                                     mutation_paths.push(MutationPath {
                                         path:          component_path,
                                         example_value: example_value.clone(),
-                                        value_type:    ft.into(),
                                     });
                                 }
                             }
@@ -484,10 +486,53 @@ impl DiscoveryContext {
         (spawn_format, mutation_paths)
     }
 
+    /// Determine which BRP operations are supported based on reflection types
+    ///
+    /// Operations are determined based on type registration and `SerDe` traits:
+    /// - Query/Get: Always supported if in registry
+    /// - Spawn/Insert: Require both Serialize AND Deserialize for components
+    /// - Insert (resource): Always available for resources (no `SerDe` required)
+    /// - Mutate: Always available for components/resources in registry
+    fn determine_supported_operations(reflect_types: &[String]) -> Vec<BrpSupportedOperation> {
+        use super::types::BrpSupportedOperation::{Get, Insert, Mutate, Query, Spawn};
+
+        let mut ops = Vec::new();
+
+        // Always supported if in registry
+        ops.push(Query);
+        ops.push(Get);
+
+        let has_serialize = reflect_types.contains(&"Serialize".to_string());
+        let has_deserialize = reflect_types.contains(&"Deserialize".to_string());
+        let has_component = reflect_types.contains(&"Component".to_string());
+        let has_resource = reflect_types.contains(&"Resource".to_string());
+
+        // Component operations:
+        // - spawn/insert require BOTH Serialize AND Deserialize
+        // - mutate_component works even without SerDe
+        if has_component {
+            if has_serialize && has_deserialize {
+                ops.push(Spawn);
+                ops.push(Insert);
+            }
+            ops.push(Mutate); // Always available for components in registry
+        }
+
+        // Resource operations:
+        // - insert_resource always works (no SerDe required)
+        // - mutate_resource always works
+        if has_resource {
+            ops.push(Insert); // insert_resource always available
+            ops.push(Mutate); // mutate_resource always available
+        }
+
+        ops
+    }
+
     /// Find type in registry response and return error if not found
     ///
-    /// This is a wrapper around find_type_in_registry_response that adds error handling
-    /// and debug logging, used by both new() and build_local_type_info()
+    /// This is a wrapper around `find_type_in_registry_response` that adds error handling
+    /// and debug logging, used by both `new()` and `build_local_type_info()`
     fn require_type_in_registry(type_name: &str, registry_data: &Value) -> Result<Value> {
         let registry_schema = Self::find_type_in_registry_response(type_name, registry_data)
             .ok_or_else(|| Error::TypeNotRegistered {

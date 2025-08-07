@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use serde_json::{Value, json};
+use serde_json::json;
 
 use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::BrpFormatKnowledge;
 use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
