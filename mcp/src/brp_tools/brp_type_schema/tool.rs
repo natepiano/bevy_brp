@@ -1008,7 +1008,7 @@ fn build_type_info_entry(type_name: &str, cached_info: &CachedTypeInfo) -> Value
         }
 
         if let Some(variants) = &mutation_path.enum_variants {
-            path_obj.insert("variants".to_string(), json!(variants));
+            path_obj.insert("enum_variants".to_string(), json!(variants));
         }
 
         if let Some(type_name) = &mutation_path.type_name {

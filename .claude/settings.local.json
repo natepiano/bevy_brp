@@ -67,6 +67,6 @@
       "mcp__brp__brp_type_schema",
       "mcp__brp__brp_type_schema"
     ],
-    "deny": []
+    "deny": ["Bash(sed:*)"]
   }
 }
