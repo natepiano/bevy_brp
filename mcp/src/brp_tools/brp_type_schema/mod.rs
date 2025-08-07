@@ -7,6 +7,7 @@
 pub mod hardcoded_formats;
 pub mod registry_cache;
 mod tool;
+pub mod type_discovery;
 pub mod types;
 
 // Re-export public API
