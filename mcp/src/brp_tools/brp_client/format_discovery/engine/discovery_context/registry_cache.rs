@@ -36,63 +36,9 @@ impl RegistryCache {
     pub fn insert(&self, type_name: BrpTypeName, info: CachedTypeInfo) {
         self.types.insert(type_name, info);
     }
-
-    /// Clear all cached entries
-    pub fn clear(&self) {
-        self.types.clear();
-    }
-
-    /// Get the number of cached types
-    pub fn len(&self) -> usize {
-        self.types.len()
-    }
-
-    /// Check if the cache is empty
-    pub fn is_empty(&self) -> bool {
-        self.types.is_empty()
-    }
 }
 
 /// Get the global registry cache instance
 pub fn global_cache() -> &'static RegistryCache {
     &REGISTRY_CACHE
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Instant;
-
-    use serde_json::json;
-
-    use super::*;
-    use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::{
-        BrpSupportedOperation, SerializationFormat,
-    };
-
-    #[test]
-    fn test_cache_operations() {
-        let cache = RegistryCache::new();
-        let type_name: BrpTypeName = "test::Type".into();
-
-        // Initially empty
-        assert!(cache.get(&type_name).is_none());
-
-        // Insert and retrieve
-        let info = CachedTypeInfo {
-            cached_at:            Instant::now(),
-            mutation_paths:       vec![],
-            registry_schema:      json!({"test": "data"}),
-            serialization_format: SerializationFormat::Object,
-            spawn_format:         json!({}),
-            supported_operations: vec![BrpSupportedOperation::Query, BrpSupportedOperation::Get],
-        };
-
-        cache.insert(type_name.clone(), info);
-        let retrieved = cache.get(&type_name);
-        assert!(retrieved.is_some());
-
-        // Clear cache
-        cache.clear();
-        assert!(cache.get(&type_name).is_none());
-    }
 }

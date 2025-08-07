@@ -382,13 +382,3 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         map
     });
-
-/// Check if we have hardcoded knowledge for a type
-pub fn has_hardcoded_format(type_name: &BrpTypeName) -> bool {
-    BRP_FORMAT_KNOWLEDGE.contains_key(type_name)
-}
-
-/// Get hardcoded format knowledge for a type
-pub fn get_hardcoded_format(type_name: &BrpTypeName) -> Option<&'static BrpFormatKnowledge> {
-    BRP_FORMAT_KNOWLEDGE.get(type_name)
-}

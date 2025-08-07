@@ -5,11 +5,14 @@
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
-use tracing::debug;
+use tracing::{debug, warn};
 
 use super::super::types::BrpTypeName;
 use super::super::unified_types::UnifiedTypeInfo;
 use super::comparison::RegistryComparison;
+use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
+use super::registry_cache::global_cache;
+use super::types::{CachedTypeInfo, SerializationFormat};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -78,12 +81,24 @@ impl DiscoveryContext {
     pub async fn enrich_with_extras(&mut self) -> Result<()> {
         let response = self.call_extras_discover_format().await?;
 
-        // Phase 0.2: Compare with local (empty) format for baseline visibility
-        let comparison = Self::compare_with_local(&response);
+        // Phase 1: Compare with local format built from registry + hardcoded knowledge
+        // First ensure cache is populated
+        if let Err(e) = self.build_local_type_info().await {
+            warn!("Failed to build local type info: {}", e);
+        }
+
+        // For now, focus on Transform for Phase 1
+        let type_name = "bevy_transform::components::transform::Transform";
+        let comparison = RegistryComparison::compare_with_local(&response, self.port, type_name)
+            .await
+            .unwrap_or_else(|e| {
+                warn!("Failed to compare with local: {}", e);
+                RegistryComparison::new(Some(response.clone()), None)
+            });
 
         // Log comparison results for each type we're processing
         for type_name in self.type_map.keys() {
-            Self::log_comparison_results(type_name, &comparison);
+            comparison.log_comparison_results(type_name);
         }
 
         // Store comparison for potential future analysis
@@ -106,67 +121,6 @@ impl DiscoveryContext {
     /// Get all types as an iterator
     pub fn types(&self) -> impl Iterator<Item = &UnifiedTypeInfo> {
         self.type_map.values()
-    }
-
-    /// Get registry comparison if available
-    #[allow(dead_code)]
-    pub const fn registry_comparison(&self) -> Option<&RegistryComparison> {
-        self.registry_comparison.as_ref()
-    }
-
-    /// Set registry comparison
-    #[allow(dead_code)]
-    pub fn set_registry_comparison(&mut self, comparison: RegistryComparison) {
-        self.registry_comparison = Some(comparison);
-    }
-
-    /// Compare local format (currently empty) with extras response format
-    ///
-    /// This method creates a `RegistryComparison` for baseline visibility into what
-    /// extras provides vs what we have locally (currently nothing). This establishes
-    /// Phase 0 comparison infrastructure before building any local formats.
-    ///
-    /// Expected behavior: Every type shows `MissingField` differences with source: `Local`
-    /// since we haven't implemented local format building yet.
-    fn compare_with_local(extras_response: &Value) -> RegistryComparison {
-        debug!("Creating baseline comparison with empty local format");
-
-        // For Phase 0.2, we create comparison with:
-        // - extras_format: Some(data from extras response)
-        // - local_format: None (we haven't built anything yet)
-        // This will show all fields as missing from Local side
-        let comparison = RegistryComparison::new(Some(extras_response.clone()), None);
-
-        debug!(
-            "Created baseline comparison - all differences will show as missing from Local side"
-        );
-
-        comparison
-    }
-
-    /// Log structured comparison results for debugging and analysis
-    ///
-    /// This function provides detailed tracing output showing comparison results
-    /// between local and extras formats. Essential for monitoring progress as
-    /// we implement local format building in future phases.
-    fn log_comparison_results(type_name: &BrpTypeName, comparison: &RegistryComparison) {
-        debug!(
-            type_name = %type_name,
-            comparison_result = ?comparison,
-            differences_count = comparison.differences.len(),
-            is_equivalent = comparison.is_equivalent(),
-            "Local vs Extras format comparison"
-        );
-
-        // Log individual differences for debugging
-        for (i, diff) in comparison.differences.iter().enumerate() {
-            debug!(
-                type_name = %type_name,
-                difference_index = i,
-                difference = ?diff,
-                "Format difference detail"
-            );
-        }
     }
 
     /// Call `bevy_brp_extras/discover_format` for all types
@@ -414,6 +368,110 @@ impl DiscoveryContext {
                 Err(e)
             }
         }
+    }
+
+    /// Build complete `CachedTypeInfo` for permanent storage in `RegistryCache`
+    ///
+    /// This method builds local type information by:
+    /// 1. Re-fetching raw registry schema via `fetch_registry_schemas()`
+    /// 2. Parsing the registry schema to extract type structure and reflection traits
+    /// 3. Building spawn format using hardcoded knowledge from `BRP_FORMAT_KNOWLEDGE`
+    /// 4. Storing complete `CachedTypeInfo` in the global cache
+    ///
+    /// Phase 1: Focused on Transform component with Vec3/Quat field types
+    pub async fn build_local_type_info(&self) -> Result<()> {
+        debug!("Building local type info for all types in context");
+
+        // For Phase 1, focus on Transform component
+        let type_name = "bevy_transform::components::transform::Transform";
+
+        // Re-fetch raw registry schema (not UnifiedTypeInfo) for direct parsing
+        let type_value_pairs = vec![(type_name.into(), json!({}))]; // Dummy value for schema fetch
+        let registry_data = Self::fetch_registry_schemas(&type_value_pairs, self.port).await?;
+        let registry_schema = Self::find_type_in_registry_response(type_name, &registry_data)
+            .ok_or_else(|| Error::missing(&format!("Type '{type_name}' in registry response")))?;
+
+        debug!(
+            "Retrieved registry schema for {}: {:?}",
+            type_name, registry_schema
+        );
+
+        // Extract serialization flags from registry schema directly
+        let reflect_types = registry_schema
+            .get("reflectTypes")
+            .and_then(Value::as_array)
+            .ok_or_else(|| {
+                Error::invalid(
+                    &format!("'reflectTypes' field for type '{type_name}'"),
+                    "missing or not an array",
+                )
+            })?;
+
+        debug!("Found reflect_types: {:?}", reflect_types);
+
+        // Parse properties and build spawn format
+        let properties = registry_schema
+            .get("properties")
+            .and_then(Value::as_object)
+            .ok_or_else(|| {
+                Error::invalid(
+                    &format!("'properties' field for type '{type_name}'"),
+                    "missing or not an object",
+                )
+            })?;
+
+        let mut spawn_format = serde_json::Map::new();
+
+        for (field_name, field_info) in properties {
+            // Extract type from {"type": {"$ref": "#/$defs/glam::Vec3"}} structure
+            let field_type = field_info
+                .get("type")
+                .and_then(|t| t.get("$ref"))
+                .and_then(Value::as_str)
+                .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
+                .ok_or_else(|| {
+                    Error::invalid(
+                        &format!("type field for '{field_name}' in '{type_name}'"),
+                        "missing or invalid $ref format",
+                    )
+                })?;
+
+            debug!(
+                "Processing field '{}' with type '{}'",
+                field_name, field_type
+            );
+
+            if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&field_type.into()) {
+                spawn_format.insert(field_name.clone(), hardcoded.example_value.clone());
+                debug!("Added field '{}' from hardcoded knowledge", field_name);
+            } else {
+                warn!(
+                    "Skipping unknown field type '{}' for field '{}' - not in hardcoded knowledge",
+                    field_type, field_name
+                );
+            }
+        }
+
+        // Create complete CachedTypeInfo
+        let cached_info = CachedTypeInfo {
+            mutation_paths:       vec![], // Phase 1: empty, Phase 2+: populated
+            registry_schema:      registry_schema.clone(),
+            serialization_format: SerializationFormat::Object, // Transform is object
+            spawn_format:         Value::Object(spawn_format.clone()),
+            supported_operations: vec![], // Phase 1: empty, Phase 2+: populated
+        };
+
+        debug!(
+            "Built CachedTypeInfo for {}: spawn_format = {:?}",
+            type_name, spawn_format
+        );
+
+        // Store in permanent cache
+        global_cache().insert(type_name.into(), cached_info);
+
+        debug!("Successfully cached type info for {}", type_name);
+
+        Ok(())
     }
 }
 

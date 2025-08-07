@@ -3,8 +3,6 @@
 //! This module contains type structures used for caching and comparing
 //! registry-derived type information with extras-based discovery.
 
-use std::time::Instant;
-
 use serde_json::Value;
 
 use super::super::types::BrpTypeName;
@@ -21,8 +19,6 @@ pub struct BrpFormatKnowledge {
 /// Cached type information from registry
 #[derive(Debug, Clone)]
 pub struct CachedTypeInfo {
-    /// When this was cached
-    pub cached_at:            Instant,
     /// Mutation paths available for this type
     pub mutation_paths:       Vec<MutationPath>,
     /// Raw registry schema response
