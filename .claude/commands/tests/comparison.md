@@ -36,6 +36,10 @@ Validate our local registry + hardcoded knowledge approach against the current e
   - `success`: Should be `true` for Phase 1 (spawn formats match)
   - `spawn_formats_match`: Should be `true` 
   - `has_core_structure`: Should be `true`
+- **NEW**: Look for `PHASE_2_STATUS:` entry and parse the JSON to check:
+  - `success`: Should be `true` for Phase 2 (mutation paths generated)
+  - `has_mutation_paths`: Should be `true`
+  - `mutation_paths_count`: Should be > 0 (should be 12 for Transform)
 - Look for `COMPARISON_RESULT:` entry and parse the JSON to verify:
   - `missing_in_local`: List of fields we haven't implemented yet
   - `missing_in_extras`: Should be empty (extras has everything)
@@ -51,13 +55,15 @@ Validate our local registry + hardcoded knowledge approach against the current e
 ## Expected Results
 - ✅ Comparison infrastructure runs in parallel without impacting existing flow
 - ✅ `PHASE_1_STATUS` shows `"success": true` for Transform
+- ✅ **NEW**: `PHASE_2_STATUS` shows `"success": true` and `"has_mutation_paths": true` with count > 0
 - ✅ `COMPARISON_RESULT` shows `"spawn_formats_match": true` for Transform
 - ✅ Missing fields only in wrapper/metadata (not in spawn format itself)
 - ✅ Human-friendly log shows "✅ Phase 1 SUCCESS for bevy_transform::components::transform::Transform"
 - ✅ Format discovery and correction continue to work normally
 - ✅ No impact on spawn/insert operations success rates
 - ✅ Structured logs include:
-  - `PHASE_1_STATUS`: Phase-specific success criteria
+  - `PHASE_1_STATUS`: Phase-specific success criteria  
+  - `PHASE_2_STATUS`: Phase 2 mutation paths success criteria
   - `COMPARISON_RESULT`: Full comparison details with categorized differences
   - Clear JSON format parseable with `jq`
   - Both machine-readable and human-friendly output

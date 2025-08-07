@@ -12,7 +12,7 @@ use super::super::unified_types::UnifiedTypeInfo;
 use super::comparison::RegistryComparison;
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::registry_cache::global_cache;
-use super::types::CachedTypeInfo;
+use super::types::{CachedTypeInfo, MutationPath};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -359,16 +359,17 @@ impl DiscoveryContext {
             // Extract serialization flags from registry schema directly
             let reflect_types = Self::extract_reflect_types(&type_schema);
 
-            // Build spawn format from properties using hardcoded knowledge
-            let spawn_format = Self::build_spawn_format(&type_schema, type_name_str);
+            // Build spawn format and mutation paths from properties using hardcoded knowledge
+            let (spawn_format, mutation_paths) =
+                Self::build_spawn_format_and_mutation_paths(&type_schema, type_name_str);
 
             // Create complete CachedTypeInfo
             let cached_info = CachedTypeInfo {
-                mutation_paths: vec![], // Phase 1: empty, Phase 2+: populated
+                mutation_paths,
                 registry_schema: type_schema,
                 reflect_types,
                 spawn_format: Value::Object(spawn_format),
-                supported_operations: vec![], // Phase 1: empty, Phase 2+: populated
+                supported_operations: vec![], // Phase 2+: populated
             };
 
             // Store in permanent cache
@@ -400,7 +401,19 @@ impl DiscoveryContext {
     /// Phase 1: Uses hardcoded knowledge for known field types (Vec3, Quat)
     /// Future phases: Will recursively build nested structures
     fn build_spawn_format(type_schema: &Value, type_name: &str) -> serde_json::Map<String, Value> {
+        let (spawn_format, _) = Self::build_spawn_format_and_mutation_paths(type_schema, type_name);
+        spawn_format
+    }
+
+    /// Build spawn format and mutation paths from registry schema properties
+    ///
+    /// Phase 2: Uses hardcoded knowledge for known field types and generates mutation paths
+    fn build_spawn_format_and_mutation_paths(
+        type_schema: &Value,
+        type_name: &str,
+    ) -> (serde_json::Map<String, Value>, Vec<MutationPath>) {
         let mut spawn_format = serde_json::Map::new();
+        let mut mutation_paths = Vec::new();
 
         let properties = type_schema.get("properties").and_then(Value::as_object);
 
@@ -416,8 +429,31 @@ impl DiscoveryContext {
                 match field_type {
                     Some(ft) => {
                         if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&ft.into()) {
-                            spawn_format.insert(field_name.clone(), hardcoded.clone());
+                            spawn_format
+                                .insert(field_name.clone(), hardcoded.example_value.clone());
                             debug!("Added field '{}' from hardcoded knowledge", field_name);
+
+                            // Always generate base field mutation path
+                            let base_path = format!(".{}", field_name);
+                            mutation_paths.push(MutationPath {
+                                path:          base_path,
+                                example_value: hardcoded.example_value.clone(),
+                                value_type:    ft.into(),
+                            });
+
+                            // Generate component mutation paths if available
+                            if let Some(component_paths) = &hardcoded.subfield_paths {
+                                for (component_name, example_value) in component_paths {
+                                    let component_path =
+                                        format!(".{}.{}", field_name, component_name);
+
+                                    mutation_paths.push(MutationPath {
+                                        path:          component_path,
+                                        example_value: example_value.clone(),
+                                        value_type:    ft.into(),
+                                    });
+                                }
+                            }
                         } else {
                             warn!(
                                 "Skipping unknown field type '{}' for field '{}' in '{}' - not in hardcoded knowledge",
@@ -440,7 +476,12 @@ impl DiscoveryContext {
             );
         }
 
-        spawn_format
+        debug!(
+            "Generated {} mutation paths for {}",
+            mutation_paths.len(),
+            type_name
+        );
+        (spawn_format, mutation_paths)
     }
 
     /// Find type in registry response and return error if not found

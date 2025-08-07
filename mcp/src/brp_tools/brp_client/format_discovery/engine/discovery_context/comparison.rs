@@ -262,6 +262,55 @@ impl RegistryComparison {
             has_serialize, has_deserialize
         );
 
+        // Convert mutation paths to extras format (object with path -> description mappings)
+        let mut mutation_paths_obj = serde_json::Map::new();
+        
+        // Group paths by base field to determine which are "entire" fields
+        let mut base_fields = std::collections::HashSet::new();
+        let mut component_fields = std::collections::HashSet::new();
+        
+        for mutation_path in &cached_info.mutation_paths {
+            let path_parts: Vec<&str> = mutation_path.path.trim_start_matches('.').split('.').collect();
+            if path_parts.len() == 1 {
+                base_fields.insert(path_parts[0]);
+            } else if path_parts.len() == 2 {
+                component_fields.insert(path_parts[0]);
+            }
+        }
+        
+        // Generate descriptions with example values
+        for mutation_path in &cached_info.mutation_paths {
+            let path_without_dot = mutation_path.path.trim_start_matches('.');
+            let path_parts: Vec<&str> = path_without_dot.split('.').collect();
+            
+            let description = if path_parts.len() == 1 {
+                // Base field - check if it has components to determine "entire" vs just field name
+                let field_name = path_parts[0];
+                if component_fields.contains(field_name) {
+                    format!("Mutate the entire {} field, e.g.: {}", field_name, mutation_path.example_value)
+                } else {
+                    format!("Mutate the {} field, e.g.: {}", field_name, mutation_path.example_value)
+                }
+            } else if path_parts.len() == 2 {
+                // Component field like .rotation.x
+                let component_name = path_parts[1];
+                format!("Mutate the {} component, e.g.: {}", component_name, mutation_path.example_value)
+            } else {
+                // Fallback for deeper nesting
+                format!("Mutate the {} field, e.g.: {}", path_without_dot, mutation_path.example_value)
+            };
+            
+            mutation_paths_obj.insert(mutation_path.path.clone(), json!(description));
+        }
+
+        // Log Phase 2 status for test validation
+        let phase_2_status = json!({
+            "success": !cached_info.mutation_paths.is_empty(),
+            "has_mutation_paths": !cached_info.mutation_paths.is_empty(),
+            "mutation_paths_count": cached_info.mutation_paths.len()
+        });
+        debug!("PHASE_2_STATUS: {}", phase_2_status);
+
         // Build full extras-equivalent response
         let local_response = json!({
             "type_info": {
@@ -269,11 +318,12 @@ impl RegistryComparison {
                     "example_values": {
                         "spawn": cached_info.spawn_format
                     },
+                    "mutation_paths": mutation_paths_obj,
                     "type_category": "Struct",
                     "has_serialize": has_serialize,
                     "has_deserialize": has_deserialize,
                     "in_registry": true
-                    // Skip mutation_paths, supported_operations for Phase 1
+                    // TODO Phase 2: Still missing supported_operations, enum_info, error, type_name
                 }
             }
         });
@@ -345,7 +395,13 @@ pub fn compare_json_values(path: &str, extras: &Value, local: &Value) -> Vec<For
             for (key, extras_val) in extras_obj {
                 if let Some(local_val) = local_obj.get(key) {
                     let sub_path = format!("{path}.{key}");
-                    differences.extend(compare_json_values(&sub_path, extras_val, local_val));
+                    
+                    // Special handling for mutation_paths - only compare keys, not values
+                    if key == "mutation_paths" {
+                        differences.extend(compare_mutation_paths(&sub_path, extras_val, local_val));
+                    } else {
+                        differences.extend(compare_json_values(&sub_path, extras_val, local_val));
+                    }
                 }
             }
         }
@@ -377,6 +433,48 @@ pub fn compare_json_values(path: &str, extras: &Value, local: &Value) -> Vec<For
         }
     }
 
+    differences
+}
+
+/// Compare mutation paths objects - only check that keys match, allow different descriptions
+fn compare_mutation_paths(path: &str, extras: &Value, local: &Value) -> Vec<FormatDifference> {
+    let mut differences = Vec::new();
+    
+    match (extras, local) {
+        (Value::Object(extras_obj), Value::Object(local_obj)) => {
+            // Check for missing keys in local
+            for key in extras_obj.keys() {
+                if !local_obj.contains_key(key) {
+                    differences.push(FormatDifference::MissingField {
+                        path: format!("{path}.{key}"),
+                        source: ComparisonSource::Local,
+                    });
+                }
+            }
+            
+            // Check for extra keys in local (shouldn't happen but let's be thorough)
+            for key in local_obj.keys() {
+                if !extras_obj.contains_key(key) {
+                    differences.push(FormatDifference::MissingField {
+                        path: format!("{path}.{key}"),
+                        source: ComparisonSource::Extras,
+                    });
+                }
+            }
+            
+            // Note: We intentionally do NOT compare the values (descriptions)
+            // since our descriptions will be different from extras
+        }
+        _ => {
+            // If either isn't an object, fall back to value mismatch
+            differences.push(FormatDifference::ValueMismatch {
+                path: path.to_string(),
+                extras: extras.clone(),
+                local: local.clone(),
+            });
+        }
+    }
+    
     differences
 }
 

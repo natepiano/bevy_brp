@@ -7,6 +7,16 @@ use serde_json::Value;
 
 use super::super::types::BrpTypeName;
 
+/// Hardcoded BRP format knowledge for a type
+#[derive(Debug, Clone)]
+pub struct BrpFormatKnowledge {
+    /// Example value in the correct BRP format
+    pub example_value:  Value,
+    /// Subfield paths for types that support subfield mutation (e.g., Vec3 has x,y,z)
+    /// Each tuple is (subfield_name, example_value)
+    pub subfield_paths: Option<Vec<(&'static str, Value)>>,
+}
+
 /// Cached type information from registry
 #[derive(Debug, Clone)]
 pub struct CachedTypeInfo {
