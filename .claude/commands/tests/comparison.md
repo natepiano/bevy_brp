@@ -27,25 +27,21 @@ Validate our local registry + hardcoded knowledge approach against the current e
   }
   ```
 - This will trigger format discovery and correction during the failure/retry process
-- Check trace log for comparison entries showing:
-  - Format discovery comparison results during correction process
-  - Differences between extras and local (should show all fields missing from Local)
-  - Structured logging of comparison data during the discovery that occurs on failure
+- The spawn should succeed after format correction is applied
 
 ### 3. Analyze Comparison Results
 - Execute `mcp__brp__brp_get_trace_log_path` to get trace log location
-- Use `grep "PHASE_1_STATUS:" <trace_log_path> | tail -1` to find Phase 1 status
-- Parse the JSON to check:
+- Read the entire trace log file (it's kept short by design)
+- Look for `PHASE_1_STATUS:` entry and parse the JSON to check:
   - `success`: Should be `true` for Phase 1 (spawn formats match)
   - `spawn_formats_match`: Should be `true` 
   - `has_core_structure`: Should be `true`
-- Use `grep "COMPARISON_RESULT:" <trace_log_path> | tail -1` to find detailed comparison
-- Parse the JSON to verify:
+- Look for `COMPARISON_RESULT:` entry and parse the JSON to verify:
   - `missing_in_local`: List of fields we haven't implemented yet
   - `missing_in_extras`: Should be empty (extras has everything)
   - `value_mismatches`: Should be empty for spawn formats
   - `spawn_formats_match`: Should be `true` for Transform
-- Look for human-friendly summary with `grep "✅ Phase 1 SUCCESS" <trace_log_path>`
+- Look for human-friendly summary containing "✅ Phase 1 SUCCESS for bevy_transform::components::transform::Transform"
 
 ### 4. Cleanup
 - Execute `mcp__brp__brp_extras_shutdown` with app_name from initial launch

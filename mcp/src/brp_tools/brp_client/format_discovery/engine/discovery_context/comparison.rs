@@ -9,7 +9,7 @@ use tracing::{debug, info};
 use super::registry_cache::global_cache;
 use crate::brp_tools::Port;
 use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
-use crate::error::{Error, Result};
+use crate::error::Result;
 
 /// Comparison results between extras and local formats
 #[derive(Debug, Clone)]
@@ -251,24 +251,11 @@ impl RegistryComparison {
             return Ok(None);
         };
 
-        // Extract reflection flags from cached registry schema
-        let reflect_types = cached_info
-            .registry_schema
-            .get("reflectTypes")
-            .and_then(Value::as_array)
-            .ok_or_else(|| {
-                Error::invalid(
-                    &format!("reflectTypes for cached type '{type_name}'"),
-                    "missing or not an array",
-                )
-            })?;
-
-        let has_serialize = reflect_types
-            .iter()
-            .any(|v| v.as_str() == Some("Serialize"));
-        let has_deserialize = reflect_types
-            .iter()
-            .any(|v| v.as_str() == Some("Deserialize"));
+        // Use reflection flags directly from cached info
+        let has_serialize = cached_info.reflect_types.contains(&"Serialize".to_string());
+        let has_deserialize = cached_info
+            .reflect_types
+            .contains(&"Deserialize".to_string());
 
         debug!(
             "Extracted reflection flags: serialize={}, deserialize={}",

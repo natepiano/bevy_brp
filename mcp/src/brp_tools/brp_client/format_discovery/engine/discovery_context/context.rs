@@ -12,18 +12,16 @@ use super::super::unified_types::UnifiedTypeInfo;
 use super::comparison::RegistryComparison;
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::registry_cache::global_cache;
-use super::types::{CachedTypeInfo, SerializationFormat};
+use super::types::CachedTypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
 
 pub struct DiscoveryContext {
     /// Port for BRP connections when making direct discovery calls
-    port:                Port,
+    port:     Port,
     /// Type information from Bevy's registry
-    type_map:            HashMap<BrpTypeName, UnifiedTypeInfo>,
-    /// Registry comparison for parallel development
-    registry_comparison: Option<RegistryComparison>,
+    type_map: HashMap<BrpTypeName, UnifiedTypeInfo>,
 }
 
 impl DiscoveryContext {
@@ -31,7 +29,7 @@ impl DiscoveryContext {
     /// This combines type extraction, value extraction, and registry fetching
     pub async fn new(method: BrpMethod, port: Port, params: &Value) -> Result<Self> {
         // Extract type names and values together
-        let type_value_pairs = Self::extract_types_with_values(method, params)?;
+        let type_value_pairs = Self::extract_type_name_and_original_value(method, params)?;
 
         debug!("fetching registry schema data");
 
@@ -41,28 +39,20 @@ impl DiscoveryContext {
         // Build type_info HashMap with values included
         let mut type_map = HashMap::new();
 
-        for (type_name, value) in type_value_pairs {
+        for (type_name, original_value) in type_value_pairs {
             // Find type in registry response
-            let schema_data =
-                Self::find_type_in_registry_response(type_name.as_str(), &registry_data)
-                    .ok_or_else(|| {
-                        // Type not found in registry - it's not registered
-                        Error::TypeNotRegistered {
-                            type_name: type_name.to_string(),
-                        }
-                    })?;
+            let schema_data = Self::require_type_in_registry(type_name.as_str(), &registry_data)?;
 
             // Create UnifiedTypeInfo from registry schema
-            let unified_info =
-                UnifiedTypeInfo::from_registry_schema(type_name.clone(), &schema_data, value);
+            let unified_info = UnifiedTypeInfo::from_registry_schema(
+                type_name.clone(),
+                &schema_data,
+                original_value,
+            );
             type_map.insert(type_name, unified_info);
         }
 
-        Ok(Self {
-            port,
-            type_map,
-            registry_comparison: None,
-        })
+        Ok(Self { port, type_map })
     }
 
     /// Enrich existing type information with data from `bevy_brp_extras`
@@ -87,22 +77,23 @@ impl DiscoveryContext {
             warn!("Failed to build local type info: {}", e);
         }
 
-        // For now, focus on Transform for Phase 1
-        let type_name = "bevy_transform::components::transform::Transform";
-        let comparison = RegistryComparison::compare_with_local(&response, self.port, type_name)
-            .await
-            .unwrap_or_else(|e| {
-                warn!("Failed to compare with local: {}", e);
-                RegistryComparison::new(Some(response.clone()), None)
-            });
-
-        // Log comparison results for each type we're processing
+        // Compare each type and log results
         for type_name in self.type_map.keys() {
+            let comparison =
+                RegistryComparison::compare_with_local(&response, self.port, type_name.as_str())
+                    .await
+                    .unwrap_or_else(|e| {
+                        warn!(
+                            "Failed to compare '{}' with local: {}",
+                            type_name.as_str(),
+                            e
+                        );
+                        RegistryComparison::new(Some(response.clone()), None)
+                    });
+
+            // Log comparison results for this type
             comparison.log_comparison_results(type_name);
         }
-
-        // Store comparison for potential future analysis
-        self.registry_comparison = Some(comparison);
 
         // Existing enrichment logic continues unchanged
         for (type_name, type_info) in &mut self.type_map {
@@ -121,6 +112,80 @@ impl DiscoveryContext {
     /// Get all types as an iterator
     pub fn types(&self) -> impl Iterator<Item = &UnifiedTypeInfo> {
         self.type_map.values()
+    }
+
+    /// Fetch registry schemas for the given types
+    async fn fetch_registry_schemas(
+        type_value_pairs: &[(BrpTypeName, Value)],
+        port: Port,
+    ) -> Result<Value> {
+        debug!(
+            "Registry Integration: Fetching schemas for {} types",
+            type_value_pairs.len()
+        );
+
+        // Extract unique crate names from type paths for filtering
+        let mut crate_names: Vec<String> = type_value_pairs
+            .iter()
+            .filter_map(|(type_name, _)| {
+                type_name
+                    .as_str()
+                    .split("::")
+                    .next()
+                    .map(std::string::ToString::to_string)
+            })
+            .collect();
+        crate_names.sort_unstable();
+        crate_names.dedup();
+
+        // Call registry_schema with crate names for filtering
+        let params = json!({
+            "with_crates": crate_names
+        });
+
+        debug!("Registry Integration: Calling registry with params: {params}");
+
+        let client = BrpClient::new(BrpMethod::BevyRegistrySchema, port, Some(params));
+        match client.execute_raw().await {
+            Ok(ResponseStatus::Success(Some(response_data))) => {
+                debug!("Registry Integration: Received successful response");
+                Ok(response_data)
+            }
+            Ok(ResponseStatus::Success(None)) => {
+                debug!("Registry Integration: Received unexpected empty success response");
+                Err(Error::BrpCommunication(
+                    "Registry returned success but no data - this shouldn't happen".to_string(),
+                )
+                .into())
+            }
+            Ok(ResponseStatus::Error(error)) => {
+                debug!("Registry Integration: Registry returned error: {:?}", error);
+                Err(Error::BrpCommunication(format!(
+                    "Registry query failed: {} - {}",
+                    error.code, error.message
+                ))
+                .into())
+            }
+            Err(e) => {
+                debug!("Registry Integration: Failed to call registry: {}", e);
+                Err(e)
+            }
+        }
+    }
+
+    /// Find type in registry response (handles various response formats)
+    fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
+        debug!("Registry Integration: Searching for '{type_name}' in registry response");
+
+        if let Some(obj) = response_data.as_object() {
+            if let Some(type_data) = obj.get(type_name) {
+                debug!("Registry Integration: Found '{type_name}' as direct key");
+                return Some(type_data.clone());
+            }
+        }
+
+        debug!("Registry Integration: Type '{type_name}' not found in any expected format");
+        None
     }
 
     /// Call `bevy_brp_extras/discover_format` for all types
@@ -169,8 +234,8 @@ impl DiscoveryContext {
         }
     }
 
-    /// Extract type names and their values from method parameters
-    fn extract_types_with_values(
+    /// Extract type names and the original parameter value from method parameters
+    fn extract_type_name_and_original_value(
         method: BrpMethod,
         params: &Value,
     ) -> Result<Vec<(BrpTypeName, Value)>> {
@@ -257,119 +322,6 @@ impl DiscoveryContext {
         Ok(pairs)
     }
 
-    /// Find type in registry response (handles various response formats)
-    fn find_type_in_registry_response(type_name: &str, response_data: &Value) -> Option<Value> {
-        debug!("Registry Integration: Searching for '{type_name}' in registry response");
-
-        // Try different possible response formats:
-
-        // Format 1: Direct object with type name as key
-        if let Some(obj) = response_data.as_object() {
-            if let Some(type_data) = obj.get(type_name) {
-                debug!("Registry Integration: Found '{type_name}' as direct key");
-                return Some(type_data.clone());
-            }
-        }
-
-        // Format 2: Array of type objects with typePath field
-        if let Some(arr) = response_data.as_array() {
-            for item in arr {
-                if let Some(item_type_path) = item.get("typePath").and_then(Value::as_str) {
-                    if item_type_path == type_name {
-                        debug!("Registry Integration: Found '{type_name}' in array by typePath");
-                        return Some(item.clone());
-                    }
-                }
-                // Also check shortPath for convenience
-                if let Some(item_short_path) = item.get("shortPath").and_then(Value::as_str) {
-                    if item_short_path == type_name {
-                        debug!("Registry Integration: Found '{type_name}' in array by shortPath");
-                        return Some(item.clone());
-                    }
-                }
-            }
-        }
-
-        // Format 3: Single type object (if we requested only one type)
-        if let Some(item_type_path) = response_data.get("typePath").and_then(Value::as_str) {
-            if item_type_path == type_name {
-                debug!("Registry Integration: Found '{type_name}' as single object");
-                return Some(response_data.clone());
-            }
-        }
-
-        // Format 4: Nested under specific keys
-        for key in ["types", "schemas", "data"] {
-            if let Some(nested) = response_data.get(key) {
-                if let Some(result) = Self::find_type_in_registry_response(type_name, nested) {
-                    return Some(result);
-                }
-            }
-        }
-
-        debug!("Registry Integration: Type '{type_name}' not found in any expected format");
-        None
-    }
-
-    /// Fetch registry schemas for the given types
-    async fn fetch_registry_schemas(
-        type_value_pairs: &[(BrpTypeName, Value)],
-        port: Port,
-    ) -> Result<Value> {
-        debug!(
-            "Registry Integration: Fetching schemas for {} types",
-            type_value_pairs.len()
-        );
-
-        // Extract unique crate names from type paths for filtering
-        let mut crate_names: Vec<String> = type_value_pairs
-            .iter()
-            .filter_map(|(type_name, _)| {
-                type_name
-                    .as_str()
-                    .split("::")
-                    .next()
-                    .map(std::string::ToString::to_string)
-            })
-            .collect();
-        crate_names.sort_unstable();
-        crate_names.dedup();
-
-        // Call registry_schema with crate names for filtering
-        let params = json!({
-            "with_crates": crate_names
-        });
-
-        debug!("Registry Integration: Calling registry with params: {params}");
-
-        let client = BrpClient::new(BrpMethod::BevyRegistrySchema, port, Some(params));
-        match client.execute_raw().await {
-            Ok(ResponseStatus::Success(Some(response_data))) => {
-                debug!("Registry Integration: Received successful response");
-                Ok(response_data)
-            }
-            Ok(ResponseStatus::Success(None)) => {
-                debug!("Registry Integration: Received unexpected empty success response");
-                Err(Error::BrpCommunication(
-                    "Registry returned success but no data - this shouldn't happen".to_string(),
-                )
-                .into())
-            }
-            Ok(ResponseStatus::Error(error)) => {
-                debug!("Registry Integration: Registry returned error: {:?}", error);
-                Err(Error::BrpCommunication(format!(
-                    "Registry query failed: {} - {}",
-                    error.code, error.message
-                ))
-                .into())
-            }
-            Err(e) => {
-                debug!("Registry Integration: Failed to call registry: {}", e);
-                Err(e)
-            }
-        }
-    }
-
     /// Build complete `CachedTypeInfo` for permanent storage in `RegistryCache`
     ///
     /// This method builds local type information by:
@@ -378,100 +330,135 @@ impl DiscoveryContext {
     /// 3. Building spawn format using hardcoded knowledge from `BRP_FORMAT_KNOWLEDGE`
     /// 4. Storing complete `CachedTypeInfo` in the global cache
     ///
-    /// Phase 1: Focused on Transform component with Vec3/Quat field types
-    pub async fn build_local_type_info(&self) -> Result<()> {
+    /// Phase 1: Process all types in type_map with Vec3/Quat field types
+    async fn build_local_type_info(&self) -> Result<()> {
         debug!("Building local type info for all types in context");
 
-        // For Phase 1, focus on Transform component
-        let type_name = "bevy_transform::components::transform::Transform";
+        // Build type_value_pairs for all types in the context
+        let type_value_pairs: Vec<(BrpTypeName, Value)> = self
+            .type_map
+            .keys()
+            .map(|k| (k.clone(), json!({})))
+            .collect();
 
-        // Re-fetch raw registry schema (not UnifiedTypeInfo) for direct parsing
-        let type_value_pairs = vec![(type_name.into(), json!({}))]; // Dummy value for schema fetch
+        debug!(
+            "build_local_type_info: Fetching registry schemas for {} types",
+            type_value_pairs.len()
+        );
+
+        // Fetch registry schemas for all types at once
         let registry_data = Self::fetch_registry_schemas(&type_value_pairs, self.port).await?;
-        let registry_schema = Self::find_type_in_registry_response(type_name, &registry_data)
-            .ok_or_else(|| Error::missing(&format!("Type '{type_name}' in registry response")))?;
+
+        // Process each type
+        for (type_name, _) in &type_value_pairs {
+            let type_name_str = type_name.as_str();
+
+            // Find this type in the registry response
+            let type_schema = Self::require_type_in_registry(type_name_str, &registry_data)?;
+
+            // Extract serialization flags from registry schema directly
+            let reflect_types = Self::extract_reflect_types(&type_schema);
+
+            // Build spawn format from properties using hardcoded knowledge
+            let spawn_format = Self::build_spawn_format(&type_schema, type_name_str);
+
+            // Create complete CachedTypeInfo
+            let cached_info = CachedTypeInfo {
+                mutation_paths: vec![], // Phase 1: empty, Phase 2+: populated
+                registry_schema: type_schema,
+                reflect_types,
+                spawn_format: Value::Object(spawn_format),
+                supported_operations: vec![], // Phase 1: empty, Phase 2+: populated
+            };
+
+            // Store in permanent cache
+            global_cache().insert(type_name.clone(), cached_info);
+
+            debug!("Successfully cached type info for {}", type_name_str);
+        }
+
+        Ok(())
+    }
+
+    /// Extract reflect types from a registry schema
+    ///
+    /// Converts the "reflectTypes" array into a Vec<String>, handling missing/invalid data
+    fn extract_reflect_types(type_schema: &Value) -> Vec<String> {
+        type_schema
+            .get("reflectTypes")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Build spawn format from registry schema properties
+    ///
+    /// Phase 1: Uses hardcoded knowledge for known field types (Vec3, Quat)
+    /// Future phases: Will recursively build nested structures
+    fn build_spawn_format(type_schema: &Value, type_name: &str) -> serde_json::Map<String, Value> {
+        let mut spawn_format = serde_json::Map::new();
+
+        let properties = type_schema.get("properties").and_then(Value::as_object);
+
+        if let Some(props) = properties {
+            for (field_name, field_info) in props {
+                // Extract type from {"type": {"$ref": "#/$defs/glam::Vec3"}} structure
+                let field_type = field_info
+                    .get("type")
+                    .and_then(|t| t.get("$ref"))
+                    .and_then(Value::as_str)
+                    .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"));
+
+                match field_type {
+                    Some(ft) => {
+                        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&ft.into()) {
+                            spawn_format.insert(field_name.clone(), hardcoded.clone());
+                            debug!("Added field '{}' from hardcoded knowledge", field_name);
+                        } else {
+                            warn!(
+                                "Skipping unknown field type '{}' for field '{}' in '{}' - not in hardcoded knowledge",
+                                ft, field_name, type_name
+                            );
+                        }
+                    }
+                    None => {
+                        debug!(
+                            "Skipping field '{}' in '{}' - missing or invalid $ref format",
+                            field_name, type_name
+                        );
+                    }
+                }
+            }
+        } else {
+            debug!(
+                "No properties for {} (marker component or primitive type)",
+                type_name
+            );
+        }
+
+        spawn_format
+    }
+
+    /// Find type in registry response and return error if not found
+    ///
+    /// This is a wrapper around find_type_in_registry_response that adds error handling
+    /// and debug logging, used by both new() and build_local_type_info()
+    fn require_type_in_registry(type_name: &str, registry_data: &Value) -> Result<Value> {
+        let registry_schema = Self::find_type_in_registry_response(type_name, registry_data)
+            .ok_or_else(|| Error::TypeNotRegistered {
+                type_name: type_name.to_string(),
+            })?;
 
         debug!(
             "Retrieved registry schema for {}: {:?}",
             type_name, registry_schema
         );
 
-        // Extract serialization flags from registry schema directly
-        let reflect_types = registry_schema
-            .get("reflectTypes")
-            .and_then(Value::as_array)
-            .ok_or_else(|| {
-                Error::invalid(
-                    &format!("'reflectTypes' field for type '{type_name}'"),
-                    "missing or not an array",
-                )
-            })?;
-
-        debug!("Found reflect_types: {:?}", reflect_types);
-
-        // Parse properties and build spawn format
-        let properties = registry_schema
-            .get("properties")
-            .and_then(Value::as_object)
-            .ok_or_else(|| {
-                Error::invalid(
-                    &format!("'properties' field for type '{type_name}'"),
-                    "missing or not an object",
-                )
-            })?;
-
-        let mut spawn_format = serde_json::Map::new();
-
-        for (field_name, field_info) in properties {
-            // Extract type from {"type": {"$ref": "#/$defs/glam::Vec3"}} structure
-            let field_type = field_info
-                .get("type")
-                .and_then(|t| t.get("$ref"))
-                .and_then(Value::as_str)
-                .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
-                .ok_or_else(|| {
-                    Error::invalid(
-                        &format!("type field for '{field_name}' in '{type_name}'"),
-                        "missing or invalid $ref format",
-                    )
-                })?;
-
-            debug!(
-                "Processing field '{}' with type '{}'",
-                field_name, field_type
-            );
-
-            if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&field_type.into()) {
-                spawn_format.insert(field_name.clone(), hardcoded.example_value.clone());
-                debug!("Added field '{}' from hardcoded knowledge", field_name);
-            } else {
-                warn!(
-                    "Skipping unknown field type '{}' for field '{}' - not in hardcoded knowledge",
-                    field_type, field_name
-                );
-            }
-        }
-
-        // Create complete CachedTypeInfo
-        let cached_info = CachedTypeInfo {
-            mutation_paths:       vec![], // Phase 1: empty, Phase 2+: populated
-            registry_schema:      registry_schema.clone(),
-            serialization_format: SerializationFormat::Object, // Transform is object
-            spawn_format:         Value::Object(spawn_format.clone()),
-            supported_operations: vec![], // Phase 1: empty, Phase 2+: populated
-        };
-
-        debug!(
-            "Built CachedTypeInfo for {}: spawn_format = {:?}",
-            type_name, spawn_format
-        );
-
-        // Store in permanent cache
-        global_cache().insert(type_name.into(), cached_info);
-
-        debug!("Successfully cached type info for {}", type_name);
-
-        Ok(())
+        Ok(registry_schema)
     }
 }
 

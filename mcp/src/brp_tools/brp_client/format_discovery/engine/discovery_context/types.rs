@@ -7,15 +7,6 @@ use serde_json::Value;
 
 use super::super::types::BrpTypeName;
 
-/// Hardcoded BRP format knowledge for a type
-#[derive(Debug, Clone)]
-pub struct BrpFormatKnowledge {
-    /// Example value in the correct BRP format
-    pub example_value:        Value,
-    /// How this type should be serialized for BRP
-    pub serialization_format: SerializationFormat,
-}
-
 /// Cached type information from registry
 #[derive(Debug, Clone)]
 pub struct CachedTypeInfo {
@@ -23,25 +14,12 @@ pub struct CachedTypeInfo {
     pub mutation_paths:       Vec<MutationPath>,
     /// Raw registry schema response
     pub registry_schema:      Value,
-    /// The serialization format for this type
-    pub serialization_format: SerializationFormat,
+    /// Reflection types from registry (e.g., ["Component", "Serialize", "Deserialize"])
+    pub reflect_types:        Vec<String>,
     /// Full object format for spawn/insert
     pub spawn_format:         Value,
     /// Operations supported by this type in BRP
     pub supported_operations: Vec<BrpSupportedOperation>,
-}
-
-/// Enum for serialization format (not bare strings)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SerializationFormat {
-    /// Array format, e.g., Vec3 as [1.0, 2.0, 3.0]
-    Array,
-    /// Object format, e.g., Transform as {translation: {...}}
-    Object,
-    /// Primitive value, e.g., f32, bool
-    Primitive,
-    /// Enum with special handling
-    Enum,
 }
 
 /// Enum for BRP supported operations

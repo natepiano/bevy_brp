@@ -5,3 +5,5 @@
   - ✅ DO run unit tests with `cargo test` - these test the code directly
   - ✅ DO build with `cargo build` to check for compilation errors
   - ⚠️ REMEMBER: The MCP tool you're using is the OLD version until I reinstall
+
+- Files in `.claude/commands/tests` are not bash commands they are agentic tests and can only be executed using the instructions in `.claude/commands/test.md`
