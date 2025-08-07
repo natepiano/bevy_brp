@@ -34,6 +34,8 @@ pub struct CachedTypeInfo {
     pub supported_operations: Vec<BrpSupportedOperation>,
     /// Category of this type (Struct, Enum, etc.)
     pub type_category:        TypeCategory,
+    /// For enums, list of variant names
+    pub enum_variants:        Option<Vec<String>>,
 }
 
 /// Enum for BRP supported operations
@@ -61,4 +63,8 @@ pub struct MutationPath {
     pub example_value: Value,
     /// Path for mutation, e.g., ".translation.x"
     pub path:          String,
+    /// For enum types, list of valid variant names
+    pub enum_variants: Option<Vec<String>>,
+    /// Type information for this path
+    pub type_name:     Option<String>,
 }
