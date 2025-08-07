@@ -1,79 +1,98 @@
-# Format Discovery Comparison Test
+# Tool Comparison Test
 
 ## Objective
-Validate our local registry + hardcoded knowledge approach against the current extras plugin by running comparison-driven development scenarios. Establish baseline visibility into extras responses without building any local representations yet.
+Direct comparison between `brp_type_schema` (local implementation) and `brp_extras_discover_format` (extras plugin) to validate parity.
 
 ## Prerequisites
-- Launch extras_plugin example on port 15702 at the beginning
-- Keep the app running throughout all test steps
+- Launch extras_plugin example on port 15702
+- Both tools must be available in the MCP environment
 - Clean shutdown at the end
 
 ## Test Steps
 
-### 1. Setup Tracing Infrastructure
-- Execute `mcp__brp__brp_set_tracing_level` with level `"trace"`
-- Execute `mcp__brp__brp_get_trace_log_path` to get trace log location
-- Use `rm` command to manually remove the trace log file at the returned path
+### 1. Launch Test Application
+- Execute `mcp__brp__brp_launch_bevy_app` with `extras_plugin` on port 15702
+- Verify app is running with `mcp__brp__brp_status`
 
-### 2. Test Format Discovery with Failure Scenario
-- Execute `mcp__brp__bevy_spawn` with Transform using wrong object format (will trigger format discovery):
-  ```json
-  {
-    "bevy_transform::components::transform::Transform": {
-      "translation": {"x": 5.0, "y": 10.0, "z": 15.0},
-      "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
-      "scale": {"x": 2.0, "y": 2.0, "z": 2.0}
-    }
-  }
-  ```
-- This will trigger format discovery and correction during the failure/retry process
-- The spawn should succeed after format correction is applied
+### 2. Run Both Discovery Tools
 
-### 3. Analyze Comparison Results
-- Execute `mcp__brp__brp_get_trace_log_path` to get trace log location
-- Read the entire trace log file (it's kept short by design)
-- Look for `PHASE_1_STATUS:` entry and parse the JSON to check:
-  - `success`: Should be `true` for Phase 1 (spawn formats match)
-  - `spawn_formats_match`: Should be `true` 
-  - `has_core_structure`: Should be `true`
-- **NEW**: Look for `PHASE_2_STATUS:` entry and parse the JSON to check:
-  - `success`: Should be `true` for Phase 2 (mutation paths and supported operations generated)
-  - `has_mutation_paths`: Should be `true`
-  - `mutation_paths_count`: Should be > 0 (should be 13 for Transform)
-  - `has_supported_operations`: Should be `true`
-  - `supported_operations_count`: Should be > 0 (should be 5 for Transform: query, get, spawn, insert, mutate)
-- Look for `COMPARISON_RESULT:` entry and parse the JSON to verify:
-  - `missing_in_local`: Should be significantly reduced compared to Phase 1 (most Phase 2 fields now implemented)
-  - `missing_in_extras`: Should be empty (extras has everything)
-  - `value_mismatches`: Should be empty for spawn formats
-  - `spawn_formats_match`: Should be `true` for Transform
-- Look for human-friendly summary containing "✅ Phase 1 SUCCESS for bevy_transform::components::transform::Transform"
+#### 2a. Run Extras Discovery
+Execute `mcp__brp__brp_extras_discover_format` with:
+```json
+{
+  "types": ["bevy_transform::components::transform::Transform"],
+  "port": 15702
+}
+```
+Store the full response as `extras_response`.
 
-### 4. Cleanup
-- Execute `mcp__brp__brp_extras_shutdown` with app_name from initial launch
-- Verify clean shutdown response
-- Confirm app process terminates gracefully
+#### 2b. Run Local Type Schema Discovery
+Execute `mcp__brp__brp_type_schema` with:
+```json
+{
+  "types": ["bevy_transform::components::transform::Transform"],
+  "port": 15702
+}
+```
+Store the full response as `local_response`.
 
-## Expected Results
-- ✅ Comparison infrastructure runs in parallel without impacting existing flow
-- ✅ `PHASE_1_STATUS` shows `"success": true` for Transform
-- ✅ **NEW**: `PHASE_2_STATUS` shows `"success": true`, `"has_mutation_paths": true`, and `"has_supported_operations": true` with counts > 0
-- ✅ `COMPARISON_RESULT` shows `"spawn_formats_match": true` for Transform
-- ✅ Missing fields significantly reduced - core Phase 2 fields (type_name, type_category, supported_operations, enum_info, error) now implemented
-- ✅ Human-friendly log shows "✅ Phase 1 SUCCESS for bevy_transform::components::transform::Transform"
-- ✅ Format discovery and correction continue to work normally
-- ✅ No impact on spawn/insert operations success rates
-- ✅ Structured logs include:
-  - `PHASE_1_STATUS`: Phase-specific success criteria  
-  - `PHASE_2_STATUS`: Phase 2 mutation paths success criteria
-  - `COMPARISON_RESULT`: Full comparison details with categorized differences
-  - Clear JSON format parseable with `jq`
-  - Both machine-readable and human-friendly output
+### 3. Compare Results
 
-## Failure Criteria
-STOP if:
-- Comparison infrastructure interferes with normal BRP operations
-- Trace logs don't show comparison entries
-- Spawn/insert operations fail due to comparison code
-- Comparison logic crashes or causes errors
-- Unable to see structured difference data in trace logs
+Compare the `result.type_info` objects from both responses:
+
+#### Required Field Validation
+- Both responses must contain `type_info` object
+- Both must have entry for `bevy_transform::components::transform::Transform`
+- All the following fields must be present and match exactly:
+  - `type_name`: Full type path string
+  - `type_category`: Should be "Struct"
+  - `in_registry`: Should be `true`
+  - `has_serialize`: Should be `true`
+  - `has_deserialize`: Should be `true`
+  - `supported_operations`: Array with ["query", "get", "spawn", "insert", "mutate"]
+  - `mutation_paths`: Object with 13 entries (.translation, .translation.x/y/z, .rotation, .rotation.x/y/z/w, .scale, .scale.x/y/z)
+  - `example_values.spawn`: Object with translation/rotation/scale arrays
+  - `enum_info`: Should be `null` for Transform
+  - `error`: Should be `null` for successful discovery
+
+### 4. Extended Multi-Type Test
+
+Run both tools with multiple types:
+```json
+{
+  "types": [
+    "bevy_transform::components::transform::Transform",
+    "bevy_core::name::Name",
+    "bevy_sprite::sprite::Sprite"
+  ],
+  "port": 15702
+}
+```
+
+Validate:
+- Both return same number of types in `type_info`
+- Each type has identical structure between tools
+- Marker components (no properties) handled correctly
+- Complex components with many fields work
+
+### 5. Cleanup
+- Execute `mcp__brp__brp_shutdown` to stop the test app
+- Verify clean shutdown
+
+## Success Criteria
+
+✅ Test passes when:
+- `extras_response.result.type_info` === `local_response.result.type_info` (deep equality)
+- No missing fields in local implementation
+- All spawn formats match exactly
+- Mutation paths identical (same paths and descriptions)
+- Supported operations arrays equal
+- Multi-type batch processing works identically
+
+## Failure Investigation
+
+If differences found:
+1. Log the specific field path that differs
+2. Show the values from both tools side-by-side
+3. Check if it's a formatting difference vs actual data difference
+4. Verify cache was populated before local tool ran

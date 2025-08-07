@@ -63,7 +63,9 @@
       "mcp__brp__brp_delete_logs",
       "mcp__brp__brp_delete_logs",
       "Bash(bash -c \"rg:*\")",
-      "Bash(od:*)"
+      "Bash(od:*)",
+      "mcp__brp__brp_type_schema",
+      "mcp__brp__brp_type_schema"
     ],
     "deny": []
   }

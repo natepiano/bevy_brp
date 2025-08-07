@@ -6,7 +6,7 @@
 use serde_json::Value;
 use strum::{AsRefStr, Display};
 
-use super::super::types::TypeCategory;
+use crate::brp_tools::brp_client::TypeCategory;
 
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
@@ -57,6 +57,7 @@ pub enum BrpSupportedOperation {
 #[derive(Debug, Clone)]
 pub struct MutationPath {
     /// Example value for this path
+    #[allow(dead_code)] // Used in response building when tool is called
     pub example_value: Value,
     /// Path for mutation, e.g., ".translation.x"
     pub path:          String,

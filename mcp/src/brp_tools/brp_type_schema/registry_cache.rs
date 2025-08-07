@@ -7,8 +7,8 @@ use std::sync::LazyLock;
 
 use dashmap::DashMap;
 
-use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::CachedTypeInfo;
-use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
+use super::types::CachedTypeInfo;
+use crate::brp_tools::brp_client::BrpTypeName;
 
 /// Global registry cache shared across all tool invocations
 static REGISTRY_CACHE: LazyLock<RegistryCache> = LazyLock::new(RegistryCache::new);

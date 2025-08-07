@@ -5,14 +5,10 @@
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
-use tracing::{debug, warn};
+use tracing::debug;
 
-use super::super::types::{BrpTypeName, TypeCategory};
-use super::super::unified_types::UnifiedTypeInfo;
-use super::comparison::RegistryComparison;
-use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
-use super::registry_cache::global_cache;
-use super::types::{BrpSupportedOperation, CachedTypeInfo, MutationPath};
+use super::types::BrpTypeName;
+use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -71,22 +67,7 @@ impl DiscoveryContext {
     pub async fn enrich_with_extras(&mut self) -> Result<()> {
         let response = self.call_extras_discover_format().await?;
 
-        // Phase 1: Compare with local format built from registry + hardcoded knowledge
-        // First ensure cache is populated
-        if let Err(e) = self.build_local_type_info().await {
-            warn!("Failed to build local type info: {}", e);
-        }
-
-        // Compare each type and log results
-        for type_name in self.type_map.keys() {
-            let comparison =
-                RegistryComparison::compare_with_local(&response, self.port, type_name.as_str());
-
-            // Log comparison results for this type
-            comparison.log_comparison_results(type_name);
-        }
-
-        // Existing enrichment logic continues unchanged
+        // Existing enrichment logic
         for (type_name, type_info) in &mut self.type_map {
             if let Some(extras_data) = find_type_in_extras_response(type_name, &response) {
                 type_info.enrich_from_extras(extras_data);
@@ -326,213 +307,10 @@ impl DiscoveryContext {
         Ok(pairs)
     }
 
-    /// Build complete `CachedTypeInfo` for permanent storage in `RegistryCache`
-    ///
-    /// This method builds local type information by:
-    /// 1. Re-fetching raw registry schema via `fetch_registry_schemas()`
-    /// 2. Parsing the registry schema to extract type structure and reflection traits
-    /// 3. Building spawn format using hardcoded knowledge from `BRP_FORMAT_KNOWLEDGE`
-    /// 4. Storing complete `CachedTypeInfo` in the global cache
-    ///
-    /// Phase 1: Process all types in `type_map` with Vec3/Quat field types
-    async fn build_local_type_info(&self) -> Result<()> {
-        debug!("Building local type info for all types in context");
-
-        // Build type_value_pairs for all types in the context
-        let type_value_pairs: Vec<(BrpTypeName, Value)> = self
-            .type_map
-            .keys()
-            .map(|k| (k.clone(), json!({})))
-            .collect();
-
-        debug!(
-            "build_local_type_info: Fetching registry schemas for {} types",
-            type_value_pairs.len()
-        );
-
-        // Fetch registry schemas for all types at once
-        let registry_data = Self::fetch_registry_schemas(&type_value_pairs, self.port).await?;
-
-        // Process each type
-        for (type_name, _) in &type_value_pairs {
-            let type_name_str = type_name.as_str();
-
-            // Find this type in the registry response
-            let type_schema = Self::require_type_in_registry(type_name_str, &registry_data)?;
-
-            // Extract serialization flags from registry schema directly
-            let reflect_types = Self::extract_reflect_types(&type_schema);
-
-            // Build spawn format and mutation paths from properties using hardcoded knowledge
-            let (spawn_format, mutation_paths) =
-                Self::build_spawn_format_and_mutation_paths(&type_schema, type_name_str);
-
-            // Determine supported operations based on reflection types
-            let supported_operations = Self::determine_supported_operations(&reflect_types);
-
-            // Extract type category from registry schema
-            let type_category: TypeCategory = type_schema
-                .get("kind")
-                .and_then(Value::as_str)
-                .map_or(TypeCategory::Unknown, Into::into);
-
-            // Create complete CachedTypeInfo
-            let cached_info = CachedTypeInfo {
-                mutation_paths,
-                registry_schema: type_schema,
-                reflect_types,
-                spawn_format: Value::Object(spawn_format),
-                supported_operations,
-                type_category,
-            };
-
-            // Store in permanent cache
-            global_cache().insert(type_name.clone(), cached_info);
-
-            debug!("Successfully cached type info for {}", type_name_str);
-        }
-
-        Ok(())
-    }
-
-    /// Extract reflect types from a registry schema
-    ///
-    /// Converts the "reflectTypes" array into a Vec<String>, handling missing/invalid data
-    fn extract_reflect_types(type_schema: &Value) -> Vec<String> {
-        type_schema
-            .get("reflectTypes")
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect::<Vec<String>>()
-            })
-            .unwrap_or_default()
-    }
-
-    /// Build spawn format and mutation paths from registry schema properties
-    ///
-    /// Phase 2: Uses hardcoded knowledge for known field types and generates mutation paths
-    fn build_spawn_format_and_mutation_paths(
-        type_schema: &Value,
-        type_name: &str,
-    ) -> (serde_json::Map<String, Value>, Vec<MutationPath>) {
-        let mut spawn_format = serde_json::Map::new();
-        let mut mutation_paths = Vec::new();
-
-        let properties = type_schema.get("properties").and_then(Value::as_object);
-
-        if let Some(props) = properties {
-            for (field_name, field_info) in props {
-                // Extract type from {"type": {"$ref": "#/$defs/glam::Vec3"}} structure
-                let field_type = field_info
-                    .get("type")
-                    .and_then(|t| t.get("$ref"))
-                    .and_then(Value::as_str)
-                    .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"));
-
-                match field_type {
-                    Some(ft) => {
-                        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&ft.into()) {
-                            spawn_format
-                                .insert(field_name.clone(), hardcoded.example_value.clone());
-                            debug!("Added field '{}' from hardcoded knowledge", field_name);
-
-                            // Always generate base field mutation path
-                            let base_path = format!(".{field_name}");
-                            mutation_paths.push(MutationPath {
-                                path:          base_path,
-                                example_value: hardcoded.example_value.clone(),
-                            });
-
-                            // Generate component mutation paths if available
-                            if let Some(component_paths) = &hardcoded.subfield_paths {
-                                for (component_name, example_value) in component_paths {
-                                    let component_path = format!(".{field_name}.{component_name}");
-
-                                    mutation_paths.push(MutationPath {
-                                        path:          component_path,
-                                        example_value: example_value.clone(),
-                                    });
-                                }
-                            }
-                        } else {
-                            warn!(
-                                "Skipping unknown field type '{}' for field '{}' in '{}' - not in hardcoded knowledge",
-                                ft, field_name, type_name
-                            );
-                        }
-                    }
-                    None => {
-                        debug!(
-                            "Skipping field '{}' in '{}' - missing or invalid $ref format",
-                            field_name, type_name
-                        );
-                    }
-                }
-            }
-        } else {
-            debug!(
-                "No properties for {} (marker component or primitive type)",
-                type_name
-            );
-        }
-
-        debug!(
-            "Generated {} mutation paths for {}",
-            mutation_paths.len(),
-            type_name
-        );
-        (spawn_format, mutation_paths)
-    }
-
-    /// Determine which BRP operations are supported based on reflection types
-    ///
-    /// Operations are determined based on type registration and `SerDe` traits:
-    /// - Query/Get: Always supported if in registry
-    /// - Spawn/Insert: Require both Serialize AND Deserialize for components
-    /// - Insert (resource): Always available for resources (no `SerDe` required)
-    /// - Mutate: Always available for components/resources in registry
-    fn determine_supported_operations(reflect_types: &[String]) -> Vec<BrpSupportedOperation> {
-        use super::types::BrpSupportedOperation::{Get, Insert, Mutate, Query, Spawn};
-
-        let mut ops = Vec::new();
-
-        // Always supported if in registry
-        ops.push(Query);
-        ops.push(Get);
-
-        let has_serialize = reflect_types.contains(&"Serialize".to_string());
-        let has_deserialize = reflect_types.contains(&"Deserialize".to_string());
-        let has_component = reflect_types.contains(&"Component".to_string());
-        let has_resource = reflect_types.contains(&"Resource".to_string());
-
-        // Component operations:
-        // - spawn/insert require BOTH Serialize AND Deserialize
-        // - mutate_component works even without SerDe
-        if has_component {
-            if has_serialize && has_deserialize {
-                ops.push(Spawn);
-                ops.push(Insert);
-            }
-            ops.push(Mutate); // Always available for components in registry
-        }
-
-        // Resource operations:
-        // - insert_resource always works (no SerDe required)
-        // - mutate_resource always works
-        if has_resource {
-            ops.push(Insert); // insert_resource always available
-            ops.push(Mutate); // mutate_resource always available
-        }
-
-        ops
-    }
-
     /// Find type in registry response and return error if not found
     ///
     /// This is a wrapper around `find_type_in_registry_response` that adds error handling
-    /// and debug logging, used by both `new()` and `build_local_type_info()`
+    /// and debug logging, used by `new()`
     fn require_type_in_registry(type_name: &str, registry_data: &Value) -> Result<Value> {
         let registry_schema = Self::find_type_in_registry_response(type_name, registry_data)
             .ok_or_else(|| Error::TypeNotRegistered {

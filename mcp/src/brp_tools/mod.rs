@@ -1,4 +1,5 @@
 mod brp_client;
+mod brp_type_schema;
 mod constants;
 mod port;
 mod tools;
@@ -12,6 +13,10 @@ pub use brp_client::{
     BrpClient, BrpClientError, ExecuteMode, FormatCorrectionStatus,
     JSON_RPC_ERROR_METHOD_NOT_FOUND, ResponseStatus, ResultStructBrpExt,
 };
+//
+// Export brp_type_schema tool
+#[allow(unused_imports)]
+pub use brp_type_schema::{BrpTypeSchema, TypeSchemaParams, TypeSchemaResult};
 pub use constants::BRP_PORT_ENV_VAR;
 pub use port::Port;
 //

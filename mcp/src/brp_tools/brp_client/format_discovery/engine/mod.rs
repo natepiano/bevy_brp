@@ -14,7 +14,7 @@ mod recovery_result;
 mod retry;
 mod serialization_check;
 mod state;
-mod types;
+pub mod types;
 mod unified_types;
 
 // Export new type state API

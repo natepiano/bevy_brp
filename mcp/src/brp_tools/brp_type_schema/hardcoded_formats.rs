@@ -9,8 +9,8 @@ use std::sync::LazyLock;
 
 use serde_json::json;
 
-use crate::brp_tools::brp_client::format_discovery::engine::discovery_context::types::BrpFormatKnowledge;
-use crate::brp_tools::brp_client::format_discovery::engine::types::BrpTypeName;
+use super::types::BrpFormatKnowledge;
+use crate::brp_tools::brp_client::BrpTypeName;
 
 /// Static map of hardcoded BRP format knowledge
 /// This captures the serialization rules that can't be derived from registry

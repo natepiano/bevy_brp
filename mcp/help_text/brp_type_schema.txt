@@ -1,0 +1,9 @@
+Discover component and resource format schemas for BRP operations using local type registry-based discovery.
+
+This tool provides type schema information for types in your Bevy app by using registry schema calls combined with hardcoded BRP serialization knowledge so that your coding agent can construct the necessary JSON structures for BRP operations.
+
+Returns:
+- spawn_format: Example JSON structure for bevy/spawn operations, bevy/insert and bevy/insert_resource methods.
+- mutation_info: Available mutation paths for bevy/mutate_component and bevy/mutate_resource operations
+- supported_operations: Which BRP operations work with each type
+- reflection traits: Serialization capabilities (Serialize, Deserialize, etc.)

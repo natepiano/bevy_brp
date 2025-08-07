@@ -32,7 +32,7 @@
 
 mod constants;
 mod detection;
-mod engine;
+pub mod engine;
 mod field_mapper;
 mod format_correction_fields;
 mod transformers;
