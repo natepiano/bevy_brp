@@ -1,4 +1,4 @@
 **/target/
-plan*.md
+plan*
 settings.local.json
 .ropeproject/
