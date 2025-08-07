@@ -12,3 +12,4 @@ pub mod types;
 
 // Re-export public API
 pub use tool::{BrpTypeSchema, TypeSchemaParams, TypeSchemaResult};
+pub use types::{BrpTypeName, TypeCategory};

@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 use tracing::debug;
 
-use super::types::BrpTypeName;
 use super::unified_types::UnifiedTypeInfo;
+use crate::brp_tools::brp_type_schema::BrpTypeName;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;

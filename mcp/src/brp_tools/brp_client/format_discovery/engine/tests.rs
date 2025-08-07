@@ -8,8 +8,9 @@
 use serde_json::json;
 
 use super::orchestrator;
-use super::types::{DiscoverySource, Operation, TypeCategory};
+use super::types::{DiscoverySource, Operation};
 use super::unified_types::UnifiedTypeInfo;
+use crate::brp_tools::brp_type_schema::TypeCategory;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::{BrpMethod, ParameterName};
 

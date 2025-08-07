@@ -5,10 +5,11 @@ use tracing::debug;
 
 use super::super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use super::super::detection::ErrorPattern;
-use super::super::engine::{BrpTypeName, TransformationResult, UnifiedTypeInfo};
+use super::super::engine::{TransformationResult, UnifiedTypeInfo};
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::BrpClientError;
+use crate::brp_tools::brp_type_schema::BrpTypeName;
 
 /// Transformer for math types (Vec2, Vec3, Vec4, Quat)
 /// Converts object format {x: 1.0, y: 2.0} to array format [1.0, 2.0]

@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use tracing::debug;
 
-use super::registry_cache::global_cache;
+use super::TypeCategory;
+use super::registry_cache::REGISTRY_CACHE;
 use super::type_discovery::{
     build_spawn_format_and_mutation_paths, determine_supported_operations, extract_reflect_types,
     require_type_in_registry,
 };
-use super::types::{BrpSupportedOperation, CachedTypeInfo, MutationPath};
-use crate::brp_tools::brp_client::{BrpTypeName, TypeCategory};
+use super::types::{BrpSupportedOperation, BrpTypeName, CachedTypeInfo, MutationPath};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
@@ -139,7 +139,7 @@ async fn build_local_type_info_for_type(
     debug!("Building local type info for {}", type_name_str);
 
     // Check if already cached
-    if global_cache().get(type_name).is_some() {
+    if REGISTRY_CACHE.get(type_name).is_some() {
         debug!("Type {} already in cache", type_name_str);
         return Ok(());
     }
@@ -175,7 +175,7 @@ async fn build_local_type_info_for_type(
     };
 
     // Store in permanent cache
-    global_cache().insert(type_name.clone(), cached_info);
+    REGISTRY_CACHE.insert(type_name.clone(), cached_info);
 
     debug!("Successfully cached type info for {}", type_name_str);
     Ok(())
@@ -194,7 +194,7 @@ async fn discover_nested_type_paths(
 
     // Check cache first
     let type_name: BrpTypeName = field_type.into();
-    if let Some(cached_info) = global_cache().get(&type_name) {
+    if let Some(cached_info) = REGISTRY_CACHE.get(&type_name) {
         debug!("Found {} in cache, using cached mutation paths", field_type);
         // Add the cached type's mutation paths prefixed with our field name
         for path in &cached_info.mutation_paths {
@@ -274,7 +274,7 @@ async fn discover_nested_type_paths(
                                 enum_variants: None,
                             };
 
-                            global_cache().insert(type_name, cached_info);
+                            REGISTRY_CACHE.insert(type_name, cached_info);
                             debug!(
                                 "Cached struct type {} with {} mutation paths",
                                 field_type,
@@ -375,7 +375,7 @@ async fn discover_nested_type_paths(
                                 enum_variants: Some(variant_options),
                             };
 
-                            global_cache().insert(type_name, cached_info);
+                            REGISTRY_CACHE.insert(type_name, cached_info);
                             debug!("Cached enum type {} with spawn format", field_type);
                         }
                     }
@@ -399,7 +399,7 @@ async fn discover_nested_type_paths(
                             enum_variants: None,
                         };
 
-                        global_cache().insert(type_name, cached_info);
+                        REGISTRY_CACHE.insert(type_name, cached_info);
                     }
                 }
             }
@@ -431,7 +431,7 @@ fn build_type_schema_response(requested_types: &[String]) -> Value {
     let mut failed_discoveries = 0;
 
     for type_name in requested_types {
-        if let Some(cached_info) = global_cache().get(&type_name.as_str().into()) {
+        if let Some(cached_info) = REGISTRY_CACHE.get(&type_name.as_str().into()) {
             let type_entry = build_type_info_entry(type_name, &cached_info);
             type_info.insert(type_name.clone(), type_entry);
             successful_discoveries += 1;

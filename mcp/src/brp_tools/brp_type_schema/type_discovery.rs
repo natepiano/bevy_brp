@@ -8,10 +8,10 @@ use std::collections::HashMap;
 use serde_json::{Map, Value, json};
 use tracing::debug;
 
+use super::TypeCategory;
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
-use super::registry_cache::global_cache;
-use super::types::{BrpSupportedOperation, CachedTypeInfo, MutationPath};
-use crate::brp_tools::brp_client::{BrpTypeName, TypeCategory};
+use super::registry_cache::REGISTRY_CACHE;
+use super::types::{BrpSupportedOperation, BrpTypeName, CachedTypeInfo, MutationPath};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -121,7 +121,7 @@ pub fn require_type_in_registry<'a>(
 
     // If not found directly, search through all types
     if let Some(obj) = registry_data.as_object() {
-        for (key, value) in obj {
+        for (_key, value) in obj {
             if let Some(type_path) = value.get("typePath").and_then(Value::as_str) {
                 if type_path == type_name {
                     return Ok(value);
@@ -147,7 +147,7 @@ pub async fn batch_discover_types_by_crate(
 
     for type_name in types_to_discover {
         // Skip if already in cache
-        if global_cache().get(&type_name.as_str().into()).is_some() {
+        if REGISTRY_CACHE.get(&type_name.as_str().into()).is_some() {
             continue;
         }
 
@@ -220,7 +220,7 @@ pub async fn batch_discover_types_by_crate(
                                     enum_variants: None,
                                 };
 
-                                global_cache().insert(type_name_key, cached_info);
+                                REGISTRY_CACHE.insert(type_name_key, cached_info);
                                 debug!("Cached struct {} from batch", type_name);
                             }
                             Some("Enum") => {
@@ -258,7 +258,7 @@ pub async fn batch_discover_types_by_crate(
                                     enum_variants,
                                 };
 
-                                global_cache().insert(type_name_key, cached_info);
+                                REGISTRY_CACHE.insert(type_name_key, cached_info);
                                 debug!("Cached enum {} from batch", type_name);
                             }
                             _ => {
@@ -281,7 +281,7 @@ pub async fn batch_discover_types_by_crate(
                                     enum_variants: None,
                                 };
 
-                                global_cache().insert(type_name_key, cached_info);
+                                REGISTRY_CACHE.insert(type_name_key, cached_info);
                                 debug!(
                                     "Cached {} type {} from batch",
                                     type_kind.unwrap_or("unknown"),
@@ -410,7 +410,7 @@ pub async fn build_spawn_format_and_mutation_paths(
                         // Check if type is now in cache from batch discovery
                         let type_name_key: BrpTypeName = ft.into();
 
-                        if let Some(cached_info) = global_cache().get(&type_name_key) {
+                        if let Some(cached_info) = REGISTRY_CACHE.get(&type_name_key) {
                             debug!("Using cached type {} for field '{}'", ft, field_name);
 
                             // For enums, use the spawn format as the mutation example

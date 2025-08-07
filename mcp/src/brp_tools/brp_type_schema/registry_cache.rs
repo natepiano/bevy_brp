@@ -7,11 +7,10 @@ use std::sync::LazyLock;
 
 use dashmap::DashMap;
 
-use super::types::CachedTypeInfo;
-use crate::brp_tools::brp_client::BrpTypeName;
+use super::types::{BrpTypeName, CachedTypeInfo};
 
 /// Global registry cache shared across all tool invocations
-static REGISTRY_CACHE: LazyLock<RegistryCache> = LazyLock::new(RegistryCache::new);
+pub static REGISTRY_CACHE: LazyLock<RegistryCache> = LazyLock::new(RegistryCache::new);
 
 /// Thread-safe cache for registry type information
 pub struct RegistryCache {
@@ -36,9 +35,4 @@ impl RegistryCache {
     pub fn insert(&self, type_name: BrpTypeName, info: CachedTypeInfo) {
         self.types.insert(type_name, info);
     }
-}
-
-/// Get the global registry cache instance
-pub fn global_cache() -> &'static RegistryCache {
-    &REGISTRY_CACHE
 }

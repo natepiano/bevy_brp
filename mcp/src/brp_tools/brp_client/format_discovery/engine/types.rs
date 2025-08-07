@@ -12,46 +12,6 @@ use super::unified_types::UnifiedTypeInfo;
 use crate::error::Error;
 use crate::tool::{BrpMethod, ParameterName};
 
-/// A newtype wrapper for BRP type names used as `HashMap` keys
-///
-/// This type provides documentation and type safety for strings that represent
-/// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
-/// when used as keys in type information maps.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct BrpTypeName(String);
-
-impl BrpTypeName {
-    /// Get the underlying string reference
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<&str> for BrpTypeName {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
-}
-
-impl From<String> for BrpTypeName {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
-}
-
-impl From<&String> for BrpTypeName {
-    fn from(s: &String) -> Self {
-        Self(s.clone())
-    }
-}
-
-impl std::fmt::Display for BrpTypeName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 /// Type of BRP operation being performed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -299,33 +259,4 @@ pub struct TransformationResult {
     pub corrected_value: Value,
     /// Human-readable hint about the transformation
     pub hint:            String,
-}
-
-/// Category of type for quick identification and processing
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub enum TypeCategory {
-    /// Unknown or unclassified type
-    Unknown,
-    /// Regular struct type
-    Struct,
-    /// Tuple struct type
-    TupleStruct,
-    /// Enum type
-    Enum,
-    /// Math type (Vec2, Vec3, Quat, etc.)
-    MathType,
-    /// Component type
-    Component,
-}
-
-impl From<&str> for TypeCategory {
-    fn from(s: &str) -> Self {
-        match s {
-            "Struct" => Self::Struct,
-            "TupleStruct" => Self::TupleStruct,
-            "Enum" => Self::Enum,
-            _ => Self::Unknown,
-        }
-    }
 }

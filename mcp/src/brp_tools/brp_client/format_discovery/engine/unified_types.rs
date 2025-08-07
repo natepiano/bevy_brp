@@ -13,9 +13,10 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::types::{
-    BrpTypeName, Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo,
-    EnumVariant, FormatInfo, Operation, RegistryStatus, SerializationSupport, TypeCategory,
+    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
+    FormatInfo, Operation, RegistryStatus, SerializationSupport,
 };
+use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeCategory};
 use crate::tool::ParameterName;
 
 /// Comprehensive type information unified across all discovery sources

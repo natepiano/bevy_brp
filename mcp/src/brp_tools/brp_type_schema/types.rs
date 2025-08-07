@@ -3,10 +3,9 @@
 //! This module contains type structures used for caching and comparing
 //! registry-derived type information with extras-based discovery.
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display};
-
-use crate::brp_tools::brp_client::TypeCategory;
 
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
@@ -16,6 +15,46 @@ pub struct BrpFormatKnowledge {
     /// Subfield paths for types that support subfield mutation (e.g., Vec3 has x,y,z)
     /// Each tuple is (`subfield_name`, `example_value`)
     pub subfield_paths: Option<Vec<(&'static str, Value)>>,
+}
+
+/// A newtype wrapper for BRP type names used as `HashMap` keys
+///
+/// This type provides documentation and type safety for strings that represent
+/// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
+/// when used as keys in type information maps.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BrpTypeName(String);
+
+impl BrpTypeName {
+    /// Get the underlying string reference
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<&str> for BrpTypeName {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl From<String> for BrpTypeName {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&String> for BrpTypeName {
+    fn from(s: &String) -> Self {
+        Self(s.clone())
+    }
+}
+
+impl std::fmt::Display for BrpTypeName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// Cached type information from registry
@@ -67,4 +106,33 @@ pub struct MutationPath {
     pub enum_variants: Option<Vec<String>>,
     /// Type information for this path
     pub type_name:     Option<String>,
+}
+
+/// Category of type for quick identification and processing
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum TypeCategory {
+    /// Unknown or unclassified type
+    Unknown,
+    /// Regular struct type
+    Struct,
+    /// Tuple struct type
+    TupleStruct,
+    /// Enum type
+    Enum,
+    /// Math type (Vec2, Vec3, Quat, etc.)
+    MathType,
+    /// Component type
+    Component,
+}
+
+impl From<&str> for TypeCategory {
+    fn from(s: &str) -> Self {
+        match s {
+            "Struct" => Self::Struct,
+            "TupleStruct" => Self::TupleStruct,
+            "Enum" => Self::Enum,
+            _ => Self::Unknown,
+        }
+    }
 }
