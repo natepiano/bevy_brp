@@ -1,7 +1,5 @@
 use strum::{Display, EnumString};
 
-use crate::tool::JsonFieldAccess;
-
 /// Format correction field names enum for type-safe field access
 ///
 /// This enum provides compile-time safety for format correction field names
@@ -49,5 +47,3 @@ pub enum FormatCorrectionField {
     /// Value for mutation operations
     Value,
 }
-
-impl JsonFieldAccess for FormatCorrectionField {}

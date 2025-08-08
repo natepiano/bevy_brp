@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 
 use serde_json::json;
 
-use super::types::{BrpFormatKnowledge, BrpTypeName};
+use super::types::{BrpFormatKnowledge, BrpTypeName, MathComponent};
 
 /// Static map of hardcoded BRP format knowledge
 /// This captures the serialization rules that can't be derived from registry
@@ -178,14 +178,20 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             "bevy_math::vec2::Vec2".into(),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0]),
-                subfield_paths: Some(vec![("x", json!(1.0)), ("y", json!(2.0))]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                ]),
             },
         );
         map.insert(
             "glam::Vec2".into(),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0]),
-                subfield_paths: Some(vec![("x", json!(1.0)), ("y", json!(2.0))]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                ]),
             },
         );
 
@@ -195,9 +201,9 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(1.0)),
-                    ("y", json!(2.0)),
-                    ("z", json!(3.0)),
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                    (MathComponent::Z, json!(3.0)),
                 ]),
             },
         );
@@ -206,9 +212,9 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(1.0)),
-                    ("y", json!(2.0)),
-                    ("z", json!(3.0)),
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                    (MathComponent::Z, json!(3.0)),
                 ]),
             },
         );
@@ -217,9 +223,9 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(1.0)),
-                    ("y", json!(2.0)),
-                    ("z", json!(3.0)),
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                    (MathComponent::Z, json!(3.0)),
                 ]),
             },
         );
@@ -228,9 +234,9 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(1.0)),
-                    ("y", json!(2.0)),
-                    ("z", json!(3.0)),
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                    (MathComponent::Z, json!(3.0)),
                 ]),
             },
         );
@@ -241,10 +247,10 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0, 4.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(1.0)),
-                    ("y", json!(2.0)),
-                    ("z", json!(3.0)),
-                    ("w", json!(4.0)),
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                    (MathComponent::Z, json!(3.0)),
+                    (MathComponent::W, json!(4.0)),
                 ]),
             },
         );
@@ -253,10 +259,10 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0, 4.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(1.0)),
-                    ("y", json!(2.0)),
-                    ("z", json!(3.0)),
-                    ("w", json!(4.0)),
+                    (MathComponent::X, json!(1.0)),
+                    (MathComponent::Y, json!(2.0)),
+                    (MathComponent::Z, json!(3.0)),
+                    (MathComponent::W, json!(4.0)),
                 ]),
             },
         );
@@ -267,10 +273,10 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([0.0, 0.0, 0.0, 1.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(0.0)),
-                    ("y", json!(0.0)),
-                    ("z", json!(0.0)),
-                    ("w", json!(1.0)),
+                    (MathComponent::X, json!(0.0)),
+                    (MathComponent::Y, json!(0.0)),
+                    (MathComponent::Z, json!(0.0)),
+                    (MathComponent::W, json!(1.0)),
                 ]),
             },
         );
@@ -279,10 +285,10 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             BrpFormatKnowledge {
                 example_value:  json!([0.0, 0.0, 0.0, 1.0]),
                 subfield_paths: Some(vec![
-                    ("x", json!(0.0)),
-                    ("y", json!(0.0)),
-                    ("z", json!(0.0)),
-                    ("w", json!(1.0)),
+                    (MathComponent::X, json!(0.0)),
+                    (MathComponent::Y, json!(0.0)),
+                    (MathComponent::Z, json!(0.0)),
+                    (MathComponent::W, json!(1.0)),
                 ]),
             },
         );

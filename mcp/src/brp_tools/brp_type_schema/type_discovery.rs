@@ -11,28 +11,37 @@ use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::registry_cache::REGISTRY_CACHE;
 use super::types::{
     BrpFormatKnowledge, BrpSupportedOperation, BrpTypeName, CachedTypeInfo, MutationPath,
+    ReflectTrait, SchemaField, VecStringContains,
 };
 use super::wrapper_types::WrapperType;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Result;
+use crate::json_field_access::JsonFieldAccess;
 use crate::tool::BrpMethod;
 
 // ===== Public Functions (Alphabetical) =====
 
 /// Build enum spawn format from type schema
 pub fn build_enum_spawn_format(type_schema: &Value) -> Value {
-    if let Some(one_of) = type_schema.get("oneOf").and_then(Value::as_array) {
+    if let Some(one_of) = type_schema
+        .get_field(SchemaField::OneOf)
+        .and_then(Value::as_array)
+    {
         if let Some(first_variant) = one_of.first() {
-            if let Some(variant_name) = first_variant.get("shortPath").and_then(Value::as_str) {
+            if let Some(variant_name) = first_variant
+                .get_field(SchemaField::ShortPath)
+                .and_then(Value::as_str)
+            {
                 // Check variant type to build appropriate spawn format
-                if let Some(prefix_items) =
-                    first_variant.get("prefixItems").and_then(Value::as_array)
+                if let Some(prefix_items) = first_variant
+                    .get_field(SchemaField::PrefixItems)
+                    .and_then(Value::as_array)
                 {
                     // Tuple variant
                     if let Some(first_item) = prefix_items.first() {
                         if let Some(type_ref) = first_item
-                            .get("type")
-                            .and_then(|t| t.get("$ref"))
+                            .get_field(SchemaField::Type)
+                            .and_then(|t| t.get_field(SchemaField::Ref))
                             .and_then(Value::as_str)
                         {
                             let inner_type = type_ref.strip_prefix("#/$defs/").unwrap_or(type_ref);
@@ -54,7 +63,7 @@ pub fn build_enum_spawn_format(type_schema: &Value) -> Value {
                         }
                     }
                     return json!({ variant_name: [] });
-                } else if first_variant.get("properties").is_some() {
+                } else if first_variant.get_field(SchemaField::Properties).is_some() {
                     // Struct variant
                     return json!({ variant_name: {} });
                 }
@@ -82,7 +91,9 @@ pub async fn build_spawn_format_and_mutation_paths(
     let mut spawn_format = Map::new();
     let mut mutation_paths = Vec::new();
 
-    let properties = type_schema.get("properties").and_then(Value::as_object);
+    let properties = type_schema
+        .get_field(SchemaField::Properties)
+        .and_then(Value::as_object);
 
     if let Some(props) = properties {
         // Build spawn format and mutation paths, discovering types as needed
@@ -115,10 +126,10 @@ pub async fn build_spawn_format_and_mutation_paths(
 pub fn determine_supported_operations(reflect_types: &[String]) -> Vec<BrpSupportedOperation> {
     let mut operations = vec![BrpSupportedOperation::Query];
 
-    let has_component = reflect_types.contains(&"Component".to_string());
-    let has_resource = reflect_types.contains(&"Resource".to_string());
-    let has_serialize = reflect_types.contains(&"Serialize".to_string());
-    let has_deserialize = reflect_types.contains(&"Deserialize".to_string());
+    let has_component = reflect_types.contains_trait(ReflectTrait::Component);
+    let has_resource = reflect_types.contains_trait(ReflectTrait::Resource);
+    let has_serialize = reflect_types.contains_trait(ReflectTrait::Serialize);
+    let has_deserialize = reflect_types.contains_trait(ReflectTrait::Deserialize);
 
     if has_component {
         operations.push(BrpSupportedOperation::Get);
@@ -146,7 +157,7 @@ pub fn determine_supported_operations(reflect_types: &[String]) -> Vec<BrpSuppor
 /// Extract reflect types from a registry schema
 pub fn extract_reflect_types(type_schema: &Value) -> Vec<String> {
     type_schema
-        .get("reflectTypes")
+        .get_field(SchemaField::ReflectTypes)
         .and_then(Value::as_array)
         .map(|arr| {
             arr.iter()
@@ -169,7 +180,10 @@ pub fn require_type_in_registry<'a>(
     // If not found directly, search through all types
     if let Some(obj) = registry_data.as_object() {
         for (_key, value) in obj {
-            if let Some(type_path) = value.get("typePath").and_then(Value::as_str) {
+            if let Some(type_path) = value
+                .get_field(SchemaField::TypePath)
+                .and_then(Value::as_str)
+            {
                 if type_path == type_name {
                     return Ok(value);
                 }
@@ -209,15 +223,18 @@ async fn discover_nested_type_paths(
             // Try to find this type in the response
             if let Ok(type_schema) = require_type_in_registry(field_type, &registry_data) {
                 // Check the kind of type
-                let type_kind = type_schema.get("kind").and_then(Value::as_str);
+                let type_kind = type_schema
+                    .get_field(SchemaField::Kind)
+                    .and_then(Value::as_str);
 
                 match type_kind {
                     Some("Struct") => {
                         let struct_paths = process_struct_type(type_schema, field_name, type_name);
 
                         // Recursively discover paths for nested non-primitive fields
-                        if let Some(props) =
-                            type_schema.get("properties").and_then(Value::as_object)
+                        if let Some(props) = type_schema
+                            .get_field(SchemaField::Properties)
+                            .and_then(Value::as_object)
                         {
                             for (nested_field_name, nested_field_info) in props {
                                 let nested_field_type = extract_field_type(nested_field_info);
@@ -255,7 +272,7 @@ async fn discover_nested_type_paths(
                         debug!("Unknown type kind for {}: {:?}", field_type, type_kind);
                         // Cache with empty paths for unknown types
                         let type_category: TypeKind = type_schema
-                            .get("kind")
+                            .get_field(SchemaField::Kind)
                             .and_then(Value::as_str)
                             .map_or(TypeKind::Unknown, Into::into);
 
@@ -310,7 +327,12 @@ async fn get_enum_variants_for_type(type_name: &str, port: Port) -> Option<Vec<S
         .and_then(|registry_data| {
             require_type_in_registry(type_name, &registry_data)
                 .ok()
-                .filter(|type_schema| type_schema.get("kind").and_then(Value::as_str) == Some("Enum"))
+                .filter(|type_schema| {
+                    type_schema
+                        .get_field(SchemaField::Kind)
+                        .and_then(Value::as_str)
+                        == Some("Enum")
+                })
                 .and_then(extract_enum_variants)
         })
 }
@@ -591,12 +613,12 @@ fn cache_type_info(
 /// Get enum variants from a type schema
 fn extract_enum_variants(type_schema: &Value) -> Option<Vec<String>> {
     type_schema
-        .get("oneOf")
+        .get_field(SchemaField::OneOf)
         .and_then(Value::as_array)
         .map(|one_of| {
             one_of
                 .iter()
-                .filter_map(|v| v.get("shortPath").and_then(Value::as_str))
+                .filter_map(|v| v.get_field(SchemaField::ShortPath).and_then(Value::as_str))
                 .map(std::string::ToString::to_string)
                 .collect()
         })
@@ -605,8 +627,8 @@ fn extract_enum_variants(type_schema: &Value) -> Option<Vec<String>> {
 /// Extract field type from field info
 fn extract_field_type(field_info: &Value) -> Option<&str> {
     field_info
-        .get("type")
-        .and_then(|t| t.get("$ref"))
+        .get_field(SchemaField::Type)
+        .and_then(|t| t.get_field(SchemaField::Ref))
         .and_then(Value::as_str)
         .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
 }
@@ -644,7 +666,10 @@ fn is_primitive_type(type_name: &str) -> bool {
 
 /// Process enum type schema
 fn process_enum_type(type_schema: &Value, field_type: &str, type_name: BrpTypeName) {
-    if let Some(_one_of) = type_schema.get("oneOf").and_then(Value::as_array) {
+    if let Some(_one_of) = type_schema
+        .get_field(SchemaField::OneOf)
+        .and_then(Value::as_array)
+    {
         let spawn_format = build_enum_spawn_format(type_schema);
         let variant_options = extract_enum_variants(type_schema).unwrap_or_default();
 
@@ -712,8 +737,8 @@ fn process_hardcoded_type(
     // Generate component mutation paths if available (but NOT for wrapper types)
     if wrapper_type.is_none() {
         if let Some(component_paths) = &hardcoded.subfield_paths {
-            for (component_name, example_value) in component_paths {
-                let component_path = format!(".{field_name}.{component_name}");
+            for (component, example_value) in component_paths {
+                let component_path = format!(".{field_name}.{}", component.as_ref());
                 mutation_paths.push(MutationPath {
                     path:          component_path,
                     example_value: example_value.clone(),
@@ -734,7 +759,10 @@ fn process_struct_type(
     let mut nested_paths = Vec::new();
     let mut cache_paths = Vec::new();
 
-    if let Some(props) = type_schema.get("properties").and_then(Value::as_object) {
+    if let Some(props) = type_schema
+        .get_field(SchemaField::Properties)
+        .and_then(Value::as_object)
+    {
         // Build paths for immediate return with field_name prefix
         for (nested_field_name, nested_field_info) in props {
             let nested_path = format!(".{field_name}.{nested_field_name}");

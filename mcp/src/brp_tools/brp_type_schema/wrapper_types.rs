@@ -4,7 +4,16 @@
 //! special mutation paths or enum variant listings.
 
 use serde_json::{Value, json};
-use strum::{AsRefStr, EnumIter, IntoEnumIterator};
+use strum::{AsRefStr, Display, EnumIter, IntoEnumIterator};
+
+/// Wrapper type variant names for serialization
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
+pub enum WrapperVariant {
+    Some,
+    None,
+    Strong,
+    Weak,
+}
 
 /// Well-known wrapper types that we handle specially
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
@@ -16,6 +25,28 @@ pub enum WrapperType {
 }
 
 impl WrapperType {
+    // Helper methods for building JSON with WrapperVariant
+
+    /// Build JSON for `Option::Some` variant
+    fn wrap_some(value: Value) -> Value {
+        json!({WrapperVariant::Some.to_string(): value})
+    }
+
+    /// Build JSON for `Option::None` variant
+    fn wrap_none() -> Value {
+        json!(WrapperVariant::None.to_string())
+    }
+
+    /// Build JSON for `Handle::Strong` variant
+    fn wrap_strong(value: Value) -> Value {
+        json!({WrapperVariant::Strong.to_string(): [value]})
+    }
+
+    /// Build JSON for `Handle::Weak` variant
+    fn wrap_weak(value: Value) -> Value {
+        json!({WrapperVariant::Weak.to_string(): [value]})
+    }
+
     /// Try to detect a wrapper type from a full type name
     pub fn detect(type_name: &str) -> Option<(Self, &str)> {
         for wrapper in Self::iter() {
@@ -45,11 +76,12 @@ impl WrapperType {
         match self {
             Self::Option => {
                 // Option wraps as {"Some": inner_value}
-                json!({"Some": inner_value})
+                Self::wrap_some(inner_value)
             }
             Self::Handle => {
                 // Handle wraps as {"Strong": [inner_value]}
-                json!({"Strong": [inner_value]})
+                // Note: We use Strong for examples, though Handle also supports Weak
+                Self::wrap_strong(inner_value)
             }
         }
     }
@@ -57,8 +89,9 @@ impl WrapperType {
     /// Get the default/empty example for this wrapper type
     pub fn default_example(self) -> Value {
         match self {
-            Self::Option => json!("None"),
-            Self::Handle => json!({"Strong": [{}]}),
+            Self::Option => Self::wrap_none(),
+            // Handle::default() returns Weak(AssetId::default()) in Bevy
+            Self::Handle => Self::wrap_weak(json!({})),
         }
     }
 
@@ -76,8 +109,10 @@ impl WrapperType {
             }
             Self::Handle => {
                 // Handle still needs the wrapper in mutations
+                // Using Strong for actual asset references (Weak would be for placeholders)
                 json!({
-                    "example": {"Strong": [inner_value]}
+                    "strong": Self::wrap_strong(inner_value),
+                    "weak_placeholder": Self::wrap_weak(json!({}))
                 })
             }
         }
@@ -142,10 +177,7 @@ mod tests {
     #[test]
     fn test_default_example() {
         assert_eq!(WrapperType::Option.default_example(), json!("None"));
-        assert_eq!(
-            WrapperType::Handle.default_example(),
-            json!({"Strong": [{}]})
-        );
+        assert_eq!(WrapperType::Handle.default_example(), json!({"Weak": [{}]}));
     }
 
     #[test]
@@ -157,7 +189,10 @@ mod tests {
         );
         assert_eq!(
             WrapperType::Handle.mutation_examples(inner),
-            json!({"example": {"Strong": [[1.0, 2.0]]}})
+            json!({
+                "strong": {"Strong": [[1.0, 2.0]]},
+                "weak_placeholder": {"Weak": [{}]}
+            })
         );
     }
 }

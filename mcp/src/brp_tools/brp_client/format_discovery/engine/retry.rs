@@ -11,6 +11,7 @@ use super::state::{DiscoveryEngine, Retry};
 use super::types::{Correction, CorrectionInfo, Operation};
 use crate::brp_tools::{BrpClientError, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
+use crate::json_field_access::JsonFieldAccess;
 use crate::tool::ParameterName;
 
 impl DiscoveryEngine<Retry> {
@@ -112,7 +113,7 @@ fn build_corrected_params(
                     ParameterName::Components => {
                         // For components: update components[type_name]
                         if let Some(components) =
-                            ParameterName::Components.get_object_mut_from(&mut params)
+                            params.get_field_object_mut(ParameterName::Components)
                         {
                             components.insert(
                                 correction.type_info.type_name.as_str().to_string(),

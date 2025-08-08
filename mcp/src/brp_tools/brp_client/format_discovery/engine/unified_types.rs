@@ -215,7 +215,7 @@ impl UnifiedTypeInfo {
             brp_compatible: has_serialize && has_deserialize,
         };
 
-        // Extract type category from schema if available
+        // Extract type kind from schema if available
         let type_category = schema_data
             .get("type")
             .and_then(Value::as_str)

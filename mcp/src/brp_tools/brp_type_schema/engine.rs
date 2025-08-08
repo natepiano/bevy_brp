@@ -19,9 +19,10 @@ use super::type_discovery::{
     build_spawn_format_and_mutation_paths, determine_supported_operations, extract_reflect_types,
     require_type_in_registry,
 };
-use super::types::{BrpTypeName, CachedTypeInfo, MutationPath};
+use super::types::{BrpTypeName, CachedTypeInfo, EnumVariantKind, MutationPath, SchemaField};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
+use crate::json_field_access::JsonFieldAccess;
 use crate::tool::BrpMethod;
 
 /// Engine that owns request-scoped state and performs discovery.
@@ -132,7 +133,7 @@ impl TypeSchemaEngine {
 
         // Extract type category from registry schema
         let type_category: TypeKind = type_schema
-            .get("kind")
+            .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
             .map_or(TypeKind::Unknown, Into::into);
 
@@ -270,7 +271,9 @@ impl TypeSchemaEngine {
 
     /// Extract enum info from registry schema
     fn extract_enum_info(registry_schema: &Value) -> Option<Vec<EnumVariantInfo>> {
-        let one_of = registry_schema.get("oneOf").and_then(Value::as_array)?;
+        let one_of = registry_schema
+            .get_field(SchemaField::OneOf)
+            .and_then(Value::as_array)?;
 
         let variants: Vec<EnumVariantInfo> = one_of
             .iter()
@@ -282,54 +285,64 @@ impl TypeSchemaEngine {
 
     /// Extract a single enum variant from schema
     fn extract_enum_variant(v: &Value) -> Option<EnumVariantInfo> {
-        let name = v.get("shortPath").and_then(Value::as_str)?;
+        let name = v
+            .get_field(SchemaField::ShortPath)
+            .and_then(Value::as_str)?;
 
         // Check if this is a unit variant, tuple variant, or struct variant
-        let variant_type = if v.get("prefixItems").is_some() {
-            "Tuple"
-        } else if v.get("properties").is_some() {
-            "Struct"
+        let variant_type = if v.get_field(SchemaField::PrefixItems).is_some() {
+            EnumVariantKind::Tuple
+        } else if v.get_field(SchemaField::Properties).is_some() {
+            EnumVariantKind::Struct
         } else {
-            "Unit"
+            EnumVariantKind::Unit
         };
 
         // Extract tuple types if present
-        let tuple_types = if variant_type == "Tuple" {
-            v.get("prefixItems").and_then(Value::as_array).map(|items| {
-                items
-                    .iter()
-                    .filter_map(|item| item.get("type").and_then(Value::as_str).map(String::from))
-                    .collect()
-            })
+        let tuple_types = if variant_type == EnumVariantKind::Tuple {
+            v.get_field(SchemaField::PrefixItems)
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| {
+                            item.get_field(SchemaField::Type)
+                                .and_then(Value::as_str)
+                                .map(String::from)
+                        })
+                        .collect()
+                })
         } else {
             None
         };
 
         // Extract struct fields if present
-        let fields = if variant_type == "Struct" {
-            v.get("properties").and_then(Value::as_object).map(|props| {
-                props
-                    .iter()
-                    .map(|(field_name, field_value)| {
-                        let type_name = field_value
-                            .get("type")
-                            .and_then(Value::as_str)
-                            .unwrap_or("unknown")
-                            .to_string();
-                        EnumFieldInfo {
-                            name: field_name.clone(),
-                            type_name,
-                        }
-                    })
-                    .collect()
-            })
+        let fields = if variant_type == EnumVariantKind::Struct {
+            v.get_field(SchemaField::Properties)
+                .and_then(Value::as_object)
+                .map(|props| {
+                    props
+                        .iter()
+                        .map(|(field_name, field_value)| {
+                            let type_name = field_value
+                                .get_field(SchemaField::Type)
+                                .and_then(Value::as_str)
+                                .unwrap_or("unknown")
+                                .to_string();
+                            EnumFieldInfo {
+                                name: field_name.clone(),
+                                type_name,
+                            }
+                        })
+                        .collect()
+                })
         } else {
             None
         };
 
         Some(EnumVariantInfo {
             name: name.to_string(),
-            variant_type: variant_type.to_string(),
+            variant_type,
             fields,
             tuple_types,
         })

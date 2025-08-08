@@ -1,7 +1,6 @@
 mod annotations;
 mod field_placement;
 mod handler_context;
-mod json_field_access;
 mod json_response;
 mod large_response;
 mod parameters;
@@ -14,7 +13,6 @@ mod types;
 pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement};
 //
 pub use handler_context::HandlerContext;
-pub use json_field_access::JsonFieldAccess;
 pub use parameters::{ParamStruct, ParameterName};
 //
 // exported for mcp_macros

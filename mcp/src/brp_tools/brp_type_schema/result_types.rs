@@ -9,7 +9,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::types::{CachedTypeInfo, MutationPath};
+use super::types::{
+    CachedTypeInfo, EnumVariantKind, MutationPath, ReflectTrait, VecStringContains,
+};
 
 /// The main response structure for type schema discovery
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,7 +98,7 @@ pub struct EnumVariantInfo {
     /// Name of the variant
     pub name:         String,
     /// Type of the variant (Unit, Tuple, Struct)
-    pub variant_type: String,
+    pub variant_type: EnumVariantKind,
     /// Fields for struct variants
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fields:       Option<Vec<EnumFieldInfo>>,
@@ -120,8 +122,10 @@ impl TypeInfo {
     /// Create a `TypeInfo` from internal `CachedTypeInfo`
     pub fn from_cached_info(type_name: &str, cached: &CachedTypeInfo) -> Self {
         // Check for Serialize/Deserialize traits
-        let has_serialize = cached.reflect_types.contains(&"Serialize".to_string());
-        let has_deserialize = cached.reflect_types.contains(&"Deserialize".to_string());
+        let has_serialize = cached.reflect_types.contains_trait(ReflectTrait::Serialize);
+        let has_deserialize = cached
+            .reflect_types
+            .contains_trait(ReflectTrait::Deserialize);
 
         // Convert supported operations to strings
         let supported_operations: Vec<String> = cached

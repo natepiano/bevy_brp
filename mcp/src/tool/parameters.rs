@@ -7,8 +7,6 @@ use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
-use super::JsonFieldAccess;
-
 /// Trait for parameter types used in tools
 ///
 /// This trait provides a type-level constraint for tool parameter types.
@@ -103,23 +101,6 @@ pub enum ParameterName {
     WithTypes,
     /// Exclude specific reflect types
     WithoutTypes,
-}
-
-impl JsonFieldAccess for ParameterName {}
-
-impl ParameterName {
-    /// Get parameter value from a mutable JSON object
-    pub fn get_mut_from(self, value: &mut serde_json::Value) -> Option<&mut serde_json::Value> {
-        value.get_mut(self.as_ref())
-    }
-
-    /// Get parameter value as mutable object from a mutable JSON object
-    pub fn get_object_mut_from(
-        self,
-        value: &mut serde_json::Value,
-    ) -> Option<&mut serde_json::Map<String, serde_json::Value>> {
-        value.get_mut(self.as_ref()).and_then(|v| v.as_object_mut())
-    }
 }
 
 /// Parameter field types for schema generation.

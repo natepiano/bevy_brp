@@ -13,7 +13,8 @@ use super::constants::{BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
-use crate::tool::{BrpMethod, JsonFieldAccess, ParameterName};
+use crate::json_field_access::JsonFieldAccess;
+use crate::tool::{BrpMethod, ParameterName};
 
 /// HTTP client for BRP communication
 pub struct BrpHttpClient {
@@ -175,14 +176,14 @@ impl BrpHttpClient {
 
         // Try to parse request body to extract component/entity info for mutations
         if let Ok(body_json) = serde_json::from_str::<Value>(request_body) {
-            if let Some(params) = ParameterName::Params.get_from(&body_json) {
-                if let Some(entity) = ParameterName::Entity.get_from(params) {
+            if let Some(params) = body_json.get_field(ParameterName::Params) {
+                if let Some(entity) = params.get_field(ParameterName::Entity) {
                     context_info.push(format!("Entity: {entity}"));
                 }
-                if let Some(component) = ParameterName::Component.get_str_from(params) {
+                if let Some(component) = params.get_field_str(ParameterName::Component) {
                     context_info.push(format!("Component: {component}"));
                 }
-                if let Some(path) = ParameterName::Path.get_str_from(params) {
+                if let Some(path) = params.get_field_str(ParameterName::Path) {
                     context_info.push(format!("Path: {path}"));
                 }
             }

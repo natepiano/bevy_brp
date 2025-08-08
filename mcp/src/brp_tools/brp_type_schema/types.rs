@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use strum::{AsRefStr, Display};
+use strum::{AsRefStr, Display, EnumString};
 
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
@@ -13,8 +13,25 @@ pub struct BrpFormatKnowledge {
     /// Example value in the correct BRP format
     pub example_value:  Value,
     /// Subfield paths for types that support subfield mutation (e.g., Vec3 has x,y,z)
-    /// Each tuple is (`subfield_name`, `example_value`)
-    pub subfield_paths: Option<Vec<(&'static str, Value)>>,
+    /// Each tuple is (`component_name`, `example_value`)
+    pub subfield_paths: Option<Vec<(MathComponent, Value)>>,
+}
+
+/// Enum for BRP supported operations
+/// Each operation has specific requirements based on type registration and traits
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, AsRefStr)]
+#[strum(serialize_all = "lowercase")]
+pub enum BrpSupportedOperation {
+    /// Get operation - requires type in registry
+    Get,
+    /// Insert operation - requires Serialize + Deserialize traits
+    Insert,
+    /// Mutate operation - requires mutable type (struct/tuple)
+    Mutate,
+    /// Query operation - requires type in registry
+    Query,
+    /// Spawn operation - requires Serialize + Deserialize traits
+    Spawn,
 }
 
 /// A newtype wrapper for BRP type names used as `HashMap` keys
@@ -77,21 +94,23 @@ pub struct CachedTypeInfo {
     pub enum_variants:        Option<Vec<String>>,
 }
 
-/// Enum for BRP supported operations
-/// Each operation has specific requirements based on type registration and traits
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, AsRefStr)]
+/// Enum variant classification
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum EnumVariantKind {
+    Tuple,
+    Struct,
+    Unit,
+}
+
+/// Math type component names
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
 #[strum(serialize_all = "lowercase")]
-pub enum BrpSupportedOperation {
-    /// Get operation - requires type in registry
-    Get,
-    /// Insert operation - requires Serialize + Deserialize traits
-    Insert,
-    /// Mutate operation - requires mutable type (struct/tuple)
-    Mutate,
-    /// Query operation - requires type in registry
-    Query,
-    /// Spawn operation - requires Serialize + Deserialize traits
-    Spawn,
+pub enum MathComponent {
+    X,
+    Y,
+    Z,
+    W,
 }
 
 /// Mutation path information
@@ -106,6 +125,48 @@ pub struct MutationPath {
     pub enum_variants: Option<Vec<String>>,
     /// Type information for this path
     pub type_name:     Option<String>,
+}
+
+/// Bevy reflection trait names
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString)]
+pub enum ReflectTrait {
+    Component,
+    Resource,
+    Serialize,
+    Deserialize,
+}
+
+/// Extension trait for checking if a collection of strings contains a reflection trait
+pub trait VecStringContains {
+    fn contains_trait(&self, trait_name: ReflectTrait) -> bool;
+}
+
+impl VecStringContains for Vec<String> {
+    fn contains_trait(&self, trait_name: ReflectTrait) -> bool {
+        self.contains(&trait_name.to_string())
+    }
+}
+
+impl VecStringContains for [String] {
+    fn contains_trait(&self, trait_name: ReflectTrait) -> bool {
+        self.contains(&trait_name.to_string())
+    }
+}
+
+/// Registry schema field names
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
+#[strum(serialize_all = "camelCase")]
+pub enum SchemaField {
+    Kind,
+    OneOf,
+    ShortPath,
+    PrefixItems,
+    Properties,
+    Type,
+    #[strum(serialize = "$ref")]
+    Ref,
+    ReflectTypes,
+    TypePath,
 }
 
 /// Category of type for quick identification and processing
