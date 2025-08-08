@@ -89,7 +89,7 @@ pub struct CachedTypeInfo {
     /// Operations supported by this type in BRP
     pub supported_operations: Vec<BrpSupportedOperation>,
     /// Category of this type (Struct, Enum, etc.)
-    pub type_category:        TypeKind,
+    pub type_kind:            TypeKind,
     /// For enums, list of variant names
     pub enum_variants:        Option<Vec<String>>,
 }

@@ -159,7 +159,7 @@ impl CorrectionInfo {
             // Extract type_category
             obj.insert(
                 FormatCorrectionField::TypeCategory.as_ref().to_string(),
-                serde_json::json!(format!("{:?}", self.type_info.type_category)),
+                serde_json::json!(format!("{:?}", self.type_info.type_kind)),
             );
 
             // Extract discovery_source (always present now)

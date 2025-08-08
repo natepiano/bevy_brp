@@ -143,7 +143,7 @@ impl TypeInfo {
 
         Self {
             type_name: type_name.to_string(),
-            type_category: cached.type_category.to_string(),
+            type_category: cached.type_kind.to_string(),
             in_registry: true,
             has_serialize,
             has_deserialize,

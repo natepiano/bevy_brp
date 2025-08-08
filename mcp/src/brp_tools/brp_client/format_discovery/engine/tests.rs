@@ -190,7 +190,7 @@ fn test_enrich_from_extras_full_enrichment() {
         info.type_name.as_str(),
         "bevy_transform::components::transform::Transform"
     );
-    assert_eq!(info.type_category, TypeKind::Struct); // for_transform_type creates Struct category
+    assert_eq!(info.type_kind, TypeKind::Struct); // for_transform_type creates Struct category
 
     // Note: Registry status, serialization, and supported_operations are not enriched by extras
     // They remain as set by the original constructor

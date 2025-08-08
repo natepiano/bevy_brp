@@ -459,7 +459,7 @@ async fn process_unknown_type(
             // Always check cache for spawn format after discovery
             let type_name_key: BrpTypeName = field_type.into();
             if let Some(cached_info) = REGISTRY_CACHE.get(&type_name_key) {
-                if cached_info.type_category == TypeKind::Enum {
+                if cached_info.type_kind == TypeKind::Enum {
                     spawn_format.insert(field_name.to_string(), cached_info.spawn_format);
                 }
             }
@@ -471,7 +471,7 @@ async fn process_unknown_type(
 
             let type_name_key: BrpTypeName = field_type.into();
             if let Some(cached_info) = REGISTRY_CACHE.get(&type_name_key) {
-                if cached_info.type_category == TypeKind::Enum {
+                if cached_info.type_kind == TypeKind::Enum {
                     spawn_format.insert(field_name.to_string(), cached_info.spawn_format);
                 }
             }
@@ -603,7 +603,7 @@ fn cache_type_info(
         reflect_types,
         spawn_format,
         supported_operations,
-        type_category,
+        type_kind: type_category,
         enum_variants,
     };
 
@@ -646,7 +646,7 @@ fn get_cached_example_or_default(
             cached_info.spawn_format
         };
 
-        let variants = match cached_info.type_category {
+        let variants = match cached_info.type_kind {
             TypeKind::Enum => cached_info.enum_variants,
             _ => None,
         };

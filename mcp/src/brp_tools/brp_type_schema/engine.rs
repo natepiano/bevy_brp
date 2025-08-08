@@ -131,8 +131,8 @@ impl TypeSchemaEngine {
         // Determine supported operations based on reflection types
         let supported_operations = determine_supported_operations(&reflect_types);
 
-        // Extract type category from registry schema
-        let type_category: TypeKind = type_schema
+        // Extract type kind from registry schema
+        let type_kind: TypeKind = type_schema
             .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
             .map_or(TypeKind::Unknown, Into::into);
@@ -144,7 +144,7 @@ impl TypeSchemaEngine {
             reflect_types,
             spawn_format: Value::Object(spawn_format),
             supported_operations,
-            type_category,
+            type_kind,
             enum_variants: None,
         };
 
@@ -182,7 +182,7 @@ impl TypeSchemaEngine {
         type_info.mutation_paths = Self::build_mutation_paths(cached_info);
 
         // Extract enum info if this is an enum type
-        if cached_info.type_category == TypeKind::Enum {
+        if cached_info.type_kind == TypeKind::Enum {
             type_info.enum_info = Self::extract_enum_info(&cached_info.registry_schema);
         }
 

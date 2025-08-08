@@ -143,14 +143,14 @@
     "expected_shutdown_method": "varies"
   },
   {
-    "test_name": "comparison",
-    "test_file": ".claude/commands/tests/comparison.md",
+    "test_name": "type_schema",
+    "test_file": ".claude/commands/tests/type_schema.md",
     "port": 20114,
-    "app_name": "various",
-    "log_file_prefix": "bevy_brp_mcp_*_port20114",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 for some tests",
-    "shutdown_instruction": "Varies by test case",
-    "test_objective": "Test all success and error cases for brp_status and brp_shutdown",
-    "expected_shutdown_method": "varies"
+    "app_name": "extras_plugin",
+    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20114",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 parameter to launch extras_plugin example",
+    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "test_objective": "Test brp_type_schema tool produces expected output structure",
+    "expected_shutdown_method": "clean_shutdown"
   }
 ]
