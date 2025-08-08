@@ -6,10 +6,12 @@
 
 pub mod hardcoded_formats;
 pub mod registry_cache;
+mod result_types;
 mod tool;
 pub mod type_discovery;
 pub mod types;
+mod wrapper_types;
 
 // Re-export public API
 pub use tool::{BrpTypeSchema, TypeSchemaParams, TypeSchemaResult};
-pub use types::{BrpTypeName, TypeCategory};
+pub use types::{BrpTypeName, TypeKind};

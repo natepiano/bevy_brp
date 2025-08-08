@@ -341,42 +341,26 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
 
+        // ===== Bevy math Rect =====
+        map.insert(
+            "bevy_math::rects::rect::Rect".into(),
+            BrpFormatKnowledge {
+                example_value:  json!({
+                    "min": [0.0, 0.0],
+                    "max": [100.0, 100.0]
+                }),
+                subfield_paths: None, // Has nested paths via Vec2 fields
+            },
+        );
+
         // ===== Bevy color types =====
+
+        // Color enum - tuple variants with flat array of RGBA values
+        // Note: BRP mutations expect [r, g, b, a] array, not the struct wrapper
         map.insert(
-            "bevy_color::srgba::Srgba".into(),
+            "bevy_color::color::Color".into(),
             BrpFormatKnowledge {
-                example_value:  json!({
-                    "red": 1.0,
-                    "green": 0.0,
-                    "blue": 0.0,
-                    "alpha": 1.0
-                }),
-                subfield_paths: None, // Colors use named fields, not component access
-            },
-        );
-        map.insert(
-            "bevy_color::linear_rgba::LinearRgba".into(),
-            BrpFormatKnowledge {
-                example_value:  json!({
-                    "red": 1.0,
-                    "green": 0.0,
-                    "blue": 0.0,
-                    "alpha": 1.0
-                }),
-                subfield_paths: None,
-            },
-        );
-        map.insert(
-            "bevy_color::Color".into(),
-            BrpFormatKnowledge {
-                example_value:  json!({
-                    "Srgba": {
-                        "red": 1.0,
-                        "green": 0.0,
-                        "blue": 0.0,
-                        "alpha": 1.0
-                    }
-                }),
+                example_value:  json!({"Srgba": [1.0, 0.0, 0.0, 1.0]}),
                 subfield_paths: None,
             },
         );

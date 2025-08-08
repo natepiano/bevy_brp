@@ -16,7 +16,7 @@ use super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
     FormatInfo, Operation, RegistryStatus, SerializationSupport,
 };
-use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeCategory};
+use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeKind};
 use crate::tool::ParameterName;
 
 /// Comprehensive type information unified across all discovery sources
@@ -33,7 +33,7 @@ pub struct UnifiedTypeInfo {
     /// Format-specific data and examples
     pub format_info:      FormatInfo,
     /// Type category for quick identification
-    pub type_category:    TypeCategory,
+    pub type_category:    TypeKind,
     /// Enum variant information (only populated for enum types)
     pub enum_info:        Option<EnumInfo>,
     /// Source of this type information for debugging
@@ -67,7 +67,7 @@ impl UnifiedTypeInfo {
                 original_format:  None,
                 corrected_format: None,
             },
-            type_category: TypeCategory::Unknown,
+            type_category: TypeKind::Unknown,
             enum_info: None,
             discovery_source,
         }
@@ -100,7 +100,7 @@ impl UnifiedTypeInfo {
         // Extract and update type category from extras_response if available
         if let Some(type_category) = extras_response.get("type_category").and_then(Value::as_str) {
             let new_category = Self::parse_type_category(type_category);
-            if new_category != TypeCategory::Unknown {
+            if new_category != TypeKind::Unknown {
                 self.type_category = new_category;
                 enriched = true;
             }
@@ -138,7 +138,7 @@ impl UnifiedTypeInfo {
         original_value: Value,
     ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category = TypeCategory::Enum;
+        info.type_category = TypeKind::Enum;
         if !variant_names.is_empty() {
             let variants = variant_names
                 .into_iter()
@@ -159,7 +159,7 @@ impl UnifiedTypeInfo {
     /// Sets appropriate type category and generates examples.
     pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category = TypeCategory::MathType;
+        info.type_category = TypeKind::MathType;
         info.generate_all_examples();
         info
     }
@@ -170,7 +170,7 @@ impl UnifiedTypeInfo {
     /// Sets appropriate type category, child types, and generates examples.
     pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category = TypeCategory::Struct;
+        info.type_category = TypeKind::Struct;
 
         info.generate_all_examples();
         info
@@ -219,10 +219,10 @@ impl UnifiedTypeInfo {
         let type_category = schema_data
             .get("type")
             .and_then(Value::as_str)
-            .map_or(TypeCategory::Unknown, Self::parse_type_category);
+            .map_or(TypeKind::Unknown, Self::parse_type_category);
 
         // Extract enum information if this is an enum
-        let enum_info = if type_category == TypeCategory::Enum {
+        let enum_info = if type_category == TypeKind::Enum {
             Self::extract_enum_info_from_schema(schema_data)
         } else {
             None
@@ -508,9 +508,9 @@ impl UnifiedTypeInfo {
     /// Generate spawn example based on type structure
     fn generate_spawn_insert_example(&self) -> Option<Value> {
         match self.type_category {
-            TypeCategory::Struct => self.generate_struct_example(),
-            TypeCategory::Enum => self.generate_enum_example(),
-            TypeCategory::MathType => self.generate_math_type_example(),
+            TypeKind::Struct => self.generate_struct_example(),
+            TypeKind::Enum => self.generate_enum_example(),
+            TypeKind::MathType => self.generate_math_type_example(),
             _ => None,
         }
     }
@@ -574,9 +574,9 @@ impl UnifiedTypeInfo {
     /// Transform an incorrect value to the correct format
     pub fn transform_value(&self, value: &Value) -> Option<Value> {
         match self.type_category {
-            TypeCategory::MathType => self.transform_math_value(value),
-            TypeCategory::Struct => self.transform_struct_value(value),
-            TypeCategory::Enum => self.transform_enum_value(value),
+            TypeKind::MathType => self.transform_math_value(value),
+            TypeKind::Struct => self.transform_struct_value(value),
+            TypeKind::Enum => self.transform_enum_value(value),
             _ => {
                 tracing::debug!(
                     "No transformation available for type_category={:?} (type='{}')",
@@ -708,14 +708,14 @@ impl UnifiedTypeInfo {
     }
 
     /// Parse a type category string to the corresponding enum variant
-    fn parse_type_category(category_str: &str) -> TypeCategory {
+    fn parse_type_category(category_str: &str) -> TypeKind {
         match category_str {
-            "Struct" => TypeCategory::Struct,
-            "TupleStruct" => TypeCategory::TupleStruct,
-            "Enum" => TypeCategory::Enum,
-            "MathType" => TypeCategory::MathType,
-            "Component" => TypeCategory::Component,
-            _ => TypeCategory::Unknown,
+            "Struct" => TypeKind::Struct,
+            "TupleStruct" => TypeKind::TupleStruct,
+            "Enum" => TypeKind::Enum,
+            "MathType" => TypeKind::MathType,
+            "Component" => TypeKind::Component,
+            _ => TypeKind::Unknown,
         }
     }
 

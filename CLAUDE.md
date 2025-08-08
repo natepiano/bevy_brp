@@ -7,3 +7,4 @@
   - ⚠️ REMEMBER: The MCP tool you're using is the OLD version until I reinstall
 
 - Files in `.claude/commands/tests` are not bash commands they are agentic tests and can only be executed using the instructions in `.claude/commands/test.md`
+- **IMPORANT** you can't run the mcp tool without me reinstalling it after you've changed something

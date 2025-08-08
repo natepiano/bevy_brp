@@ -160,9 +160,24 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Name::new("VisibleEntity"),
         Visibility::default(),
     ));
+    let x = Color::Srgba::new(1.0, 0.5, 0.25, 1.0);
+
+    // Entity with Sprite component for testing mutation paths
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 0.5, 0.25),
+            custom_size: Some(Vec2::new(64.0, 64.0)),
+            flip_x: false,
+            flip_y: false,
+            anchor: bevy::sprite::Anchor::Center,
+            ..default()
+        },
+        Transform::from_xyz(100.0, 100.0, 0.0),
+        Name::new("TestSprite"),
+    ));
 
     info!(
-        "Test entities spawned. BRP server running on http://localhost:{}",
+        "Test entities spawned (including Sprite). BRP server running on http://localhost:{}",
         port.0
     );
 }

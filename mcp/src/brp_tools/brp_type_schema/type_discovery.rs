@@ -3,15 +3,14 @@
 //! This module handles the discovery of type formats and mutation paths
 //! by combining registry schema information with hardcoded BRP knowledge.
 
-use std::collections::HashMap;
-
 use serde_json::{Map, Value, json};
 use tracing::debug;
 
-use super::TypeCategory;
+use super::TypeKind;
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::registry_cache::REGISTRY_CACHE;
 use super::types::{BrpSupportedOperation, BrpTypeName, CachedTypeInfo, MutationPath};
+use super::wrapper_types::WrapperType;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Result;
 use crate::tool::BrpMethod;
@@ -137,171 +136,216 @@ pub fn require_type_in_registry<'a>(
     .into())
 }
 
-/// Batch discover types by crate to minimize registry calls
-pub async fn batch_discover_types_by_crate(
-    types_to_discover: Vec<String>,
+/// Discover nested type paths by fetching registry schema for unknown types
+async fn discover_nested_type_paths(
+    field_type: &str,
+    field_name: &str,
     port: Port,
-) -> Result<()> {
-    // Group types by crate
-    let mut types_by_crate: HashMap<String, Vec<String>> = HashMap::new();
+) -> Result<Vec<MutationPath>> {
+    let mut nested_paths = Vec::new();
 
-    for type_name in types_to_discover {
-        // Skip if already in cache
-        if REGISTRY_CACHE.get(&type_name.as_str().into()).is_some() {
-            continue;
+    // Check cache first
+    let type_name: BrpTypeName = field_type.into();
+    if let Some(cached_info) = REGISTRY_CACHE.get(&type_name) {
+        debug!("Found {} in cache, using cached mutation paths", field_type);
+        // Add the cached type's mutation paths prefixed with our field name
+        for path in &cached_info.mutation_paths {
+            let nested_path = if path.path.starts_with('.') {
+                format!(".{field_name}{}", path.path)
+            } else {
+                format!(".{field_name}.{}", path.path)
+            };
+            nested_paths.push(MutationPath {
+                path:          nested_path,
+                example_value: path.example_value.clone(),
+                enum_variants: path.enum_variants.clone(),
+                type_name:     path.type_name.clone(),
+            });
         }
-
-        // Extract crate name (first part before ::)
-        let crate_name = type_name
-            .split("::")
-            .next()
-            .unwrap_or(&type_name)
-            .to_string();
-        types_by_crate
-            .entry(crate_name)
-            .or_insert_with(Vec::new)
-            .push(type_name);
+        return Ok(nested_paths);
     }
 
-    // Make one registry call per crate
-    for (crate_name, type_names) in types_by_crate {
-        debug!(
-            "Batching {} types from crate {}",
-            type_names.len(),
-            crate_name
-        );
+    // Not in cache, make a registry call for this specific type
+    debug!("Making registry call for nested type: {}", field_type);
 
-        // Use with_crates instead of with_types for better efficiency
-        let client = BrpClient::new(
-            BrpMethod::BevyRegistrySchema,
-            port,
-            Some(json!({
-                "with_crates": [crate_name]
-            })),
-        );
+    let client = BrpClient::new(
+        BrpMethod::BevyRegistrySchema,
+        port,
+        Some(json!({
+            "with_types": [field_type]
+        })),
+    );
 
-        match client.execute_raw().await {
-            Ok(ResponseStatus::Success(Some(registry_data))) => {
-                // Cache all types we were looking for from this crate
-                for type_name in &type_names {
-                    if let Ok(type_schema) = require_type_in_registry(type_name, &registry_data) {
-                        // Process and cache the type based on its kind
-                        let type_kind = type_schema.get("kind").and_then(Value::as_str);
-                        let type_name_key: BrpTypeName = type_name.as_str().into();
+    match client.execute_raw().await {
+        Ok(ResponseStatus::Success(Some(registry_data))) => {
+            // Try to find this type in the response
+            if let Ok(type_schema) = require_type_in_registry(field_type, &registry_data) {
+                // Check the kind of type
+                let type_kind = type_schema.get("kind").and_then(Value::as_str);
 
-                        match type_kind {
-                            Some("Struct") => {
-                                // Process struct type
-                                let mut cache_paths = Vec::new();
-                                if let Some(props) =
-                                    type_schema.get("properties").and_then(Value::as_object)
-                                {
-                                    for (field_name, _) in props {
-                                        cache_paths.push(MutationPath {
-                                            path:          format!(".{field_name}"),
-                                            example_value: json!(null),
-                                            enum_variants: None,
-                                            type_name:     None,
-                                        });
+                match type_kind {
+                    Some("Struct") => {
+                        // Extract properties and generate mutation paths for structs
+                        if let Some(props) =
+                            type_schema.get("properties").and_then(Value::as_object)
+                        {
+                            // Build paths for immediate return with field_name prefix
+                            for (nested_field_name, nested_field_info) in props {
+                                let nested_path = format!(".{field_name}.{nested_field_name}");
+
+                                // Check if this nested field has a known type for recursive
+                                // discovery
+                                let nested_field_type = nested_field_info
+                                    .get("type")
+                                    .and_then(|t| t.get("$ref"))
+                                    .and_then(Value::as_str)
+                                    .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"));
+
+                                // Add base path for this nested field
+                                nested_paths.push(MutationPath {
+                                    path:          nested_path.clone(),
+                                    example_value: json!(null),
+                                    enum_variants: None,
+                                    type_name:     nested_field_type.map(String::from),
+                                });
+
+                                // Recursively discover paths for nested structs
+                                if let Some(nft) = nested_field_type {
+                                    if !nft.starts_with("core::")
+                                        && !nft.starts_with("alloc::")
+                                        && !BRP_FORMAT_KNOWLEDGE.contains_key(&nft.into())
+                                    {
+                                        // Recursive call for deeper nesting
+                                        let full_nested_name =
+                                            format!("{field_name}.{nested_field_name}");
+                                        if let Ok(deeper_paths) =
+                                            Box::pin(discover_nested_type_paths(
+                                                nft,
+                                                &full_nested_name,
+                                                port,
+                                            ))
+                                            .await
+                                        {
+                                            nested_paths.extend(deeper_paths);
+                                        }
                                     }
                                 }
+                            }
 
-                                let reflect_types = extract_reflect_types(&type_schema);
-                                let supported_operations =
-                                    determine_supported_operations(&reflect_types);
-
-                                let cached_info = CachedTypeInfo {
-                                    mutation_paths: cache_paths,
-                                    registry_schema: type_schema.clone(),
-                                    reflect_types,
-                                    spawn_format: json!({}),
-                                    supported_operations,
-                                    type_category: TypeCategory::Struct,
+                            // Build relative paths for caching (without field_name prefix)
+                            let mut cache_paths = Vec::new();
+                            for (nested_field_name, _nested_field_info) in props {
+                                cache_paths.push(MutationPath {
+                                    path:          format!(".{nested_field_name}"),
+                                    example_value: json!(null),
                                     enum_variants: None,
-                                };
-
-                                REGISTRY_CACHE.insert(type_name_key, cached_info);
-                                debug!("Cached struct {} from batch", type_name);
+                                    type_name:     None,
+                                });
                             }
-                            Some("Enum") => {
-                                // Process enum type
-                                let spawn_format = build_enum_spawn_format(&type_schema);
-                                let reflect_types = extract_reflect_types(&type_schema);
-                                let supported_operations =
-                                    determine_supported_operations(&reflect_types);
 
-                                // Extract variant names
-                                let enum_variants = if let Some(one_of) =
-                                    type_schema.get("oneOf").and_then(Value::as_array)
-                                {
-                                    Some(
-                                        one_of
-                                            .iter()
-                                            .filter_map(|v| {
-                                                v.get("shortPath").and_then(Value::as_str)
-                                            })
-                                            .map(|s| s.to_string())
-                                            .collect(),
-                                    )
-                                } else {
-                                    None
-                                };
+                            // Cache this type for future use with relative paths
+                            let reflect_types = extract_reflect_types(&type_schema);
+                            let supported_operations =
+                                determine_supported_operations(&reflect_types);
 
-                                let cached_info = CachedTypeInfo {
-                                    mutation_paths: vec![], /* Enums don't have nested mutation
-                                                             * paths */
-                                    registry_schema: type_schema.clone(),
-                                    reflect_types,
-                                    spawn_format,
-                                    supported_operations,
-                                    type_category: TypeCategory::Enum,
-                                    enum_variants,
-                                };
+                            let cached_info = CachedTypeInfo {
+                                mutation_paths: cache_paths, // Store relative paths in cache
+                                registry_schema: type_schema.clone(),
+                                reflect_types,
+                                spawn_format: json!({}),
+                                supported_operations,
+                                type_category: TypeKind::Struct,
+                                enum_variants: None,
+                            };
 
-                                REGISTRY_CACHE.insert(type_name_key, cached_info);
-                                debug!("Cached enum {} from batch", type_name);
-                            }
-                            _ => {
-                                // Cache unknown types with empty data
-                                let reflect_types = extract_reflect_types(&type_schema);
-                                let supported_operations =
-                                    determine_supported_operations(&reflect_types);
-                                let type_category: TypeCategory = type_schema
-                                    .get("kind")
-                                    .and_then(Value::as_str)
-                                    .map_or(TypeCategory::Unknown, Into::into);
-
-                                let cached_info = CachedTypeInfo {
-                                    mutation_paths: vec![],
-                                    registry_schema: type_schema.clone(),
-                                    reflect_types,
-                                    spawn_format: json!({}),
-                                    supported_operations,
-                                    type_category,
-                                    enum_variants: None,
-                                };
-
-                                REGISTRY_CACHE.insert(type_name_key, cached_info);
-                                debug!(
-                                    "Cached {} type {} from batch",
-                                    type_kind.unwrap_or("unknown"),
-                                    type_name
-                                );
-                            }
+                            REGISTRY_CACHE.insert(type_name, cached_info);
+                            debug!(
+                                "Cached struct type {} with {} mutation paths",
+                                field_type,
+                                nested_paths.len()
+                            );
                         }
+                    }
+                    Some("Enum") => {
+                        // For enums, we generate different mutation paths
+                        // Enums in Bevy are serialized as { "variant_name": variant_data }
+                        // For Color, you'd have paths like .color with examples showing the
+                        // variants
+
+                        // Get the first variant as the default example
+                        if let Some(one_of) = type_schema.get("oneOf").and_then(Value::as_array) {
+                            // Build spawn format from first variant
+                            let spawn_format = build_enum_spawn_format(&type_schema);
+
+                            // Create a list of all variant options for documentation
+                            let variant_options: Vec<String> = one_of
+                                .iter()
+                                .filter_map(|v| v.get("shortPath").and_then(Value::as_str))
+                                .map(|s| s.to_string())
+                                .collect();
+
+                            debug!(
+                                "Found enum type {} with {} variants",
+                                field_type,
+                                variant_options.len()
+                            );
+
+                            // Cache enum info with variant information
+                            let reflect_types = extract_reflect_types(&type_schema);
+                            let supported_operations =
+                                determine_supported_operations(&reflect_types);
+
+                            let cached_info = CachedTypeInfo {
+                                mutation_paths: vec![], // Enums don't have nested mutation paths
+                                registry_schema: type_schema.clone(),
+                                reflect_types,
+                                spawn_format,
+                                supported_operations,
+                                type_category: TypeKind::Enum,
+                                enum_variants: Some(variant_options),
+                            };
+
+                            REGISTRY_CACHE.insert(type_name, cached_info);
+                            debug!("Cached enum type {} with spawn format", field_type);
+                        }
+                    }
+                    _ => {
+                        debug!("Unknown type kind for {}: {:?}", field_type, type_kind);
+                        // Cache with empty paths for unknown types
+                        let reflect_types = extract_reflect_types(&type_schema);
+                        let supported_operations = determine_supported_operations(&reflect_types);
+                        let type_category: TypeKind = type_schema
+                            .get("kind")
+                            .and_then(Value::as_str)
+                            .map_or(TypeKind::Unknown, Into::into);
+
+                        let cached_info = CachedTypeInfo {
+                            mutation_paths: vec![],
+                            registry_schema: type_schema.clone(),
+                            reflect_types,
+                            spawn_format: json!({}),
+                            supported_operations,
+                            type_category,
+                            enum_variants: None,
+                        };
+
+                        REGISTRY_CACHE.insert(type_name, cached_info);
                     }
                 }
             }
-            Ok(_) => {
-                debug!("Registry call for crate {} returned no data", crate_name);
-            }
-            Err(e) => {
-                debug!("Failed to fetch registry for crate {}: {}", crate_name, e);
-            }
+        }
+        Ok(_) => {
+            debug!("Registry call for {} returned no data", field_type);
+        }
+        Err(e) => {
+            debug!(
+                "Failed to fetch registry for nested type {}: {}",
+                field_type, e
+            );
         }
     }
 
-    Ok(())
+    Ok(nested_paths)
 }
 
 /// Build spawn format and mutation paths for a type
@@ -319,55 +363,11 @@ pub async fn build_spawn_format_and_mutation_paths(
 ) -> (Map<String, Value>, Vec<MutationPath>) {
     let mut spawn_format = Map::new();
     let mut mutation_paths = Vec::new();
-    let mut types_to_discover = Vec::new();
 
     let properties = type_schema.get("properties").and_then(Value::as_object);
 
     if let Some(props) = properties {
-        // First pass: collect all types we need to discover
-        for (_field_name, field_info) in props {
-            let field_type = field_info
-                .get("type")
-                .and_then(|t| t.get("$ref"))
-                .and_then(Value::as_str)
-                .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"));
-
-            if let Some(ft) = field_type {
-                if BRP_FORMAT_KNOWLEDGE.get(&ft.into()).is_none() {
-                    // No hardcoded knowledge - add to discovery list
-                    let should_discover = !ft.starts_with("core::")
-                        && !ft.starts_with("alloc::")
-                        && !matches!(
-                            ft,
-                            "bool"
-                                | "u8"
-                                | "u16"
-                                | "u32"
-                                | "u64"
-                                | "i8"
-                                | "i16"
-                                | "i32"
-                                | "i64"
-                                | "f32"
-                                | "f64"
-                                | "usize"
-                                | "isize"
-                        );
-
-                    if should_discover {
-                        types_to_discover.push(ft.to_string());
-                    }
-                }
-            }
-        }
-
-        // Batch discover all types we need
-        if !types_to_discover.is_empty() {
-            debug!("Batch discovering {} types", types_to_discover.len());
-            let _ = batch_discover_types_by_crate(types_to_discover, port).await;
-        }
-
-        // Second pass: build spawn format and mutation paths with discovered types
+        // Build spawn format and mutation paths, discovering types as needed
         for (field_name, field_info) in props {
             // Extract type from {"type": {"$ref": "#/$defs/glam::Vec3"}} structure
             let field_type = field_info
@@ -381,98 +381,325 @@ pub async fn build_spawn_format_and_mutation_paths(
 
             match field_type {
                 Some(ft) => {
-                    if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&ft.into()) {
-                        // We have hardcoded knowledge for this type
-                        spawn_format.insert(field_name.clone(), hardcoded.example_value.clone());
-                        debug!("Added field '{}' from hardcoded knowledge", field_name);
+                    // Check if this is a well-known wrapper type (Option, Handle, etc.)
+                    let (actual_type, wrapper_type) =
+                        if let Some((wrapper, inner_type)) = WrapperType::detect(ft) {
+                            (inner_type, Some(wrapper))
+                        } else {
+                            (ft, None)
+                        };
+
+                    if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&actual_type.into()) {
+                        // We have hardcoded knowledge for this type (or its inner type)
+                        let example_value = if let Some(wrapper) = wrapper_type {
+                            wrapper.wrap_example(hardcoded.example_value.clone())
+                        } else {
+                            hardcoded.example_value.clone()
+                        };
+
+                        spawn_format.insert(field_name.clone(), example_value.clone());
+                        debug!(
+                            "Added field '{}' from hardcoded knowledge{}",
+                            field_name,
+                            wrapper_type
+                                .map_or("".to_string(), |w| format!(" ({} wrapper)", w.as_ref()))
+                        );
+
+                        // For wrapper types (Option, Handle), we don't want to show enum variants
+                        // as they're trivial For other enums, try to
+                        // discover enum variants
+                        let enum_variants = if wrapper_type.is_some() {
+                            None
+                        } else {
+                            // Make a quick registry call to get enum variants
+                            let client = BrpClient::new(
+                                BrpMethod::BevyRegistrySchema,
+                                port,
+                                Some(json!({
+                                    "with_types": [ft]
+                                })),
+                            );
+
+                            match client.execute_raw().await {
+                                Ok(ResponseStatus::Success(Some(registry_data))) => {
+                                    if let Ok(type_schema) =
+                                        require_type_in_registry(ft, &registry_data)
+                                    {
+                                        if type_schema.get("kind").and_then(Value::as_str)
+                                            == Some("Enum")
+                                        {
+                                            // Extract enum variants
+                                            if let Some(one_of) =
+                                                type_schema.get("oneOf").and_then(Value::as_array)
+                                            {
+                                                Some(
+                                                    one_of
+                                                        .iter()
+                                                        .filter_map(|v| {
+                                                            v.get("shortPath")
+                                                                .and_then(Value::as_str)
+                                                        })
+                                                        .map(|s| s.to_string())
+                                                        .collect(),
+                                                )
+                                            } else {
+                                                None
+                                            }
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                }
+                                _ => None,
+                            }
+                        };
+
+                        // For Option wrapper types in mutation paths, show the unwrapped value
+                        // since mutations accept raw values for Some and null for None
+                        let mutation_example = if let Some(wrapper) = wrapper_type {
+                            if wrapper == WrapperType::Option {
+                                // For Option mutation paths, use the mutation examples format
+                                // which shows both Some and None examples
+                                // Use the actual inner value, not the wrapped spawn format
+                                wrapper.mutation_examples(hardcoded.example_value.clone())
+                            } else {
+                                // Handle wrapper still uses wrapped format in mutations
+                                example_value.clone()
+                            }
+                        } else {
+                            // Not a wrapper type
+                            hardcoded.example_value.clone()
+                        };
 
                         mutation_paths.push(MutationPath {
-                            path:          base_path,
-                            example_value: hardcoded.example_value.clone(),
-                            enum_variants: None,
-                            type_name:     Some(ft.to_string()),
+                            path: base_path,
+                            example_value: mutation_example,
+                            enum_variants,
+                            type_name: Some(ft.to_string()),
                         });
 
-                        // Generate component mutation paths if available
-                        if let Some(component_paths) = &hardcoded.subfield_paths {
-                            for (component_name, example_value) in component_paths {
-                                let component_path = format!(".{field_name}.{component_name}");
+                        // Generate component mutation paths if available (but NOT for wrapper
+                        // types)
+                        if wrapper_type.is_none() {
+                            if let Some(component_paths) = &hardcoded.subfield_paths {
+                                for (component_name, example_value) in component_paths {
+                                    let component_path = format!(".{field_name}.{component_name}");
 
+                                    mutation_paths.push(MutationPath {
+                                        path:          component_path,
+                                        example_value: example_value.clone(),
+                                        enum_variants: None,
+                                        type_name:     None,
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        // No hardcoded knowledge - check if it's a wrapper type we should handle
+                        // specially
+                        if let Some(wrapper) = wrapper_type {
+                            // For wrapper types without hardcoded inner type, try recursive
+                            // discovery
+                            debug!(
+                                "Handling {} wrapper type {} - attempting recursive discovery for inner type",
+                                wrapper.as_ref(),
+                                ft
+                            );
+
+                            // Try to discover the inner type recursively
+                            match Box::pin(discover_nested_type_paths(
+                                actual_type,
+                                field_name,
+                                port,
+                            ))
+                            .await
+                            {
+                                Ok(_) => {
+                                    // Check if we cached the inner type during discovery
+                                    let type_name_key: BrpTypeName = actual_type.into();
+                                    let example_value = if let Some(cached_info) =
+                                        REGISTRY_CACHE.get(&type_name_key)
+                                    {
+                                        // Use the discovered spawn format for the inner type
+                                        wrapper.wrap_example(cached_info.spawn_format.clone())
+                                    } else {
+                                        // Fallback to simple defaults
+                                        wrapper.default_example()
+                                    };
+
+                                    // For Option wrapper, show both Some and None examples
+                                    let final_example = if wrapper == WrapperType::Option {
+                                        // Get the inner example and create mutation examples
+                                        if let Some(cached_info) =
+                                            REGISTRY_CACHE.get(&type_name_key)
+                                        {
+                                            wrapper
+                                                .mutation_examples(cached_info.spawn_format.clone())
+                                        } else {
+                                            wrapper.mutation_examples(json!(null))
+                                        }
+                                    } else {
+                                        // Handle wrapper uses regular wrapped format
+                                        example_value
+                                    };
+
+                                    mutation_paths.push(MutationPath {
+                                        path:          base_path,
+                                        example_value: final_example,
+                                        enum_variants: None, /* Don't show variants for wrapper
+                                                              * types */
+                                        type_name:     Some(ft.to_string()),
+                                    });
+                                }
+                                Err(e) => {
+                                    debug!("Failed to discover inner type {}: {}", actual_type, e);
+                                    // Fallback to simple defaults
+                                    let example_value = wrapper.default_example();
+
+                                    // For Option wrapper, show both Some and None examples
+                                    let final_example = if wrapper == WrapperType::Option {
+                                        wrapper.mutation_examples(json!(null))
+                                    } else {
+                                        example_value
+                                    };
+
+                                    mutation_paths.push(MutationPath {
+                                        path:          base_path,
+                                        example_value: final_example,
+                                        enum_variants: None,
+                                        type_name:     Some(ft.to_string()),
+                                    });
+                                }
+                            }
+                        } else {
+                            // Not an Option - try recursive discovery
+                            debug!(
+                                "Attempting recursive discovery for type {} in field '{}'",
+                                ft, field_name
+                            );
+
+                            // Try recursive discovery for this type
+                            match Box::pin(discover_nested_type_paths(ft, field_name, port)).await {
+                                Ok(discovered_paths) => {
+                                    if !discovered_paths.is_empty() {
+                                        debug!(
+                                            "Discovered {} nested paths for field '{}'",
+                                            discovered_paths.len(),
+                                            field_name
+                                        );
+                                        // Add all discovered paths
+                                        mutation_paths.extend(discovered_paths);
+                                    } else {
+                                        // Check cache to see if we discovered an enum or other type
+                                        // info
+                                        let type_name_key: BrpTypeName = ft.into();
+                                        if let Some(cached_info) =
+                                            REGISTRY_CACHE.get(&type_name_key)
+                                        {
+                                            let (example_value, enum_variants) =
+                                                match cached_info.type_category {
+                                                    TypeKind::Enum => {
+                                                        // Use spawn format as example for enums
+                                                        (
+                                                            cached_info.spawn_format.clone(),
+                                                            cached_info.enum_variants.clone(),
+                                                        )
+                                                    }
+                                                    _ => (json!(null), None),
+                                                };
+
+                                            mutation_paths.push(MutationPath {
+                                                path: base_path.clone(),
+                                                example_value,
+                                                enum_variants,
+                                                type_name: Some(ft.to_string()),
+                                            });
+                                        } else {
+                                            // No cache info, add base path with null
+                                            debug!(
+                                                "No nested paths discovered for {}, adding base path only",
+                                                ft
+                                            );
+                                            mutation_paths.push(MutationPath {
+                                                path:          base_path.clone(),
+                                                example_value: json!(null),
+                                                enum_variants: None,
+                                                type_name:     Some(ft.to_string()),
+                                            });
+                                        }
+                                    }
+
+                                    // Always check cache for spawn format after discovery
+                                    let type_name_key: BrpTypeName = ft.into();
+                                    if let Some(cached_info) = REGISTRY_CACHE.get(&type_name_key) {
+                                        if cached_info.type_category == TypeKind::Enum {
+                                            spawn_format.insert(
+                                                field_name.clone(),
+                                                cached_info.spawn_format.clone(),
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    debug!("Failed to discover nested paths for {}: {}", ft, e);
+                                    // Check cache anyway in case some discovery happened before the
+                                    // error
+                                    let type_name_key: BrpTypeName = ft.into();
+                                    if let Some(cached_info) = REGISTRY_CACHE.get(&type_name_key) {
+                                        let (example_value, enum_variants) =
+                                            match cached_info.type_category {
+                                                TypeKind::Enum => {
+                                                    spawn_format.insert(
+                                                        field_name.clone(),
+                                                        cached_info.spawn_format.clone(),
+                                                    );
+                                                    (
+                                                        cached_info.spawn_format.clone(),
+                                                        cached_info.enum_variants.clone(),
+                                                    )
+                                                }
+                                                _ => (json!(null), None),
+                                            };
+
+                                        mutation_paths.push(MutationPath {
+                                            path: base_path.clone(),
+                                            example_value,
+                                            enum_variants,
+                                            type_name: Some(ft.to_string()),
+                                        });
+                                    } else {
+                                        // Fallback to base path only
+                                        mutation_paths.push(MutationPath {
+                                            path:          base_path.clone(),
+                                            example_value: json!(null),
+                                            enum_variants: None,
+                                            type_name:     Some(ft.to_string()),
+                                        });
+                                    }
+                                }
+                            }
+
+                            // Check for special cases like Option<Vec2> that might have array
+                            // access
+                            if ft.starts_with("core::option::Option<") && ft.contains("Vec") {
+                                // Add array-style mutation paths for optional vectors
                                 mutation_paths.push(MutationPath {
-                                    path:          component_path,
-                                    example_value: example_value.clone(),
+                                    path:          format!(".{field_name}[0]"),
+                                    example_value: json!(null),
+                                    enum_variants: None,
+                                    type_name:     None,
+                                });
+                                mutation_paths.push(MutationPath {
+                                    path:          format!(".{field_name}[1]"),
+                                    example_value: json!(null),
                                     enum_variants: None,
                                     type_name:     None,
                                 });
                             }
                         }
-                    } else {
-                        // Check if type is now in cache from batch discovery
-                        let type_name_key: BrpTypeName = ft.into();
-
-                        if let Some(cached_info) = REGISTRY_CACHE.get(&type_name_key) {
-                            debug!("Using cached type {} for field '{}'", ft, field_name);
-
-                            // For enums, use the spawn format as the mutation example
-                            let mutation_example =
-                                if cached_info.type_category == TypeCategory::Enum {
-                                    cached_info.spawn_format.clone()
-                                } else {
-                                    json!(null)
-                                };
-
-                            // Add base mutation path with appropriate example and variants
-                            mutation_paths.push(MutationPath {
-                                path:          base_path.clone(),
-                                example_value: mutation_example,
-                                enum_variants: cached_info.enum_variants.clone(),
-                                type_name:     Some(ft.to_string()),
-                            });
-
-                            // Add nested paths from cache (for structs)
-                            for path in &cached_info.mutation_paths {
-                                let nested_path = format!(".{field_name}{}", path.path);
-                                mutation_paths.push(MutationPath {
-                                    path:          nested_path,
-                                    example_value: path.example_value.clone(),
-                                    enum_variants: path.enum_variants.clone(),
-                                    type_name:     path.type_name.clone(),
-                                });
-                            }
-
-                            // Use spawn format from cache for enums
-                            if cached_info.type_category == TypeCategory::Enum {
-                                spawn_format
-                                    .insert(field_name.clone(), cached_info.spawn_format.clone());
-                            }
-                        } else {
-                            debug!("Type {} not found in cache after batch discovery", ft);
-                            // Type not in cache - use null as example
-                            mutation_paths.push(MutationPath {
-                                path:          base_path.clone(),
-                                example_value: json!(null),
-                                enum_variants: None,
-                                type_name:     Some(ft.to_string()),
-                            });
-                        }
-
-                        // Check for special cases like Option<Vec2> that might have array access
-                        if ft.starts_with("core::option::Option<") && ft.contains("Vec") {
-                            // Add array-style mutation paths for optional vectors
-                            mutation_paths.push(MutationPath {
-                                path:          format!(".{field_name}[0]"),
-                                example_value: json!(null),
-                                enum_variants: None,
-                                type_name:     None,
-                            });
-                            mutation_paths.push(MutationPath {
-                                path:          format!(".{field_name}[1]"),
-                                example_value: json!(null),
-                                enum_variants: None,
-                                type_name:     None,
-                            });
-                        }
-                    }
+                    } // End of is_option else block
                 }
                 None => {
                     // No type info, but still generate base mutation path

@@ -72,7 +72,7 @@ pub struct CachedTypeInfo {
     /// Operations supported by this type in BRP
     pub supported_operations: Vec<BrpSupportedOperation>,
     /// Category of this type (Struct, Enum, etc.)
-    pub type_category:        TypeCategory,
+    pub type_category:        TypeKind,
     /// For enums, list of variant names
     pub enum_variants:        Option<Vec<String>>,
 }
@@ -109,9 +109,9 @@ pub struct MutationPath {
 }
 
 /// Category of type for quick identification and processing
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "PascalCase")]
-pub enum TypeCategory {
+pub enum TypeKind {
     /// Unknown or unclassified type
     Unknown,
     /// Regular struct type
@@ -126,7 +126,7 @@ pub enum TypeCategory {
     Component,
 }
 
-impl From<&str> for TypeCategory {
+impl From<&str> for TypeKind {
     fn from(s: &str) -> Self {
         match s {
             "Struct" => Self::Struct,

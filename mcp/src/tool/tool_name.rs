@@ -185,8 +185,7 @@ pub enum ToolName {
         result = "RegistrySchemaResult"
     )]
     BevyRegistrySchema,
-    /// `brp_type_schema` - Local registry-based type schema discovery
-    BrpTypeSchema,
+
     /// `bevy_reparent` - Change entity parents
     #[brp_tool(
         brp_method = "bevy/reparent",
@@ -262,6 +261,10 @@ pub enum ToolName {
     BrpGetTraceLogPath,
     /// `brp_set_tracing_level` - Set tracing level
     BrpSetTracingLevel,
+
+    // Type Schema - In a class of its own
+    /// `brp_type_schema` - Local type schema discovery
+    BrpTypeSchema,
 }
 
 impl ToolName {
