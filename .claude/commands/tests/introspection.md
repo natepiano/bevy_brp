@@ -6,36 +6,47 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 ## Test Steps
 
 ### 1. RPC Method Discovery
-- Execute `mcp__brp__bevy_rpc_discover`
-- Verify comprehensive method list is returned
-- Check method schemas are properly formatted
+- Execute `mcp__brp__bevy_rpc_discover` with port parameter
+- Verify response includes at least 20 methods
+- Check for presence of core methods: `bevy/list`, `bevy/query`, `bevy/spawn`, `rpc.discover`
+- Check for brp_extras methods: `brp_extras/discover_format`, `brp_extras/screenshot`, `brp_extras/shutdown`
+- Verify response includes OpenRPC version and server info
 
 ### 2. Registry Schema Discovery
-- Execute `mcp__brp__bevy_registry_schema` with filters (avoid large response)
-- Use `with_crates: ["bevy_transform"]` filter
-- Verify schema objects include shortPath, typePath, properties
+- Execute `mcp__brp__bevy_registry_schema` with port parameter and filters:
+  - Use `with_crates: ["bevy_transform"]` filter to avoid large response
+- Verify response returns around 25 schemas
+- Check for specific schemas: `Transform`, `GlobalTransform`
+- Verify schema objects include required fields: `shortPath`, `typePath`, `kind`, `reflectTypes`
+- Verify Transform schema has `properties` with `translation`, `rotation`, `scale` fields
 
 ### 3. Component Listing
-- Execute `mcp__brp__bevy_list` (without entity parameter)
-- Verify all registered components are listed
-- Check for presence of common components like Transform
+- Execute `mcp__brp__bevy_list` with port parameter (without entity parameter)
+- Verify response returns around 95+ registered components
+- Check for presence of specific components: `Transform`, `Name`, `Camera`, `Visibility`
+- Verify response format includes component count in metadata
 
 ### 4. Resource Listing  
-- Execute `mcp__brp__bevy_list_resources`
-- Verify registered resources are returned
-- Check for typical resources like Time
+- Execute `mcp__brp__bevy_list_resources` with port parameter
+- Verify response returns around 10+ registered resources
+- Check for specific resources: `ClearColor`, `Time<()>`, `Time<Real>`, `Time<Virtual>`
+- Verify response format includes resource count in metadata
 
 ### 5. Entity-Specific Component Listing (Positive Case)
-- Execute `mcp__brp__bevy_query` to find existing entities
-- Pick a valid entity ID from the results
-- Execute `mcp__brp__bevy_list` with that valid entity ID
-- Verify components are listed for the existing entity
-- Check response format is correct
+- Execute `mcp__brp__bevy_query` with proper parameters:
+  - `filter: {"with": ["bevy_transform::components::transform::Transform"]}`
+  - `data: {"components": ["bevy_transform::components::transform::Transform"]}`
+- Verify query returns entities with Transform components
+- Pick the first valid entity ID from the results
+- Execute `mcp__brp__bevy_list` with that valid entity ID parameter
+- Verify components are listed for the existing entity (should include Transform, GlobalTransform, etc.)
+- Check response format includes component count and component list
 
 ### 6. Entity-Specific Component Listing (Negative Case)
-- Execute `mcp__brp__bevy_list` with invalid entity ID (0)
+- Execute `mcp__brp__bevy_list` with port parameter and invalid entity ID (0)
 - Verify proper error response is returned (not a crash)
-- Confirm error message indicates invalid entity ID
+- Confirm error message contains "not a valid entity" or similar indication
+- Verify response has status "error" and proper call_info
 
 ## Expected Results
 - ✅ RPC discovery returns complete method list
