@@ -27,9 +27,9 @@ impl WrapperType {
     }
 
     /// Extract the inner type from a wrapper type string
-    pub fn extract_inner_type<'a>(&self, type_name: &'a str) -> Option<&'a str> {
+    pub fn extract_inner_type(self, type_name: &str) -> Option<&str> {
         let prefix = self.as_ref();
-        let expected_start = format!("{}<", prefix);
+        let expected_start = format!("{prefix}<");
 
         if type_name.starts_with(&expected_start) && type_name.ends_with('>') {
             // Extract the inner type between < and >
@@ -41,13 +41,13 @@ impl WrapperType {
     }
 
     /// Wrap an example value in the appropriate wrapper format
-    pub fn wrap_example(&self, inner_value: Value) -> Value {
+    pub fn wrap_example(self, inner_value: Value) -> Value {
         match self {
-            WrapperType::Option => {
+            Self::Option => {
                 // Option wraps as {"Some": inner_value}
                 json!({"Some": inner_value})
             }
-            WrapperType::Handle => {
+            Self::Handle => {
                 // Handle wraps as {"Strong": [inner_value]}
                 json!({"Strong": [inner_value]})
             }
@@ -55,26 +55,26 @@ impl WrapperType {
     }
 
     /// Get the default/empty example for this wrapper type
-    pub fn default_example(&self) -> Value {
+    pub fn default_example(self) -> Value {
         match self {
-            WrapperType::Option => json!("None"),
-            WrapperType::Handle => json!({"Strong": [{}]}),
+            Self::Option => json!("None"),
+            Self::Handle => json!({"Strong": [{}]}),
         }
     }
 
     /// Get mutation examples showing how to set the value
     /// For Option: shows both Some and None examples
     /// For Handle: shows the wrapped format
-    pub fn mutation_examples(&self, inner_value: Value) -> Value {
+    pub fn mutation_examples(self, inner_value: Value) -> Value {
         match self {
-            WrapperType::Option => {
+            Self::Option => {
                 // For Option mutation, you pass the value directly or null
                 json!({
                     "some": inner_value,
                     "none": null
                 })
             }
-            WrapperType::Handle => {
+            Self::Handle => {
                 // Handle still needs the wrapper in mutations
                 json!({
                     "example": {"Strong": [inner_value]}
@@ -134,7 +134,7 @@ mod tests {
             json!({"Some": [1.0, 2.0]})
         );
         assert_eq!(
-            WrapperType::Handle.wrap_example(inner.clone()),
+            WrapperType::Handle.wrap_example(inner),
             json!({"Strong": [[1.0, 2.0]]})
         );
     }
@@ -156,7 +156,7 @@ mod tests {
             json!({"some": [1.0, 2.0], "none": null})
         );
         assert_eq!(
-            WrapperType::Handle.mutation_examples(inner.clone()),
+            WrapperType::Handle.mutation_examples(inner),
             json!({"example": {"Strong": [[1.0, 2.0]]}})
         );
     }

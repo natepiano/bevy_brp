@@ -4,12 +4,13 @@
 //! the `bevy_brp_extras` plugin. It uses registry schema calls combined with hardcoded BRP
 //! serialization knowledge to provide format discovery equivalent to `brp_extras_discover_format`.
 
-pub mod hardcoded_formats;
-pub mod registry_cache;
+mod engine;
+mod hardcoded_formats;
+mod registry_cache;
 mod result_types;
 mod tool;
-pub mod type_discovery;
-pub mod types;
+mod type_discovery;
+mod types;
 mod wrapper_types;
 
 // Re-export public API

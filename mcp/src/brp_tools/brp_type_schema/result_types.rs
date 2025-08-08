@@ -1,4 +1,4 @@
-//! Public API result types for the brp_type_schema tool
+//! Public API result types for the `brp_type_schema` tool
 //!
 //! This module contains the strongly-typed structures that form the public API
 //! for type schema discovery results. These types are separate from the internal
@@ -42,7 +42,7 @@ pub struct TypeSchemaSummary {
 pub struct TypeInfo {
     /// Fully-qualified type name
     pub type_name:            String,
-    /// Category of the type (Struct, Enum, TupleStruct, etc.)
+    /// Category of the type (Struct, Enum, `TupleStruct`, etc.)
     pub type_category:        String,
     /// Whether the type is registered in the Bevy registry
     pub in_registry:          bool,
@@ -117,7 +117,7 @@ pub struct EnumFieldInfo {
 
 // Builder/conversion implementations
 impl TypeInfo {
-    /// Create a TypeInfo from internal CachedTypeInfo
+    /// Create a `TypeInfo` from internal `CachedTypeInfo`
     pub fn from_cached_info(type_name: &str, cached: &CachedTypeInfo) -> Self {
         // Check for Serialize/Deserialize traits
         let has_serialize = cached.reflect_types.contains(&"Serialize".to_string());
@@ -151,7 +151,7 @@ impl TypeInfo {
         }
     }
 
-    /// Create an error TypeInfo for types not found in registry
+    /// Create an error `TypeInfo` for types not found in registry
     pub fn error(type_name: &str) -> Self {
         Self {
             type_name:            type_name.to_string(),
@@ -169,7 +169,7 @@ impl TypeInfo {
 }
 
 impl MutationPathInfo {
-    /// Create from internal MutationPath with proper formatting logic
+    /// Create from internal `MutationPath` with proper formatting logic
     pub fn from_mutation_path(path: &MutationPath, description: String, is_option: bool) -> Self {
         if is_option {
             // For Option types, check if we have the special format
@@ -237,7 +237,7 @@ impl TypeSchemaResponse {
     }
 
     /// Finalize the summary statistics
-    pub fn finalize(&mut self) {
+    pub const fn finalize(&mut self) {
         self.summary.total_requested = self.requested_types.len();
         self.discovered_count = self.summary.successful_discoveries;
     }
