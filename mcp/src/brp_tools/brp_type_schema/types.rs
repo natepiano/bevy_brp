@@ -170,30 +170,29 @@ pub enum SchemaField {
 }
 
 /// Category of type for quick identification and processing
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
+///
+/// This enum represents the actual type kinds returned by Bevy's type registry.
+/// These correspond to the "kind" field in registry schema responses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
 #[serde(rename_all = "PascalCase")]
+#[strum(serialize_all = "PascalCase")]
 pub enum TypeKind {
-    /// Unknown or unclassified type
-    Unknown,
-    /// Regular struct type
-    Struct,
-    /// Tuple struct type
-    TupleStruct,
+    /// Array type
+    Array,
     /// Enum type
     Enum,
-    /// Math type (Vec2, Vec3, Quat, etc.)
-    MathType,
-    /// Component type
-    Component,
-}
-
-impl From<&str> for TypeKind {
-    fn from(s: &str) -> Self {
-        match s {
-            "Struct" => Self::Struct,
-            "TupleStruct" => Self::TupleStruct,
-            "Enum" => Self::Enum,
-            _ => Self::Unknown,
-        }
-    }
+    /// List type
+    List,
+    /// Map type (`HashMap`, `BTreeMap`, etc.)
+    Map,
+    /// Option type
+    Option,
+    /// Regular struct type
+    Struct,
+    /// Tuple type
+    Tuple,
+    /// Tuple struct type
+    TupleStruct,
+    /// Value type (primitive types like i32, f32, bool, String)
+    Value,
 }

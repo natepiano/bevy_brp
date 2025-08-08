@@ -7,6 +7,8 @@
 //! The engine intentionally mirrors the logic previously in `tool.rs`, but is
 //! moved here so the `tool.rs` can remain a thin delegating wrapper.
 
+use std::str::FromStr;
+
 use serde_json::{Value, json};
 use tracing::debug;
 
@@ -135,7 +137,8 @@ impl TypeSchemaEngine {
         let type_kind: TypeKind = type_schema
             .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
-            .map_or(TypeKind::Unknown, Into::into);
+            .and_then(|s| TypeKind::from_str(s).ok())
+            .unwrap_or(TypeKind::Value);
 
         // Create complete CachedTypeInfo
         let cached_info = CachedTypeInfo {

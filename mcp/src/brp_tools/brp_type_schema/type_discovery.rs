@@ -3,6 +3,8 @@
 //! This module handles the discovery of type formats and mutation paths
 //! by combining registry schema information with hardcoded BRP knowledge.
 
+use std::str::FromStr;
+
 use serde_json::{Map, Value, json};
 use tracing::debug;
 
@@ -274,7 +276,8 @@ async fn discover_nested_type_paths(
                         let type_category: TypeKind = type_schema
                             .get_field(SchemaField::Kind)
                             .and_then(Value::as_str)
-                            .map_or(TypeKind::Unknown, Into::into);
+                            .and_then(|s| TypeKind::from_str(s).ok())
+                            .unwrap_or(TypeKind::Value);
 
                         cache_type_info(
                             type_name,

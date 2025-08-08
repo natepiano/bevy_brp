@@ -8,9 +8,8 @@
 use serde_json::json;
 
 use super::orchestrator;
-use super::types::{DiscoverySource, Operation};
+use super::types::{DiscoverySource, Operation, TypeCategoryFromDiscoverFormat};
 use super::unified_types::UnifiedTypeInfo;
-use crate::brp_tools::brp_type_schema::TypeKind;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -190,7 +189,10 @@ fn test_enrich_from_extras_full_enrichment() {
         info.type_name.as_str(),
         "bevy_transform::components::transform::Transform"
     );
-    assert_eq!(info.type_kind, TypeKind::Struct); // for_transform_type creates Struct category
+    assert_eq!(
+        info.type_category_from_discover_format,
+        TypeCategoryFromDiscoverFormat::Struct
+    ); // for_transform_type creates Struct category
 
     // Note: Registry status, serialization, and supported_operations are not enriched by extras
     // They remain as set by the original constructor
