@@ -17,6 +17,7 @@ use super::types::{
     FormatInfo, Operation, RegistryStatus, SerializationSupport, TypeCategoryFromDiscoverFormat,
 };
 use crate::brp_tools::brp_type_schema::BrpTypeName;
+use crate::json_traits::IntoStrings;
 use crate::tool::ParameterName;
 
 /// Comprehensive type information unified across all discovery sources
@@ -191,12 +192,7 @@ impl UnifiedTypeInfo {
         let reflect_types = schema_data
             .get("reflectTypes")
             .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(Value::as_str)
-                    .map(String::from)
-                    .collect::<Vec<_>>()
-            })
+            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings())
             .unwrap_or_default();
 
         // Determine serialization support

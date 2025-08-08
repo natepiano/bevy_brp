@@ -11,6 +11,7 @@ use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Guidance};
 use super::types::{Correction, CorrectionInfo, CorrectionMethod, Operation};
 use super::unified_types::UnifiedTypeInfo;
+use crate::json_traits::JsonFieldAccess;
 use crate::tool::ParameterName;
 
 impl DiscoveryEngine<Guidance> {
@@ -109,7 +110,7 @@ impl DiscoveryEngine<Guidance> {
             );
 
             let mut guidance = serde_json::json!({
-                FormatCorrectionField::Hint.as_ref(): "Use appropriate path and value for mutation"
+                FormatCorrectionField::Hint: "Use appropriate path and value for mutation"
             });
 
             if !type_info.format_info.mutation_paths.is_empty() {
@@ -119,7 +120,10 @@ impl DiscoveryEngine<Guidance> {
                     .keys()
                     .cloned()
                     .collect();
-                guidance[FormatCorrectionField::AvailablePaths.as_ref()] = serde_json::json!(paths);
+                guidance.insert_field(
+                    FormatCorrectionField::AvailablePaths,
+                    serde_json::json!(paths),
+                );
             }
 
             // Add enum-specific guidance if this is an enum
@@ -131,13 +135,18 @@ impl DiscoveryEngine<Guidance> {
                     variants.len(),
                     variants
                 );
-                guidance[FormatCorrectionField::ValidValues.as_ref()] = serde_json::json!(variants);
-                guidance[FormatCorrectionField::Hint.as_ref()] =
-                    serde_json::json!("Use empty path with variant name as value");
-                guidance[FormatCorrectionField::Examples.as_ref()] = serde_json::json!([
-                    {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
-                    {FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}
-                ]);
+                guidance.insert_field(
+                    FormatCorrectionField::ValidValues,
+                    serde_json::json!(variants),
+                );
+                guidance.insert_field(
+                    FormatCorrectionField::Hint,
+                    serde_json::json!("Use empty path with variant name as value"),
+                );
+                guidance.insert_field(FormatCorrectionField::Examples, serde_json::json!([
+                    {FormatCorrectionField::Path: "", FormatCorrectionField::Value: variants.first().cloned().unwrap_or_else(|| "Variant1".to_string())},
+                    {FormatCorrectionField::Path: "", FormatCorrectionField::Value: variants.get(1).cloned().unwrap_or_else(|| "Variant2".to_string())}
+                ]));
                 debug!(
                     "build_corrected_value_from_type_info: Final guidance with enum fields: {}",
                     serde_json::to_string_pretty(&guidance)

@@ -24,7 +24,7 @@ use super::type_discovery::{
 use super::types::{BrpTypeName, CachedTypeInfo, EnumVariantKind, MutationPath, SchemaField};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
-use crate::json_traits::JsonFieldAccess;
+use crate::json_traits::{IntoStrings, JsonFieldAccess};
 use crate::tool::BrpMethod;
 
 /// Engine that owns request-scoped state and performs discovery.
@@ -309,11 +309,9 @@ impl TypeSchemaEngine {
                     items
                         .iter()
                         .filter_map(|item| {
-                            item.get_field(SchemaField::Type)
-                                .and_then(Value::as_str)
-                                .map(String::from)
+                            item.get_field(SchemaField::Type).and_then(Value::as_str)
                         })
-                        .collect()
+                        .into_strings()
                 })
         } else {
             None

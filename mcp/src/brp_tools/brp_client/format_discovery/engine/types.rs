@@ -167,10 +167,10 @@ impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
     pub fn to_json(&self) -> Value {
         let mut correction_json = serde_json::json!({
-            FormatCorrectionField::TypeName.as_ref(): self.type_info.type_name.as_str(),
-            FormatCorrectionField::OriginalFormat.as_ref(): self.type_info.original_value,
-            FormatCorrectionField::CorrectedFormat.as_ref(): self.corrected_value,
-            FormatCorrectionField::Hint.as_ref(): self.hint
+            FormatCorrectionField::TypeName: self.type_info.type_name.as_str(),
+            FormatCorrectionField::OriginalFormat: self.type_info.original_value,
+            FormatCorrectionField::CorrectedFormat: self.corrected_value,
+            FormatCorrectionField::Hint: self.hint
         });
 
         // Add rich metadata fields
@@ -185,14 +185,14 @@ impl CorrectionInfo {
                     .cloned()
                     .collect();
                 obj.insert(
-                    FormatCorrectionField::MutationPaths.as_ref().to_string(),
+                    String::from(FormatCorrectionField::MutationPaths),
                     serde_json::json!(paths),
                 );
             }
 
             // Extract type_category
             obj.insert(
-                FormatCorrectionField::TypeCategory.as_ref().to_string(),
+                String::from(FormatCorrectionField::TypeCategory),
                 serde_json::json!(format!(
                     "{:?}",
                     self.type_info.type_category_from_discover_format
@@ -201,7 +201,7 @@ impl CorrectionInfo {
 
             // Extract discovery_source (always present now)
             obj.insert(
-                FormatCorrectionField::DiscoverySource.as_ref().to_string(),
+                String::from(FormatCorrectionField::DiscoverySource),
                 serde_json::json!(format!("{:?}", self.type_info.discovery_source)),
             );
         }

@@ -44,7 +44,7 @@ impl BrpClient {
 
         // Only filter out the port field
         let brp_params = if let Value::Object(ref mut map) = params_json {
-            map.retain(|key, _value| key != ParameterName::Port.as_ref());
+            map.retain(|key, _value| key != &String::from(ParameterName::Port));
             if map.is_empty() {
                 None
             } else {

@@ -13,7 +13,7 @@ use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::registry_cache::REGISTRY_CACHE;
 use super::types::{
     BrpFormatKnowledge, BrpSupportedOperation, BrpTypeName, CachedTypeInfo, MutationPath,
-    ReflectTrait, SchemaField, VecStringContains,
+    ReflectTrait, SchemaField,
 };
 use super::wrapper_types::WrapperType;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
@@ -125,13 +125,15 @@ pub async fn build_spawn_format_and_mutation_paths(
 }
 
 /// Determine supported BRP operations based on reflection traits
-pub fn determine_supported_operations(reflect_types: &[String]) -> Vec<BrpSupportedOperation> {
+pub fn determine_supported_operations(
+    reflect_types: &[ReflectTrait],
+) -> Vec<BrpSupportedOperation> {
     let mut operations = vec![BrpSupportedOperation::Query];
 
-    let has_component = reflect_types.contains_trait(ReflectTrait::Component);
-    let has_resource = reflect_types.contains_trait(ReflectTrait::Resource);
-    let has_serialize = reflect_types.contains_trait(ReflectTrait::Serialize);
-    let has_deserialize = reflect_types.contains_trait(ReflectTrait::Deserialize);
+    let has_component = reflect_types.contains(&ReflectTrait::Component);
+    let has_resource = reflect_types.contains(&ReflectTrait::Resource);
+    let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
+    let has_deserialize = reflect_types.contains(&ReflectTrait::Deserialize);
 
     if has_component {
         operations.push(BrpSupportedOperation::Get);
@@ -157,14 +159,15 @@ pub fn determine_supported_operations(reflect_types: &[String]) -> Vec<BrpSuppor
 }
 
 /// Extract reflect types from a registry schema
-pub fn extract_reflect_types(type_schema: &Value) -> Vec<String> {
+pub fn extract_reflect_types(type_schema: &Value) -> Vec<ReflectTrait> {
     type_schema
         .get_field(SchemaField::ReflectTypes)
         .and_then(Value::as_array)
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect::<Vec<String>>()
+                .filter_map(|v| v.as_str())
+                .filter_map(|s| s.parse::<ReflectTrait>().ok())
+                .collect()
         })
         .unwrap_or_default()
 }
@@ -518,7 +521,7 @@ async fn process_wrapper_type(
 ) {
     debug!(
         "Handling {} wrapper type {} - attempting recursive discovery for inner type",
-        wrapper.as_ref(),
+        String::from(wrapper),
         field_type
     );
 
@@ -715,7 +718,7 @@ fn process_hardcoded_type(
     debug!(
         "Added field '{}' from hardcoded knowledge{}",
         field_name,
-        wrapper_type.map_or(String::new(), |w| format!(" ({} wrapper)", w.as_ref()))
+        wrapper_type.map_or(String::new(), |w| format!(" ({} wrapper)", String::from(w)))
     );
 
     // Build mutation example
@@ -741,7 +744,7 @@ fn process_hardcoded_type(
     if wrapper_type.is_none() {
         if let Some(component_paths) = &hardcoded.subfield_paths {
             for (component, example_value) in component_paths {
-                let component_path = format!(".{field_name}.{}", component.as_ref());
+                let component_path = format!(".{field_name}.{}", String::from(*component));
                 mutation_paths.push(MutationPath {
                     path:          component_path,
                     example_value: example_value.clone(),

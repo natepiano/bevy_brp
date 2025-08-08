@@ -7,6 +7,8 @@ use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
+use crate::json_traits::IntoStrings;
+
 /// Trait for parameter types used in tools
 ///
 /// This trait provides a type-level constraint for tool parameter types.
@@ -323,7 +325,8 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         .map(|arr| {
             arr.iter()
                 .filter_map(|v| v.as_str())
-                .map(String::from)
+                .into_strings()
+                .into_iter()
                 .collect()
         })
         .unwrap_or_default();
@@ -366,4 +369,10 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     }
 
     builder
+}
+
+impl From<ParameterName> for String {
+    fn from(param: ParameterName) -> Self {
+        param.as_ref().to_string()
+    }
 }

@@ -8,6 +8,7 @@ use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
+use crate::json_traits::IntoStrings;
 use crate::tool::ParameterName;
 
 /// Transformer for enum variant patterns
@@ -229,8 +230,7 @@ impl EnumVariantTransformer {
                     .split(',')
                     .map(str::trim)
                     .filter(|s| !s.is_empty())
-                    .map(String::from)
-                    .collect();
+                    .into_strings();
             }
         }
 
@@ -243,8 +243,7 @@ impl EnumVariantTransformer {
                     .split(',')
                     .map(str::trim)
                     .filter(|s| !s.is_empty())
-                    .map(String::from)
-                    .collect();
+                    .into_strings();
             }
         }
 
@@ -289,10 +288,10 @@ impl EnumVariantTransformer {
             );
 
             json!({
-                FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
-                FormatCorrectionField::Path.as_ref(): "",
-                FormatCorrectionField::ValidValues.as_ref(): valid_values,
-                FormatCorrectionField::Examples.as_ref(): valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): v})).collect::<Vec<_>>()
+                FormatCorrectionField::Hint: "Use empty path with variant name as value",
+                FormatCorrectionField::Path: "",
+                FormatCorrectionField::ValidValues: valid_values,
+                FormatCorrectionField::Examples: valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path: "", FormatCorrectionField::Value: v})).collect::<Vec<_>>()
             })
         };
 
@@ -335,10 +334,10 @@ impl EnumVariantTransformer {
 
         // Return format correction that explains empty path usage
         let format_info = json!({
-            FormatCorrectionField::Hint.as_ref(): "Use empty path with variant name as value",
-            FormatCorrectionField::Path.as_ref(): "",
-            FormatCorrectionField::ValidValues.as_ref(): valid_values,
-            FormatCorrectionField::Examples.as_ref(): valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path.as_ref(): "", FormatCorrectionField::Value.as_ref(): v})).collect::<Vec<_>>()
+            FormatCorrectionField::Hint: "Use empty path with variant name as value",
+            FormatCorrectionField::Path: "",
+            FormatCorrectionField::ValidValues: valid_values,
+            FormatCorrectionField::Examples: valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path: "", FormatCorrectionField::Value: v})).collect::<Vec<_>>()
         });
 
         let hint = format!(
@@ -900,13 +899,13 @@ mod tests {
         // Check that the transformed value has the expected structure
         assert!(transformation_result.corrected_value.is_object());
         let obj = transformation_result.corrected_value.as_object().unwrap();
-        assert!(obj.contains_key(FormatCorrectionField::Hint.as_ref()));
-        assert!(obj.contains_key(FormatCorrectionField::Path.as_ref()));
-        assert!(obj.contains_key(FormatCorrectionField::ValidValues.as_ref()));
-        assert!(obj.contains_key(FormatCorrectionField::Examples.as_ref()));
+        assert!(obj.contains_key(&String::from(FormatCorrectionField::Hint)));
+        assert!(obj.contains_key(&String::from(FormatCorrectionField::Path)));
+        assert!(obj.contains_key(&String::from(FormatCorrectionField::ValidValues)));
+        assert!(obj.contains_key(&String::from(FormatCorrectionField::Examples)));
 
         // Check that the path is empty as required for unit variant mutation
-        assert_eq!(obj[FormatCorrectionField::Path.as_ref()], "");
+        assert_eq!(obj[&String::from(FormatCorrectionField::Path)], "");
     }
 
     #[test]

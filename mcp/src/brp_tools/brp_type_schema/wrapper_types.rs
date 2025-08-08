@@ -119,6 +119,12 @@ impl WrapperType {
     }
 }
 
+impl From<WrapperType> for String {
+    fn from(wrapper: WrapperType) -> Self {
+        wrapper.as_ref().to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

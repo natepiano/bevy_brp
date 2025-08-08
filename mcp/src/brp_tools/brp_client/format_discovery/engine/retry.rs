@@ -108,7 +108,8 @@ fn build_corrected_params(
                 match parameter_name {
                     ParameterName::Value => {
                         // For resources: update value directly
-                        params[ParameterName::Value.as_ref()] = correction.corrected_value.clone();
+                        params
+                            .insert_field(ParameterName::Value, correction.corrected_value.clone());
                     }
                     ParameterName::Components => {
                         // For components: update components[type_name]
@@ -132,18 +133,20 @@ fn build_corrected_params(
             Operation::Mutate { parameter_name } => {
                 // For mutations, we need the type parameter (component/resource), path, and value
                 // First, set the type-specific parameter with the type name
-                params[parameter_name.as_ref()] =
-                    Value::String(correction.type_info.type_name.as_str().to_string());
+                params.insert_field(
+                    parameter_name,
+                    Value::String(correction.type_info.type_name.as_str().to_string()),
+                );
 
                 // Then set path and value from the correction
                 if correction.corrected_value.is_object() {
                     if let Some(obj) = correction.corrected_value.as_object() {
                         if let (Some(path), Some(value)) = (
-                            obj.get(ParameterName::Path.as_ref()),
-                            obj.get(ParameterName::Value.as_ref()),
+                            obj.get_field(ParameterName::Path),
+                            obj.get_field(ParameterName::Value),
                         ) {
-                            params[ParameterName::Path.as_ref()] = path.clone();
-                            params[ParameterName::Value.as_ref()] = value.clone();
+                            params.insert_field(ParameterName::Path, path.clone());
+                            params.insert_field(ParameterName::Value, value.clone());
                         } else {
                             return Err(Error::InvalidArgument(
                                 "Mutation correction missing path or value".to_string(),
@@ -154,8 +157,8 @@ fn build_corrected_params(
                 } else {
                     // If corrected_value is not an object, it's just the value to set
                     // Use empty path for direct replacement
-                    params[ParameterName::Path.as_ref()] = Value::String(String::new());
-                    params[ParameterName::Value.as_ref()] = correction.corrected_value.clone();
+                    params.insert_field_str(ParameterName::Path, "");
+                    params.insert_field(ParameterName::Value, correction.corrected_value.clone());
                 }
             }
         }

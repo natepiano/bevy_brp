@@ -47,3 +47,9 @@ pub enum FormatCorrectionField {
     /// Value for mutation operations
     Value,
 }
+
+impl From<FormatCorrectionField> for String {
+    fn from(field: FormatCorrectionField) -> Self {
+        field.as_ref().to_string()
+    }
+}

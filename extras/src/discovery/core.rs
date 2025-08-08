@@ -323,7 +323,7 @@ pub fn discover_multiple_formats_with_debug(
 pub fn get_common_component_types() -> Vec<String> {
     vec![
         "bevy_transform::components::transform::Transform".to_string(),
-        "bevy_core::name::Name".to_string(),
+        "bevy_ecs::name::Name".to_string(),
         "bevy_render::color::LinearRgba".to_string(),
         "bevy_sprite::sprite::Sprite".to_string(),
         "bevy_render::camera::camera::Camera".to_string(),

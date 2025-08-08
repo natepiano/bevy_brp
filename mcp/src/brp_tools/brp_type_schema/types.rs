@@ -82,8 +82,8 @@ pub struct CachedTypeInfo {
     /// Raw registry schema response
     #[allow(dead_code)]
     pub registry_schema:      Value,
-    /// Reflection types from registry (e.g., `["Component", "Serialize", "Deserialize"]`)
-    pub reflect_types:        Vec<String>,
+    /// Reflection types from registry (e.g., `[Component, Serialize, Deserialize]`)
+    pub reflect_types:        Vec<ReflectTrait>,
     /// Full object format for spawn/insert
     pub spawn_format:         Value,
     /// Operations supported by this type in BRP
@@ -136,23 +136,6 @@ pub enum ReflectTrait {
     Deserialize,
 }
 
-/// Extension trait for checking if a collection of strings contains a reflection trait
-pub trait VecStringContains {
-    fn contains_trait(&self, trait_name: ReflectTrait) -> bool;
-}
-
-impl VecStringContains for Vec<String> {
-    fn contains_trait(&self, trait_name: ReflectTrait) -> bool {
-        self.contains(&trait_name.to_string())
-    }
-}
-
-impl VecStringContains for [String] {
-    fn contains_trait(&self, trait_name: ReflectTrait) -> bool {
-        self.contains(&trait_name.to_string())
-    }
-}
-
 /// Registry schema field names
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
@@ -195,4 +178,16 @@ pub enum TypeKind {
     TupleStruct,
     /// Value type (primitive types like i32, f32, bool, String)
     Value,
+}
+
+impl From<BrpSupportedOperation> for String {
+    fn from(op: BrpSupportedOperation) -> Self {
+        op.as_ref().to_string()
+    }
+}
+
+impl From<MathComponent> for String {
+    fn from(component: MathComponent) -> Self {
+        component.as_ref().to_string()
+    }
 }

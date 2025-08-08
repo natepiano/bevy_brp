@@ -434,14 +434,14 @@ mod tests {
                 "reflectTypes": ["Component", "Serialize", "Deserialize"]
             },
             {
-                "typePath": "bevy_core::name::Name",
+                "typePath": "bevy_ecs::name::Name",
                 "shortPath": "Name",
                 "reflectTypes": ["Component"]
             }
         ]);
 
         let result =
-            DiscoveryContext::find_type_in_registry_response("bevy_core::name::Name", &response);
+            DiscoveryContext::find_type_in_registry_response("bevy_ecs::name::Name", &response);
 
         assert!(result.is_some());
         let result = result.expect("Expected to find type in registry response");
@@ -449,7 +449,7 @@ mod tests {
             .get("typePath")
             .and_then(|v| v.as_str())
             .expect("Expected typePath to be a string");
-        assert_eq!(type_path, "bevy_core::name::Name");
+        assert_eq!(type_path, "bevy_ecs::name::Name");
     }
 
     #[test]

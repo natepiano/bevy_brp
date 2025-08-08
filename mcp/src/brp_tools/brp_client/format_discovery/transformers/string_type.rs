@@ -28,7 +28,7 @@ impl StringTypeTransformer {
                 // Try common field names that might contain the string value
                 for field in [
                     FIELD_NAME,
-                    FormatCorrectionField::Value.as_ref(),
+                    &String::from(FormatCorrectionField::Value),
                     FIELD_TEXT,
                     FIELD_LABEL,
                 ] {
