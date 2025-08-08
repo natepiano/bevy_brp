@@ -11,7 +11,7 @@ use super::state::{DiscoveryEngine, Retry};
 use super::types::{Correction, CorrectionInfo, Operation};
 use crate::brp_tools::{BrpClientError, ResponseStatus, brp_client};
 use crate::error::{Error, Result};
-use crate::json_field_access::JsonFieldAccess;
+use crate::json_traits::JsonFieldAccess;
 use crate::tool::ParameterName;
 
 impl DiscoveryEngine<Retry> {

@@ -18,7 +18,7 @@ use super::types::{
 use super::wrapper_types::WrapperType;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Result;
-use crate::json_field_access::JsonFieldAccess;
+use crate::json_traits::JsonFieldAccess;
 use crate::tool::BrpMethod;
 
 // ===== Public Functions (Alphabetical) =====
