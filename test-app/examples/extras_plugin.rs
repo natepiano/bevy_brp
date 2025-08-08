@@ -160,7 +160,6 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Name::new("VisibleEntity"),
         Visibility::default(),
     ));
-    let x = Color::Srgba::new(1.0, 0.5, 0.25, 1.0);
 
     // Entity with Sprite component for testing mutation paths
     commands.spawn((
