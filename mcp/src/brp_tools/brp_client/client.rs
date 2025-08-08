@@ -42,7 +42,7 @@ impl BrpClient {
         let mut params_json = serde_json::to_value(params)
             .map_err(|e| Error::InvalidArgument(format!("Failed to serialize parameters: {e}")))?;
 
-        // Only filter out the port field - null values are valid for Option fields
+        // Only filter out the port field
         let brp_params = if let Value::Object(ref mut map) = params_json {
             map.retain(|key, _value| key != ParameterName::Port.as_ref());
             if map.is_empty() {
