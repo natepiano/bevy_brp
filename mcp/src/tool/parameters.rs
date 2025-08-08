@@ -7,7 +7,7 @@ use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
-use crate::json_traits::IntoStrings;
+use crate::string_traits::IntoStrings;
 
 /// Trait for parameter types used in tools
 ///

@@ -13,7 +13,7 @@ use super::constants::{BRP_DEFAULT_HOST, BRP_HTTP_PROTOCOL, BRP_JSONRPC_PATH};
 use super::json_rpc_builder::BrpJsonRpcBuilder;
 use crate::brp_tools::Port;
 use crate::error::{Error, Result};
-use crate::json_traits::JsonFieldAccess;
+use crate::string_traits::JsonFieldAccess;
 use crate::tool::{BrpMethod, ParameterName};
 
 /// HTTP client for BRP communication

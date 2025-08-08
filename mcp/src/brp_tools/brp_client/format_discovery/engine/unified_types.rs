@@ -17,7 +17,7 @@ use super::types::{
     FormatInfo, Operation, RegistryStatus, SerializationSupport, TypeCategoryFromDiscoverFormat,
 };
 use crate::brp_tools::brp_type_schema::BrpTypeName;
-use crate::json_traits::IntoStrings;
+use crate::string_traits::IntoStrings;
 use crate::tool::ParameterName;
 
 /// Comprehensive type information unified across all discovery sources

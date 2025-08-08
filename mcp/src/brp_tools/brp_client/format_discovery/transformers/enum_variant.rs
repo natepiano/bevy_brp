@@ -8,7 +8,7 @@ use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
-use crate::json_traits::IntoStrings;
+use crate::string_traits::IntoStrings;
 use crate::tool::ParameterName;
 
 /// Transformer for enum variant patterns

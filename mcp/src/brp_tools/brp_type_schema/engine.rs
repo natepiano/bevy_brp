@@ -24,7 +24,7 @@ use super::type_discovery::{
 use super::types::{BrpTypeName, CachedTypeInfo, EnumVariantKind, MutationPath, SchemaField};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
-use crate::json_traits::{IntoStrings, JsonFieldAccess};
+use crate::string_traits::{IntoStrings, JsonFieldAccess};
 use crate::tool::BrpMethod;
 
 /// Engine that owns request-scoped state and performs discovery.

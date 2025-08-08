@@ -17,9 +17,9 @@ use rmcp::transport::stdio;
 mod app_tools;
 mod brp_tools;
 mod error;
-mod json_traits;
 mod log_tools;
 mod mcp_service;
+mod string_traits;
 mod tool;
 
 #[tokio::main]

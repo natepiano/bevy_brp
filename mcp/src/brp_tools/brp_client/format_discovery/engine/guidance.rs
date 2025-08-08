@@ -11,7 +11,7 @@ use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Guidance};
 use super::types::{Correction, CorrectionInfo, CorrectionMethod, Operation};
 use super::unified_types::UnifiedTypeInfo;
-use crate::json_traits::JsonFieldAccess;
+use crate::string_traits::JsonFieldAccess;
 use crate::tool::ParameterName;
 
 impl DiscoveryEngine<Guidance> {
