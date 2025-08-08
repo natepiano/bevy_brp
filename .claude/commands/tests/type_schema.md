@@ -107,7 +107,7 @@ Execute `mcp__brp__brp_type_schema` with multiple types:
 {
   "types": [
     "bevy_transform::components::transform::Transform",
-    "bevy_core::name::Name",
+    "bevy_ecs::name::Name",
     "bevy_sprite::sprite::Sprite"
   ],
   "port": 20114
