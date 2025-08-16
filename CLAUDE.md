@@ -1,3 +1,6 @@
+## Purpose
+The purpose of the the bevy_brp_mcp create is to provide mcp protocol bsaed access to a running evy app/game using the Bevy Remote Protocol (brp).  As such a key goal is to have the running mcp server act as an educational to you, the coding agent, in order to properly work with the bevy remote protocol. The primary purpose is the api access but the user wants me to keep in mind that the secondary goal, about educating the agentic coder, with information about how to successfully utilize the available commands.
+
 ## Workspace Structure and Purpose
 This is a Rust workspace with 4 crates serving distinct roles: `mcp` (MCP server for AI agents), `extras` (Bevy plugin for enhanced BRP methods), `mcp_macros` (procedural macros for code generation), and `test-app` (testing application). The separation enables providing tests bevy apps and examples as well as agentic tests that don't need to be published to crates.io.  The `mcp` crate is published to crates.io as `bevy_brp_mcp`. The `extras` crate is published to crates.io as `bevy_brp_extras`. The `mcp_macros` crate is published to crates.io as `bevy_brp_mcp_macros`. The `test-app` crate and the agentic tests under .claude are not published.
 
