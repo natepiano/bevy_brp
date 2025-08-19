@@ -46,7 +46,6 @@
       "mcp__brp__brp_execute",
       "Bash(pkill:*)",
       "Bash(rustc:*)",
-      "Bash(./test_debug_scanning)",
       "Bash(timeout:*)",
       "mcp__brp__brp_cleanup_logs",
       "mcp__brp__bevy_reparent",
