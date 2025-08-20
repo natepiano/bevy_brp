@@ -11,6 +11,7 @@ use serde_json::Value;
 use super::registry_cache::get_full_registry;
 use super::result_types::TypeSchemaResponseV2;
 use super::schema_processor::SchemaProcessor;
+use super::type_discovery::{determine_supported_operations, extract_reflect_types};
 use super::types::BrpTypeName;
 use crate::brp_tools::Port;
 use crate::error::Result;
@@ -52,8 +53,17 @@ impl TypeSchemaEngineV2 {
                 let mutation_paths = processor.build_mutation_paths();
                 mutation_info.insert(type_name.clone(), mutation_paths);
 
-                // For now, use empty operations list - will be enhanced later
-                supported_operations.insert(type_name.clone(), Vec::new());
+                // Extract reflection traits from the schema
+                let reflect_types = extract_reflect_types(type_schema);
+
+                // Determine supported operations based on traits
+                let operations = determine_supported_operations(&reflect_types);
+
+                // Convert to strings for the response
+                let operations_strings: Vec<String> =
+                    operations.iter().map(|op| op.to_string()).collect();
+
+                supported_operations.insert(type_name.clone(), operations_strings);
 
                 // Add schema
                 schemas.insert(type_name.clone(), type_schema.clone());
