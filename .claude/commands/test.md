@@ -11,9 +11,9 @@ This command runs BRP tests in two modes:
 
 ## Usage Examples
 ```
-/test_runner                    # Run all tests PARALLEL_TESTS at a time, stop on first failure
-/test_runner debug_mode         # Run only the debug_mode test
-/test_runner data_operations    # Run only the data_operations test
+/test                    # Run all tests PARALLEL_TESTS at a time, stop on first failure
+/test extras             # Run only the debug_mode test
+/test data_operations    # Run only the data_operations test
 ```
 
 ## Test Configuration
