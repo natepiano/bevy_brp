@@ -242,3 +242,49 @@ impl TypeSchemaResponse {
         self.discovered_count = self.summary.successful_discoveries;
     }
 }
+
+// V2 Response Types for parallel implementation
+
+/// V2 response structure with simpler field layout
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeSchemaResponseV2 {
+    /// Spawn format examples for each type
+    pub spawn_format:         HashMap<String, Value>,
+    /// Mutation info for each type
+    pub mutation_info:        HashMap<String, Vec<MutationPath>>,
+    /// Supported operations for each type  
+    pub supported_operations: HashMap<String, Vec<String>>,
+    /// Reflection traits for each type
+    pub reflection_traits:    HashMap<String, Vec<String>>,
+    /// Number of types discovered
+    pub discovered_count:     usize,
+    /// All schemas - both requested and dependencies
+    pub schemas:              HashMap<String, Value>,
+}
+
+/// V2 version of `TypeInfo` without `registry_schema` field
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeInfoV2 {
+    /// Fully-qualified type name
+    pub type_name:            String,
+    /// Category of the type (Struct, Enum, etc.)
+    pub type_category:        String,
+    /// Whether the type is registered in the Bevy registry
+    pub in_registry:          bool,
+    /// Whether the type has the Serialize trait
+    pub has_serialize:        bool,
+    /// Whether the type has the Deserialize trait
+    pub has_deserialize:      bool,
+    /// List of BRP operations supported by this type
+    pub supported_operations: Vec<String>,
+    /// Mutation paths available for this type
+    pub mutation_paths:       Vec<MutationPath>,
+    /// Spawn format example
+    pub spawn_format:         Value,
+    /// Information about enum variants if this is an enum
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enum_info:            Option<Vec<EnumVariantInfo>>,
+    /// Error message if discovery failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error:                Option<String>,
+}

@@ -114,7 +114,7 @@ pub enum MathComponent {
 }
 
 /// Mutation path information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Example value for this path
     #[allow(dead_code)] // Used in response building when tool is called
@@ -150,6 +150,22 @@ pub enum SchemaField {
     Ref,
     ReflectTypes,
     TypePath,
+    #[strum(serialize = "bevyBrpMcpTypeHint")]
+    BevyBrpMcpTypeHint,
+}
+
+/// JSON schema type names for type schema generation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, EnumString)]
+#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+pub enum JsonSchemaType {
+    Object,
+    Array,
+    String,
+    Number,
+    Integer,
+    Boolean,
+    Null,
 }
 
 /// Category of type for quick identification and processing

@@ -12,7 +12,7 @@ use crate::brp_tools::constants::{DEFAULT_BRP_PORT, VALID_PORT_RANGE};
 ///
 /// This type ensures port numbers are within the valid range and provides
 /// a default value of 15702 (the standard BRP port).
-#[derive(Debug, Clone, Copy, JsonSchema, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, JsonSchema, Serialize)]
 pub struct Port(pub u16);
 
 impl<'de> Deserialize<'de> for Port {

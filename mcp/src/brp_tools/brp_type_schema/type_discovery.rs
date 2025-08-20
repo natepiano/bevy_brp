@@ -232,8 +232,12 @@ async fn discover_nested_type_paths(
                     .get_field(SchemaField::Kind)
                     .and_then(Value::as_str);
 
-                match type_kind {
-                    Some("Struct") => {
+                let type_category = type_kind
+                    .and_then(|s| TypeKind::from_str(s).ok())
+                    .unwrap_or(TypeKind::Value);
+
+                match type_category {
+                    TypeKind::Struct => {
                         let struct_paths = process_struct_type(type_schema, field_name, type_name);
 
                         // Recursively discover paths for nested non-primitive fields
@@ -270,18 +274,12 @@ async fn discover_nested_type_paths(
                             nested_paths.len()
                         );
                     }
-                    Some("Enum") => {
+                    TypeKind::Enum => {
                         process_enum_type(type_schema, field_type, type_name);
                     }
                     _ => {
                         debug!("Unknown type kind for {}: {:?}", field_type, type_kind);
                         // Cache with empty paths for unknown types
-                        let type_category: TypeKind = type_schema
-                            .get_field(SchemaField::Kind)
-                            .and_then(Value::as_str)
-                            .and_then(|s| TypeKind::from_str(s).ok())
-                            .unwrap_or(TypeKind::Value);
-
                         cache_type_info(
                             type_name,
                             type_schema,
@@ -337,7 +335,8 @@ async fn get_enum_variants_for_type(type_name: &str, port: Port) -> Option<Vec<S
                     type_schema
                         .get_field(SchemaField::Kind)
                         .and_then(Value::as_str)
-                        == Some("Enum")
+                        .and_then(|s| TypeKind::from_str(s).ok())
+                        == Some(TypeKind::Enum)
                 })
                 .and_then(extract_enum_variants)
         })

@@ -64,8 +64,11 @@
       "Bash(bash -c \"rg:*\")",
       "Bash(od:*)",
       "mcp__brp__brp_type_schema",
-      "mcp__brp__brp_type_schema"
+      "mcp__brp__brp_type_schema",
+      "mcp__brp__brp_type_schema_v2"
     ],
-    "deny": ["Bash(sed:*)"]
+    "deny": [
+      "Bash(sed:*)"
+    ]
   }
 }

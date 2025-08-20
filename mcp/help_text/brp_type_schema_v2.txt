@@ -1,0 +1,30 @@
+Type schema discovery for Bevy components (V2 implementation)
+
+This tool provides format information for Bevy components and resources using
+a new parallel implementation. It's intended for testing and comparison with
+the original brp_type_schema tool.
+
+The V2 implementation uses a complete registry approach instead of recursive
+discovery, providing potentially better performance and accuracy.
+
+## Parameters
+
+- `types` (array): List of fully-qualified type names to discover
+- `port` (integer): BRP port number (default: 15702)
+
+## Example
+
+```json
+{
+  "types": ["bevy_transform::components::transform::Transform"],
+  "port": 15702
+}
+```
+
+## Returns
+
+V2 response format with:
+- Spawn format examples
+- Mutation paths with type information  
+- Supported BRP operations
+- Complete type schemas

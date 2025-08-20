@@ -4,6 +4,7 @@
 //! - Type-safe JSON field access using any type that implements `AsRef<str>`
 //! - Converting iterators to string collections
 
+use serde::Serialize;
 use serde_json::{Map, Value};
 
 /// Extension trait for type-safe JSON field access
@@ -22,6 +23,12 @@ pub trait JsonFieldAccess {
 
     /// Insert field with string value using any type that converts to String
     fn insert_field_str<T: Into<String>>(&mut self, field: T, value: &str);
+
+    /// Set or update a field value using types that can serialize
+    fn set_field<F, V>(&mut self, field: F, value: V)
+    where
+        F: AsRef<str>,
+        V: Serialize;
 }
 
 impl JsonFieldAccess for Value {
@@ -48,6 +55,18 @@ impl JsonFieldAccess for Value {
             obj.insert(field.into(), Self::String(value.to_string()));
         }
     }
+
+    fn set_field<F, V>(&mut self, field: F, value: V)
+    where
+        F: AsRef<str>,
+        V: Serialize,
+    {
+        if let Some(obj) = self.as_object_mut() {
+            if let Ok(json_value) = serde_json::to_value(value) {
+                obj.insert((*field.as_ref()).to_string(), json_value);
+            }
+        }
+    }
 }
 
 impl JsonFieldAccess for Map<String, Value> {
@@ -69,6 +88,16 @@ impl JsonFieldAccess for Map<String, Value> {
 
     fn insert_field_str<T: Into<String>>(&mut self, field: T, value: &str) {
         self.insert(field.into(), Value::String(value.to_string()));
+    }
+
+    fn set_field<F, V>(&mut self, field: F, value: V)
+    where
+        F: AsRef<str>,
+        V: Serialize,
+    {
+        if let Ok(json_value) = serde_json::to_value(value) {
+            self.insert((*field.as_ref()).to_string(), json_value);
+        }
     }
 }
 
