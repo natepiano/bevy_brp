@@ -417,7 +417,7 @@ async fn process_field(
         );
         mutation_paths.push(MutationPath {
             path:          base_path,
-            example_value: json!(null),
+            example:       json!(null),
             enum_variants: None,
             type_name:     None,
         });
@@ -448,7 +448,7 @@ async fn process_unknown_type(
 
                 mutation_paths.push(MutationPath {
                     path: base_path.clone(),
-                    example_value,
+                    example: example_value,
                     enum_variants,
                     type_name: Some(field_type.to_string()),
                 });
@@ -483,7 +483,7 @@ async fn process_unknown_type(
 
             mutation_paths.push(MutationPath {
                 path: base_path.clone(),
-                example_value,
+                example: example_value,
                 enum_variants,
                 type_name: Some(field_type.to_string()),
             });
@@ -495,13 +495,13 @@ async fn process_unknown_type(
         // Add array-style mutation paths for optional vectors
         mutation_paths.push(MutationPath {
             path:          format!(".{field_name}[0]"),
-            example_value: json!(null),
+            example:       json!(null),
             enum_variants: None,
             type_name:     None,
         });
         mutation_paths.push(MutationPath {
             path:          format!(".{field_name}[1]"),
-            example_value: json!(null),
+            example:       json!(null),
             enum_variants: None,
             type_name:     None,
         });
@@ -543,7 +543,7 @@ async fn process_wrapper_type(
 
             mutation_paths.push(MutationPath {
                 path:          base_path,
-                example_value: final_example,
+                example:       final_example,
                 enum_variants: None,
                 type_name:     Some(field_type.to_string()),
             });
@@ -559,7 +559,7 @@ async fn process_wrapper_type(
 
             mutation_paths.push(MutationPath {
                 path:          base_path,
-                example_value: final_example,
+                example:       final_example,
                 enum_variants: None,
                 type_name:     Some(field_type.to_string()),
             });
@@ -583,7 +583,7 @@ fn add_cached_paths_with_prefix(
         };
         nested_paths.push(MutationPath {
             path:          nested_path,
-            example_value: path.example_value.clone(),
+            example:       path.example.clone(),
             enum_variants: path.enum_variants.clone(),
             type_name:     path.type_name.clone(),
         });
@@ -734,7 +734,7 @@ fn process_hardcoded_type(
 
     mutation_paths.push(MutationPath {
         path:          base_path,
-        example_value: mutation_example,
+        example:       mutation_example,
         enum_variants: None, // Will be populated later if needed
         type_name:     Some(field_type.to_string()),
     });
@@ -746,7 +746,7 @@ fn process_hardcoded_type(
                 let component_path = format!(".{field_name}.{}", String::from(*component));
                 mutation_paths.push(MutationPath {
                     path:          component_path,
-                    example_value: example_value.clone(),
+                    example:       example_value.clone(),
                     enum_variants: None,
                     type_name:     None,
                 });
@@ -776,7 +776,7 @@ fn process_struct_type(
             // Add base path for this nested field
             nested_paths.push(MutationPath {
                 path:          nested_path,
-                example_value: json!(null),
+                example:       json!(null),
                 enum_variants: None,
                 type_name:     nested_field_type.map(String::from),
             });
@@ -784,7 +784,7 @@ fn process_struct_type(
             // Build relative paths for caching
             cache_paths.push(MutationPath {
                 path:          format!(".{nested_field_name}"),
-                example_value: json!(null),
+                example:       json!(null),
                 enum_variants: None,
                 type_name:     None,
             });

@@ -118,7 +118,7 @@ pub enum MathComponent {
 pub struct MutationPath {
     /// Example value for this path
     #[allow(dead_code)] // Used in response building when tool is called
-    pub example_value: Value,
+    pub example: Value,
     /// Path for mutation, e.g., ".translation.x"
     pub path:          String,
     /// For enum types, list of valid variant names
@@ -150,8 +150,6 @@ pub enum SchemaField {
     Ref,
     ReflectTypes,
     TypePath,
-    #[strum(serialize = "bevyBrpMcpTypeHint")]
-    BevyBrpMcpTypeHint,
 }
 
 /// JSON schema type names for type schema generation

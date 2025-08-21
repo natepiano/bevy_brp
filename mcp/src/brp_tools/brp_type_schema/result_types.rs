@@ -173,7 +173,7 @@ impl MutationPathInfo {
     pub fn from_mutation_path(path: &MutationPath, description: String, is_option: bool) -> Self {
         if is_option {
             // For Option types, check if we have the special format
-            if let Some(examples_obj) = path.example_value.as_object() {
+            if let Some(examples_obj) = path.example.as_object() {
                 if examples_obj.contains_key("some") && examples_obj.contains_key("none") {
                     return Self {
                         description,
@@ -192,10 +192,10 @@ impl MutationPathInfo {
         Self {
             description,
             type_name: path.type_name.clone().unwrap_or_default(),
-            example: if path.example_value.is_null() {
+            example: if path.example.is_null() {
                 None
             } else {
-                Some(path.example_value.clone())
+                Some(path.example.clone())
             },
             example_some: None,
             example_none: None,
@@ -245,24 +245,22 @@ impl TypeSchemaResponse {
 
 // V2 Response Types for parallel implementation
 
-/// V2 response structure with simpler field layout
+/// V2 response structure - same as V1 but uses `TypeInfoV2`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeSchemaResponseV2 {
-    /// Spawn format examples for each type
-    pub spawn_format:         HashMap<String, Value>,
-    /// Mutation info for each type
-    pub mutation_info:        HashMap<String, Vec<MutationPath>>,
-    /// Supported operations for each type  
-    pub supported_operations: HashMap<String, Vec<String>>,
-    /// Reflection traits for each type
-    pub reflection_traits:    HashMap<String, Vec<String>>,
-    /// Number of types discovered
-    pub discovered_count:     usize,
-    /// All schemas - both requested and dependencies
-    pub schemas:              HashMap<String, Value>,
+    /// Number of types successfully discovered
+    pub discovered_count: usize,
+    /// List of type names that were requested
+    pub requested_types:  Vec<String>,
+    /// Whether the discovery operation succeeded overall
+    pub success:          bool,
+    /// Summary statistics for the discovery operation
+    pub summary:          TypeSchemaSummary,
+    /// Detailed information for each type, keyed by type name
+    pub type_info:        HashMap<String, TypeInfoV2>,
 }
 
-/// V2 version of `TypeInfo` without `registry_schema` field
+/// V2 version of `TypeInfo` - same structure as V1 but without `registry_schema` field
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeInfoV2 {
     /// Fully-qualified type name
@@ -277,10 +275,11 @@ pub struct TypeInfoV2 {
     pub has_deserialize:      bool,
     /// List of BRP operations supported by this type
     pub supported_operations: Vec<String>,
-    /// Mutation paths available for this type
-    pub mutation_paths:       Vec<MutationPath>,
-    /// Spawn format example
-    pub spawn_format:         Value,
+    /// Mutation paths available for this type - using same format as V1
+    pub mutation_paths:       HashMap<String, MutationPathInfo>,
+    /// Example values for spawn/insert operations (currently empty to match V1)
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub example_values:       HashMap<String, Value>,
     /// Information about enum variants if this is an enum
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enum_info:            Option<Vec<EnumVariantInfo>>,
