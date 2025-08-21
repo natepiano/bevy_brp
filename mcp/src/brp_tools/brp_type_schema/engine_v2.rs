@@ -12,7 +12,7 @@ use super::registry_cache::get_full_registry;
 use super::result_types::{MutationPathInfo, TypeInfoV2, TypeSchemaResponseV2, TypeSchemaSummary};
 use super::schema_processor::SchemaProcessor;
 use super::type_discovery::{determine_supported_operations, extract_reflect_types};
-use super::types::{BrpTypeName, ReflectTrait};
+use super::types::{BrpTypeName, EnumVariantKind, ReflectTrait, SchemaField};
 use crate::brp_tools::Port;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
@@ -171,12 +171,83 @@ impl TypeSchemaEngineV2 {
 
     /// Build enum info for enum types
     fn build_enum_info(type_schema: &Value) -> Option<Vec<super::result_types::EnumVariantInfo>> {
-        // For enums in V1, we just return an empty Vec - V1 doesn't actually populate enum_info
-        // properly It only sets it to Some(vec![]) for enum types
-        if type_schema.get_field("oneOf").is_some() {
-            Some(Vec::new())
+        use super::result_types::EnumVariantInfo;
+
+        let one_of = type_schema
+            .get_field(SchemaField::OneOf)
+            .and_then(Value::as_array)?;
+
+        let variants: Vec<EnumVariantInfo> = one_of
+            .iter()
+            .filter_map(|v| Self::extract_enum_variant(v))
+            .collect();
+
+        Some(variants)
+    }
+
+    /// Extract a single enum variant from schema
+    fn extract_enum_variant(v: &Value) -> Option<super::result_types::EnumVariantInfo> {
+        use super::result_types::{EnumFieldInfo, EnumVariantInfo};
+        use crate::string_traits::IntoStrings;
+
+        let name = v
+            .get_field(SchemaField::ShortPath)
+            .and_then(Value::as_str)?;
+
+        // Check if this is a unit variant, tuple variant, or struct variant
+        let variant_type = if v.get_field(SchemaField::PrefixItems).is_some() {
+            EnumVariantKind::Tuple
+        } else if v.get_field(SchemaField::Properties).is_some() {
+            EnumVariantKind::Struct
+        } else {
+            EnumVariantKind::Unit
+        };
+
+        // Extract tuple types if present
+        let tuple_types = if variant_type == EnumVariantKind::Tuple {
+            v.get_field(SchemaField::PrefixItems)
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| {
+                            item.get_field(SchemaField::Type).and_then(Value::as_str)
+                        })
+                        .into_strings()
+                })
         } else {
             None
-        }
+        };
+
+        // Extract struct fields if present
+        let fields = if variant_type == EnumVariantKind::Struct {
+            v.get_field(SchemaField::Properties)
+                .and_then(Value::as_object)
+                .map(|props| {
+                    props
+                        .iter()
+                        .map(|(field_name, field_value)| {
+                            let type_name = field_value
+                                .get_field(SchemaField::Type)
+                                .and_then(Value::as_str)
+                                .unwrap_or("unknown")
+                                .to_string();
+                            EnumFieldInfo {
+                                name: field_name.clone(),
+                                type_name,
+                            }
+                        })
+                        .collect()
+                })
+        } else {
+            None
+        };
+
+        Some(EnumVariantInfo {
+            name: name.to_string(),
+            variant_type,
+            fields,
+            tuple_types,
+        })
     }
 }

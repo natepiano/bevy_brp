@@ -10,6 +10,7 @@ use serde_json::{Value, json};
 
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::types::{BrpTypeName, MutationPath, SchemaField, TypeKind};
+use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
 /// Domain type for schema processing in the new V2 path
@@ -72,19 +73,22 @@ impl<'a> SchemaProcessor<'a> {
             return paths;
         };
 
-        // Check if this is an Option type
-        let is_option = ft.starts_with("core::option::Option<");
+        // Check if this is a wrapper type (Option, Handle)
+        let wrapper_info = WrapperType::detect(&ft);
 
-        // Get example value and enum variants
-        let (example_value, enum_variants) = self.get_field_example_and_variants(&ft, is_option);
+        // Get example value and enum variants based on type
+        let (example_value, enum_variants) = self.get_field_example_and_variants(&ft, wrapper_info);
 
         // Check for hardcoded knowledge
-        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(ft.as_str())) {
+        // For wrapper types, check the inner type for hardcoded knowledge
+        let type_to_check = wrapper_info.map(|(_, inner)| inner).unwrap_or(ft.as_str());
+
+        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(type_to_check)) {
             paths.extend(Self::build_hardcoded_paths(
                 field_name,
                 &ft,
                 hardcoded,
-                is_option,
+                wrapper_info,
                 enum_variants,
             ));
         } else {
@@ -93,7 +97,7 @@ impl<'a> SchemaProcessor<'a> {
                 &ft,
                 example_value,
                 enum_variants,
-                is_option,
+                wrapper_info,
             ));
         }
 
@@ -114,57 +118,42 @@ impl<'a> SchemaProcessor<'a> {
     fn get_field_example_and_variants(
         &self,
         field_type: &str,
-        is_option: bool,
+        wrapper_info: Option<(WrapperType, &str)>,
     ) -> (Value, Option<Vec<String>>) {
-        if is_option {
-            self.get_option_example_and_variants(field_type)
-        } else {
-            self.get_regular_example_and_variants(field_type)
+        match wrapper_info {
+            Some((wrapper_type, inner_type)) => {
+                // Handle wrapper types - they don't get enum_variants
+                let inner_example = BRP_FORMAT_KNOWLEDGE
+                    .get(&BrpTypeName::from(inner_type))
+                    .map(|h| h.example_value.clone())
+                    .unwrap_or(json!(null));
+
+                // Build the appropriate example based on wrapper type
+                let example = match wrapper_type {
+                    WrapperType::Option => inner_example, /* For Option, we return the inner
+                                                            * example */
+                    WrapperType::Handle => wrapper_type.wrap_example(json!({})), /* For Handle,
+                                                                                  * wrap it */
+                };
+
+                (example, None) // Wrapper types never get enum_variants
+            }
+            None => {
+                // Regular types - check if they're enums
+                self.registry.get(&BrpTypeName::from(field_type)).map_or(
+                    (json!(null), None),
+                    |schema| {
+                        if Self::get_type_kind(schema) == Some(TypeKind::Enum) {
+                            let variants = Self::extract_enum_variants(schema);
+                            let example = Self::build_enum_example(schema);
+                            (example, variants)
+                        } else {
+                            (json!(null), None)
+                        }
+                    },
+                )
+            }
         }
-    }
-
-    /// Get example and variants for Option types
-    fn get_option_example_and_variants(&self, field_type: &str) -> (Value, Option<Vec<String>>) {
-        // Extract inner type
-        let inner_type = field_type
-            .strip_prefix("core::option::Option<")
-            .and_then(|s| s.strip_suffix('>'))
-            .unwrap_or("");
-
-        // Get example for inner type
-        let inner_example = BRP_FORMAT_KNOWLEDGE
-            .get(&inner_type.into())
-            .map(|h| h.example_value.clone())
-            .unwrap_or(json!(null));
-
-        // Get variants from registry
-        let variants = self
-            .registry
-            .get(&BrpTypeName::from(field_type))
-            .and_then(|schema| {
-                if Self::get_type_kind(schema) == Some(TypeKind::Enum) {
-                    Self::extract_enum_variants(schema)
-                } else {
-                    None
-                }
-            });
-
-        (inner_example, variants)
-    }
-
-    /// Get example and variants for regular types
-    fn get_regular_example_and_variants(&self, field_type: &str) -> (Value, Option<Vec<String>>) {
-        self.registry
-            .get(&BrpTypeName::from(field_type))
-            .map_or((json!(null), None), |schema| {
-                if Self::get_type_kind(schema) == Some(TypeKind::Enum) {
-                    let variants = Self::extract_enum_variants(schema);
-                    let example = Self::build_enum_example(schema);
-                    (example, variants)
-                } else {
-                    (json!(null), None)
-                }
-            })
     }
 
     /// Build paths for types with hardcoded knowledge
@@ -172,13 +161,13 @@ impl<'a> SchemaProcessor<'a> {
         field_name: &str,
         field_type: &str,
         hardcoded: &super::types::BrpFormatKnowledge,
-        is_option: bool,
+        wrapper_info: Option<(WrapperType, &str)>,
         enum_variants: Option<Vec<String>>,
     ) -> Vec<MutationPath> {
         let mut paths = Vec::new();
 
         // Build main path with appropriate example format
-        let final_example = if is_option {
+        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
             json!({
                 "some": hardcoded.example_value.clone(),
                 "none": null
@@ -215,9 +204,9 @@ impl<'a> SchemaProcessor<'a> {
         field_type: &str,
         example_value: Value,
         enum_variants: Option<Vec<String>>,
-        is_option: bool,
+        wrapper_info: Option<(WrapperType, &str)>,
     ) -> MutationPath {
-        let final_example = if is_option {
+        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
             json!({
                 "some": example_value,
                 "none": null
