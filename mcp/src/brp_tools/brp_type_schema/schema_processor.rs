@@ -81,7 +81,7 @@ impl<'a> SchemaProcessor<'a> {
 
         // Check for hardcoded knowledge
         // For wrapper types, check the inner type for hardcoded knowledge
-        let type_to_check = wrapper_info.map(|(_, inner)| inner).unwrap_or(ft.as_str());
+        let type_to_check = wrapper_info.map_or(ft.as_str(), |(_, inner)| inner);
 
         if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(type_to_check)) {
             paths.extend(Self::build_hardcoded_paths(
@@ -130,8 +130,8 @@ impl<'a> SchemaProcessor<'a> {
 
                 // Build the appropriate example based on wrapper type
                 let example = match wrapper_type {
-                    WrapperType::Option => inner_example, /* For Option, we return the inner
-                                                            * example */
+                    WrapperType::Option => inner_example, /* For Option, we return the inner */
+                    // example
                     WrapperType::Handle => wrapper_type.wrap_example(json!({})), /* For Handle,
                                                                                   * wrap it */
                 };

@@ -74,26 +74,6 @@ impl std::fmt::Display for BrpTypeName {
     }
 }
 
-/// Cached type information from registry
-#[derive(Debug, Clone)]
-pub struct CachedTypeInfo {
-    /// Mutation paths available for this type
-    pub mutation_paths:       Vec<MutationPath>,
-    /// Raw registry schema response
-    #[allow(dead_code)]
-    pub registry_schema:      Value,
-    /// Reflection types from registry (e.g., `[Component, Serialize, Deserialize]`)
-    pub reflect_types:        Vec<ReflectTrait>,
-    /// Full object format for spawn/insert
-    pub spawn_format:         Value,
-    /// Operations supported by this type in BRP
-    pub supported_operations: Vec<BrpSupportedOperation>,
-    /// Category of this type (Struct, Enum, etc.)
-    pub type_kind:            TypeKind,
-    /// For enums, list of variant names
-    pub enum_variants:        Option<Vec<String>>,
-}
-
 /// Enum variant classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -149,7 +129,6 @@ pub enum SchemaField {
     #[strum(serialize = "$ref")]
     Ref,
     ReflectTypes,
-    TypePath,
 }
 
 /// JSON schema type names for type schema generation

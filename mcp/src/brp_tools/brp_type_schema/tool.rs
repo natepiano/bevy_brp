@@ -11,13 +11,11 @@
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 use tracing::debug;
 
-use super::engine::TypeSchemaEngine;
+use super::engine_v2::TypeSchemaEngine;
 use super::result_types::TypeSchemaResponse;
 use crate::brp_tools::Port;
-use crate::brp_tools::brp_type_schema::BrpTypeName;
 use crate::error::Result;
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
@@ -71,18 +69,11 @@ impl ToolFn for TypeSchema {
 async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
     debug!("Executing brp_type_schema for {} types", params.types.len());
 
-    // Convert types to BrpTypeName and prepare for registry calls
-    let type_value_pairs: Vec<(BrpTypeName, Value)> = params
-        .types
-        .iter()
-        .map(|type_str| (type_str.as_str().into(), json!({})))
-        .collect();
+    // Construct V2 engine
+    let engine = TypeSchemaEngine::new(params.port).await?;
 
-    // Construct engine (fetching registry data as part of construction)
-    let engine = TypeSchemaEngine::new(&type_value_pairs, params.port).await?;
-
-    // Run the engine to produce the typed response
-    let response = engine.run(&params.types).await?;
+    // Run the engine to produce the typed response (V2 is synchronous)
+    let response = engine.generate_response(&params.types);
     let type_count = response.discovered_count;
 
     Ok(TypeSchemaResult::new(response, type_count)

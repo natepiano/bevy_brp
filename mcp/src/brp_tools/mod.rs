@@ -15,8 +15,7 @@ pub use brp_client::{
 };
 //
 // Export brp_type_schema tool
-#[allow(unused_imports)]
-pub use brp_type_schema::{BrpTypeSchema, TypeSchemaParams, TypeSchemaResult, TypeSchemaV2};
+pub use brp_type_schema::{BrpTypeSchema, TypeSchemaParams};
 pub use constants::BRP_PORT_ENV_VAR;
 pub use port::Port;
 //

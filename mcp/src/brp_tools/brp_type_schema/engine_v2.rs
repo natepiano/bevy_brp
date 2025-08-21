@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use super::registry_cache::get_full_registry;
-use super::result_types::{MutationPathInfo, TypeInfoV2, TypeSchemaResponseV2, TypeSchemaSummary};
+use super::result_types::{MutationPathInfo, TypeInfoV2, TypeSchemaResponse, TypeSchemaSummary};
 use super::schema_processor::SchemaProcessor;
 use super::type_discovery::{determine_supported_operations, extract_reflect_types};
 use super::types::{BrpTypeName, EnumVariantKind, ReflectTrait, SchemaField};
@@ -18,11 +18,11 @@ use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
 /// V2 engine for type schema generation using complete registry approach
-pub struct TypeSchemaEngineV2 {
+pub struct TypeSchemaEngine {
     registry: HashMap<BrpTypeName, Value>,
 }
 
-impl TypeSchemaEngineV2 {
+impl TypeSchemaEngine {
     /// Create a new V2 engine instance
     pub async fn new(port: Port) -> Result<Self> {
         let registry = get_full_registry(port).await?;
@@ -30,8 +30,8 @@ impl TypeSchemaEngineV2 {
     }
 
     /// Generate response for requested types using the V2 approach
-    pub fn generate_response(&self, requested_types: &[String]) -> TypeSchemaResponseV2 {
-        let mut response = TypeSchemaResponseV2 {
+    pub fn generate_response(&self, requested_types: &[String]) -> TypeSchemaResponse {
+        let mut response = TypeSchemaResponse {
             discovered_count: 0,
             requested_types:  requested_types.to_vec(),
             success:          true,
@@ -179,7 +179,7 @@ impl TypeSchemaEngineV2 {
 
         let variants: Vec<EnumVariantInfo> = one_of
             .iter()
-            .filter_map(|v| Self::extract_enum_variant(v))
+            .filter_map(Self::extract_enum_variant)
             .collect();
 
         Some(variants)

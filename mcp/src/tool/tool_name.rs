@@ -29,7 +29,7 @@ use crate::brp_tools::{
     RegistrySchemaResult, RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult,
     ReparentParams, ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
     ScreenshotResult, SendKeysParams, SendKeysResult, SpawnParams, SpawnResult, StopWatchParams,
-    TypeSchemaParams, TypeSchemaV2,
+    TypeSchemaParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -265,9 +265,6 @@ pub enum ToolName {
     // Type Schema - In a class of its own
     /// `brp_type_schema` - Local type schema discovery
     BrpTypeSchema,
-
-    /// `brp_type_schema_v2` - Local type schema discovery (V2 implementation for testing)
-    BrpTypeSchemaV2,
 }
 
 impl ToolName {
@@ -482,11 +479,6 @@ impl ToolName {
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
-            Self::BrpTypeSchemaV2 => Annotation::new(
-                "Type schema for components (V2 implementation)",
-                ToolCategory::Discovery,
-                EnvironmentImpact::ReadOnly,
-            ),
         }
     }
 
@@ -561,9 +553,7 @@ impl ToolName {
             }
             Self::BrpStatus => Some(parameters::build_parameters_from::<StatusParams>),
             Self::BrpShutdown => Some(parameters::build_parameters_from::<ShutdownParams>),
-            Self::BrpTypeSchema | Self::BrpTypeSchemaV2 => {
-                Some(parameters::build_parameters_from::<TypeSchemaParams>)
-            }
+            Self::BrpTypeSchema => Some(parameters::build_parameters_from::<TypeSchemaParams>),
         }
     }
 
@@ -613,7 +603,6 @@ impl ToolName {
             Self::BrpStatus => Arc::new(Status),
             Self::BrpShutdown => Arc::new(Shutdown),
             Self::BrpTypeSchema => Arc::new(BrpTypeSchema),
-            Self::BrpTypeSchemaV2 => Arc::new(TypeSchemaV2),
         }
     }
 
