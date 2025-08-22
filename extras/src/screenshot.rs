@@ -84,11 +84,13 @@ pub fn handler(In(params): In<Option<Value>>, world: &mut World) -> BrpResult {
                     match img.try_into_dynamic() {
                         Ok(dyn_img) => {
                             // Create parent directory if needed
-                            if let Some(parent) = std::path::Path::new(&path_clone).parent() {
-                                if let Err(e) = std::fs::create_dir_all(parent) {
-                                    error!("Failed to create directory for screenshot {path_clone}: {e}");
-                                    return;
-                                }
+                            if let Some(parent) = std::path::Path::new(&path_clone).parent()
+                                && let Err(e) = std::fs::create_dir_all(parent)
+                            {
+                                error!(
+                                    "Failed to create directory for screenshot {path_clone}: {e}"
+                                );
+                                return;
                             }
 
                             // Save the image

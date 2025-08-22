@@ -163,10 +163,10 @@ fn determine_supported_operations(
             supported_operations.push("insert".to_string());
         }
 
-        if let Some(type_info) = type_info_opt {
-            if is_mutable_type(type_info) {
-                supported_operations.push("mutate".to_string());
-            }
+        if let Some(type_info) = type_info_opt
+            && is_mutable_type(type_info)
+        {
+            supported_operations.push("mutate".to_string());
         }
     }
 
