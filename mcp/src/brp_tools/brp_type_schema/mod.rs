@@ -8,9 +8,7 @@ mod engine;
 mod hardcoded_formats;
 mod registry_cache;
 mod result_types;
-mod schema_processor;
 mod tool;
-mod type_discovery;
 mod types;
 mod wrapper_types;
 
