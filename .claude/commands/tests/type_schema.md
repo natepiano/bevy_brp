@@ -41,7 +41,7 @@ Verify the response contains:
 #### 3b. Validate Type Info
 Verify `result.type_info["bevy_sprite::sprite::Sprite"]` contains:
 - `type_name` === "bevy_sprite::sprite::Sprite"
-- `type_category` === "Struct"
+- `type_kind` === "Struct"
 - `in_registry` === true
 - `has_serialize` === false
 - `has_deserialize` === false
@@ -146,7 +146,7 @@ Execute `mcp__brp__brp_type_schema` with:
 }
 ```
 - **Expected**: Type IS found (using stale cache from extras_plugin)
-- **Validate**: 
+- **Validate**:
   - Response succeeds
   - `result.type_info["TestStructWithSerDe"]` exists
   - `result.type_info["TestStructWithSerDe"].in_registry` === true
