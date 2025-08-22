@@ -123,12 +123,12 @@ pub struct TypeSchemaResponse {
     /// Summary statistics for the discovery operation
     pub summary:          TypeSchemaSummary,
     /// Detailed information for each type, keyed by type name
-    pub type_info:        HashMap<String, TypeInfoV2>,
+    pub type_info:        HashMap<String, TypeInfo>,
 }
 
 /// V2 version of `TypeInfo` - same structure as V1 but without `registry_schema` field
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TypeInfoV2 {
+pub struct TypeInfo {
     /// Fully-qualified type name
     pub type_name:            String,
     /// Category of the type (Struct, Enum, etc.)

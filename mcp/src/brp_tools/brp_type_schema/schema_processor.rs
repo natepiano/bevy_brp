@@ -14,9 +14,6 @@ use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
 /// Domain type for schema processing in the new V2 path
-///
-/// This replaces utility functions with proper methods for better organization
-/// and type safety in the V2 implementation.
 pub struct SchemaProcessor<'a> {
     type_schema: &'a Value,
     registry:    &'a HashMap<BrpTypeName, Value>,

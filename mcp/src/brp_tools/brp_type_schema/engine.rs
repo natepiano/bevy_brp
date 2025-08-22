@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use super::registry_cache::get_full_registry;
-use super::result_types::{MutationPathInfo, TypeInfoV2, TypeSchemaResponse, TypeSchemaSummary};
+use super::result_types::{MutationPathInfo, TypeInfo, TypeSchemaResponse, TypeSchemaSummary};
 use super::schema_processor::SchemaProcessor;
 use super::type_discovery::{determine_supported_operations, extract_reflect_types};
 use super::types::{BrpTypeName, EnumVariantKind, ReflectTrait, SchemaField};
@@ -55,7 +55,7 @@ impl TypeSchemaEngine {
                 response.summary.successful_discoveries += 1;
             } else {
                 // Type not found - add error
-                let type_info = TypeInfoV2 {
+                let type_info = TypeInfo {
                     type_name:            type_name.clone(),
                     type_category:        "Unknown".to_string(),
                     in_registry:          false,
@@ -77,7 +77,7 @@ impl TypeSchemaEngine {
     }
 
     /// Build `TypeInfoV2` for a single type
-    fn build_type_info(&self, type_name: &str, type_schema: &Value) -> TypeInfoV2 {
+    fn build_type_info(&self, type_name: &str, type_schema: &Value) -> TypeInfo {
         // Use SchemaProcessor for this type
         let processor = SchemaProcessor::new(type_schema, &self.registry);
 
@@ -115,7 +115,7 @@ impl TypeSchemaEngine {
             None
         };
 
-        TypeInfoV2 {
+        TypeInfo {
             type_name: type_name.to_string(),
             type_category,
             in_registry: true,

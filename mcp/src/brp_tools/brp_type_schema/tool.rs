@@ -13,7 +13,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
-use super::engine_v2::TypeSchemaEngine;
+use super::engine::TypeSchemaEngine;
 use super::result_types::TypeSchemaResponse;
 use crate::brp_tools::Port;
 use crate::error::Result;
