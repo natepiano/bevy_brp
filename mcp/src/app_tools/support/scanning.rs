@@ -315,10 +315,10 @@ pub fn find_all_targets_by_name(
             for mut target in found_targets {
                 if target.name == target_name {
                     // Filter by target type if specified
-                    if let Some(required_type) = target_type {
-                        if target.target_type != required_type {
-                            continue;
-                        }
+                    if let Some(required_type) = target_type
+                        && target.target_type != required_type
+                    {
+                        continue;
                     }
 
                     // Set the relative path based on the discovered project path
@@ -354,48 +354,33 @@ pub fn find_required_target_with_path(
     debug!("Found {} matching {target_type_str}(s)", all_targets.len());
 
     // If a path is provided and we found multiple targets, check for ambiguity
-    if let Some(path_str) = path {
-        if all_targets.len() > 1 {
-            let filtered_targets =
-                find_and_filter_by_path(all_targets.clone(), path, |target| &target.relative_path);
+    if let Some(path_str) = path
+        && all_targets.len() > 1
+    {
+        let filtered_targets =
+            find_and_filter_by_path(all_targets.clone(), path, |target| &target.relative_path);
 
-            // If filtering resulted in 0 matches but there were multiple targets,
-            // check if the path could have been ambiguous
-            if filtered_targets.is_empty() {
-                // Check if the path partially matches multiple targets
-                let partial_matches: Vec<_> = all_targets
-                    .iter()
-                    .filter(|target| {
-                        let relative_path = &target.relative_path;
-                        partial_path_match(relative_path, path_str)
-                    })
-                    .collect();
+        // If filtering resulted in 0 matches but there were multiple targets,
+        // check if the path could have been ambiguous
+        if filtered_targets.is_empty() {
+            // Check if the path partially matches multiple targets
+            let partial_matches: Vec<_> = all_targets
+                .iter()
+                .filter(|target| {
+                    let relative_path = &target.relative_path;
+                    partial_path_match(relative_path, path_str)
+                })
+                .collect();
 
-                if partial_matches.len() > 1 {
-                    // This is an ambiguous partial path
-                    let paths: Vec<String> = partial_matches
-                        .iter()
-                        .map(|target| target.relative_path.to_string_lossy().to_string())
-                        .collect();
-
-                    let path_disambiguation_error = PathDisambiguationError::new(
-                        paths,
-                        target_name.to_string(),
-                        target_type_str.to_string(),
-                    );
-                    return Err(Error::Structured {
-                        result: Box::new(path_disambiguation_error),
-                    });
-                }
-
-                // Enhanced error message for path not found
-                let available_paths: Vec<String> = all_targets
+            if partial_matches.len() > 1 {
+                // This is an ambiguous partial path
+                let paths: Vec<String> = partial_matches
                     .iter()
                     .map(|target| target.relative_path.to_string_lossy().to_string())
                     .collect();
 
                 let path_disambiguation_error = PathDisambiguationError::new(
-                    available_paths,
+                    paths,
                     target_name.to_string(),
                     target_type_str.to_string(),
                 );
@@ -404,13 +389,28 @@ pub fn find_required_target_with_path(
                 });
             }
 
-            return validate_single_result_or_error(
-                filtered_targets,
-                target_name,
-                target_type_str,
-                |target| &target.relative_path,
+            // Enhanced error message for path not found
+            let available_paths: Vec<String> = all_targets
+                .iter()
+                .map(|target| target.relative_path.to_string_lossy().to_string())
+                .collect();
+
+            let path_disambiguation_error = PathDisambiguationError::new(
+                available_paths,
+                target_name.to_string(),
+                target_type_str.to_string(),
             );
+            return Err(Error::Structured {
+                result: Box::new(path_disambiguation_error),
+            });
         }
+
+        return validate_single_result_or_error(
+            filtered_targets,
+            target_name,
+            target_type_str,
+            |target| &target.relative_path,
+        );
     }
 
     let filtered_targets =
