@@ -444,30 +444,30 @@ fn generate_from_brp_client_response(
                     }
                 })
             });
-        } else if let Some((template_field_name, template_default)) = message_template_field {
-            if field_name == template_field_name {
-                // Check if the field type is Option<String> or String
-                let type_str = quote!(#field_type).to_string();
-                let is_option = type_str.contains("Option <");
+        } else if let Some((template_field_name, template_default)) = message_template_field
+            && field_name == template_field_name
+        {
+            // Check if the field type is Option<String> or String
+            let type_str = quote!(#field_type).to_string();
+            let is_option = type_str.contains("Option <");
 
-                if let Some(template) = template_default {
-                    let converted_template = convert_template_braces(template);
-                    if is_option {
-                        field_initializers
-                            .push(quote! { #field_name: Some(#converted_template.to_string()) });
-                    } else {
-                        field_initializers
-                            .push(quote! { #field_name: #converted_template.to_string() });
-                    }
+            if let Some(template) = template_default {
+                let converted_template = convert_template_braces(template);
+                if is_option {
+                    field_initializers
+                        .push(quote! { #field_name: Some(#converted_template.to_string()) });
                 } else {
-                    // No default template
-                    if is_option {
-                        field_initializers.push(quote! { #field_name: None });
-                    } else {
-                        panic!(
-                            "Message template field must be Option<String> when no default template is provided"
-                        );
-                    }
+                    field_initializers
+                        .push(quote! { #field_name: #converted_template.to_string() });
+                }
+            } else {
+                // No default template
+                if is_option {
+                    field_initializers.push(quote! { #field_name: None });
+                } else {
+                    panic!(
+                        "Message template field must be Option<String> when no default template is provided"
+                    );
                 }
             }
         }

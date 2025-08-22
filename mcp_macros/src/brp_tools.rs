@@ -51,66 +51,66 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
         }
 
         // Generate tool implementation if params are present and it's a BRP tool
-        if let Some(params) = tool_params {
-            if method.is_some() {
-                // This is a BRP tool with params
-                let params_ident = syn::Ident::new(&params, variant_name.span());
+        if let Some(params) = tool_params
+            && method.is_some()
+        {
+            // This is a BRP tool with params
+            let params_ident = syn::Ident::new(&params, variant_name.span());
 
-                // Use specific result type (required for BRP tools)
-                let result_type = if let Some(result) = &tool_result {
-                    let result_ident = syn::Ident::new(result, variant_name.span());
-                    quote! { #result_ident }
-                } else {
-                    panic!("BRP tools must specify a result type");
-                };
+            // Use specific result type (required for BRP tools)
+            let result_type = if let Some(result) = &tool_result {
+                let result_ident = syn::Ident::new(result, variant_name.span());
+                quote! { #result_ident }
+            } else {
+                panic!("BRP tools must specify a result type");
+            };
 
-                // Generate unified ToolFn implementation
-                tool_impls.push(quote! {
-                    impl crate::tool::ToolFn for #variant_name {
-                        type Output = #result_type;
-                        type Params = #params_ident;
+            // Generate unified ToolFn implementation
+            tool_impls.push(quote! {
+                impl crate::tool::ToolFn for #variant_name {
+                    type Output = #result_type;
+                    type Params = #params_ident;
 
-                        fn call(
-                            &self,
-                            ctx: crate::tool::HandlerContext,
-                        ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
-                            Box::pin(async move {
-                                let params = ctx.extract_parameter_values::<#params_ident>()?;
-                                let port = params.port;
-                                let params_json = serde_json::to_value(&params).ok();
+                    fn call(
+                        &self,
+                        ctx: crate::tool::HandlerContext,
+                    ) -> crate::tool::HandlerResult<crate::tool::ToolResult<Self::Output, Self::Params>> {
+                        Box::pin(async move {
+                            let params = ctx.extract_parameter_values::<#params_ident>()?;
+                            let port = params.port;
+                            let params_json = serde_json::to_value(&params).ok();
 
-                                // Use BrpClient::prepare_params to filter out nulls and port
-                                let brp_params = crate::brp_tools::BrpClient::prepare_params(&params)?;
-                                // Create BrpClient and execute
-                                let client = crate::brp_tools::BrpClient::new(
-                                    crate::tool::BrpMethod::#variant_name,
-                                    port,
-                                    brp_params,
-                                );
-                                let result = match client.execute::<#result_type>().await {
-                                    Ok(r) => r,
-                                    Err(e) => {
-                                        let params = params_json
-                                            .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
-                                        return Ok(crate::tool::ToolResult {
-                                            result: Err(e),
-                                            params,
-                                        });
-                                    },
-                                };
+                            // Use BrpClient::prepare_params to filter out nulls and port
+                            let brp_params = crate::brp_tools::BrpClient::prepare_params(&params)?;
+                            // Create BrpClient and execute
+                            let client = crate::brp_tools::BrpClient::new(
+                                crate::tool::BrpMethod::#variant_name,
+                                port,
+                                brp_params,
+                            );
+                            let result = match client.execute::<#result_type>().await {
+                                Ok(r) => r,
+                                Err(e) => {
+                                    let params = params_json
+                                        .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+                                    return Ok(crate::tool::ToolResult {
+                                        result: Err(e),
+                                        params,
+                                    });
+                                },
+                            };
 
-                                let params = params_json
-                                    .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
+                            let params = params_json
+                                .and_then(|json| serde_json::from_value::<#params_ident>(json).ok());
 
-                                Ok(crate::tool::ToolResult {
-                                    result: Ok(result),
-                                    params,
-                                })
+                            Ok(crate::tool::ToolResult {
+                                result: Ok(result),
+                                params,
                             })
-                        }
+                        })
                     }
-                });
-            }
+                }
+            });
         }
     }
 
