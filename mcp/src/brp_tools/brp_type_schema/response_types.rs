@@ -88,6 +88,26 @@ impl From<&BrpTypeName> for Value {
     }
 }
 
+/// Schema information extracted from the registry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchemaInfo {
+    /// Category of the type (Struct, Enum, etc.) from registry
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub type_kind:   Option<TypeKind>,
+    /// Field definitions from the registry schema
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub properties:  Option<Value>,
+    /// Required fields list
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required:    Option<Vec<String>>,
+    /// Module path of the type
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub module_path: Option<String>,
+    /// Crate name of the type
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crate_name:  Option<String>,
+}
+
 /// Information about a field in an enum struct variant
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnumFieldInfo {

@@ -10,7 +10,7 @@ use tracing::warn;
 use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, BrpFormatKnowledge};
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath,
-    MutationPathInfo, OptionField, ReflectTrait, SchemaField, TypeKind,
+    MutationPathInfo, OptionField, ReflectTrait, SchemaField, SchemaInfo, TypeKind,
 };
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
@@ -20,8 +20,6 @@ use crate::string_traits::JsonFieldAccess;
 pub struct TypeInfo {
     /// Fully-qualified type name
     pub type_name:            BrpTypeName,
-    /// Category of the type (Struct, Enum, etc.)
-    pub type_kind:            TypeKind,
     /// Whether the type is registered in the Bevy registry
     pub in_registry:          bool,
     /// Whether the type has the Serialize trait
@@ -31,13 +29,20 @@ pub struct TypeInfo {
     /// List of BRP operations supported by this type
     pub supported_operations: Vec<String>,
     /// Mutation paths available for this type - using same format as V1
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub mutation_paths:       HashMap<String, MutationPathInfo>,
     /// Example values for spawn/insert operations (currently empty to match V1)
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub example_values:       HashMap<String, Value>,
+    /// Example format for spawn/insert operations when supported
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawn_format:         Option<Value>,
     /// Information about enum variants if this is an enum
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enum_info:            Option<Vec<EnumVariantInfo>>,
+    /// Schema information from the registry
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema_info:          Option<SchemaInfo>,
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error:                Option<String>,
@@ -50,7 +55,7 @@ impl TypeInfo {
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
-        // Extract type category - default to Value if missing/invalid
+        // Extract type category for enum check
         let type_kind = Self::get_type_kind(type_schema, &brp_type_name);
 
         // Extract reflection traits
@@ -63,8 +68,22 @@ impl TypeInfo {
         // Get supported operations directly as strings
         let supported_operations = Self::get_supported_operations(&reflect_types);
 
-        // Get mutation paths directly as HashMap
-        let mutation_paths = Self::get_mutation_paths(type_schema, registry);
+        // Only get mutation paths if mutation is supported
+        let can_mutate = supported_operations.contains(&"mutate".to_string());
+        let mutation_paths = if can_mutate {
+            Self::get_mutation_paths(type_schema, registry)
+        } else {
+            HashMap::new()
+        };
+
+        // Build spawn format if spawn/insert is supported
+        let can_spawn = supported_operations.contains(&"spawn".to_string())
+            || supported_operations.contains(&"insert".to_string());
+        let spawn_format = if can_spawn {
+            Self::build_spawn_format(type_schema, registry)
+        } else {
+            None
+        };
 
         // Build enum info if it's an enum
         let enum_info = if type_kind == TypeKind::Enum {
@@ -73,16 +92,20 @@ impl TypeInfo {
             None
         };
 
+        // Extract schema info from registry
+        let schema_info = Self::extract_schema_info(type_schema);
+
         Self {
             type_name: brp_type_name,
-            type_kind,
             in_registry: true,
             has_serialize,
             has_deserialize,
             supported_operations,
             mutation_paths,
             example_values: HashMap::new(), // V1 always has this empty
+            spawn_format,
             enum_info,
+            schema_info,
             error: None,
         }
     }
@@ -91,14 +114,15 @@ impl TypeInfo {
     pub fn not_found(type_name: BrpTypeName, error_msg: String) -> Self {
         Self {
             type_name,
-            type_kind: TypeKind::Value, // Default to Value for unknown types
             in_registry: false,
             has_serialize: false,
             has_deserialize: false,
             supported_operations: Vec::new(),
             mutation_paths: HashMap::new(),
             example_values: HashMap::new(),
+            spawn_format: None,
             enum_info: None,
+            schema_info: None,
             error: Some(error_msg),
         }
     }
@@ -551,5 +575,100 @@ impl TypeInfo {
             return json!(variant_name);
         }
         json!(null)
+    }
+
+    /// Extract schema information from registry schema
+    fn extract_schema_info(type_schema: &Value) -> Option<SchemaInfo> {
+        let type_kind = type_schema
+            .get_field(SchemaField::Kind)
+            .and_then(Value::as_str)
+            .and_then(|s| TypeKind::from_str(s).ok());
+
+        let properties = type_schema.get_field(SchemaField::Properties).cloned();
+
+        let required = type_schema
+            .get("required")
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(Value::as_str)
+                    .map(String::from)
+                    .collect()
+            });
+
+        let module_path = type_schema
+            .get("modulePath")
+            .and_then(Value::as_str)
+            .map(String::from);
+
+        let crate_name = type_schema
+            .get("crateName")
+            .and_then(Value::as_str)
+            .map(String::from);
+
+        // Only return SchemaInfo if we have at least some information
+        if type_kind.is_some()
+            || properties.is_some()
+            || required.is_some()
+            || module_path.is_some()
+            || crate_name.is_some()
+        {
+            Some(SchemaInfo {
+                type_kind,
+                properties,
+                required,
+                module_path,
+                crate_name,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Build spawn format example for types that support spawn/insert
+    fn build_spawn_format(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Option<Value> {
+        let properties = type_schema
+            .get_field(SchemaField::Properties)
+            .and_then(Value::as_object)?;
+
+        let mut spawn_example = Map::new();
+
+        for (field_name, field_info) in properties {
+            // Extract field type
+            let field_type = Self::extract_field_type(field_info);
+
+            if let Some(ft) = field_type {
+                // Check for hardcoded knowledge
+                let example = if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&ft) {
+                    hardcoded.example_value.clone()
+                } else {
+                    // Check if it's an enum and build example
+                    if let Some(field_schema) = registry.get(&ft) {
+                        if field_schema
+                            .get_field(SchemaField::Kind)
+                            .and_then(Value::as_str)
+                            == Some("Enum")
+                        {
+                            Self::build_enum_example(field_schema)
+                        } else {
+                            json!(null)
+                        }
+                    } else {
+                        json!(null)
+                    }
+                };
+
+                spawn_example.insert(field_name.clone(), example);
+            }
+        }
+
+        if spawn_example.is_empty() {
+            None
+        } else {
+            Some(Value::Object(spawn_example))
+        }
     }
 }

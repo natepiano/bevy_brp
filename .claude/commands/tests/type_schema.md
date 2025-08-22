@@ -41,71 +41,54 @@ Verify the response contains:
 #### 3b. Validate Type Info
 Verify `result.type_info["bevy_sprite::sprite::Sprite"]` contains:
 - `type_name` === "bevy_sprite::sprite::Sprite"
-- `type_kind` === "Struct"
 - `in_registry` === true
 - `has_serialize` === false
 - `has_deserialize` === false
 - `supported_operations` array contains exactly ["query", "get"]
 
-### 4. Validate Mutation Paths
+### 4. Validate Sprite Has No Mutation Paths (No Serialize Trait)
 
-#### 4a. Check All Paths Present
-Verify `mutation_paths` object contains exactly these 11 keys:
-- `.anchor`
-- `.color`
-- `.custom_size`
-- `.flip_x`
-- `.flip_y`
-- `.image`
-- `.image_mode`
-- `.rect`
-- `.texture_atlas`
-- `.custom_size.x`
-- `.custom_size.y`
+#### 4a. Verify Mutation Paths Are Absent
+For Sprite (which lacks Serialize trait):
+- Verify `mutation_paths` field does NOT exist in the response
+- The field should be completely absent, not just empty
 
-#### 4b. Validate Enum Fields
-Check enum fields have correct variants:
+#### 4b. Verify Spawn Format Is Absent
+- Verify `spawn_format` field does NOT exist in the response
+- The field should be completely absent since Sprite cannot be spawned/inserted
 
-**`.anchor`**:
-- `enum_variants` contains: ["Center", "BottomLeft", "BottomCenter", "BottomRight", "CenterLeft", "CenterRight", "TopLeft", "TopCenter", "TopRight", "Custom"]
-- `example` === "Center"
+### 5. Validate Schema Info for Sprite
 
-**`.color`**:
-- `enum_variants` contains: ["Srgba", "LinearRgba", "Hsla", "Hsva", "Hwba", "Laba", "Lcha", "Oklaba", "Oklcha", "Xyza"]
-- `example` is object with "Srgba" key
+#### 5a. Check Schema Info Exists
+Verify `result.type_info["bevy_sprite::sprite::Sprite"].schema_info` exists and contains:
+- `type_kind` === "Struct"
+- `properties` object with field definitions
+- `required` array
+- `module_path` === "bevy_sprite::sprite"
+- `crate_name` === "bevy_sprite"
 
-**`.image_mode`**:
-- `enum_variants` contains: ["Auto", "Scale", "Sliced", "Tiled"]
-- `example` === "Auto"
+#### 5b. Validate Required Fields
+Verify `schema_info.required` contains exactly:
+- "image"
+- "color"
+- "flip_x"
+- "flip_y"
+- "anchor"
+- "image_mode"
 
-#### 4c. Validate Option Fields
-Check Option fields have both examples:
+#### 5c. Validate Properties Structure
+Verify `schema_info.properties` contains these fields:
+- `anchor` with type reference
+- `color` with type reference
+- `custom_size` with type reference
+- `flip_x` with type reference
+- `flip_y` with type reference
+- `image` with type reference
+- `image_mode` with type reference
+- `rect` with type reference
+- `texture_atlas` with type reference
 
-**`.custom_size`**:
-- Has `example_some` field (array with 2 numbers)
-- Has `example_none` field (null)
-- Has `note` about Option field handling
-
-**`.rect`**:
-- Has `example_some` field (object with min/max arrays)
-- Has `example_none` field (null)
-- Has `note` about Option field handling
-
-**`.texture_atlas`**:
-- Has `example_some` field (object)
-- Has `example_none` field (null)
-- Has `note` about Option field handling
-
-#### 4d. Validate Simple Fields
-**`.flip_x`** and **`.flip_y`**:
-- `example` === true
-- `type` === "bool"
-
-**`.image`**:
-- `example` is object with "Strong" key containing array
-- `type` === "bevy_asset::handle::Handle<bevy_image::image::Image>"
-
-### 5. Multi-Type Discovery Test
+### 6. Multi-Type Discovery Test
 
 Execute `mcp__brp__brp_type_schema` with multiple types:
 ```json
@@ -122,11 +105,18 @@ Execute `mcp__brp__brp_type_schema` with multiple types:
 Validate:
 - `result.discovered_count` === 3
 - All three types present in `result.type_info`
-- Transform has mutation paths for translation/rotation/scale
+- Transform:
+  - Has `mutation_paths` for translation/rotation/scale with all subfields
+  - Has `spawn_format` with example values for translation, rotation, scale
+  - Has `schema_info` with properties and required fields
+- Sprite:
+  - Does NOT have `mutation_paths` field
+  - Does NOT have `spawn_format` field
+  - Has `schema_info` with properties and required fields
 - Name has appropriate fields for a wrapper type
-- Each type has correct `type_category`
+- Each type has correct `type_kind` in its `schema_info`
 
-### 6. Cache Refresh Validation
+### 7. Cache Refresh Validation
 
 This test validates that the cache refresh parameter works correctly by switching between apps with different type registrations. The cache for port 20114 is already populated with the `extras_plugin` registry from earlier tests.
 
@@ -179,7 +169,7 @@ Execute `mcp__brp__brp_type_schema` with:
 ```
 - **Validate**: Transform type is found (exists in both apps and cache was refreshed)
 
-### 7. Final Cleanup
+### 8. Final Cleanup
 - Execute `mcp__brp__brp_shutdown` to stop the test app
 - Verify clean shutdown with status "process_kill" (no_extras_plugin doesn't have BrpExtrasPlugin)
 
