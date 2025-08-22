@@ -185,16 +185,16 @@ fn extract_app_name(process: &sysinfo::Process) -> String {
             .collect();
         if let Some(_run_pos) = args.iter().position(|arg| arg == "run") {
             // Check for --bin argument
-            if let Some(bin_pos) = args.iter().position(|arg| arg == "--bin") {
-                if let Some(bin_name) = args.get(bin_pos + 1) {
-                    return bin_name.clone();
-                }
+            if let Some(bin_pos) = args.iter().position(|arg| arg == "--bin")
+                && let Some(bin_name) = args.get(bin_pos + 1)
+            {
+                return bin_name.clone();
             }
             // Check for --example argument
-            if let Some(ex_pos) = args.iter().position(|arg| arg == "--example") {
-                if let Some(ex_name) = args.get(ex_pos + 1) {
-                    return ex_name.clone();
-                }
+            if let Some(ex_pos) = args.iter().position(|arg| arg == "--example")
+                && let Some(ex_name) = args.get(ex_pos + 1)
+            {
+                return ex_name.clone();
             }
         }
     }
