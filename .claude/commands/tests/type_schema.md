@@ -47,7 +47,7 @@ Verify `result.type_info["bevy_sprite::sprite::Sprite"]` contains:
 ### 4. Validate Mutation Paths
 
 #### 4a. Check All Paths Present
-Verify `mutation_paths` object contains exactly these 9 keys:
+Verify `mutation_paths` object contains exactly these 11 keys:
 - `.anchor`
 - `.color`
 - `.custom_size`
@@ -57,6 +57,8 @@ Verify `mutation_paths` object contains exactly these 9 keys:
 - `.image_mode`
 - `.rect`
 - `.texture_atlas`
+- `.custom_size.x`
+- `.custom_size.y`
 
 #### 4b. Validate Enum Fields
 Check enum fields have correct variants:
