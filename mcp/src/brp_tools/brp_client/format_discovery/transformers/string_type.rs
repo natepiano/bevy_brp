@@ -9,6 +9,7 @@ use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
 use super::common::{extract_type_name_from_error, messages};
 use crate::brp_tools::BrpClientError;
+use crate::json_types::JsonSchemaType;
 
 /// Transformer for string types, especially the Name component
 /// Extracts strings from objects and arrays to convert to string format
@@ -72,9 +73,9 @@ impl StringTypeTransformer {
             Self::extract_string_value(original_value)
         {
             let format_type = match original_value {
-                Value::Object(_) => "object",
-                Value::Array(_) => "array",
-                _ => "other",
+                Value::Object(_) => JsonSchemaType::Object,
+                Value::Array(_) => JsonSchemaType::Array,
+                _ => JsonSchemaType::String,
             };
 
             Some(TransformationResult {

@@ -7,7 +7,8 @@ use schemars::{JsonSchema, Schema};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
-use crate::string_traits::IntoStrings;
+use crate::json_types::JsonSchemaType;
+use crate::string_traits::{IntoStrings, JsonFieldAccess};
 
 /// Trait for parameter types used in tools
 ///
@@ -137,9 +138,9 @@ impl ParameterBuilder {
     /// Add a string property to the schema
     pub fn add_string_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        prop.insert("type".to_string(), "string".into());
-        prop.insert("description".to_string(), description.into());
-        self.properties.insert(name.to_string(), prop.into());
+        prop.insert_field("type", JsonSchemaType::String);
+        prop.insert_field("description", description);
+        self.properties.insert_field(name, prop);
 
         if required {
             self.required.push(name.to_string());
@@ -156,14 +157,14 @@ impl ParameterBuilder {
         required: bool,
     ) -> Self {
         let mut prop = Map::new();
-        prop.insert("type".to_string(), "array".into());
+        prop.insert_field("type", JsonSchemaType::Array);
 
         let mut items = Map::new();
-        items.insert("type".to_string(), "string".into());
-        prop.insert("items".to_string(), items.into());
+        items.insert_field("type", JsonSchemaType::String);
+        prop.insert_field("items", items);
 
-        prop.insert("description".to_string(), description.into());
-        self.properties.insert(name.to_string(), prop.into());
+        prop.insert_field("description", description);
+        self.properties.insert_field(name, prop);
 
         if required {
             self.required.push(name.to_string());
@@ -180,14 +181,14 @@ impl ParameterBuilder {
         required: bool,
     ) -> Self {
         let mut prop = Map::new();
-        prop.insert("type".to_string(), "array".into());
+        prop.insert_field("type", JsonSchemaType::Array);
 
         let mut items = Map::new();
-        items.insert("type".to_string(), "number".into());
-        prop.insert("items".to_string(), items.into());
+        items.insert_field("type", JsonSchemaType::Number);
+        prop.insert_field("items", items);
 
-        prop.insert("description".to_string(), description.into());
-        self.properties.insert(name.to_string(), prop.into());
+        prop.insert_field("description", description);
+        self.properties.insert_field(name, prop);
 
         if required {
             self.required.push(name.to_string());
@@ -199,9 +200,9 @@ impl ParameterBuilder {
     /// Add a number property to the schema
     pub fn add_number_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        prop.insert("type".to_string(), "number".into());
-        prop.insert("description".to_string(), description.into());
-        self.properties.insert(name.to_string(), prop.into());
+        prop.insert_field("type", JsonSchemaType::Number);
+        prop.insert_field("description", description);
+        self.properties.insert_field(name, prop);
 
         if required {
             self.required.push(name.to_string());
@@ -213,9 +214,9 @@ impl ParameterBuilder {
     /// Add a boolean property to the schema
     pub fn add_boolean_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        prop.insert("type".to_string(), "boolean".into());
-        prop.insert("description".to_string(), description.into());
-        self.properties.insert(name.to_string(), prop.into());
+        prop.insert_field("type", JsonSchemaType::Boolean);
+        prop.insert_field("description", description);
+        self.properties.insert_field(name, prop);
 
         if required {
             self.required.push(name.to_string());
@@ -227,9 +228,18 @@ impl ParameterBuilder {
     /// Add a property that can be any type (object, array, null, etc.)
     pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
-        prop.insert("type".to_string(), vec!["object", "array", "null"].into());
-        prop.insert("description".to_string(), description.into());
-        self.properties.insert(name.to_string(), prop.into());
+        // Multiple types require a JSON array value
+        prop.insert(
+            "type".to_string(),
+            vec![
+                JsonSchemaType::Object.as_ref(),
+                JsonSchemaType::Array.as_ref(),
+                JsonSchemaType::Null.as_ref(),
+            ]
+            .into(),
+        );
+        prop.insert_field("description", description);
+        self.properties.insert_field(name, prop);
 
         if required {
             self.required.push(name.to_string());
@@ -241,11 +251,11 @@ impl ParameterBuilder {
     /// Build the final schema
     pub fn build(self) -> Arc<Map<String, Value>> {
         let mut schema = Map::new();
-        schema.insert("type".to_string(), "object".into());
-        schema.insert("properties".to_string(), self.properties.into());
+        schema.insert_field("type", JsonSchemaType::Object);
+        schema.insert_field("properties", self.properties);
 
         if !self.required.is_empty() {
-            schema.insert("required".to_string(), self.required.into());
+            schema.insert_field("required", self.required);
         }
 
         Arc::new(schema)
@@ -264,18 +274,24 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
 
     match type_value {
         Value::String(type_str) => match type_str.as_str() {
-            "string" => ParameterType::String,
-            "integer" | "number" => ParameterType::Number,
-            "boolean" => ParameterType::Boolean,
-            "array" => {
+            s if s == JsonSchemaType::String.as_ref() => ParameterType::String,
+            s if s == JsonSchemaType::Integer.as_ref() || s == JsonSchemaType::Number.as_ref() => {
+                ParameterType::Number
+            }
+            s if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
+            s if s == JsonSchemaType::Array.as_ref() => {
                 // Check items schema for array element type
                 obj.get("items")
                     .and_then(|items| items.as_object())
                     .and_then(|items_obj| items_obj.get("type"))
                     .and_then(|item_type| item_type.as_str())
                     .map_or(ParameterType::Any, |item_type_str| match item_type_str {
-                        "string" => ParameterType::StringArray,
-                        "integer" | "number" => ParameterType::NumberArray,
+                        s if s == JsonSchemaType::String.as_ref() => ParameterType::StringArray,
+                        s if s == JsonSchemaType::Integer.as_ref()
+                            || s == JsonSchemaType::Number.as_ref() =>
+                        {
+                            ParameterType::NumberArray
+                        }
                         _ => ParameterType::Any,
                     })
             }
@@ -286,14 +302,19 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
             let non_null_types: Vec<&str> = types
                 .iter()
                 .filter_map(|v| v.as_str())
-                .filter(|&t| t != "null")
+                .filter(|&t| t != JsonSchemaType::Null.as_ref())
                 .collect();
 
             if non_null_types.len() == 1 {
                 match non_null_types.first() {
-                    Some(&"string") => ParameterType::String,
-                    Some(&"integer" | &"number") => ParameterType::Number,
-                    Some(&"boolean") => ParameterType::Boolean,
+                    Some(&s) if s == JsonSchemaType::String.as_ref() => ParameterType::String,
+                    Some(&s)
+                        if s == JsonSchemaType::Integer.as_ref()
+                            || s == JsonSchemaType::Number.as_ref() =>
+                    {
+                        ParameterType::Number
+                    }
+                    Some(&s) if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
                     _ => ParameterType::Any,
                 }
             } else {

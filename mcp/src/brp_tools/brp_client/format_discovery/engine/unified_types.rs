@@ -344,7 +344,7 @@ impl UnifiedTypeInfo {
             let correction_info = CorrectionInfo {
                 corrected_value:   transformed_value,
                 hint:              format!(
-                    "Transformed {} format for type '{}' (discovered via bevy_brp_extras)",
+                    "Transformed {} format for type '{}'",
                     if self.original_value.is_object() {
                         "object"
                     } else {

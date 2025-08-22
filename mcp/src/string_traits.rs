@@ -17,11 +17,12 @@ pub trait JsonFieldAccess {
     /// Get field value as mutable object
     fn get_field_object_mut<T: AsRef<str>>(&mut self, field: T) -> Option<&mut Map<String, Value>>;
 
-    /// Insert field with value using any type that converts to String
-    fn insert_field<T: Into<String>>(&mut self, field: T, value: Value);
-
-    /// Insert field with string value using any type that converts to String
-    fn insert_field_str<T: Into<String>>(&mut self, field: T, value: &str);
+    /// Insert field with value using any type that converts to String and any value that can become
+    /// JSON
+    fn insert_field<F, V>(&mut self, field: F, value: V)
+    where
+        F: Into<String>,
+        V: Into<Value>;
 }
 
 impl JsonFieldAccess for Value {
@@ -37,15 +38,13 @@ impl JsonFieldAccess for Value {
         self.get_mut(field.as_ref()).and_then(Self::as_object_mut)
     }
 
-    fn insert_field<T: Into<String>>(&mut self, field: T, value: Value) {
+    fn insert_field<F, V>(&mut self, field: F, value: V)
+    where
+        F: Into<String>,
+        V: Into<Value>,
+    {
         if let Some(obj) = self.as_object_mut() {
-            obj.insert(field.into(), value);
-        }
-    }
-
-    fn insert_field_str<T: Into<String>>(&mut self, field: T, value: &str) {
-        if let Some(obj) = self.as_object_mut() {
-            obj.insert(field.into(), Self::String(value.to_string()));
+            obj.insert(field.into(), value.into());
         }
     }
 }
@@ -63,12 +62,12 @@ impl JsonFieldAccess for Map<String, Value> {
         self.get_mut(field.as_ref()).and_then(Value::as_object_mut)
     }
 
-    fn insert_field<T: Into<String>>(&mut self, field: T, value: Value) {
-        self.insert(field.into(), value);
-    }
-
-    fn insert_field_str<T: Into<String>>(&mut self, field: T, value: &str) {
-        self.insert(field.into(), Value::String(value.to_string()));
+    fn insert_field<F, V>(&mut self, field: F, value: V)
+    where
+        F: Into<String>,
+        V: Into<Value>,
+    {
+        self.insert(field.into(), value.into());
     }
 }
 

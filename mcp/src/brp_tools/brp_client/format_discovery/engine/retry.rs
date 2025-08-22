@@ -133,10 +133,7 @@ fn build_corrected_params(
             Operation::Mutate { parameter_name } => {
                 // For mutations, we need the type parameter (component/resource), path, and value
                 // First, set the type-specific parameter with the type name
-                params.insert_field(
-                    parameter_name,
-                    Value::String(correction.type_info.type_name.as_str().to_string()),
-                );
+                params.insert_field(parameter_name, &correction.type_info.type_name);
 
                 // Then set path and value from the correction
                 if correction.corrected_value.is_object() {
@@ -157,7 +154,7 @@ fn build_corrected_params(
                 } else {
                     // If corrected_value is not an object, it's just the value to set
                     // Use empty path for direct replacement
-                    params.insert_field_str(ParameterName::Path, "");
+                    params.insert_field(ParameterName::Path, "");
                     params.insert_field(ParameterName::Value, correction.corrected_value.clone());
                 }
             }

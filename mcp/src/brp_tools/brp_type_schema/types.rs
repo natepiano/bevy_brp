@@ -74,6 +74,18 @@ impl std::fmt::Display for BrpTypeName {
     }
 }
 
+impl From<BrpTypeName> for Value {
+    fn from(type_name: BrpTypeName) -> Self {
+        Value::String(type_name.0)
+    }
+}
+
+impl From<&BrpTypeName> for Value {
+    fn from(type_name: &BrpTypeName) -> Self {
+        Value::String(type_name.0.clone())
+    }
+}
+
 /// Enum variant classification
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -129,20 +141,6 @@ pub enum SchemaField {
     #[strum(serialize = "$ref")]
     Ref,
     ReflectTypes,
-}
-
-/// JSON schema type names for type schema generation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, EnumString)]
-#[strum(serialize_all = "lowercase")]
-#[serde(rename_all = "lowercase")]
-pub enum JsonSchemaType {
-    Object,
-    Array,
-    String,
-    Number,
-    Integer,
-    Boolean,
-    Null,
 }
 
 /// Category of type for quick identification and processing

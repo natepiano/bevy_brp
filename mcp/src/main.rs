@@ -17,6 +17,7 @@ use rmcp::transport::stdio;
 mod app_tools;
 mod brp_tools;
 mod error;
+mod json_types;
 mod log_tools;
 mod mcp_service;
 mod string_traits;
