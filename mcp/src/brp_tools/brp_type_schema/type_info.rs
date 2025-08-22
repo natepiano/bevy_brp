@@ -1,142 +1,21 @@
-//! Public API result types for the `brp_type_schema` tool
-//!
-//! This module contains the strongly-typed structures that form the public API
-//! for type schema discovery results. These types are separate from the internal
-//! processing types to provide a clean, stable API contract.
-
+//! This is the main response structure use to convey type information
+//! to the caller
 use std::collections::HashMap;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 use tracing::warn;
 
-use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
-use super::types::{
-    BrpSupportedOperation, BrpTypeName, EnumVariantKind, MutationPath, ReflectTrait, SchemaField,
-    TypeKind,
+use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, BrpFormatKnowledge};
+use super::response_types::{
+    BrpSupportedOperation, BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath,
+    MutationPathInfo, OptionField, ReflectTrait, SchemaField, TypeKind,
 };
 use super::wrapper_types::WrapperType;
-use crate::string_traits::{IntoStrings, JsonFieldAccess};
+use crate::string_traits::JsonFieldAccess;
 
-/// Summary statistics for the discovery operation
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TypeSchemaSummary {
-    /// Number of types that failed discovery
-    pub failed_discoveries:     usize,
-    /// Number of types successfully discovered
-    pub successful_discoveries: usize,
-    /// Total number of types requested
-    pub total_requested:        usize,
-}
-
-/// Information about a mutation path
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MutationPathInfo {
-    /// Human-readable description of what this path mutates
-    pub description:   String,
-    /// Fully-qualified type name of the field
-    #[serde(rename = "type")]
-    pub type_name:     String,
-    /// Example value for mutations (for non-Option types)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:       Option<Value>,
-    /// Example value for setting Some variant (Option types only)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_some:  Option<Value>,
-    /// Example value for setting None variant (Option types only)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_none:  Option<Value>,
-    /// List of valid enum variants for this field
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_variants: Option<Vec<String>>,
-    /// Additional note about how to use this mutation path
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub note:          Option<String>,
-}
-
-/// Information about an enum variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumVariantInfo {
-    /// Name of the variant
-    pub name:         String,
-    /// Type of the variant (Unit, Tuple, Struct)
-    pub variant_type: EnumVariantKind,
-    /// Fields for struct variants
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fields:       Option<Vec<EnumFieldInfo>>,
-    /// Types for tuple variants
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tuple_types:  Option<Vec<String>>,
-}
-
-/// Information about a field in an enum struct variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumFieldInfo {
-    /// Field name
-    pub name:      String,
-    /// Field type
-    #[serde(rename = "type")]
-    pub type_name: String,
-}
-
-impl MutationPathInfo {
-    /// Create from internal `MutationPath` with proper formatting logic
-    pub fn from_mutation_path(path: &MutationPath, description: String, is_option: bool) -> Self {
-        if is_option {
-            // For Option types, check if we have the special format
-            if let Some(examples_obj) = path.example.as_object()
-                && examples_obj.contains_key("some")
-                && examples_obj.contains_key("none")
-            {
-                return Self {
-                    description,
-                    type_name: path.type_name.to_string(),
-                    example: None,
-                    example_some: Some(examples_obj["some"].clone()),
-                    example_none: Some(examples_obj["none"].clone()),
-                    enum_variants: path.enum_variants.clone(),
-                    note: Some(
-                        "For Option fields: pass the value directly to set Some, null to set None"
-                            .to_string(),
-                    ),
-                };
-            }
-        }
-
-        // Regular non-Option path
-        Self {
-            description,
-            type_name: path.type_name.to_string(),
-            example: if path.example.is_null() {
-                None
-            } else {
-                Some(path.example.clone())
-            },
-            example_some: None,
-            example_none: None,
-            enum_variants: path.enum_variants.clone(),
-            note: None,
-        }
-    }
-}
-
-// V2 Response Types for parallel implementation
-
-/// V2 response structure - same as V1 but uses `TypeInfoV2`
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TypeSchemaResponse {
-    /// Number of types successfully discovered
-    pub discovered_count: usize,
-    /// List of type names that were requested
-    pub requested_types:  Vec<String>,
-    /// Summary statistics for the discovery operation
-    pub summary:          TypeSchemaSummary,
-    /// Detailed information for each type, keyed by type name
-    pub type_info:        HashMap<BrpTypeName, TypeInfo>,
-}
-
-/// V2 version of `TypeInfo` - same structure as V1 but without `registry_schema` field
+/// this is all of the information we provide about a type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeInfo {
     /// Fully-qualified type name
@@ -358,7 +237,7 @@ impl TypeInfo {
         };
 
         // Check if this is a wrapper type (Option, Handle)
-        let wrapper_info = WrapperType::detect(&ft);
+        let wrapper_info = WrapperType::detect(ft.as_str());
 
         // Get example value and enum variants based on type
         let (example_value, enum_variants) =
@@ -390,13 +269,13 @@ impl TypeInfo {
     }
 
     /// Extract field type from field info
-    fn extract_field_type(field_info: &Value) -> Option<String> {
+    fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
         field_info
             .get_field(SchemaField::Type)
             .and_then(|t| t.get_field(SchemaField::Ref))
             .and_then(Value::as_str)
             .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
-            .map(String::from)
+            .map(BrpTypeName::from)
     }
 
     /// Generate a description for a mutation path
@@ -439,7 +318,8 @@ impl TypeInfo {
                         .filter_map(|item| {
                             item.get_field(SchemaField::Type).and_then(Value::as_str)
                         })
-                        .into_strings()
+                        .map(BrpTypeName::from)
+                        .collect()
                 })
         } else {
             None
@@ -456,11 +336,10 @@ impl TypeInfo {
                             let type_name = field_value
                                 .get_field(SchemaField::Type)
                                 .and_then(Value::as_str)
-                                .unwrap_or("unknown")
-                                .to_string();
-                            super::result_types::EnumFieldInfo {
-                                name: field_name.clone(),
-                                type_name,
+                                .unwrap_or("unknown");
+                            super::response_types::EnumFieldInfo {
+                                field_name: field_name.clone(),
+                                type_name:  BrpTypeName::from(type_name),
                             }
                         })
                         .collect()
@@ -470,8 +349,8 @@ impl TypeInfo {
         };
 
         Some(EnumVariantInfo {
-            name: name.to_string(),
-            variant_type,
+            variant_name: name.to_string(),
+            variant_kind: variant_type,
             fields,
             tuple_types,
         })
@@ -479,7 +358,7 @@ impl TypeInfo {
 
     /// Get example value and enum variants for a field
     fn get_field_example_and_variants(
-        field_type: &str,
+        field_type: &BrpTypeName,
         wrapper_info: Option<(WrapperType, &str)>,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> (Value, Option<Vec<String>>) {
@@ -504,7 +383,7 @@ impl TypeInfo {
             None => {
                 // Regular types - check if they're enums
                 registry
-                    .get(&BrpTypeName::from(field_type))
+                    .get(field_type)
                     .map_or((json!(null), None), |schema| {
                         if schema
                             .get_field(SchemaField::Kind)
@@ -526,8 +405,8 @@ impl TypeInfo {
     /// Build paths for types with hardcoded knowledge
     fn build_hardcoded_paths(
         field_name: &str,
-        field_type: &str,
-        hardcoded: &super::types::BrpFormatKnowledge,
+        field_type: &BrpTypeName,
+        hardcoded: &BrpFormatKnowledge,
         wrapper_info: Option<(WrapperType, &str)>,
         enum_variants: Option<Vec<String>>,
     ) -> Vec<MutationPath> {
@@ -535,10 +414,10 @@ impl TypeInfo {
 
         // Build main path with appropriate example format
         let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
-            json!({
-                "some": hardcoded.example_value.clone(),
-                "none": null
-            })
+            let mut option_example = Map::new();
+            option_example.insert_field(OptionField::Some, hardcoded.example_value.clone());
+            option_example.insert_field(OptionField::None, json!(null));
+            Value::Object(option_example)
         } else {
             hardcoded.example_value.clone()
         };
@@ -547,7 +426,7 @@ impl TypeInfo {
             path: format!(".{field_name}"),
             example: final_example,
             enum_variants,
-            type_name: BrpTypeName::from(field_type),
+            type_name: field_type.clone(),
         });
 
         // Add component paths if available (e.g., .x, .y, .z for Vec3)
@@ -568,16 +447,16 @@ impl TypeInfo {
     /// Build standard mutation path
     fn build_standard_path(
         field_name: &str,
-        field_type: &str,
+        field_type: &BrpTypeName,
         example_value: Value,
         enum_variants: Option<Vec<String>>,
         wrapper_info: Option<(WrapperType, &str)>,
     ) -> MutationPath {
         let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
-            json!({
-                "some": example_value,
-                "none": null
-            })
+            let mut option_example = Map::new();
+            option_example.insert_field(OptionField::Some, example_value);
+            option_example.insert_field(OptionField::None, json!(null));
+            Value::Object(option_example)
         } else {
             example_value
         };
@@ -586,7 +465,7 @@ impl TypeInfo {
             path: format!(".{field_name}"),
             example: final_example,
             enum_variants,
-            type_name: BrpTypeName::from(field_type),
+            type_name: field_type.clone(),
         }
     }
 

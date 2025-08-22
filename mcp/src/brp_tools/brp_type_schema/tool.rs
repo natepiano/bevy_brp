@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::registry_cache::get_full_registry;
-use super::result_types::{TypeInfo, TypeSchemaResponse, TypeSchemaSummary};
-use super::types::BrpTypeName;
+use super::response_types::{BrpTypeName, TypeSchemaResponse, TypeSchemaSummary};
+use super::type_info::TypeInfo;
 use crate::brp_tools::Port;
 use crate::error::Result;
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
@@ -51,13 +51,45 @@ pub struct TypeSchemaResult {
     message_template: Option<String>,
 }
 
-/// V2 engine for type schema generation using complete registry approach
+/// The main tool struct for type schema discovery
+pub struct TypeSchema;
+
+impl ToolFn for TypeSchema {
+    type Output = TypeSchemaResult;
+    type Params = TypeSchemaParams;
+
+    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
+        Box::pin(async move {
+            let params: TypeSchemaParams = ctx.extract_parameter_values()?;
+            let result = handle_impl(params.clone()).await;
+            Ok(ToolResult {
+                result,
+                params: Some(params),
+            })
+        })
+    }
+}
+
+/// Thin orchestration function: build engine and delegate the work to it.
+async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
+    // Construct V2 engine with optional cache refresh
+    let engine = TypeSchemaEngine::new(params.port, params.refresh_cache).await?;
+
+    // Run the engine to produce the typed response
+    let response = engine.generate_response(&params.types);
+    let type_count = response.discovered_count;
+
+    Ok(TypeSchemaResult::new(response, type_count)
+        .with_message_template(format!("Discovered {type_count} type(s)")))
+}
+
+/// orchestrates type schema generation using a single call to get the complete registry
 struct TypeSchemaEngine {
     registry: HashMap<BrpTypeName, Value>,
 }
 
 impl TypeSchemaEngine {
-    /// Create a new V2 engine instance by fetching the complete registry
+    /// Create a new engine instance by fetching the complete registry
     ///
     /// If `refresh_cache` is true, the registry cache will be cleared before fetching,
     /// ensuring fresh type information is retrieved.
@@ -97,36 +129,4 @@ impl TypeSchemaEngine {
 
         response
     }
-}
-
-/// The main tool struct for type schema discovery
-pub struct TypeSchema;
-
-impl ToolFn for TypeSchema {
-    type Output = TypeSchemaResult;
-    type Params = TypeSchemaParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: TypeSchemaParams = ctx.extract_parameter_values()?;
-            let result = handle_impl(params.clone()).await;
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
-
-/// Thin orchestration function: build engine and delegate the work to it.
-async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
-    // Construct V2 engine with optional cache refresh
-    let engine = TypeSchemaEngine::new(params.port, params.refresh_cache).await?;
-
-    // Run the engine to produce the typed response
-    let response = engine.generate_response(&params.types);
-    let type_count = response.discovered_count;
-
-    Ok(TypeSchemaResult::new(response, type_count)
-        .with_message_template(format!("Discovered {type_count} type(s)")))
 }

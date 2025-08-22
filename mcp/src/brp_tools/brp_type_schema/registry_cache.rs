@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 use dashmap::DashMap;
 use serde_json::{Value, json};
 
-use super::types::BrpTypeName;
+use super::BrpTypeName;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Result;
 use crate::tool::BrpMethod;

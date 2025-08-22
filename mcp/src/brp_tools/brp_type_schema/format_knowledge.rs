@@ -7,9 +7,19 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use serde_json::json;
+use serde_json::{Value, json};
 
-use super::types::{BrpFormatKnowledge, BrpTypeName, MathComponent};
+use super::response_types::{BrpTypeName, MathComponent};
+
+/// Hardcoded BRP format knowledge for a type
+#[derive(Debug, Clone)]
+pub struct BrpFormatKnowledge {
+    /// Example value in the correct BRP format
+    pub example_value:  Value,
+    /// Subfield paths for types that support subfield mutation (e.g., Vec3 has x,y,z)
+    /// Each tuple is (`component_name`, `example_value`)
+    pub subfield_paths: Option<Vec<(MathComponent, Value)>>,
+}
 
 /// Static map of hardcoded BRP format knowledge
 /// This captures the serialization rules that can't be derived from registry
