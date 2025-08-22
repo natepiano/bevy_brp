@@ -166,41 +166,41 @@ impl HandlerContext {
             .change_context(Error::General("Failed to serialize response".to_string()))?;
         let estimated_tokens = response_json.len() / CHARS_PER_TOKEN;
 
-        if estimated_tokens > config.max_tokens {
-            if let Some(result_field) = &response.result {
-                // Generate filename using self.tool_def.tool_name
-                let timestamp = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .change_context(Error::General("Failed to get timestamp".to_string()))?
-                    .as_secs();
+        if estimated_tokens > config.max_tokens
+            && let Some(result_field) = &response.result
+        {
+            // Generate filename using self.tool_def.tool_name
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .change_context(Error::General("Failed to get timestamp".to_string()))?
+                .as_secs();
 
-                let sanitized_identifier =
-                    self.tool_def.tool_name.to_string().replace(['/', ' '], "_");
-                let filename = format!(
-                    "{}{}{}.json",
-                    config.file_prefix, sanitized_identifier, timestamp
-                );
+            let sanitized_identifier = self.tool_def.tool_name.to_string().replace(['/', ' '], "_");
+            let filename = format!(
+                "{}{}{}.json",
+                config.file_prefix, sanitized_identifier, timestamp
+            );
 
-                let filepath = config.temp_dir.join(&filename);
+            let filepath = config.temp_dir.join(&filename);
 
-                let result_json = serde_json::to_string_pretty(result_field).change_context(
-                    Error::General("Failed to serialize result field".to_string()),
-                )?;
+            let result_json = serde_json::to_string_pretty(result_field).change_context(
+                Error::General("Failed to serialize result field".to_string()),
+            )?;
 
-                fs::write(&filepath, &result_json).change_context(Error::FileOperation(
-                    format!("Failed to write result to {}", filepath.display()),
-                ))?;
+            fs::write(&filepath, &result_json).change_context(Error::FileOperation(format!(
+                "Failed to write result to {}",
+                filepath.display()
+            )))?;
 
-                let mut modified_response = response;
-                modified_response.result = Some(json!({
-                    "saved_to_file": true,
-                    "filepath": filepath.to_string_lossy(),
-                    "instructions": "Use Read tool to examine, Grep to search, or jq commands to filter the data.",
-                    "original_size_tokens": estimated_tokens
-                }));
+            let mut modified_response = response;
+            modified_response.result = Some(json!({
+                "saved_to_file": true,
+                "filepath": filepath.to_string_lossy(),
+                "instructions": "Use Read tool to examine, Grep to search, or jq commands to filter the data.",
+                "original_size_tokens": estimated_tokens
+            }));
 
-                return Ok(modified_response);
-            }
+            return Ok(modified_response);
         }
 
         Ok(response)

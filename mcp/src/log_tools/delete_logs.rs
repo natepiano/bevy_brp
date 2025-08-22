@@ -86,19 +86,19 @@ fn delete_log_files(
     // Use the iterator to get all log files with filters
     let filter = |entry: &LogFileEntry| -> bool {
         // Apply app name filter
-        if let Some(app_filter) = app_name_filter {
-            if entry.app_name != app_filter {
-                return false;
-            }
+        if let Some(app_filter) = app_name_filter
+            && entry.app_name != app_filter
+        {
+            return false;
         }
 
         // Apply age filter if provided
-        if let Some(cutoff) = cutoff_time {
-            if let Ok(modified) = entry.metadata.modified() {
-                // Skip if file is newer than cutoff
-                if modified > cutoff {
-                    return false;
-                }
+        if let Some(cutoff) = cutoff_time
+            && let Ok(modified) = entry.metadata.modified()
+        {
+            // Skip if file is newer than cutoff
+            if modified > cutoff {
+                return false;
             }
         }
 
