@@ -129,19 +129,17 @@ pub struct TypeSchemaResponse {
     pub discovered_count: usize,
     /// List of type names that were requested
     pub requested_types:  Vec<String>,
-    /// Whether the discovery operation succeeded overall
-    pub success:          bool,
     /// Summary statistics for the discovery operation
     pub summary:          TypeSchemaSummary,
     /// Detailed information for each type, keyed by type name
-    pub type_info:        HashMap<String, TypeInfo>,
+    pub type_info:        HashMap<BrpTypeName, TypeInfo>,
 }
 
 /// V2 version of `TypeInfo` - same structure as V1 but without `registry_schema` field
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeInfo {
     /// Fully-qualified type name
-    pub type_name:            String,
+    pub type_name:            BrpTypeName,
     /// Category of the type (Struct, Enum, etc.)
     pub type_category:        String,
     /// Whether the type is registered in the Bevy registry
@@ -168,7 +166,7 @@ pub struct TypeInfo {
 impl TypeInfo {
     /// Builder method to create `TypeInfo` from schema data
     pub fn from_schema(
-        type_name: &str,
+        brp_type_name: BrpTypeName,
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
@@ -201,7 +199,7 @@ impl TypeInfo {
         };
 
         Self {
-            type_name: type_name.to_string(),
+            type_name: brp_type_name,
             type_category,
             in_registry: true,
             has_serialize,
@@ -215,9 +213,9 @@ impl TypeInfo {
     }
 
     /// Builder method to create `TypeInfo` for type not found in registry
-    pub fn not_found(type_name: &str) -> Self {
+    pub fn not_found(type_name: BrpTypeName) -> Self {
         Self {
-            type_name:            type_name.to_string(),
+            type_name:            type_name,
             type_category:        "Unknown".to_string(),
             in_registry:          false,
             has_serialize:        false,

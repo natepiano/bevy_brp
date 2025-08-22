@@ -21,8 +21,11 @@ pub struct TypeSchemaEngine {
 
 impl TypeSchemaEngine {
     /// Create a new V2 engine instance by fetching the complete registry
-    pub async fn new(port: Port) -> Result<Self> {
-        let registry = get_full_registry(port).await?;
+    ///
+    /// If `refresh_cache` is true, the registry cache will be cleared before fetching,
+    /// ensuring fresh type information is retrieved.
+    pub async fn new(port: Port, refresh_cache: bool) -> Result<Self> {
+        let registry = get_full_registry(port, refresh_cache).await?;
         Ok(Self { registry })
     }
 
@@ -31,7 +34,6 @@ impl TypeSchemaEngine {
         let mut response = TypeSchemaResponse {
             discovered_count: 0,
             requested_types:  requested_types.to_vec(),
-            success:          true,
             summary:          TypeSchemaSummary {
                 failed_discoveries:     0,
                 successful_discoveries: 0,
@@ -40,30 +42,24 @@ impl TypeSchemaEngine {
             type_info:        HashMap::new(),
         };
 
-        for type_name in requested_types {
-            let brp_type_name = BrpTypeName::from(type_name);
-
-            if let Some(type_schema) = self.registry.get(&brp_type_name) {
-                // Build TypeInfo for this type
-                let type_info = self.build_type_info(type_name, type_schema);
-
-                response.type_info.insert(type_name.clone(), type_info);
+        for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
+            let type_info = if let Some(type_schema) = self.registry.get(&brp_type_name) {
                 response.discovered_count += 1;
                 response.summary.successful_discoveries += 1;
+                self.build_type_info(brp_type_name.clone(), type_schema)
             } else {
-                // Type not found - add error
-                let type_info = TypeInfo::not_found(type_name);
-
-                response.type_info.insert(type_name.clone(), type_info);
                 response.summary.failed_discoveries += 1;
-            }
+                TypeInfo::not_found(brp_type_name.clone())
+            };
+
+            response.type_info.insert(brp_type_name, type_info);
         }
 
         response
     }
 
     /// Build `TypeInfo` for a single type
-    fn build_type_info(&self, type_name: &str, type_schema: &Value) -> TypeInfo {
-        TypeInfo::from_schema(type_name, type_schema, &self.registry)
+    fn build_type_info(&self, brp_type_name: BrpTypeName, type_schema: &Value) -> TypeInfo {
+        TypeInfo::from_schema(brp_type_name, type_schema, &self.registry)
     }
 }

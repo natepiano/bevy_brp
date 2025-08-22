@@ -11,7 +11,6 @@
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 
 use super::engine::TypeSchemaEngine;
 use super::result_types::TypeSchemaResponse;
@@ -28,6 +27,12 @@ pub struct TypeSchemaParams {
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port: Port,
+
+    /// Force refresh of the type registry cache (default: false)
+    /// Use this when you've made changes to your Bevy app's types and need to fetch the latest
+    /// registry information
+    #[serde(default)]
+    pub refresh_cache: bool,
 }
 
 /// Result for the `brp_type_schema` tool
@@ -67,8 +72,8 @@ impl ToolFn for TypeSchema {
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
-    // Construct V2 engine
-    let engine = TypeSchemaEngine::new(params.port).await?;
+    // Construct V2 engine with optional cache refresh
+    let engine = TypeSchemaEngine::new(params.port, params.refresh_cache).await?;
 
     // Run the engine to produce the typed response
     let response = engine.generate_response(&params.types);
@@ -77,9 +82,3 @@ async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
     Ok(TypeSchemaResult::new(response, type_count)
         .with_message_template(format!("Discovered {type_count} type(s)")))
 }
-
-/* Engine implementation moved to `engine.rs`. The tool delegates to the engine via
-`super::TypeSchemaEngine` (re-exported from the module). */
-
-// BrpTypeSchema is exported as an alias for backward compatibility
-pub use TypeSchema as BrpTypeSchema;

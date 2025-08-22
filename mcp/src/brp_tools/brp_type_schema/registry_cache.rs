@@ -20,10 +20,17 @@ static FULL_REGISTRY_CACHE: LazyLock<DashMap<Port, HashMap<BrpTypeName, Value>>>
 
 /// Get the complete registry for a port, with caching
 ///
-/// Note: We don't have a cache refresh scheme at this point so for the duration of the mcp server's
-/// lifetime, the registry will be fetched once and cached. We may want to revisit this in the
-/// future if it becomes a pain point.
-pub async fn get_full_registry(port: Port) -> Result<HashMap<BrpTypeName, Value>> {
+/// If `force_refresh` is true, the cache for this port will be cleared before fetching,
+/// ensuring fresh data is retrieved from the BRP server.
+pub async fn get_full_registry(
+    port: Port,
+    force_refresh: bool,
+) -> Result<HashMap<BrpTypeName, Value>> {
+    // If force_refresh is true, remove the cached entry first
+    if force_refresh {
+        FULL_REGISTRY_CACHE.remove(&port);
+    }
+
     // Check cache first
     if let Some(cached_registry) = FULL_REGISTRY_CACHE.get(&port) {
         return Ok(cached_registry.clone());
