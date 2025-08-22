@@ -120,17 +120,17 @@ Validate:
 
 This test validates that the cache refresh parameter works correctly by switching between apps with different type registrations. The cache for port 20114 is already populated with the `extras_plugin` registry from earlier tests.
 
-#### 6a. Switch to App WITHOUT Custom Types
+#### 7a. Switch to App WITHOUT Custom Types
 - Shutdown current `extras_plugin` with `mcp__brp__brp_shutdown`
 - Verify shutdown with status "clean_shutdown"
-- Launch `no_extras_plugin` example on port 20114
+- Launch `test_extras_plugin_app` binary on port 20114
 - Verify app is running with `mcp__brp__brp_status`
 
-#### 6b. Query Custom Type WITHOUT Cache Refresh (Should Use Stale Cache)
+#### 7b. Query Custom Type WITHOUT Cache Refresh (Should Use Stale Cache)
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
-  "types": ["TestStructWithSerDe"],
+  "types": ["extras_plugin::TestStructWithSerDe"],
   "port": 20114,
   "refresh_cache": false
 }
@@ -138,27 +138,27 @@ Execute `mcp__brp__brp_type_schema` with:
 - **Expected**: Type IS found (using stale cache from extras_plugin)
 - **Validate**:
   - Response succeeds
-  - `result.type_info["TestStructWithSerDe"]` exists
-  - `result.type_info["TestStructWithSerDe"].in_registry` === true
+  - `result.type_info["extras_plugin::TestStructWithSerDe"]` exists
+  - `result.type_info["extras_plugin::TestStructWithSerDe"].in_registry` === true
 - This proves the cache is being used despite the app change
 
-#### 6c. Query Custom Type WITH Cache Refresh (Should Get Current Registry)
+#### 7c. Query Custom Type WITH Cache Refresh (Should Get Current Registry)
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
-  "types": ["TestStructWithSerDe"],
+  "types": ["extras_plugin::TestStructWithSerDe"],
   "port": 20114,
   "refresh_cache": true
 }
 ```
-- **Expected**: Type NOT found (no_extras_plugin doesn't have this type)
+- **Expected**: Type NOT found (test_extras_plugin_app doesn't have this type)
 - **Validate**:
   - Response succeeds but type not in registry
-  - `result.type_info["TestStructWithSerDe"].in_registry` === false
-  - `result.type_info["TestStructWithSerDe"].error` contains "not found" or similar message
+  - `result.type_info["extras_plugin::TestStructWithSerDe"].in_registry` === false
+  - `result.type_info["extras_plugin::TestStructWithSerDe"].error` contains "not found" or similar message
 - This proves refresh_cache forces a fresh registry fetch
 
-#### 6d. Verify Standard Types Still Work After Refresh
+#### 7d. Verify Standard Types Still Work After Refresh
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
@@ -171,7 +171,7 @@ Execute `mcp__brp__brp_type_schema` with:
 
 ### 8. Final Cleanup
 - Execute `mcp__brp__brp_shutdown` to stop the test app
-- Verify clean shutdown with status "process_kill" (no_extras_plugin doesn't have BrpExtrasPlugin)
+- Verify clean shutdown with status "clean_shutdown" (test_extras_plugin_app has BrpExtrasPlugin)
 
 ## Success Criteria
 
