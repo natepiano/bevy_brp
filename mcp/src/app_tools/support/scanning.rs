@@ -428,20 +428,20 @@ fn exact_path_match(relative_path: &Path, path_str: &str) -> bool {
 
 /// Check if the relative path ends with the provided path (partial match)
 fn partial_path_match(relative_path: &Path, path_str: &str) -> bool {
-    if let Some(path_str_path) = Path::new(path_str).to_str() {
-        if let Some(relative_str) = relative_path.to_str() {
-            // Check if it ends with the path (suffix match)
-            if relative_str.ends_with(path_str_path) {
+    if let Some(path_str_path) = Path::new(path_str).to_str()
+        && let Some(relative_str) = relative_path.to_str()
+    {
+        // Check if it ends with the path (suffix match)
+        if relative_str.ends_with(path_str_path) {
+            return true;
+        }
+        // Also check if the path string is contained within any path component
+        // This handles cases like "duplicate" matching "test-duplicate-a"
+        for component in relative_path.components() {
+            if let Some(component_str) = component.as_os_str().to_str()
+                && component_str.contains(path_str)
+            {
                 return true;
-            }
-            // Also check if the path string is contained within any path component
-            // This handles cases like "duplicate" matching "test-duplicate-a"
-            for component in relative_path.components() {
-                if let Some(component_str) = component.as_os_str().to_str() {
-                    if component_str.contains(path_str) {
-                        return true;
-                    }
-                }
             }
         }
     }

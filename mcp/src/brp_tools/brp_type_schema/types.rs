@@ -76,13 +76,13 @@ impl std::fmt::Display for BrpTypeName {
 
 impl From<BrpTypeName> for Value {
     fn from(type_name: BrpTypeName) -> Self {
-        Value::String(type_name.0)
+        Self::String(type_name.0)
     }
 }
 
 impl From<&BrpTypeName> for Value {
     fn from(type_name: &BrpTypeName) -> Self {
-        Value::String(type_name.0.clone())
+        Self::String(type_name.0.clone())
     }
 }
 

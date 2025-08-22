@@ -77,18 +77,22 @@ impl MutationPathInfo {
     pub fn from_mutation_path(path: &MutationPath, description: String, is_option: bool) -> Self {
         if is_option {
             // For Option types, check if we have the special format
-            if let Some(examples_obj) = path.example.as_object() {
-                if examples_obj.contains_key("some") && examples_obj.contains_key("none") {
-                    return Self {
-                        description,
-                        type_name: path.type_name.clone().unwrap_or_default(),
-                        example: None,
-                        example_some: Some(examples_obj["some"].clone()),
-                        example_none: Some(examples_obj["none"].clone()),
-                        enum_variants: path.enum_variants.clone(),
-                        note: Some("For Option fields: pass the value directly to set Some, null to set None".to_string()),
-                    };
-                }
+            if let Some(examples_obj) = path.example.as_object()
+                && examples_obj.contains_key("some")
+                && examples_obj.contains_key("none")
+            {
+                return Self {
+                    description,
+                    type_name: path.type_name.clone().unwrap_or_default(),
+                    example: None,
+                    example_some: Some(examples_obj["some"].clone()),
+                    example_none: Some(examples_obj["none"].clone()),
+                    enum_variants: path.enum_variants.clone(),
+                    note: Some(
+                        "For Option fields: pass the value directly to set Some, null to set None"
+                            .to_string(),
+                    ),
+                };
             }
         }
 

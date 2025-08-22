@@ -26,7 +26,7 @@ pub trait JsonFieldAccess {
 }
 
 impl JsonFieldAccess for Value {
-    fn get_field<T: AsRef<str>>(&self, field: T) -> Option<&Value> {
+    fn get_field<T: AsRef<str>>(&self, field: T) -> Option<&Self> {
         self.get(field.as_ref())
     }
 
@@ -34,14 +34,14 @@ impl JsonFieldAccess for Value {
         self.get(field.as_ref()).and_then(Self::as_str)
     }
 
-    fn get_field_object_mut<T: AsRef<str>>(&mut self, field: T) -> Option<&mut Map<String, Value>> {
+    fn get_field_object_mut<T: AsRef<str>>(&mut self, field: T) -> Option<&mut Map<String, Self>> {
         self.get_mut(field.as_ref()).and_then(Self::as_object_mut)
     }
 
     fn insert_field<F, V>(&mut self, field: F, value: V)
     where
         F: Into<String>,
-        V: Into<Value>,
+        V: Into<Self>,
     {
         if let Some(obj) = self.as_object_mut() {
             obj.insert(field.into(), value.into());

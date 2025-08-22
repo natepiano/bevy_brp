@@ -192,34 +192,34 @@ impl TupleStructTransformer {
         match original_value {
             Value::Object(obj) => {
                 // If we have an object with a single field, try converting to tuple access
-                if obj.len() == 1 {
-                    if let Some((_, value)) = obj.iter().next() {
-                        return Some(TransformationResult {
-                            corrected_value: value.clone(),
-                            hint:            format!(
-                                "`{type_name}` is a tuple struct, use numeric indices like .0 instead of named fields"
-                            ),
-                        });
-                    }
+                if obj.len() == 1
+                    && let Some((_, value)) = obj.iter().next()
+                {
+                    return Some(TransformationResult {
+                        corrected_value: value.clone(),
+                        hint:            format!(
+                            "`{type_name}` is a tuple struct, use numeric indices like .0 instead of named fields"
+                        ),
+                    });
                 }
             }
             Value::Array(arr) => {
                 // If we have an array and the path suggests index access, extract the element
                 // Use the fixed path which may have been transformed from enum variant field names
-                if let Ok(index) = fixed_path.trim_start_matches('.').parse::<usize>() {
-                    if let Some(element) = arr.get(index) {
-                        let hint = if fixed_path == field_path {
-                            format!("`{type_name}` tuple struct element at index {index} extracted")
-                        } else {
-                            format!(
-                                "`{type_name}` tuple struct: converted '{field_path}' to '{fixed_path}' for element access"
-                            )
-                        };
-                        return Some(TransformationResult {
-                            corrected_value: element.clone(),
-                            hint,
-                        });
-                    }
+                if let Ok(index) = fixed_path.trim_start_matches('.').parse::<usize>()
+                    && let Some(element) = arr.get(index)
+                {
+                    let hint = if fixed_path == field_path {
+                        format!("`{type_name}` tuple struct element at index {index} extracted")
+                    } else {
+                        format!(
+                            "`{type_name}` tuple struct: converted '{field_path}' to '{fixed_path}' for element access"
+                        )
+                    };
+                    return Some(TransformationResult {
+                        corrected_value: element.clone(),
+                        hint,
+                    });
                 }
             }
             _ => {}
@@ -256,18 +256,17 @@ impl TupleStructTransformer {
             match original_value {
                 Value::Array(arr) => {
                     // Extract the correct index from the fixed path
-                    if let Some(index_str) = fixed_path.strip_prefix('.') {
-                        if let Ok(index) = index_str.parse::<usize>() {
-                            if let Some(element) = arr.get(index) {
-                                let hint = format!(
-                                    "`{type_name}` MissingField '{field_name}': converted to tuple struct index {index}"
-                                );
-                                return Some(TransformationResult {
-                                    corrected_value: element.clone(),
-                                    hint,
-                                });
-                            }
-                        }
+                    if let Some(index_str) = fixed_path.strip_prefix('.')
+                        && let Ok(index) = index_str.parse::<usize>()
+                        && let Some(element) = arr.get(index)
+                    {
+                        let hint = format!(
+                            "`{type_name}` MissingField '{field_name}': converted to tuple struct index {index}"
+                        );
+                        return Some(TransformationResult {
+                            corrected_value: element.clone(),
+                            hint,
+                        });
                     }
                 }
                 Value::Object(obj) => {
@@ -396,24 +395,24 @@ impl FormatTransformer for TupleStructTransformer {
             let message = &error.message;
 
             // Look for path patterns in the message
-            if let Some(path_start) = message.find("path ") {
-                if let Some(path_quote_start) = message[path_start..].find('`') {
-                    let search_start = path_start + path_quote_start + 1;
-                    if let Some(path_quote_end) = message[search_start..].find('`') {
-                        let path = &message[search_start..search_start + path_quote_end];
-                        return Self::fix_tuple_struct_format(&type_name, value, path);
-                    }
+            if let Some(path_start) = message.find("path ")
+                && let Some(path_quote_start) = message[path_start..].find('`')
+            {
+                let search_start = path_start + path_quote_start + 1;
+                if let Some(path_quote_end) = message[search_start..].find('`') {
+                    let path = &message[search_start..search_start + path_quote_end];
+                    return Self::fix_tuple_struct_format(&type_name, value, path);
                 }
             }
 
             // Look for field names in the message
             if message.contains("MissingField") {
                 // Extract field name (this is a simple heuristic)
-                if let Some(field_start) = message.find('\'') {
-                    if let Some(field_end) = message[field_start + 1..].find('\'') {
-                        let field_name = &message[field_start + 1..field_start + 1 + field_end];
-                        return Self::handle_missing_field(&type_name, value, field_name);
-                    }
+                if let Some(field_start) = message.find('\'')
+                    && let Some(field_end) = message[field_start + 1..].find('\'')
+                {
+                    let field_name = &message[field_start + 1..field_start + 1 + field_end];
+                    return Self::handle_missing_field(&type_name, value, field_name);
                 }
             }
         }

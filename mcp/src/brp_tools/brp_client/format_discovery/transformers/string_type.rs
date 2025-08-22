@@ -38,21 +38,18 @@ impl StringTypeTransformer {
                     }
                 }
                 // For single-field objects, use the value
-                if obj.len() == 1 {
-                    if let Some((field_name, Value::String(s))) = obj.iter().next() {
-                        return Some((s.clone(), messages::extracted_from_field(field_name)));
-                    }
+                if obj.len() == 1
+                    && let Some((field_name, Value::String(s))) = obj.iter().next()
+                {
+                    return Some((s.clone(), messages::extracted_from_field(field_name)));
                 }
             }
             Value::Array(arr) => {
                 // If it's an array with one string, extract it
-                if arr.len() == 1 {
-                    if let Value::String(s) = &arr[0] {
-                        return Some((
-                            s.clone(),
-                            "Extracted from single-element array".to_string(),
-                        ));
-                    }
+                if arr.len() == 1
+                    && let Value::String(s) = &arr[0]
+                {
+                    return Some((s.clone(), "Extracted from single-element array".to_string()));
                 }
             }
             Value::String(s) => {

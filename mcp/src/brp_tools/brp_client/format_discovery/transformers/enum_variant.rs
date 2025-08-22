@@ -169,17 +169,17 @@ impl EnumVariantTransformer {
         match (expected, actual) {
             // Tuple variant vs struct variant
             ("tuple", "struct") => {
-                if let Value::Object(obj) = original_value {
-                    if let Some((variant_name, value)) = extract_single_field_value(obj) {
-                        let hint = format!(
-                            "`{type_name}` VariantTypeMismatch: Expected {expected} variant access to access a {actual} variant, \
-                                        converted '{variant_name}' to tuple variant format"
-                        );
-                        return Some(TransformationResult {
-                            corrected_value: value.clone(),
-                            hint,
-                        });
-                    }
+                if let Value::Object(obj) = original_value
+                    && let Some((variant_name, value)) = extract_single_field_value(obj)
+                {
+                    let hint = format!(
+                        "`{type_name}` VariantTypeMismatch: Expected {expected} variant access to access a {actual} variant, \
+                                    converted '{variant_name}' to tuple variant format"
+                    );
+                    return Some(TransformationResult {
+                        corrected_value: value.clone(),
+                        hint,
+                    });
                 }
             }
             // Struct variant vs tuple variant
@@ -369,11 +369,10 @@ impl EnumVariantTransformer {
             .is_some_and(|c| c.is_ascii_uppercase())
         {
             // Likely an enum variant name like "LinearRgba"
-            if let Value::Object(obj) = original_value {
-                if let Some(result) = Self::try_enum_variant_extraction(type_name, field_name, obj)
-                {
-                    return Some(result);
-                }
+            if let Value::Object(obj) = original_value
+                && let Some(result) = Self::try_enum_variant_extraction(type_name, field_name, obj)
+            {
+                return Some(result);
             }
         }
 

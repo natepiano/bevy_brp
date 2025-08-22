@@ -493,15 +493,15 @@ impl UnifiedTypeInfo {
         }
 
         // Generate mutation example if type supports mutation
-        if self.supports_mutation() {
-            if let Some(example) = self.generate_mutation_example() {
-                self.format_info.examples.insert(
-                    Operation::Mutate {
-                        parameter_name: ParameterName::Component,
-                    },
-                    example,
-                );
-            }
+        if self.supports_mutation()
+            && let Some(example) = self.generate_mutation_example()
+        {
+            self.format_info.examples.insert(
+                Operation::Mutate {
+                    parameter_name: ParameterName::Component,
+                },
+                example,
+            );
         }
     }
     /// Generate spawn example based on type structure
@@ -780,35 +780,33 @@ impl UnifiedTypeInfo {
                             .get("type")
                             .and_then(|t| t.get("$ref"))
                             .and_then(Value::as_str)
+                            && type_ref.contains("Color")
                         {
-                            if type_ref.contains("Color") {
-                                // Add common color field paths
-                                paths.insert(
-                                    format!(".{index}.red"),
-                                    "Access the red component (if Color is an enum with named fields)"
-                                        .to_string(),
-                                );
-                                paths.insert(
+                            // Add common color field paths
+                            paths.insert(
+                                format!(".{index}.red"),
+                                "Access the red component (if Color is an enum with named fields)"
+                                    .to_string(),
+                            );
+                            paths.insert(
                                     format!(".{index}.green"),
                                     "Access the green component (if Color is an enum with named fields)".to_string()
                                 );
-                                paths.insert(
-                                    format!(".{index}.blue"),
-                                    "Access the blue component (if Color is an enum with named fields)"
-                                        .to_string(),
-                                );
-                                paths.insert(
+                            paths.insert(
+                                format!(".{index}.blue"),
+                                "Access the blue component (if Color is an enum with named fields)"
+                                    .to_string(),
+                            );
+                            paths.insert(
                                     format!(".{index}.alpha"),
                                     "Access the alpha component (if Color is an enum with named fields)".to_string()
                                 );
 
-                                // Also add potential enum variant access
-                                paths.insert(
-                                    format!(".{index}.0"),
-                                    "Access the first field if Color is an enum variant"
-                                        .to_string(),
-                                );
-                            }
+                            // Also add potential enum variant access
+                            paths.insert(
+                                format!(".{index}.0"),
+                                "Access the first field if Color is an enum variant".to_string(),
+                            );
                         }
                     }
                 }

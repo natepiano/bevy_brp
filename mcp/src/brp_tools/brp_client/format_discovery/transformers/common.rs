@@ -33,10 +33,10 @@ pub fn extract_type_name_from_error(error: &BrpClientError) -> Option<String> {
     let message = &error.message;
 
     // Look for common patterns that indicate the type name
-    if let Some(start) = message.find('`') {
-        if let Some(end) = message[start + 1..].find('`') {
-            return Some(message[start + 1..start + 1 + end].to_string());
-        }
+    if let Some(start) = message.find('`')
+        && let Some(end) = message[start + 1..].find('`')
+    {
+        return Some(message[start + 1..start + 1 + end].to_string());
     }
 
     None

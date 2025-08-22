@@ -247,51 +247,48 @@ impl<'a> SchemaProcessor<'a> {
         if let Some(one_of) = schema
             .get_field(SchemaField::OneOf)
             .and_then(Value::as_array)
+            && let Some(first_variant) = one_of.first()
         {
-            if let Some(first_variant) = one_of.first() {
-                if let Some(variant_name) = first_variant
-                    .get_field(SchemaField::ShortPath)
-                    .and_then(Value::as_str)
+            if let Some(variant_name) = first_variant
+                .get_field(SchemaField::ShortPath)
+                .and_then(Value::as_str)
+            {
+                // Check variant type to build appropriate example
+                if let Some(prefix_items) = first_variant
+                    .get_field(SchemaField::PrefixItems)
+                    .and_then(Value::as_array)
                 {
-                    // Check variant type to build appropriate example
-                    if let Some(prefix_items) = first_variant
-                        .get_field(SchemaField::PrefixItems)
-                        .and_then(Value::as_array)
+                    // Tuple variant
+                    if let Some(first_item) = prefix_items.first()
+                        && let Some(type_ref) = first_item
+                            .get_field(SchemaField::Type)
+                            .and_then(|t| t.get_field(SchemaField::Ref))
+                            .and_then(Value::as_str)
                     {
-                        // Tuple variant
-                        if let Some(first_item) = prefix_items.first() {
-                            if let Some(type_ref) = first_item
-                                .get_field(SchemaField::Type)
-                                .and_then(|t| t.get_field(SchemaField::Ref))
-                                .and_then(Value::as_str)
-                            {
-                                let inner_type =
-                                    type_ref.strip_prefix("#/$defs/").unwrap_or(type_ref);
+                        let inner_type = type_ref.strip_prefix("#/$defs/").unwrap_or(type_ref);
 
-                                let inner_value = if inner_type.contains("Srgba") {
-                                    json!({
-                                        "red": 1.0,
-                                        "green": 0.0,
-                                        "blue": 0.0,
-                                        "alpha": 1.0
-                                    })
-                                } else {
-                                    json!({})
-                                };
+                        let inner_value = if inner_type.contains("Srgba") {
+                            json!({
+                                "red": 1.0,
+                                "green": 0.0,
+                                "blue": 0.0,
+                                "alpha": 1.0
+                            })
+                        } else {
+                            json!({})
+                        };
 
-                                return json!({
-                                    variant_name: [inner_value]
-                                });
-                            }
-                        }
-                        return json!({ variant_name: [] });
-                    } else if first_variant.get_field(SchemaField::Properties).is_some() {
-                        // Struct variant
-                        return json!({ variant_name: {} });
+                        return json!({
+                            variant_name: [inner_value]
+                        });
                     }
-                    // Unit variant
-                    return json!(variant_name);
+                    return json!({ variant_name: [] });
+                } else if first_variant.get_field(SchemaField::Properties).is_some() {
+                    // Struct variant
+                    return json!({ variant_name: {} });
                 }
+                // Unit variant
+                return json!(variant_name);
             }
         }
         json!(null)

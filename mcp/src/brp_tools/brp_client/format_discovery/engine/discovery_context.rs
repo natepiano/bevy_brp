@@ -150,21 +150,21 @@ impl DiscoveryContext {
         debug!("Registry Integration: Searching for '{type_name}' in registry response");
 
         // Try object format first (direct key lookup)
-        if let Some(obj) = response_data.as_object() {
-            if let Some(type_data) = obj.get(type_name) {
-                debug!("Registry Integration: Found '{type_name}' as direct key");
-                return Some(type_data.clone());
-            }
+        if let Some(obj) = response_data.as_object()
+            && let Some(type_data) = obj.get(type_name)
+        {
+            debug!("Registry Integration: Found '{type_name}' as direct key");
+            return Some(type_data.clone());
         }
 
         // Try array format (search by typePath field)
         if let Some(arr) = response_data.as_array() {
             for item in arr {
-                if let Some(type_path) = item.get("typePath").and_then(Value::as_str) {
-                    if type_path == type_name {
-                        debug!("Registry Integration: Found '{type_name}' in array format");
-                        return Some(item.clone());
-                    }
+                if let Some(type_path) = item.get("typePath").and_then(Value::as_str)
+                    && type_path == type_name
+                {
+                    debug!("Registry Integration: Found '{type_name}' in array format");
+                    return Some(item.clone());
                 }
             }
         }

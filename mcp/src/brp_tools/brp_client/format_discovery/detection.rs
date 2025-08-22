@@ -138,12 +138,12 @@ fn match_all_patterns(message: &str) -> Option<ErrorPattern> {
     }
 
     // 7. Transform sequence pattern
-    if let Some(captures) = TRANSFORM_SEQUENCE_REGEX.captures(message) {
-        if let Ok(count) = captures[1].parse::<usize>() {
-            return Some(ErrorPattern::TransformSequence {
-                expected_count: count,
-            });
-        }
+    if let Some(captures) = TRANSFORM_SEQUENCE_REGEX.captures(message)
+        && let Ok(count) = captures[1].parse::<usize>()
+    {
+        return Some(ErrorPattern::TransformSequence {
+            expected_count: count,
+        });
     }
 
     // 8. Expected type pattern

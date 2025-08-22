@@ -23,6 +23,6 @@ pub enum JsonSchemaType {
 
 impl From<JsonSchemaType> for Value {
     fn from(schema_type: JsonSchemaType) -> Self {
-        Value::String(schema_type.as_ref().to_string())
+        Self::String(schema_type.as_ref().to_string())
     }
 }
