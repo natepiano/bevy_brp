@@ -134,8 +134,11 @@ pub struct EnumVariantInfo {
 }
 
 /// Enum variant classification
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize, Deserialize,
+)]
 #[serde(rename_all = "PascalCase")]
+#[strum(serialize_all = "PascalCase")]
 pub enum EnumVariantKind {
     Tuple,
     Struct,
@@ -158,6 +161,81 @@ impl From<MathComponent> for String {
     }
 }
 
+/// Context for a mutation path describing what kind of mutation this is
+#[derive(Debug, Clone)]
+pub enum MutationContext {
+    /// Replace the entire value (root mutation with empty path)
+    RootValue { type_name: BrpTypeName },
+    /// Mutate a field in a struct
+    StructField {
+        field_name:  String,
+        parent_type: BrpTypeName,
+    },
+    /// Mutate an element in a tuple by index
+    TupleElement {
+        index:       usize,
+        parent_type: BrpTypeName,
+    },
+    /// Mutate an element in an array
+    ArrayElement {
+        index:       usize,
+        parent_type: BrpTypeName,
+    },
+    /// Complex nested path (fallback for complicated paths)
+    NestedPath {
+        components: Vec<String>,
+        final_type: BrpTypeName,
+    },
+}
+
+impl Default for MutationContext {
+    fn default() -> Self {
+        Self::RootValue {
+            type_name: BrpTypeName::from("unknown"),
+        }
+    }
+}
+
+impl MutationContext {
+    /// Generate a human-readable description for this mutation
+    pub fn description(&self) -> String {
+        match self {
+            Self::RootValue { type_name } => {
+                format!("Replace the entire {type_name} value")
+            }
+            Self::StructField {
+                field_name,
+                parent_type,
+            } => {
+                format!("Mutate the {field_name} field of {parent_type}")
+            }
+            Self::TupleElement { index, parent_type } => {
+                format!("Mutate element {index} of {parent_type}")
+            }
+            Self::ArrayElement { index, parent_type } => {
+                format!("Mutate element [{index}] of {parent_type}")
+            }
+            Self::NestedPath {
+                components,
+                final_type,
+            } => {
+                if components.len() == 2 {
+                    format!(
+                        "Mutate the {} component of {} (type: {})",
+                        components[1], components[0], final_type
+                    )
+                } else {
+                    format!(
+                        "Mutate nested path: {} (type: {})",
+                        components.join("."),
+                        final_type
+                    )
+                }
+            }
+        }
+    }
+}
+
 /// Mutation path information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
@@ -169,6 +247,9 @@ pub struct MutationPath {
     pub enum_variants: Option<Vec<String>>,
     /// Type information for this path
     pub type_name:     BrpTypeName,
+    /// Context describing what kind of mutation this is
+    #[serde(skip)]
+    pub context:       MutationContext,
 }
 
 /// Information about a mutation path
@@ -272,6 +353,7 @@ pub enum SchemaField {
     #[strum(serialize = "$ref")]
     Ref,
     ReflectTypes,
+    TypePath,
 }
 
 /// Category of type for quick identification and processing

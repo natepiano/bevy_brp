@@ -96,6 +96,47 @@ enum TestEnumNoSerDe {
     Special(String, u32),
 }
 
+/// Test component with array field
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestArrayField {
+    /// Fixed-size array field
+    pub vertices: [Vec2; 3],
+    /// Another array field
+    pub values:   [f32; 4],
+}
+
+/// Test component with tuple field  
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestTupleField {
+    /// Tuple field with two elements
+    pub coords:    (f32, f32),
+    /// Tuple field with three elements
+    pub color_rgb: (u8, u8, u8),
+}
+
+/// Test tuple struct component
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestTupleStruct(pub f32, pub String, pub bool);
+
+/// Complex nested component with various field types
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestComplexComponent {
+    /// Nested struct field (will have .transform.translation.x paths)
+    pub transform:      Transform,
+    /// Enum field
+    pub mode:           TestEnumNoSerDe,
+    /// Array field
+    pub points:         [Vec3; 2],
+    /// Tuple field
+    pub range:          (f32, f32),
+    /// Option field
+    pub optional_value: Option<f32>,
+}
+
 fn main() {
     let brp_plugin = BrpExtrasPlugin::new();
     let (port, _) = brp_plugin.get_effective_port();
@@ -122,6 +163,10 @@ fn main() {
         .register_type::<TestStructNoSerDe>()
         .register_type::<TestEnumWithSerDe>()
         .register_type::<TestEnumNoSerDe>()
+        .register_type::<TestArrayField>()
+        .register_type::<TestTupleField>()
+        .register_type::<TestTupleStruct>()
+        .register_type::<TestComplexComponent>()
         .add_systems(Startup, (setup_test_entities, setup_ui))
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
         .run();
@@ -175,8 +220,48 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Name::new("TestSprite"),
     ));
 
+    // Entity with TestArrayField component
+    commands.spawn((
+        TestArrayField {
+            vertices: [
+                Vec2::new(0.0, 0.0),
+                Vec2::new(1.0, 0.0),
+                Vec2::new(0.5, 1.0),
+            ],
+            values:   [1.0, 2.0, 3.0, 4.0],
+        },
+        Name::new("TestArrayFieldEntity"),
+    ));
+
+    // Entity with TestTupleField component
+    commands.spawn((
+        TestTupleField {
+            coords:    (10.0, 20.0),
+            color_rgb: (255, 128, 64),
+        },
+        Name::new("TestTupleFieldEntity"),
+    ));
+
+    // Entity with TestTupleStruct component
+    commands.spawn((
+        TestTupleStruct(42.0, "test".to_string(), true),
+        Name::new("TestTupleStructEntity"),
+    ));
+
+    // Entity with TestComplexComponent
+    commands.spawn((
+        TestComplexComponent {
+            transform:      Transform::from_xyz(5.0, 10.0, 15.0),
+            mode:           TestEnumNoSerDe::Active,
+            points:         [Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0)],
+            range:          (0.0, 100.0),
+            optional_value: Some(50.0),
+        },
+        Name::new("TestComplexEntity"),
+    ));
+
     info!(
-        "Test entities spawned (including Sprite). BRP server running on http://localhost:{}",
+        "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",
         port.0
     );
 }

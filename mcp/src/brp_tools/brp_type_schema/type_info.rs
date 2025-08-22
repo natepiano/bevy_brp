@@ -9,8 +9,8 @@ use tracing::warn;
 
 use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, BrpFormatKnowledge};
 use super::response_types::{
-    BrpSupportedOperation, BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath,
-    MutationPathInfo, OptionField, ReflectTrait, SchemaField, SchemaInfo, TypeKind,
+    BrpSupportedOperation, BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationContext,
+    MutationPath, MutationPathInfo, OptionField, ReflectTrait, SchemaField, SchemaInfo, TypeKind,
 };
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
@@ -127,64 +127,405 @@ impl TypeInfo {
         }
     }
 
-    // Private helper methods
+    // Private helper methods (alphabetically ordered)
 
-    /// Extract reflect types from a registry schema
-    fn extract_reflect_types(type_schema: &Value) -> Vec<ReflectTrait> {
-        type_schema
-            .get_field(SchemaField::ReflectTypes)
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .filter_map(|s| s.parse::<ReflectTrait>().ok())
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
+    /// Build mutation paths for an array field within a struct
+    fn build_array_field_mutation_paths(
+        field_name: &str,
+        array_type: &BrpTypeName,
+        array_schema: &Value,
+        parent_type: &BrpTypeName,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
 
-    /// Get supported BRP operations as strings based on reflection traits
-    fn get_supported_operations(reflect_types: &[ReflectTrait]) -> Vec<String> {
-        let mut operations = vec![BrpSupportedOperation::Query];
+        // Get array element type
+        let element_type = array_schema
+            .get("items")
+            .and_then(|v| v.get_field(SchemaField::Type))
+            .and_then(|t| t.get_field(SchemaField::Ref))
+            .and_then(Value::as_str)
+            .and_then(|s| s.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from)
+            .unwrap_or_else(|| BrpTypeName::from("unknown"));
 
-        let has_component = reflect_types.contains(&ReflectTrait::Component);
-        let has_resource = reflect_types.contains(&ReflectTrait::Resource);
-        let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
-        let has_deserialize = reflect_types.contains(&ReflectTrait::Deserialize);
+        // Build example array
+        let example_element = BRP_FORMAT_KNOWLEDGE
+            .get(&element_type)
+            .map_or(json!(null), |k| k.example_value.clone());
 
-        if has_component {
-            operations.push(BrpSupportedOperation::Get);
-            if has_serialize && has_deserialize {
-                operations.push(BrpSupportedOperation::Spawn);
-                operations.push(BrpSupportedOperation::Insert);
-            }
-            if has_serialize {
-                operations.push(BrpSupportedOperation::Mutate);
-            }
+        // Determine array size from type path (e.g., "[Vec3; 3]" -> 3)
+        let array_size = array_type
+            .as_str()
+            .rsplit(';')
+            .next()
+            .and_then(|s| s.trim_end_matches(']').trim().parse::<usize>().ok())
+            .unwrap_or(3);
+
+        // Add path for the entire array field
+        let array_example: Vec<Value> = (0..array_size).map(|_| example_element.clone()).collect();
+        paths.push(MutationPath {
+            path:          format!(".{field_name}"),
+            example:       json!(array_example),
+            enum_variants: None,
+            type_name:     array_type.clone(),
+            context:       MutationContext::StructField {
+                field_name:  field_name.to_string(),
+                parent_type: parent_type.clone(),
+            },
+        });
+
+        // Add paths for array elements (usually just first few as examples)
+        for index in 0..array_size.min(3) {
+            paths.push(MutationPath {
+                path:          format!(".{field_name}[{index}]"),
+                example:       example_element.clone(),
+                enum_variants: None,
+                type_name:     element_type.clone(),
+                context:       MutationContext::ArrayElement {
+                    index,
+                    parent_type: array_type.clone(),
+                },
+            });
         }
 
-        if has_resource {
-            if has_serialize && has_deserialize {
-                operations.push(BrpSupportedOperation::Insert);
-            }
-            if has_serialize {
-                operations.push(BrpSupportedOperation::Mutate);
-            }
-        }
-
-        operations
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect()
+        paths
     }
 
-    /// Get mutation paths for a type as a `HashMap`
-    fn get_mutation_paths(
+    /// Build mutation paths for array types
+    fn build_array_mutation_paths(
         type_schema: &Value,
+        _registry: &HashMap<BrpTypeName, Value>,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
+
+        let parent_type = type_schema
+            .get_field(SchemaField::TypePath)
+            .and_then(Value::as_str)
+            .map(BrpTypeName::from)
+            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+
+        // Get array item type
+        let Some(items) = type_schema
+            .get("items")
+            .and_then(|v| v.get_field(SchemaField::Type))
+        else {
+            return paths;
+        };
+
+        let element_type = items
+            .get_field(SchemaField::Ref)
+            .and_then(Value::as_str)
+            .and_then(|s| s.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from)
+            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+
+        // Build example array
+        let example_element = BRP_FORMAT_KNOWLEDGE
+            .get(&element_type)
+            .map_or(json!(null), |k| k.example_value.clone());
+
+        // Determine array size from type path (e.g., "[Vec3; 3]" -> 3)
+        let array_size = parent_type
+            .as_str()
+            .rsplit(';')
+            .next()
+            .and_then(|s| s.trim_end_matches(']').trim().parse::<usize>().ok())
+            .unwrap_or(3);
+
+        // Add root mutation path for the entire array
+        let array_example: Vec<Value> = (0..array_size).map(|_| example_element.clone()).collect();
+        paths.push(MutationPath {
+            path:          String::new(),
+            example:       json!(array_example),
+            enum_variants: None,
+            type_name:     parent_type.clone(),
+            context:       MutationContext::RootValue {
+                type_name: parent_type.clone(),
+            },
+        });
+
+        // Add paths for array elements (usually just first few as examples)
+        for index in 0..array_size.min(3) {
+            paths.push(MutationPath {
+                path:          format!("[{index}]"),
+                example:       example_element.clone(),
+                enum_variants: None,
+                type_name:     element_type.clone(),
+                context:       MutationContext::ArrayElement {
+                    index,
+                    parent_type: parent_type.clone(),
+                },
+            });
+        }
+
+        paths
+    }
+
+    /// Build example value for an enum type
+    fn build_enum_example(schema: &Value) -> Value {
+        if let Some(one_of) = schema
+            .get_field(SchemaField::OneOf)
+            .and_then(Value::as_array)
+            && let Some(first_variant) = one_of.first()
+        {
+            let Some(variant_name) = Self::get_variant_identifier(first_variant) else {
+                return json!(null);
+            };
+
+            // Check variant type to build appropriate example
+            if first_variant.is_string() {
+                // Simple unit variant - just return the string
+                return json!(variant_name);
+            } else if let Some(prefix_items) = first_variant
+                .get_field(SchemaField::PrefixItems)
+                .and_then(Value::as_array)
+            {
+                // Tuple variant
+                if let Some(first_item) = prefix_items.first()
+                    && let Some(type_ref) = first_item
+                        .get_field(SchemaField::Type)
+                        .and_then(|t| t.get_field(SchemaField::Ref))
+                        .and_then(Value::as_str)
+                {
+                    let inner_type = type_ref.strip_prefix("#/$defs/").unwrap_or(type_ref);
+
+                    let inner_value = if inner_type.contains("Srgba") {
+                        json!({
+                            "red": 1.0,
+                            "green": 0.0,
+                            "blue": 0.0,
+                            "alpha": 1.0
+                        })
+                    } else {
+                        json!({})
+                    };
+
+                    return json!({
+                        variant_name: [inner_value]
+                    });
+                }
+                return json!({ variant_name: [] });
+            } else if first_variant.get_field(SchemaField::Properties).is_some() {
+                // Struct variant
+                return json!({ variant_name: {} });
+            } else {
+                // Unit variant (object format)
+                return json!(variant_name);
+            }
+        }
+        json!(null)
+    }
+
+    /// Build mutation paths for enum types
+    fn build_enum_mutation_paths(type_schema: &Value) -> Vec<MutationPath> {
+        let type_name = type_schema
+            .get_field(SchemaField::TypePath)
+            .and_then(Value::as_str)
+            .map(BrpTypeName::from)
+            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+
+        // Extract enum info using our existing function
+        let Some(enum_info) = Self::extract_enum_info(type_schema) else {
+            return Vec::new();
+        };
+
+        // Get variant names for the root mutation
+        let variants: Vec<String> = enum_info
+            .iter()
+            .map(|info| info.variant_name.clone())
+            .collect();
+
+        let mut paths = Vec::new();
+
+        // Always add root path for replacing entire enum
+        if let Some(first_variant) = variants.first() {
+            paths.push(MutationPath {
+                path:          String::new(),
+                example:       json!(first_variant),
+                enum_variants: Some(variants),
+                type_name:     type_name.clone(),
+                context:       MutationContext::RootValue {
+                    type_name: type_name.clone(),
+                },
+            });
+        }
+
+        // Add paths based on variant kinds (simplified for now)
+        // TODO: Add variant-specific field paths when needed
+
+        paths
+    }
+
+    /// Build mutation paths for a single field
+    fn build_field_mutation_paths(
+        field_name: &str,
+        field_info: &Value,
         registry: &HashMap<BrpTypeName, Value>,
-    ) -> HashMap<String, MutationPathInfo> {
-        let mutation_paths_vec = Self::build_mutation_paths(type_schema, registry);
-        Self::convert_mutation_paths(&mutation_paths_vec)
+        parent_type: &BrpTypeName,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
+
+        // Extract field type
+        let field_type = Self::extract_field_type(field_info);
+
+        let Some(ft) = field_type else {
+            // No type info, add null mutation path
+            paths.push(MutationPath {
+                path:          format!(".{field_name}"),
+                example:       json!(null),
+                enum_variants: None,
+                type_name:     BrpTypeName::from("unknown"),
+                context:       MutationContext::StructField {
+                    field_name:  field_name.to_string(),
+                    parent_type: parent_type.clone(),
+                },
+            });
+            return paths;
+        };
+
+        // Check if this is a wrapper type (Option, Handle) first
+        let wrapper_info = WrapperType::detect(ft.as_str());
+
+        // For wrapper types, check the inner type for hardcoded knowledge
+        let type_to_check = wrapper_info.map_or(ft.as_str(), |(_, inner)| inner);
+
+        // Check for hardcoded math types (Vec3, Quat, etc.)
+        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(type_to_check)) {
+            // Get enum variants if this is an enum
+            let enum_variants = if wrapper_info.is_none() {
+                registry.get(&ft).and_then(|schema| {
+                    if Self::get_type_kind(schema, &ft) == TypeKind::Enum {
+                        Self::extract_enum_variants(schema)
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            };
+
+            paths.extend(Self::build_hardcoded_paths(
+                field_name,
+                &ft,
+                hardcoded,
+                wrapper_info,
+                enum_variants,
+                parent_type,
+            ));
+            return paths;
+        }
+
+        // Look up the field type in the registry to determine its kind
+        let field_type_schema = registry.get(&ft);
+        let field_type_kind = field_type_schema
+            .map(|schema| Self::get_type_kind(schema, &ft))
+            .unwrap_or(TypeKind::Value);
+
+        // Handle different type kinds
+        match field_type_kind {
+            TypeKind::Array => {
+                // Array field - generate element paths
+                if let Some(schema) = field_type_schema {
+                    paths.extend(Self::build_array_field_mutation_paths(
+                        field_name,
+                        &ft,
+                        schema,
+                        parent_type,
+                    ));
+                }
+            }
+            TypeKind::Enum => {
+                // Enum field - include enum variants
+                let enum_variants = field_type_schema.and_then(Self::extract_enum_variants);
+                let example = field_type_schema
+                    .map(Self::build_enum_example)
+                    .unwrap_or(json!(null));
+
+                paths.push(Self::build_standard_path(
+                    field_name,
+                    &ft,
+                    example,
+                    enum_variants,
+                    wrapper_info,
+                    parent_type,
+                ));
+            }
+            TypeKind::Tuple | TypeKind::TupleStruct => {
+                // Tuple field - generate element paths
+                if let Some(schema) = field_type_schema {
+                    paths.extend(Self::build_tuple_field_mutation_paths(
+                        field_name,
+                        &ft,
+                        schema,
+                        parent_type,
+                    ));
+                }
+            }
+            _ => {
+                // All other types (Struct, Value, List, Map, etc.)
+                paths.push(Self::build_standard_path(
+                    field_name,
+                    &ft,
+                    json!(null),
+                    None,
+                    wrapper_info,
+                    parent_type,
+                ));
+            }
+        }
+
+        paths
+    }
+
+    /// Build paths for types with hardcoded knowledge
+    fn build_hardcoded_paths(
+        field_name: &str,
+        field_type: &BrpTypeName,
+        hardcoded: &BrpFormatKnowledge,
+        wrapper_info: Option<(WrapperType, &str)>,
+        enum_variants: Option<Vec<String>>,
+        parent_type: &BrpTypeName,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
+
+        // Build main path with appropriate example format
+        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
+            let mut option_example = Map::new();
+            option_example.insert_field(OptionField::Some, hardcoded.example_value.clone());
+            option_example.insert_field(OptionField::None, json!(null));
+            Value::Object(option_example)
+        } else {
+            hardcoded.example_value.clone()
+        };
+
+        paths.push(MutationPath {
+            path: format!(".{field_name}"),
+            example: final_example,
+            enum_variants,
+            type_name: field_type.clone(),
+            context: MutationContext::StructField {
+                field_name:  field_name.to_string(),
+                parent_type: parent_type.clone(),
+            },
+        });
+
+        // Add component paths if available (e.g., .x, .y, .z for Vec3)
+        if let Some(component_paths) = &hardcoded.subfield_paths {
+            for (component, example_value) in component_paths {
+                paths.push(MutationPath {
+                    path:          format!(".{field_name}.{component}"),
+                    example:       example_value.clone(),
+                    enum_variants: None,
+                    type_name:     BrpTypeName::from("f32"),
+                    context:       MutationContext::NestedPath {
+                        components: vec![field_name.to_string(), component.to_string()],
+                        final_type: BrpTypeName::from("f32"),
+                    },
+                });
+            }
+        }
+
+        paths
     }
 
     /// Build mutation paths for a type
@@ -192,21 +533,260 @@ impl TypeInfo {
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Vec<MutationPath> {
-        let mut mutation_paths = Vec::new();
+        let type_kind = Self::get_type_kind(type_schema, &BrpTypeName::from("unknown"));
+
+        match type_kind {
+            TypeKind::Enum => Self::build_enum_mutation_paths(type_schema),
+            TypeKind::Struct => Self::build_struct_mutation_paths(type_schema, registry),
+            TypeKind::Tuple | TypeKind::TupleStruct => {
+                Self::build_tuple_mutation_paths(type_schema, registry)
+            }
+            TypeKind::Array => Self::build_array_mutation_paths(type_schema, registry),
+            _ => Vec::new(),
+        }
+    }
+
+    /// Build spawn format example for types that support spawn/insert
+    fn build_spawn_format(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Option<Value> {
+        let properties = type_schema
+            .get_field(SchemaField::Properties)
+            .and_then(Value::as_object)?;
+
+        let mut spawn_example = Map::new();
+
+        for (field_name, field_info) in properties {
+            // Extract field type
+            let field_type = Self::extract_field_type(field_info);
+
+            if let Some(ft) = field_type {
+                // Check for hardcoded knowledge
+                let example = BRP_FORMAT_KNOWLEDGE.get(&ft).map_or_else(
+                    || {
+                        // Check if it's an enum and build example
+                        registry.get(&ft).map_or(json!(null), |field_schema| {
+                            if field_schema
+                                .get_field(SchemaField::Kind)
+                                .and_then(Value::as_str)
+                                == Some("Enum")
+                            {
+                                Self::build_enum_example(field_schema)
+                            } else {
+                                json!(null)
+                            }
+                        })
+                    },
+                    |hardcoded| hardcoded.example_value.clone(),
+                );
+
+                spawn_example.insert(field_name.clone(), example);
+            }
+        }
+
+        if spawn_example.is_empty() {
+            None
+        } else {
+            Some(Value::Object(spawn_example))
+        }
+    }
+
+    /// Build standard mutation path
+    fn build_standard_path(
+        field_name: &str,
+        field_type: &BrpTypeName,
+        example_value: Value,
+        enum_variants: Option<Vec<String>>,
+        wrapper_info: Option<(WrapperType, &str)>,
+        parent_type: &BrpTypeName,
+    ) -> MutationPath {
+        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
+            let mut option_example = Map::new();
+            option_example.insert_field(OptionField::Some, example_value);
+            option_example.insert_field(OptionField::None, json!(null));
+            Value::Object(option_example)
+        } else {
+            example_value
+        };
+
+        MutationPath {
+            path: format!(".{field_name}"),
+            example: final_example,
+            enum_variants,
+            type_name: field_type.clone(),
+            context: MutationContext::StructField {
+                field_name:  field_name.to_string(),
+                parent_type: parent_type.clone(),
+            },
+        }
+    }
+
+    /// Build mutation paths for struct types
+    fn build_struct_mutation_paths(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
+
+        let parent_type = type_schema
+            .get_field(SchemaField::TypePath)
+            .and_then(Value::as_str)
+            .map(BrpTypeName::from)
+            .unwrap_or_else(|| BrpTypeName::from("unknown"));
 
         let Some(properties) = type_schema
             .get_field(SchemaField::Properties)
             .and_then(Value::as_object)
         else {
-            return mutation_paths;
+            return paths;
         };
 
         for (field_name, field_info) in properties {
-            let paths = Self::build_field_mutation_paths(field_name, field_info, registry);
-            mutation_paths.extend(paths);
+            let field_paths =
+                Self::build_field_mutation_paths(field_name, field_info, registry, &parent_type);
+            paths.extend(field_paths);
         }
 
-        mutation_paths
+        paths
+    }
+
+    /// Build example value for a tuple
+    fn build_tuple_example(
+        prefix_items: &[Value],
+        _registry: &HashMap<BrpTypeName, Value>,
+    ) -> Value {
+        let elements: Vec<Value> = prefix_items
+            .iter()
+            .map(|item| {
+                Self::extract_field_type(item)
+                    .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&t))
+                    .map_or(json!(null), |k| k.example_value.clone())
+            })
+            .collect();
+
+        json!(elements)
+    }
+
+    /// Build mutation paths for a tuple field within a struct
+    fn build_tuple_field_mutation_paths(
+        field_name: &str,
+        tuple_type: &BrpTypeName,
+        tuple_schema: &Value,
+        parent_type: &BrpTypeName,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
+
+        // Get prefix items (tuple elements)
+        let prefix_items = tuple_schema
+            .get_field(SchemaField::PrefixItems)
+            .and_then(Value::as_array);
+
+        // Build example tuple value
+        let example = if let Some(items) = prefix_items {
+            let elements: Vec<Value> = items
+                .iter()
+                .map(|item| {
+                    Self::extract_field_type(item)
+                        .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&t))
+                        .map_or(json!(null), |k| k.example_value.clone())
+                })
+                .collect();
+            json!(elements)
+        } else {
+            json!([])
+        };
+
+        // Add path for the entire tuple field
+        paths.push(MutationPath {
+            path: format!(".{field_name}"),
+            example,
+            enum_variants: None,
+            type_name: tuple_type.clone(),
+            context: MutationContext::StructField {
+                field_name:  field_name.to_string(),
+                parent_type: parent_type.clone(),
+            },
+        });
+
+        // Add paths for each tuple element
+        if let Some(items) = prefix_items {
+            for (index, element_info) in items.iter().enumerate() {
+                if let Some(element_type) = Self::extract_field_type(element_info) {
+                    let elem_example = BRP_FORMAT_KNOWLEDGE
+                        .get(&element_type)
+                        .map_or(json!(null), |k| k.example_value.clone());
+
+                    paths.push(MutationPath {
+                        path:          format!(".{field_name}.{index}"),
+                        example:       elem_example,
+                        enum_variants: None,
+                        type_name:     element_type,
+                        context:       MutationContext::TupleElement {
+                            index,
+                            parent_type: tuple_type.clone(),
+                        },
+                    });
+                }
+            }
+        }
+
+        paths
+    }
+
+    /// Build mutation paths for tuple and tuple struct types
+    fn build_tuple_mutation_paths(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Vec<MutationPath> {
+        let mut paths = Vec::new();
+
+        let parent_type = type_schema
+            .get_field(SchemaField::TypePath)
+            .and_then(Value::as_str)
+            .map(BrpTypeName::from)
+            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+
+        // Get prefix items (tuple elements)
+        let Some(prefix_items) = type_schema
+            .get_field(SchemaField::PrefixItems)
+            .and_then(Value::as_array)
+        else {
+            return paths;
+        };
+
+        // Add root mutation path for the entire tuple
+        paths.push(MutationPath {
+            path:          String::new(),
+            example:       Self::build_tuple_example(prefix_items, registry),
+            enum_variants: None,
+            type_name:     parent_type.clone(),
+            context:       MutationContext::RootValue {
+                type_name: parent_type.clone(),
+            },
+        });
+
+        // Add paths for each tuple element
+        for (index, element_info) in prefix_items.iter().enumerate() {
+            if let Some(element_type) = Self::extract_field_type(element_info) {
+                let example = BRP_FORMAT_KNOWLEDGE
+                    .get(&element_type)
+                    .map_or(json!(null), |k| k.example_value.clone());
+
+                paths.push(MutationPath {
+                    path: format!(".{index}"),
+                    example,
+                    enum_variants: None,
+                    type_name: element_type,
+                    context: MutationContext::TupleElement {
+                        index,
+                        parent_type: parent_type.clone(),
+                    },
+                });
+            }
+        }
+
+        paths
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
@@ -214,8 +794,8 @@ impl TypeInfo {
         let mut result = HashMap::new();
 
         for path in paths {
-            // Generate description based on path
-            let description = Self::generate_mutation_description(&path.path);
+            // Generate description using the context
+            let description = path.context.description();
 
             // Check if this is an Option type
             let is_option = path.type_name.as_str().starts_with("core::option::Option<");
@@ -223,7 +803,14 @@ impl TypeInfo {
             // Create MutationPathInfo from MutationPath
             let path_info = MutationPathInfo::from_mutation_path(path, description, is_option);
 
-            result.insert(path.path.clone(), path_info);
+            // Use "." for root mutations instead of empty string
+            let key = if path.path.is_empty() {
+                ".".to_string()
+            } else {
+                path.path.clone()
+            };
+
+            result.insert(key, path_info);
         }
 
         result
@@ -243,99 +830,23 @@ impl TypeInfo {
         Some(variants)
     }
 
-    /// Build mutation paths for a single field
-    fn build_field_mutation_paths(
-        field_name: &str,
-        field_info: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> Vec<MutationPath> {
-        let mut paths = Vec::new();
-
-        // Extract field type
-        let field_type = Self::extract_field_type(field_info);
-
-        let Some(ft) = field_type else {
-            // No type info, add null mutation path
-            paths.push(MutationPath {
-                path:          format!(".{field_name}"),
-                example:       json!(null),
-                enum_variants: None,
-                type_name:     BrpTypeName::from("unknown"),
-            });
-            return paths;
-        };
-
-        // Check if this is a wrapper type (Option, Handle)
-        let wrapper_info = WrapperType::detect(ft.as_str());
-
-        // Get example value and enum variants based on type
-        let (example_value, enum_variants) =
-            Self::get_field_example_and_variants(&ft, wrapper_info, registry);
-
-        // Check for hardcoded knowledge
-        // For wrapper types, check the inner type for hardcoded knowledge
-        let type_to_check = wrapper_info.map_or(ft.as_str(), |(_, inner)| inner);
-
-        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(type_to_check)) {
-            paths.extend(Self::build_hardcoded_paths(
-                field_name,
-                &ft,
-                hardcoded,
-                wrapper_info,
-                enum_variants,
-            ));
-        } else {
-            paths.push(Self::build_standard_path(
-                field_name,
-                &ft,
-                example_value,
-                enum_variants,
-                wrapper_info,
-            ));
-        }
-
-        paths
-    }
-
-    /// Extract field type from field info
-    fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
-        field_info
-            .get_field(SchemaField::Type)
-            .and_then(|t| t.get_field(SchemaField::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
-    }
-
-    /// Generate a description for a mutation path
-    fn generate_mutation_description(path: &str) -> String {
-        // Remove leading dot and split
-        let parts: Vec<&str> = path.trim_start_matches('.').split('.').collect();
-
-        if parts.len() == 1 {
-            format!("Mutate the entire {} field", parts[0])
-        } else if parts.len() == 2 {
-            // Component path like .rotation.x
-            format!("Mutate the {} component", parts[1])
-        } else {
-            format!("Mutate path {path}")
-        }
-    }
-
     /// Extract a single enum variant from schema
     fn extract_enum_variant(v: &Value) -> Option<EnumVariantInfo> {
-        let name = v
-            .get_field(SchemaField::ShortPath)
-            .and_then(Value::as_str)?;
+        let name = Self::get_variant_identifier(v)?;
 
-        // Check if this is a unit variant, tuple variant, or struct variant
-        let variant_type = if v.get_field(SchemaField::PrefixItems).is_some() {
-            EnumVariantKind::Tuple
-        } else if v.get_field(SchemaField::Properties).is_some() {
-            EnumVariantKind::Struct
-        } else {
-            EnumVariantKind::Unit
-        };
+        // Use the explicit kind field if available, otherwise infer from structure
+        let variant_type = v
+            .get_field(SchemaField::Kind)
+            .and_then(Value::as_str)
+            .and_then(|s| EnumVariantKind::from_str(s).ok())
+            .unwrap_or_else(|| {
+                if v.is_string() {
+                    EnumVariantKind::Unit
+                } else {
+                    // Object without explicit kind = unit variant with metadata
+                    EnumVariantKind::Unit
+                }
+            });
 
         // Extract tuple types if present
         let tuple_types = if variant_type == EnumVariantKind::Tuple {
@@ -385,119 +896,6 @@ impl TypeInfo {
         })
     }
 
-    /// Get example value and enum variants for a field
-    fn get_field_example_and_variants(
-        field_type: &BrpTypeName,
-        wrapper_info: Option<(WrapperType, &str)>,
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> (Value, Option<Vec<String>>) {
-        match wrapper_info {
-            Some((wrapper_type, inner_type)) => {
-                // Handle wrapper types - they don't get enum_variants
-                let inner_example = BRP_FORMAT_KNOWLEDGE
-                    .get(&BrpTypeName::from(inner_type))
-                    .map(|h| h.example_value.clone())
-                    .unwrap_or(json!(null));
-
-                // Build the appropriate example based on wrapper type
-                let example = match wrapper_type {
-                    WrapperType::Option => inner_example, /* For Option, we return the inner */
-                    // example
-                    WrapperType::Handle => wrapper_type.wrap_example(json!({})), /* For Handle,
-                                                                                  * wrap it */
-                };
-
-                (example, None) // Wrapper types never get enum_variants
-            }
-            None => {
-                // Regular types - check if they're enums
-                registry
-                    .get(field_type)
-                    .map_or((json!(null), None), |schema| {
-                        if schema
-                            .get_field(SchemaField::Kind)
-                            .and_then(Value::as_str)
-                            .and_then(|s| TypeKind::from_str(s).ok())
-                            == Some(TypeKind::Enum)
-                        {
-                            let variants = Self::extract_enum_variants(schema);
-                            let example = Self::build_enum_example(schema);
-                            (example, variants)
-                        } else {
-                            (json!(null), None)
-                        }
-                    })
-            }
-        }
-    }
-
-    /// Build paths for types with hardcoded knowledge
-    fn build_hardcoded_paths(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        hardcoded: &BrpFormatKnowledge,
-        wrapper_info: Option<(WrapperType, &str)>,
-        enum_variants: Option<Vec<String>>,
-    ) -> Vec<MutationPath> {
-        let mut paths = Vec::new();
-
-        // Build main path with appropriate example format
-        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
-            let mut option_example = Map::new();
-            option_example.insert_field(OptionField::Some, hardcoded.example_value.clone());
-            option_example.insert_field(OptionField::None, json!(null));
-            Value::Object(option_example)
-        } else {
-            hardcoded.example_value.clone()
-        };
-
-        paths.push(MutationPath {
-            path: format!(".{field_name}"),
-            example: final_example,
-            enum_variants,
-            type_name: field_type.clone(),
-        });
-
-        // Add component paths if available (e.g., .x, .y, .z for Vec3)
-        if let Some(component_paths) = &hardcoded.subfield_paths {
-            for (component, example_value) in component_paths {
-                paths.push(MutationPath {
-                    path:          format!(".{field_name}.{component}"),
-                    example:       example_value.clone(),
-                    enum_variants: None,
-                    type_name:     BrpTypeName::from("f32"),
-                });
-            }
-        }
-
-        paths
-    }
-
-    /// Build standard mutation path
-    fn build_standard_path(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        example_value: Value,
-        enum_variants: Option<Vec<String>>,
-        wrapper_info: Option<(WrapperType, &str)>,
-    ) -> MutationPath {
-        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
-            let mut option_example = Map::new();
-            option_example.insert_field(OptionField::Some, example_value);
-            option_example.insert_field(OptionField::None, json!(null));
-            Value::Object(option_example)
-        } else {
-            example_value
-        };
-
-        MutationPath {
-            path: format!(".{field_name}"),
-            example: final_example,
-            enum_variants,
-            type_name: field_type.clone(),
-        }
-    }
-
     /// Extract enum variants from a type schema
     fn extract_enum_variants(type_schema: &Value) -> Option<Vec<String>> {
         type_schema
@@ -506,75 +904,33 @@ impl TypeInfo {
             .map(|one_of| {
                 one_of
                     .iter()
-                    .filter_map(|v| v.get_field(SchemaField::ShortPath).and_then(Value::as_str))
-                    .map(std::string::ToString::to_string)
+                    .filter_map(|v| Self::get_variant_identifier(v).map(String::from))
                     .collect()
             })
     }
 
-    /// Get the type kind from a schema
-    fn get_type_kind(schema: &Value, type_name: &BrpTypeName) -> TypeKind {
-        schema
-            .get_field(SchemaField::Kind)
+    /// Extract field type from field info
+    fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
+        field_info
+            .get_field(SchemaField::Type)
+            .and_then(|t| t.get_field(SchemaField::Ref))
             .and_then(Value::as_str)
-            .and_then(|s| TypeKind::from_str(s).ok())
-            .unwrap_or_else(|| {
-                warn!(
-                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
-                    type_name
-                );
-                TypeKind::Value
-            })
+            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from)
     }
 
-    /// Build example value for an enum type
-    fn build_enum_example(schema: &Value) -> Value {
-        if let Some(one_of) = schema
-            .get_field(SchemaField::OneOf)
+    /// Extract reflect types from a registry schema
+    fn extract_reflect_types(type_schema: &Value) -> Vec<ReflectTrait> {
+        type_schema
+            .get_field(SchemaField::ReflectTypes)
             .and_then(Value::as_array)
-            && let Some(first_variant) = one_of.first()
-            && let Some(variant_name) = first_variant
-                .get_field(SchemaField::ShortPath)
-                .and_then(Value::as_str)
-        {
-            // Check variant type to build appropriate example
-            if let Some(prefix_items) = first_variant
-                .get_field(SchemaField::PrefixItems)
-                .and_then(Value::as_array)
-            {
-                // Tuple variant
-                if let Some(first_item) = prefix_items.first()
-                    && let Some(type_ref) = first_item
-                        .get_field(SchemaField::Type)
-                        .and_then(|t| t.get_field(SchemaField::Ref))
-                        .and_then(Value::as_str)
-                {
-                    let inner_type = type_ref.strip_prefix("#/$defs/").unwrap_or(type_ref);
-
-                    let inner_value = if inner_type.contains("Srgba") {
-                        json!({
-                            "red": 1.0,
-                            "green": 0.0,
-                            "blue": 0.0,
-                            "alpha": 1.0
-                        })
-                    } else {
-                        json!({})
-                    };
-
-                    return json!({
-                        variant_name: [inner_value]
-                    });
-                }
-                return json!({ variant_name: [] });
-            } else if first_variant.get_field(SchemaField::Properties).is_some() {
-                // Struct variant
-                return json!({ variant_name: {} });
-            }
-            // Unit variant
-            return json!(variant_name);
-        }
-        json!(null)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .filter_map(|s| s.parse::<ReflectTrait>().ok())
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Extract schema information from registry schema
@@ -625,49 +981,73 @@ impl TypeInfo {
         }
     }
 
-    /// Build spawn format example for types that support spawn/insert
-    fn build_spawn_format(
+    /// Get mutation paths for a type as a `HashMap`
+    fn get_mutation_paths(
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
-    ) -> Option<Value> {
-        let properties = type_schema
-            .get_field(SchemaField::Properties)
-            .and_then(Value::as_object)?;
+    ) -> HashMap<String, MutationPathInfo> {
+        let mutation_paths_vec = Self::build_mutation_paths(type_schema, registry);
+        Self::convert_mutation_paths(&mutation_paths_vec)
+    }
 
-        let mut spawn_example = Map::new();
+    /// Get supported BRP operations as strings based on reflection traits
+    fn get_supported_operations(reflect_types: &[ReflectTrait]) -> Vec<String> {
+        let mut operations = vec![BrpSupportedOperation::Query];
 
-        for (field_name, field_info) in properties {
-            // Extract field type
-            let field_type = Self::extract_field_type(field_info);
+        let has_component = reflect_types.contains(&ReflectTrait::Component);
+        let has_resource = reflect_types.contains(&ReflectTrait::Resource);
+        let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
+        let has_deserialize = reflect_types.contains(&ReflectTrait::Deserialize);
 
-            if let Some(ft) = field_type {
-                // Check for hardcoded knowledge
-                let example = BRP_FORMAT_KNOWLEDGE.get(&ft).map_or_else(
-                    || {
-                        // Check if it's an enum and build example
-                        registry.get(&ft).map_or(json!(null), |field_schema| {
-                            if field_schema
-                                .get_field(SchemaField::Kind)
-                                .and_then(Value::as_str)
-                                == Some("Enum")
-                            {
-                                Self::build_enum_example(field_schema)
-                            } else {
-                                json!(null)
-                            }
-                        })
-                    },
-                    |hardcoded| hardcoded.example_value.clone(),
-                );
-
-                spawn_example.insert(field_name.clone(), example);
+        if has_component {
+            operations.push(BrpSupportedOperation::Get);
+            // Mutation only requires reflection support (being in the registry)
+            operations.push(BrpSupportedOperation::Mutate);
+            if has_serialize && has_deserialize {
+                operations.push(BrpSupportedOperation::Spawn);
+                operations.push(BrpSupportedOperation::Insert);
             }
         }
 
-        if spawn_example.is_empty() {
-            None
+        if has_resource {
+            // Mutation only requires reflection support (being in the registry)
+            operations.push(BrpSupportedOperation::Mutate);
+            if has_serialize && has_deserialize {
+                operations.push(BrpSupportedOperation::Insert);
+            }
+        }
+
+        operations
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect()
+    }
+
+    /// Get the type kind from a schema
+    fn get_type_kind(schema: &Value, type_name: &BrpTypeName) -> TypeKind {
+        schema
+            .get_field(SchemaField::Kind)
+            .and_then(Value::as_str)
+            .and_then(|s| TypeKind::from_str(s).ok())
+            .unwrap_or_else(|| {
+                warn!(
+                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
+                    type_name
+                );
+                TypeKind::Value
+            })
+    }
+
+    /// Extract variant identifier from either string or object representation
+    /// This returns the discriminant/name that identifies which variant this is,
+    /// regardless of whether the variant contains data
+    fn get_variant_identifier(v: &Value) -> Option<&str> {
+        if let Some(s) = v.as_str() {
+            // Simple string variant (unit variant with no data)
+            Some(s)
         } else {
-            Some(Value::Object(spawn_example))
+            // Complex variant (may have tuple or struct data) - get its identifier
+            v.get_field(SchemaField::ShortPath).and_then(Value::as_str)
         }
     }
 }
