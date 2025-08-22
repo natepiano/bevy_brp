@@ -109,14 +109,13 @@ pub enum MathComponent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Example value for this path
-    #[allow(dead_code)] // Used in response building when tool is called
-    pub example: Value,
+    pub example:       Value,
     /// Path for mutation, e.g., ".translation.x"
     pub path:          String,
     /// For enum types, list of valid variant names
     pub enum_variants: Option<Vec<String>>,
     /// Type information for this path
-    pub type_name:     Option<String>,
+    pub type_name:     BrpTypeName,
 }
 
 /// Bevy reflection trait names

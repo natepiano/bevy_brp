@@ -46,8 +46,8 @@ pub async fn get_full_registry(
 
             if let Some(obj) = registry_data.as_object() {
                 for (key, value) in obj {
-                    let type_name = BrpTypeName::from(key);
-                    registry_map.insert(type_name, value.clone());
+                    let brp_type_name = BrpTypeName::from(key);
+                    registry_map.insert(brp_type_name, value.clone());
                 }
             }
 

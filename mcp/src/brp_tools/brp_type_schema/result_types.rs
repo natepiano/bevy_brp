@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use tracing::warn;
 
 use super::hardcoded_formats::BRP_FORMAT_KNOWLEDGE;
 use super::types::{
@@ -90,7 +91,7 @@ impl MutationPathInfo {
             {
                 return Self {
                     description,
-                    type_name: path.type_name.clone().unwrap_or_default(),
+                    type_name: path.type_name.to_string(),
                     example: None,
                     example_some: Some(examples_obj["some"].clone()),
                     example_none: Some(examples_obj["none"].clone()),
@@ -106,7 +107,7 @@ impl MutationPathInfo {
         // Regular non-Option path
         Self {
             description,
-            type_name: path.type_name.clone().unwrap_or_default(),
+            type_name: path.type_name.to_string(),
             example: if path.example.is_null() {
                 None
             } else {
@@ -141,7 +142,7 @@ pub struct TypeInfo {
     /// Fully-qualified type name
     pub type_name:            BrpTypeName,
     /// Category of the type (Struct, Enum, etc.)
-    pub type_category:        String,
+    pub type_kind:            TypeKind,
     /// Whether the type is registered in the Bevy registry
     pub in_registry:          bool,
     /// Whether the type has the Serialize trait
@@ -170,8 +171,8 @@ impl TypeInfo {
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
-        // Extract type category
-        let type_category = Self::extract_category(type_schema);
+        // Extract type category - default to Value if missing/invalid
+        let type_kind = Self::get_type_kind(type_schema, &brp_type_name);
 
         // Extract reflection traits
         let reflect_types = Self::extract_reflect_types(type_schema);
@@ -192,7 +193,7 @@ impl TypeInfo {
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec);
 
         // Build enum info if it's an enum
-        let enum_info = if type_category == "Enum" {
+        let enum_info = if type_kind == TypeKind::Enum {
             Self::extract_enum_info(type_schema)
         } else {
             None
@@ -200,7 +201,7 @@ impl TypeInfo {
 
         Self {
             type_name: brp_type_name,
-            type_category,
+            type_kind,
             in_registry: true,
             has_serialize,
             has_deserialize,
@@ -213,18 +214,18 @@ impl TypeInfo {
     }
 
     /// Builder method to create `TypeInfo` for type not found in registry
-    pub fn not_found(type_name: BrpTypeName) -> Self {
+    pub fn not_found(type_name: BrpTypeName, error_msg: String) -> Self {
         Self {
-            type_name:            type_name,
-            type_category:        "Unknown".to_string(),
-            in_registry:          false,
-            has_serialize:        false,
-            has_deserialize:      false,
+            type_name,
+            type_kind: TypeKind::Value, // Default to Value for unknown types
+            in_registry: false,
+            has_serialize: false,
+            has_deserialize: false,
             supported_operations: Vec::new(),
-            mutation_paths:       HashMap::new(),
-            example_values:       HashMap::new(),
-            enum_info:            None,
-            error:                Some("Type not found in registry".to_string()),
+            mutation_paths: HashMap::new(),
+            example_values: HashMap::new(),
+            enum_info: None,
+            error: Some(error_msg),
         }
     }
 
@@ -278,15 +279,6 @@ impl TypeInfo {
         operations
     }
 
-    /// Extract type category from schema
-    fn extract_category(type_schema: &Value) -> String {
-        type_schema
-            .get_field("kind")
-            .and_then(Value::as_str)
-            .unwrap_or("Unknown")
-            .to_string()
-    }
-
     /// Build mutation paths for a type
     fn build_mutation_paths(
         type_schema: &Value,
@@ -318,10 +310,7 @@ impl TypeInfo {
             let description = Self::generate_mutation_description(&path.path);
 
             // Check if this is an Option type
-            let is_option = path
-                .type_name
-                .as_ref()
-                .is_some_and(|t| t.starts_with("core::option::Option<"));
+            let is_option = path.type_name.as_str().starts_with("core::option::Option<");
 
             // Create MutationPathInfo from MutationPath
             let path_info = MutationPathInfo::from_mutation_path(path, description, is_option);
@@ -363,7 +352,7 @@ impl TypeInfo {
                 path:          format!(".{field_name}"),
                 example:       json!(null),
                 enum_variants: None,
-                type_name:     None,
+                type_name:     BrpTypeName::from("unknown"),
             });
             return paths;
         };
@@ -517,7 +506,12 @@ impl TypeInfo {
                 registry
                     .get(&BrpTypeName::from(field_type))
                     .map_or((json!(null), None), |schema| {
-                        if Self::get_type_kind(schema) == Some(TypeKind::Enum) {
+                        if schema
+                            .get_field(SchemaField::Kind)
+                            .and_then(Value::as_str)
+                            .and_then(|s| TypeKind::from_str(s).ok())
+                            == Some(TypeKind::Enum)
+                        {
                             let variants = Self::extract_enum_variants(schema);
                             let example = Self::build_enum_example(schema);
                             (example, variants)
@@ -553,7 +547,7 @@ impl TypeInfo {
             path: format!(".{field_name}"),
             example: final_example,
             enum_variants,
-            type_name: Some(field_type.to_string()),
+            type_name: BrpTypeName::from(field_type),
         });
 
         // Add component paths if available (e.g., .x, .y, .z for Vec3)
@@ -563,7 +557,7 @@ impl TypeInfo {
                     path:          format!(".{field_name}.{component}"),
                     example:       example_value.clone(),
                     enum_variants: None,
-                    type_name:     None,
+                    type_name:     BrpTypeName::from("f32"),
                 });
             }
         }
@@ -592,7 +586,7 @@ impl TypeInfo {
             path: format!(".{field_name}"),
             example: final_example,
             enum_variants,
-            type_name: Some(field_type.to_string()),
+            type_name: BrpTypeName::from(field_type),
         }
     }
 
@@ -611,11 +605,18 @@ impl TypeInfo {
     }
 
     /// Get the type kind from a schema
-    fn get_type_kind(schema: &Value) -> Option<TypeKind> {
+    fn get_type_kind(schema: &Value, type_name: &BrpTypeName) -> TypeKind {
         schema
             .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
             .and_then(|s| TypeKind::from_str(s).ok())
+            .unwrap_or_else(|| {
+                warn!(
+                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
+                    type_name
+                );
+                TypeKind::Value
+            })
     }
 
     /// Build example value for an enum type

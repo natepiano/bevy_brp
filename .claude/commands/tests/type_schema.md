@@ -33,7 +33,10 @@ Verify the response contains:
 - `result` object exists
 - `result.type_info` object exists
 - `result.discovered_count` === 1
-- `result.success` === true
+- `result.summary` object with:
+  - `successful_discoveries` === 1
+  - `failed_discoveries` === 0
+  - `total_requested` === 1
 
 #### 3b. Validate Type Info
 Verify `result.type_info["bevy_sprite::sprite::Sprite"]` contains:
