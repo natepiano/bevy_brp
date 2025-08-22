@@ -60,16 +60,11 @@ impl TypeInfo {
         let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
         let has_deserialize = reflect_types.contains(&ReflectTrait::Deserialize);
 
-        // Determine supported operations
-        let operations = Self::determine_supported_operations(&reflect_types);
-        let operations_strings: Vec<String> = operations
-            .iter()
-            .map(std::string::ToString::to_string)
-            .collect();
+        // Get supported operations directly as strings
+        let supported_operations = Self::get_supported_operations(&reflect_types);
 
-        // Build mutation paths
-        let mutation_paths_vec = Self::build_mutation_paths(type_schema, registry);
-        let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec);
+        // Get mutation paths directly as HashMap
+        let mutation_paths = Self::get_mutation_paths(type_schema, registry);
 
         // Build enum info if it's an enum
         let enum_info = if type_kind == TypeKind::Enum {
@@ -84,7 +79,7 @@ impl TypeInfo {
             in_registry: true,
             has_serialize,
             has_deserialize,
-            supported_operations: operations_strings,
+            supported_operations,
             mutation_paths,
             example_values: HashMap::new(), // V1 always has this empty
             enum_info,
@@ -124,10 +119,8 @@ impl TypeInfo {
             .unwrap_or_default()
     }
 
-    /// Determine supported BRP operations based on reflection traits
-    fn determine_supported_operations(
-        reflect_types: &[ReflectTrait],
-    ) -> Vec<BrpSupportedOperation> {
+    /// Get supported BRP operations as strings based on reflection traits
+    fn get_supported_operations(reflect_types: &[ReflectTrait]) -> Vec<String> {
         let mut operations = vec![BrpSupportedOperation::Query];
 
         let has_component = reflect_types.contains(&ReflectTrait::Component);
@@ -156,6 +149,18 @@ impl TypeInfo {
         }
 
         operations
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect()
+    }
+
+    /// Get mutation paths for a type as a `HashMap`
+    fn get_mutation_paths(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> HashMap<String, MutationPathInfo> {
+        let mutation_paths_vec = Self::build_mutation_paths(type_schema, registry);
+        Self::convert_mutation_paths(&mutation_paths_vec)
     }
 
     /// Build mutation paths for a type
