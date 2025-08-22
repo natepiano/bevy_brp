@@ -107,10 +107,10 @@ impl ResponseBuilder {
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
 
         // Skip fields marked for nullable skipping
-        if let Value::String(s) = &value_json {
-            if s == "__SKIP_NULL_FIELD__" {
-                return Ok(self);
-            }
+        if let Value::String(s) = &value_json
+            && s == "__SKIP_NULL_FIELD__"
+        {
+            return Ok(self);
         }
 
         if let Some(Value::Object(map)) = &mut self.metadata {
@@ -155,10 +155,10 @@ impl ResponseBuilder {
             .change_context(Error::General(format!("Failed to serialize field '{key}'")))?;
 
         // Skip fields marked for nullable skipping
-        if let Value::String(s) = &value_json {
-            if s == "__SKIP_NULL_FIELD__" {
-                return Ok(self);
-            }
+        if let Value::String(s) = &value_json
+            && s == "__SKIP_NULL_FIELD__"
+        {
+            return Ok(self);
         }
 
         match placement {
@@ -359,24 +359,24 @@ impl ResponseBuilder {
         }
 
         // Then check metadata
-        if let Some(Value::Object(metadata)) = builder.metadata() {
-            if let Some(value) = metadata.get(placeholder) {
-                return Some(Self::value_to_string(value));
-            }
+        if let Some(Value::Object(metadata)) = builder.metadata()
+            && let Some(value) = metadata.get(placeholder)
+        {
+            return Some(Self::value_to_string(value));
         }
 
         // Then check result if placeholder is "result"
-        if placeholder == "result" {
-            if let Some(result_value) = builder.result() {
-                return Some(Self::value_to_string(result_value));
-            }
+        if placeholder == "result"
+            && let Some(result_value) = builder.result()
+        {
+            return Some(Self::value_to_string(result_value));
         }
 
         // Check parameters added to the builder
-        if let Some(Value::Object(params_obj)) = builder.parameters_ref() {
-            if let Some(value) = params_obj.get(placeholder) {
-                return Some(Self::value_to_string(value));
-            }
+        if let Some(Value::Object(params_obj)) = builder.parameters_ref()
+            && let Some(value) = params_obj.get(placeholder)
+        {
+            return Some(Self::value_to_string(value));
         }
 
         // Finally check request parameters
