@@ -20,7 +20,7 @@ pub struct TypeSchemaEngine {
 }
 
 impl TypeSchemaEngine {
-    /// Create a new V2 engine instance
+    /// Create a new V2 engine instance by fetching the complete registry
     pub async fn new(port: Port) -> Result<Self> {
         let registry = get_full_registry(port).await?;
         Ok(Self { registry })

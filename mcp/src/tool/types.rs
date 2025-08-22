@@ -30,7 +30,7 @@ use crate::tool::ParamStruct;
 /// system-level errors, or handler setup issues.
 pub type HandlerResult<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
 
-/// Business logic result wrapper that includes parameters.
+/// Result wrapper that includes parameters so they can be returned in the response.
 /// Allows for heterogeneous results and parameters that are optional (unit struct for optional)
 #[derive(Debug)]
 pub struct ToolResult<T, P = ()> {

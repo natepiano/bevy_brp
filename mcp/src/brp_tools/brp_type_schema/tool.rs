@@ -67,12 +67,10 @@ impl ToolFn for TypeSchema {
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
-    debug!("Executing brp_type_schema for {} types", params.types.len());
-
     // Construct V2 engine
     let engine = TypeSchemaEngine::new(params.port).await?;
 
-    // Run the engine to produce the typed response (V2 is synchronous)
+    // Run the engine to produce the typed response
     let response = engine.generate_response(&params.types);
     let type_count = response.discovered_count;
 
