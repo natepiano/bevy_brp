@@ -1,0 +1,177 @@
+[
+  {
+    "id": "1",
+    "content": "Add TypeInfo::from_schema builder method to result_types.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Add TypeInfo::not_found error builder method to result_types.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Move extract_reflect_types from type_discovery.rs to TypeInfo as private method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Move determine_supported_operations from type_discovery.rs to TypeInfo as private method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Move type category extraction from engine.rs to TypeInfo::extract_category",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Move enum info extraction from engine.rs to TypeInfo::extract_enum_info",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Move SchemaProcessor::build_mutation_paths to TypeInfo::build_mutation_paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Move all mutation path helper methods from schema_processor.rs to TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Update engine.rs build_type_info to use TypeInfo::from_schema",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Update engine.rs generate_response to use TypeInfo builders",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Remove all unused code from engine.rs",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Delete schema_processor.rs file",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Delete type_discovery.rs file",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Update mod.rs to remove deleted module exports",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo build && cargo +nightly fmt and fix final errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Fix all remaining clippy issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
