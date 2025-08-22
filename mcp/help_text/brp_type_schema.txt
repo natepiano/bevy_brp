@@ -7,5 +7,3 @@ Returns:
 - mutation_info: Available mutation paths for bevy/mutate_component and bevy/mutate_resource operations
 - supported_operations: Which BRP operations work with each type
 - reflection traits: Serialization capabilities (Serialize, Deserialize, etc.)
-
-Note: The type registry is cached for performance. Set refresh_cache to true after modifying your Bevy app's types to ensure you get the latest type information.

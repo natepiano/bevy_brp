@@ -642,24 +642,23 @@ impl TypeInfo {
 
             if let Some(ft) = field_type {
                 // Check for hardcoded knowledge
-                let example = if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&ft) {
-                    hardcoded.example_value.clone()
-                } else {
-                    // Check if it's an enum and build example
-                    if let Some(field_schema) = registry.get(&ft) {
-                        if field_schema
-                            .get_field(SchemaField::Kind)
-                            .and_then(Value::as_str)
-                            == Some("Enum")
-                        {
-                            Self::build_enum_example(field_schema)
-                        } else {
-                            json!(null)
-                        }
-                    } else {
-                        json!(null)
-                    }
-                };
+                let example = BRP_FORMAT_KNOWLEDGE.get(&ft).map_or_else(
+                    || {
+                        // Check if it's an enum and build example
+                        registry.get(&ft).map_or(json!(null), |field_schema| {
+                            if field_schema
+                                .get_field(SchemaField::Kind)
+                                .and_then(Value::as_str)
+                                == Some("Enum")
+                            {
+                                Self::build_enum_example(field_schema)
+                            } else {
+                                json!(null)
+                            }
+                        })
+                    },
+                    |hardcoded| hardcoded.example_value.clone(),
+                );
 
                 spawn_example.insert(field_name.clone(), example);
             }

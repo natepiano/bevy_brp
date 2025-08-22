@@ -9,14 +9,13 @@ use std::collections::HashMap;
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 
-use super::registry_cache::get_full_registry;
 use super::response_types::{BrpTypeName, TypeSchemaResponse, TypeSchemaSummary};
 use super::type_info::TypeInfo;
-use crate::brp_tools::Port;
+use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Parameters for the `brp_type_schema` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -27,12 +26,6 @@ pub struct TypeSchemaParams {
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port: Port,
-
-    /// Force refresh of the type registry cache (default: false)
-    /// Use this when you've made changes to your Bevy app's types and need to fetch the latest
-    /// registry information
-    #[serde(default)]
-    pub refresh_cache: bool,
 }
 
 /// Result for the `brp_type_schema` tool
@@ -72,8 +65,8 @@ impl ToolFn for TypeSchema {
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
-    // Construct V2 engine with optional cache refresh
-    let engine = TypeSchemaEngine::new(params.port, params.refresh_cache).await?;
+    // Construct V2 engine
+    let engine = TypeSchemaEngine::new(params.port).await?;
 
     // Run the engine to produce the typed response
     let response = engine.generate_response(&params.types);
@@ -90,12 +83,38 @@ struct TypeSchemaEngine {
 
 impl TypeSchemaEngine {
     /// Create a new engine instance by fetching the complete registry
-    ///
-    /// If `refresh_cache` is true, the registry cache will be cleared before fetching,
-    /// ensuring fresh type information is retrieved.
-    async fn new(port: Port, refresh_cache: bool) -> Result<Self> {
-        let registry = get_full_registry(port, refresh_cache).await?;
+    async fn new(port: Port) -> Result<Self> {
+        let registry = Self::get_full_registry(port).await?;
         Ok(Self { registry })
+    }
+
+    /// Get the complete registry for a port
+    ///
+    /// Fetches fresh registry data from the BRP server on each call.
+    async fn get_full_registry(port: Port) -> Result<HashMap<BrpTypeName, Value>> {
+        // Fetch full registry from BRP
+        let client = BrpClient::new(BrpMethod::BevyRegistrySchema, port, Some(json!({})));
+
+        match client.execute_raw().await {
+            Ok(ResponseStatus::Success(Some(registry_data))) => {
+                // Convert to HashMap with BrpTypeName keys
+                let mut registry_map = HashMap::new();
+
+                if let Some(obj) = registry_data.as_object() {
+                    for (key, value) in obj {
+                        let brp_type_name = BrpTypeName::from(key);
+                        registry_map.insert(brp_type_name, value.clone());
+                    }
+                }
+
+                Ok(registry_map)
+            }
+            Ok(_) => Err(crate::error::Error::BrpCommunication(
+                "Registry call returned no data".to_string(),
+            )
+            .into()),
+            Err(e) => Err(e),
+        }
     }
 
     /// Generate response for requested types using the V2 approach
