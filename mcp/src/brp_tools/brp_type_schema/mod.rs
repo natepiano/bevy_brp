@@ -12,4 +12,4 @@ mod wrapper_types;
 
 // Re-export public API
 pub use response_types::BrpTypeName;
-pub use tool::{TypeSchema, TypeSchemaParams};
+pub use tool::{TypeSchema, TypeSchemaEngine, TypeSchemaParams};

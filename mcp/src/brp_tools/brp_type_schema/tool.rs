@@ -77,13 +77,13 @@ async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
 }
 
 /// orchestrates type schema generation using a single call to get the complete registry
-struct TypeSchemaEngine {
+pub struct TypeSchemaEngine {
     registry: HashMap<BrpTypeName, Value>,
 }
 
 impl TypeSchemaEngine {
     /// Create a new engine instance by fetching the complete registry
-    async fn new(port: Port) -> Result<Self> {
+    pub async fn new(port: Port) -> Result<Self> {
         let registry = Self::get_full_registry(port).await?;
         Ok(Self { registry })
     }
@@ -118,7 +118,7 @@ impl TypeSchemaEngine {
     }
 
     /// Generate response for requested types using the V2 approach
-    fn generate_response(&self, requested_types: &[String]) -> TypeSchemaResponse {
+    pub fn generate_response(&self, requested_types: &[String]) -> TypeSchemaResponse {
         let mut response = TypeSchemaResponse {
             discovered_count: 0,
             requested_types:  requested_types.to_vec(),

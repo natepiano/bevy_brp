@@ -8,10 +8,9 @@
 use serde_json::json;
 
 use super::orchestrator;
-use super::types::{DiscoverySource, Operation, TypeCategoryFromDiscoverFormat};
 use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port};
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::BrpMethod;
 
 // Complete orchestrator flow using new engine only
 // Note: The following tests require a running BRP server and have been removed:
@@ -135,98 +134,8 @@ async fn test_orchestrator_extras_discovery_path() {
 }
 
 // Integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion
-// and mutation_paths preservation (Phase 5)
-
-#[test]
-fn test_enrich_from_extras_full_enrichment() {
-    // Simulate extras discovery response JSON with full metadata
-    let extras_response = json!({
-        "type_name": "bevy_transform::components::transform::Transform",
-        "in_registry": true,
-        "has_serialize": true,
-        "has_deserialize": true,
-        "type_category": "Struct",
-        "example_values": {
-            "spawn": {
-                "translation": [1.0, 2.0, 3.0],
-                "rotation": [0.0, 0.0, 0.0, 1.0],
-                "scale": [1.0, 1.0, 1.0]
-            },
-            "insert": {
-                "translation": [0.0, 0.0, 0.0],
-                "rotation": [0.0, 0.0, 0.0, 1.0],
-                "scale": [1.0, 1.0, 1.0]
-            }
-        },
-        "mutation_paths": {
-            ".translation.x": "X component of translation vector",
-            ".translation.y": "Y component of translation vector",
-            ".translation.z": "Z component of translation vector",
-            ".rotation.w": "W component of rotation quaternion",
-            ".scale.x": "X component of scale vector"
-        }
-    });
-
-    // Start with a registry-based UnifiedTypeInfo
-    let mut info = UnifiedTypeInfo::for_transform_type(
-        "bevy_transform::components::transform::Transform",
-        serde_json::json!({}),
-    );
-
-    // Verify initial state
-    assert_eq!(info.discovery_source, DiscoverySource::PatternMatching);
-    assert!(info.format_info.examples.is_empty() || info.format_info.examples.len() <= 2);
-    let initial_mutation_count = info.format_info.mutation_paths.len();
-
-    // Enrich with extras data
-    info.enrich_from_type_schema(&extras_response);
-
-    // Verify enrichment occurred
-    assert_eq!(info.discovery_source, DiscoverySource::RegistryPlusExtras);
-
-    // Verify basic type information is preserved from original
-    assert_eq!(
-        info.type_name.as_str(),
-        "bevy_transform::components::transform::Transform"
-    );
-    assert_eq!(
-        info.type_category_from_discover_format,
-        TypeCategoryFromDiscoverFormat::Struct
-    ); // for_transform_type creates Struct category
-
-    // Note: Registry status, serialization, and supported_operations are not enriched by extras
-    // They remain as set by the original constructor
-
-    // Critical: Verify mutation_paths are enriched from extras (additive merge)
-    let final_mutation_count = info.format_info.mutation_paths.len();
-    assert!(
-        final_mutation_count > initial_mutation_count,
-        "Mutation paths should be added from extras"
-    );
-
-    // Verify specific mutation paths from extras are added
-    assert_eq!(
-        info.format_info.mutation_paths.get(".translation.x"),
-        Some(&"X component of translation vector".to_string())
-    );
-    assert_eq!(
-        info.format_info.mutation_paths.get(".rotation.w"),
-        Some(&"W component of rotation quaternion".to_string())
-    );
-
-    // Verify example values are enriched from extras
-    assert!(
-        !info.format_info.examples.is_empty(),
-        "Examples should be preserved"
-    );
-    assert!(
-        info.format_info
-            .examples
-            .contains_key(&Operation::SpawnInsert {
-                parameter_name: ParameterName::Components,
-            })
-    );
-}
+// Note: test_enrich_from_extras_full_enrichment removed after replacing
+// bevy_brp_extras with TypeSchemaEngine (Phase 5)
 
 #[test]
 fn test_registry_schema_to_unified_type_info_conversion() {

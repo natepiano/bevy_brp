@@ -28,7 +28,9 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
 - Shutdown the extras_plugin app
 
 ### 3. BrpNotRespondingError - App Running Without BRP
-- Launch no_extras_plugin example (which runs on port 25000, not 20113)
+**CRITICAL**: no_extras_plugin has a HARD-CODED port of 25000 in its source code!
+- Launch no_extras_plugin example (which ALWAYS runs on port 25000, NOT 20113)
+  - Do NOT pass a port parameter when launching - it will use its hard-coded port 25000
 - Execute `mcp__brp__brp_status` with app_name: "no_extras_plugin", port: 20113
 - Verify response has status: "error"
 - Verify error_info contains:
@@ -46,8 +48,11 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
 - Verify message indicates process is not currently running
 
 ### 5. Successful Shutdown with Process Kill (Degraded Success)
+**CRITICAL PORT NOTE**: no_extras_plugin ALWAYS runs on hard-coded port 25000, NOT the test's configured port!
 - Ensure no_extras_plugin is still running from step 3
 - Execute `mcp__brp__brp_shutdown` with app_name: "no_extras_plugin", port: 25000
+  - **IMPORTANT**: Use port 25000 here, NOT port 20113!
+  - **REASON**: no_extras_plugin has a hard-coded port of 25000 in its source code
 - Verify response has status: "success" (not error!)
 - Verify metadata contains:
   - app_name: "no_extras_plugin"

@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use tracing::debug;
 
 use super::unified_types::UnifiedTypeInfo;
-use crate::brp_tools::brp_type_schema::BrpTypeName;
+use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeSchemaEngine};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::BrpMethod;
@@ -51,28 +51,27 @@ impl DiscoveryContext {
         Ok(Self { port, type_map })
     }
 
-    /// Enrich existing type information with data from `bevy_brp_extras`
+    /// Enrich existing type information with data from type schema engine
     ///
     /// This method attempts to discover additional format information for all types
-    /// currently in the context using `bevy_brp_extras`. It preserves existing registry
-    /// information and marks enriched types with the `RegistryPlusExtras` source.
+    /// currently in the context using the local `TypeSchemaEngine`. It preserves existing
+    /// registry information and marks enriched types with the `RegistryPlusExtras` source.
     ///
-    /// Phase 0.2: Now includes comparison infrastructure to establish baseline visibility
-    /// into extras responses vs our local implementation (currently empty).
+    /// Phase 5: Now uses direct `TypeSchemaEngine` integration instead of extras plugin.
     ///
     /// # Errors
     ///
     /// Returns Ok(()) even if some discoveries fail - individual failures are logged
     /// but don't prevent the overall enrichment process from completing.
     pub async fn enrich_with_type_registry(&mut self) -> Result<()> {
-        let response = self.call_extras_discover_format().await?;
+        let response = self.call_type_schema_engine().await?;
 
         // Existing enrichment logic
         for (type_name, type_info) in &mut self.type_map {
-            if let Some(extras_data) = find_type_in_type_schema(type_name, &response) {
-                type_info.enrich_from_type_schema(extras_data);
+            if let Some(type_schema_data) = find_type_in_type_schema(type_name, &response) {
+                type_info.enrich_from_type_schema(type_schema_data);
                 debug!(
-                    "TypeDiscoveryContext: Enriched type '{}' with extras data",
+                    "TypeDiscoveryContext: Enriched type '{}' with type schema data",
                     type_name
                 );
             }
@@ -173,8 +172,8 @@ impl DiscoveryContext {
         None
     }
 
-    /// Call `bevy_brp_extras/discover_format` for all types
-    async fn call_extras_discover_format(&self) -> Result<Value> {
+    /// Call `TypeSchemaEngine` to discover format information for all types
+    async fn call_type_schema_engine(&self) -> Result<Value> {
         let type_names: Vec<String> = self
             .type_map
             .keys()
@@ -182,41 +181,19 @@ impl DiscoveryContext {
             .collect();
 
         debug!(
-            "TypeDiscoveryContext: Calling brp_extras/discover_format on port {} with {} types",
+            "TypeDiscoveryContext: Calling TypeSchemaEngine on port {} with {} types",
             self.port,
             type_names.len()
         );
 
-        // set of types to ask for format discovery
-        let params = json!({
-            "types": type_names
-        });
+        // Create TypeSchemaEngine and get response
+        let engine = TypeSchemaEngine::new(self.port).await?;
+        let response = engine.generate_response(&type_names);
 
-        let client = BrpClient::new(BrpMethod::BrpExtrasDiscoverFormat, self.port, Some(params));
-        match client.execute_raw().await {
-            Ok(ResponseStatus::Success(Some(response_data))) => {
-                debug!("TypeDiscoveryContext: Received successful response from brp_extras");
-                Ok(response_data)
-            }
-            Ok(ResponseStatus::Success(None)) => {
-                debug!("TypeDiscoveryContext: Received empty success response");
-                Ok(json!({}))
-            }
-            Ok(ResponseStatus::Error(error)) => {
-                debug!(
-                    "TypeDiscoveryContext: brp_extras returned error: {:?}",
-                    error
-                );
-                Err(error_stack::Report::new(Error::BrpCommunication(format!(
-                    "brp_extras/discover_format failed: {} - {}",
-                    error.code, error.message
-                ))))
-            }
-            Err(e) => {
-                debug!("TypeDiscoveryContext: Failed to call brp_extras: {}", e);
-                Err(e)
-            }
-        }
+        // Convert TypeSchemaResponse to Value for compatibility with existing code
+        serde_json::to_value(response).map_err(|e| {
+            Error::BrpCommunication(format!("Failed to serialize TypeSchemaResponse: {e}")).into()
+        })
     }
 
     /// Extract type names and the original parameter value from method parameters

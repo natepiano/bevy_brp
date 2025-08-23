@@ -385,30 +385,20 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Extract format examples from `bevy_brp_extras` response
+    /// Extract format examples from `TypeInfo` response
     fn extract_examples_from_type_schema(
-        extras_response: &Value,
+        type_info_response: &Value,
     ) -> Option<HashMap<Operation, Value>> {
         let mut examples = HashMap::new();
 
-        // Look for example_values field in the response
-        if let Some(example_values) = extras_response
-            .get("example_values")
-            .and_then(Value::as_object)
-        {
-            for (operation_str, example) in example_values {
-                // The extras code only generates "spawn" examples (see
-                // extras/src/discovery/core.rs:213) Map it to our Operation enum
-                if operation_str == "spawn" {
-                    examples.insert(
-                        Operation::SpawnInsert {
-                            parameter_name: ParameterName::Components,
-                        },
-                        example.clone(),
-                    );
-                }
-                // Ignore any other keys that don't map to our operations
-            }
+        // Look for spawn_format field directly in the TypeInfo structure
+        if let Some(spawn_format) = type_info_response.get("spawn_format") {
+            examples.insert(
+                Operation::SpawnInsert {
+                    parameter_name: ParameterName::Components,
+                },
+                spawn_format.clone(),
+            );
         }
 
         // Only return if we found at least one example
@@ -419,20 +409,22 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Extract mutation paths from `bevy_brp_extras` response
+    /// Extract mutation paths from `TypeInfo` response
     fn extract_mutation_paths_from_type_schema(
-        extras_response: &Value,
+        type_info_response: &Value,
     ) -> Option<HashMap<String, String>> {
         let mut mutation_paths = HashMap::new();
 
-        // Look for mutation_paths field in the response
-        if let Some(paths) = extras_response
+        // Look for mutation_paths field in the TypeInfo response
+        if let Some(paths) = type_info_response
             .get("mutation_paths")
             .and_then(Value::as_object)
         {
-            for (path, description) in paths {
-                if let Some(desc_str) = description.as_str() {
-                    mutation_paths.insert(path.clone(), desc_str.to_string());
+            // Each value is now a MutationPathInfo object, extract the description
+            for (path, mutation_info) in paths {
+                if let Some(description) = mutation_info.get("description").and_then(Value::as_str)
+                {
+                    mutation_paths.insert(path.clone(), description.to_string());
                 }
             }
         }
@@ -445,39 +437,38 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Extract enum info from `bevy_brp_extras` response
-    fn extract_enum_info_from_type_schema(extras_response: &Value) -> Option<EnumInfo> {
+    /// Extract enum info from `TypeInfo` response
+    fn extract_enum_info_from_type_schema(type_info_response: &Value) -> Option<EnumInfo> {
         debug!(
-            "extract_enum_info_from_extras: Processing response: {}",
-            serde_json::to_string_pretty(extras_response)
+            "extract_enum_info_from_type_schema: Processing response: {}",
+            serde_json::to_string_pretty(type_info_response)
                 .unwrap_or_else(|_| "Failed to serialize".to_string())
         );
 
-        extras_response.get("enum_info").and_then(|enum_obj| {
-            enum_obj
-                .get("variants")
-                .and_then(Value::as_array)
-                .map(|variants_array| {
-                    let variants = variants_array
-                        .iter()
-                        .filter_map(|variant| {
-                            if let Some(variant_obj) = variant.as_object() {
-                                let name = variant_obj.get("name")?.as_str()?.to_string();
-                                let variant_type = variant_obj
-                                    .get("type")
-                                    .and_then(Value::as_str)
-                                    .unwrap_or("Unit")
-                                    .to_string();
-                                Some(EnumVariant { name, variant_type })
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
+        // The new TypeInfo structure has enum_info as a direct array of EnumVariantInfo
+        type_info_response
+            .get("enum_info")
+            .and_then(Value::as_array)
+            .map(|variants_array| {
+                let variants = variants_array
+                    .iter()
+                    .filter_map(|variant| {
+                        if let Some(variant_obj) = variant.as_object() {
+                            let name = variant_obj.get("variant_name")?.as_str()?.to_string();
+                            let variant_type = variant_obj
+                                .get("variant_kind")
+                                .and_then(Value::as_str)
+                                .unwrap_or("Unit")
+                                .to_string();
+                            Some(EnumVariant { name, variant_type })
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
 
-                    EnumInfo { variants }
-                })
-        })
+                EnumInfo { variants }
+            })
     }
 
     /// Regenerate all examples based on current type information
