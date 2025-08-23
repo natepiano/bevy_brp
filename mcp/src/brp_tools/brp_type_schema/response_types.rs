@@ -46,6 +46,14 @@ impl From<BrpSupportedOperation> for String {
 pub struct BrpTypeName(String);
 
 impl BrpTypeName {
+    /// Create a `BrpTypeName` representing an unknown type
+    ///
+    /// This is commonly used as a fallback when type information
+    /// is not available or cannot be determined.
+    pub fn unknown() -> Self {
+        Self("unknown".to_string())
+    }
+
     /// Get the underlying string reference
     pub fn as_str(&self) -> &str {
         &self.0
@@ -188,14 +196,6 @@ pub enum MutationContext {
     },
 }
 
-impl Default for MutationContext {
-    fn default() -> Self {
-        Self::RootValue {
-            type_name: BrpTypeName::from("unknown"),
-        }
-    }
-}
-
 impl MutationContext {
     /// Generate a human-readable description for this mutation
     pub fn description(&self) -> String {
@@ -236,9 +236,9 @@ impl MutationContext {
     }
 }
 
-/// Mutation path information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MutationPath {
+/// Mutation path information (internal representation)
+#[derive(Debug, Clone)]
+pub struct MutationPathInternal {
     /// Example value for this path
     pub example:       Value,
     /// Path for mutation, e.g., ".translation.x"
@@ -248,13 +248,12 @@ pub struct MutationPath {
     /// Type information for this path
     pub type_name:     BrpTypeName,
     /// Context describing what kind of mutation this is
-    #[serde(skip)]
     pub context:       MutationContext,
 }
 
-/// Information about a mutation path
+/// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MutationPathInfo {
+pub struct MutationPath {
     /// Human-readable description of what this path mutates
     pub description:   String,
     /// Fully-qualified type name of the field
@@ -277,9 +276,13 @@ pub struct MutationPathInfo {
     pub note:          Option<String>,
 }
 
-impl MutationPathInfo {
+impl MutationPath {
     /// Create from internal `MutationPath` with proper formatting logic
-    pub fn from_mutation_path(path: &MutationPath, description: String, is_option: bool) -> Self {
+    pub fn from_mutation_path(
+        path: &MutationPathInternal,
+        description: String,
+        is_option: bool,
+    ) -> Self {
         if is_option {
             // For Option types, check if we have the special format
             if let Some(some_val) = path.example.get_field(OptionField::Some)
