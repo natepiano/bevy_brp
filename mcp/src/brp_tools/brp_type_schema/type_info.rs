@@ -140,7 +140,7 @@ impl TypeInfo {
 
         // Create root context for the new trait system
         let location = RootOrField::root(&BrpTypeName::unknown());
-        let ctx = MutationPathContext::new(location, registry, None, Some(type_schema));
+        let ctx = MutationPathContext::new(location, registry, None);
 
         // Use the new trait dispatch system
         type_kind.build_paths(&ctx).unwrap_or_else(|_| Vec::new())
@@ -167,14 +167,12 @@ impl TypeInfo {
                     || {
                         // Check if it's an enum and build example
                         registry.get(&ft).map_or(json!(null), |field_schema| {
-                            if field_schema
-                                .get_field(SchemaField::Kind)
-                                .and_then(Value::as_str)
-                                == Some("Enum")
-                            {
-                                EnumMutationBuilder::build_enum_example(field_schema)
-                            } else {
-                                json!(null)
+                            let field_kind = TypeKind::from_schema(field_schema, &ft);
+                            match field_kind {
+                                TypeKind::Enum => {
+                                    EnumMutationBuilder::build_enum_example(field_schema)
+                                }
+                                _ => json!(null),
                             }
                         })
                     },
@@ -323,7 +321,7 @@ impl TypeInfo {
         let properties = type_schema.get_field(SchemaField::Properties).cloned();
 
         let required = type_schema
-            .get("required")
+            .get_field(SchemaField::Required)
             .and_then(Value::as_array)
             .map(|arr| {
                 arr.iter()
@@ -333,12 +331,12 @@ impl TypeInfo {
             });
 
         let module_path = type_schema
-            .get("modulePath")
+            .get_field(SchemaField::ModulePath)
             .and_then(Value::as_str)
             .map(String::from);
 
         let crate_name = type_schema
-            .get("crateName")
+            .get_field(SchemaField::CrateName)
             .and_then(Value::as_str)
             .map(String::from);
 

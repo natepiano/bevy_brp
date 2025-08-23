@@ -348,15 +348,18 @@ pub enum ReflectTrait {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaField {
+    CrateName,
     Kind,
+    ModulePath,
     OneOf,
-    ShortPath,
     PrefixItems,
     Properties,
-    Type,
     #[strum(serialize = "$ref")]
     Ref,
     ReflectTypes,
+    Required,
+    ShortPath,
+    Type,
 }
 
 impl SchemaField {

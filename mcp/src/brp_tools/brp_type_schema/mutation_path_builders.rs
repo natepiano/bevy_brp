@@ -72,8 +72,6 @@ pub struct MutationPathContext<'a> {
     registry:         &'a HashMap<BrpTypeName, Value>,
     /// Wrapper type information if applicable (Option, Handle, etc.)
     pub wrapper_info: Option<(WrapperType, BrpTypeName)>,
-    /// The schema for the current type
-    schema:           Option<&'a Value>,
 }
 
 impl<'a> MutationPathContext<'a> {
@@ -82,13 +80,11 @@ impl<'a> MutationPathContext<'a> {
         location: RootOrField,
         registry: &'a HashMap<BrpTypeName, Value>,
         wrapper_info: Option<(WrapperType, BrpTypeName)>,
-        schema: Option<&'a Value>,
     ) -> Self {
         Self {
             location,
             registry,
             wrapper_info,
-            schema,
         }
     }
 
@@ -98,17 +94,15 @@ impl<'a> MutationPathContext<'a> {
     }
 
     /// Require the schema to be present, logging a warning if missing
+    /// Looks up the schema from the registry based on the current type
     pub fn require_schema(&self) -> Option<&Value> {
-        self.schema.map_or_else(
-            || {
-                warn!(
-                    type_name = %self.type_name(),
-                    "Schema missing for type - mutation paths may be incomplete"
-                );
-                None
-            },
-            Some,
-        )
+        self.registry.get(self.type_name()).or_else(|| {
+            warn!(
+                type_name = %self.type_name(),
+                "Schema missing for type - mutation paths may be incomplete"
+            );
+            None
+        })
     }
 
     /// Look up a type in the registry
@@ -122,14 +116,12 @@ impl<'a> MutationPathContext<'a> {
         field_name: &str,
         field_type: &BrpTypeName,
         wrapper_info: Option<(WrapperType, BrpTypeName)>,
-        schema: Option<&'a Value>,
     ) -> Self {
         let parent_type = self.type_name();
         Self::new(
             RootOrField::field(field_name, field_type, parent_type),
             self.registry,
             wrapper_info,
-            schema,
         )
     }
 
@@ -440,7 +432,7 @@ impl MutationPathBuilder for StructMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.require_schema() else {
+        let Some(_schema) = ctx.require_schema() else {
             return Ok(paths);
         };
 
@@ -454,59 +446,16 @@ impl MutationPathBuilder for StructMutationBuilder {
                 field_type,
                 parent_type,
             } => {
-                // First, add the struct field itself with null example
-                let final_example = ctx.wrap_example(json!(null));
+                // First, add the struct field itself
+                paths.push(Self::build_field_mutation_path(
+                    field_name,
+                    field_type,
+                    parent_type,
+                    ctx,
+                ));
 
-                paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       final_example,
-                    enum_variants: None,
-                    type_name:     field_type.clone(),
-                    context:       MutationPathKind::StructField {
-                        field_name:  field_name.clone(),
-                        parent_type: parent_type.clone(),
-                    },
-                });
-
-                // Then recursively expand nested fields (depth = 1 only)
-                // Create a context for nested field building
-                let nested_context = MutationPathContext::new(
-                    RootOrField::root(field_type),
-                    ctx.registry,
-                    None, // No wrapper for nested fields
-                    Some(schema),
-                );
-
-                let nested_paths = Self::build_property_paths(&nested_context)?;
-                for nested_path in nested_paths {
-                    // Convert to nested path by prepending the field name
-                    let full_path = if nested_path.path.is_empty() {
-                        format!(".{field_name}")
-                    } else {
-                        format!(".{field_name}{}", nested_path.path)
-                    };
-
-                    // Create new path with NestedPath context
-                    let mut components = vec![field_name.clone()];
-                    if let MutationPathKind::StructField {
-                        field_name: nested_field,
-                        ..
-                    } = &nested_path.context
-                    {
-                        components.push(nested_field.clone());
-                    }
-
-                    paths.push(MutationPathInternal {
-                        path:          full_path,
-                        example:       nested_path.example,
-                        enum_variants: nested_path.enum_variants,
-                        type_name:     nested_path.type_name.clone(),
-                        context:       MutationPathKind::NestedPath {
-                            components,
-                            final_type: nested_path.type_name,
-                        },
-                    });
-                }
+                // Then expand nested fields (depth = 1 only)
+                paths.extend(Self::expand_nested_fields(field_name, field_type, ctx)?);
             }
         }
 
@@ -515,6 +464,76 @@ impl MutationPathBuilder for StructMutationBuilder {
 }
 
 impl StructMutationBuilder {
+    /// Build a single field mutation path
+    fn build_field_mutation_path(
+        field_name: &str,
+        field_type: &BrpTypeName,
+        parent_type: &BrpTypeName,
+        ctx: &MutationPathContext<'_>,
+    ) -> MutationPathInternal {
+        let final_example = ctx.wrap_example(json!(null));
+
+        MutationPathInternal {
+            path:          format!(".{field_name}"),
+            example:       final_example,
+            enum_variants: None,
+            type_name:     field_type.clone(),
+            context:       MutationPathKind::StructField {
+                field_name:  field_name.to_string(),
+                parent_type: parent_type.clone(),
+            },
+        }
+    }
+
+    /// Expand nested fields for a struct field (depth = 1 only)
+    fn expand_nested_fields(
+        field_name: &str,
+        field_type: &BrpTypeName,
+        ctx: &MutationPathContext<'_>,
+    ) -> Result<Vec<MutationPathInternal>> {
+        let mut paths = Vec::new();
+
+        // Create a context for nested field building
+        let nested_context = MutationPathContext::new(
+            RootOrField::root(field_type),
+            ctx.registry,
+            None, // No wrapper for nested fields
+        );
+
+        let nested_paths = Self::build_property_paths(&nested_context)?;
+        for nested_path in nested_paths {
+            // Convert to nested path by prepending the field name
+            let full_path = if nested_path.path.is_empty() {
+                format!(".{field_name}")
+            } else {
+                format!(".{field_name}{}", nested_path.path)
+            };
+
+            // Create new path with NestedPath context
+            let mut components = vec![field_name.to_string()];
+            if let MutationPathKind::StructField {
+                field_name: nested_field,
+                ..
+            } = &nested_path.context
+            {
+                components.push(nested_field.clone());
+            }
+
+            paths.push(MutationPathInternal {
+                path:          full_path,
+                example:       nested_path.example,
+                enum_variants: nested_path.enum_variants,
+                type_name:     nested_path.type_name.clone(),
+                context:       MutationPathKind::NestedPath {
+                    components,
+                    final_type: nested_path.type_name,
+                },
+            });
+        }
+
+        Ok(paths)
+    }
+
     /// Build mutation paths for all properties in a struct
     ///
     /// This method handles the property-level iteration and delegates to the
@@ -606,8 +625,7 @@ impl StructMutationBuilder {
                 .map_or(TypeKind::Value, |schema| TypeKind::from_schema(schema, &ft));
 
             // Create a field context for this property
-            let field_ctx =
-                ctx.create_field_context(field_name, &ft, wrapper_info, field_type_schema);
+            let field_ctx = ctx.create_field_context(field_name, &ft, wrapper_info);
 
             // Dispatch to the appropriate builder based on field type kind
             let field_paths = field_type_kind.build_paths(&field_ctx)?;
