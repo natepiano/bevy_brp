@@ -5,6 +5,7 @@
 //! serialization knowledge to provide format discovery equivalent to `brp_extras_discover_format`.
 
 mod format_knowledge;
+mod mutation_path_builders;
 mod response_types;
 mod tool;
 mod type_info;

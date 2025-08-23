@@ -15,8 +15,9 @@ use crate::string_traits::JsonFieldAccess;
 
 /// Enum for BRP supported operations
 /// Each operation has specific requirements based on type registration and traits
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, AsRefStr, Serialize, Deserialize)]
 #[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum BrpSupportedOperation {
     /// Get operation - requires type in registry
     Get,
@@ -171,7 +172,7 @@ impl From<MathComponent> for String {
 
 /// Context for a mutation path describing what kind of mutation this is
 #[derive(Debug, Clone)]
-pub enum MutationContext {
+pub enum MutationPathKind {
     /// Replace the entire value (root mutation with empty path)
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
@@ -196,7 +197,7 @@ pub enum MutationContext {
     },
 }
 
-impl MutationContext {
+impl MutationPathKind {
     /// Generate a human-readable description for this mutation
     pub fn description(&self) -> String {
         match self {
@@ -248,7 +249,7 @@ pub struct MutationPathInternal {
     /// Type information for this path
     pub type_name:     BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub context:       MutationContext,
+    pub context:       MutationPathKind,
 }
 
 /// Information about a mutation path that we serialize to our response
@@ -356,7 +357,6 @@ pub enum SchemaField {
     #[strum(serialize = "$ref")]
     Ref,
     ReflectTypes,
-    TypePath,
 }
 
 /// Category of type for quick identification and processing
