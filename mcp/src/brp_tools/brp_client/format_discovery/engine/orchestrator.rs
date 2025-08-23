@@ -110,7 +110,7 @@ impl DiscoveryEngine<TypeDiscovery> {
             DiscoveryContext::new(self.method, self.port, &self.params).await?;
 
         // Enrich context with extras discovery upfront (don't fail if enrichment fails)
-        if let Err(e) = discovery_context.enrich_with_extras().await {
+        if let Err(e) = discovery_context.enrich_with_type_registry().await {
             tracing::debug!("TypeDiscovery: Failed to enrich with extras: {e:?}");
         }
 

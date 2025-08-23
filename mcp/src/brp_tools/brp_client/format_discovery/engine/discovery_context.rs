@@ -64,7 +64,7 @@ impl DiscoveryContext {
     ///
     /// Returns Ok(()) even if some discoveries fail - individual failures are logged
     /// but don't prevent the overall enrichment process from completing.
-    pub async fn enrich_with_extras(&mut self) -> Result<()> {
+    pub async fn enrich_with_type_registry(&mut self) -> Result<()> {
         let response = self.call_extras_discover_format().await?;
 
         // Existing enrichment logic
