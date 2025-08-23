@@ -1,86 +1,331 @@
 [
   {
-    "id": "struct_case_match",
-    "content": "Add TypeKind::Struct case to build_field_mutation_paths match statement",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added TypeKind::Struct case that first adds the struct field itself, then recursively expands nested fields to depth 1 with NestedPath context"
-  },
-  {
-    "id": "build_after_struct",
-    "content": "Run cargo build && cargo +nightly fmt after struct case addition",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Build succeeded after fixing borrow checker error by cloning type_name. Formatter ran successfully"
-  },
-  {
-    "id": "test_nested_paths",
-    "content": "Test nested path generation with extras_plugin example",
-    "status": "completed",
-    "priority": "high",
-    "notes": "ISSUE FOUND: TestComplexComponent.transform field only shows .transform path, missing nested paths like .transform.translation.x. Need to debug TypeKind::Struct case."
-  },
-  {
-    "id": "run_type_schema_test",
-    "content": "Run type_schema test to verify mutation paths are correct",
-    "status": "in_progress",
-    "priority": "high",
-    "notes": ""
-  },
-  {
-    "id": "build_after_testing",
-    "content": "Run cargo build && cargo +nightly fmt after testing",
+    "id": "1",
+    "content": "Create mutation_path_builders.rs module with PathBuildingContext enum",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "run_clippy",
+    "id": "2", 
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Add MutationPathContext struct to mutation_path_builders.rs", 
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending", 
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Add MutationPathBuilder trait definition to mutation_path_builders.rs",
+    "status": "pending",
+    "priority": "high", 
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7", 
+    "content": "Implement MutationPathBuilder for TypeKind with dispatch logic",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors", 
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
     "status": "pending",
-    "priority": "medium",
+    "priority": "high",
     "notes": ""
   },
   {
-    "id": "fix_clippy_issues",
+    "id": "10",
     "content": "Fix all clippy issues following warning rules",
     "status": "pending",
-    "priority": "medium",
+    "priority": "high", 
     "notes": ""
   },
   {
-    "id": "run_nextest",
+    "id": "11",
+    "content": "Create ArrayMutationBuilder struct and implement context-aware build_paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Move build_array_field_mutation_paths logic to ArrayMutationBuilder",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending", 
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Create EnumMutationBuilder struct and implement context-aware build_paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Move build_enum_mutation_paths logic to EnumMutationBuilder", 
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Create StructMutationBuilder with context-aware recursion handling",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Implement StructMutationBuilder::build_simple_property_paths method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Implement StructMutationBuilder recursion with path prefixing logic", 
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Create TupleMutationBuilder struct and implement context-aware build_paths",
+    "status": "pending", 
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Move build_tuple_field_mutation_paths logic to TupleMutationBuilder",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high", 
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Update mod.rs to export mutation_path_builders module",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Refactor build_field_mutation_paths to use MutationPathBuilder trait",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Implement context creation logic for different TypeKind variants",
+    "status": "pending",
+    "priority": "high", 
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Add wrapper transformation helper method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Implement apply_wrapper_transformations for Option/Handle types",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "33",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "34",
+    "content": "Remove old Array/Enum/Tuple mutation path functions from type_info.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "35",
+    "content": "Update imports in type_info.rs to use new mutation_path_builders",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "36", 
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "37",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "38",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high", 
+    "notes": ""
+  },
+  {
+    "id": "39",
     "content": "Run cargo nextest run",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "stop_test_failures",
+    "id": "40",
     "content": "STOP if test failures - review with user",
     "status": "pending",
     "priority": "high",
     "notes": ""
   },
   {
-    "id": "return_control",
+    "id": "41",
+    "content": "STOP Implementation - Request User to Reinstall MCP Tool",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "42",
+    "content": "USER ACTION: Exit Claude Code and restart to pick up updated MCP tool",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "43",
+    "content": "Run agentic type_schema.md test to validate changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "44",
+    "content": "Fix any issues found during agentic testing",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "45",
     "content": "Subagent: STOP and return control",
     "status": "pending",
-    "priority": "low",
+    "priority": "high",
     "notes": ""
   },
   {
-    "id": "task_review_subagent",
+    "id": "46",
     "content": "Main: Task new subagent for code review (read-only)",
     "status": "pending",
-    "priority": "low",
+    "priority": "high",
     "notes": ""
   },
   {
-    "id": "review_with_user",
-    "content": "Review suggestions with user",
+    "id": "47",
+    "content": "Review suggestions with user", 
     "status": "pending",
-    "priority": "low",
+    "priority": "high",
     "notes": ""
   }
 ]
