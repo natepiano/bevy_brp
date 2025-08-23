@@ -159,7 +159,7 @@ impl TypeInfo {
 
         for (field_name, field_info) in properties {
             // Extract field type
-            let field_type = Self::extract_field_type(field_info);
+            let field_type = SchemaField::extract_field_type(field_info);
 
             if let Some(ft) = field_type {
                 // Check for hardcoded knowledge
@@ -297,16 +297,6 @@ impl TypeInfo {
             fields,
             tuple_types,
         })
-    }
-
-    /// Extract field type from field info
-    fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
-        field_info
-            .get_field(SchemaField::Type)
-            .and_then(|t| t.get_field(SchemaField::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
     }
 
     /// Extract reflect types from a registry schema

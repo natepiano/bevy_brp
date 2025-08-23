@@ -120,13 +120,23 @@
     "test_objective": "Test all success and error cases for brp_status and brp_shutdown"
   },
   {
-    "test_name": "type_schema",
-    "test_file": ".claude/commands/tests/type_schema.md",
+    "test_name": "discovery",
+    "test_file": ".claude/commands/tests/discovery.md",
     "port": 20114,
     "app_name": "extras_plugin",
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20114",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test brp_type_schema tool produces expected output structure"
+    "test_objective": "Test brp_type_schema discovery and metadata structure validation"
+  },
+  {
+    "test_name": "mutations",
+    "test_file": ".claude/commands/tests/mutations.md",
+    "port": 20115,
+    "app_name": "extras_plugin",
+    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20115",
+    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20115 parameter to launch extras_plugin example",
+    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "test_objective": "Test functional mutations using discovered type schema paths"
   }
 ]

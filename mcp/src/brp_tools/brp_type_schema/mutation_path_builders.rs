@@ -8,11 +8,11 @@
 
 use std::collections::HashMap;
 
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
 use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
 use super::response_types::{
-    BrpTypeName, MutationPathInternal, MutationPathKind, OptionField, SchemaField, TypeKind,
+    BrpTypeName, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
@@ -95,9 +95,37 @@ impl<'a> MutationPathContext<'a> {
         self.location.type_name()
     }
 
-    /// Check if this is a wrapper type (Option, Handle, etc.)
-    pub const fn is_wrapper(&self) -> bool {
-        self.wrapper_info.is_some()
+    /// Look up a type in the registry
+    pub fn get_type_schema(&self, type_name: &BrpTypeName) -> Option<&Value> {
+        self.registry.get(type_name)
+    }
+
+    /// Create a new context for a field within the current type
+    pub fn create_field_context(
+        &self,
+        field_name: &str,
+        field_type: &BrpTypeName,
+        wrapper_info: Option<(WrapperType, &'a str)>,
+        schema: Option<&'a Value>,
+    ) -> Self {
+        let parent_type = self.type_name();
+        Self::new(
+            RootOrField::field(field_name, field_type, parent_type),
+            self.registry,
+            wrapper_info,
+            schema,
+        )
+    }
+
+    /// Wrap an example value based on the wrapper type context
+    /// For Option types: creates {some: value, none: null}
+    /// For other wrappers: creates appropriate mutation format
+    /// For non-wrappers: returns the value as-is
+    pub fn wrap_example(&self, inner_value: Value) -> Value {
+        match self.wrapper_info {
+            Some((wrapper, _)) => wrapper.mutation_examples(inner_value),
+            None => inner_value,
+        }
     }
 }
 
@@ -282,18 +310,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                 parent_type,
             } => {
                 // For field enum mutations, handle wrapper types appropriately
-                let final_example = if ctx.is_wrapper() {
-                    if let Some((WrapperType::Option, _)) = ctx.wrapper_info {
-                        let mut option_example = Map::new();
-                        option_example.insert_field(OptionField::Some, enum_example);
-                        option_example.insert_field(OptionField::None, json!(null));
-                        Value::Object(option_example)
-                    } else {
-                        enum_example
-                    }
-                } else {
-                    enum_example
-                };
+                let final_example = ctx.wrap_example(enum_example);
 
                 paths.push(MutationPathInternal {
                     path: format!(".{field_name}"),
@@ -421,18 +438,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                 parent_type,
             } => {
                 // First, add the struct field itself with null example
-                let final_example = if ctx.is_wrapper() {
-                    if let Some((WrapperType::Option, _)) = ctx.wrapper_info {
-                        let mut option_example = Map::new();
-                        option_example.insert_field(OptionField::Some, json!(null));
-                        option_example.insert_field(OptionField::None, json!(null));
-                        Value::Object(option_example)
-                    } else {
-                        json!(null)
-                    }
-                } else {
-                    json!(null)
-                };
+                let final_example = ctx.wrap_example(json!(null));
 
                 paths.push(MutationPathInternal {
                     path:          format!(".{field_name}"),
@@ -514,7 +520,7 @@ impl StructMutationBuilder {
         // This requires calling back into the main mutation path building system
         for (field_name, field_info) in properties {
             // Extract field type from field info
-            let field_type = Self::extract_field_type(field_info);
+            let field_type = SchemaField::extract_field_type(field_info);
 
             let Some(ft) = field_type else {
                 // No type info, add null mutation path
@@ -550,7 +556,7 @@ impl StructMutationBuilder {
             if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(type_to_check)) {
                 // Get enum variants if this is an enum
                 let enum_variants = if wrapper_info.is_none() {
-                    ctx.registry.get(&ft).and_then(|schema| {
+                    ctx.get_type_schema(&ft).and_then(|schema| {
                         if TypeKind::from_schema(schema, &ft) == TypeKind::Enum {
                             EnumMutationBuilder::extract_enum_variants(schema)
                         } else {
@@ -574,19 +580,13 @@ impl StructMutationBuilder {
             }
 
             // Look up the field type in the registry to determine its kind
-            let field_type_schema = ctx.registry.get(&ft);
+            let field_type_schema = ctx.get_type_schema(&ft);
             let field_type_kind = field_type_schema
                 .map_or(TypeKind::Value, |schema| TypeKind::from_schema(schema, &ft));
 
             // Create a field context for this property
-            let parent_type = ctx.type_name();
-            let field_context = RootOrField::field(field_name, &ft, parent_type);
-            let field_ctx = MutationPathContext::new(
-                field_context,
-                ctx.registry,
-                wrapper_info,
-                field_type_schema,
-            );
+            let field_ctx =
+                ctx.create_field_context(field_name, &ft, wrapper_info, field_type_schema);
 
             // Dispatch to the appropriate builder based on field type kind
             let field_paths = field_type_kind.build_paths(&field_ctx);
@@ -594,18 +594,6 @@ impl StructMutationBuilder {
         }
 
         paths
-    }
-
-    // Helper methods that replicate functionality from the existing TypeInfo impl
-
-    /// Extract field type from field info
-    fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
-        field_info
-            .get_field(SchemaField::Type)
-            .and_then(|t| t.get_field(SchemaField::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
     }
 
     /// Build paths for types with hardcoded knowledge (Vec3, Quat, etc.)
@@ -620,14 +608,10 @@ impl StructMutationBuilder {
         let mut paths = Vec::new();
 
         // Build main path with appropriate example format
-        let final_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
-            let mut option_example = Map::new();
-            option_example.insert_field(OptionField::Some, hardcoded.example_value.clone());
-            option_example.insert_field(OptionField::None, json!(null));
-            Value::Object(option_example)
-        } else {
-            hardcoded.example_value.clone()
-        };
+        let final_example = wrapper_info.map_or_else(
+            || hardcoded.example_value.clone(),
+            |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
+        );
 
         paths.push(MutationPathInternal {
             path: format!(".{field_name}"),
@@ -643,14 +627,10 @@ impl StructMutationBuilder {
         // Add component paths if available (e.g., .x, .y, .z for Vec3)
         if let Some(subfield_paths) = &hardcoded.subfield_paths {
             for (component_name, component_example) in subfield_paths {
-                let component_example = if matches!(wrapper_info, Some((WrapperType::Option, _))) {
-                    let mut option_example = Map::new();
-                    option_example.insert_field(OptionField::Some, component_example.clone());
-                    option_example.insert_field(OptionField::None, json!(null));
-                    Value::Object(option_example)
-                } else {
-                    component_example.clone()
-                };
+                let component_example = wrapper_info.map_or_else(
+                    || component_example.clone(),
+                    |(wrapper, _)| wrapper.mutation_examples(component_example.clone()),
+                );
 
                 paths.push(MutationPathInternal {
                     path:          format!(".{field_name}.{component_name}"),
@@ -687,7 +667,7 @@ impl TupleMutationBuilder {
                 let elements: Vec<Value> = items
                     .iter()
                     .map(|item| {
-                        Self::extract_field_type(item)
+                        SchemaField::extract_field_type(item)
                             .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&t))
                             .map_or(json!(null), |k| k.example_value.clone())
                     })
@@ -753,7 +733,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 // Add paths for each tuple element
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
-                        if let Some(element_type) = Self::extract_field_type(element_info) {
+                        if let Some(element_type) = SchemaField::extract_field_type(element_info) {
                             let elem_example = BRP_FORMAT_KNOWLEDGE
                                 .get(&element_type)
                                 .map_or(json!(null), |k| k.example_value.clone());
@@ -780,7 +760,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 // Add paths for each tuple element
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
-                        if let Some(element_type) = Self::extract_field_type(element_info) {
+                        if let Some(element_type) = SchemaField::extract_field_type(element_info) {
                             let elem_example = BRP_FORMAT_KNOWLEDGE
                                 .get(&element_type)
                                 .map_or(json!(null), |k| k.example_value.clone());
@@ -802,18 +782,6 @@ impl MutationPathBuilder for TupleMutationBuilder {
         }
 
         paths
-    }
-}
-
-impl TupleMutationBuilder {
-    /// Extract field type from tuple element info
-    fn extract_field_type(element_info: &Value) -> Option<BrpTypeName> {
-        element_info
-            .get_field(SchemaField::Type)
-            .and_then(|t| t.get_field(SchemaField::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
     }
 }
 
