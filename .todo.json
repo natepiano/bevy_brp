@@ -1,0 +1,86 @@
+[
+  {
+    "id": "struct_case_match",
+    "content": "Add TypeKind::Struct case to build_field_mutation_paths match statement",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_struct",
+    "content": "Run cargo build && cargo +nightly fmt after struct case addition",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "test_nested_paths",
+    "content": "Test nested path generation with extras_plugin example",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "run_type_schema_test",
+    "content": "Run type_schema test to verify mutation paths are correct",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "build_after_testing",
+    "content": "Run cargo build && cargo +nightly fmt after testing",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "run_clippy",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix_clippy_issues",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "run_nextest",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "stop_test_failures",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "return_control",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "task_review_subagent",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "review_with_user",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  }
+]
