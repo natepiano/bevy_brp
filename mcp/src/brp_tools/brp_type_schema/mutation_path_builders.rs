@@ -21,7 +21,7 @@ use crate::string_traits::JsonFieldAccess;
 /// necessary because Struct, specifically, allows us to recurse down a level
 /// for complex types that have Struct fields
 #[derive(Debug, Clone)]
-pub enum PathBuildingContext {
+pub enum RootOrField {
     /// Building paths for a root type (used in root mutations)
     Root { type_name: BrpTypeName },
     /// Building paths for a field within a parent type
@@ -32,7 +32,7 @@ pub enum PathBuildingContext {
     },
 }
 
-impl PathBuildingContext {
+impl RootOrField {
     /// Create a field context
     pub fn field(field_name: &str, field_type: &BrpTypeName, parent_type: &BrpTypeName) -> Self {
         Self::Field {
@@ -56,7 +56,6 @@ impl PathBuildingContext {
             Self::Field { field_type, .. } => field_type,
         }
     }
-
 }
 
 /// Context for mutation path building operations
@@ -66,7 +65,7 @@ impl PathBuildingContext {
 #[derive(Debug)]
 pub struct MutationPathContext<'a> {
     /// The building context (root or field)
-    pub context:      PathBuildingContext,
+    pub location:     RootOrField,
     /// Reference to the type registry
     pub registry:     &'a HashMap<BrpTypeName, Value>,
     /// Wrapper type information if applicable (Option, Handle, etc.)
@@ -78,13 +77,13 @@ pub struct MutationPathContext<'a> {
 impl<'a> MutationPathContext<'a> {
     /// Create a new mutation path context
     pub const fn new(
-        context: PathBuildingContext,
+        location: RootOrField,
         registry: &'a HashMap<BrpTypeName, Value>,
         wrapper_info: Option<(WrapperType, &'a str)>,
         schema: Option<&'a Value>,
     ) -> Self {
         Self {
-            context,
+            location,
             registry,
             wrapper_info,
             schema,
@@ -93,7 +92,7 @@ impl<'a> MutationPathContext<'a> {
 
     /// Get the type name being processed
     pub const fn type_name(&self) -> &BrpTypeName {
-        self.context.type_name()
+        self.location.type_name()
     }
 
     /// Check if this is a wrapper type (Option, Handle, etc.)
@@ -178,8 +177,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         // Build example array
         let array_example: Vec<Value> = (0..array_size).map(|_| example_element.clone()).collect();
 
-        match &ctx.context {
-            PathBuildingContext::Root { type_name } => {
+        match &ctx.location {
+            RootOrField::Root { type_name } => {
                 // Add root mutation path for the entire array
                 paths.push(MutationPathInternal {
                     path:          String::new(),
@@ -205,7 +204,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                     });
                 }
             }
-            PathBuildingContext::Field {
+            RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
@@ -260,8 +259,8 @@ impl MutationPathBuilder for EnumMutationBuilder {
         let enum_variants = Self::extract_enum_variants(schema);
         let enum_example = Self::build_enum_example(schema);
 
-        match &ctx.context {
-            PathBuildingContext::Root { type_name } => {
+        match &ctx.location {
+            RootOrField::Root { type_name } => {
                 // For root enum mutations, add a root path with all variants
                 if let Some(ref variants) = enum_variants
                     && let Some(first_variant) = variants.first()
@@ -277,7 +276,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     });
                 }
             }
-            PathBuildingContext::Field {
+            RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
@@ -411,12 +410,12 @@ impl MutationPathBuilder for StructMutationBuilder {
             return paths;
         };
 
-        match &ctx.context {
-            PathBuildingContext::Root { .. } => {
+        match &ctx.location {
+            RootOrField::Root { .. } => {
                 // For root struct mutations, build paths for all properties
                 paths.extend(Self::build_property_paths(ctx));
             }
-            PathBuildingContext::Field {
+            RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
@@ -449,7 +448,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                 // Then recursively expand nested fields (depth = 1 only)
                 // Create a context for nested field building
                 let nested_context = MutationPathContext::new(
-                    PathBuildingContext::root(field_type),
+                    RootOrField::root(field_type),
                     ctx.registry,
                     None, // No wrapper for nested fields
                     Some(schema),
@@ -524,12 +523,12 @@ impl StructMutationBuilder {
                     example:       json!(null),
                     enum_variants: None,
                     type_name:     BrpTypeName::unknown(),
-                    context:       match &ctx.context {
-                        PathBuildingContext::Root { type_name } => MutationPathKind::StructField {
+                    context:       match &ctx.location {
+                        RootOrField::Root { type_name } => MutationPathKind::StructField {
                             field_name:  field_name.clone(),
                             parent_type: type_name.clone(),
                         },
-                        PathBuildingContext::Field {
+                        RootOrField::Field {
                             field_type: parent_type,
                             ..
                         } => MutationPathKind::StructField {
@@ -581,7 +580,7 @@ impl StructMutationBuilder {
 
             // Create a field context for this property
             let parent_type = ctx.type_name();
-            let field_context = PathBuildingContext::field(field_name, &ft, parent_type);
+            let field_context = RootOrField::field(field_name, &ft, parent_type);
             let field_ctx = MutationPathContext::new(
                 field_context,
                 ctx.registry,
@@ -721,8 +720,8 @@ impl MutationPathBuilder for TupleMutationBuilder {
         );
 
         // Add the main tuple path first (example is consumed here)
-        let main_path = match &ctx.context {
-            PathBuildingContext::Root { type_name } => MutationPathInternal {
+        let main_path = match &ctx.location {
+            RootOrField::Root { type_name } => MutationPathInternal {
                 path: String::new(),
                 example,
                 enum_variants: None,
@@ -731,7 +730,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     type_name: type_name.clone(),
                 },
             },
-            PathBuildingContext::Field {
+            RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
@@ -749,8 +748,8 @@ impl MutationPathBuilder for TupleMutationBuilder {
         paths.push(main_path);
 
         // Add element paths
-        match &ctx.context {
-            PathBuildingContext::Root { type_name } => {
+        match &ctx.location {
+            RootOrField::Root { type_name } => {
                 // Add paths for each tuple element
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
@@ -773,7 +772,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     }
                 }
             }
-            PathBuildingContext::Field {
+            RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type: _,
@@ -827,8 +826,8 @@ impl MutationPathBuilder for DefaultMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
         let mut paths = Vec::new();
 
-        match &ctx.context {
-            PathBuildingContext::Root { type_name } => {
+        match &ctx.location {
+            RootOrField::Root { type_name } => {
                 paths.push(MutationPathInternal {
                     path:          String::new(),
                     example:       json!(null),
@@ -839,7 +838,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                     },
                 });
             }
-            PathBuildingContext::Field {
+            RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,

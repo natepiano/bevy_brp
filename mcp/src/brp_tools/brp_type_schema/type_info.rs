@@ -8,7 +8,7 @@ use serde_json::{Map, Value, json};
 
 use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
 use super::mutation_path_builders::{
-    EnumMutationBuilder, MutationPathBuilder, MutationPathContext, PathBuildingContext,
+    EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath,
@@ -139,8 +139,8 @@ impl TypeInfo {
         let type_kind = TypeKind::from_schema(type_schema, &BrpTypeName::unknown());
 
         // Create root context for the new trait system
-        let root_context = PathBuildingContext::root(&BrpTypeName::unknown());
-        let ctx = MutationPathContext::new(root_context, registry, None, Some(type_schema));
+        let location = RootOrField::root(&BrpTypeName::unknown());
+        let ctx = MutationPathContext::new(location, registry, None, Some(type_schema));
 
         // Use the new trait dispatch system
         type_kind.build_paths(&ctx)
@@ -409,7 +409,6 @@ impl TypeInfo {
 
         operations
     }
-
 
     /// Extract variant identifier from either string or object representation
     /// This returns the discriminant/name that identifies which variant this is,

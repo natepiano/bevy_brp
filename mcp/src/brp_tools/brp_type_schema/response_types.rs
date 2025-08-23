@@ -359,6 +359,21 @@ pub enum SchemaField {
     ReflectTypes,
 }
 
+impl SchemaField {
+    /// Extract field type from field info JSON
+    ///
+    /// This extracts the type reference from a field definition in the schema,
+    /// handling the standard pattern of type.$ref with #/$defs/ prefix.
+    pub fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
+        field_info
+            .get_field(Self::Type)
+            .and_then(|t| t.get_field(Self::Ref))
+            .and_then(Value::as_str)
+            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from)
+    }
+}
+
 /// Category of type for quick identification and processing
 ///
 /// This enum represents the actual type kinds returned by Bevy's type registry.
