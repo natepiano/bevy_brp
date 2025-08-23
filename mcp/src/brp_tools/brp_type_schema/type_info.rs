@@ -73,7 +73,7 @@ impl TypeInfo {
         // Only get mutation paths if mutation is supported
         let can_mutate = supported_operations.contains(&BrpSupportedOperation::Mutate);
         let mutation_paths = if can_mutate {
-            Self::get_mutation_paths(type_schema, registry)
+            Self::get_mutation_paths(&brp_type_name, type_schema, registry)
         } else {
             HashMap::new()
         };
@@ -133,13 +133,14 @@ impl TypeInfo {
 
     /// Build mutation paths for a type using the trait system
     fn build_mutation_paths(
+        brp_type_name: &BrpTypeName,
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Vec<MutationPathInternal> {
-        let type_kind = TypeKind::from_schema(type_schema, &BrpTypeName::unknown());
+        let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
 
         // Create root context for the new trait system
-        let location = RootOrField::root(&BrpTypeName::unknown());
+        let location = RootOrField::root(brp_type_name);
         let ctx = MutationPathContext::new(location, registry, None);
 
         // Use the new trait dispatch system
@@ -361,10 +362,11 @@ impl TypeInfo {
 
     /// Get mutation paths for a type as a `HashMap`
     fn get_mutation_paths(
+        brp_type_name: &BrpTypeName,
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> HashMap<String, MutationPath> {
-        let mutation_paths_vec = Self::build_mutation_paths(type_schema, registry);
+        let mutation_paths_vec = Self::build_mutation_paths(brp_type_name, type_schema, registry);
         Self::convert_mutation_paths(&mutation_paths_vec)
     }
 
