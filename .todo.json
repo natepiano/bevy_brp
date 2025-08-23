@@ -2,28 +2,28 @@
   {
     "id": "struct_case_match",
     "content": "Add TypeKind::Struct case to build_field_mutation_paths match statement",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Added TypeKind::Struct case that first adds the struct field itself, then recursively expands nested fields to depth 1 with NestedPath context"
   },
   {
     "id": "build_after_struct",
     "content": "Run cargo build && cargo +nightly fmt after struct case addition",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "Build succeeded after fixing borrow checker error by cloning type_name. Formatter ran successfully"
   },
   {
     "id": "test_nested_paths",
     "content": "Test nested path generation with extras_plugin example",
-    "status": "pending",
+    "status": "completed",
     "priority": "high",
-    "notes": ""
+    "notes": "ISSUE FOUND: TestComplexComponent.transform field only shows .transform path, missing nested paths like .transform.translation.x. Need to debug TypeKind::Struct case."
   },
   {
     "id": "run_type_schema_test",
     "content": "Run type_schema test to verify mutation paths are correct",
-    "status": "pending",
+    "status": "in_progress",
     "priority": "high",
     "notes": ""
   },

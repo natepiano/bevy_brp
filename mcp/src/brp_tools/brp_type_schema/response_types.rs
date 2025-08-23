@@ -387,6 +387,23 @@ pub enum TypeKind {
     Value,
 }
 
+impl TypeKind {
+    /// Extract `TypeKind` from a registry schema with fallback to `Value`
+    pub fn from_schema(schema: &Value, type_name: &BrpTypeName) -> Self {
+        schema
+            .get_field(SchemaField::Kind)
+            .and_then(Value::as_str)
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_else(|| {
+                tracing::warn!(
+                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
+                    type_name
+                );
+                Self::Value
+            })
+    }
+}
+
 /// response structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeSchemaResponse {

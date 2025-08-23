@@ -5,7 +5,6 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
-use tracing::warn;
 
 use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, BrpFormatKnowledge};
 use super::response_types::{
@@ -454,8 +453,53 @@ impl TypeInfo {
                     ));
                 }
             }
+            TypeKind::Struct => {
+                // Struct field - first add the struct field itself, then expand nested fields
+                paths.push(Self::build_standard_path(
+                    field_name,
+                    &ft,
+                    json!(null),
+                    None,
+                    wrapper_info,
+                    parent_type,
+                ));
+
+                if let Some(schema) = field_type_schema {
+                    // Then recursively expand nested fields (depth = 1 only)
+                    let nested_paths = Self::build_struct_mutation_paths(schema, registry);
+                    for nested_path in nested_paths {
+                        // Convert to nested path by prepending the field name
+                        let full_path = if nested_path.path.is_empty() {
+                            format!(".{field_name}")
+                        } else {
+                            format!(".{field_name}{}", nested_path.path)
+                        };
+
+                        // Create new path with NestedPath context
+                        let mut components = vec![field_name.to_string()];
+                        if let MutationContext::StructField {
+                            field_name: nested_field,
+                            ..
+                        } = &nested_path.context
+                        {
+                            components.push(nested_field.clone());
+                        }
+
+                        paths.push(MutationPathInternal {
+                            path:          full_path,
+                            example:       nested_path.example,
+                            enum_variants: nested_path.enum_variants,
+                            type_name:     nested_path.type_name.clone(),
+                            context:       MutationContext::NestedPath {
+                                components,
+                                final_type: nested_path.type_name,
+                            },
+                        });
+                    }
+                }
+            }
             _ => {
-                // All other types (Struct, Value, List, Map, etc.)
+                // All other types (Value, List, Map, etc.)
                 paths.push(Self::build_standard_path(
                     field_name,
                     &ft,
@@ -1014,17 +1058,7 @@ impl TypeInfo {
 
     /// Get the type kind from a schema
     fn get_type_kind(schema: &Value, type_name: &BrpTypeName) -> TypeKind {
-        schema
-            .get_field(SchemaField::Kind)
-            .and_then(Value::as_str)
-            .and_then(|s| TypeKind::from_str(s).ok())
-            .unwrap_or_else(|| {
-                warn!(
-                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
-                    type_name
-                );
-                TypeKind::Value
-            })
+        TypeKind::from_schema(schema, type_name)
     }
 
     /// Extract variant identifier from either string or object representation
