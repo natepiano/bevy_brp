@@ -143,7 +143,7 @@ impl TypeInfo {
         let ctx = MutationPathContext::new(location, registry, None, Some(type_schema));
 
         // Use the new trait dispatch system
-        type_kind.build_paths(&ctx)
+        type_kind.build_paths(&ctx).unwrap_or_else(|_| Vec::new())
     }
 
     /// Build spawn format example for types that support spawn/insert

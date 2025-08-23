@@ -6,6 +6,8 @@
 use serde_json::{Value, json};
 use strum::{AsRefStr, Display, EnumIter, IntoEnumIterator};
 
+use super::response_types::BrpTypeName;
+
 /// Wrapper type variant names for serialization
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum WrapperVariant {
@@ -48,10 +50,10 @@ impl WrapperType {
     }
 
     /// Try to detect a wrapper type from a full type name
-    pub fn detect(type_name: &str) -> Option<(Self, &str)> {
+    pub fn detect(type_name: &str) -> Option<(Self, BrpTypeName)> {
         for wrapper in Self::iter() {
             if let Some(inner) = wrapper.extract_inner_type(type_name) {
-                return Some((wrapper, inner));
+                return Some((wrapper, BrpTypeName::from(inner)));
             }
         }
         None

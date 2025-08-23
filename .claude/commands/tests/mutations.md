@@ -12,14 +12,12 @@ Validate that mutation paths discovered by `brp_type_schema` work correctly for 
 
 ### 1. Launch Test Application
 - Execute `mcp__brp__brp_launch_bevy_example` with `extras_plugin` on port 20115
-- Verify app is running with `mcp__brp__brp_status`
 
 ### 2. Discover Type Schemas
-Execute `mcp__brp__brp_type_schema` to get mutation paths for test components:
+Execute `mcp__brp__brp_type_schema` to get mutation paths for test components (only the types we actually test):
 ```json
 {
   "types": [
-    "bevy_sprite::sprite::Sprite",
     "extras_plugin::TestArrayField",
     "extras_plugin::TestTupleField",
     "extras_plugin::TestTupleStruct",
@@ -28,7 +26,7 @@ Execute `mcp__brp__brp_type_schema` to get mutation paths for test components:
   "port": 20115
 }
 ```
-Store response to use mutation paths.
+Store response to validate mutation path discovery works.
 
 ### 3. Spawn Test Entity
 
@@ -63,47 +61,42 @@ Spawn a single entity with ALL serializable test components to minimize API call
 
 Store the returned entity ID for all subsequent mutation tests.
 
-For Sprite component (non-serializable), query for an existing entity with Sprite component.
+### 4. Execute Mutations and Batch Verify
 
-### 4. Execute and Verify Mutations
+Perform all mutations on the spawned entity, then verify all changes with a single `bevy_get`:
 
-For each mutation context type, perform mutations and verify results on the SINGLE spawned entity:
+#### 4a. Execute All Mutations on Test Entity
+Perform these mutations in sequence WITHOUT intermediate verification:
 
-#### 4a. ArrayElement Context
-Mutate `.values[1]` on TestArrayField component:
-- Use `bevy_mutate_component` on spawned entity with component "extras_plugin::TestArrayField", path ".values[1]" and value 999.5
-- Verify with `bevy_get` that values[1] changed from 20.0 to 999.5
+1. **ArrayElement Context**: Mutate `.values[1]` on TestArrayField to 999.5
+2. **TupleElement Context**: Mutate `.color_rgb.2` on TestTupleField to 200  
+3. **RootValue Context**: Replace entire TestTupleStruct with [99.0, "replaced", false]
+4. **NestedPath Context**: Mutate `.transform.translation.y` on TestComplexComponent to 555.0
+5. **StructField with Enum**: Mutate `.mode` on TestComplexComponent to "Inactive"
+6. **Option Field**: Mutate `.optional_value` on TestComplexComponent to null
 
-#### 4b. TupleElement Context  
-Mutate `.color_rgb.2` on TestTupleField component:
-- Use `bevy_mutate_component` on spawned entity with component "extras_plugin::TestTupleField", path ".color_rgb.2" and value 200
-- Verify with `bevy_get` that color_rgb[2] changed from 64 to 200
+#### 4b. Batch Verify All Mutations
+After ALL mutations complete, execute a single `bevy_get` with all components:
+```json
+{
+  "entity": <spawned_entity_id>,
+  "components": [
+    "extras_plugin::TestArrayField",
+    "extras_plugin::TestTupleField", 
+    "extras_plugin::TestTupleStruct",
+    "extras_plugin::TestComplexComponent"
+  ]
+}
+```
 
-#### 4c. RootValue Context
-Replace entire TestTupleStruct using root path:
-- Use `bevy_mutate_component` on spawned entity with component "extras_plugin::TestTupleStruct", path "" and value [99.0, "replaced", false]
-- Verify with `bevy_get` that entire tuple struct was replaced
-
-#### 4d. NestedPath Context
-Mutate `.transform.translation.y` on TestComplexComponent:
-- Use `bevy_mutate_component` on spawned entity with component "extras_plugin::TestComplexComponent", path ".transform.translation.y" and value 555.0
-- Verify with `bevy_get` that translation.y changed from 2.0 to 555.0
-
-#### 4e. StructField with Enum
-Mutate `.mode` to "Inactive" on TestComplexComponent:
-- Use `bevy_mutate_component` on spawned entity with component "extras_plugin::TestComplexComponent", path ".mode" and value "Inactive"
-- Verify with `bevy_get` that mode changed from "Active" to "Inactive"
-
-#### 4f. Option Field
-Mutate `.optional_value` to None on TestComplexComponent:
-- Use `bevy_mutate_component` on spawned entity with component "extras_plugin::TestComplexComponent", path ".optional_value" and value null
-- Verify with `bevy_get` that optional_value is now None/null
-
-#### 4g. Non-Serializable Component
-Find or create entity with Sprite, then mutate `.flip_x`:
-- Query for entity with Sprite component
-- Use `bevy_mutate_component` with path ".flip_x" and value true
-- Verify with `bevy_get` that flip_x changed to true
+Verify in the response:
+- TestArrayField: values[1] is 999.5
+- TestTupleField: color_rgb[2] is 200
+- TestTupleStruct: entire value is [99.0, "replaced", false]
+- TestComplexComponent:
+  - transform.translation.y is 555.0
+  - mode is "Inactive"
+  - optional_value is null
 
 ### 5. Final Cleanup
 - Execute `mcp__brp__brp_shutdown` to stop the test app

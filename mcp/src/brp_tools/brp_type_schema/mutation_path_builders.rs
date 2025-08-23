@@ -9,12 +9,14 @@
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
+use tracing::warn;
 
 use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
 use super::response_types::{
     BrpTypeName, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
 use super::wrapper_types::WrapperType;
+use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
 /// Context for building mutation paths - handles root vs field scenarios
@@ -67,11 +69,11 @@ pub struct MutationPathContext<'a> {
     /// The building context (root or field)
     pub location:     RootOrField,
     /// Reference to the type registry
-    pub registry:     &'a HashMap<BrpTypeName, Value>,
+    registry:         &'a HashMap<BrpTypeName, Value>,
     /// Wrapper type information if applicable (Option, Handle, etc.)
-    pub wrapper_info: Option<(WrapperType, &'a str)>,
+    pub wrapper_info: Option<(WrapperType, BrpTypeName)>,
     /// The schema for the current type
-    pub schema:       Option<&'a Value>,
+    schema:           Option<&'a Value>,
 }
 
 impl<'a> MutationPathContext<'a> {
@@ -79,7 +81,7 @@ impl<'a> MutationPathContext<'a> {
     pub const fn new(
         location: RootOrField,
         registry: &'a HashMap<BrpTypeName, Value>,
-        wrapper_info: Option<(WrapperType, &'a str)>,
+        wrapper_info: Option<(WrapperType, BrpTypeName)>,
         schema: Option<&'a Value>,
     ) -> Self {
         Self {
@@ -95,6 +97,20 @@ impl<'a> MutationPathContext<'a> {
         self.location.type_name()
     }
 
+    /// Require the schema to be present, logging a warning if missing
+    pub fn require_schema(&self) -> Option<&Value> {
+        self.schema.map_or_else(
+            || {
+                warn!(
+                    type_name = %self.type_name(),
+                    "Schema missing for type - mutation paths may be incomplete"
+                );
+                None
+            },
+            Some,
+        )
+    }
+
     /// Look up a type in the registry
     pub fn get_type_schema(&self, type_name: &BrpTypeName) -> Option<&Value> {
         self.registry.get(type_name)
@@ -105,7 +121,7 @@ impl<'a> MutationPathContext<'a> {
         &self,
         field_name: &str,
         field_type: &BrpTypeName,
-        wrapper_info: Option<(WrapperType, &'a str)>,
+        wrapper_info: Option<(WrapperType, BrpTypeName)>,
         schema: Option<&'a Value>,
     ) -> Self {
         let parent_type = self.type_name();
@@ -140,8 +156,9 @@ pub trait MutationPathBuilder {
     /// This method takes a `MutationPathContext` which provides all necessary information
     /// including the registry, wrapper info, and enum variants.
     ///
-    /// Returns a vector of `MutationPathInternal` representing all possible mutation paths.
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal>;
+    /// Returns a `Result` containing a vector of `MutationPathInternal` representing
+    /// all possible mutation paths, or an error if path building failed.
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>>;
 }
 
 /// Implementation of `MutationPathBuilder` for `TypeKind`
@@ -149,7 +166,7 @@ pub trait MutationPathBuilder {
 /// This provides type-directed dispatch - each `TypeKind` variant gets routed
 /// to the appropriate specialized builder for handling its specific logic.
 impl MutationPathBuilder for TypeKind {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         match self {
             Self::Array => ArrayMutationBuilder.build_paths(ctx),
             Self::Enum => EnumMutationBuilder.build_paths(ctx),
@@ -172,11 +189,11 @@ impl MutationPathBuilder for TypeKind {
 pub struct ArrayMutationBuilder;
 
 impl MutationPathBuilder for ArrayMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.schema else {
-            return paths;
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(paths);
         };
 
         // Get array element type from schema
@@ -265,7 +282,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             }
         }
 
-        paths
+        Ok(paths)
     }
 }
 
@@ -276,11 +293,11 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 pub struct EnumMutationBuilder;
 
 impl MutationPathBuilder for EnumMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.schema else {
-            return paths;
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(paths);
         };
 
         // Extract enum variants from schema
@@ -325,7 +342,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
             }
         }
 
-        paths
+        Ok(paths)
     }
 }
 
@@ -420,17 +437,17 @@ impl EnumMutationBuilder {
 pub struct StructMutationBuilder;
 
 impl MutationPathBuilder for StructMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.schema else {
-            return paths;
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(paths);
         };
 
         match &ctx.location {
             RootOrField::Root { .. } => {
                 // For root struct mutations, build paths for all properties
-                paths.extend(Self::build_property_paths(ctx));
+                paths.extend(Self::build_property_paths(ctx)?);
             }
             RootOrField::Field {
                 field_name,
@@ -460,7 +477,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                     Some(schema),
                 );
 
-                let nested_paths = Self::build_property_paths(&nested_context);
+                let nested_paths = Self::build_property_paths(&nested_context)?;
                 for nested_path in nested_paths {
                     // Convert to nested path by prepending the field name
                     let full_path = if nested_path.path.is_empty() {
@@ -493,7 +510,7 @@ impl MutationPathBuilder for StructMutationBuilder {
             }
         }
 
-        paths
+        Ok(paths)
     }
 }
 
@@ -502,18 +519,22 @@ impl StructMutationBuilder {
     ///
     /// This method handles the property-level iteration and delegates to the
     /// field-level mutation path building logic via the main dispatch system.
-    fn build_property_paths(ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_property_paths(ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.schema else {
-            return paths;
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(paths);
         };
 
         let Some(properties) = schema
             .get_field(SchemaField::Properties)
             .and_then(Value::as_object)
         else {
-            return paths;
+            warn!(
+                type_name = %ctx.type_name(),
+                "No properties field found in struct schema - mutation paths may be incomplete"
+            );
+            return Ok(paths);
         };
 
         // For each property, we need to build field mutation paths
@@ -550,10 +571,10 @@ impl StructMutationBuilder {
             let wrapper_info = WrapperType::detect(ft.as_str());
 
             // For wrapper types, check the inner type for hardcoded knowledge
-            let type_to_check = wrapper_info.map_or(ft.as_str(), |(_, inner)| inner);
+            let type_to_check = wrapper_info.as_ref().map_or(&ft, |(_, inner)| inner);
 
             // Check for hardcoded math types (Vec3, Quat, etc.) first
-            if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&BrpTypeName::from(type_to_check)) {
+            if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_to_check) {
                 // Get enum variants if this is an enum
                 let enum_variants = if wrapper_info.is_none() {
                     ctx.get_type_schema(&ft).and_then(|schema| {
@@ -589,11 +610,11 @@ impl StructMutationBuilder {
                 ctx.create_field_context(field_name, &ft, wrapper_info, field_type_schema);
 
             // Dispatch to the appropriate builder based on field type kind
-            let field_paths = field_type_kind.build_paths(&field_ctx);
+            let field_paths = field_type_kind.build_paths(&field_ctx)?;
             paths.extend(field_paths);
         }
 
-        paths
+        Ok(paths)
     }
 
     /// Build paths for types with hardcoded knowledge (Vec3, Quat, etc.)
@@ -601,14 +622,14 @@ impl StructMutationBuilder {
         field_name: &str,
         field_type: &BrpTypeName,
         hardcoded: &super::format_knowledge::BrpFormatKnowledge,
-        wrapper_info: Option<(WrapperType, &str)>,
+        wrapper_info: Option<(WrapperType, BrpTypeName)>,
         enum_variants: Option<Vec<String>>,
         parent_type: &BrpTypeName,
     ) -> Vec<MutationPathInternal> {
         let mut paths = Vec::new();
 
         // Build main path with appropriate example format
-        let final_example = wrapper_info.map_or_else(
+        let final_example = wrapper_info.as_ref().map_or_else(
             || hardcoded.example_value.clone(),
             |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
         );
@@ -627,7 +648,7 @@ impl StructMutationBuilder {
         // Add component paths if available (e.g., .x, .y, .z for Vec3)
         if let Some(subfield_paths) = &hardcoded.subfield_paths {
             for (component_name, component_example) in subfield_paths {
-                let component_example = wrapper_info.map_or_else(
+                let component_example = wrapper_info.as_ref().map_or_else(
                     || component_example.clone(),
                     |(wrapper, _)| wrapper.mutation_examples(component_example.clone()),
                 );
@@ -657,10 +678,7 @@ pub struct TupleMutationBuilder;
 
 impl TupleMutationBuilder {
     /// Build example value for a tuple type
-    pub fn build_tuple_example(
-        prefix_items: &Value,
-        _registry: &HashMap<BrpTypeName, Value>,
-    ) -> Value {
+    pub fn build_tuple_example(prefix_items: &Value) -> Value {
         prefix_items.as_array().map_or_else(
             || json!([]),
             |items| {
@@ -679,11 +697,11 @@ impl TupleMutationBuilder {
 }
 
 impl MutationPathBuilder for TupleMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.schema else {
-            return paths;
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(paths);
         };
 
         // Get prefix items (tuple elements) from schema
@@ -696,7 +714,6 @@ impl MutationPathBuilder for TupleMutationBuilder {
             schema
                 .get_field(SchemaField::PrefixItems)
                 .unwrap_or(&json!([])),
-            ctx.registry,
         );
 
         // Add the main tuple path first (example is consumed here)
@@ -781,7 +798,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
             }
         }
 
-        paths
+        Ok(paths)
     }
 }
 
@@ -791,7 +808,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
 pub struct DefaultMutationBuilder;
 
 impl MutationPathBuilder for DefaultMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Vec<MutationPathInternal> {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
         match &ctx.location {
@@ -824,6 +841,6 @@ impl MutationPathBuilder for DefaultMutationBuilder {
             }
         }
 
-        paths
+        Ok(paths)
     }
 }

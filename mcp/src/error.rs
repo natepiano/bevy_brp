@@ -51,6 +51,9 @@ pub enum Error {
     #[error("Process management error: {0}")]
     ProcessManagement(String),
 
+    #[error("Schema processing error: {0}")]
+    SchemaProcessing(String),
+
     #[error("Structured error")] // Generic message, the real message comes from the ResultStruct
     Structured { result: Box<dyn ResultStruct> },
 
@@ -84,6 +87,7 @@ impl std::fmt::Debug for Error {
             Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
             Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
             Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
+            Self::SchemaProcessing(s) => f.debug_tuple("SchemaProcessing").field(s).finish(),
             Self::Structured { .. } => f
                 .debug_struct("Structured")
                 .field("result", &"<dyn ResultStruct>")
