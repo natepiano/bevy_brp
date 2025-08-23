@@ -1,0 +1,198 @@
+[
+  {
+    "id": "001",
+    "content": "Set terminal title for implementation",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "002",
+    "content": "Add SchemaProcessing error variant to error.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "003",
+    "content": "Run cargo build && cargo +nightly fmt after error variant",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "004",
+    "content": "Make schema field private in MutationPathContext",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "005",
+    "content": "Add require_schema helper method to MutationPathContext",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "006",
+    "content": "Run cargo build && cargo +nightly fmt after context changes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "007",
+    "content": "Update 5 call sites to use ctx.require_schema()",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "008",
+    "content": "Run cargo build && cargo +nightly fmt after call site updates",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "009",
+    "content": "Add properties logging to StructMutationBuilder",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "010",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "011",
+    "content": "Fix clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "012",
+    "content": "Change MutationPathBuilder trait to return Result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "013",
+    "content": "Update TypeKind::build_paths impl to return Result and propagate",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "014",
+    "content": "Update ArrayMutationBuilder to return Result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "015",
+    "content": "Update EnumMutationBuilder to return Result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "016",
+    "content": "Update StructMutationBuilder to return Result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "017",
+    "content": "Update TupleMutationBuilder to return Result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "018",
+    "content": "Update DefaultMutationBuilder to return Result",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "019",
+    "content": "Run cargo build && cargo +nightly fmt after Result refactor",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "020",
+    "content": "Add error handling to TypeInfo::build_mutation_paths",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "021",
+    "content": "Run cargo build && cargo +nightly fmt after error handling",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "022",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "023",
+    "content": "Fix final clippy issues",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "024",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "025",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "026",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "027",
+    "content": "Main: Task new subagent for code review",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "028",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
