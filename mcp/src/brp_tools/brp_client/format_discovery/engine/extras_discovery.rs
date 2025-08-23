@@ -19,7 +19,7 @@ impl DiscoveryEngine<ExtrasDiscovery> {
     ///
     /// Returns `Either::Left(Either<Retry, Guidance>)` if corrections are found,
     /// or `Either::Right(engine)` to continue with `PatternCorrection`.
-    pub fn try_extras_corrections(
+    pub fn try_corrections(
         self,
     ) -> Either<
         Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>>,

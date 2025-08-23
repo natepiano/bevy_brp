@@ -145,8 +145,7 @@ impl TypeInfo {
             .and_then(|t| t.get_field(SchemaField::Ref))
             .and_then(Value::as_str)
             .and_then(|s| s.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
-            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+            .map_or_else(|| BrpTypeName::from("unknown"), BrpTypeName::from);
 
         // Build example array
         let example_element = BRP_FORMAT_KNOWLEDGE
@@ -201,8 +200,7 @@ impl TypeInfo {
         let parent_type = type_schema
             .get_field(SchemaField::TypePath)
             .and_then(Value::as_str)
-            .map(BrpTypeName::from)
-            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+            .map_or_else(|| BrpTypeName::from("unknown"), BrpTypeName::from);
 
         // Get array item type
         let Some(items) = type_schema
@@ -216,8 +214,7 @@ impl TypeInfo {
             .get_field(SchemaField::Ref)
             .and_then(Value::as_str)
             .and_then(|s| s.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
-            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+            .map_or_else(|| BrpTypeName::from("unknown"), BrpTypeName::from);
 
         // Build example array
         let example_element = BRP_FORMAT_KNOWLEDGE
@@ -308,10 +305,9 @@ impl TypeInfo {
             } else if first_variant.get_field(SchemaField::Properties).is_some() {
                 // Struct variant
                 return json!({ variant_name: {} });
-            } else {
-                // Unit variant (object format)
-                return json!(variant_name);
             }
+            // Unit variant (object format)
+            return json!(variant_name);
         }
         json!(null)
     }
@@ -321,8 +317,7 @@ impl TypeInfo {
         let type_name = type_schema
             .get_field(SchemaField::TypePath)
             .and_then(Value::as_str)
-            .map(BrpTypeName::from)
-            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+            .map_or_else(|| BrpTypeName::from("unknown"), BrpTypeName::from);
 
         // Extract enum info using our existing function
         let Some(enum_info) = Self::extract_enum_info(type_schema) else {
@@ -344,9 +339,7 @@ impl TypeInfo {
                 example:       json!(first_variant),
                 enum_variants: Some(variants),
                 type_name:     type_name.clone(),
-                context:       MutationContext::RootValue {
-                    type_name: type_name.clone(),
-                },
+                context:       MutationContext::RootValue { type_name },
             });
         }
 
@@ -417,9 +410,8 @@ impl TypeInfo {
 
         // Look up the field type in the registry to determine its kind
         let field_type_schema = registry.get(&ft);
-        let field_type_kind = field_type_schema
-            .map(|schema| Self::get_type_kind(schema, &ft))
-            .unwrap_or(TypeKind::Value);
+        let field_type_kind =
+            field_type_schema.map_or(TypeKind::Value, |schema| Self::get_type_kind(schema, &ft));
 
         // Handle different type kinds
         match field_type_kind {
@@ -632,8 +624,7 @@ impl TypeInfo {
         let parent_type = type_schema
             .get_field(SchemaField::TypePath)
             .and_then(Value::as_str)
-            .map(BrpTypeName::from)
-            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+            .map_or_else(|| BrpTypeName::from("unknown"), BrpTypeName::from);
 
         let Some(properties) = type_schema
             .get_field(SchemaField::Properties)
@@ -683,19 +674,20 @@ impl TypeInfo {
             .and_then(Value::as_array);
 
         // Build example tuple value
-        let example = if let Some(items) = prefix_items {
-            let elements: Vec<Value> = items
-                .iter()
-                .map(|item| {
-                    Self::extract_field_type(item)
-                        .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&t))
-                        .map_or(json!(null), |k| k.example_value.clone())
-                })
-                .collect();
-            json!(elements)
-        } else {
-            json!([])
-        };
+        let example = prefix_items.map_or_else(
+            || json!([]),
+            |items| {
+                let elements: Vec<Value> = items
+                    .iter()
+                    .map(|item| {
+                        Self::extract_field_type(item)
+                            .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&t))
+                            .map_or(json!(null), |k| k.example_value.clone())
+                    })
+                    .collect();
+                json!(elements)
+            },
+        );
 
         // Add path for the entire tuple field
         paths.push(MutationPath {
@@ -744,8 +736,7 @@ impl TypeInfo {
         let parent_type = type_schema
             .get_field(SchemaField::TypePath)
             .and_then(Value::as_str)
-            .map(BrpTypeName::from)
-            .unwrap_or_else(|| BrpTypeName::from("unknown"));
+            .map_or_else(|| BrpTypeName::from("unknown"), BrpTypeName::from);
 
         // Get prefix items (tuple elements)
         let Some(prefix_items) = type_schema
@@ -841,11 +832,11 @@ impl TypeInfo {
             .and_then(|s| EnumVariantKind::from_str(s).ok())
             .unwrap_or_else(|| {
                 if v.is_string() {
-                    EnumVariantKind::Unit
+                    // Simple string variant
                 } else {
                     // Object without explicit kind = unit variant with metadata
-                    EnumVariantKind::Unit
                 }
+                EnumVariantKind::Unit
             });
 
         // Extract tuple types if present
@@ -1042,12 +1033,9 @@ impl TypeInfo {
     /// This returns the discriminant/name that identifies which variant this is,
     /// regardless of whether the variant contains data
     fn get_variant_identifier(v: &Value) -> Option<&str> {
-        if let Some(s) = v.as_str() {
-            // Simple string variant (unit variant with no data)
-            Some(s)
-        } else {
-            // Complex variant (may have tuple or struct data) - get its identifier
-            v.get_field(SchemaField::ShortPath).and_then(Value::as_str)
-        }
+        v.as_str().map_or_else(
+            || v.get_field(SchemaField::ShortPath).and_then(Value::as_str),
+            Some,
+        )
     }
 }

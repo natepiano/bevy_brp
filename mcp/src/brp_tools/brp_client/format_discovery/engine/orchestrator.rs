@@ -40,7 +40,7 @@ pub async fn discover_format_with_recovery(
     let terminal = engine.check_serialization().either(
         |terminal| terminal,
         |extras| {
-            extras.try_extras_corrections().either(
+            extras.try_corrections().either(
                 |terminal| terminal,
                 DiscoveryEngine::try_pattern_corrections,
             )

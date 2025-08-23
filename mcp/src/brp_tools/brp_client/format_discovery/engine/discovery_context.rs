@@ -69,8 +69,8 @@ impl DiscoveryContext {
 
         // Existing enrichment logic
         for (type_name, type_info) in &mut self.type_map {
-            if let Some(extras_data) = find_type_in_extras_response(type_name, &response) {
-                type_info.enrich_from_extras(extras_data);
+            if let Some(extras_data) = find_type_in_type_schema(type_name, &response) {
+                type_info.enrich_from_type_schema(extras_data);
                 debug!(
                     "TypeDiscoveryContext: Enriched type '{}' with extras data",
                     type_name
@@ -336,7 +336,7 @@ impl DiscoveryContext {
 ///   }
 /// }
 /// ```
-fn find_type_in_extras_response<'a>(
+fn find_type_in_type_schema<'a>(
     type_name: &BrpTypeName,
     response_data: &'a Value,
 ) -> Option<&'a Value> {

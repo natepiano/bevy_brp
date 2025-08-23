@@ -79,11 +79,11 @@ impl UnifiedTypeInfo {
     /// This method is infallible - if extras data is malformed or missing,
     /// the type info remains unchanged. The `discovery_source` is only updated
     /// to `RegistryPlusExtras` if actual enrichment occurs.
-    pub fn enrich_from_extras(&mut self, extras_response: &Value) {
+    pub fn enrich_from_type_schema(&mut self, extras_response: &Value) {
         let mut enriched = false;
 
         // Extract and merge format examples from extras_response
-        if let Some(examples) = Self::extract_examples_from_extras(extras_response) {
+        if let Some(examples) = Self::extract_examples_from_type_schema(extras_response) {
             // REPLACE: format_info.examples (extras data takes precedence)
             // This matches the old behavior where extras completely replaced registry format info
             self.format_info.examples.extend(examples);
@@ -91,7 +91,8 @@ impl UnifiedTypeInfo {
         }
 
         // Extract and merge mutation paths from extras_response
-        if let Some(mutation_paths) = Self::extract_mutation_paths_from_extras(extras_response) {
+        if let Some(mutation_paths) = Self::extract_mutation_paths_from_type_schema(extras_response)
+        {
             // REPLACE: format_info.mutation_paths (extras data takes precedence)
             // This matches the old behavior where extras completely replaced registry format info
             self.format_info.mutation_paths.extend(mutation_paths);
@@ -109,7 +110,7 @@ impl UnifiedTypeInfo {
         }
 
         // Extract and update enum_info from extras_response if available
-        if let Some(enum_info) = Self::extract_enum_info_from_extras(extras_response) {
+        if let Some(enum_info) = Self::extract_enum_info_from_type_schema(extras_response) {
             debug!(
                 "enrich_from_extras: Found enum_info with {} variants for type '{}'",
                 enum_info.variants.len(),
@@ -385,7 +386,9 @@ impl UnifiedTypeInfo {
     }
 
     /// Extract format examples from `bevy_brp_extras` response
-    fn extract_examples_from_extras(extras_response: &Value) -> Option<HashMap<Operation, Value>> {
+    fn extract_examples_from_type_schema(
+        extras_response: &Value,
+    ) -> Option<HashMap<Operation, Value>> {
         let mut examples = HashMap::new();
 
         // Look for example_values field in the response
@@ -417,7 +420,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Extract mutation paths from `bevy_brp_extras` response
-    fn extract_mutation_paths_from_extras(
+    fn extract_mutation_paths_from_type_schema(
         extras_response: &Value,
     ) -> Option<HashMap<String, String>> {
         let mut mutation_paths = HashMap::new();
@@ -443,7 +446,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Extract enum info from `bevy_brp_extras` response
-    fn extract_enum_info_from_extras(extras_response: &Value) -> Option<EnumInfo> {
+    fn extract_enum_info_from_type_schema(extras_response: &Value) -> Option<EnumInfo> {
         debug!(
             "extract_enum_info_from_extras: Processing response: {}",
             serde_json::to_string_pretty(extras_response)

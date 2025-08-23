@@ -179,7 +179,7 @@ fn test_enrich_from_extras_full_enrichment() {
     let initial_mutation_count = info.format_info.mutation_paths.len();
 
     // Enrich with extras data
-    info.enrich_from_extras(&extras_response);
+    info.enrich_from_type_schema(&extras_response);
 
     // Verify enrichment occurred
     assert_eq!(info.discovery_source, DiscoverySource::RegistryPlusExtras);

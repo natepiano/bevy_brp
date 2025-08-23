@@ -29,7 +29,7 @@ impl DiscoveryEngine<SerializationCheck> {
         // Only check for spawn/insert methods with UnknownComponentType errors
         if !matches!(self.operation, Operation::SpawnInsert { .. }) {
             debug!("SerializationCheck: Not a spawn/insert method, proceeding to ExtrasDiscovery");
-            return Either::Right(self.transition_to_extras_discovery());
+            return Either::Right(self.transition_to_type_discovery());
         }
 
         // Check if error message indicates a serialization issue
@@ -44,7 +44,7 @@ impl DiscoveryEngine<SerializationCheck> {
             debug!(
                 "SerializationCheck: Error message doesn't indicate serialization issue, proceeding to ExtrasDiscovery"
             );
-            return Either::Right(self.transition_to_extras_discovery());
+            return Either::Right(self.transition_to_type_discovery());
         }
 
         debug!("SerializationCheck: Checking for serialization errors in registry type infos");
@@ -58,7 +58,7 @@ impl DiscoveryEngine<SerializationCheck> {
             debug!(
                 "SerializationCheck: All components have serialization support or are not in registry, proceeding to ExtrasDiscovery"
             );
-            return Either::Right(self.transition_to_extras_discovery());
+            return Either::Right(self.transition_to_type_discovery());
         }
 
         // Build corrections for all types with serialization issues
@@ -127,7 +127,7 @@ impl DiscoveryEngine<SerializationCheck> {
     }
 
     /// Transition to `ExtrasDiscovery` state, preserving the discovery context
-    fn transition_to_extras_discovery(self) -> DiscoveryEngine<ExtrasDiscovery> {
+    fn transition_to_type_discovery(self) -> DiscoveryEngine<ExtrasDiscovery> {
         DiscoveryEngine {
             method:         self.method,
             operation:      self.operation,
