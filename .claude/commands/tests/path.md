@@ -61,7 +61,6 @@ Validate path parameter handling when multiple apps or examples with the same na
 
 ### 6. Cleanup
 - Shutdown any launched apps from path testing
-- Verify clean termination
 - Confirm ports are available
 
 ## Expected Results

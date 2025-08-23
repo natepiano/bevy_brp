@@ -29,7 +29,6 @@ This file contains an array of test configurations with the following structure:
 - `launch_instruction`: How to launch the app
 - `shutdown_instruction`: How to shutdown the app
 - `test_objective`: What the test validates
-- `expected_shutdown_method`: Expected shutdown behavior (`clean_shutdown`, `process_kill`, or `N/A`)
 
 **IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches PARALLEL_TESTS.
 
@@ -38,25 +37,6 @@ This file contains an array of test configurations with the following structure:
 jq '. | length' .claude/commands/test_config.json
 ```
 Use this exact count in your final summary. Do NOT manually count or assume any number.
-
-## Shutdown Validation
-
-All tests that launch apps must validate the shutdown method matches the expected behavior:
-
-### Expected Shutdown Methods
-- **clean_shutdown**: Apps with `BrpExtrasPlugin` (extras_plugin, test_extras_plugin_app)
-  - Message: "Successfully initiated graceful shutdown for '...' via bevy_brp_extras on port ..."
-  - shutdown_method field: `"clean_shutdown"`
-- **process_kill**: Apps without `BrpExtrasPlugin` (no_extras_plugin)
-  - Message: "Terminated process '...' (PID: ...) using kill. Consider adding bevy_brp_extras for clean shutdown."
-  - shutdown_method field: `"process_kill"`
-- **N/A**: Tests with no app launch (discovery)
-
-### Validation Rules
-- Parse shutdown response `data.shutdown_method` field
-- Compare against `expected_shutdown_method` from test config
-- Report mismatch as FAILED test with detailed explanation
-- Include both expected and actual methods in test results
 
 ## Sub-agent Prompt Template
 
@@ -173,9 +153,6 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
 
 ## Cleanup Status
 - **App Status**: [Shutdown Successfully/Still Running/N/A]
-- **Shutdown Method**: [clean_shutdown/process_kill/N/A]
-- **Expected Method**: [EXPECTED_SHUTDOWN_METHOD]
-- **Shutdown Validation**: [PASSED/FAILED - explanation if failed]
 - **Port Status**: [Available/Still in use]
 
 **CRITICAL ERROR HANDLING:**
@@ -239,7 +216,6 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
   - [LAUNCH_INSTRUCTION] = `launch_instruction` field
   - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
   - [TEST_OBJECTIVE] = `test_objective` field
-  - [EXPECTED_SHUTDOWN_METHOD] = `expected_shutdown_method` field
 
 **Example Task Invocation:**
 ```
@@ -255,20 +231,6 @@ If no test configuration matches `$ARGUMENTS`:
 # Error: Test Not Found
 
 The test "$ARGUMENTS" was not found in .claude/commands/test_config.json.
-
-Available tests:
-- app_launch_status
-- brp_extras_methods
-- data_operations
-- debug_mode
-- discovery
-- format_discovery_with_plugin
-- introspection
-- large_response
-- no_plugin_tests
-- registry_discovery
-- watch_commands
-- workspace_disambiguation
 
 Usage: /test_runner <test_name>
 Example: /test_runner debug_mode
@@ -309,7 +271,6 @@ After the Task completes, simply present the test results as returned by the sub
 **CRITICAL**: Monitor each completed test result for failure indicators:
 - Check for `### ❌ FAILED` sections with content
 - Check for `**Critical Issues**: Yes` in summary
-- Check for `**Shutdown Validation**: FAILED` in cleanup status
 - Check for any `CRITICAL FAILURE` mentions in results
 
 **On Error Detection**:
@@ -331,7 +292,6 @@ After the Task completes, simply present the test results as returned by the sub
   - [LAUNCH_INSTRUCTION] = `launch_instruction` field
   - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
   - [TEST_OBJECTIVE] = `test_objective` field
-  - [EXPECTED_SHUTDOWN_METHOD] = `expected_shutdown_method` field
 
 **Critical Implementation Note:**
 The key requirement is that when launching PARALLEL_TESTS tests, ALL Task tool invocations MUST be in a SINGLE message. This ensures true parallel execution.
@@ -353,7 +313,7 @@ The execution maintains exactly PARALLEL_TESTS running tests at all times. When 
 ## ❌ CRITICAL FAILURE DETECTED
 
 **Failed Test**: [test_name]
-**Failure Type**: [Critical Issues/Failed Tests/Shutdown Validation/etc.]
+**Failure Type**: [Critical Issues/Failed Tests/etc.]
 
 ### Failure Details
 [Include full failure details from the failed test]

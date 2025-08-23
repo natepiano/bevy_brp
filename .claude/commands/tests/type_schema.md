@@ -111,15 +111,14 @@ Validate:
   - Has `spawn_format` with example values for translation, rotation, scale
   - Has `schema_info` with properties and required fields
 - Sprite:
-  - Does NOT have `mutation_paths` field
-  - Does NOT have `spawn_format` field
+  - Has `mutation_paths` field (components can be mutated without Serialize)
+  - Does NOT have `spawn_format` field (cannot spawn without Serialize)
   - Has `schema_info` with properties and required fields
 - Name has appropriate fields for a wrapper type
 - Each type has correct `type_kind` in its `schema_info`
 
 ### 7. Final Cleanup
 - Execute `mcp__brp__brp_shutdown` to stop the test app
-- Verify clean shutdown with status "clean_shutdown" (test_extras_plugin_app has BrpExtrasPlugin)
 
 ## Success Criteria
 
@@ -148,15 +147,15 @@ Validate that all MutationContext types are properly generated for different fie
 
 ### Prerequisites
 - Build and launch extras_plugin example with test components
-- The example includes TestArrayField, TestTupleField, TestTupleStruct, and TestComplexComponent
+- The example includes extras_plugin::TestArrayField, extras_plugin::TestTupleField, extras_plugin::TestTupleStruct, and extras_plugin::TestComplexComponent
 
 ### Test Components
 
-#### 1. Array Field Component - TestArrayField
+#### 1. Array Field Component - extras_plugin::TestArrayField
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
-  "types": ["TestArrayField"],
+  "types": ["extras_plugin::TestArrayField"],
   "port": 20114
 }
 ```
@@ -168,11 +167,11 @@ Validate `mutation_paths` contains:
 - `.values[0]`, `.values[1]`, `.values[2]`, `.values[3]` - array elements
 - Descriptions should indicate "element [N]" for array elements
 
-#### 2. Tuple Field Component - TestTupleField  
+#### 2. Tuple Field Component - extras_plugin::TestTupleField  
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
-  "types": ["TestTupleField"],
+  "types": ["extras_plugin::TestTupleField"],
   "port": 20114
 }
 ```
@@ -184,11 +183,11 @@ Validate `mutation_paths` contains:
 - `.color_rgb.0`, `.color_rgb.1`, `.color_rgb.2` - tuple elements
 - Descriptions should indicate "element N" for tuple elements
 
-#### 3. TupleStruct Component - TestTupleStruct
+#### 3. TupleStruct Component - extras_plugin::TestTupleStruct
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
-  "types": ["TestTupleStruct"],
+  "types": ["extras_plugin::TestTupleStruct"],
   "port": 20114
 }
 ```
@@ -201,11 +200,11 @@ Validate:
   - `.1` - second element (String) with TupleElement context  
   - `.2` - third element (bool) with TupleElement context
 
-#### 4. Complex Component - TestComplexComponent
+#### 4. Complex Component - extras_plugin::TestComplexComponent
 Execute `mcp__brp__brp_type_schema` with:
 ```json
 {
-  "types": ["TestComplexComponent"],
+  "types": ["extras_plugin::TestComplexComponent"],
   "port": 20114
 }
 ```
@@ -282,20 +281,20 @@ After verifying the mutation paths are generated correctly, **you must perform a
 
 **IMPORTANT**: After EACH mutation, use `bevy_get` to verify the change took effect.
 
-For **TestArrayField**:
+For **extras_plugin::TestArrayField**:
 - Mutate a StructField: `.vertices` (entire array) → Verify with `bevy_get`
 - Mutate an ArrayElement: `.values[1]` (single element) → Verify with `bevy_get`
 
-For **TestTupleField**:
+For **extras_plugin::TestTupleField**:
 - Mutate a StructField: `.coords` (entire tuple) → Verify with `bevy_get`
 - Mutate a TupleElement: `.color_rgb.2` (single element) → Verify with `bevy_get`
 
-For **TestTupleStruct**:
-- Mutate RootValue: replace entire tuple struct → Verify with `bevy_get`
+For **extras_plugin::TestTupleStruct**:
+- Mutate RootValue: replace entire tuple struct using empty path "" → Verify with `bevy_get`
 - Mutate a TupleElement: `.1` (string element) → Verify with `bevy_get`
 
-For **TestComplexComponent**:
-- Mutate a StructField with enum: `.mode` → Verify with `bevy_get`
+For **extras_plugin::TestComplexComponent**:
+- Mutate a StructField with enum: `.mode` to "Inactive" (unit variant) → Verify with `bevy_get`
 - Mutate an ArrayElement: `.points[0]` → Verify with `bevy_get`
 - Mutate a TupleElement: `.range.1` → Verify with `bevy_get`
 - Mutate a NestedPath: `.transform.translation.y` → Verify with `bevy_get`

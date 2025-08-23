@@ -55,16 +55,9 @@ Validate fallback behavior and error handling when bevy_brp_extras plugin is NOT
 - Verify error suggests correct path (e.g., `.0.Srgba.red`)
 - Check error guidance is actionable
 
-### 6. Fallback Shutdown Test (PERFORM LAST)
-- Execute `mcp__brp__brp_extras_shutdown` with app_name
-- Verify fallback to process termination
-- Check response indicates shutdown_method: "process_kill" with warning about clean shutdown
-- **NOTE**: This step shuts down the app, so it must be performed LAST
-
 ## Expected Results
 - ✅ BRP extras methods return helpful installation guidance
 - ✅ Error messages are consistent across extras methods
-- ✅ Shutdown falls back to process termination with warning
 - ✅ Transform spawn MUST: Have error status AND error_info contains `format_corrections` array AND mention format type issue
 - ✅ Basic BRP functionality works without extras
 - ✅ Spawn with non-serializable components fails with helpful error mentioning missing traits

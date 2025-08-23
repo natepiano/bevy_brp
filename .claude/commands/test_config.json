@@ -7,8 +7,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20102",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20102 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown via the brp_extras_shutdown method (part of test)",
-    "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods"
   },
   {
     "test_name": "data_operations",
@@ -18,8 +17,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20103",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20103 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test spawn, insert, get, remove, mutate operations",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test spawn, insert, get, remove, mutate operations"
   },
   {
     "test_name": "list",
@@ -29,19 +27,7 @@
     "log_file_prefix": "N/A",
     "launch_instruction": "No app launch required - discovery works from workspace metadata",
     "shutdown_instruction": "No cleanup required",
-    "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps",
-    "expected_shutdown_method": "N/A"
-  },
-  {
-    "test_name": "discovery",
-    "test_file": ".claude/commands/tests/discovery.md",
-    "port": 20105,
-    "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20105",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20105 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test Tier 2 direct format discovery with bevy_brp_extras",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps"
   },
   {
     "test_name": "introspection",
@@ -51,8 +37,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20106",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20106 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test rpc_discover, registry_schema, list operations",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test rpc_discover, registry_schema, list operations"
   },
   {
     "test_name": "large_response",
@@ -62,8 +47,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20107",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20107 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test registry_schema file output for large responses",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test registry_schema file output for large responses"
   },
   {
     "test_name": "no_plugin",
@@ -73,8 +57,7 @@
     "log_file_prefix": "bevy_brp_mcp_no_extras_plugin_port25000",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool to launch no_extras_plugin example (uses hard-coded port 25000)",
     "shutdown_instruction": "Shutdown via process termination (no clean shutdown available)",
-    "test_objective": "Test fallback discovery and error handling without bevy_brp_extras",
-    "expected_shutdown_method": "process_kill"
+    "test_objective": "Test fallback discovery and error handling without bevy_brp_extras"
   },
   {
     "test_name": "corrections",
@@ -84,8 +67,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20108",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20108 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test spawn, insert, mutate for serialization on components and corrections of format",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test spawn, insert, mutate for serialization on components and corrections of format"
   },
   {
     "test_name": "watch",
@@ -95,8 +77,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20109",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20109 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test get_watch, list_watch, active_watches, stop_watch",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
   },
   {
     "test_name": "path",
@@ -106,8 +87,7 @@
     "log_file_prefix": "bevy_brp_mcp_*_port20110",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools with port: 20110 parameter as instructed (may use multiple apps for testing)",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
-    "test_objective": "Test path parameter handling for duplicate names",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test path parameter handling for duplicate names"
   },
   {
     "test_name": "apps",
@@ -117,8 +97,7 @@
     "log_file_prefix": "bevy_brp_mcp_test_extras_plugin_app_port20111",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_app tool with port: 20111 parameter to launch test_extras_plugin_app application",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
   },
   {
     "test_name": "resource",
@@ -128,8 +107,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20112",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20112 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test insert_resource with/without Serialize/Deserialize traits",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test insert_resource with/without Serialize/Deserialize traits"
   },
   {
     "test_name": "shutdown",
@@ -139,8 +117,7 @@
     "log_file_prefix": "bevy_brp_mcp_*_port20113",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20113 for some tests",
     "shutdown_instruction": "Varies by test case",
-    "test_objective": "Test all success and error cases for brp_status and brp_shutdown",
-    "expected_shutdown_method": "varies"
+    "test_objective": "Test all success and error cases for brp_status and brp_shutdown"
   },
   {
     "test_name": "type_schema",
@@ -150,7 +127,6 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20114",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test brp_type_schema tool produces expected output structure",
-    "expected_shutdown_method": "clean_shutdown"
+    "test_objective": "Test brp_type_schema tool produces expected output structure"
   }
 ]

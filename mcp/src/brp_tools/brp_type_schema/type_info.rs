@@ -173,8 +173,8 @@ impl TypeInfo {
             },
         });
 
-        // Add paths for array elements (usually just first few as examples)
-        for index in 0..array_size.min(3) {
+        // Add paths for all array elements
+        for index in 0..array_size {
             paths.push(MutationPath {
                 path:          format!(".{field_name}[{index}]"),
                 example:       example_element.clone(),
@@ -241,8 +241,8 @@ impl TypeInfo {
             },
         });
 
-        // Add paths for array elements (usually just first few as examples)
-        for index in 0..array_size.min(3) {
+        // Add paths for all array elements
+        for index in 0..array_size {
             paths.push(MutationPath {
                 path:          format!("[{index}]"),
                 example:       example_element.clone(),
@@ -794,12 +794,9 @@ impl TypeInfo {
             // Create MutationPathInfo from MutationPath
             let path_info = MutationPathInfo::from_mutation_path(path, description, is_option);
 
-            // Use "." for root mutations instead of empty string
-            let key = if path.path.is_empty() {
-                ".".to_string()
-            } else {
-                path.path.clone()
-            };
+            // Keep empty path as empty for root mutations
+            // BRP expects empty string for root replacements, not "."
+            let key = path.path.clone();
 
             result.insert(key, path_info);
         }

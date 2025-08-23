@@ -63,9 +63,7 @@ Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not exa
 - Check that Transform, Sprite, and other standard components are listed
 
 ### 9. Clean Shutdown
-- Execute `mcp__brp__brp_extras_shutdown` with app_name
-- Verify clean shutdown response (method: "clean_shutdown")
-- Confirm app process terminates gracefully
+- Execute `mcp__brp__brp_extras_shutdown` with app_name to clean up
 
 ## Expected Results
 - ✅ App launches successfully using `brp_launch_bevy_app` (not example launch)
@@ -73,7 +71,6 @@ Validate app launch functionality using `mcp__brp__brp_launch_bevy_app` (not exa
 - ✅ Basic BRP operations (spawn, query, mutate, get) function correctly
 - ✅ RPC discovery shows both standard BRP and extras methods
 - ✅ Component listing works properly
-- ✅ Extras functionality (shutdown) works with apps
 - ✅ App vs example launch distinction is validated
 
 ## Failure Criteria

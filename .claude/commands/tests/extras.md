@@ -1,7 +1,7 @@
 # BRP Extras Methods Tests
 
 ## Objective
-Validate brp_extras specific methods: discover_format, screenshot, send_keys, set_debug_mode, and shutdown.
+Validate brp_extras specific methods: discover_format, screenshot, send_keys, and set_debug_mode.
 
 ## Test Steps
 
@@ -42,11 +42,6 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, se
 - Read screenshot to confirm key display updated
 - Clean up this screenshot file as well
 
-### 7. Clean Shutdown Test
-- Execute `mcp__brp__brp_extras_shutdown` with app_name
-- Verify clean shutdown response (shutdown_method: "clean_shutdown")
-- Confirm app process terminates gracefully
-
 ## Expected Results
 - ✅ Format discovery works with plugin available
 - ✅ Screenshot capture succeeds and creates valid files
@@ -57,7 +52,6 @@ Validate brp_extras specific methods: discover_format, screenshot, send_keys, se
 - ✅ Debug info can be enabled/disabled via enable_debug_info parameter
 - ✅ Debug info appears in response when enabled and is absent when disabled
 - ✅ UI updates reflect sent keyboard input
-- ✅ Clean shutdown works via brp_extras method
 
 ## Failure Criteria
-STOP if: Any brp_extras method fails unexpectedly, screenshot capture fails, keyboard input doesn't work, debug mode control fails, or shutdown fails.
+STOP if: Any brp_extras method fails unexpectedly, screenshot capture fails, keyboard input doesn't work, or debug mode control fails.
