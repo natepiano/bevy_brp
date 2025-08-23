@@ -97,8 +97,8 @@ enum TestEnumNoSerDe {
 }
 
 /// Test component with array field
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
 struct TestArrayField {
     /// Fixed-size array field
     pub vertices: [Vec2; 3],
@@ -106,9 +106,9 @@ struct TestArrayField {
     pub values:   [f32; 4],
 }
 
-/// Test component with tuple field  
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
+/// Test component with tuple field
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
 struct TestTupleField {
     /// Tuple field with two elements
     pub coords:    (f32, f32),
@@ -117,18 +117,18 @@ struct TestTupleField {
 }
 
 /// Test tuple struct component
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
 struct TestTupleStruct(pub f32, pub String, pub bool);
 
 /// Complex nested component with various field types
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
 struct TestComplexComponent {
     /// Nested struct field (will have .transform.translation.x paths)
     pub transform:      Transform,
     /// Enum field
-    pub mode:           TestEnumNoSerDe,
+    pub mode:           TestEnumWithSerDe,
     /// Array field
     pub points:         [Vec3; 2],
     /// Tuple field
@@ -252,7 +252,7 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         TestComplexComponent {
             transform:      Transform::from_xyz(5.0, 10.0, 15.0),
-            mode:           TestEnumNoSerDe::Active,
+            mode:           TestEnumWithSerDe::Active,
             points:         [Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0)],
             range:          (0.0, 100.0),
             optional_value: Some(50.0),
