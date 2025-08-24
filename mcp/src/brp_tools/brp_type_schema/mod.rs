@@ -12,5 +12,5 @@ mod type_info;
 mod wrapper_types;
 
 // Re-export public API
-pub use response_types::BrpTypeName;
+pub use response_types::{BrpTypeName, TypeKind};
 pub use tool::{TypeSchema, TypeSchemaEngine, TypeSchemaParams};

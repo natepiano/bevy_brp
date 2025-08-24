@@ -12,40 +12,6 @@ use super::unified_types::UnifiedTypeInfo;
 use crate::error::Error;
 use crate::tool::{BrpMethod, ParameterName};
 
-/// Type category for legacy `bevy_brp_extras` `discover_format` responses
-///
-/// This enum is specifically designed for parsing the `type_category` field
-/// from `bevy_brp_extras` API responses. It contains only the types that
-/// can be returned by that legacy system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TypeCategoryFromDiscoverFormat {
-    /// Regular struct type
-    Struct,
-    /// Tuple struct type
-    TupleStruct,
-    /// Enum type
-    Enum,
-    /// Math type (Vec2, Vec3, Quat, etc.)
-    MathType,
-    /// Component type (legacy category)
-    Component,
-    /// Unknown or unclassified type
-    Unknown,
-}
-
-impl From<&str> for TypeCategoryFromDiscoverFormat {
-    fn from(s: &str) -> Self {
-        match s {
-            "Struct" => Self::Struct,
-            "TupleStruct" => Self::TupleStruct,
-            "Enum" => Self::Enum,
-            "MathType" => Self::MathType,
-            "Component" => Self::Component,
-            _ => Self::Unknown,
-        }
-    }
-}
-
 /// Type of BRP operation being performed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -193,10 +159,7 @@ impl CorrectionInfo {
             // Extract type_category
             obj.insert(
                 String::from(FormatCorrectionField::TypeCategory),
-                serde_json::json!(format!(
-                    "{:?}",
-                    self.type_info.type_category_from_discover_format
-                )),
+                serde_json::json!(format!("{:?}", self.type_info.type_kind)),
             );
 
             // Extract discovery_source (always present now)

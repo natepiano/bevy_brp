@@ -14,9 +14,9 @@ use tracing::debug;
 
 use super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
-    FormatInfo, Operation, RegistryStatus, SerializationSupport, TypeCategoryFromDiscoverFormat,
+    FormatInfo, Operation, RegistryStatus, SerializationSupport,
 };
-use crate::brp_tools::brp_type_schema::BrpTypeName;
+use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeKind};
 use crate::string_traits::IntoStrings;
 use crate::tool::ParameterName;
 
@@ -24,21 +24,21 @@ use crate::tool::ParameterName;
 #[derive(Debug, Clone, Serialize)]
 pub struct UnifiedTypeInfo {
     /// The fully-qualified type name
-    pub type_name:                          BrpTypeName,
+    pub type_name:        BrpTypeName,
     /// The original value from parameters
-    pub original_value:                     Value,
+    pub original_value:   Value,
     /// Registry and reflection information
-    pub registry_status:                    RegistryStatus,
+    pub registry_status:  RegistryStatus,
     /// Serialization support information
-    pub serialization:                      SerializationSupport,
+    pub serialization:    SerializationSupport,
     /// Format-specific data and examples
-    pub format_info:                        FormatInfo,
-    /// Type category for quick identification
-    pub type_category_from_discover_format: TypeCategoryFromDiscoverFormat,
+    pub format_info:      FormatInfo,
+    /// Type kind for quick identification
+    pub type_kind:        TypeKind,
     /// Enum variant information (only populated for enum types)
-    pub enum_info:                          Option<EnumInfo>,
+    pub enum_info:        Option<EnumInfo>,
     /// Source of this type information for debugging
-    pub discovery_source:                   DiscoverySource,
+    pub discovery_source: DiscoverySource,
 }
 
 impl UnifiedTypeInfo {
@@ -68,7 +68,7 @@ impl UnifiedTypeInfo {
                 original_format:  None,
                 corrected_format: None,
             },
-            type_category_from_discover_format: TypeCategoryFromDiscoverFormat::Unknown,
+            type_kind: TypeKind::Value,
             enum_info: None,
             discovery_source,
         }
@@ -99,12 +99,17 @@ impl UnifiedTypeInfo {
             enriched = true;
         }
 
-        // Extract and update type category from extras_response if available
+        // Extract and update type kind from extras_response if available
         if let Some(type_category) = extras_response.get("type_category").and_then(Value::as_str) {
-            let new_type_category_from_discover_format =
-                Self::parse_type_category_from_discover_format(type_category);
-            if new_type_category_from_discover_format != TypeCategoryFromDiscoverFormat::Unknown {
-                self.type_category_from_discover_format = new_type_category_from_discover_format;
+            // Map old type_category values to TypeKind variants
+            let new_type_kind = match type_category {
+                "Enum" => TypeKind::Enum,
+                "Struct" | "MathType" => TypeKind::Struct, /* Math types are represented as */
+                // structs in TypeKind
+                _ => self.type_kind.clone(), // Keep existing value for unknown categories
+            };
+            if new_type_kind != self.type_kind {
+                self.type_kind = new_type_kind;
                 enriched = true;
             }
         }
@@ -141,7 +146,7 @@ impl UnifiedTypeInfo {
         original_value: Value,
     ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category_from_discover_format = TypeCategoryFromDiscoverFormat::Enum;
+        info.type_kind = TypeKind::Enum;
         if !variant_names.is_empty() {
             let variants = variant_names
                 .into_iter()
@@ -162,7 +167,7 @@ impl UnifiedTypeInfo {
     /// Sets appropriate type category and generates examples.
     pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category_from_discover_format = TypeCategoryFromDiscoverFormat::MathType;
+        info.type_kind = TypeKind::Struct;
         info.generate_all_examples();
         info
     }
@@ -173,7 +178,7 @@ impl UnifiedTypeInfo {
     /// Sets appropriate type category, child types, and generates examples.
     pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_category_from_discover_format = TypeCategoryFromDiscoverFormat::Struct;
+        info.type_kind = TypeKind::Struct;
 
         info.generate_all_examples();
         info
@@ -214,19 +219,14 @@ impl UnifiedTypeInfo {
         };
 
         // Extract type kind from schema if available
-        let type_category_from_discover_format =
-            schema_data.get("kind").and_then(Value::as_str).map_or(
-                TypeCategoryFromDiscoverFormat::Unknown,
-                Self::parse_type_category_from_discover_format,
-            );
+        let type_kind = TypeKind::from_schema(schema_data, &type_name);
 
         // Extract enum information if this is an enum
-        let enum_info =
-            if type_category_from_discover_format == TypeCategoryFromDiscoverFormat::Enum {
-                Self::extract_enum_info_from_schema(schema_data)
-            } else {
-                None
-            };
+        let enum_info = if type_kind == TypeKind::Enum {
+            Self::extract_enum_info_from_schema(schema_data)
+        } else {
+            None
+        };
 
         // Generate mutation paths based on schema structure
         let mutation_paths = Self::generate_mutation_paths_from_schema(schema_data);
@@ -242,7 +242,7 @@ impl UnifiedTypeInfo {
                 original_format: None,
                 corrected_format: None,
             },
-            type_category_from_discover_format,
+            type_kind,
             enum_info,
             discovery_source: DiscoverySource::TypeRegistry,
         };
@@ -255,6 +255,15 @@ impl UnifiedTypeInfo {
     /// Get the mutation paths for this type
     pub const fn get_mutation_paths(&self) -> &HashMap<String, String> {
         &self.format_info.mutation_paths
+    }
+
+    /// Check if this type is a math type (Vec2, Vec3, Vec4, Quat, etc.)
+    pub fn is_math_type(&self) -> bool {
+        let type_name = self.type_name.as_str();
+        type_name.contains("Vec2")
+            || type_name.contains("Vec3")
+            || type_name.contains("Vec4")
+            || type_name.contains("Quat")
     }
 
     /// Check if this type supports mutation operations
@@ -500,10 +509,15 @@ impl UnifiedTypeInfo {
     }
     /// Generate spawn example based on type structure
     fn generate_spawn_insert_example(&self) -> Option<Value> {
-        match self.type_category_from_discover_format {
-            TypeCategoryFromDiscoverFormat::Struct => self.generate_struct_example(),
-            TypeCategoryFromDiscoverFormat::Enum => self.generate_enum_example(),
-            TypeCategoryFromDiscoverFormat::MathType => self.generate_math_type_example(),
+        match self.type_kind {
+            TypeKind::Enum => self.generate_enum_example(),
+            TypeKind::Struct => {
+                if self.is_math_type() {
+                    self.generate_math_type_example()
+                } else {
+                    self.generate_struct_example()
+                }
+            }
             _ => None,
         }
     }
@@ -566,14 +580,19 @@ impl UnifiedTypeInfo {
 
     /// Transform an incorrect value to the correct format
     pub fn transform_value(&self, value: &Value) -> Option<Value> {
-        match self.type_category_from_discover_format {
-            TypeCategoryFromDiscoverFormat::MathType => self.transform_math_value(value),
-            TypeCategoryFromDiscoverFormat::Struct => self.transform_struct_value(value),
-            TypeCategoryFromDiscoverFormat::Enum => self.transform_enum_value(value),
+        match self.type_kind {
+            TypeKind::Enum => self.transform_enum_value(value),
+            TypeKind::Struct => {
+                if self.is_math_type() {
+                    self.transform_math_value(value)
+                } else {
+                    self.transform_struct_value(value)
+                }
+            }
             _ => {
                 tracing::debug!(
-                    "No transformation available for type_category={:?} (type='{}')",
-                    self.type_category_from_discover_format,
+                    "No transformation available for type_kind={:?} (type='{}')",
+                    self.type_kind,
                     self.type_name
                 );
                 None
@@ -698,13 +717,6 @@ impl UnifiedTypeInfo {
             }
         }
         None
-    }
-
-    /// Parse a type category string to the corresponding enum variant
-    fn parse_type_category_from_discover_format(
-        category_str: &str,
-    ) -> TypeCategoryFromDiscoverFormat {
-        TypeCategoryFromDiscoverFormat::from(category_str)
     }
 
     /// Extract enum variant information from registry schema
