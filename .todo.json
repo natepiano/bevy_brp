@@ -1,0 +1,233 @@
+[
+  {
+    "id": "add_typekind_import",
+    "content": "Add TypeKind import to unified_types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_import",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "add_math_helper",
+    "content": "Add is_math_type helper method to UnifiedTypeInfo",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_helper",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "replace_struct_field",
+    "content": "Replace type_category_from_discover_format field with type_kind in UnifiedTypeInfo struct",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_field",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_constructor",
+    "content": "Update UnifiedTypeInfo::new constructor to use TypeKind::Value",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_constructor",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_schema_parsing",
+    "content": "Update schema parsing in from_registry_schema to use TypeKind::from_schema",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_parsing",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_generate_example",
+    "content": "Update generate_spawn_insert_example match statement to use TypeKind",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_generate",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_transform_value",
+    "content": "Update transform_value match statement to use TypeKind",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_transform",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_factory_methods",
+    "content": "Update factory methods (for_enum_type, for_math_type, for_transform_type) to use TypeKind",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_factory",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_check_1",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix_clippy_1",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "remove_parse_method",
+    "content": "Remove parse_type_category_from_discover_format method",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_remove",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "update_debug_logging",
+    "content": "Update debug logging to use type_kind instead of type_category_from_discover_format",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_logging",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "remove_enum_types",
+    "content": "Remove TypeCategoryFromDiscoverFormat enum from types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_enum",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "remove_imports",
+    "content": "Remove TypeCategoryFromDiscoverFormat from imports in unified_types.rs",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "build_after_imports",
+    "content": "Run cargo build && cargo +nightly fmt and fix errors",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "clippy_final",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "fix_clippy_final",
+    "content": "Fix all remaining clippy issues following warning rules",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "run_tests",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "check_test_results",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "subagent_stop",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "task_review_agent",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "review_with_user",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
