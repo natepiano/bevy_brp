@@ -1,0 +1,177 @@
+[
+  {
+    "id": "1",
+    "content": "Set terminal title for Phase 1 implementation",
+    "status": "pending",
+    "priority": "low",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Step 1.1a: Add is_math_type() method to TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Build after adding is_math_type() method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Step 1.1b: Update FormatInfo to use MutationPath objects",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Step 1.1c: Update EnumVariant to use EnumVariantKind enum",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Build after updating type structures",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Step 1.1d: Create UnifiedTypeInfo::from_type_info constructor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Build after adding constructor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Step 1.1e: Remove string-based is_math_type() from UnifiedTypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Step 1.1f: Update call sites for EnumVariant changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Build and fix compilation errors from type changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run clippy after Step 1.1 changes",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Step 1.2: Refactor DiscoveryContext::new() to use TypeSchemaEngine",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Build after DiscoveryContext refactor",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Step 1.3: Remove enrich_with_type_registry() method",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Step 1.3: Remove call to enrich_with_type_registry() from orchestrator",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Build after removing enrichment methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Step 1.4a: Remove obsolete discovery methods",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Step 1.4b: Remove RegistryPlusExtras from DiscoverySource enum",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Step 1.4c: Update DiscoverySource usage to TypeRegistry",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Build and fix final compilation errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Run clippy on entire workspace",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Run cargo nextest run for validation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Final code review by subagent",
+    "status": "pending",
+    "priority": "medium",
+    "notes": ""
+  }
+]
