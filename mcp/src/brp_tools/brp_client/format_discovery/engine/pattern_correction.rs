@@ -243,7 +243,7 @@ impl DiscoveryEngine<PatternCorrection> {
                         // We have valid paths from registry or discovery
                         let paths_list: Vec<String> = mutation_paths
                             .iter()
-                            .map(|(path, desc)| format!("{path} - {desc}"))
+                            .map(|(path, desc)| format!("{path} - {}", desc.description))
                             .collect();
 
                         format!(

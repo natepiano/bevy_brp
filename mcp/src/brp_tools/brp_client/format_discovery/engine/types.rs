@@ -9,6 +9,9 @@ use serde_json::Value;
 
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::unified_types::UnifiedTypeInfo;
+use crate::brp_tools::brp_type_schema::{
+    BrpTypeName, EnumFieldInfo, EnumVariantKind, MutationPath,
+};
 use crate::error::Error;
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -197,8 +200,6 @@ pub enum DiscoverySource {
     TypeRegistry,
     /// Information inferred from error patterns
     PatternMatching,
-    /// Information combined from registry and extras sources
-    RegistryPlusExtras,
 }
 
 /// Information about an enum variant
@@ -207,7 +208,11 @@ pub struct EnumVariant {
     /// The name of the variant
     pub name:         String,
     /// The type of the variant (Unit, Tuple, Struct)
-    pub variant_type: String,
+    pub variant_kind: EnumVariantKind,
+    /// Fields for struct variants
+    pub fields:       Option<Vec<EnumFieldInfo>>,
+    /// Types for tuple variants
+    pub tuple_types:  Option<Vec<BrpTypeName>>,
 }
 
 /// Information about an enum type
@@ -223,7 +228,7 @@ pub struct FormatInfo {
     /// Real example values for different BRP operations
     pub examples:         HashMap<Operation, Value>,
     /// Available mutation paths if the type supports mutation
-    pub mutation_paths:   HashMap<String, String>,
+    pub mutation_paths:   HashMap<String, MutationPath>,
     /// Original format that caused the error (if applicable)
     pub original_format:  Option<Value>,
     /// Corrected format to use instead

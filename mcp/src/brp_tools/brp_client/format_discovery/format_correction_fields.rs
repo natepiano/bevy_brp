@@ -17,8 +17,7 @@ pub enum FormatCorrectionField {
     Component,
     /// Corrected format to use instead
     CorrectedFormat,
-    /// Source of the type discovery (e.g., "`TypeRegistry`", "`PatternMatching`",
-    /// "`RegistryPlusExtras`")
+    /// Source of the type discovery (e.g., "`TypeRegistry`", "`PatternMatching`")
     DiscoverySource,
     /// Error data in error responses
     ErrorData,

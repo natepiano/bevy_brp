@@ -106,13 +106,7 @@ impl DiscoveryEngine<TypeDiscovery> {
     /// and returns a `SerializationCheck` state containing the context to allow further processing.
     pub async fn initialize_context(self) -> Result<DiscoveryEngine<SerializationCheck>> {
         // Create discovery context from method parameters
-        let mut discovery_context =
-            DiscoveryContext::new(self.method, self.port, &self.params).await?;
-
-        // Enrich context with extras discovery upfront (don't fail if enrichment fails)
-        if let Err(e) = discovery_context.enrich_with_type_registry().await {
-            tracing::debug!("TypeDiscovery: Failed to enrich with extras: {e:?}");
-        }
+        let discovery_context = DiscoveryContext::new(self.method, self.port, &self.params).await?;
 
         // Return SerializationCheck state with the context
         Ok(DiscoveryEngine {

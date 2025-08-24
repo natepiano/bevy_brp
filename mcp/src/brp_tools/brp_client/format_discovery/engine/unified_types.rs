@@ -16,9 +16,10 @@ use super::types::{
     Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
     FormatInfo, Operation, RegistryStatus, SerializationSupport,
 };
-use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeKind};
-use crate::string_traits::IntoStrings;
-use crate::tool::ParameterName;
+use crate::brp_tools::brp_type_schema::{
+    BrpTypeName, EnumVariantKind, MutationPath, TypeInfo, TypeKind,
+};
+use crate::tool::{BrpMethod, ParameterName};
 
 /// Comprehensive type information unified across all discovery sources
 #[derive(Debug, Clone, Serialize)]
@@ -74,67 +75,82 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Enrich this type info with data from `bevy_brp_extras` discovery
-    ///
-    /// This method is infallible - if extras data is malformed or missing,
-    /// the type info remains unchanged. The `discovery_source` is only updated
-    /// to `RegistryPlusExtras` if actual enrichment occurs.
-    pub fn enrich_from_type_schema(&mut self, extras_response: &Value) {
-        let mut enriched = false;
+    /// Create `UnifiedTypeInfo` from `TypeInfo` (single source of truth constructor)
+    pub fn from_type_info(
+        type_info: &TypeInfo,
+        original_value: Value,
+        method: BrpMethod,
+    ) -> Result<Self, crate::error::Error> {
+        let type_name = type_info.type_name.clone();
 
-        // Extract and merge format examples from extras_response
-        if let Some(examples) = Self::extract_examples_from_type_schema(extras_response) {
-            // REPLACE: format_info.examples (extras data takes precedence)
-            // This matches the old behavior where extras completely replaced registry format info
-            self.format_info.examples.extend(examples);
-            enriched = true;
-        }
+        // Determine operation for examples
+        let operation = Operation::try_from(method)?;
 
-        // Extract and merge mutation paths from extras_response
-        if let Some(mutation_paths) = Self::extract_mutation_paths_from_type_schema(extras_response)
-        {
-            // REPLACE: format_info.mutation_paths (extras data takes precedence)
-            // This matches the old behavior where extras completely replaced registry format info
-            self.format_info.mutation_paths.extend(mutation_paths);
-            enriched = true;
-        }
-
-        // Extract and update type kind from extras_response if available
-        if let Some(type_category) = extras_response.get("type_category").and_then(Value::as_str) {
-            // Map old type_category values to TypeKind variants
-            let new_type_kind = match type_category {
-                "Enum" => TypeKind::Enum,
-                "Struct" | "MathType" => TypeKind::Struct, /* Math types are represented as */
-                // structs in TypeKind
-                _ => self.type_kind.clone(), // Keep existing value for unknown categories
-            };
-            if new_type_kind != self.type_kind {
-                self.type_kind = new_type_kind;
-                enriched = true;
+        // Build examples HashMap
+        let mut examples = HashMap::new();
+        if let Some(spawn_format) = &type_info.spawn_format {
+            // Add spawn_format to examples if this is a SpawnInsert operation
+            if matches!(operation, Operation::SpawnInsert { .. }) {
+                examples.insert(operation, spawn_format.clone());
             }
         }
 
-        // Extract and update enum_info from extras_response if available
-        if let Some(enum_info) = Self::extract_enum_info_from_type_schema(extras_response) {
-            debug!(
-                "enrich_from_extras: Found enum_info with {} variants for type '{}'",
-                enum_info.variants.len(),
-                self.type_name
-            );
-            self.enum_info = Some(enum_info);
-            enriched = true;
-        } else {
-            debug!(
-                "enrich_from_extras: No enum_info found in extras response for type '{}'",
-                self.type_name
-            );
-        }
+        // Use TypeInfo mutation_paths directly
+        let mutation_paths = type_info.mutation_paths.clone();
 
-        // UPDATE: discovery_source to RegistryPlusExtras (only if ANY enrichment occurred)
-        if enriched {
-            self.discovery_source = DiscoverySource::RegistryPlusExtras;
-        }
+        // Convert enum_info from TypeInfo format to our format
+        let enum_info = type_info.enum_info.as_ref().map(|enum_variants| {
+            let variants = enum_variants
+                .iter()
+                .map(|variant_info| EnumVariant {
+                    name:         variant_info.variant_name.clone(),
+                    variant_kind: variant_info.variant_kind,
+                    fields:       variant_info.fields.clone(),
+                    tuple_types:  variant_info.tuple_types.clone(),
+                })
+                .collect();
+            EnumInfo { variants }
+        });
+
+        // Compute has_reflect from TypeInfo's reflect traits
+        let has_reflect = type_info.schema_info.is_some() || type_info.in_registry;
+
+        // Compute brp_compatible as has_serialize && has_deserialize
+        let brp_compatible = type_info.has_serialize && type_info.has_deserialize;
+
+        // Determine TypeKind from schema_info or default to Value
+        let type_kind = type_info
+            .schema_info
+            .as_ref()
+            .and_then(|schema| schema.type_kind.clone())
+            .unwrap_or(TypeKind::Value);
+
+        Ok(Self {
+            type_name,
+            original_value,
+            registry_status: RegistryStatus {
+                in_registry: type_info.in_registry,
+                has_reflect,
+                type_path: None, // Not directly available from TypeInfo
+            },
+            serialization: SerializationSupport {
+                has_serialize: type_info.has_serialize,
+                has_deserialize: type_info.has_deserialize,
+                brp_compatible,
+            },
+            format_info: FormatInfo {
+                examples,
+                mutation_paths,
+                original_format: None,
+                corrected_format: None,
+            },
+            type_kind,
+            enum_info,
+            discovery_source: DiscoverySource::TypeRegistry,
+        })
     }
+
+    /// Enrich this type info with data from `bevy_brp_extras` discovery
 
     /// Create `UnifiedTypeInfo` for enum types with variant names
     ///
@@ -152,7 +168,9 @@ impl UnifiedTypeInfo {
                 .into_iter()
                 .map(|name| EnumVariant {
                     name,
-                    variant_type: "Unit".to_string(),
+                    variant_kind: EnumVariantKind::Unit,
+                    fields: None,
+                    tuple_types: None,
                 })
                 .collect();
             info.enum_info = Some(EnumInfo { variants });
@@ -184,86 +202,19 @@ impl UnifiedTypeInfo {
         info
     }
 
-    /// Create `UnifiedTypeInfo` from Bevy registry schema
-    ///
-    /// Extracts registry status, reflection traits, and serialization support.
-    /// Automatically generates examples before returning.
-    pub fn from_registry_schema(
-        type_name: impl Into<BrpTypeName>,
-        schema_data: &Value,
-        original_value: Value,
-    ) -> Self {
-        let type_name = type_name.into();
-        // Extract reflect types
-        let reflect_types = schema_data
-            .get("reflectTypes")
-            .and_then(Value::as_array)
-            .map(|arr| arr.iter().filter_map(Value::as_str).into_strings())
-            .unwrap_or_default();
-
-        // Determine serialization support
-        let has_serialize = reflect_types.contains(&"Serialize".to_string());
-        let has_deserialize = reflect_types.contains(&"Deserialize".to_string());
-
-        let registry_status = RegistryStatus {
-            in_registry: true, // If we have schema data, it's in the registry
-            has_reflect: reflect_types.contains(&"Default".to_string())
-                || !reflect_types.is_empty(),
-            type_path:   Some(type_name.as_str().to_string()),
-        };
-
-        let serialization = SerializationSupport {
-            has_serialize,
-            has_deserialize,
-            brp_compatible: has_serialize && has_deserialize,
-        };
-
-        // Extract type kind from schema if available
-        let type_kind = TypeKind::from_schema(schema_data, &type_name);
-
-        // Extract enum information if this is an enum
-        let enum_info = if type_kind == TypeKind::Enum {
-            Self::extract_enum_info_from_schema(schema_data)
-        } else {
-            None
-        };
-
-        // Generate mutation paths based on schema structure
-        let mutation_paths = Self::generate_mutation_paths_from_schema(schema_data);
-
-        let mut unified_info = Self {
-            type_name,
-            original_value,
-            registry_status,
-            serialization,
-            format_info: FormatInfo {
-                examples: HashMap::new(),
-                mutation_paths,
-                original_format: None,
-                corrected_format: None,
-            },
-            type_kind,
-            enum_info,
-            discovery_source: DiscoverySource::TypeRegistry,
-        };
-
-        // Generate examples before returning
-        unified_info.generate_all_examples();
-        unified_info
-    }
-
     /// Get the mutation paths for this type
-    pub const fn get_mutation_paths(&self) -> &HashMap<String, String> {
+    pub const fn get_mutation_paths(&self) -> &HashMap<String, MutationPath> {
         &self.format_info.mutation_paths
     }
 
-    /// Check if this type is a math type (Vec2, Vec3, Vec4, Quat, etc.)
-    pub fn is_math_type(&self) -> bool {
-        let type_name = self.type_name.as_str();
-        type_name.contains("Vec2")
-            || type_name.contains("Vec3")
-            || type_name.contains("Vec4")
-            || type_name.contains("Quat")
+    /// Check if this type is a math type using BRP format knowledge
+    /// This replaces the old string-based matching and uses the same logic as
+    /// `TypeInfo.is_math_type()`
+    fn is_math_type(&self) -> bool {
+        use crate::brp_tools::brp_type_schema::BRP_FORMAT_KNOWLEDGE;
+        BRP_FORMAT_KNOWLEDGE
+            .get(&self.type_name)
+            .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
     }
 
     /// Check if this type supports mutation operations
@@ -289,8 +240,8 @@ impl UnifiedTypeInfo {
                 "Type '{}' supports mutation. Available paths:\n",
                 self.type_name
             );
-            for (path, description) in self.get_mutation_paths() {
-                let _ = writeln!(hint, "  {path} - {description}");
+            for (path, mutation_path) in self.get_mutation_paths() {
+                let _ = writeln!(hint, "  {path} - {}", mutation_path.description);
             }
 
             Correction::Uncorrectable {
@@ -394,92 +345,6 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Extract format examples from `TypeInfo` response
-    fn extract_examples_from_type_schema(
-        type_info_response: &Value,
-    ) -> Option<HashMap<Operation, Value>> {
-        let mut examples = HashMap::new();
-
-        // Look for spawn_format field directly in the TypeInfo structure
-        if let Some(spawn_format) = type_info_response.get("spawn_format") {
-            examples.insert(
-                Operation::SpawnInsert {
-                    parameter_name: ParameterName::Components,
-                },
-                spawn_format.clone(),
-            );
-        }
-
-        // Only return if we found at least one example
-        if examples.is_empty() {
-            None
-        } else {
-            Some(examples)
-        }
-    }
-
-    /// Extract mutation paths from `TypeInfo` response
-    fn extract_mutation_paths_from_type_schema(
-        type_info_response: &Value,
-    ) -> Option<HashMap<String, String>> {
-        let mut mutation_paths = HashMap::new();
-
-        // Look for mutation_paths field in the TypeInfo response
-        if let Some(paths) = type_info_response
-            .get("mutation_paths")
-            .and_then(Value::as_object)
-        {
-            // Each value is now a MutationPathInfo object, extract the description
-            for (path, mutation_info) in paths {
-                if let Some(description) = mutation_info.get("description").and_then(Value::as_str)
-                {
-                    mutation_paths.insert(path.clone(), description.to_string());
-                }
-            }
-        }
-
-        // Only return if we found at least one mutation path
-        if mutation_paths.is_empty() {
-            None
-        } else {
-            Some(mutation_paths)
-        }
-    }
-
-    /// Extract enum info from `TypeInfo` response
-    fn extract_enum_info_from_type_schema(type_info_response: &Value) -> Option<EnumInfo> {
-        debug!(
-            "extract_enum_info_from_type_schema: Processing response: {}",
-            serde_json::to_string_pretty(type_info_response)
-                .unwrap_or_else(|_| "Failed to serialize".to_string())
-        );
-
-        // The new TypeInfo structure has enum_info as a direct array of EnumVariantInfo
-        type_info_response
-            .get("enum_info")
-            .and_then(Value::as_array)
-            .map(|variants_array| {
-                let variants = variants_array
-                    .iter()
-                    .filter_map(|variant| {
-                        if let Some(variant_obj) = variant.as_object() {
-                            let name = variant_obj.get("variant_name")?.as_str()?.to_string();
-                            let variant_type = variant_obj
-                                .get("variant_kind")
-                                .and_then(Value::as_str)
-                                .unwrap_or("Unit")
-                                .to_string();
-                            Some(EnumVariant { name, variant_type })
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                EnumInfo { variants }
-            })
-    }
-
     /// Regenerate all examples based on current type information
     fn generate_all_examples(&mut self) {
         // Clear existing examples
@@ -524,11 +389,11 @@ impl UnifiedTypeInfo {
 
     /// Generate mutation example with paths
     fn generate_mutation_example(&self) -> Option<Value> {
-        if let Some((path, description)) = self.format_info.mutation_paths.iter().next() {
+        if let Some((path, mutation_path)) = self.format_info.mutation_paths.iter().next() {
             Some(serde_json::json!({
                 "path": path,
-                "value": Self::generate_value_for_type(description),
-                "description": description
+                "value": Self::generate_value_for_type(&mutation_path.description),
+                "description": mutation_path.description
             }))
         } else {
             None
@@ -547,8 +412,8 @@ impl UnifiedTypeInfo {
             enum_info
                 .variants
                 .first()
-                .map(|variant| match variant.variant_type.as_str() {
-                    "Unit" => Value::String(variant.name.clone()),
+                .map(|variant| match variant.variant_kind {
+                    EnumVariantKind::Unit => Value::String(variant.name.clone()),
                     _ => serde_json::json!({
                         variant.name.clone(): {}
                     }),
@@ -717,128 +582,5 @@ impl UnifiedTypeInfo {
             }
         }
         None
-    }
-
-    /// Extract enum variant information from registry schema
-    fn extract_enum_info_from_schema(schema_data: &Value) -> Option<EnumInfo> {
-        // Look for the "oneOf" field which contains enum variants
-        schema_data
-            .get("oneOf")
-            .and_then(Value::as_array)
-            .and_then(|one_of| {
-                let variants: Vec<EnumVariant> = one_of
-                    .iter()
-                    .filter_map(|variant| {
-                        match variant {
-                            // Simple string variant (unit variants)
-                            Value::String(variant_name) => Some(EnumVariant {
-                                name:         variant_name.clone(),
-                                variant_type: "Unit".to_string(),
-                            }),
-                            // Object variant (struct or tuple variants)
-                            Value::Object(variant_obj) => {
-                                variant_obj.get("shortPath").and_then(Value::as_str).map(
-                                    |short_path| EnumVariant {
-                                        name:         short_path.to_string(),
-                                        variant_type: "Unit".to_string(), /* Most registry enums
-                                                                           * are
-                                                                           * unit variants */
-                                    },
-                                )
-                            }
-                            _ => None,
-                        }
-                    })
-                    .collect();
-
-                if variants.is_empty() {
-                    None
-                } else {
-                    Some(EnumInfo { variants })
-                }
-            })
-    }
-
-    /// Generate mutation paths from registry schema structure
-    fn generate_mutation_paths_from_schema(schema_data: &Value) -> HashMap<String, String> {
-        let mut paths = HashMap::new();
-
-        // Get the type kind
-        let kind = schema_data
-            .get("kind")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-
-        match kind {
-            "TupleStruct" => {
-                // For tuple structs, generate paths based on prefixItems
-                if let Some(prefix_items) = schema_data.get("prefixItems").and_then(Value::as_array)
-                {
-                    for (index, item) in prefix_items.iter().enumerate() {
-                        // Basic tuple access path
-                        paths.insert(
-                            format!(".{index}"),
-                            format!("Access field {index} of the tuple struct"),
-                        );
-
-                        // Check if this field is a Color type
-                        if let Some(type_ref) = item
-                            .get("type")
-                            .and_then(|t| t.get("$ref"))
-                            .and_then(Value::as_str)
-                            && type_ref.contains("Color")
-                        {
-                            // Add common color field paths
-                            paths.insert(
-                                format!(".{index}.red"),
-                                "Access the red component (if Color is an enum with named fields)"
-                                    .to_string(),
-                            );
-                            paths.insert(
-                                    format!(".{index}.green"),
-                                    "Access the green component (if Color is an enum with named fields)".to_string()
-                                );
-                            paths.insert(
-                                format!(".{index}.blue"),
-                                "Access the blue component (if Color is an enum with named fields)"
-                                    .to_string(),
-                            );
-                            paths.insert(
-                                    format!(".{index}.alpha"),
-                                    "Access the alpha component (if Color is an enum with named fields)".to_string()
-                                );
-
-                            // Also add potential enum variant access
-                            paths.insert(
-                                format!(".{index}.0"),
-                                "Access the first field if Color is an enum variant".to_string(),
-                            );
-                        }
-                    }
-                }
-            }
-            "Struct" => {
-                // For regular structs, use property names
-                if let Some(properties) = schema_data.get("properties").and_then(Value::as_object) {
-                    for (field_name, _field_type) in properties {
-                        paths.insert(
-                            format!(".{field_name}"),
-                            format!("Access the '{field_name}' field"),
-                        );
-                    }
-                }
-            }
-            _ => {
-                // For other types (enums, values), mutation typically replaces the whole value
-                // NOTE: For enums, we don't add mutation paths here because the enum guidance
-                // system in build_corrected_value_from_type_info generates better guidance
-                // with valid_values and examples
-                if kind == "Enum" {
-                    // Skip adding mutation path for enums
-                }
-            }
-        }
-
-        paths
     }
 }
