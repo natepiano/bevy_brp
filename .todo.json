@@ -1,0 +1,247 @@
+[
+  {
+    "id": "1",
+    "content": "Review Phase 3 changes: UnifiedTypeInfo consolidation to embed TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Update UnifiedTypeInfo struct to embed TypeInfo instead of duplicating fields",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Run cargo build && cargo +nightly fmt after UnifiedTypeInfo struct changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Update UnifiedTypeInfo::from_type_info constructor to use embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Update UnifiedTypeInfo::for_enum_type to work with embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Update UnifiedTypeInfo::for_math_type to work with embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Update UnifiedTypeInfo::for_transform_type to work with embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build && cargo +nightly fmt after constructor updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Update all UnifiedTypeInfo method accessors to use self.type_info.field",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Update is_math_type() to delegate to TypeInfo::is_math_type()",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Update get_mutation_paths() to use self.type_info.mutation_paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Update to_correction() method to use embedded TypeInfo fields",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Update transform_value() method to access TypeInfo fields correctly",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Run cargo build && cargo +nightly fmt after method updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Update CorrectionInfo::to_json() to use nested type_info.type_info paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Update enum_variant transformer to work with embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Update math_type transformer to work with embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Run cargo build && cargo +nightly fmt after transformer updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Update discovery_context.rs to use new UnifiedTypeInfo structure",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Update extras_discovery.rs to construct UnifiedTypeInfo correctly",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Update guidance.rs to access embedded TypeInfo fields",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Update pattern_correction.rs for new UnifiedTypeInfo structure",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Update recovery_result.rs to handle embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Update retry.rs for new type structure",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Update serialization_check.rs to use embedded TypeInfo",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Run cargo build && cargo +nightly fmt after engine module updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Update all tests in tests.rs to match new UnifiedTypeInfo structure",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "Run cargo nextest run to validate all changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Final cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "33",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "34",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "35",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
