@@ -13,7 +13,6 @@ use std::time::Instant;
 
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 use serde::{Deserialize, Serialize};
 
