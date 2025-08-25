@@ -71,7 +71,8 @@
       "WebFetch(domain:github.com)",
       "Read(//Users/natemccoy/rust/bevy/**)",
       "Read(//Users/natemccoy/rust/bevy/**)",
-      "Read(//Users/natemccoy/rust/bevy/**)"
+      "Read(//Users/natemccoy/rust/bevy/**)",
+      "mcp__brp__brp_extras_set_window_title"
     ],
     "deny": [
       "Bash(sed:*)"
