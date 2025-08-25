@@ -305,16 +305,21 @@ async fn check_brp_for_app(app_name: &str, port: Port) -> Result<StatusResult> {
 
 /// Check if BRP is responding on the given port
 async fn check_brp_on_port(port: Port) -> Result<bool> {
-    // Try a simple BRP request to check connectivity using bevy/list
-    let client = brp_tools::BrpClient::new(BrpMethod::BevyList, port, None);
-    match client.execute_raw().await {
-        Ok(ResponseStatus::Success(_)) => {
-            // BRP is responding and working
-            Ok(true)
-        }
-        Ok(ResponseStatus::Error(_)) | Err(_) => {
-            // BRP not responding or returned an error
-            Ok(false)
+    // Try up to 5 times with 500ms delays to account for BRP initialization timing
+    for _attempt in 0..5 {
+        let client = brp_tools::BrpClient::new(BrpMethod::BevyList, port, None);
+        match client.execute_raw().await {
+            Ok(ResponseStatus::Success(_)) => {
+                // BRP is responding and working
+                return Ok(true);
+            }
+            Ok(ResponseStatus::Error(_)) | Err(_) => {
+                // BRP not responding or returned an error, wait and retry
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
         }
     }
+    
+    // After all retries failed
+    Ok(false)
 }
