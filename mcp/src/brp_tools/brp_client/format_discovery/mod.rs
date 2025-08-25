@@ -11,10 +11,10 @@
 //! ### Tier 1: Serialization Diagnostics
 //! - Checks if types support Serialize/Deserialize traits required for BRP operations
 //! - Provides early feedback on incompatible types (e.g., `ClearColor` without traits)
-//! - Uses `bevy_brp_extras/discover_format` when available
+//! - Uses registry schema via a call to `brp_type_schema`
 //!
 //! ### Tier 2: Direct Discovery
-//! - Queries `bevy_brp_extras` plugin for authoritative type format information
+//! - Uses registry schema for authoritative type format information
 //! - Returns factual `TypeDiscoveryResponse` with real examples and mutation paths
 //! - Validates format quality to avoid placeholder values like `["example_Color"]`
 //! - Falls back to legacy format for backward compatibility

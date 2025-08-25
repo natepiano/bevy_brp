@@ -417,9 +417,8 @@ impl FormatTransformer for EnumVariantTransformer {
                     actual_variant_type: _,
                 },
             ) => {
-                // Phase 4: No synthetic type creation - this should only be called with registry
-                // data Return None to indicate this transformer cannot handle the
-                // error without type info
+                // This should only be called with registry data Return None to indicate this
+                // transformer cannot handle the error without type info
                 None
             }
             Some(ErrorPattern::TypeMismatch {
@@ -762,5 +761,4 @@ mod tests {
                 .contains("extracted enum variant value")
         );
     }
-
 }

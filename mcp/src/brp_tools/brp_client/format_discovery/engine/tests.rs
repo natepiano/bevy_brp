@@ -18,7 +18,7 @@ use crate::tool::BrpMethod;
 // - test_orchestrator_mutation_path_error
 // These tests attempted to make HTTP calls to fetch registry schemas but no server was available.
 
-// Integration tests for orchestrator flows - moved from format_discovery/tests.rs
+// Integration tests for orchestrator flows
 
 #[tokio::test]
 async fn test_orchestrator_serialization_issue_path() {
@@ -135,4 +135,4 @@ async fn test_orchestrator_extras_discovery_path() {
 // Integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion
 // Note: test_enrich_from_extras_full_enrichment and
 // test_registry_schema_to_unified_type_info_conversion removed after replacing direct registry
-// schema conversion with TypeSchemaEngine (Phase 2)
+// schema conversion with TypeSchemaEngine

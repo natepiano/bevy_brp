@@ -2,7 +2,7 @@
 //!
 //! This tool provides type schema information for types in your Bevy app without requiring
 //! the `bevy_brp_extras` plugin. It uses registry schema calls combined with hardcoded BRP
-//! serialization knowledge to provide the same information as `brp_extras_discover_format`.
+//! serialization knowledge to provide accurate type schema information for BRP operations.
 
 use std::collections::HashMap;
 

@@ -17,7 +17,6 @@ pub mod bevy_reparent;
 pub mod bevy_rpc_discover;
 pub mod bevy_spawn;
 pub mod brp_execute;
-pub mod brp_extras_discover_format;
 pub mod brp_extras_screenshot;
 pub mod brp_extras_send_keys;
 pub mod brp_extras_set_window_title;

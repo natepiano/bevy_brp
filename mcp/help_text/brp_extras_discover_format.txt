@@ -1,7 +1,0 @@
-Discover component format information for BRP operations to get exact JSON formats needed for spawn, insert, and mutation operations.
-
-Returns:
-- spawn_format: Example JSON structure for bevy/spawn operations
-- mutation_info: Available mutation paths for bevy/mutate_component operations
-
-Note: Requires bevy_brp_extras plugin installed.

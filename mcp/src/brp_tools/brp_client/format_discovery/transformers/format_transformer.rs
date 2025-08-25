@@ -3,8 +3,7 @@
 //! This module consolidates the transformation logic into a clean trait-based system
 //! that replaces the previous 1000+ line transformations.rs file.
 //!
-//! Updated for Phase 3 to work with the unified type system using `UnifiedTypeInfo`
-//! instead of the legacy `DiscoveredFacts` structure.
+//! works with the unified type system using `UnifiedTypeInfo`
 
 use serde_json::Value;
 

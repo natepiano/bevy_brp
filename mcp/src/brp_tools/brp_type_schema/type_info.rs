@@ -58,6 +58,29 @@ impl TypeInfo {
             .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
     }
 
+    /// Get the type name of a field in this struct
+    /// Returns None if this isn't a struct or the field doesn't exist
+    pub fn get_field_type(&self, field_name: &str) -> Option<BrpTypeName> {
+        let schema_info = self.schema_info.as_ref()?;
+        let properties = schema_info.properties.as_ref()?.as_object()?;
+        let field_info = properties.get(field_name)?;
+
+        // Extract the type reference from the field info
+        // Field info typically looks like: {"type": {"$ref": "#/$defs/glam::Vec3"}}
+        let type_ref = field_info.get("type")?.get("$ref")?.as_str()?;
+
+        // Remove the "#/$defs/" prefix to get the type name
+        let type_name = type_ref.strip_prefix("#/$defs/")?;
+        Some(BrpTypeName::from(type_name))
+    }
+
+    /// Check if a field of this struct is a math type
+    pub fn is_field_math_type(&self, field_name: &str) -> bool {
+        self.get_field_type(field_name)
+            .and_then(|type_name| BRP_FORMAT_KNOWLEDGE.get(&type_name))
+            .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
+    }
+
     /// Builder method to create `TypeInfo` from schema data
     pub fn from_schema(
         brp_type_name: BrpTypeName,
@@ -164,13 +187,11 @@ impl TypeInfo {
             TypeKind::TupleStruct | TypeKind::Tuple => {
                 Self::build_tuple_spawn_format(type_schema, registry)
             }
-            TypeKind::Struct => {
-                Self::build_struct_spawn_format(type_schema, registry)
-            }
+            TypeKind::Struct => Self::build_struct_spawn_format(type_schema, registry),
             _ => None,
         }
     }
-    
+
     /// Build spawn format for struct types with named properties
     fn build_struct_spawn_format(
         type_schema: &Value,
@@ -196,7 +217,7 @@ impl TypeInfo {
             Some(Value::Object(spawn_example))
         }
     }
-    
+
     /// Build spawn format for tuple struct types with indexed fields
     fn build_tuple_spawn_format(
         type_schema: &Value,
@@ -205,7 +226,7 @@ impl TypeInfo {
         let prefix_items = type_schema
             .get_field(SchemaField::PrefixItems)
             .and_then(Value::as_array)?;
-        
+
         let tuple_examples: Vec<Value> = prefix_items
             .iter()
             .map(|item| {
@@ -219,14 +240,14 @@ impl TypeInfo {
                     .unwrap_or_else(|| json!(null))
             })
             .collect();
-        
+
         if tuple_examples.is_empty() {
             None
         } else {
             Some(Value::Array(tuple_examples))
         }
     }
-    
+
     /// Build an example value for a specific type
     fn build_example_value_for_type(
         type_name: &BrpTypeName,
@@ -239,9 +260,7 @@ impl TypeInfo {
                 registry.get(type_name).map_or(json!(null), |field_schema| {
                     let field_kind = TypeKind::from_schema(field_schema, type_name);
                     match field_kind {
-                        TypeKind::Enum => {
-                            EnumMutationBuilder::build_enum_example(field_schema)
-                        }
+                        TypeKind::Enum => EnumMutationBuilder::build_enum_example(field_schema),
                         _ => json!(null),
                     }
                 })

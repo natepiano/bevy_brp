@@ -2,7 +2,7 @@
 //!
 //! This module provides type schema information for types in your Bevy app without requiring
 //! the `bevy_brp_extras` plugin. It uses registry schema calls combined with hardcoded BRP
-//! serialization knowledge to provide format discovery equivalent to `brp_extras_discover_format`.
+//! serialization knowledge to provide accurate format discovery for BRP operations.
 
 mod format_knowledge;
 mod mutation_path_builders;

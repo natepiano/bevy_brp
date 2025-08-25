@@ -21,15 +21,15 @@ use crate::app_tools::{
 // Import parameter and result types so they're in scope for the macro
 use crate::brp_tools::{
     BevyGetWatch, BevyListWatch, BrpExecute, BrpListActiveWatches, BrpStopWatch, DestroyParams,
-    DestroyResult, DiscoverFormatParams, DiscoverFormatResult, ExecuteParams, GetParams,
-    GetResourceParams, GetResourceResult, GetResult, GetWatchParams, InsertParams,
-    InsertResourceParams, InsertResourceResult, InsertResult, ListParams, ListResourcesParams,
-    ListResourcesResult, ListResult, ListWatchParams, MutateComponentParams, MutateComponentResult,
-    MutateResourceParams, MutateResourceResult, QueryParams, QueryResult, RegistrySchemaParams,
-    RegistrySchemaResult, RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult,
-    ReparentParams, ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
-    ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
-    SpawnParams, SpawnResult, StopWatchParams, TypeSchema, TypeSchemaParams,
+    DestroyResult, ExecuteParams, GetParams, GetResourceParams, GetResourceResult, GetResult,
+    GetWatchParams, InsertParams, InsertResourceParams, InsertResourceResult, InsertResult,
+    ListParams, ListResourcesParams, ListResourcesResult, ListResult, ListWatchParams,
+    MutateComponentParams, MutateComponentResult, MutateResourceParams, MutateResourceResult,
+    QueryParams, QueryResult, RegistrySchemaParams, RegistrySchemaResult, RemoveParams,
+    RemoveResourceParams, RemoveResourceResult, RemoveResult, ReparentParams, ReparentResult,
+    RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams, ScreenshotResult, SendKeysParams,
+    SendKeysResult, SetWindowTitleParams, SetWindowTitleResult, SpawnParams, SpawnResult,
+    StopWatchParams, TypeSchema, TypeSchemaParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -205,13 +205,6 @@ pub enum ToolName {
     BrpExecute,
 
     // BRP Extras Tools
-    /// `brp_extras_discover_format` - Discover component format information
-    #[brp_tool(
-        brp_method = "brp_extras/discover_format",
-        params = "DiscoverFormatParams",
-        result = "DiscoverFormatResult"
-    )]
-    BrpExtrasDiscoverFormat,
     /// `brp_extras_screenshot` - Capture screenshots
     #[brp_tool(
         brp_method = "brp_extras/screenshot",
@@ -386,11 +379,6 @@ impl ToolName {
                 ToolCategory::DynamicBrp,
                 EnvironmentImpact::AdditiveIdempotent,
             ),
-            Self::BrpExtrasDiscoverFormat => Annotation::new(
-                "Discover Component Format",
-                ToolCategory::Extras,
-                EnvironmentImpact::ReadOnly,
-            ),
             Self::BrpExtrasScreenshot => Annotation::new(
                 "Take Screenshot",
                 ToolCategory::Extras,
@@ -532,9 +520,6 @@ impl ToolName {
             Self::BevyRpcDiscover => Some(parameters::build_parameters_from::<RpcDiscoverParams>),
             Self::BevySpawn => Some(parameters::build_parameters_from::<SpawnParams>),
             Self::BrpExecute => Some(parameters::build_parameters_from::<ExecuteParams>),
-            Self::BrpExtrasDiscoverFormat => {
-                Some(parameters::build_parameters_from::<DiscoverFormatParams>)
-            }
             Self::BrpExtrasScreenshot => {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
             }
@@ -593,7 +578,6 @@ impl ToolName {
             Self::BevyReparent => Arc::new(BevyReparent),
             Self::BevyRpcDiscover => Arc::new(BevyRpcDiscover),
             Self::BevySpawn => Arc::new(BevySpawn),
-            Self::BrpExtrasDiscoverFormat => Arc::new(BrpExtrasDiscoverFormat),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
             Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),

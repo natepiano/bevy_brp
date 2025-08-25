@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
 
-use crate::{DEFAULT_REMOTE_PORT, discovery, keyboard, screenshot, shutdown, window_title};
+use crate::{DEFAULT_REMOTE_PORT, keyboard, screenshot, shutdown, window_title};
 
 /// Command prefix for `brp_extras` methods
 const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
@@ -14,7 +14,6 @@ const EXTRAS_COMMAND_PREFIX: &str = "brp_extras/";
 /// Currently provides:
 /// - `brp_extras/screenshot`: Capture screenshots
 /// - `brp_extras/shutdown`: Gracefully shutdown the app
-/// - `brp_extras/discover_format`: Discover component format information
 /// - `brp_extras/send_keys`: Send keyboard input
 /// - `brp_extras/set_window_title`: Change the window title
 #[allow(non_upper_case_globals)]
@@ -94,10 +93,6 @@ impl Plugin for BrpExtrasPlugin {
                 shutdown::handler,
             )
             .with_method(
-                format!("{EXTRAS_COMMAND_PREFIX}discover_format"),
-                discovery::factual_handler,
-            )
-            .with_method(
                 format!("{EXTRAS_COMMAND_PREFIX}send_keys"),
                 keyboard::send_keys_handler,
             )
@@ -127,7 +122,6 @@ fn log_initialization(port: u16, source_description: &str) {
     trace!("Additional BRP methods available:");
     trace!("  - brp_extras/screenshot - Take a screenshot");
     trace!("  - brp_extras/shutdown - Shutdown the app");
-    trace!("  - brp_extras/discover_format - Discover component format information");
     trace!("  - brp_extras/send_keys - Send keyboard input");
     trace!("  - brp_extras/set_window_title - Change the window title");
 }

@@ -22,8 +22,8 @@ bevy_brp_extras does two things
 Adds the following Bevvy Remote Protocol methods:
 - `brp_extras/screenshot` - Capture screenshots of the primary window
 - `brp_extras/shutdown` - Gracefully shutdown the application
-- `brp_extras/discover_format` - Get correct data formats for BRP spawn/insert/mutation operations
 - `brp_extras/send_keys` - Send keyboard input to the application
+- `brp_extras/set_window_title` - Change the primary window title
 
 ## Usage
 
@@ -86,30 +86,6 @@ Without this feature, screenshot files will be created but will be 0 bytes as Be
 - **Parameters**: None
 - **Returns**: Success status with shutdown confirmation
 
-### Format Discovery
-- **Method**: `brp_extras/discover_format`
-- **Parameters**:
-  - `types` (array of strings, required): **Fully-qualified component type paths** (e.g., `"bevy_transform::components::transform::Transform"`, not just `"Transform"`)
-  - `enable_debug_info` (boolean, optional): Include detailed debug information in the response (default: false)
-- **Returns**: Correct JSON structure needed for BRP spawn, insert, and mutation operations
-
-**Why this exists:** Bevy's built-in `bevy/registry/schema` method provides type schemas, but doesn't show the actual JSON format needed for BRP operations. This method bridges that gap by providing the exact data structures required.
-
-Without `bevy_extras/discover_format` what happens is the coding agent will try the BRP methods such as `bevy/spawn` and it will have to do trial and error, parsing error messages until it finally works. And it doesn't always work. With `bevy_extras/discover_format` providing the type information directly, the coding agent can avoid these issues and interact with the BRP much more efficiently.
-
-**Example:**
-```bash
-curl -X POST http://localhost:15702/brp_extras/discover_format \
-  -H "Content-Type: application/json" \
-  -d '{"types": ["bevy_transform::components::transform::Transform", "bevy_core::name::Name"]}'
-```
-
-**Important:** Use fully-qualified type paths, not short names. Use `bevy/list` to find the correct paths.
-
-**Response shows:**
-- `spawn_format`: How to structure data for `bevy/spawn` operations
-- `mutation_info`: Available mutation paths and formats for `bevy/mutate_component` operations
-
 ### Send Keys
 - **Method**: `brp_extras/send_keys`
 - **Parameters**:
@@ -130,6 +106,21 @@ curl -X POST http://localhost:15702/brp_extras/send_keys \
 curl -X POST http://localhost:15702/brp_extras/send_keys \
   -H "Content-Type: application/json" \
   -d '{"keys": ["Space"], "duration_ms": 2000}'
+```
+
+### Set Window Title
+- **Method**: `brp_extras/set_window_title`
+- **Parameters**:
+  - `title` (string, required): The new title for the primary window
+- **Returns**: Success status with the old and new window titles
+
+Changes the title of the primary window.
+
+**Example:**
+```bash
+curl -X POST http://localhost:15702/brp_extras/set_window_title \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My Game - Level 2"}'
 ```
 
 ## Integration with bevy_brp_mcp

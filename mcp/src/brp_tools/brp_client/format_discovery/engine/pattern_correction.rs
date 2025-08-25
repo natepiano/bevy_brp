@@ -198,7 +198,7 @@ impl DiscoveryEngine<PatternCorrection> {
             return Some(correction_result);
         }
 
-        // Phase 4: No pattern matching fallback - return None for types not in registry
+        // return None for types not in registry
         debug!(
             "Level 3: No transformer could handle the error pattern for type '{type_name}', no fallback available"
         );
@@ -237,7 +237,7 @@ impl DiscoveryEngine<PatternCorrection> {
                         format!(
                             "Invalid mutation path '{attempted_path}' for type '{type_name}'. \
                             The field '{field_name}' does not exist. \
-                            Use bevy_brp_extras/discover_format to find valid mutation paths."
+                            Use brp_type_schema tool to find valid mutation paths."
                         )
                     } else {
                         // We have valid paths from registry or discovery

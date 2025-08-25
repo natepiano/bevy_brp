@@ -148,7 +148,7 @@ impl DiscoveryContext {
     }
 }
 
-/// Find type information in the response from `bevy_brp_extras/discover_format`
+/// Find type information in the discovery response
 ///
 /// The response format is always:
 /// ```json

@@ -77,7 +77,7 @@ impl MathTypeTransformer {
         original_value: &Value,
         math_type: &str,
     ) -> Option<TransformationResult> {
-        // Phase 4: No synthetic type creation - use only registry-based transformations
+        // use only registry-based transformations
         // Skip UnifiedTypeInfo creation and use direct conversion logic
         match math_type {
             "Vec3" => Self::convert_to_math_type_array(original_value, "Vec3").map(|arr| {

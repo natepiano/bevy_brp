@@ -1,10 +1,7 @@
 //! Discovery engine module
 //!
 //! This module contains the discovery engine implementation for format recovery.
-//! Phase 2 introduces the type state pattern with new modules while maintaining
-//! backward compatibility with the old engine.
 
-// Phase 2: New type state modules
 mod discovery_context;
 mod extras_discovery;
 mod guidance;

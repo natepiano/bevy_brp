@@ -39,7 +39,6 @@ pub use tools::bevy_spawn::{SpawnParams, SpawnResult};
 //
 // Export special case tools that don't follow the standard pattern
 pub use tools::brp_execute::{BrpExecute, ExecuteParams};
-pub use tools::brp_extras_discover_format::{DiscoverFormatParams, DiscoverFormatResult};
 pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
 pub use tools::brp_extras_set_window_title::{SetWindowTitleParams, SetWindowTitleResult};
