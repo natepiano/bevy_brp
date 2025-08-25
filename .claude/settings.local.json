@@ -68,7 +68,9 @@
       "mcp__brp__brp_type_schema_v2",
       "WebSearch",
       "WebFetch(domain:crates.io)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Read(//Users/natemccoy/rust/bevy/**)",
+      "Read(//Users/natemccoy/rust/bevy/**)"
     ],
     "deny": [
       "Bash(sed:*)"
