@@ -31,14 +31,14 @@ pub struct TypeDiscovery;
 /// if types have required serialization traits (Bevy 0.16 workaround).
 pub struct SerializationCheck(pub DiscoveryContext);
 
-/// State type for the `ExtrasDiscovery` state.
+/// State type for the `TypeSchemaDiscovery` state.
 /// This state holds a discovery context and is responsible for building
-/// corrections from extras data when no serialization issues are found.
+/// corrections from TypeSchema registry data when no serialization issues are found.
 pub struct TypeSchemaDiscovery(pub DiscoveryContext);
 
 /// State type for the `PatternCorrection` state.
 /// This state holds a discovery context and is responsible for applying
-/// pattern-based corrections when extras discovery is unavailable or fails.
+/// pattern-based corrections when TypeSchema discovery is unavailable or fails.
 pub struct PatternCorrection(pub DiscoveryContext);
 
 /// Terminal state for retryable corrections.

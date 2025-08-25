@@ -100,7 +100,10 @@ impl BrpClient {
                     self.try_format_recovery::<R>(&err).await
                 } else {
                     // Regular error - no format discovery
-                    Err(Error::tool_call_failed(err.message).into())
+                    Err(
+                        Error::tool_call_failed(format!("{} (error {})", err.message, err.code))
+                            .into(),
+                    )
                 }
             }
         }

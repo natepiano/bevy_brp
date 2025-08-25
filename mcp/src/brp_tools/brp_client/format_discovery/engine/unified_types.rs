@@ -96,7 +96,7 @@ impl UnifiedTypeInfo {
     }
 
     /// Create appropriate correction based on the operation and context
-    /// Only called from extras discovery so this indicates the `correction_source`
+    /// Only called from TypeSchema discovery so this indicates the `correction_source`
     /// We check if its a mutation operation - given we are attempting to recover from an error
     /// we can't predict the correct path to use so we provide guidance in an `Uncorrectable`
     /// Otherwise we continue to create a possible `Candidate`

@@ -17,12 +17,12 @@ use crate::tool::BrpMethod;
 /// Main entry point for format discovery with error recovery
 ///
 /// This orchestrates the entire discovery flow through the type state pattern:
-/// 1. Create engine in `TypeDiscovery` state
-/// 2. Initialize to gather discovery context (return `SerializationCheck` state)
-/// 3. Check for serialization issues (terminal if issues found)
-/// 4. Try extras-based discovery (`ExtrasDiscovery` state, terminal if corrections found)
-/// 5. Apply pattern-based corrections (`PatternCorrection` state, terminal) be it `Retry`
-///    or`Guidance`
+/// 1. Create engine in `TypeDiscovery` state and initialize with `TypeSchemaEngine` data
+/// 2. Check for serialization issues (`SerializationCheck` state, terminal if issues found)
+/// 3. Try to build corrections from TypeSchema data (`TypeSchemaDiscovery` state, terminal if
+///    corrections found)
+/// 4. Apply pattern-based transformations (`PatternCorrection` state, terminal) returning either
+///    `Retry` or `Guidance`
 pub async fn discover_format_with_recovery(
     method: BrpMethod,
     port: Port,

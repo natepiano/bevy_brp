@@ -91,23 +91,23 @@ async fn test_orchestrator_normal_flow() {
 }
 
 #[tokio::test]
-async fn test_orchestrator_extras_discovery_path() {
-    // Test the orchestrator with extras discovery path
-    // This test ensures the ExtrasDiscovery state is properly exercised
+async fn test_orchestrator_type_schema_discovery_path() {
+    // Test the orchestrator with TypeSchema discovery path
+    // This test ensures the TypeSchemaDiscovery state is properly exercised
     let method = BrpMethod::BevySpawn;
     let port = Port(15702);
     let params = json!({"components": {"Transform": {"translation": [1.0, 2.0, 3.0]}}});
     let error = BrpClientError {
         code:    -23402,
-        message: "Format error requiring extras discovery".to_string(), /* Not "Unknown
+        message: "Format error requiring TypeSchema discovery".to_string(), /* Not "Unknown
                                                                          * component type" */
         data:    None,
     };
 
     // Call the orchestrator - this should:
     // 1. Skip serialization check (no "Unknown component type" message)
-    // 2. Transition to ExtrasDiscovery state
-    // 3. Call try_extras_corrections()
+    // 2. Transition to TypeSchemaDiscovery state
+    // 3. Call try_corrections()
     // 4. Transition to PatternCorrection (fallback path)
     // 5. Process through pattern correction terminal state
     let result =
@@ -117,18 +117,18 @@ async fn test_orchestrator_extras_discovery_path() {
     match result {
         Ok(recovery_result) => {
             // If it succeeded, the full flow worked
-            println!("Extras discovery path returned recovery result: {recovery_result:?}");
+            println!("TypeSchema discovery path returned recovery result: {recovery_result:?}");
         }
         Err(e) => {
             // Expected - no actual BRP server running, but flow was exercised
-            println!("Extras discovery path exercised, got expected error: {e}");
+            println!("TypeSchema discovery path exercised, got expected error: {e}");
         }
     }
 
     // The test proves:
-    // 1. The ExtrasDiscovery state transitions work correctly
-    // 2. The try_extras_corrections() method is callable and returns proper Either type
-    // 3. The orchestrator properly handles ExtrasDiscovery -> PatternCorrection transitions
+    // 1. The TypeSchemaDiscovery state transitions work correctly
+    // 2. The try_corrections() method is callable and returns proper Either type
+    // 3. The orchestrator properly handles TypeSchemaDiscovery -> PatternCorrection transitions
     // 4. All implementation is integrated and functional
 }
 

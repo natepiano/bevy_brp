@@ -19,7 +19,7 @@ impl DiscoveryEngine<SerializationCheck> {
     /// and Deserialize traits for BRP operations.
     ///
     /// Returns `Either::Left(Either<Retry, Guidance>)` if serialization issues are found,
-    /// or `Either::Right(engine)` to continue with `ExtrasDiscovery`.
+    /// or `Either::Right(engine)` to continue with `TypeSchemaDiscovery`.
     pub fn check_serialization(
         self,
     ) -> Either<
@@ -28,7 +28,7 @@ impl DiscoveryEngine<SerializationCheck> {
     > {
         // Only check for spawn/insert methods with serialization errors
         if !matches!(self.operation, Operation::SpawnInsert { .. }) {
-            debug!("SerializationCheck: Not a spawn/insert method, proceeding to ExtrasDiscovery");
+            debug!("SerializationCheck: Not a spawn/insert method, proceeding to TypeSchemaDiscovery");
             return Either::Right(self.transition_to_type_discovery());
         }
 
@@ -42,7 +42,7 @@ impl DiscoveryEngine<SerializationCheck> {
             .contains("Unknown component type")
         {
             debug!(
-                "SerializationCheck: Error message doesn't indicate serialization issue, proceeding to ExtrasDiscovery"
+                "SerializationCheck: Error message doesn't indicate serialization issue, proceeding to TypeSchemaDiscovery"
             );
             return Either::Right(self.transition_to_type_discovery());
         }
@@ -57,7 +57,7 @@ impl DiscoveryEngine<SerializationCheck> {
 
         if !has_serialization_issues {
             debug!(
-                "SerializationCheck: All components have serialization support or are not in registry, proceeding to ExtrasDiscovery"
+                "SerializationCheck: All components have serialization support or are not in registry, proceeding to TypeSchemaDiscovery"
             );
             return Either::Right(self.transition_to_type_discovery());
         }
@@ -125,7 +125,7 @@ impl DiscoveryEngine<SerializationCheck> {
         }
     }
 
-    /// Transition to `ExtrasDiscovery` state, preserving the discovery context
+    /// Transition to `TypeSchemaDiscovery` state, preserving the discovery context
     fn transition_to_type_discovery(self) -> DiscoveryEngine<TypeSchemaDiscovery> {
         DiscoveryEngine {
             method:         self.method,

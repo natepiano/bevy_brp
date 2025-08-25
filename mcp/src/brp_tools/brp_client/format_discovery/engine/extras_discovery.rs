@@ -1,7 +1,7 @@
-//! `ExtrasDiscovery` state implementation
+//! `TypeSchemaDiscovery` state implementation
 //!
-//! This module implements the `ExtrasDiscovery` state for the discovery engine.
-//! This state builds correction candidates using already-gathered extras data
+//! This module implements the `TypeSchemaDiscovery` state for the discovery engine.
+//! This state builds correction candidates using TypeSchema data from the registry
 //! when no serialization issues are found.
 
 use either::Either;
@@ -11,9 +11,9 @@ use super::state::{DiscoveryEngine, Guidance, PatternCorrection, Retry, TypeSche
 use super::types::{Correction, are_corrections_retryable};
 
 impl DiscoveryEngine<TypeSchemaDiscovery> {
-    /// Try to build corrections from extras data
+    /// Try to build corrections from TypeSchema data
     ///
-    /// This method processes types from the `TypeRegistry` to build corrections.
+    /// This method processes types from the TypeSchema registry to build corrections.
     ///
     /// Returns `Either::Left(Either<Retry, Guidance>)` if corrections are found,
     /// or `Either::Right(engine)` to continue with `PatternCorrection`.
@@ -24,7 +24,7 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
         DiscoveryEngine<PatternCorrection>,
     > {
         debug!(
-            "ExtrasDiscovery: Attempting direct discovery for {} types",
+            "TypeSchemaDiscovery: Attempting discovery for {} types",
             self.context.types().count()
         );
 
@@ -38,7 +38,7 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
             })
             .map(|type_info| {
                 debug!(
-                    "ExtrasDiscovery: Processing type '{}' from TypeRegistry",
+                    "TypeSchemaDiscovery: Processing type '{}' from TypeSchema registry",
                     type_info.type_name().as_str()
                 );
                 type_info.to_correction(self.operation)
@@ -48,13 +48,13 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
         // Log the discovery results and evaluate corrections
         if corrections.is_empty() {
             debug!(
-                "ExtrasDiscovery: No extras-based corrections found, proceeding to PatternCorrection with {} type infos",
+                "TypeSchemaDiscovery: No TypeSchema-based corrections found, proceeding to PatternCorrection with {} type infos",
                 self.context.types().count()
             );
             Either::Right(self.transition_to_pattern_correction())
         } else {
             debug!(
-                "ExtrasDiscovery: Found {} corrections from extras discovery",
+                "TypeSchemaDiscovery: Found {} corrections from TypeSchema discovery",
                 corrections.len()
             );
 
@@ -63,7 +63,7 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
 
             // Evaluate whether corrections are retryable or guidance-only
             if are_corrections_retryable(&corrections) {
-                debug!("ExtrasDiscovery: Corrections are retryable, creating Retry state");
+                debug!("TypeSchemaDiscovery: Corrections are retryable, creating Retry state");
                 let retry_state = Retry::new(discovery_context, corrections);
                 let retry_engine = DiscoveryEngine {
                     method:         self.method,
@@ -75,7 +75,9 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
                 };
                 Either::Left(Either::Left(retry_engine))
             } else {
-                debug!("ExtrasDiscovery: Corrections are guidance-only, creating Guidance state");
+                debug!(
+                    "TypeSchemaDiscovery: Corrections are guidance-only, creating Guidance state"
+                );
                 let guidance_state = Guidance::new(discovery_context, corrections);
                 let guidance_engine = DiscoveryEngine {
                     method:         self.method,

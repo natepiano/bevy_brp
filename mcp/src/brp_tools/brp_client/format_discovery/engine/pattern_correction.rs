@@ -1,7 +1,7 @@
 //! `PatternCorrection` state implementation
 //!
 //! This module implements the `PatternCorrection` state for the discovery engine.
-//! This state applies pattern-based corrections when extras discovery is unavailable
+//! This state applies pattern-based corrections when TypeSchema discovery is unavailable
 //! or fails. This is the terminal state of the discovery process.
 
 use tracing::debug;
