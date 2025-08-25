@@ -78,7 +78,8 @@
       "Bash(sed:*)"
     ],
     "additionalDirectories": [
-      "/Users/natemccoy/rust/bevy"
+      "/Users/natemccoy/rust/bevy",
+      "/Users/natemccoy/rust"
     ]
   }
 }
