@@ -89,7 +89,7 @@ impl TypeInfo {
         let can_spawn = supported_operations.contains(&BrpSupportedOperation::Spawn)
             || supported_operations.contains(&BrpSupportedOperation::Insert);
         let spawn_format = if can_spawn {
-            Self::build_spawn_format(type_schema, registry)
+            Self::build_spawn_format(type_schema, registry, &type_kind)
         } else {
             None
         };
@@ -158,6 +158,23 @@ impl TypeInfo {
     fn build_spawn_format(
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
+        type_kind: &TypeKind,
+    ) -> Option<Value> {
+        match type_kind {
+            TypeKind::TupleStruct | TypeKind::Tuple => {
+                Self::build_tuple_spawn_format(type_schema, registry)
+            }
+            TypeKind::Struct => {
+                Self::build_struct_spawn_format(type_schema, registry)
+            }
+            _ => None,
+        }
+    }
+    
+    /// Build spawn format for struct types with named properties
+    fn build_struct_spawn_format(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
     ) -> Option<Value> {
         let properties = type_schema
             .get_field(SchemaField::Properties)
@@ -166,27 +183,9 @@ impl TypeInfo {
         let mut spawn_example = Map::new();
 
         for (field_name, field_info) in properties {
-            // Extract field type
             let field_type = SchemaField::extract_field_type(field_info);
-
             if let Some(ft) = field_type {
-                // Check for hardcoded knowledge
-                let example = BRP_FORMAT_KNOWLEDGE.get(&ft).map_or_else(
-                    || {
-                        // Check if it's an enum and build example
-                        registry.get(&ft).map_or(json!(null), |field_schema| {
-                            let field_kind = TypeKind::from_schema(field_schema, &ft);
-                            match field_kind {
-                                TypeKind::Enum => {
-                                    EnumMutationBuilder::build_enum_example(field_schema)
-                                }
-                                _ => json!(null),
-                            }
-                        })
-                    },
-                    |hardcoded| hardcoded.example_value.clone(),
-                );
-
+                let example = Self::build_example_value_for_type(&ft, registry);
                 spawn_example.insert(field_name.clone(), example);
             }
         }
@@ -196,6 +195,59 @@ impl TypeInfo {
         } else {
             Some(Value::Object(spawn_example))
         }
+    }
+    
+    /// Build spawn format for tuple struct types with indexed fields
+    fn build_tuple_spawn_format(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Option<Value> {
+        let prefix_items = type_schema
+            .get_field(SchemaField::PrefixItems)
+            .and_then(Value::as_array)?;
+        
+        let tuple_examples: Vec<Value> = prefix_items
+            .iter()
+            .map(|item| {
+                // Extract type from $ref format
+                item.get_field(SchemaField::Type)
+                    .and_then(|t| t.get("$ref"))
+                    .and_then(Value::as_str)
+                    .and_then(|s| s.strip_prefix("#/$defs/"))
+                    .map(BrpTypeName::from)
+                    .map(|ft| Self::build_example_value_for_type(&ft, registry))
+                    .unwrap_or_else(|| json!(null))
+            })
+            .collect();
+        
+        if tuple_examples.is_empty() {
+            None
+        } else {
+            Some(Value::Array(tuple_examples))
+        }
+    }
+    
+    /// Build an example value for a specific type
+    fn build_example_value_for_type(
+        type_name: &BrpTypeName,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Value {
+        // Check for hardcoded knowledge first
+        BRP_FORMAT_KNOWLEDGE.get(type_name).map_or_else(
+            || {
+                // Check if it's an enum and build example
+                registry.get(type_name).map_or(json!(null), |field_schema| {
+                    let field_kind = TypeKind::from_schema(field_schema, type_name);
+                    match field_kind {
+                        TypeKind::Enum => {
+                            EnumMutationBuilder::build_enum_example(field_schema)
+                        }
+                        _ => json!(null),
+                    }
+                })
+            },
+            |hardcoded| hardcoded.example_value.clone(),
+        )
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
