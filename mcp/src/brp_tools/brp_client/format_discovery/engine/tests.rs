@@ -8,7 +8,6 @@
 use serde_json::json;
 
 use super::orchestrator;
-use super::unified_types::UnifiedTypeInfo;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::BrpMethod;
 
@@ -134,57 +133,6 @@ async fn test_orchestrator_extras_discovery_path() {
 }
 
 // Integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion
-// Note: test_enrich_from_extras_full_enrichment removed after replacing
-// bevy_brp_extras with TypeSchemaEngine (Phase 5)
-
-#[test]
-fn test_registry_schema_to_unified_type_info_conversion() {
-    // Simulate registry schema response
-    let schema_data = json!({
-        "typePath": "bevy_render::color::Color",
-        "shortPath": "Color",
-        "reflectTypes": ["Component", "Serialize", "Deserialize", "Default"],
-        "properties": {
-            "fields": [
-                {
-                    "name": "r",
-                    "type": "f32",
-                    "doc": "Red component"
-                },
-                {
-                    "name": "g",
-                    "type": "f32",
-                    "doc": "Green component"
-                },
-                {
-                    "name": "b",
-                    "type": "f32",
-                    "doc": "Blue component"
-                },
-                {
-                    "name": "a",
-                    "type": "f32",
-                    "doc": "Alpha component"
-                }
-            ]
-        }
-    });
-
-    let unified_info = UnifiedTypeInfo::from_registry_schema(
-        "bevy_render::color::Color",
-        &schema_data,
-        serde_json::json!({}),
-    );
-
-    // Verify type information from registry
-    assert_eq!(unified_info.type_name.as_str(), "bevy_render::color::Color");
-
-    // Verify registry status is correctly set
-    assert!(unified_info.registry_status.in_registry);
-    assert!(unified_info.registry_status.has_reflect);
-
-    // Verify serialization support from reflect traits
-    assert!(unified_info.serialization.has_serialize);
-    assert!(unified_info.serialization.has_deserialize);
-    assert!(unified_info.serialization.brp_compatible);
-}
+// Note: test_enrich_from_extras_full_enrichment and
+// test_registry_schema_to_unified_type_info_conversion removed after replacing direct registry
+// schema conversion with TypeSchemaEngine (Phase 2)

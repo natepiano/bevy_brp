@@ -13,8 +13,7 @@ use serde_json::Value;
 use tracing::debug;
 
 use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, EnumInfo, EnumVariant,
-    FormatInfo, Operation, RegistryStatus, SerializationSupport,
+    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, FormatInfo, Operation,
 };
 use crate::brp_tools::brp_type_schema::{
     BrpTypeName, EnumVariantKind, MutationPath, TypeInfo, TypeKind,
@@ -24,20 +23,12 @@ use crate::tool::{BrpMethod, ParameterName};
 /// Comprehensive type information unified across all discovery sources
 #[derive(Debug, Clone, Serialize)]
 pub struct UnifiedTypeInfo {
-    /// The fully-qualified type name
-    pub type_name:        BrpTypeName,
+    /// Complete type information from registry
+    pub type_info:        TypeInfo,
     /// The original value from parameters
     pub original_value:   Value,
-    /// Registry and reflection information
-    pub registry_status:  RegistryStatus,
-    /// Serialization support information
-    pub serialization:    SerializationSupport,
     /// Format-specific data and examples
     pub format_info:      FormatInfo,
-    /// Type kind for quick identification
-    pub type_kind:        TypeKind,
-    /// Enum variant information (only populated for enum types)
-    pub enum_info:        Option<EnumInfo>,
     /// Source of this type information for debugging
     pub discovery_source: DiscoverySource,
 }
@@ -50,107 +41,42 @@ impl UnifiedTypeInfo {
         original_value: Value,
         discovery_source: DiscoverySource,
     ) -> Self {
+        // Create minimal TypeInfo for pattern matching cases
+        let type_info = TypeInfo {
+            type_name:            type_name.into(),
+            spawn_format:         None,
+            mutation_paths:       HashMap::new(),
+            in_registry:          false,
+            has_serialize:        false,
+            has_deserialize:      false,
+            supported_operations: Vec::new(),
+            example_values:       HashMap::new(),
+            schema_info:          None,
+            enum_info:            None,
+            error:                None,
+        };
+
         Self {
-            type_name: type_name.into(),
+            type_info,
             original_value,
-            registry_status: RegistryStatus {
-                in_registry: false,
-                has_reflect: false,
-                type_path:   None,
-            },
-            serialization: SerializationSupport {
-                has_serialize:   false,
-                has_deserialize: false,
-                brp_compatible:  false,
-            },
-            format_info: FormatInfo {
-                examples:         HashMap::new(),
-                mutation_paths:   HashMap::new(),
-                original_format:  None,
-                corrected_format: None,
-            },
-            type_kind: TypeKind::Value,
-            enum_info: None,
             discovery_source,
+            format_info: FormatInfo::default(),
         }
     }
 
     /// Create `UnifiedTypeInfo` from `TypeInfo` (single source of truth constructor)
     pub fn from_type_info(
-        type_info: &TypeInfo,
+        type_info: TypeInfo, // Take ownership instead of reference
         original_value: Value,
-        method: BrpMethod,
-    ) -> Result<Self, crate::error::Error> {
-        let type_name = type_info.type_name.clone();
-
-        // Determine operation for examples
-        let operation = Operation::try_from(method)?;
-
-        // Build examples HashMap
-        let mut examples = HashMap::new();
-        if let Some(spawn_format) = &type_info.spawn_format {
-            // Add spawn_format to examples if this is a SpawnInsert operation
-            if matches!(operation, Operation::SpawnInsert { .. }) {
-                examples.insert(operation, spawn_format.clone());
-            }
-        }
-
-        // Use TypeInfo mutation_paths directly
-        let mutation_paths = type_info.mutation_paths.clone();
-
-        // Convert enum_info from TypeInfo format to our format
-        let enum_info = type_info.enum_info.as_ref().map(|enum_variants| {
-            let variants = enum_variants
-                .iter()
-                .map(|variant_info| EnumVariant {
-                    name:         variant_info.variant_name.clone(),
-                    variant_kind: variant_info.variant_kind,
-                    fields:       variant_info.fields.clone(),
-                    tuple_types:  variant_info.tuple_types.clone(),
-                })
-                .collect();
-            EnumInfo { variants }
-        });
-
-        // Compute has_reflect from TypeInfo's reflect traits
-        let has_reflect = type_info.schema_info.is_some() || type_info.in_registry;
-
-        // Compute brp_compatible as has_serialize && has_deserialize
-        let brp_compatible = type_info.has_serialize && type_info.has_deserialize;
-
-        // Determine TypeKind from schema_info or default to Value
-        let type_kind = type_info
-            .schema_info
-            .as_ref()
-            .and_then(|schema| schema.type_kind.clone())
-            .unwrap_or(TypeKind::Value);
-
-        Ok(Self {
-            type_name,
+        _method: BrpMethod, // No longer needed for examples
+    ) -> Self {
+        Self {
+            type_info,
             original_value,
-            registry_status: RegistryStatus {
-                in_registry: type_info.in_registry,
-                has_reflect,
-                type_path: None, // Not directly available from TypeInfo
-            },
-            serialization: SerializationSupport {
-                has_serialize: type_info.has_serialize,
-                has_deserialize: type_info.has_deserialize,
-                brp_compatible,
-            },
-            format_info: FormatInfo {
-                examples,
-                mutation_paths,
-                original_format: None,
-                corrected_format: None,
-            },
-            type_kind,
-            enum_info,
             discovery_source: DiscoverySource::TypeRegistry,
-        })
+            format_info: FormatInfo::default(), // Only populate if corrections needed
+        }
     }
-
-    /// Enrich this type info with data from `bevy_brp_extras` discovery
 
     /// Create `UnifiedTypeInfo` for enum types with variant names
     ///
@@ -162,20 +88,27 @@ impl UnifiedTypeInfo {
         original_value: Value,
     ) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_kind = TypeKind::Enum;
+
+        // Update TypeInfo with enum variants
         if !variant_names.is_empty() {
+            use crate::brp_tools::brp_type_schema::EnumVariantInfo;
             let variants = variant_names
                 .into_iter()
-                .map(|name| EnumVariant {
-                    name,
+                .map(|name| EnumVariantInfo {
+                    variant_name: name,
                     variant_kind: EnumVariantKind::Unit,
-                    fields: None,
-                    tuple_types: None,
+                    fields:       None,
+                    tuple_types:  None,
                 })
                 .collect();
-            info.enum_info = Some(EnumInfo { variants });
+            info.type_info.enum_info = Some(variants);
         }
-        info.generate_all_examples();
+
+        // Update schema_info to indicate this is an enum
+        if let Some(ref mut schema_info) = info.type_info.schema_info {
+            schema_info.type_kind = Some(TypeKind::Enum);
+        }
+
         info
     }
 
@@ -185,8 +118,10 @@ impl UnifiedTypeInfo {
     /// Sets appropriate type category and generates examples.
     pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_kind = TypeKind::Struct;
-        info.generate_all_examples();
+
+        // Mark this as a math type by setting an error indicating pattern matching
+        info.type_info.error = Some("Identified as math type via pattern matching".to_string());
+
         info
     }
 
@@ -196,35 +131,37 @@ impl UnifiedTypeInfo {
     /// Sets appropriate type category, child types, and generates examples.
     pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
-        info.type_kind = TypeKind::Struct;
 
-        info.generate_all_examples();
+        // Mark this as a transform type by setting an error indicating pattern matching
+        info.type_info.error =
+            Some("Identified as transform type via pattern matching".to_string());
+
         info
     }
 
     /// Get the mutation paths for this type
     pub const fn get_mutation_paths(&self) -> &HashMap<String, MutationPath> {
-        &self.format_info.mutation_paths
+        &self.type_info.mutation_paths
     }
 
     /// Check if this type is a math type using BRP format knowledge
-    /// This replaces the old string-based matching and uses the same logic as
-    /// `TypeInfo.is_math_type()`
+    /// Delegate to `TypeInfo`'s `is_math_type` method
     fn is_math_type(&self) -> bool {
-        use crate::brp_tools::brp_type_schema::BRP_FORMAT_KNOWLEDGE;
-        BRP_FORMAT_KNOWLEDGE
-            .get(&self.type_name)
-            .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
+        self.type_info.is_math_type()
     }
 
     /// Check if this type supports mutation operations
     pub fn supports_mutation(&self) -> bool {
-        !self.format_info.mutation_paths.is_empty()
+        !self.type_info.mutation_paths.is_empty()
     }
 
     /// Get example for a specific operation
-    pub fn get_example_for_operation(&self, operation: Operation) -> Option<&Value> {
-        self.format_info.examples.get(&operation)
+    pub const fn get_example_for_operation(&self, operation: Operation) -> Option<&Value> {
+        match operation {
+            Operation::SpawnInsert { .. } => self.type_info.spawn_format.as_ref(),
+            Operation::Mutate { .. } => None, /* For other operations, check corrected format if
+                                               * available */
+        }
     }
 
     /// Create appropriate correction based on the operation and context
@@ -238,7 +175,7 @@ impl UnifiedTypeInfo {
             // Create mutation guidance
             let mut hint = format!(
                 "Type '{}' supports mutation. Available paths:\n",
-                self.type_name
+                self.type_info.type_name
             );
             for (path, mutation_path) in self.get_mutation_paths() {
                 let _ = writeln!(hint, "  {path} - {}", mutation_path.description);
@@ -257,8 +194,8 @@ impl UnifiedTypeInfo {
     fn to_spawn_insert_correction(&self) -> Correction {
         debug!(
             "to_correction: Converting type '{}' with enum_info: {}",
-            self.type_name,
-            if self.enum_info.is_some() {
+            self.type_info.type_name,
+            if self.type_info.enum_info.is_some() {
                 "present"
             } else {
                 "missing"
@@ -266,19 +203,20 @@ impl UnifiedTypeInfo {
         );
 
         // Check if this is an enum with variants - provide guidance only
-        if let Some(enum_info) = &self.enum_info {
+        if let Some(enum_info) = &self.type_info.enum_info {
             let variant_names: Vec<String> =
-                enum_info.variants.iter().map(|v| v.name.clone()).collect();
+                enum_info.iter().map(|v| v.variant_name.clone()).collect();
 
             let example_variant = variant_names.first().map_or("VariantName", String::as_str);
 
             let reason = format!(
                 "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}. Use one of these values directly (e.g., \"{}\")",
-                self.type_name
+                self.type_info
+                    .type_name
                     .as_str()
                     .split("::")
                     .last()
-                    .unwrap_or(self.type_name.as_str()),
+                    .unwrap_or(self.type_info.type_name.as_str()),
                 variant_names.join(", "),
                 example_variant
             );
@@ -311,7 +249,7 @@ impl UnifiedTypeInfo {
                     } else {
                         "value"
                     },
-                    self.type_name
+                    self.type_info.type_name
                 ),
                 corrected_format:  None,
                 type_info:         self.clone(),
@@ -331,10 +269,10 @@ impl UnifiedTypeInfo {
             parameter_name: ParameterName::Components,
         }).map_or_else(|| format!(
                 "Cannot transform input for type '{}'. Type discovered but no format example available.",
-                self.type_name
+                self.type_info.type_name
             ), |spawn_example| format!(
                 "Cannot transform input for type '{}'. Use this format: {}",
-                self.type_name,
+                self.type_info.type_name,
                 serde_json::to_string(spawn_example)
                     .unwrap_or_else(|_| "correct format".to_string())
             ));
@@ -345,107 +283,21 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Regenerate all examples based on current type information
-    fn generate_all_examples(&mut self) {
-        // Clear existing examples
-        self.format_info.examples.clear();
-
-        // Generate spawn/insert example
-        if let Some(example) = self.generate_spawn_insert_example() {
-            self.format_info.examples.insert(
-                Operation::SpawnInsert {
-                    parameter_name: ParameterName::Components,
-                },
-                example,
-            );
-        }
-
-        // Generate mutation example if type supports mutation
-        if self.supports_mutation()
-            && let Some(example) = self.generate_mutation_example()
-        {
-            self.format_info.examples.insert(
-                Operation::Mutate {
-                    parameter_name: ParameterName::Component,
-                },
-                example,
-            );
-        }
-    }
-    /// Generate spawn example based on type structure
-    fn generate_spawn_insert_example(&self) -> Option<Value> {
-        match self.type_kind {
-            TypeKind::Enum => self.generate_enum_example(),
-            TypeKind::Struct => {
-                if self.is_math_type() {
-                    self.generate_math_type_example()
-                } else {
-                    self.generate_struct_example()
-                }
-            }
-            _ => None,
-        }
-    }
-
-    /// Generate mutation example with paths
-    fn generate_mutation_example(&self) -> Option<Value> {
-        if let Some((path, mutation_path)) = self.format_info.mutation_paths.iter().next() {
-            Some(serde_json::json!({
-                "path": path,
-                "value": Self::generate_value_for_type(&mutation_path.description),
-                "description": mutation_path.description
-            }))
-        } else {
-            None
-        }
-    }
-
-    /// Generate example for struct types
-    fn generate_struct_example(&self) -> Option<Value> {
-        // For now, return corrected format if available
-        self.format_info.corrected_format.clone()
-    }
-
-    /// Generate example for enum types
-    fn generate_enum_example(&self) -> Option<Value> {
-        self.enum_info.as_ref().and_then(|enum_info| {
-            enum_info
-                .variants
-                .first()
-                .map(|variant| match variant.variant_kind {
-                    EnumVariantKind::Unit => Value::String(variant.name.clone()),
-                    _ => serde_json::json!({
-                        variant.name.clone(): {}
-                    }),
-                })
-        })
-    }
-
-    /// Generate example for math types (Vec2, Vec3, etc.)
-    fn generate_math_type_example(&self) -> Option<Value> {
-        match self.type_name.as_str() {
-            name if name.contains("Vec2") => Some(serde_json::json!([0.0, 0.0])),
-            name if name.contains("Vec3") => Some(serde_json::json!([0.0, 0.0, 0.0])),
-            name if name.contains("Vec4") => Some(serde_json::json!([0.0, 0.0, 0.0, 0.0])),
-            name if name.contains("Quat") => Some(serde_json::json!([0.0, 0.0, 0.0, 1.0])),
-            _ => None,
-        }
-    }
-
-    /// Generate appropriate value for a type description
-    fn generate_value_for_type(type_desc: &str) -> Value {
-        match type_desc {
-            desc if desc.contains("f32") || desc.contains("float") => Value::from(0.0),
-            desc if desc.contains("i32") || desc.contains("int") => Value::from(0),
-            desc if desc.contains("bool") => Value::from(false),
-            desc if desc.contains("String") => Value::from(""),
-            _ => Value::Null,
-        }
-    }
-
     /// Transform an incorrect value to the correct format
     pub fn transform_value(&self, value: &Value) -> Option<Value> {
-        match self.type_kind {
+        let type_kind = self
+            .type_info
+            .schema_info
+            .as_ref()
+            .and_then(|s| s.type_kind.clone())
+            .unwrap_or_else(|| {
+                if self.type_info.enum_info.is_some() {
+                    TypeKind::Enum
+                } else {
+                    TypeKind::Struct
+                }
+            });
+        match type_kind {
             TypeKind::Enum => self.transform_enum_value(value),
             TypeKind::Struct => {
                 if self.is_math_type() {
@@ -457,8 +309,8 @@ impl UnifiedTypeInfo {
             _ => {
                 tracing::debug!(
                     "No transformation available for type_kind={:?} (type='{}')",
-                    self.type_kind,
-                    self.type_name
+                    type_kind,
+                    self.type_info.type_name
                 );
                 None
             }
@@ -470,7 +322,7 @@ impl UnifiedTypeInfo {
         // Handle object to array conversion for math types
         value
             .as_object()
-            .and_then(|obj| match self.type_name.as_str() {
+            .and_then(|obj| match self.type_info.type_name.as_str() {
                 name if name.contains("Vec2") => Self::extract_vec2_from_object(obj),
                 name if name.contains("Vec3") => Self::extract_vec3_from_object(obj),
                 name if name.contains("Vec4") => Self::extract_vec4_from_object(obj),
@@ -512,7 +364,7 @@ impl UnifiedTypeInfo {
     /// Transform struct values - only transform if input is valid and transformable
     fn transform_struct_value(&self, value: &Value) -> Option<Value> {
         // Check if this is a Transform type with child math types that can be transformed
-        if self.type_name.as_str().contains("Transform") {
+        if self.type_info.type_name.as_str().contains("Transform") {
             // Try to transform object format to array format for math fields
             if let Some(obj) = value.as_object() {
                 let mut result = serde_json::Map::new();
@@ -571,11 +423,11 @@ impl UnifiedTypeInfo {
 
     /// Transform enum values
     fn transform_enum_value(&self, value: &Value) -> Option<Value> {
-        if let Some(enum_info) = &self.enum_info {
+        if let Some(enum_info) = &self.type_info.enum_info {
             // Handle string to enum variant conversion
             if let Some(str_val) = value.as_str() {
                 // Check if string matches a variant name
-                if enum_info.variants.iter().any(|v| v.name == str_val) {
+                if enum_info.iter().any(|v| v.variant_name == str_val) {
                     // For unit variants, just return the string
                     return Some(Value::String(str_val.to_string()));
                 }

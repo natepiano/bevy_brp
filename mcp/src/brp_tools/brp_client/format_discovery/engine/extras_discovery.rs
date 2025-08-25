@@ -13,7 +13,7 @@ use super::types::{Correction, DiscoverySource, are_corrections_retryable};
 impl DiscoveryEngine<ExtrasDiscovery> {
     /// Try to build corrections from extras data
     ///
-    /// This method processes types from the TypeRegistry to build corrections.
+    /// This method processes types from the `TypeRegistry` to build corrections.
     ///
     /// Returns `Either::Left(Either<Retry, Guidance>)` if corrections are found,
     /// or `Either::Right(engine)` to continue with `PatternCorrection`.
@@ -35,13 +35,13 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             .filter(|type_info| {
                 // Process types from TypeRegistry that have spawn_format or mutation_paths
                 matches!(type_info.discovery_source, DiscoverySource::TypeRegistry)
-                    && (!type_info.format_info.examples.is_empty()
-                        || !type_info.format_info.mutation_paths.is_empty())
+                    && (type_info.type_info.spawn_format.is_some()
+                        || !type_info.type_info.mutation_paths.is_empty())
             })
             .map(|type_info| {
                 debug!(
                     "ExtrasDiscovery: Processing type '{}' from TypeRegistry",
-                    type_info.type_name.as_str()
+                    type_info.type_info.type_name.as_str()
                 );
                 type_info.to_correction(self.operation)
             })

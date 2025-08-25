@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use super::super::detection::{self, ErrorPattern};
-use super::super::engine::{EnumInfo, Operation, TransformationResult, UnifiedTypeInfo};
+use super::super::engine::{Operation, TransformationResult, UnifiedTypeInfo};
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
@@ -276,7 +276,7 @@ impl EnumVariantTransformer {
             example.clone()
         } else {
             // Fallback format if no example was generated
-            let valid_values = type_info.enum_info.as_ref().map_or_else(
+            let valid_values = type_info.type_info.enum_info.as_ref().map_or_else(
                 || {
                     vec![
                         "Variant1".to_string(),
@@ -284,7 +284,7 @@ impl EnumVariantTransformer {
                         "Variant3".to_string(),
                     ]
                 },
-                |info| info.variants.iter().map(|v| v.name.clone()).collect(),
+                |info| info.iter().map(|v| v.variant_name.clone()).collect(),
             );
 
             json!({
@@ -295,7 +295,7 @@ impl EnumVariantTransformer {
             })
         };
 
-        let valid_values = type_info.enum_info.as_ref().map_or_else(
+        let valid_values = type_info.type_info.enum_info.as_ref().map_or_else(
             || {
                 vec![
                     "Variant1".to_string(),
@@ -304,9 +304,8 @@ impl EnumVariantTransformer {
                 ]
             },
             |info| {
-                info.variants
-                    .iter()
-                    .map(|v| v.name.clone())
+                info.iter()
+                    .map(|v| v.variant_name.clone())
                     .collect::<Vec<_>>()
             },
         );
@@ -327,10 +326,10 @@ impl EnumVariantTransformer {
         type_name: &str,
         expected_variant_type: &str,
         actual_variant_type: &str,
-        enum_info: &EnumInfo,
+        enum_info: &[crate::brp_tools::brp_type_schema::EnumVariantInfo],
     ) -> TransformationResult {
         // Use actual enum variants from type information
-        let valid_values: Vec<String> = enum_info.variants.iter().map(|v| v.name.clone()).collect();
+        let valid_values: Vec<String> = enum_info.iter().map(|v| v.variant_name.clone()).collect();
 
         // Return format correction that explains empty path usage
         let format_info = json!({
@@ -424,7 +423,7 @@ impl EnumVariantTransformer {
         value: &Value,
         error: &BrpClientError,
         type_name: &str,
-        enum_info: &EnumInfo,
+        enum_info: &Vec<crate::brp_tools::brp_type_schema::EnumVariantInfo>,
     ) -> Option<TransformationResult> {
         // For now, fall back to basic pattern matching
         // This can be enhanced in the future to use the rich enum_info data
@@ -437,12 +436,12 @@ impl EnumVariantTransformer {
 
         // Check if we have variant names in enum_info
         let error_message = &error.message;
-        for variant in &enum_info.variants {
-            if error_message.contains(&variant.name) {
+        for variant in enum_info {
+            if error_message.contains(&variant.variant_name) {
                 // Found a variant reference, could provide targeted transformation
                 let hint = format!(
                     "Enum '{type_name}' variant '{}' transformation based on discovered schema",
-                    variant.name
+                    variant.variant_name
                 );
                 // For now, return the original value with an informative hint
                 // Real transformations would analyze the variant structure
@@ -565,10 +564,10 @@ impl FormatTransformer for EnumVariantTransformer {
         type_info: &UnifiedTypeInfo,
     ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
-        let type_name = &type_info.type_name;
+        let type_name = &type_info.type_info.type_name;
 
         // If type_info has enum information, use it for more accurate transformations
-        if let Some(enum_info) = &type_info.enum_info {
+        if let Some(enum_info) = &type_info.type_info.enum_info {
             // Analyze the error pattern to check for enum unit variant errors
             let pattern = super::super::detection::analyze_error_pattern(error).pattern;
 

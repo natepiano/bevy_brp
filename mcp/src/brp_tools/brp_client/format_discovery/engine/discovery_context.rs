@@ -46,7 +46,8 @@ impl DiscoveryContext {
             })?;
 
             // Create UnifiedTypeInfo from TypeInfo (single source of truth)
-            let unified_info = UnifiedTypeInfo::from_type_info(type_info, original_value, method)?;
+            let unified_info =
+                UnifiedTypeInfo::from_type_info(type_info.clone(), original_value, method);
             type_map.insert(type_name, unified_info);
         }
 
@@ -157,7 +158,6 @@ impl DiscoveryContext {
 ///   }
 /// }
 /// ```
-
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
@@ -199,73 +199,5 @@ mod tests {
 
     // Integration tests would go in the tests/ directory to test with actual BRP
 
-    // Registry integration tests (moved from registry_integration.rs)
-    #[test]
-    fn test_find_type_in_registry_response_direct_key() {
-        let response = json!({
-            "bevy_transform::components::transform::Transform": {
-                "typePath": "bevy_transform::components::transform::Transform",
-                "reflectTypes": ["Component", "Serialize", "Deserialize"]
-            }
-        });
-
-        let result = DiscoveryContext::find_type_in_registry_response(
-            "bevy_transform::components::transform::Transform",
-            &response,
-        );
-
-        assert!(result.is_some());
-        let result = result.expect("Expected to find type in registry response");
-        let type_path = result
-            .get("typePath")
-            .and_then(|v| v.as_str())
-            .expect("Expected typePath to be a string");
-        assert_eq!(
-            type_path,
-            "bevy_transform::components::transform::Transform"
-        );
-    }
-
-    #[test]
-    fn test_find_type_in_registry_response_array_format() {
-        let response = json!([
-            {
-                "typePath": "bevy_transform::components::transform::Transform",
-                "shortPath": "Transform",
-                "reflectTypes": ["Component", "Serialize", "Deserialize"]
-            },
-            {
-                "typePath": "bevy_ecs::name::Name",
-                "shortPath": "Name",
-                "reflectTypes": ["Component"]
-            }
-        ]);
-
-        let result =
-            DiscoveryContext::find_type_in_registry_response("bevy_ecs::name::Name", &response);
-
-        assert!(result.is_some());
-        let result = result.expect("Expected to find type in registry response");
-        let type_path = result
-            .get("typePath")
-            .and_then(|v| v.as_str())
-            .expect("Expected typePath to be a string");
-        assert_eq!(type_path, "bevy_ecs::name::Name");
-    }
-
-    #[test]
-    fn test_find_type_in_registry_response_not_found() {
-        let response = json!({
-            "other_type": {
-                "typePath": "other::Type"
-            }
-        });
-
-        let result = DiscoveryContext::find_type_in_registry_response(
-            "bevy_transform::components::transform::Transform",
-            &response,
-        );
-
-        assert!(result.is_none());
-    }
+    // Registry integration tests removed - direct registry processing replaced by TypeSchemaEngine
 }

@@ -33,7 +33,7 @@ impl DiscoveryEngine<Guidance> {
                 Correction::Uncorrectable { type_info, reason } => {
                     debug!(
                         "Guidance Engine: Found metadata for type '{}' but no correction: {}",
-                        type_info.type_name.as_str(),
+                        type_info.type_info.type_name.as_str(),
                         reason
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
@@ -68,13 +68,13 @@ impl DiscoveryEngine<Guidance> {
     fn build_corrected_value_from_type_info(&self, type_info: &UnifiedTypeInfo) -> Value {
         debug!(
             "build_corrected_value_from_type_info: Building for type '{}' with operation '{:?}', enum_info present: {}",
-            type_info.type_name.as_str(),
+            type_info.type_info.type_name.as_str(),
             self.operation,
-            type_info.enum_info.is_some()
+            type_info.type_info.enum_info.is_some()
         );
 
         // Check if we have examples for this operation
-        if let Some(example) = type_info.format_info.examples.get(&self.operation) {
+        if let Some(example) = type_info.get_example_for_operation(self.operation) {
             debug!(
                 "build_corrected_value_from_type_info: Found example for operation, returning it"
             );
@@ -93,7 +93,9 @@ impl DiscoveryEngine<Guidance> {
             // Check if we have a mutate example
             debug!(
                 "build_corrected_value_from_type_info: Checking for mutate example, examples keys: {:?}",
-                type_info.format_info.examples.keys().collect::<Vec<_>>()
+                vec![&Operation::SpawnInsert {
+                    parameter_name: ParameterName::Component,
+                }] // Available example operations
             );
             if let Some(mutate_example) = type_info.get_example_for_operation(Operation::Mutate {
                 parameter_name: ParameterName::Component,
@@ -113,13 +115,9 @@ impl DiscoveryEngine<Guidance> {
                 FormatCorrectionField::Hint: "Use appropriate path and value for mutation"
             });
 
-            if !type_info.format_info.mutation_paths.is_empty() {
-                let paths: Vec<String> = type_info
-                    .format_info
-                    .mutation_paths
-                    .keys()
-                    .cloned()
-                    .collect();
+            if !type_info.type_info.mutation_paths.is_empty() {
+                let paths: Vec<String> =
+                    type_info.type_info.mutation_paths.keys().cloned().collect();
                 guidance.insert_field(
                     FormatCorrectionField::AvailablePaths,
                     serde_json::json!(paths),
@@ -127,9 +125,9 @@ impl DiscoveryEngine<Guidance> {
             }
 
             // Add enum-specific guidance if this is an enum
-            if let Some(enum_info) = &type_info.enum_info {
+            if let Some(enum_info) = &type_info.type_info.enum_info {
                 let variants: Vec<String> =
-                    enum_info.variants.iter().map(|v| v.name.clone()).collect();
+                    enum_info.iter().map(|v| v.variant_name.clone()).collect();
                 debug!(
                     "build_corrected_value_from_type_info: Adding enum guidance with {} variants: {:?}",
                     variants.len(),

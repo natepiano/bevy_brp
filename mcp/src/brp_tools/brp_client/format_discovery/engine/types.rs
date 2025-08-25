@@ -2,16 +2,11 @@
 //!
 //! These marker types ensure compile-time state validation for the discovery process.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::unified_types::UnifiedTypeInfo;
-use crate::brp_tools::brp_type_schema::{
-    BrpTypeName, EnumFieldInfo, EnumVariantKind, MutationPath,
-};
 use crate::error::Error;
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -136,7 +131,7 @@ impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
     pub fn to_json(&self) -> Value {
         let mut correction_json = serde_json::json!({
-            FormatCorrectionField::TypeName: self.type_info.type_name.as_str(),
+            FormatCorrectionField::TypeName: self.type_info.type_info.type_name.as_str(),
             FormatCorrectionField::OriginalFormat: self.type_info.original_value,
             FormatCorrectionField::CorrectedFormat: self.corrected_value,
             FormatCorrectionField::Hint: self.hint
@@ -145,10 +140,10 @@ impl CorrectionInfo {
         // Add rich metadata fields
         if let Some(obj) = correction_json.as_object_mut() {
             // Extract mutation_paths
-            if !self.type_info.format_info.mutation_paths.is_empty() {
+            if !self.type_info.type_info.mutation_paths.is_empty() {
                 let paths: Vec<String> = self
                     .type_info
-                    .format_info
+                    .type_info
                     .mutation_paths
                     .keys()
                     .cloned()
@@ -160,9 +155,24 @@ impl CorrectionInfo {
             }
 
             // Extract type_category
+            let type_kind = self
+                .type_info
+                .type_info
+                .schema_info
+                .as_ref()
+                .and_then(|s| s.type_kind.clone())
+                .unwrap_or_else(|| {
+                    // Fallback: determine from enum_info
+                    use crate::brp_tools::brp_type_schema::TypeKind;
+                    if self.type_info.type_info.enum_info.is_some() {
+                        TypeKind::Enum
+                    } else {
+                        TypeKind::Struct
+                    }
+                });
             obj.insert(
                 String::from(FormatCorrectionField::TypeCategory),
-                serde_json::json!(format!("{:?}", self.type_info.type_kind)),
+                serde_json::json!(format!("{:?}", type_kind)),
             );
 
             // Extract discovery_source (always present now)
@@ -202,59 +212,13 @@ pub enum DiscoverySource {
     PatternMatching,
 }
 
-/// Information about an enum variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumVariant {
-    /// The name of the variant
-    pub name:         String,
-    /// The type of the variant (Unit, Tuple, Struct)
-    pub variant_kind: EnumVariantKind,
-    /// Fields for struct variants
-    pub fields:       Option<Vec<EnumFieldInfo>>,
-    /// Types for tuple variants
-    pub tuple_types:  Option<Vec<BrpTypeName>>,
-}
-
-/// Information about an enum type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumInfo {
-    /// List of enum variants
-    pub variants: Vec<EnumVariant>,
-}
-
-/// Format-specific information and examples
-#[derive(Debug, Clone, Serialize)]
+/// Format-specific information for correction
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct FormatInfo {
-    /// Real example values for different BRP operations
-    pub examples:         HashMap<Operation, Value>,
-    /// Available mutation paths if the type supports mutation
-    pub mutation_paths:   HashMap<String, MutationPath>,
     /// Original format that caused the error (if applicable)
     pub original_format:  Option<Value>,
     /// Corrected format to use instead
     pub corrected_format: Option<Value>,
-}
-
-/// Registry and reflection status for a type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegistryStatus {
-    /// Whether the type is registered in Bevy's type registry
-    pub in_registry: bool,
-    /// Whether the type has reflection support
-    pub has_reflect: bool,
-    /// Type path as registered in the registry
-    pub type_path:   Option<String>,
-}
-
-/// Serialization trait support for a type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SerializationSupport {
-    /// Whether the type implements Serialize
-    pub has_serialize:   bool,
-    /// Whether the type implements Deserialize
-    pub has_deserialize: bool,
-    /// Whether the type can be used in BRP operations requiring serialization
-    pub brp_compatible:  bool,
 }
 
 /// Result of a transformation operation containing the corrected value and a hint

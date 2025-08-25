@@ -52,11 +52,11 @@ pub struct TypeInfo {
 
 impl TypeInfo {
     /// Check if this type is a math type (based on BRP format knowledge)
-    // pub fn is_math_type(&self) -> bool {
-    //     BRP_FORMAT_KNOWLEDGE
-    //         .get(&self.type_name)
-    //         .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
-    // }
+    pub fn is_math_type(&self) -> bool {
+        BRP_FORMAT_KNOWLEDGE
+            .get(&self.type_name)
+            .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
+    }
 
     /// Builder method to create `TypeInfo` from schema data
     pub fn from_schema(
