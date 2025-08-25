@@ -28,8 +28,8 @@ use crate::brp_tools::{
     MutateResourceParams, MutateResourceResult, QueryParams, QueryResult, RegistrySchemaParams,
     RegistrySchemaResult, RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult,
     ReparentParams, ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
-    ScreenshotResult, SendKeysParams, SendKeysResult, SpawnParams, SpawnResult, StopWatchParams,
-    TypeSchema, TypeSchemaParams,
+    ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
+    SpawnParams, SpawnResult, StopWatchParams, TypeSchema, TypeSchemaParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -226,6 +226,13 @@ pub enum ToolName {
         result = "SendKeysResult"
     )]
     BrpExtrasSendKeys,
+    /// `brp_extras_set_window_title` - Change window title
+    #[brp_tool(
+        brp_method = "brp_extras/set_window_title",
+        params = "SetWindowTitleParams",
+        result = "SetWindowTitleResult"
+    )]
+    BrpExtrasSetWindowTitle,
 
     // BRP Watch Assist Tools
     /// `brp_stop_watch` - Stop active watch subscriptions
@@ -394,6 +401,11 @@ impl ToolName {
                 ToolCategory::Extras,
                 EnvironmentImpact::AdditiveNonIdempotent,
             ),
+            Self::BrpExtrasSetWindowTitle => Annotation::new(
+                "Change Window Title",
+                ToolCategory::Extras,
+                EnvironmentImpact::AdditiveIdempotent,
+            ),
             Self::BevyGetWatch => Annotation::new(
                 "Watch Component Changes",
                 ToolCategory::WatchMonitoring,
@@ -527,6 +539,9 @@ impl ToolName {
                 Some(parameters::build_parameters_from::<ScreenshotParams>)
             }
             Self::BrpExtrasSendKeys => Some(parameters::build_parameters_from::<SendKeysParams>),
+            Self::BrpExtrasSetWindowTitle => {
+                Some(parameters::build_parameters_from::<SetWindowTitleParams>)
+            }
             Self::BevyGetWatch => Some(parameters::build_parameters_from::<GetWatchParams>),
             Self::BevyListWatch => Some(parameters::build_parameters_from::<ListWatchParams>),
             Self::BrpDeleteLogs => Some(parameters::build_parameters_from::<DeleteLogsParams>),
@@ -581,6 +596,7 @@ impl ToolName {
             Self::BrpExtrasDiscoverFormat => Arc::new(BrpExtrasDiscoverFormat),
             Self::BrpExtrasScreenshot => Arc::new(BrpExtrasScreenshot),
             Self::BrpExtrasSendKeys => Arc::new(BrpExtrasSendKeys),
+            Self::BrpExtrasSetWindowTitle => Arc::new(BrpExtrasSetWindowTitle),
 
             // Special tools with their own implementations
             Self::BrpExecute => Arc::new(BrpExecute),

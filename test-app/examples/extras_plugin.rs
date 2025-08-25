@@ -4,6 +4,7 @@
 //! - Format discovery
 //! - Screenshot capture
 //! - Keyboard input simulation
+//! - Window title changes
 //! - Debug mode toggling
 //!
 //! Used by the test suite to validate all extras functionality.
@@ -12,6 +13,7 @@ use std::time::Instant;
 
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 use serde::{Deserialize, Serialize};
 
@@ -433,8 +435,8 @@ fn update_keyboard_display(
         };
 
         text.0 = format!(
-            "Last keys: [{keys_display}]\nDuration: {duration_display}\nStatus: {status}\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
-            port.0
+            "Last keys: [{keys_display}]\nDuration: {duration_display}\nStatus: {status}\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}\'\n\nUse curl to change window title:\ncurl -X POST http://localhost:{}/brp_extras/set_window_title \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"title\": \"My Custom Title\"}}'",
+            port.0, port.0
         );
     }
 }

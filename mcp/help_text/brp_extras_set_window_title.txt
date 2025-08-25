@@ -1,0 +1,16 @@
+Changes the window title of a running Bevy application to provide visual feedback or indicate application state.
+
+Example:
+```json
+{"title": "My Game - Level 2"}
+```
+
+Returns:
+- status: "success" or "error"  
+- old_title: Previous window title
+- new_title: New window title
+- message: Description of the change
+
+Prerequisites: bevy_brp_extras dependency and BrpExtrasPlugin registered.
+
+Note: Only affects the primary window.

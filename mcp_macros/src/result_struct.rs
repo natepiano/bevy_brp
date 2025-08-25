@@ -268,6 +268,9 @@ fn generate_message_template_provider(
                 "extract_keys_sent" => quote! { Vec::new() },
                 "extract_debug_enabled" => quote! { false },
                 "extract_message" => quote! { String::new() },
+                "extract_status" => quote! { String::new() },
+                "extract_old_title" => quote! { String::new() },
+                "extract_new_title" => quote! { String::new() },
                 _ => quote! { Default::default() },
             };
             field_initializers.push(quote! { #field_name: #default_value });
@@ -340,6 +343,9 @@ fn generate_message_template_provider(
                     "extract_keys_sent" => quote! { Vec::new() },
                     "extract_debug_enabled" => quote! { false },
                     "extract_message" => quote! { String::new() },
+                    "extract_status" => quote! { String::new() },
+                    "extract_old_title" => quote! { String::new() },
+                    "extract_new_title" => quote! { String::new() },
                     _ => quote! { Default::default() },
                 };
                 builder_to_struct_initializers.push(quote! { #field_name: #default_value });
@@ -614,6 +620,39 @@ fn generate_from_brp_client_response(
                         .and_then(|obj| obj.get("message"))
                         .and_then(|v| v.as_str())
                         .map(String::from)
+                }
+            }
+            "extract_status" => {
+                // For extracting status field
+                quote! {
+                    #source.as_ref()
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| obj.get("status"))
+                        .and_then(|v| v.as_str())
+                        .map(String::from)
+                        .unwrap_or_else(|| "unknown".to_string())
+                }
+            }
+            "extract_old_title" => {
+                // For extracting old_title field
+                quote! {
+                    #source.as_ref()
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| obj.get("old_title"))
+                        .and_then(|v| v.as_str())
+                        .map(String::from)
+                        .unwrap_or_else(|| String::new())
+                }
+            }
+            "extract_new_title" => {
+                // For extracting new_title field
+                quote! {
+                    #source.as_ref()
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| obj.get("new_title"))
+                        .and_then(|v| v.as_str())
+                        .map(String::from)
+                        .unwrap_or_else(|| String::new())
                 }
             }
             _ => panic!("Unknown computed operation: {operation}"),

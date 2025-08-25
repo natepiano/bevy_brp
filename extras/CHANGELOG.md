@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - claude code agentic test suite for parallel execution of bevy_brp_extras and bevy_brp_mcp
 - New `brp_extras/send_keys` method for simulating keyboard input
+- New `brp_extras/set_window_title` method for changing window title
+  - Allows dynamic window title updates via BRP
+  - Returns both old and new title values for confirmation
 - Optional `enable_debug_info` parameter for `brp_extras/discover_format` method
   - Provides detailed diagnostic information about type discovery process when enabled
   - Helps troubleshoot format discovery issues with complex types

@@ -42,6 +42,7 @@ pub use tools::brp_execute::{BrpExecute, ExecuteParams};
 pub use tools::brp_extras_discover_format::{DiscoverFormatParams, DiscoverFormatResult};
 pub use tools::brp_extras_screenshot::{ScreenshotParams, ScreenshotResult};
 pub use tools::brp_extras_send_keys::{SendKeysParams, SendKeysResult};
+pub use tools::brp_extras_set_window_title::{SetWindowTitleParams, SetWindowTitleResult};
 //
 // Export watch tools
 pub use watch_tools::{BevyGetWatch, GetWatchParams};

@@ -21,6 +21,7 @@
 //! - `brp_extras/shutdown`: Gracefully shutdown the app
 //! - `brp_extras/discover_format`: Discover component format information
 //! - `brp_extras/send_keys`: Send keyboard input
+//! - `brp_extras/set_window_title`: Change the window title
 
 mod discovery;
 mod keyboard;
@@ -28,6 +29,7 @@ mod keyboard;
 mod plugin;
 mod screenshot;
 mod shutdown;
+mod window_title;
 
 pub use discovery::{
     discover_component_format, discover_multiple_formats, get_common_component_types,
