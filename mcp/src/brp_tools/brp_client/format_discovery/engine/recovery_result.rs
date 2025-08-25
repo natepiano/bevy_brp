@@ -131,7 +131,7 @@ impl FormatRecoveryResult {
                     if c.hint.is_empty() {
                         None
                     } else {
-                        Some(format!("- {}: {}", c.type_info.type_info.type_name, c.hint))
+                        Some(format!("- {}: {}", c.type_info.type_name(), c.hint))
                     }
                 })
                 .collect::<Vec<_>>()

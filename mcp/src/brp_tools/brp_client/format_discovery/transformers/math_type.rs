@@ -72,7 +72,7 @@ impl MathTypeTransformer {
         type_info.transform_value(value).map(|transformed| {
             let hint = format!(
                 "Transformed {} using UnifiedTypeInfo",
-                type_info.type_info.type_name.as_str()
+                type_info.type_name().as_str()
             );
             TransformationResult {
                 corrected_value: transformed,

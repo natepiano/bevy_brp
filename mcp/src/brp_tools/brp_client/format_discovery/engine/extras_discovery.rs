@@ -8,7 +8,7 @@ use either::Either;
 use tracing::debug;
 
 use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, PatternCorrection, Retry};
-use super::types::{Correction, DiscoverySource, are_corrections_retryable};
+use super::types::{Correction, are_corrections_retryable};
 
 impl DiscoveryEngine<ExtrasDiscovery> {
     /// Try to build corrections from extras data
@@ -34,14 +34,12 @@ impl DiscoveryEngine<ExtrasDiscovery> {
             .types()
             .filter(|type_info| {
                 // Process types from TypeRegistry that have spawn_format or mutation_paths
-                matches!(type_info.discovery_source, DiscoverySource::TypeRegistry)
-                    && (type_info.type_info.spawn_format.is_some()
-                        || !type_info.type_info.mutation_paths.is_empty())
+                type_info.type_info.spawn_format.is_some() || !type_info.mutation_paths().is_empty()
             })
             .map(|type_info| {
                 debug!(
                     "ExtrasDiscovery: Processing type '{}' from TypeRegistry",
-                    type_info.type_info.type_name.as_str()
+                    type_info.type_name().as_str()
                 );
                 type_info.to_correction(self.operation)
             })

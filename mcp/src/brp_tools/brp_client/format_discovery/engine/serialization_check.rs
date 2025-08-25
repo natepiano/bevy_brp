@@ -50,10 +50,10 @@ impl DiscoveryEngine<SerializationCheck> {
         debug!("SerializationCheck: Checking for serialization errors in registry type infos");
 
         // First, check if any types have serialization issues before building corrections
-        let has_serialization_issues = self.context.types().any(|type_info| {
-            type_info.type_info.in_registry
-                && !(type_info.type_info.has_serialize && type_info.type_info.has_deserialize)
-        });
+        let has_serialization_issues = self
+            .context
+            .types()
+            .any(|type_info| type_info.in_registry() && !type_info.is_brp_compatible());
 
         if !has_serialization_issues {
             debug!(
@@ -76,18 +76,15 @@ impl DiscoveryEngine<SerializationCheck> {
 
         let corrections: Vec<Correction> = discovery_context
             .types()
-            .filter(|type_info| {
-                type_info.type_info.in_registry
-                    && !(type_info.type_info.has_serialize && type_info.type_info.has_deserialize)
-            })
+            .filter(|type_info| type_info.in_registry() && !type_info.is_brp_compatible())
             .map(|type_info| {
                 debug!(
                     "SerializationCheck: Component '{}' lacks serialization, building correction",
-                    type_info.type_info.type_name.as_str()
+                    type_info.type_name().as_str()
                 );
                 let reason = format!(
                     "Component '{}' lacks serialization support. {}",
-                    type_info.type_info.type_name.as_str(),
+                    type_info.type_name().as_str(),
                     educational_message
                 );
                 // Since serialization issues can't be fixed by BRP calls, these are always

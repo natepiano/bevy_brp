@@ -89,7 +89,7 @@ impl DiscoveryEngine<PatternCorrection> {
 
         // Process each type
         for type_info in self.context.types() {
-            let type_name = type_info.type_info.type_name.as_str();
+            let type_name = type_info.type_name().as_str();
 
             debug!("Level 3: Checking transformation patterns for '{type_name}'");
 

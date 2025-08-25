@@ -33,7 +33,7 @@ impl DiscoveryEngine<Guidance> {
                 Correction::Uncorrectable { type_info, reason } => {
                     debug!(
                         "Guidance Engine: Found metadata for type '{}' but no correction: {}",
-                        type_info.type_info.type_name.as_str(),
+                        type_info.type_name().as_str(),
                         reason
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
@@ -68,9 +68,9 @@ impl DiscoveryEngine<Guidance> {
     fn build_corrected_value_from_type_info(&self, type_info: &UnifiedTypeInfo) -> Value {
         debug!(
             "build_corrected_value_from_type_info: Building for type '{}' with operation '{:?}', enum_info present: {}",
-            type_info.type_info.type_name.as_str(),
+            type_info.type_name().as_str(),
             self.operation,
-            type_info.type_info.enum_info.is_some()
+            type_info.enum_info().is_some()
         );
 
         // Check if we have examples for this operation
@@ -115,9 +115,8 @@ impl DiscoveryEngine<Guidance> {
                 FormatCorrectionField::Hint: "Use appropriate path and value for mutation"
             });
 
-            if !type_info.type_info.mutation_paths.is_empty() {
-                let paths: Vec<String> =
-                    type_info.type_info.mutation_paths.keys().cloned().collect();
+            if !type_info.mutation_paths().is_empty() {
+                let paths: Vec<String> = type_info.mutation_paths().keys().cloned().collect();
                 guidance.insert_field(
                     FormatCorrectionField::AvailablePaths,
                     serde_json::json!(paths),
@@ -125,7 +124,7 @@ impl DiscoveryEngine<Guidance> {
             }
 
             // Add enum-specific guidance if this is an enum
-            if let Some(enum_info) = &type_info.type_info.enum_info {
+            if let Some(enum_info) = type_info.enum_info() {
                 let variants: Vec<String> =
                     enum_info.iter().map(|v| v.variant_name.clone()).collect();
                 debug!(

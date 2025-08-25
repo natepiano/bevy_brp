@@ -12,11 +12,9 @@ use serde::Serialize;
 use serde_json::Value;
 use tracing::debug;
 
-use super::types::{
-    Correction, CorrectionInfo, CorrectionMethod, DiscoverySource, FormatInfo, Operation,
-};
+use super::types::{Correction, CorrectionInfo, CorrectionMethod, FormatInfo, Operation};
 use crate::brp_tools::brp_type_schema::{
-    BrpTypeName, EnumVariantKind, MutationPath, TypeInfo, TypeKind,
+    BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath, TypeInfo, TypeKind,
 };
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -24,23 +22,17 @@ use crate::tool::{BrpMethod, ParameterName};
 #[derive(Debug, Clone, Serialize)]
 pub struct UnifiedTypeInfo {
     /// Complete type information from registry
-    pub type_info:        TypeInfo,
+    pub type_info:      TypeInfo,
     /// The original value from parameters
-    pub original_value:   Value,
+    pub original_value: Value,
     /// Format-specific data and examples
-    pub format_info:      FormatInfo,
-    /// Source of this type information for debugging
-    pub discovery_source: DiscoverySource,
+    pub format_info:    FormatInfo,
 }
 
 impl UnifiedTypeInfo {
     /// Create a new `UnifiedTypeInfo` with minimal required information
     /// This is now private - use specialized constructors instead
-    fn new(
-        type_name: impl Into<BrpTypeName>,
-        original_value: Value,
-        discovery_source: DiscoverySource,
-    ) -> Self {
+    fn new(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
         // Create minimal TypeInfo for pattern matching cases
         let type_info = TypeInfo {
             type_name:            type_name.into(),
@@ -59,7 +51,6 @@ impl UnifiedTypeInfo {
         Self {
             type_info,
             original_value,
-            discovery_source,
             format_info: FormatInfo::default(),
         }
     }
@@ -73,7 +64,6 @@ impl UnifiedTypeInfo {
         Self {
             type_info,
             original_value,
-            discovery_source: DiscoverySource::TypeRegistry,
             format_info: FormatInfo::default(), // Only populate if corrections needed
         }
     }
@@ -87,7 +77,7 @@ impl UnifiedTypeInfo {
         variant_names: Vec<String>,
         original_value: Value,
     ) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
+        let mut info = Self::new(type_name, original_value);
 
         // Update TypeInfo with enum variants
         if !variant_names.is_empty() {
@@ -117,7 +107,7 @@ impl UnifiedTypeInfo {
     /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
     /// Sets appropriate type category and generates examples.
     pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
+        let mut info = Self::new(type_name, original_value);
 
         // Mark this as a math type by setting an error indicating pattern matching
         info.type_info.error = Some("Identified as math type via pattern matching".to_string());
@@ -130,13 +120,40 @@ impl UnifiedTypeInfo {
     /// Used when pattern matching identifies a Transform component.
     /// Sets appropriate type category, child types, and generates examples.
     pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value, DiscoverySource::PatternMatching);
+        let mut info = Self::new(type_name, original_value);
 
         // Mark this as a transform type by setting an error indicating pattern matching
         info.type_info.error =
             Some("Identified as transform type via pattern matching".to_string());
 
         info
+    }
+
+    // Convenience methods for TypeInfo field access
+
+    /// Get the type name
+    pub const fn type_name(&self) -> &BrpTypeName {
+        &self.type_info.type_name
+    }
+
+    /// Check if the type is registered in the Bevy registry
+    pub const fn in_registry(&self) -> bool {
+        self.type_info.in_registry
+    }
+
+    /// Check if the type is BRP compatible (has both Serialize and Deserialize traits)
+    pub const fn is_brp_compatible(&self) -> bool {
+        self.type_info.has_serialize && self.type_info.has_deserialize
+    }
+
+    /// Get enum information if this is an enum type
+    pub const fn enum_info(&self) -> Option<&Vec<EnumVariantInfo>> {
+        self.type_info.enum_info.as_ref()
+    }
+
+    /// Get mutation paths for this type
+    pub const fn mutation_paths(&self) -> &HashMap<String, MutationPath> {
+        &self.type_info.mutation_paths
     }
 
     /// Get the mutation paths for this type

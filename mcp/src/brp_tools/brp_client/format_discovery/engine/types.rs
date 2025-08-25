@@ -131,7 +131,7 @@ impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
     pub fn to_json(&self) -> Value {
         let mut correction_json = serde_json::json!({
-            FormatCorrectionField::TypeName: self.type_info.type_info.type_name.as_str(),
+            FormatCorrectionField::TypeName: self.type_info.type_name().as_str(),
             FormatCorrectionField::OriginalFormat: self.type_info.original_value,
             FormatCorrectionField::CorrectedFormat: self.corrected_value,
             FormatCorrectionField::Hint: self.hint
@@ -140,14 +140,8 @@ impl CorrectionInfo {
         // Add rich metadata fields
         if let Some(obj) = correction_json.as_object_mut() {
             // Extract mutation_paths
-            if !self.type_info.type_info.mutation_paths.is_empty() {
-                let paths: Vec<String> = self
-                    .type_info
-                    .type_info
-                    .mutation_paths
-                    .keys()
-                    .cloned()
-                    .collect();
+            if !self.type_info.mutation_paths().is_empty() {
+                let paths: Vec<String> = self.type_info.mutation_paths().keys().cloned().collect();
                 obj.insert(
                     String::from(FormatCorrectionField::MutationPaths),
                     serde_json::json!(paths),
@@ -164,7 +158,7 @@ impl CorrectionInfo {
                 .unwrap_or_else(|| {
                     // Fallback: determine from enum_info
                     use crate::brp_tools::brp_type_schema::TypeKind;
-                    if self.type_info.type_info.enum_info.is_some() {
+                    if self.type_info.enum_info().is_some() {
                         TypeKind::Enum
                     } else {
                         TypeKind::Struct
@@ -173,12 +167,6 @@ impl CorrectionInfo {
             obj.insert(
                 String::from(FormatCorrectionField::TypeCategory),
                 serde_json::json!(format!("{:?}", type_kind)),
-            );
-
-            // Extract discovery_source (always present now)
-            obj.insert(
-                String::from(FormatCorrectionField::DiscoverySource),
-                serde_json::json!(format!("{:?}", self.type_info.discovery_source)),
             );
         }
 
@@ -201,15 +189,6 @@ pub enum CorrectionMethod {
     NestedCorrection,
     /// Field name mapping or aliasing
     FieldMapping,
-}
-
-/// Method used to discover or correct a type format
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum DiscoverySource {
-    /// Information from Bevy's type registry
-    TypeRegistry,
-    /// Information inferred from error patterns
-    PatternMatching,
 }
 
 /// Format-specific information for correction

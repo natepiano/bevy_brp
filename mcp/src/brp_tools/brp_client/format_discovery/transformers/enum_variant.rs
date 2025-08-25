@@ -269,14 +269,11 @@ impl EnumVariantTransformer {
         let type_info = UnifiedTypeInfo::for_enum_type(type_name, variants, concrete_value);
 
         // Get the enum example or use fallback
-        let format_info = if let Some(example) =
-            type_info.get_example_for_operation(Operation::Mutate {
+        let format_info = type_info.get_example_for_operation(Operation::Mutate {
                 parameter_name: ParameterName::Component,
-            }) {
-            example.clone()
-        } else {
+            }).map_or_else(|| {
             // Fallback format if no example was generated
-            let valid_values = type_info.type_info.enum_info.as_ref().map_or_else(
+            let valid_values = type_info.enum_info().map_or_else(
                 || {
                     vec![
                         "Variant1".to_string(),
@@ -293,9 +290,9 @@ impl EnumVariantTransformer {
                 FormatCorrectionField::ValidValues: valid_values,
                 FormatCorrectionField::Examples: valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path: "", FormatCorrectionField::Value: v})).collect::<Vec<_>>()
             })
-        };
+        }, std::clone::Clone::clone);
 
-        let valid_values = type_info.type_info.enum_info.as_ref().map_or_else(
+        let valid_values = type_info.enum_info().map_or_else(
             || {
                 vec![
                     "Variant1".to_string(),
@@ -564,10 +561,10 @@ impl FormatTransformer for EnumVariantTransformer {
         type_info: &UnifiedTypeInfo,
     ) -> Option<TransformationResult> {
         // Extract type name from error for better messaging
-        let type_name = &type_info.type_info.type_name;
+        let type_name = type_info.type_name();
 
         // If type_info has enum information, use it for more accurate transformations
-        if let Some(enum_info) = &type_info.type_info.enum_info {
+        if let Some(enum_info) = type_info.enum_info() {
             // Analyze the error pattern to check for enum unit variant errors
             let pattern = super::super::detection::analyze_error_pattern(error).pattern;
 
