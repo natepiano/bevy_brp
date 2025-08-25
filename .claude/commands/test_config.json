@@ -7,7 +7,7 @@
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20102",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20102 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown via the brp_extras_shutdown method (part of test)",
-    "test_objective": "Test discover_format, screenshot, send_keys, shutdown methods"
+    "test_objective": "Test screenshot, send_keys"
   },
   {
     "test_name": "data_operations",
@@ -102,11 +102,11 @@
   {
     "test_name": "shutdown",
     "test_file": ".claude/commands/tests/shutdown.md",
-    "port": 20113,
+    "port": "various",
     "app_name": "various",
-    "log_file_prefix": "bevy_brp_mcp_*_port20113",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20113 for some tests",
-    "shutdown_instruction": "Varies by test case",
+    "log_file_prefix": "various",
+    "launch_instruction": "Test manages its own app launches",
+    "shutdown_instruction": "Test manages its own app shutdowns",
     "test_objective": "Test all success and error cases for brp_status and brp_shutdown"
   },
   {

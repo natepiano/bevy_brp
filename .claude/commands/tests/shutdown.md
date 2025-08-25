@@ -29,8 +29,9 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
 
 ### 3. BrpNotRespondingError - App Running Without BRP
 **CRITICAL**: no_extras_plugin has a HARD-CODED port of 25000 in its source code!
-- Launch no_extras_plugin example (which ALWAYS runs on port 25000, NOT 20113)
-  - Do NOT pass a port parameter when launching - it will use its hard-coded port 25000
+- Launch no_extras_plugin example with port: 25000
+  - **IMPORTANT**: Pass port: 25000 to avoid confusion in metadata (app ignores other ports but uses 25000 internally)
+  - This ensures the launch metadata correctly shows port 25000
 - Execute `mcp__brp__brp_status` with app_name: "no_extras_plugin", port: 20113
 - Verify response has status: "error"
 - Verify error_info contains:
@@ -61,6 +62,7 @@ Validate all error variants for `brp_status` and `brp_shutdown` commands, ensuri
   - port: 25000
   - warning: "Consider adding bevy_brp_extras for clean shutdown" (or similar)
 - Verify message indicates process was terminated using kill
+- **CLEANUP**: The no_extras_plugin should now be terminated (no additional cleanup needed)
 
 ### 6. Clean Shutdown Success (for comparison)
 - Launch extras_plugin example on port 20113
