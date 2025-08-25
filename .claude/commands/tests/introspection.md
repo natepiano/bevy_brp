@@ -3,6 +3,8 @@
 ## Objective
 Validate BRP introspection capabilities including RPC discovery, schema operations, and component/resource listing.
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing introspection functionality, not app management.
+
 ## Test Steps
 
 ### 1. RPC Method Discovery

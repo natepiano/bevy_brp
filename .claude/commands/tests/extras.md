@@ -3,6 +3,8 @@
 ## Objective
 Validate brp_extras specific methods: discover_format, screenshot, send_keys, and set_debug_mode.
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing brp_extras functionality, not app management.
+
 ## Test Steps
 
 ### 1. Format Discovery Method

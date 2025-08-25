@@ -3,17 +3,11 @@
 ## Objective
 Validate that `brp_type_schema` tool correctly discovers type information and produces the expected output structure for Bevy components.
 
-## Prerequisites
-- Launch extras_plugin example on port 20114
-- Tool `brp_type_schema` must be available in the MCP environment
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing type schema discovery, not app management.
 
 ## Test Steps
 
-### 1. Launch Test Application
-- Execute `mcp__brp__brp_launch_bevy_example` with `extras_plugin` on port 20114
-- Verify app is running with `mcp__brp__brp_status`
-
-### 2. Batch Type Schema Discovery
+### 1. Batch Type Schema Discovery
 
 Execute `mcp__brp__brp_type_schema` with ALL test types in a single call:
 ```json
@@ -120,8 +114,6 @@ Verify `result.type_info["bevy_ecs::name::Name"]`:
 - Has appropriate fields for a wrapper type
 - Has both `mutation_paths` and `spawn_format` (has Serialize/Deserialize)
 
-### 8. Final Cleanup
-- Execute `mcp__brp__brp_shutdown` to stop the test app
 
 ## Success Criteria
 

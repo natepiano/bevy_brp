@@ -12,7 +12,7 @@ This command runs BRP tests in two modes:
 ## Usage Examples
 ```
 /test                    # Run all tests PARALLEL_TESTS at a time, stop on first failure
-/test extras             # Run only the debug_mode test
+/test extras             # Run only the extras test
 /test data_operations    # Run only the data_operations test
 ```
 
@@ -24,10 +24,10 @@ This file contains an array of test configurations with the following structure:
 - `test_name`: Identifier for the test
 - `test_file`: Test file name in the tests/ directory
 - `port`: Port number for the test (or "N/A")
-- `app_name`: App/example to launch (or "N/A")
+- `app_name`: App/example to launch (or "N/A" or "various")
 - `log_file_prefix`: Expected log file prefix for verification (or "N/A")
-- `launch_instruction`: How to launch the app
-- `shutdown_instruction`: How to shutdown the app
+- `launch_instruction`: How to launch the app (used by main runner)
+- `shutdown_instruction`: How to shutdown the app (used by main runner)
 - `test_objective`: What the test validates
 
 **IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches PARALLEL_TESTS.
@@ -38,87 +38,62 @@ jq '. | length' .claude/commands/test_config.json
 ```
 Use this exact count in your final summary. Do NOT manually count or assume any number.
 
-## Sub-agent Prompt Template
+## App Management Strategy
 
-<SubAgentPrompt>
+Tests are categorized by app requirements:
+
+### App-Managed Tests (Main Runner Handles)
+Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_extras_plugin_app"):
+- Each test needs its own app instance on its specified port
+- Main runner launches the app before running the test
+- Main runner shuts down the app after test completion
+
+**Main runner handles:**
+1. App launch on test-specific port
+2. BRP connectivity verification (using brp_status)
+3. Window title setting
+4. App lifecycle management
+5. Central cleanup
+
+### Self-Managed Tests
+- **various**: Tests handle their own app launching (path, shutdown tests)
+- **N/A**: No app required (list test)
+
+## Sub-agent Prompt Templates
+
+### Template for Dedicated App Tests
+
+<DedicatedAppPrompt>
 
 You are executing BRP test: [TEST_NAME]
-Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
+Configuration: Port [PORT], App [APP_NAME]
 
 **Your Task:**
-1. [LAUNCH_INSTRUCTION]
-   - **CRITICAL**: You MUST pass `port: [PORT]` parameter to the launch tool
-   - **REQUIRED**: Log the exact port parameter you used in the Port Usage Report section
-2. **LOG VERIFICATION** (if log_file_prefix != "N/A"): Immediately after app launch, verify log file exists:
-   - Use `mcp__brp__brp_list_logs` (no parameters) to get all log files
-   - Search the results for a log file whose filename starts with "[LOG_FILE_PREFIX]"
-   - Confirm log file exists and was created within the last 2 minutes
-   - Report log verification status in Port Usage Report section
-   - **CRITICAL**: If log verification fails, mark as FAILED test and stop immediately
-2a. **WINDOW TITLE SETTING** (if app has BrpExtrasPlugin):
-   - **ONLY for apps with BrpExtrasPlugin** (extras_plugin, test_extras_plugin_app):
-     - After successful log verification, set window title using `mcp__brp__brp_extras_set_window_title`
-     - Title format: "[TEST_NAME] test - port [PORT]"
-     - Parameters: {"title": "[TEST_NAME] test - port [PORT]", "port": [PORT]}
-     - Log success/failure in Port Usage Report section
-   - **SKIP** this step for apps without BrpExtrasPlugin (no_extras_plugin, various)
-   - **NOTE**: Title setting failures are non-critical - continue test if it fails
-3. Execute test procedures from file: [TEST_FILE]
-4. [SHUTDOWN_INSTRUCTION]
-5. Report results using the exact format below
+A [APP_NAME] app is running on port [PORT] with BRP enabled and window title already set.
+
+Execute test procedures from file: [TEST_FILE]
+
+**CRITICAL PORT REQUIREMENT:**
+- **ALL BRP operations MUST use port [PORT]**
+- **DO NOT launch or shutdown the app** - it's managed externally
+- **DO NOT set window titles** - already handled
+- **Port parameter is MANDATORY** for all BRP tool calls
+
+**Test Context:**
+- Test File: [TEST_FILE]
+- Port: [PORT] (MANDATORY for all BRP operations)
+- App: [APP_NAME] (already running)
+- Objective: [TEST_OBJECTIVE]
 
 **FAILURE HANDLING PROTOCOL:**
-- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing. Failures include:
-  - Tool returns an error or exception
-  - Tool succeeds but response doesn't match test expectations
-  - Behavior doesn't match expected test outcomes
-  - **Log verification fails** - log file doesn't exist or doesn't contain expected port
-- **CAPTURE EVERYTHING**: For every failed test step, include the complete tool response in your results
-- **NO CONTINUATION**: Do not attempt any further test steps after the first failure
+- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing
+- **CAPTURE EVERYTHING**: Include complete tool responses for all failed operations
+- **NO CONTINUATION**: Do not attempt further test steps after first failure
 
 **CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
 - Error message quality issues are FAILURES, not minor issues
 - Any deviation from expected behavior is a FAILURE
 - Do NOT categorize any issue as "minor" - mark it as FAILED
-
-**Test Context:**
-- Test File: [TEST_FILE]
-- Port: [PORT]
-- App: [APP_NAME]
-- Log File Prefix: [LOG_FILE_PREFIX]
-- Objective: [TEST_OBJECTIVE]
-- Expected Shutdown Method: [EXPECTED_SHUTDOWN_METHOD]
-
-**PORT TRACKING REQUIREMENTS:**
-- **LAUNCH COMMAND**: When calling mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app, you MUST:
-  1. Include the `port` parameter with value [PORT]
-  2. Log the exact port parameter passed in your Port Usage Report
-  3. Example: mcp__brp__brp_launch_bevy_example with parameters: app_name="extras_plugin", port=[PORT]
-- **LOG VERIFICATION**: Immediately after app launch (if log_file_prefix != "N/A"), you MUST:
-  1. Use `mcp__brp__brp_list_logs` (no parameters) to get all log files
-  2. Search the results for a log file whose filename starts with "[LOG_FILE_PREFIX]"
-  3. Verify log file exists and was created within last 2 minutes
-  4. Report verification status in Port Usage Report section
-  5. **STOP and mark as FAILED** if log verification fails
-- **BRP OPERATIONS**: All subsequent BRP operations MUST use port [PORT]
-- **VERIFICATION**: If any operation uses a different port than [PORT], mark as FAILED
-
-**CRITICAL ERROR HANDLING:**
-- **ALWAYS use the specified port [PORT] for ALL BRP operations**
-- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop testing and report results
-- **CAPTURE FULL RESPONSES**: For every failed test step, include the complete tool response in your results
-- **TEST FAILURES INCLUDE**:
-  - HTTP request failures, connection errors, or tool exceptions
-  - Tool succeeds but response data doesn't match test expectations
-  - Unexpected behavior or state changes
-- **FAILURE RESPONSE PROTOCOL**:
-  1. STOP immediately - do not continue with remaining test steps
-  2. Record the exact error message or expectation mismatch
-  3. Note what operation was being attempted and what was expected
-  4. **Include the full JSON response** from the tool call (successful or failed)
-  5. Report the failure in your test results with complete context
-- Do NOT continue testing after ANY failure (error OR expectation mismatch)
-- Do NOT retry failed operations - report them as failures
 
 **Required Response Format:**
 
@@ -126,20 +101,11 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
 
 ## Configuration
 - Port: [PORT]
-- App: [APP_NAME]
-- Launch Status: [Launched Successfully/Failed to Launch/N/A]
-
-## Port Usage Report
-- **Configured Port**: [PORT]
-- **Launch Command Port**: [actual port passed to launch tool or "Not passed" or "N/A" if no app launch]
-- **Log Verification**: [PASSED/FAILED/N/A - log file exists with correct prefix | explanation if failed | "N/A" if no app launch]
-- **Window Title Set**: [SUCCESS/FAILED/SKIPPED/N/A - title set for extras apps | error if failed | "SKIPPED" for non-extras apps | "N/A" if no app launch]
-- **BRP Operations Port**: [port used for all BRP operations or "N/A" if no BRP operations]
-- **Port Match Verification**: [PASSED/FAILED - all ports match | explanation if mismatch | "N/A" if no app launch]
+- App: [APP_NAME] (externally managed)
+- Test Status: [Completed/Failed]
 
 ## Test Results
 ### ✅ PASSED
-- [Test description]: [Brief result]
 - [Test description]: [Brief result]
 
 ### ❌ FAILED
@@ -147,7 +113,7 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
   - **Error**: [exact error message]
   - **Expected**: [what should happen]
   - **Actual**: [what happened]
-  - **Impact**: critical (ALL ISSUES ARE CRITICAL - NO MINOR ISSUES ALLOWED)
+  - **Impact**: critical
   - **Component/Resource**: [fully qualified type name or N/A if not applicable]
   - **Full Tool Response**: [Complete JSON response from the failed tool call]
 
@@ -160,42 +126,37 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
 - **Failed**: Z
 - **Critical Issues**: [Yes/No - brief description if yes]
 
-## Cleanup Status
-- **App Status**: [Shutdown Successfully/Still Running/N/A]
-- **Port Status**: [Available/Still in use]
+</DedicatedAppPrompt>
 
-**CRITICAL ERROR HANDLING:**
-  - **ALWAYS use the specified port [PORT] for ALL BRP operations**
-  - **STOP ON FIRST ERROR**: When ANY test step fails, IMMEDIATELY stop and return results
-  - **CAPTURE FULL RESPONSES**: Include complete tool responses for ALL failed operations
-  - If you encounter HTTP request failures, connection errors, or
-  unexpected tool failures:
-    1. **IMMEDIATELY return your test results with the failure documented**
-    2. **Include the full JSON response from the failed tool**
-    3. **Do not attempt any further BRP operations or test steps**
-    4. **Do not relaunch the app**
-    5. **Mark the test as CRITICAL FAILURE in your response**
+### Template for Self-Managed Tests
 
-  **When you see "MCP error -32602" or "HTTP request failed":**
-  - This is a CRITICAL FAILURE
-  - **Capture the complete tool response**
-  - Stop immediately and return results
-  - Do not continue testing
+<SelfManagedPrompt>
 
-**SHUTDOWN VALIDATION REQUIREMENTS:**
-  - **CRITICAL**: After shutdown, verify the shutdown response `method` field matches [EXPECTED_SHUTDOWN_METHOD]
-  - If shutdown method doesn't match expected:
-    1. **Mark as FAILED test** in your results
-    2. Report actual vs expected shutdown method
-    3. Include full shutdown response in error details
-  - Expected behaviors:
-    - `clean_shutdown`: Apps with BrpExtrasPlugin (extras_plugin, test_extras_plugin_app)
-    - `process_kill`: Apps without BrpExtrasPlugin (no_extras_plugin)
-    - `N/A`: Tests with no app launch (discovery)
-  - Parse the shutdown response `data.shutdown_method` field to get actual method
-  - **FAILURE EXAMPLE**: If expected `clean_shutdown` but got `process_kill`, this indicates BrpExtrasPlugin configuration issue
+You are executing BRP test: [TEST_NAME]
+Configuration: Port [PORT], App [APP_NAME]
 
-</SubAgentPrompt>
+**Your Task:**
+1. [LAUNCH_INSTRUCTION]
+2. Execute test procedures from file: [TEST_FILE]
+3. [SHUTDOWN_INSTRUCTION]
+
+**Test Context:**
+- Test File: [TEST_FILE]
+- Port: [PORT]
+- App: [APP_NAME]
+- Objective: [TEST_OBJECTIVE]
+
+**FAILURE HANDLING PROTOCOL:**
+- **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing
+- **CAPTURE EVERYTHING**: Include complete tool responses for all failed operations
+- **NO CONTINUATION**: Do not attempt further test steps after first failure
+
+**CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
+
+**Required Response Format:**
+[Same format as DedicatedAppPrompt]
+
+</SelfManagedPrompt>
 
 ## Execution Mode Selection
 
@@ -210,28 +171,19 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
 1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
 2. **Find Test**: Search for test configuration where `test_name` matches `$ARGUMENTS`
 3. **Validate**: If test not found, report error and list available test names
-4. **Execute Test**: If found, run the single test using the Task tool
+4. **Execute Test**: If found, run the single test using appropriate strategy
 
 ### Single Test Execution
 
-**For the test configuration matching `$ARGUMENTS`**:
-- Create a Task with description: "BRP [test_name] Test"
-- Use the SubAgentPrompt template above, substituting values from the matched test configuration:
-  - [TEST_NAME] = `test_name` field
-  - [TEST_FILE] = `test_file` field
-  - [PORT] = `port` field
-  - [APP_NAME] = `app_name` field
-  - [LOG_FILE_PREFIX] = `log_file_prefix` field
-  - [LAUNCH_INSTRUCTION] = `launch_instruction` field
-  - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
-  - [TEST_OBJECTIVE] = `test_objective` field
+**For tests where app_name is a specific app (not "various" or "N/A"):**
+1. **Launch App**: Use launch_instruction to start the app on the test's specified port
+2. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
+3. **Set Window Title**: Set title to "[TEST_NAME] test - port [PORT]"
+4. **Execute Test**: Use DedicatedAppPrompt template
+5. **Cleanup**: Shutdown app using shutdown_instruction
 
-**Example Task Invocation:**
-```
-Task tool with:
-- Description: "BRP debug_mode Test"
-- Prompt: [SubAgentPrompt with values substituted from the debug_mode config object]
-```
+**For self-managed tests (app_name is "various" or "N/A"):**
+1. **Execute Test**: Use SelfManagedPrompt template directly
 
 ### Error Handling
 
@@ -241,39 +193,49 @@ If no test configuration matches `$ARGUMENTS`:
 
 The test "$ARGUMENTS" was not found in .claude/commands/test_config.json.
 
-Usage: /test_runner <test_name>
-Example: /test_runner debug_mode
+Usage: /test <test_name>
+Example: /test extras
 ```
-
-### Final Output for Single Test
-
-After the Task completes, simply present the test results as returned by the sub-agent. No consolidation or summary needed since it's a single test.
 
 ## Continuous Parallel Test Mode (when no $ARGUMENTS)
 
-### Continuous Parallel Execution Instructions
+### App Launch Phase
+
+**Before running each batch of tests:**
+
+1. **Read test_config.json** to identify which tests are in the current batch
+2. **For each test in the batch:**
+   - If `app_name` is "various" or "N/A": Skip (test manages its own apps)
+   - Otherwise: Note the app_name and port for launching
+3. **Launch required apps for the batch:**
+   - For each unique app/port combination needed:
+     - Use appropriate launch tool (check if it's an example or app)
+     - Verify BRP connectivity using `brp_status` on the specified port
+     - Set window title to "[TEST_NAME] test - port [PORT]" (using the test name that needs this app)
+4. **Track launched apps** for cleanup after batch completion
+
+**If any app launch fails, STOP immediately and report failure.**
+
+### Test Execution Phase
 
 **Execute tests PARALLEL_TESTS at a time with continuous execution:**
 
-**IMPORTANT**: When you see "PARALLEL_TESTS" in this document, substitute the value from the Configuration section at the top. This means launching PARALLEL_TESTS tests concurrently.
-
-**CRITICAL PARALLEL EXECUTION REQUIREMENT**: When executing multiple tests "at a time", you MUST invoke multiple Task tools in a SINGLE message. Sequential execution (one Task per message) is NOT parallel execution.
-
-1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
-   - **FIRST**: Run `jq '. | length' .claude/commands/test_config.json` to get the exact test count
-   - **USE THIS COUNT** in all summaries and reports - do NOT manually count
-2. **Initialize Execution State**:
-   - Create queue of all test configurations
-   - Track running tests (max PARALLEL_TESTS at a time)
-   - Track completed tests and their results
-   - Track failed tests for immediate stopping
+1. **Load Configuration**: Read `test_config.json`
+2. **Categorize Tests**:
+   - **Dedicated app tests**: Use DedicatedAppPrompt (no app management)
+   - **Self-managed tests**: Use SelfManagedPrompt (handle own apps)
 3. **Continuous Execution Loop**:
-   - **Start Phase**: Launch first PARALLEL_TESTS tests from queue by invoking PARALLEL_TESTS Task tools IN ONE MESSAGE
-   - **Monitor Phase**: Wait for any test to complete
-   - **Result Phase**: Collect completed test results and check for failures
-   - **Error Handling**: If any test reports failures, STOP immediately and report
-   - **Continue Phase**: If no failures, start next test from queue (maintaining PARALLEL_TESTS running)
-   - **Repeat**: Continue until all tests complete or failure detected
+   - Launch PARALLEL_TESTS tests from queue using appropriate templates
+   - Monitor for failures and stop immediately on first failure
+   - Continue until all tests complete or failure detected
+
+### Cleanup Phase
+
+**After each batch of tests completes (success or failure):**
+1. **For each app launched in the batch:**
+   - Use `mcp__brp__brp_shutdown` with the app_name and port
+   - Verify shutdown completed
+2. **Clear the tracked apps list** for the next batch
 
 ### Error Detection and Immediate Stopping
 
@@ -285,38 +247,33 @@ After the Task completes, simply present the test results as returned by the sub
 **On Error Detection**:
 1. **STOP immediately** - do not start any new tests
 2. **Collect results** from any currently running tests
-3. **Report failure immediately** with details from failed test
-4. **Skip consolidation** and provide immediate failure report
+3. **Cleanup apps** immediately
+4. **Report failure immediately** with details from failed test
 
-### Test Configuration and Execution
+### Results Formats
 
-**For each test in the execution queue**:
-- Create a Task with description: "BRP [test_name] Test"
-- Use the SubAgentPrompt template above, substituting values from `test_config.json`
-  - [TEST_NAME] = `test_name` field
-  - [TEST_FILE] = `test_file` field
-  - [PORT] = `port` field
-  - [APP_NAME] = `app_name` field
-  - [LOG_FILE_PREFIX] = `log_file_prefix` field
-  - [LAUNCH_INSTRUCTION] = `launch_instruction` field
-  - [SHUTDOWN_INSTRUCTION] = `shutdown_instruction` field
-  - [TEST_OBJECTIVE] = `test_objective` field
+**Success Path**: After all tests complete successfully:
+```
+# BRP Test Suite - Consolidated Results
 
-**Critical Implementation Note:**
-The key requirement is that when launching PARALLEL_TESTS tests, ALL Task tool invocations MUST be in a SINGLE message. This ensures true parallel execution.
+## Overall Statistics
+- **Total Tests**: [Count from test_config.json]
+- **Passed**: X
+- **Failed**: 0 (execution stops on first failure)
+- **Skipped**: Y
+- **Critical Issues**: 0 (execution stops on critical issues)
+- **Total Execution Time**: ~X minutes (continuous parallel)
+- **Execution Strategy**: PARALLEL_TESTS tests at a time with continuous execution
 
-- ✅ **CORRECT**: One message containing PARALLEL_TESTS Task tool invocations
-- ❌ **WRONG**: Multiple separate messages, each with one Task tool invocation
+## Test Results Summary
+[List each test by name with its result count, avoiding duplication]
 
-The execution maintains exactly PARALLEL_TESTS running tests at all times. When any test completes, immediately start the next test from the queue (if any remain) to maintain the parallel count.
+## ⚠️ SKIPPED TESTS
+[List of skipped tests with reasons]
+```
 
-### Results Consolidation
-
-**Success Path**: After all tests complete successfully, generate consolidated summary
-**Failure Path**: If any test fails, provide immediate failure report instead
-
-### Immediate Failure Report (when error detected)
-
+**Failure Path**: When error detected:
+```
 # BRP Test Suite - FAILED
 
 ## ❌ CRITICAL FAILURE DETECTED
@@ -335,23 +292,9 @@ The execution maintains exactly PARALLEL_TESTS running tests at all times. When 
 - **Remaining**: Y tests
 - **Reason**: Execution stopped due to failure
 
+### Cleanup Status
+- **extras_plugin**: [Shutdown/Still Running]
+- **test_extras_plugin_app**: [Shutdown/Still Running]
+
 **Recommendation**: Fix the failure in [test_name] before running remaining tests.
-
-### Final Summary Format for All Tests (Success Path Only)
-
-# BRP Test Suite - Consolidated Results
-
-## Overall Statistics
-- **Total Tests**: [Count from test_config.json]
-- **Passed**: X
-- **Failed**: 0 (execution stops on first failure)
-- **Skipped**: Y
-- **Critical Issues**: 0 (execution stops on critical issues)
-- **Total Execution Time**: ~X minutes (continuous parallel)
-- **Execution Strategy**: PARALLEL_TESTS tests at a time with continuous execution
-
-## Test Results Summary
-[List each test by name with its result count, avoiding duplication]
-
-## ⚠️ SKIPPED TESTS
-[List of skipped tests with reasons]
+```

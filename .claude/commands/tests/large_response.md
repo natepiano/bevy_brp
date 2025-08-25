@@ -3,6 +3,8 @@
 ## Objective
 Validate handling of large responses that exceed context limits, particularly registry schema operations.
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing large response handling, not app management.
+
 **IMPORTANT**: Do NOT attempt to read or access the generated files. Only validate the response metadata.
 
 ## Response Interpretation Guide

@@ -6,6 +6,8 @@ Validate BRP format discovery system including:
 2. Registry behavior with components lacking Serialize/Deserialize traits
 3. Proper error handling for non-transformable input
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing format correction functionality, not app management.
+
 **CRITICAL** You must include the specified {{PORT}} in the call to the tool or it will default to 15702 and FAIL!
 
 ## Test Steps
@@ -184,3 +186,4 @@ STOP if:
 - Mutation fails for registered components
 - Error guidance is insufficient
 - Success message doesn't indicate when format correction occurred
+

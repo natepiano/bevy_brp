@@ -3,6 +3,8 @@
 ## Objective
 Validate entity watch functionality including component monitoring, list watching, timeout configuration, and watch management.
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing watch functionality, not app management.
+
 ## Test Steps
 
 ### 1. Start Component Watch and Verify Logging

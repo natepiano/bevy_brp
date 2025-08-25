@@ -3,6 +3,8 @@
 ## Objective
 Validate BRP behavior with resources that lack Serialize/Deserialize traits and ensure proper error handling for insert_resource operations.
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing resource operations, not app management.
+
 **CRITICAL** You must include the specified {{PORT}} in the call to the tool or it will default to 15702 and FAIL!
 
 ## Test Resources

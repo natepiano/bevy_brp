@@ -3,17 +3,11 @@
 ## Objective
 Validate that mutation paths discovered by `brp_type_schema` work correctly for actual mutation operations across all context types.
 
-## Prerequisites
-- Launch extras_plugin example on port 20115
-- Tool `brp_type_schema` must be available in the MCP environment
-- Tools for spawn, mutate, and get operations must be available
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing mutation functionality, not app management.
 
 ## Test Steps
 
-### 1. Launch Test Application
-- Execute `mcp__brp__brp_launch_bevy_example` with `extras_plugin` on port 20115
-
-### 2. Discover Type Schemas
+### 1. Discover Type Schemas
 Execute `mcp__brp__brp_type_schema` to get mutation paths for test components (only the types we actually test):
 ```json
 {
@@ -28,7 +22,7 @@ Execute `mcp__brp__brp_type_schema` to get mutation paths for test components (o
 ```
 Store response to validate mutation path discovery works.
 
-### 3. Spawn Test Entity
+### 2. Spawn Test Entity
 
 Spawn a single entity with ALL serializable test components to minimize API calls:
 
@@ -51,7 +45,7 @@ Spawn a single entity with ALL serializable test components to minimize API call
         "scale": [1.0, 1.0, 1.0]
       },
       "mode": "Active",
-      "points": [[10.0, 20.0], [30.0, 40.0]],
+      "points": [[10.0, 20.0, 30.0], [30.0, 40.0, 50.0]],
       "range": [0.0, 100.0],
       "optional_value": 3.14
     }
@@ -61,7 +55,7 @@ Spawn a single entity with ALL serializable test components to minimize API call
 
 Store the returned entity ID for all subsequent mutation tests.
 
-### 4. Execute Mutations and Batch Verify
+### 3. Execute Mutations and Batch Verify
 
 Perform all mutations on the spawned entity, then verify all changes with a single `bevy_get`:
 
@@ -69,7 +63,7 @@ Perform all mutations on the spawned entity, then verify all changes with a sing
 Perform these mutations in sequence WITHOUT intermediate verification:
 
 1. **ArrayElement Context**: Mutate `.values[1]` on TestArrayField to 999.5
-2. **TupleElement Context**: Mutate `.color_rgb.2` on TestTupleField to 200  
+2. **TupleElement Context**: Mutate `.color_rgb.2` on TestTupleField to 200
 3. **RootValue Context**: Replace entire TestTupleStruct with [99.0, "replaced", false]
 4. **NestedPath Context**: Mutate `.transform.translation.y` on TestComplexComponent to 555.0
 5. **StructField with Enum**: Mutate `.mode` on TestComplexComponent to "Inactive"
@@ -82,7 +76,7 @@ After ALL mutations complete, execute a single `bevy_get` with all components:
   "entity": <spawned_entity_id>,
   "components": [
     "extras_plugin::TestArrayField",
-    "extras_plugin::TestTupleField", 
+    "extras_plugin::TestTupleField",
     "extras_plugin::TestTupleStruct",
     "extras_plugin::TestComplexComponent"
   ]
@@ -98,8 +92,6 @@ Verify in the response:
   - mode is "Inactive"
   - optional_value is null
 
-### 5. Final Cleanup
-- Execute `mcp__brp__brp_shutdown` to stop the test app
 
 ## Success Criteria
 

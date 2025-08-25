@@ -3,6 +3,8 @@
 ## Objective
 Validate entity, component, and resource CRUD operations through BRP.
 
+**NOTE**: The extras_plugin app is already running on the specified port - focus on testing operations, not app management.
+
 ## Test Steps
 
 ### 1. Entity Spawning

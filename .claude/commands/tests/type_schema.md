@@ -145,8 +145,6 @@ For each mutation context type, perform ONE representative mutation and verify:
 
 **Non-Serializable**: Mutate `.flip_x` to true on Sprite → Verify with `bevy_get`
 
-### 9. Final Cleanup
-- Execute `mcp__brp__brp_shutdown` to stop the test app
 
 ## Success Criteria
 
