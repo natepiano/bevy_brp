@@ -14,7 +14,7 @@ use tracing::debug;
 
 use super::types::{Correction, CorrectionInfo, CorrectionMethod, FormatInfo, Operation};
 use crate::brp_tools::brp_type_schema::{
-    BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath, TypeInfo, TypeKind,
+    BrpTypeName, EnumVariantInfo, MutationPath, TypeInfo, TypeKind,
 };
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -30,31 +30,6 @@ pub struct UnifiedTypeInfo {
 }
 
 impl UnifiedTypeInfo {
-    /// Create a new `UnifiedTypeInfo` with minimal required information
-    /// This is now private - use specialized constructors instead
-    fn new(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        // Create minimal TypeInfo for pattern matching cases
-        let type_info = TypeInfo {
-            type_name:            type_name.into(),
-            spawn_format:         None,
-            mutation_paths:       HashMap::new(),
-            in_registry:          false,
-            has_serialize:        false,
-            has_deserialize:      false,
-            supported_operations: Vec::new(),
-            example_values:       HashMap::new(),
-            schema_info:          None,
-            enum_info:            None,
-            error:                None,
-        };
-
-        Self {
-            type_info,
-            original_value,
-            format_info: FormatInfo::default(),
-        }
-    }
-
     /// Create `UnifiedTypeInfo` from `TypeInfo` (single source of truth constructor)
     pub fn from_type_info(
         type_info: TypeInfo, // Take ownership instead of reference
@@ -66,67 +41,6 @@ impl UnifiedTypeInfo {
             original_value,
             format_info: FormatInfo::default(), // Only populate if corrections needed
         }
-    }
-
-    /// Create `UnifiedTypeInfo` for enum types with variant names
-    ///
-    /// Used when pattern matching identifies an enum with specific variants.
-    /// Sets appropriate type category, enum info, and generates examples.
-    pub fn for_enum_type(
-        type_name: impl Into<BrpTypeName>,
-        variant_names: Vec<String>,
-        original_value: Value,
-    ) -> Self {
-        let mut info = Self::new(type_name, original_value);
-
-        // Update TypeInfo with enum variants
-        if !variant_names.is_empty() {
-            use crate::brp_tools::brp_type_schema::EnumVariantInfo;
-            let variants = variant_names
-                .into_iter()
-                .map(|name| EnumVariantInfo {
-                    variant_name: name,
-                    variant_kind: EnumVariantKind::Unit,
-                    fields:       None,
-                    tuple_types:  None,
-                })
-                .collect();
-            info.type_info.enum_info = Some(variants);
-        }
-
-        // Update schema_info to indicate this is an enum
-        if let Some(ref mut schema_info) = info.type_info.schema_info {
-            schema_info.type_kind = Some(TypeKind::Enum);
-        }
-
-        info
-    }
-
-    /// Create `UnifiedTypeInfo` for a specific math type
-    ///
-    /// Used when pattern matching identifies a math type (Vec2, Vec3, etc).
-    /// Sets appropriate type category and generates examples.
-    pub fn for_math_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value);
-
-        // Mark this as a math type by setting an error indicating pattern matching
-        info.type_info.error = Some("Identified as math type via pattern matching".to_string());
-
-        info
-    }
-
-    /// Create `UnifiedTypeInfo` for Transform types
-    ///
-    /// Used when pattern matching identifies a Transform component.
-    /// Sets appropriate type category, child types, and generates examples.
-    pub fn for_transform_type(type_name: impl Into<BrpTypeName>, original_value: Value) -> Self {
-        let mut info = Self::new(type_name, original_value);
-
-        // Mark this as a transform type by setting an error indicating pattern matching
-        info.type_info.error =
-            Some("Identified as transform type via pattern matching".to_string());
-
-        info
     }
 
     // Convenience methods for TypeInfo field access

@@ -8,7 +8,7 @@ use super::constants::{
     ACCESS_ERROR_REGEX, ENUM_UNIT_VARIANT_ACCESS_ERROR_REGEX, ENUM_UNIT_VARIANT_REGEX,
     EXPECTED_TYPE_REGEX, MATH_TYPE_ARRAY_REGEX, MISSING_FIELD_REGEX, TRANSFORM_SEQUENCE_REGEX,
     TUPLE_STRUCT_PATH_REGEX, TYPE_MISMATCH_REGEX, UNKNOWN_COMPONENT_REGEX,
-    UNKNOWN_COMPONENT_TYPE_REGEX, VARIANT_TYPE_MISMATCH_REGEX,
+    VARIANT_TYPE_MISMATCH_REGEX,
 };
 use crate::brp_tools::BrpClientError;
 
@@ -21,8 +21,6 @@ pub enum ErrorPattern {
     ExpectedType { expected_type: String },
     /// Vec3/Quat math types expect array format
     MathTypeArray { math_type: String },
-    /// Enum serialization issue - unknown component type
-    UnknownComponentType { component_type: String },
     /// Tuple struct access error (e.g., "found a tuple struct instead")
     TupleStructAccess { field_path: String },
     /// Bevy `AccessError`: Error accessing element with X access
@@ -162,12 +160,6 @@ fn match_all_patterns(message: &str) -> Option<ErrorPattern> {
     if let Some(captures) = TUPLE_STRUCT_PATH_REGEX.captures(message) {
         let field_path = captures[1].to_string();
         return Some(ErrorPattern::TupleStructAccess { field_path });
-    }
-
-    // 11. Unknown component type pattern
-    if let Some(captures) = UNKNOWN_COMPONENT_TYPE_REGEX.captures(message) {
-        let component_type = captures[1].to_string();
-        return Some(ErrorPattern::UnknownComponentType { component_type });
     }
 
     None

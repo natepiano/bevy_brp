@@ -19,7 +19,7 @@ mod unified_types;
 
 // Export new type state API
 pub use orchestrator::discover_format_with_recovery;
-pub use types::{FormatCorrectionStatus, Operation, TransformationResult};
+pub use types::{FormatCorrectionStatus, TransformationResult};
 pub use unified_types::UnifiedTypeInfo;
 
 // Internal tests

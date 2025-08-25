@@ -12,6 +12,6 @@ mod type_info;
 mod wrapper_types;
 
 // Re-export public API
-pub use response_types::{BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath, TypeKind};
+pub use response_types::{BrpTypeName, EnumVariantInfo, MutationPath, TypeKind};
 pub use tool::{TypeSchema, TypeSchemaEngine, TypeSchemaParams};
 pub use type_info::TypeInfo;

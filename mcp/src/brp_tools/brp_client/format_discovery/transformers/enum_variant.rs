@@ -3,13 +3,11 @@
 use serde_json::{Value, json};
 
 use super::super::detection::{self, ErrorPattern};
-use super::super::engine::{Operation, TransformationResult, UnifiedTypeInfo};
+use super::super::engine::{TransformationResult, UnifiedTypeInfo};
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error};
 use crate::brp_tools::BrpClientError;
-use crate::string_traits::IntoStrings;
-use crate::tool::ParameterName;
 
 /// Transformer for enum variant patterns
 /// Handles enum variant mismatches and conversions between different variant types
@@ -218,106 +216,6 @@ impl EnumVariantTransformer {
         None
     }
 
-    /// Extract enum variants dynamically from error messages or format info
-    fn extract_enum_variants(error_message: &str) -> Vec<String> {
-        // Try to extract variants from error message patterns
-        // Look for patterns like "expected one of: Variant1, Variant2, Variant3"
-        if let Some(start_idx) = error_message.find("expected one of:") {
-            let variants_str = &error_message[start_idx + 16..]; // Skip "expected one of:"
-            if let Some(end_idx) = variants_str.find(", found") {
-                let variants_part = &variants_str[..end_idx];
-                return variants_part
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .into_strings();
-            }
-        }
-
-        // Try to extract from "valid values are: ..." pattern
-        if let Some(start_idx) = error_message.find("valid values are:") {
-            let variants_str = &error_message[start_idx + 17..]; // Skip "valid values are:"
-            if let Some(end_idx) = variants_str.find('.') {
-                let variants_part = &variants_str[..end_idx];
-                return variants_part
-                    .split(',')
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .into_strings();
-            }
-        }
-
-        // No reliable way to extract variants from error message
-        Vec::new()
-    }
-
-    /// Common handler for enum unit variant errors that generates enhanced error messages
-    fn handle_enum_unit_variant_error(
-        type_name: &str,
-        expected_variant_type: &str,
-        actual_variant_type: &str,
-        error_message: &str,
-        original_value: Option<&Value>,
-    ) -> TransformationResult {
-        // Extract enum variants dynamically
-        let variants = Self::extract_enum_variants(error_message);
-
-        // Create a UnifiedTypeInfo with the extracted variants and original value
-        let concrete_value = original_value
-            .cloned()
-            .unwrap_or_else(|| serde_json::json!({}));
-        let type_info = UnifiedTypeInfo::for_enum_type(type_name, variants, concrete_value);
-
-        // Get the enum example or use fallback
-        let format_info = type_info.get_example_for_operation(Operation::Mutate {
-                parameter_name: ParameterName::Component,
-            }).map_or_else(|| {
-            // Fallback format if no example was generated
-            let valid_values = type_info.enum_info().map_or_else(
-                || {
-                    vec![
-                        "Variant1".to_string(),
-                        "Variant2".to_string(),
-                        "Variant3".to_string(),
-                    ]
-                },
-                |info| info.iter().map(|v| v.variant_name.clone()).collect(),
-            );
-
-            json!({
-                FormatCorrectionField::Hint: "Use empty path with variant name as value",
-                FormatCorrectionField::Path: "",
-                FormatCorrectionField::ValidValues: valid_values,
-                FormatCorrectionField::Examples: valid_values.iter().take(2).map(|v| json!({FormatCorrectionField::Path: "", FormatCorrectionField::Value: v})).collect::<Vec<_>>()
-            })
-        }, std::clone::Clone::clone);
-
-        let valid_values = type_info.enum_info().map_or_else(
-            || {
-                vec![
-                    "Variant1".to_string(),
-                    "Variant2".to_string(),
-                    "Variant3".to_string(),
-                ]
-            },
-            |info| {
-                info.iter()
-                    .map(|v| v.variant_name.clone())
-                    .collect::<Vec<_>>()
-            },
-        );
-
-        let hint = format!(
-            "Enum '{type_name}' requires empty path for unit variant mutation. Expected {expected_variant_type} variant, found {actual_variant_type} variant. Valid variants: {}",
-            valid_values.join(", ")
-        );
-
-        TransformationResult {
-            corrected_value: format_info,
-            hint,
-        }
-    }
-
     /// Enhanced handler for enum unit variant errors with type information
     fn handle_enum_unit_variant_error_with_type_info(
         type_name: &str,
@@ -510,21 +408,20 @@ impl FormatTransformer for EnumVariantTransformer {
         match pattern {
             Some(
                 ErrorPattern::EnumUnitVariantMutation {
-                    expected_variant_type,
-                    actual_variant_type,
+                    expected_variant_type: _,
+                    actual_variant_type: _,
                 }
                 | ErrorPattern::EnumUnitVariantAccessError {
                     access: _,
-                    expected_variant_type,
-                    actual_variant_type,
+                    expected_variant_type: _,
+                    actual_variant_type: _,
                 },
-            ) => Some(Self::handle_enum_unit_variant_error(
-                &type_name,
-                &expected_variant_type,
-                &actual_variant_type,
-                &error.message,
-                Some(value),
-            )),
+            ) => {
+                // Phase 4: No synthetic type creation - this should only be called with registry
+                // data Return None to indicate this transformer cannot handle the
+                // error without type info
+                None
+            }
             Some(ErrorPattern::TypeMismatch {
                 expected,
                 actual,
@@ -866,66 +763,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_enum_unit_variant_mutation_pattern_handling() {
-        let transformer = EnumVariantTransformer::new();
-
-        // Test that we can handle the enum unit variant mutation pattern
-        let pattern = ErrorPattern::EnumUnitVariantMutation {
-            expected_variant_type: "Struct".to_string(),
-            actual_variant_type:   "Unit".to_string(),
-        };
-        assert!(transformer.can_handle(&pattern));
-
-        // Create an error that matches the pattern
-        let error = BrpClientError {
-            code: -1,
-            message: "Expected variant field access to access a Struct variant, found a Unit variant instead".to_string(),
-            data: None,
-        };
-
-        // Test with some dummy value
-        let value = json!({"field": "value"});
-        let result = transformer.transform_with_error(&value, &error);
-
-        assert!(result.is_some(), "Expected transformation to succeed");
-        let transformation_result = result.unwrap();
-
-        // Check that the transformed value has the expected structure
-        assert!(transformation_result.corrected_value.is_object());
-        let obj = transformation_result.corrected_value.as_object().unwrap();
-        assert!(obj.contains_key(&String::from(FormatCorrectionField::Hint)));
-        assert!(obj.contains_key(&String::from(FormatCorrectionField::Path)));
-        assert!(obj.contains_key(&String::from(FormatCorrectionField::ValidValues)));
-        assert!(obj.contains_key(&String::from(FormatCorrectionField::Examples)));
-
-        // Check that the path is empty as required for unit variant mutation
-        assert_eq!(obj[&String::from(FormatCorrectionField::Path)], "");
-    }
-
-    #[test]
-    fn test_extract_enum_variants() {
-        // Test pattern: "expected one of: Variant1, Variant2, Variant3"
-        let error_msg = "Error: expected one of: Hidden, Inherited, Visible, found Unknown";
-        let variants = EnumVariantTransformer::extract_enum_variants(error_msg);
-        assert_eq!(variants, vec!["Hidden", "Inherited", "Visible"]);
-
-        // Test pattern: "valid values are: ..."
-        let error_msg2 = "Invalid variant. valid values are: Red, Green, Blue.";
-        let variants2 = EnumVariantTransformer::extract_enum_variants(error_msg2);
-        assert_eq!(variants2, vec!["Red", "Green", "Blue"]);
-
-        // Test fallback pattern - should return empty vector (no longer extracts capitalized words)
-        let error_msg3 = "Cannot mutate Unit variant Something to NewThing variant";
-        let variants3 = EnumVariantTransformer::extract_enum_variants(error_msg3);
-        assert!(
-            variants3.is_empty(),
-            "Should not extract capitalized words as fallback"
-        );
-
-        // Test with no recognizable pattern
-        let error_msg4 = "some error without any patterns";
-        let variants4 = EnumVariantTransformer::extract_enum_variants(error_msg4);
-        assert!(variants4.is_empty());
-    }
 }

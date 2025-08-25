@@ -109,7 +109,7 @@ impl DiscoveryEngine<PatternCorrection> {
                 corrections.push(Correction::Uncorrectable {
                     type_info: type_info.clone(),
                     reason: format!(
-                        "Format discovery attempted pattern-based correction for type '{type_name}' but no applicable transformer could handle the error pattern."
+                        "Type '{type_name}' found but no transformer could handle the error format. This may indicate a data format issue or unsupported operation."
                     ),
                 });
             }
@@ -198,11 +198,11 @@ impl DiscoveryEngine<PatternCorrection> {
             return Some(correction_result);
         }
 
-        // Step 5: Fall back to old pattern-based approach for well-known types
+        // Phase 4: No pattern matching fallback - return None for types not in registry
         debug!(
-            "Level 3: No transformer could handle the error pattern, falling back to pattern matching"
+            "Level 3: No transformer could handle the error pattern for type '{type_name}', no fallback available"
         );
-        Self::fallback_pattern_based_correction(type_name)
+        None
     }
 
     /// Handle mutation-specific errors for invalid paths
@@ -293,40 +293,5 @@ impl DiscoveryEngine<PatternCorrection> {
         };
 
         Correction::Candidate { correction_info }
-    }
-
-    /// Fallback to the original pattern-based correction for well-known types
-    fn fallback_pattern_based_correction(type_name: &str) -> Option<Correction> {
-        match type_name {
-            // Math types - common object vs array issues
-            t if t.contains("Vec2")
-                || t.contains("Vec3")
-                || t.contains("Vec4")
-                || t.contains("Quat") =>
-            {
-                debug!("Level 3: Detected math type '{t}', providing array format guidance");
-
-                // For fallback math type guidance, provide empty object as placeholder
-                let type_info = UnifiedTypeInfo::for_math_type(t, serde_json::json!({}));
-
-                let reason = if t.contains("Quat") {
-                    format!(
-                        "Quaternion type '{t}' uses array format [x, y, z, w] where w is typically 1.0 for identity"
-                    )
-                } else {
-                    format!(
-                        "Math type '{t}' typically uses array format [x, y, ...] instead of object format"
-                    )
-                };
-
-                Some(Correction::Uncorrectable { type_info, reason })
-            }
-
-            // Other types - no specific patterns yet
-            _ => {
-                debug!("Level 3: No specific pattern available for type '{type_name}'");
-                None
-            }
-        }
     }
 }

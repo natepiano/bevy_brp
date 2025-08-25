@@ -41,7 +41,7 @@ impl DiscoveryContext {
         for (type_name, original_value) in type_value_pairs {
             let type_info = response.type_info.get(&type_name).ok_or_else(|| {
                 Error::InvalidArgument(format!(
-                    "Type '{type_name}' not found in TypeSchemaEngine response"
+                    "Type '{type_name}' not found in registry. Verify the type name is correct and the Bevy app is running with this component registered."
                 ))
             })?;
 

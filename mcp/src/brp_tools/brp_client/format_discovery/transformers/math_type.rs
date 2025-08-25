@@ -5,11 +5,10 @@ use tracing::debug;
 
 use super::super::constants::TRANSFORM_SEQUENCE_F32_COUNT;
 use super::super::detection::ErrorPattern;
-use super::super::engine::{TransformationResult, UnifiedTypeInfo};
+use super::super::engine::TransformationResult;
 use super::FormatTransformer;
 use super::common::{extract_single_field_value, extract_type_name_from_error, messages};
 use crate::brp_tools::BrpClientError;
-use crate::brp_tools::brp_type_schema::BrpTypeName;
 
 /// Transformer for math types (Vec2, Vec3, Vec4, Quat)
 /// Converts object format {x: 1.0, y: 2.0} to array format [1.0, 2.0]
@@ -60,27 +59,6 @@ impl MathTypeTransformer {
         Self
     }
 
-    /// Use `UnifiedTypeInfo` to transform math types
-    fn try_unified_transform(
-        type_name: impl Into<BrpTypeName>,
-        value: &Value,
-    ) -> Option<TransformationResult> {
-        // Create a UnifiedTypeInfo for the math type with the original value
-        let type_info = UnifiedTypeInfo::for_math_type(type_name, value.clone());
-
-        // Try transformation using UnifiedTypeInfo
-        type_info.transform_value(value).map(|transformed| {
-            let hint = format!(
-                "Transformed {} using UnifiedTypeInfo",
-                type_info.type_name().as_str()
-            );
-            TransformationResult {
-                corrected_value: transformed,
-                hint,
-            }
-        })
-    }
-
     /// Convert object values to array format for math types
     /// Handles Vec2 [x, y], Vec3 [x, y, z], Vec4/Quat [x, y, z, w]
     fn convert_to_math_type_array(value: &Value, math_type: &str) -> Option<Value> {
@@ -99,14 +77,8 @@ impl MathTypeTransformer {
         original_value: &Value,
         math_type: &str,
     ) -> Option<TransformationResult> {
-        // First try UnifiedTypeInfo transformation
-        if let Some(result) =
-            Self::try_unified_transform(format!("glam::{math_type}"), original_value)
-        {
-            return Some(result);
-        }
-
-        // Fallback to legacy implementation for compatibility
+        // Phase 4: No synthetic type creation - use only registry-based transformations
+        // Skip UnifiedTypeInfo creation and use direct conversion logic
         match math_type {
             "Vec3" => Self::convert_to_math_type_array(original_value, "Vec3").map(|arr| {
                 TransformationResult {
@@ -171,18 +143,8 @@ impl MathTypeTransformer {
             transform_data
         );
 
-        // First try using UnifiedTypeInfo for Transform with the original value
-        let type_info =
-            UnifiedTypeInfo::for_transform_type(actual_type_name, transform_data.clone());
-
-        if let Some(transformed) = type_info.transform_value(transform_data) {
-            let hint = format!("`{actual_type_name}` Transform converted to proper array format");
-            debug!("apply_transform_sequence_fix: UnifiedTypeInfo transformation succeeded");
-            return Some(TransformationResult {
-                corrected_value: transformed,
-                hint,
-            });
-        }
+        // Phase 4: No synthetic type creation - skip UnifiedTypeInfo approach
+        // Only proceed with legacy transformation logic
 
         // Fallback to legacy implementation if UnifiedTypeInfo doesn't work
         let Value::Object(obj) = transform_data else {
@@ -248,14 +210,7 @@ impl FormatTransformer for MathTypeTransformer {
     }
 
     fn transform(&self, value: &Value) -> Option<TransformationResult> {
-        // Try different math type conversions using UnifiedTypeInfo first
-        for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
-            if let Some(result) = Self::try_unified_transform(format!("glam::{math_type}"), value) {
-                return Some(result);
-            }
-        }
-
-        // Fallback to legacy conversion
+        // Phase 4: No synthetic type creation - use direct conversion logic only
         for math_type in ["Vec2", "Vec3", "Vec4", "Quat"] {
             if let Some(converted) = Self::convert_to_math_type_array(value, math_type) {
                 let hint = messages::converted_to_format(&format!("{math_type} array"));

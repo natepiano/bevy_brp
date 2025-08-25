@@ -26,7 +26,7 @@ impl DiscoveryEngine<SerializationCheck> {
         Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>>,
         DiscoveryEngine<ExtrasDiscovery>,
     > {
-        // Only check for spawn/insert methods with UnknownComponentType errors
+        // Only check for spawn/insert methods with serialization errors
         if !matches!(self.operation, Operation::SpawnInsert { .. }) {
             debug!("SerializationCheck: Not a spawn/insert method, proceeding to ExtrasDiscovery");
             return Either::Right(self.transition_to_type_discovery());
