@@ -1,0 +1,233 @@
+[
+  {
+    "id": "1",
+    "content": "Create window_title.rs handler in extras/src",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "2",
+    "content": "Run cargo build && cargo +nightly fmt in extras crate",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "3",
+    "content": "Add window_title module declaration to extras/src/lib.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "4",
+    "content": "Update doc comment in extras/src/lib.rs to include set_window_title",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "5",
+    "content": "Run cargo build && cargo +nightly fmt in extras crate after lib.rs changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "6",
+    "content": "Add set_window_title method registration in extras/src/plugin.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "7",
+    "content": "Update log_initialization in extras/src/plugin.rs to include set_window_title",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "8",
+    "content": "Run cargo build && cargo +nightly fmt in extras crate after plugin changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "9",
+    "content": "Run cargo clippy on extras crate and fix issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "10",
+    "content": "Create brp_extras_set_window_title.rs in mcp/src/brp_tools/tools",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "11",
+    "content": "Run cargo build && cargo +nightly fmt in mcp crate after creating struct file",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "12",
+    "content": "Add module declaration in mcp/src/brp_tools/tools/mod.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "13",
+    "content": "Add exports to mcp/src/brp_tools/mod.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "14",
+    "content": "Run cargo build && cargo +nightly fmt in mcp crate after module updates",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "15",
+    "content": "Add imports for SetWindowTitleParams and SetWindowTitleResult in tool_name.rs",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "16",
+    "content": "Add BrpExtrasSetWindowTitle variant to ToolName enum",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "17",
+    "content": "Run cargo build && cargo +nightly fmt after ToolName enum change",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "18",
+    "content": "Add annotation case for BrpExtrasSetWindowTitle",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "19",
+    "content": "Add parameters case for BrpExtrasSetWindowTitle",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "20",
+    "content": "Add get_tool_fn case for BrpExtrasSetWindowTitle",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "21",
+    "content": "Run cargo build && cargo +nightly fmt after all tool_name.rs changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "22",
+    "content": "Run cargo clippy on mcp crate and fix issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "23",
+    "content": "Create help text file mcp/help_text/brp_extras_set_window_title.txt",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "24",
+    "content": "Run full workspace cargo build && cargo +nightly fmt",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "25",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "26",
+    "content": "Update extras_plugin.rs example to demonstrate window title change",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "27",
+    "content": "Run cargo build --example extras_plugin",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "28",
+    "content": "Create window_title.md test file in .claude/commands/tests",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "29",
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "30",
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "31",
+    "content": "Subagent: STOP and return control",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "32",
+    "content": "Main: Task new subagent for code review (read-only)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "33",
+    "content": "Review suggestions with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
