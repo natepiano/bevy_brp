@@ -171,7 +171,7 @@ impl From<MathComponent> for String {
 }
 
 /// Context for a mutation path describing what kind of mutation this is
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MutationPathKind {
     /// Replace the entire value (root mutation with empty path)
     RootValue { type_name: BrpTypeName },
@@ -275,6 +275,8 @@ pub struct MutationPath {
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note:          Option<String>,
+    /// Context metadata describing the kind of mutation this path represents
+    pub context:       MutationPathKind,
 }
 
 impl MutationPath {
@@ -300,6 +302,7 @@ impl MutationPath {
                         "For Option fields: pass the value directly to set Some, null to set None"
                             .to_string(),
                     ),
+                    context: path.context.clone(),
                 };
             }
         }
@@ -317,6 +320,7 @@ impl MutationPath {
             example_none: None,
             enum_variants: path.enum_variants.clone(),
             note: None,
+            context: path.context.clone(),
         }
     }
 }
