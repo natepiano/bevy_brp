@@ -100,7 +100,7 @@ async fn test_orchestrator_type_schema_discovery_path() {
     let error = BrpClientError {
         code:    -23402,
         message: "Format error requiring TypeSchema discovery".to_string(), /* Not "Unknown
-                                                                         * component type" */
+                                                                             * component type" */
         data:    None,
     };
 

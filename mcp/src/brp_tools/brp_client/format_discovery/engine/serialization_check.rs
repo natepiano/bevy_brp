@@ -28,7 +28,9 @@ impl DiscoveryEngine<SerializationCheck> {
     > {
         // Only check for spawn/insert methods with serialization errors
         if !matches!(self.operation, Operation::SpawnInsert { .. }) {
-            debug!("SerializationCheck: Not a spawn/insert method, proceeding to TypeSchemaDiscovery");
+            debug!(
+                "SerializationCheck: Not a spawn/insert method, proceeding to TypeSchemaDiscovery"
+            );
             return Either::Right(self.transition_to_type_discovery());
         }
 
