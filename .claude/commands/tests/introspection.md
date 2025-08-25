@@ -11,7 +11,7 @@ Validate BRP introspection capabilities including RPC discovery, schema operatio
 - Execute `mcp__brp__bevy_rpc_discover` with port parameter
 - Verify response includes at least 20 methods
 - Check for presence of core methods: `bevy/list`, `bevy/query`, `bevy/spawn`, `rpc.discover`
-- Check for brp_extras methods: `brp_extras/discover_format`, `brp_extras/screenshot`, `brp_extras/shutdown`
+- Check for brp_extras methods: `brp_extras/screenshot`, `brp_extras/shutdown`
 - Verify response includes OpenRPC version and server info
 
 ### 2. Registry Schema Discovery

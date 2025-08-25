@@ -32,12 +32,12 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Verify component is removed from entity
 - Confirm Transform component remains
 
-### 6. Resource Operations with Format Discovery
-- Execute `mcp__brp__brp_extras_discover_format` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
-- Verify discovery returns `type_category: "TupleStruct"` and available mutation paths
+### 6. Resource Operations with Type Schema Discovery
+- Execute `mcp__brp__brp_type_schema` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
+- Verify schema returns mutation paths and spawn format information
 - Execute `mcp__brp__bevy_get_resource` to retrieve current ClearColor resource value
 - Execute `mcp__brp__bevy_mutate_resource` using discovered structure:
-  - Path: `.0` (the Color field, as revealed by format discovery)
+  - Path: `.0` (the Color field, as revealed by type schema)
   - Value: `{"Srgba": {"red": 0.8, "green": 0.2, "blue": 0.1, "alpha": 1.0}}`
 - Execute `mcp__brp__bevy_get_resource` again to verify the mutation took effect
 - Confirm the color value changed to the new Srgba values
@@ -52,7 +52,7 @@ Validate entity, component, and resource CRUD operations through BRP.
 - ✅ Component retrieval returns correct data
 - ✅ Component mutation works as expected
 - ✅ Component removal functions properly
-- ✅ Format discovery reveals correct resource structure (ClearColor as tuple struct)
+- ✅ Type schema reveals correct resource structure and mutation paths
 - ✅ Resource access and mutation using discovered paths is functional
 - ✅ Entity destruction completes cleanly
 
