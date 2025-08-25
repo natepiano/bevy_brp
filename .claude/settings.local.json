@@ -70,10 +70,14 @@
       "WebFetch(domain:crates.io)",
       "WebFetch(domain:github.com)",
       "Read(//Users/natemccoy/rust/bevy/**)",
+      "Read(//Users/natemccoy/rust/bevy/**)",
       "Read(//Users/natemccoy/rust/bevy/**)"
     ],
     "deny": [
       "Bash(sed:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/natemccoy/rust/bevy"
     ]
   }
 }
