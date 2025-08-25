@@ -34,7 +34,7 @@ pub struct SerializationCheck(pub DiscoveryContext);
 /// State type for the `ExtrasDiscovery` state.
 /// This state holds a discovery context and is responsible for building
 /// corrections from extras data when no serialization issues are found.
-pub struct ExtrasDiscovery(pub DiscoveryContext);
+pub struct TypeSchemaDiscovery(pub DiscoveryContext);
 
 /// State type for the `PatternCorrection` state.
 /// This state holds a discovery context and is responsible for applying
@@ -68,7 +68,7 @@ impl Deref for SerializationCheck {
     }
 }
 
-impl Deref for ExtrasDiscovery {
+impl Deref for TypeSchemaDiscovery {
     type Target = DiscoveryContext;
 
     fn deref(&self) -> &Self::Target {
@@ -107,7 +107,7 @@ impl SerializationCheck {
     }
 }
 
-impl ExtrasDiscovery {
+impl TypeSchemaDiscovery {
     pub fn into_inner(self) -> DiscoveryContext {
         self.0
     }

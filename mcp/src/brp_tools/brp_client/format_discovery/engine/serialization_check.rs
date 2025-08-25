@@ -8,7 +8,7 @@
 use either::Either;
 use tracing::debug;
 
-use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, Retry, SerializationCheck};
+use super::state::{DiscoveryEngine, Guidance, Retry, SerializationCheck, TypeSchemaDiscovery};
 use super::types::{Correction, Operation, are_corrections_retryable};
 
 impl DiscoveryEngine<SerializationCheck> {
@@ -24,7 +24,7 @@ impl DiscoveryEngine<SerializationCheck> {
         self,
     ) -> Either<
         Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>>,
-        DiscoveryEngine<ExtrasDiscovery>,
+        DiscoveryEngine<TypeSchemaDiscovery>,
     > {
         // Only check for spawn/insert methods with serialization errors
         if !matches!(self.operation, Operation::SpawnInsert { .. }) {
@@ -126,14 +126,14 @@ impl DiscoveryEngine<SerializationCheck> {
     }
 
     /// Transition to `ExtrasDiscovery` state, preserving the discovery context
-    fn transition_to_type_discovery(self) -> DiscoveryEngine<ExtrasDiscovery> {
+    fn transition_to_type_discovery(self) -> DiscoveryEngine<TypeSchemaDiscovery> {
         DiscoveryEngine {
             method:         self.method,
             operation:      self.operation,
             port:           self.port,
             params:         self.params,
             original_error: self.original_error,
-            context:        ExtrasDiscovery(self.context.into_inner()),
+            context:        TypeSchemaDiscovery(self.context.into_inner()),
         }
     }
 }

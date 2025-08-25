@@ -7,10 +7,10 @@
 use either::Either;
 use tracing::debug;
 
-use super::state::{DiscoveryEngine, ExtrasDiscovery, Guidance, PatternCorrection, Retry};
+use super::state::{DiscoveryEngine, Guidance, PatternCorrection, Retry, TypeSchemaDiscovery};
 use super::types::{Correction, are_corrections_retryable};
 
-impl DiscoveryEngine<ExtrasDiscovery> {
+impl DiscoveryEngine<TypeSchemaDiscovery> {
     /// Try to build corrections from extras data
     ///
     /// This method processes types from the `TypeRegistry` to build corrections.
