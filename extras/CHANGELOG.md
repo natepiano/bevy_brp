@@ -8,11 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - Unreleased
 
 ### Added
-- claude code agentic test suite for parallel execution of bevy_brp_extras and bevy_brp_mcp
 - New `brp_extras/send_keys` method for simulating keyboard input
 - New `brp_extras/set_window_title` method for changing window title
-  - Allows dynamic window title updates via BRP
-  - Returns both old and new title values for confirmation
 - Optional `enable_debug_info` parameter for `brp_extras/discover_format` method
   - Provides detailed diagnostic information about type discovery process when enabled
   - Helps troubleshoot format discovery issues with complex types
@@ -20,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Allows runtime port configuration without code changes
   - Priority: `BRP_PORT` environment variable > `with_port()` > default port (15702)
   - Enables unique port assignment for testing and CI/CD environments
+
+### Breaking Change
+- Removed `brp_extras/discover_format` method in favor of using the BevyBrpMcp tool, `brp_type_schema` method which uses the TypeRegistry to create a more accurate response than this retired method. And given it is built into the mcp tool itself, will not require `BevyBrpExtras` dependency.
 
 ## [0.2.0] - 2025-06-24
 

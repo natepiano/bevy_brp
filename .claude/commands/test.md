@@ -55,6 +55,14 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
    - Confirm log file exists and was created within the last 2 minutes
    - Report log verification status in Port Usage Report section
    - **CRITICAL**: If log verification fails, mark as FAILED test and stop immediately
+2a. **WINDOW TITLE SETTING** (if app has BrpExtrasPlugin):
+   - **ONLY for apps with BrpExtrasPlugin** (extras_plugin, test_extras_plugin_app):
+     - After successful log verification, set window title using `mcp__brp__brp_extras_set_window_title`
+     - Title format: "[TEST_NAME] test - port [PORT]"
+     - Parameters: {"title": "[TEST_NAME] test - port [PORT]", "port": [PORT]}
+     - Log success/failure in Port Usage Report section
+   - **SKIP** this step for apps without BrpExtrasPlugin (no_extras_plugin, various)
+   - **NOTE**: Title setting failures are non-critical - continue test if it fails
 3. Execute test procedures from file: [TEST_FILE]
 4. [SHUTDOWN_INSTRUCTION]
 5. Report results using the exact format below
@@ -125,6 +133,7 @@ Configuration: Port [PORT], App [APP_NAME], Log Prefix [LOG_FILE_PREFIX]
 - **Configured Port**: [PORT]
 - **Launch Command Port**: [actual port passed to launch tool or "Not passed" or "N/A" if no app launch]
 - **Log Verification**: [PASSED/FAILED/N/A - log file exists with correct prefix | explanation if failed | "N/A" if no app launch]
+- **Window Title Set**: [SUCCESS/FAILED/SKIPPED/N/A - title set for extras apps | error if failed | "SKIPPED" for non-extras apps | "N/A" if no app launch]
 - **BRP Operations Port**: [port used for all BRP operations or "N/A" if no BRP operations]
 - **Port Match Verification**: [PASSED/FAILED - all ports match | explanation if mismatch | "N/A" if no app launch]
 

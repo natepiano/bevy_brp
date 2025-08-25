@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.1] - Unreleased
 
 ### Added
+- 'brp_extras_set_window_title` tool, allowing agent to change the running apps window title
 - `brp_extras_send_keys` tool for simulating keyboard input
 - Optional `path` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for disambiguation when multiple apps/examples have the same name
 - File-based tracing system with dynamic level control (error, warn, info, debug, trace)
