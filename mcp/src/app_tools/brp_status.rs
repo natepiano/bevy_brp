@@ -319,7 +319,7 @@ async fn check_brp_on_port(port: Port) -> Result<bool> {
             }
         }
     }
-    
+
     // After all retries failed
     Ok(false)
 }
