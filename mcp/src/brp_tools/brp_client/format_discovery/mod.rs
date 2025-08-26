@@ -13,7 +13,7 @@
 //! - Provides early feedback on incompatible types (e.g., `ClearColor` without traits)
 //! - Terminal state if serialization issues are found
 //!
-//! ### State 2: TypeSchema Discovery (Terminal)
+//! ### State 2: `TypeSchema` Discovery (Terminal)
 //! - Uses `TypeSchemaEngine` for authoritative type format information from the registry
 //! - Every Component/Resource automatically gets mutation support and paths
 //! - Applies built-in transformations (e.g., Vec3 object→array conversion)

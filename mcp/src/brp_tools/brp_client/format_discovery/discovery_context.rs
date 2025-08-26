@@ -23,14 +23,14 @@ pub struct DiscoveryContext {
     /// Complete original parameters from the BRP request
     pub original_params: Value,
 
-    /// Type information keyed by BrpTypeName
+    /// Type information keyed by `BrpTypeName`
     pub type_registry: HashMap<BrpTypeName, TypeInfo>,
 
-    /// Operation type (SpawnInsert or Mutate)
+    /// Operation type (`SpawnInsert` or Mutate)
     pub operation: Operation,
 
     /// For mutations: the specific path being mutated
-    /// For spawn/insert: None (use BrpTypeName as path)
+    /// For spawn/insert: None (use `BrpTypeName` as path)
     pub mutation_path: Option<String>,
 }
 
@@ -197,15 +197,13 @@ impl DiscoveryContext {
     /// Check if a type is registered in the Bevy registry
     pub fn in_registry(&self, type_name: &BrpTypeName) -> bool {
         self.get_type_info(type_name)
-            .map(|ti| ti.in_registry)
-            .unwrap_or(false)
+            .is_some_and(|ti| ti.in_registry)
     }
 
     /// Check if a type is BRP compatible (has both Serialize and Deserialize traits)
     pub fn is_brp_compatible(&self, type_name: &BrpTypeName) -> bool {
         self.get_type_info(type_name)
-            .map(|ti| ti.has_serialize && ti.has_deserialize)
-            .unwrap_or(false)
+            .is_some_and(|ti| ti.has_serialize && ti.has_deserialize)
     }
 
     /// Get enum information for a type if it's an enum
@@ -225,8 +223,7 @@ impl DiscoveryContext {
     /// Check if a type is a math type using BRP format knowledge
     fn is_math_type(&self, type_name: &BrpTypeName) -> bool {
         self.get_type_info(type_name)
-            .map(|ti| ti.is_math_type())
-            .unwrap_or(false)
+            .is_some_and(TypeInfo::is_math_type)
     }
 
     /// Get example for a specific operation and type
@@ -351,7 +348,7 @@ impl DiscoveryContext {
             // We can transform the input - return Corrected with actual transformation
             let correction_info = CorrectionInfo {
                 corrected_value: transformed_value,
-                hint:            format!(
+                hint: format!(
                     "Transformed {} format for type '{}'",
                     if original_value.is_object() {
                         "object"
@@ -360,8 +357,8 @@ impl DiscoveryContext {
                     },
                     type_name.as_str()
                 ),
-                type_name:       type_name.clone(),
-                original_value:  original_value,
+                type_name: type_name.clone(),
+                original_value,
             };
 
             return Correction::Candidate { correction_info };

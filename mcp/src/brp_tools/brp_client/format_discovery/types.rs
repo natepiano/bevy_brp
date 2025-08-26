@@ -49,8 +49,8 @@ pub struct CorrectionInfo {
 
 impl CorrectionInfo {
     /// Convert to JSON representation for API compatibility
-    /// Note: Additional metadata (mutation_paths, type_category) should be added by the caller
-    /// who has access to the full DiscoveryContext
+    /// Note: Additional metadata (`mutation_paths`, `type_category`) should be added by the caller
+    /// who has access to the full `DiscoveryContext`
     pub fn to_json(&self) -> Value {
         serde_json::json!({
             FormatCorrectionField::TypeName: self.type_name.as_str(),

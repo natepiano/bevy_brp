@@ -150,11 +150,11 @@ impl TypeInfo {
 
     // Private helper methods (alphabetically ordered)
 
-    /// Build TypeInfos for direct fields of a struct (one level deep)
+    /// Build `TypeInfos` for direct fields of a struct (one level deep)
     fn build_field_type_infos(
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
-    ) -> HashMap<String, TypeInfo> {
+    ) -> HashMap<String, Self> {
         let mut field_infos = HashMap::new();
 
         // Extract properties from the schema
@@ -171,7 +171,7 @@ impl TypeInfo {
                 // Look up the field type in the registry and build its TypeInfo
                 if let Some(field_schema) = registry.get(&field_type_name) {
                     let field_type_info =
-                        TypeInfo::from_schema(field_type_name.clone(), field_schema, registry);
+                        Self::from_schema(field_type_name.clone(), field_schema, registry);
                     field_infos.insert(field_name.clone(), field_type_info);
                 }
             }
@@ -296,7 +296,7 @@ impl TypeInfo {
 
         for path in paths {
             // Generate description using the context
-            let description = path.mutation_path_kind.description();
+            let description = path.path_kind.description();
 
             // Check if this is an Option type using the proper wrapper detection
             let is_option = matches!(

@@ -71,43 +71,43 @@ Verify `result.type_info["bevy_transform::components::transform::Transform"]`:
 - Has `mutation_paths` for translation/rotation/scale with all subfields
 - Has `spawn_format` with example values
 - Has `schema_info` with properties and required fields
-- StructField mutation_path_kind for `.translation`, `.rotation`, `.scale`
-- NestedPath mutation_path_kind for `.translation.x`, `.translation.y`, etc.
+- StructField path_kind for `.translation`, `.rotation`, `.scale`
+- NestedPath path_kind for `.translation.x`, `.translation.y`, etc.
 
-### 6. Validate Test Components with Mutation mutation_path_kind's
+### 6. Validate Test Components with Mutation path_kind's
 
 #### 6a. TestArrayField - extras_plugin::TestArrayField
 Validate `mutation_paths` contains:
-- `.vertices` - entire array field with StructField mutation_path_kind
-- `.vertices[0]`, `.vertices[1]`, `.vertices[2]` - array elements with ArrayElement mutation_path_kind
+- `.vertices` - entire array field with StructField path_kind
+- `.vertices[0]`, `.vertices[1]`, `.vertices[2]` - array elements with ArrayElement path_kind
 - `.values` - entire array field
 - `.values[0]`, `.values[1]`, `.values[2]`, `.values[3]` - array elements
 
 #### 6b. TestTupleField - extras_plugin::TestTupleField
 Validate `mutation_paths` contains:
-- `.coords` - entire tuple field with StructField mutation_path_kind
-- `.coords.0`, `.coords.1` - tuple elements with TupleElement mutation_path_kind
+- `.coords` - entire tuple field with StructField path_kind
+- `.coords.0`, `.coords.1` - tuple elements with TupleElement path_kind
 - `.color_rgb` - entire tuple field
 - `.color_rgb.0`, `.color_rgb.1`, `.color_rgb.2` - tuple elements
 
 #### 6c. TestTupleStruct - extras_plugin::TestTupleStruct
 Validate `mutation_paths` contains:
-- Root path `""` with mutation_path_kind RootValue
-- `.0` - first element (f32) with TupleElement mutation_path_kind
-- `.1` - second element (String) with TupleElement mutation_path_kind
-- `.2` - third element (bool) with TupleElement mutation_path_kind
+- Root path `""` with path_kind RootValue
+- `.0` - first element (f32) with TupleElement path_kind
+- `.1` - second element (String) with TupleElement path_kind
+- `.2` - third element (bool) with TupleElement path_kind
 
 #### 6d. TestComplexComponent - extras_plugin::TestComplexComponent
 Validate `mutation_paths` contains:
-- **StructField mutation_path_kind**: `.transform`, `.mode`, `.points`, `.range`, `.optional_value`
-- **NestedPath mutation_path_kind**: `.transform.translation.x`, `.transform.rotation.x`, etc.
-- **ArrayElement mutation_path_kind**: `.points[0]`, `.points[1]`
-- **TupleElement mutation_path_kind**: `.range.0`, `.range.1`
+- **StructField path_kind**: `.transform`, `.mode`, `.points`, `.range`, `.optional_value`
+- **NestedPath path_kind**: `.transform.translation.x`, `.transform.rotation.x`, etc.
+- **ArrayElement path_kind**: `.points[0]`, `.points[1]`
+- **TupleElement path_kind**: `.range.0`, `.range.1`
 
 #### 6e. MipBias (Standard TupleStruct) - bevy_render::camera::camera::MipBias
 Validate:
-- Root path with RootValue mutation_path_kind
-- `.0` with TupleElement mutation_path_kind
+- Root path with RootValue path_kind
+- `.0` with TupleElement path_kind
 
 ### 7. Validate Name Component
 Verify `result.type_info["bevy_ecs::name::Name"]`:
@@ -120,7 +120,7 @@ Verify `result.type_info["bevy_ecs::name::Name"]`:
 ✅ Test passes when:
 - Single batched discovery call retrieves all 8 types successfully
 - All expected fields are present for each type
-- Mutation mutation_path_kind's are correct (RootValue, StructField, TupleElement, ArrayElement, NestedPath)
+- Mutation path_kind's are correct (RootValue, StructField, TupleElement, ArrayElement, NestedPath)
 - Components without Serialize can be mutated but not spawned
 - Tool provides comprehensive type metadata and structure information
 
@@ -129,5 +129,5 @@ Verify `result.type_info["bevy_ecs::name::Name"]`:
 If test fails:
 1. Check if app is running with BRP enabled
 2. Verify types exist in registry
-3. Compare actual vs expected mutation paths and mutation_path_kind's
+3. Compare actual vs expected mutation paths and path_kind's
 4. Check schema structure matches expected format
