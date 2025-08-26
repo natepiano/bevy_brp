@@ -11,26 +11,14 @@ use strum::{Display, EnumString};
 pub enum FormatCorrectionField {
     /// Available mutation paths
     AvailablePaths,
-    /// Error code
-    Code,
-    /// Component type being corrected
-    Component,
     /// Corrected format to use instead
     CorrectedFormat,
-    /// Error data in error responses
-    ErrorData,
     /// Examples of valid usage
     Examples,
-    /// Status indicating if format correction was applied
-    FormatCorrected,
-    /// Array of format corrections that were applied
-    FormatCorrections,
     /// Human-readable hint for using the corrected format
     Hint,
     /// Available mutation paths for this component
     MutationPaths,
-    /// Original error message when enhanced
-    OriginalError,
     /// Original format that was incorrect
     OriginalFormat,
     /// Path for mutation operations
