@@ -20,7 +20,7 @@
 //! - Always terminal - either returns retry corrections or guidance
 
 mod discovery_context;
-mod format_correction_fields;
+//mod format_correction_fields;
 mod guidance;
 mod orchestrator;
 mod recovery_result;

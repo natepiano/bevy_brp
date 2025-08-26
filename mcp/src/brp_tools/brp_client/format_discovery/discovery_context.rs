@@ -6,7 +6,6 @@
 //! one place to prevent data loss.
 
 use std::collections::HashMap;
-use std::fmt::Write;
 
 use serde_json::Value;
 use tracing::debug;
@@ -14,63 +13,94 @@ use tracing::debug;
 use super::types::{Correction, CorrectionInfo, Operation};
 use crate::brp_tools::Port;
 use crate::brp_tools::brp_type_schema::{
-    BrpTypeName, EnumVariantInfo, MutationPath, TypeInfo, TypeKind, TypeSchemaEngine,
+    BRP_FORMAT_KNOWLEDGE, BrpTypeName, EnumVariantInfo, MathComponent, MutationPath, TypeInfo,
+    TypeSchemaEngine,
 };
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
 pub struct DiscoveryContext {
-    /// Type information from Bevy's registry
-    type_map: HashMap<BrpTypeName, TypeContext>,
+    /// Complete original parameters from the BRP request
+    pub original_params: Value,
+
+    /// Type information keyed by BrpTypeName
+    pub type_registry: HashMap<BrpTypeName, TypeInfo>,
+
+    /// Operation type (SpawnInsert or Mutate)
+    pub operation: Operation,
+
+    /// For mutations: the specific path being mutated
+    /// For spawn/insert: None (use BrpTypeName as path)
+    pub mutation_path: Option<String>,
 }
 
 impl DiscoveryContext {
     /// Create a new `DiscoveryContext` from BRP method parameters
     /// Uses `TypeSchemaEngine` as single source of truth for type information
     pub async fn new(method: BrpMethod, port: Port, params: &Value) -> Result<Self> {
-        // Extract type names, values, and mutation paths
-        let tool_arguments = Self::extract_type_name_and_original_value(method, params)?;
+        // Determine operation type from method
+        let operation = Operation::try_from(method)?;
+
+        // Extract type names and mutation path
+        let (type_names, mutation_path) = Self::extract_type_names_and_path(method, params)?;
 
         debug!("using TypeSchemaEngine for type information (single registry fetch)");
 
         // Get TypeInfo from TypeSchemaEngine (single registry fetch)
         let engine = TypeSchemaEngine::new(port).await?;
-        let type_names: Vec<String> = tool_arguments
-            .iter()
-            .map(|(name, _, _)| name.as_str().to_string())
-            .collect();
         let response = engine.generate_response(&type_names);
 
-        // Build type_map from TypeInfo using the new constructor
-        let mut type_map = HashMap::new();
+        // Build type_registry from TypeInfo
+        let mut type_registry = HashMap::new();
 
-        for (type_name, original_value, mutation_path) in tool_arguments {
+        for type_name_str in type_names {
+            let type_name: BrpTypeName = type_name_str.into();
             let type_info = response.type_info.get(&type_name).ok_or_else(|| {
                 Error::InvalidArgument(format!(
-                    "Type '{type_name}' not found in registry. Verify the type name is correct and the Bevy app is running with this component registered."
+                    "Type '{}' not found in registry. Verify the type name is correct and the Bevy app is running with this component registered.",
+                    type_name.as_str()
                 ))
             })?;
-
-            // Create TypeContext from TypeInfo with mutation path
-            let unified_info =
-                TypeContext::from_type_info(type_info.clone(), original_value, mutation_path);
-            type_map.insert(type_name, unified_info);
+            type_registry.insert(type_name, type_info.clone());
         }
 
-        Ok(Self { type_map })
+        Ok(Self {
+            original_params: params.clone(),
+            type_registry,
+            operation,
+            mutation_path,
+        })
     }
 
-    /// Get all types as an iterator
-    pub fn types(&self) -> impl Iterator<Item = &TypeContext> {
-        self.type_map.values()
+    /// Get all type names as an iterator
+    pub fn type_names(&self) -> impl Iterator<Item = &BrpTypeName> {
+        self.type_registry.keys()
     }
 
-    /// Extract type names and the original parameter value from method parameters
-    fn extract_type_name_and_original_value(
+    /// Extract value for a specific type from original parameters
+    pub fn extract_value_for_type(&self, type_name: &BrpTypeName) -> Option<Value> {
+        match self.operation {
+            Operation::SpawnInsert { .. } => {
+                // For spawn/insert, extract from components using type name as key
+                self.original_params
+                    .get("components")
+                    .and_then(|c| c.get(type_name.as_str()))
+                    .cloned()
+            }
+            Operation::Mutate { .. } => {
+                // For mutations, return the value field
+                self.original_params.get("value").cloned()
+            }
+        }
+    }
+
+    /// Extract type names and mutation path from method parameters
+    fn extract_type_names_and_path(
         method: BrpMethod,
         params: &Value,
-    ) -> Result<Vec<(BrpTypeName, Value, Option<String>)>> {
-        let mut tool_arguments = Vec::new();
+    ) -> Result<(Vec<String>, Option<String>)> {
+        let mut type_names = Vec::new();
+        let mut mutation_path = None;
 
         match method {
             BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
@@ -85,18 +115,18 @@ impl DiscoveryContext {
                         Error::InvalidArgument("'components' field must be an object".to_string())
                     })?;
 
-                for (type_name, value) in components {
-                    // Validate type name is a valid string (could add more validation here)
+                for type_name in components.keys() {
+                    // Validate type name is a valid string
                     if type_name.is_empty() {
                         return Err(Error::InvalidArgument(
                             "Empty type name in components".to_string(),
                         )
                         .into());
                     }
-                    tool_arguments.push((type_name.into(), value.clone(), None));
+                    type_names.push(type_name.clone());
                 }
 
-                if tool_arguments.is_empty() {
+                if type_names.is_empty() {
                     return Err(Error::InvalidArgument("No components provided".to_string()).into());
                 }
             }
@@ -115,16 +145,12 @@ impl DiscoveryContext {
                     );
                 }
 
-                let path = params
+                mutation_path = params
                     .get("path")
                     .and_then(|v| v.as_str())
                     .map(String::from);
 
-                let value = params
-                    .get("value")
-                    .ok_or_else(|| Error::InvalidArgument("Missing 'value' field".to_string()))?
-                    .clone();
-                tool_arguments.push((component.into(), value, path));
+                type_names.push(component.to_string());
             }
             BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
                 let resource = params
@@ -141,20 +167,14 @@ impl DiscoveryContext {
                     );
                 }
 
-                let path = if method == BrpMethod::BevyMutateResource {
-                    params
+                if method == BrpMethod::BevyMutateResource {
+                    mutation_path = params
                         .get("path")
                         .and_then(|v| v.as_str())
-                        .map(String::from)
-                } else {
-                    None
-                };
+                        .map(String::from);
+                }
 
-                let value = params
-                    .get("value")
-                    .ok_or_else(|| Error::InvalidArgument("Missing 'value' field".to_string()))?
-                    .clone();
-                tool_arguments.push((resource.into(), value, path));
+                type_names.push(resource.to_string());
             }
             _ => {
                 return Err(Error::InvalidArgument(format!(
@@ -164,172 +184,80 @@ impl DiscoveryContext {
             }
         }
 
-        Ok(tool_arguments)
+        Ok((type_names, mutation_path))
     }
 }
 
-/// Comprehensive type information unified across all discovery sources
-#[derive(Debug, Clone)]
-pub struct TypeContext {
-    /// Complete type information from registry
-    pub type_info:      TypeInfo,
-    /// The original value from parameters
-    pub original_value: Value,
-    /// Mutation path for mutation operations (e.g., ".translation")
-    pub mutation_path:  Option<String>,
-}
+impl DiscoveryContext {
+    // Helper methods for working with types
 
-impl TypeContext {
-    /// Create `TypeContext` from `TypeInfo` (single source of truth constructor)
-    pub fn from_type_info(
-        type_info: TypeInfo,
-        original_value: Value,
-        mutation_path: Option<String>,
-    ) -> Self {
-        Self {
-            type_info,
-            original_value,
-            mutation_path,
-        }
+    /// Get type info for a specific type
+    pub fn get_type_info(&self, type_name: &BrpTypeName) -> Option<&TypeInfo> {
+        self.type_registry.get(type_name)
     }
 
-    // Convenience methods for TypeInfo field access
-
-    /// Get the type name
-    pub const fn type_name(&self) -> &BrpTypeName {
-        &self.type_info.type_name
+    /// Check if a type is registered in the Bevy registry
+    pub fn in_registry(&self, type_name: &BrpTypeName) -> bool {
+        self.get_type_info(type_name)
+            .map(|ti| ti.in_registry)
+            .unwrap_or(false)
     }
 
-    /// Check if the type is registered in the Bevy registry
-    pub const fn in_registry(&self) -> bool {
-        self.type_info.in_registry
+    /// Check if a type is BRP compatible (has both Serialize and Deserialize traits)
+    pub fn is_brp_compatible(&self, type_name: &BrpTypeName) -> bool {
+        self.get_type_info(type_name)
+            .map(|ti| ti.has_serialize && ti.has_deserialize)
+            .unwrap_or(false)
     }
 
-    /// Check if the type is BRP compatible (has both Serialize and Deserialize traits)
-    pub const fn is_brp_compatible(&self) -> bool {
-        self.type_info.has_serialize && self.type_info.has_deserialize
+    /// Get enum information for a type if it's an enum
+    pub fn enum_info(&self, type_name: &BrpTypeName) -> Option<&Vec<EnumVariantInfo>> {
+        self.get_type_info(type_name)
+            .and_then(|ti| ti.enum_info.as_ref())
     }
 
-    /// Get enum information if this is an enum type
-    pub const fn enum_info(&self) -> Option<&Vec<EnumVariantInfo>> {
-        self.type_info.enum_info.as_ref()
+    /// Get mutation paths for a type
+    pub fn mutation_paths(
+        &self,
+        type_name: &BrpTypeName,
+    ) -> Option<&HashMap<String, MutationPath>> {
+        self.get_type_info(type_name).map(|ti| &ti.mutation_paths)
     }
 
-    /// Get mutation paths for this type
-    pub const fn mutation_paths(&self) -> &HashMap<String, MutationPath> {
-        &self.type_info.mutation_paths
+    /// Check if a type is a math type using BRP format knowledge
+    fn is_math_type(&self, type_name: &BrpTypeName) -> bool {
+        self.get_type_info(type_name)
+            .map(|ti| ti.is_math_type())
+            .unwrap_or(false)
     }
 
-    /// Get the mutation paths for this type
-    pub const fn get_mutation_paths(&self) -> &HashMap<String, MutationPath> {
-        &self.type_info.mutation_paths
-    }
-
-    /// Check if this type is a math type using BRP format knowledge
-    /// Delegate to `TypeInfo`'s `is_math_type` method
-    fn is_math_type(&self) -> bool {
-        self.type_info.is_math_type()
-    }
-
-    /// Get example for a specific operation
-    pub const fn get_example_for_operation(&self, operation: Operation) -> Option<&Value> {
-        match operation {
-            Operation::SpawnInsert { .. } => self.type_info.spawn_format.as_ref(),
-            Operation::Mutate { .. } => None, /* For other operations, check corrected format if
-                                               * available */
-        }
-    }
-
-    /// Create appropriate correction based on the operation and context
-    /// We check if its a mutation operation - given we are attempting to recover from an error
-    /// we can't predict the correct path to use so we provide guidance in an `Uncorrectable`
-    /// Otherwise we continue to create a possible `Candidate`
-    pub fn build_correction(&self, operation: Operation) -> Correction {
-        debug!(
-            "to_correction called for type '{}' with operation: {:?}",
-            self.type_info.type_name, operation
-        );
-
-        match operation {
-            Operation::Mutate { .. } => {
-                debug!(
-                    "This is a mutation operation for type '{}'",
-                    self.type_info.type_name
-                );
-
-                // Extract mutation path from original parameters to determine what field is being
-                // mutated
-                let mutation_path = self.extract_mutation_path();
-                debug!(
-                    "Extracted mutation path: '{}'",
-                    mutation_path.as_deref().unwrap_or("(root)")
-                );
-
-                // Check if the specific field being mutated is a math type
-                let is_math_field = if let Some(path) = &mutation_path {
-                    // Field mutation - check if the field's type is a math type
-                    let field_name = path.trim_start_matches('.');
-                    if let Some(field_type_info) = self.type_info.field_type_infos.get(field_name) {
-                        let is_math = field_type_info.is_math_type();
-                        debug!(
-                            "Field '{}' type '{}' is_math_type: {}",
-                            field_name, field_type_info.type_name, is_math
-                        );
-                        is_math
-                    } else {
-                        debug!("Field '{}' not found in field_type_infos", field_name);
-                        false
-                    }
-                } else {
-                    // Root mutation - check if this type itself is a math type
-                    let is_math = self.is_math_type();
-                    debug!(
-                        "Root mutation - type '{}' is_math_type: {}",
-                        self.type_info.type_name, is_math
-                    );
-                    is_math
-                };
-
-                if is_math_field {
-                    debug!("Mutation target is a math type, creating Candidate correction");
-                    // This mutation can be auto-corrected - enable retry mode
-                    self.to_correction()
-                } else {
-                    debug!("Mutation target is not a math type, creating Uncorrectable correction");
-                    // Create mutation guidance for non-transformable types
-                    let mut hint = format!(
-                        "Type '{}' supports mutation. Available paths:\n",
-                        self.type_info.type_name
-                    );
-                    for (path, mutation_path) in self.get_mutation_paths() {
-                        let _ = writeln!(hint, "  {path} - {}", mutation_path.description);
-                    }
-
-                    Correction::Uncorrectable {
-                        type_info: self.clone(),
-                        reason:    hint,
-                    }
-                }
-            }
-            Operation::SpawnInsert { .. } => {
-                debug!(
-                    "This is a spawn/insert operation for type '{}'",
-                    self.type_info.type_name
-                );
-                self.to_correction()
-            }
-        }
-    }
-
-    /// Get mutation path for mutation operations
-    fn extract_mutation_path(&self) -> Option<String> {
-        self.mutation_path.clone()
+    /// Get example for a specific operation and type
+    pub fn get_example_for_operation(
+        &self,
+        type_name: &BrpTypeName,
+        operation: Operation,
+    ) -> Option<&Value> {
+        self.get_type_info(type_name)
+            .and_then(|ti| match operation {
+                Operation::SpawnInsert { .. } => ti.spawn_format.as_ref(),
+                Operation::Mutate { .. } => None,
+            })
     }
 
     /// Convert this type info to a `Correction`
-    fn to_correction(&self) -> Correction {
+    pub fn to_correction(&self, type_name: &BrpTypeName) -> Correction {
+        let type_info = match self.get_type_info(type_name) {
+            Some(ti) => ti,
+            None => {
+                return Correction::Uncorrectable {
+                    type_name: type_name.clone(),
+                    reason:    format!("Type '{}' not found in registry", type_name.as_str()),
+                };
+            }
+        };
+
         // Check if this is an enum with variants - provide guidance only
-        if let Some(enum_info) = &self.type_info.enum_info {
+        if let Some(enum_info) = &type_info.enum_info {
             let variant_names: Vec<String> =
                 enum_info.iter().map(|v| v.variant_name.clone()).collect();
 
@@ -337,243 +265,337 @@ impl TypeContext {
 
             let reason = format!(
                 "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}. Use one of these values directly (e.g., \"{}\")",
-                self.type_info
-                    .type_name
+                type_name
                     .as_str()
                     .split("::")
                     .last()
-                    .unwrap_or(self.type_info.type_name.as_str()),
+                    .unwrap_or(type_name.as_str()),
                 variant_names.join(", "),
                 example_variant
             );
 
             return Correction::Uncorrectable {
-                type_info: self.clone(),
+                type_name: type_name.clone(),
                 reason,
             };
         }
 
         // Check if we can actually transform the original input
+        // Get the original value for this type from the original params
+        let original_value = match self.extract_value_for_type(type_name) {
+            Some(val) => {
+                debug!(
+                    "Extracted value for type '{}': {}",
+                    type_name.as_str(),
+                    serde_json::to_string(&val).unwrap_or_else(|_| "invalid json".to_string())
+                );
+                val
+            }
+            None => {
+                // No value was provided in the request
+                debug!(
+                    "No value provided for type '{}' in request",
+                    type_name.as_str()
+                );
+
+                // Get an example of the expected format
+                let example = self
+                    .get_example_for_operation(type_name, self.operation.clone())
+                    .map(|ex| {
+                        serde_json::to_string(ex).unwrap_or_else(|_| "valid format".to_string())
+                    })
+                    .unwrap_or_else(|| "correct format (no example available)".to_string());
+
+                return Correction::Uncorrectable {
+                    type_name: type_name.clone(),
+                    reason:    format!(
+                        "No value provided for type '{}'. Expected format: {}",
+                        type_name.as_str(),
+                        example
+                    ),
+                };
+            }
+        };
+
         tracing::debug!(
-            "Extras Integration: Attempting to transform original value: {}",
-            serde_json::to_string(&self.original_value)
-                .unwrap_or_else(|_| "invalid json".to_string())
+            "Attempting to transform original value for type '{}'",
+            type_name.as_str()
         );
 
         // For mutations with a path, use the field's TypeInfo for transformation
         let transformed_value = if let Some(path) = &self.mutation_path {
             let field_name = path.trim_start_matches('.');
-            if let Some(field_type_info) = self.type_info.field_type_infos.get(field_name) {
+            if let Some(field_type_info) = type_info.field_type_infos.get(field_name) {
                 debug!(
                     "Using field '{}' TypeInfo '{}' for transformation",
                     field_name, field_type_info.type_name
                 );
-                // Create temporary TypeContext for the field to use its transform_value
-                let field_unified = TypeContext::from_type_info(
-                    field_type_info.clone(),
-                    self.original_value.clone(),
-                    None, // Field doesn't have its own mutation path
-                );
-                field_unified.transform_value(&self.original_value)
+                // For now, use the type's transform on the original value
+                self.transform_value(type_name, &original_value)
             } else {
                 debug!(
                     "Field '{}' not found in field_type_infos, using parent transformation",
                     field_name
                 );
-                self.transform_value(&self.original_value)
+                self.transform_value(type_name, &original_value)
             }
         } else {
             // No mutation path - use self transformation
-            self.transform_value(&self.original_value)
+            debug!("No mutation path, using type's own transformation");
+            self.transform_value(type_name, &original_value)
         };
 
         if let Some(transformed_value) = transformed_value {
-            tracing::debug!(
-                "Extras Integration: Successfully transformed value to: {}",
-                serde_json::to_string(&transformed_value)
-                    .unwrap_or_else(|_| "invalid json".to_string())
+            debug!(
+                "Successfully transformed value for type '{}'",
+                type_name.as_str()
             );
             // We can transform the input - return Corrected with actual transformation
             let correction_info = CorrectionInfo {
                 corrected_value: transformed_value,
                 hint:            format!(
                     "Transformed {} format for type '{}'",
-                    if self.original_value.is_object() {
+                    if original_value.is_object() {
                         "object"
                     } else {
                         "value"
                     },
-                    self.type_info.type_name
+                    type_name.as_str()
                 ),
-                type_info:       self.clone(),
+                type_name:       type_name.clone(),
+                original_value:  original_value,
             };
 
             return Correction::Candidate { correction_info };
         }
-        tracing::debug!(
-            "Extras Integration: transform_value() returned None - cannot transform input"
+
+        debug!(
+            "Could not transform value for type '{}' - providing guidance instead",
+            type_name.as_str()
         );
 
         // Cannot transform input - provide guidance with examples
-        let reason = self.get_example_for_operation(Operation::SpawnInsert {
+        let reason = self.get_example_for_operation(type_name, Operation::SpawnInsert {
             parameter_name: ParameterName::Components,
         }).map_or_else(|| format!(
                 "Cannot transform input for type '{}'. Type discovered but no format example available.",
-                self.type_info.type_name
+                type_name.as_str()
             ), |spawn_example| format!(
                 "Cannot transform input for type '{}'. Use this format: {}",
-                self.type_info.type_name,
+                type_name.as_str(),
                 serde_json::to_string(spawn_example)
                     .unwrap_or_else(|_| "correct format".to_string())
             ));
 
         Correction::Uncorrectable {
-            type_info: self.clone(),
+            type_name: type_name.clone(),
             reason,
         }
     }
 
+    /// Helper method to transform a value with consistent logging
+    fn transform_with_logging<F>(
+        &self,
+        type_name: &BrpTypeName,
+        value: &Value,
+        transform_fn: F,
+        transform_type: &str,
+    ) -> Option<Value>
+    where
+        F: FnOnce(&Self, &Value) -> Option<Value>,
+    {
+        let result = transform_fn(self, value);
+        if result.is_none() {
+            debug!(
+                "{} transformation failed for type '{}'",
+                transform_type,
+                type_name.as_str()
+            );
+        }
+        result
+    }
+
     /// Transform an incorrect value to the correct format
-    pub fn transform_value(&self, value: &Value) -> Option<Value> {
-        let type_kind = self
-            .type_info
+    pub fn transform_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
+        use crate::brp_tools::brp_type_schema::TypeKind;
+
+        let type_info = match self.get_type_info(type_name) {
+            Some(ti) => ti,
+            None => {
+                debug!(
+                    "Cannot transform: type '{}' not found in registry",
+                    type_name.as_str()
+                );
+                return None;
+            }
+        };
+
+        let type_kind = type_info
             .schema_info
             .as_ref()
             .and_then(|s| s.type_kind.clone())
             .unwrap_or_else(|| {
-                if self.type_info.enum_info.is_some() {
+                if type_info.enum_info.is_some() {
                     TypeKind::Enum
                 } else {
                     TypeKind::Struct
                 }
             });
-        match type_kind {
-            TypeKind::Enum => self.transform_enum_value(value),
+
+        debug!(
+            "Attempting to transform value for type '{}' (kind: {:?})",
+            type_name.as_str(),
+            type_kind
+        );
+
+        let transform_result = match type_kind {
+            TypeKind::Enum => self.transform_with_logging(
+                type_name,
+                value,
+                |ctx, val| ctx.transform_enum_value(type_name, val),
+                "Enum",
+            ),
             TypeKind::Struct => {
-                if self.is_math_type() {
-                    self.transform_math_value(value)
+                if self.is_math_type(type_name) {
+                    self.transform_with_logging(
+                        type_name,
+                        value,
+                        |ctx, val| ctx.transform_math_value(type_name, val),
+                        "Math type",
+                    )
                 } else {
-                    self.transform_struct_value(value)
+                    self.transform_with_logging(
+                        type_name,
+                        value,
+                        |ctx, val| ctx.transform_struct_value(type_name, val),
+                        "Struct",
+                    )
                 }
             }
             _ => {
-                tracing::debug!(
+                debug!(
                     "No transformation available for type_kind={:?} (type='{}')",
                     type_kind,
-                    self.type_info.type_name
+                    type_name.as_str()
+                );
+                None
+            }
+        };
+
+        transform_result
+    }
+
+    /// Transform math type values (Vec2, Vec3, Quat, etc.)
+    fn transform_math_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
+        // Only try to transform if value is an object
+        let obj = value.as_object()?;
+
+        // Get the format knowledge for this type
+        let format_knowledge = BRP_FORMAT_KNOWLEDGE.get(type_name)?;
+
+        // Only math types have subfield_paths
+        let subfield_paths = format_knowledge.subfield_paths.as_ref()?;
+
+        // Extract values in the order defined by subfield_paths
+        let mut values = Vec::new();
+        for (component, _example) in subfield_paths {
+            let field_name = match component {
+                MathComponent::X => "x",
+                MathComponent::Y => "y",
+                MathComponent::Z => "z",
+                MathComponent::W => "w",
+            };
+
+            // Try to get the field value as a number
+            let field_value = obj.get(field_name)?.as_f64()?;
+            values.push(field_value);
+        }
+
+        // Return as array
+        Some(serde_json::json!(values))
+    }
+
+    /// Transform struct values - handles specific known struct types
+    fn transform_struct_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
+        // Only handle specific Transform types we know about
+        match type_name.as_str() {
+            "bevy_transform::components::transform::Transform"
+            | "bevy_transform::components::global_transform::GlobalTransform" => {
+                debug!("Attempting to transform {} component", type_name.as_str());
+                self.transform_bevy_transform_fields(value)
+            }
+            _ => {
+                // We don't attempt to transform unknown struct types
+                debug!(
+                    "No transformation available for struct type '{}'",
+                    type_name.as_str()
                 );
                 None
             }
         }
     }
 
-    /// Transform math type values (Vec2, Vec3, Quat, etc.)
-    fn transform_math_value(&self, value: &Value) -> Option<Value> {
-        // Handle object to array conversion for math types
-        value
-            .as_object()
-            .and_then(|obj| match self.type_info.type_name.as_str() {
-                name if name.contains("Vec2") => Self::extract_vec2_from_object(obj),
-                name if name.contains("Vec3") => Self::extract_vec3_from_object(obj),
-                name if name.contains("Vec4") => Self::extract_vec4_from_object(obj),
-                name if name.contains("Quat") => Self::extract_quat_from_object(obj),
-                _ => None,
-            })
-    }
+    /// Transform the fields of a Transform or GlobalTransform component
+    fn transform_bevy_transform_fields(&self, value: &Value) -> Option<Value> {
+        let obj = value.as_object()?;
+        let mut result = serde_json::Map::new();
+        let mut transformed_any = false;
 
-    /// Extract Vec2 array from object
-    fn extract_vec2_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
-        let x = obj.get("x").and_then(Value::as_f64)?;
-        let y = obj.get("y").and_then(Value::as_f64)?;
-        Some(serde_json::json!([x, y]))
-    }
+        // Define the expected field types for Transform components
+        // Both Transform and GlobalTransform have the same fields
+        let field_types = [
+            ("translation", BrpTypeName::from("glam::Vec3")),
+            ("rotation", BrpTypeName::from("glam::Quat")),
+            ("scale", BrpTypeName::from("glam::Vec3")),
+        ];
 
-    /// Extract Vec3 array from object
-    fn extract_vec3_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
-        let x = obj.get("x").and_then(Value::as_f64)?;
-        let y = obj.get("y").and_then(Value::as_f64)?;
-        let z = obj.get("z").and_then(Value::as_f64)?;
-        Some(serde_json::json!([x, y, z]))
-    }
+        for (field_name, field_value) in obj {
+            // Find the expected type for this field
+            let transformed_value = field_types
+                .iter()
+                .find(|(name, _)| name == field_name)
+                .and_then(|(_, field_type)| {
+                    debug!(
+                        "Attempting to transform field '{}' as type '{}'",
+                        field_name,
+                        field_type.as_str()
+                    );
+                    self.transform_math_value(field_type, field_value)
+                });
 
-    /// Extract Vec4 array from object
-    fn extract_vec4_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
-        let x = obj.get("x").and_then(Value::as_f64)?;
-        let y = obj.get("y").and_then(Value::as_f64)?;
-        let z = obj.get("z").and_then(Value::as_f64)?;
-        let w = obj.get("w").and_then(Value::as_f64)?;
-        Some(serde_json::json!([x, y, z, w]))
-    }
-
-    /// Extract Quaternion array from object
-    fn extract_quat_from_object(obj: &serde_json::Map<String, Value>) -> Option<Value> {
-        // Same as Vec4 for quaternions
-        Self::extract_vec4_from_object(obj)
-    }
-
-    /// Transform struct values - only transform if input is valid and transformable
-    fn transform_struct_value(&self, value: &Value) -> Option<Value> {
-        // Check if this is a Transform type with child math types that can be transformed
-        if self.type_info.type_name.as_str().contains("Transform") {
-            // Try to transform object format to array format for math fields
-            if let Some(obj) = value.as_object() {
-                let mut result = serde_json::Map::new();
-                let mut transformed_any = false;
-
-                for (field_name, field_value) in obj {
-                    match field_name.as_str() {
-                        "translation" | "scale" => {
-                            // Try to transform Vec3 object to array
-                            if let Some(field_obj) = field_value.as_object() {
-                                if let Some(vec3_array) = Self::extract_vec3_from_object(field_obj)
-                                {
-                                    result.insert(field_name.clone(), vec3_array);
-                                    transformed_any = true;
-                                } else {
-                                    // Cannot transform this field - copy as-is
-                                    result.insert(field_name.clone(), field_value.clone());
-                                }
-                            } else {
-                                // Field is not an object, copy as-is
-                                result.insert(field_name.clone(), field_value.clone());
-                            }
-                        }
-                        "rotation" => {
-                            // Try to transform Quat object to array
-                            if let Some(field_obj) = field_value.as_object() {
-                                if let Some(quat_array) = Self::extract_quat_from_object(field_obj)
-                                {
-                                    result.insert(field_name.clone(), quat_array);
-                                    transformed_any = true;
-                                } else {
-                                    // Cannot transform this field - copy as-is
-                                    result.insert(field_name.clone(), field_value.clone());
-                                }
-                            } else {
-                                // Field is not an object, copy as-is
-                                result.insert(field_name.clone(), field_value.clone());
-                            }
-                        }
-                        _ => {
-                            // Copy other fields as-is
-                            result.insert(field_name.clone(), field_value.clone());
-                        }
-                    }
+            match transformed_value {
+                Some(transformed) => {
+                    debug!(
+                        "Successfully transformed field '{}' from object to array format",
+                        field_name
+                    );
+                    result.insert(field_name.clone(), transformed);
+                    transformed_any = true;
                 }
-
-                if transformed_any {
-                    return Some(Value::Object(result));
+                None => {
+                    debug!(
+                        "Field '{}' does not need transformation or cannot be transformed",
+                        field_name
+                    );
+                    // Copy field as-is
+                    result.insert(field_name.clone(), field_value.clone());
                 }
             }
         }
 
-        // For other struct types, return None - no transformation possible
-        None
+        if transformed_any {
+            debug!("Transform component had fields that were transformed");
+            Some(Value::Object(result))
+        } else {
+            debug!("No fields in Transform component needed transformation");
+            None
+        }
     }
 
     /// Transform enum values
-    fn transform_enum_value(&self, value: &Value) -> Option<Value> {
-        if let Some(enum_info) = &self.type_info.enum_info {
+    fn transform_enum_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
+        let type_info = self.get_type_info(type_name)?;
+        if let Some(enum_info) = &type_info.enum_info {
             // Handle string to enum variant conversion
             if let Some(str_val) = value.as_str() {
                 // Check if string matches a variant name

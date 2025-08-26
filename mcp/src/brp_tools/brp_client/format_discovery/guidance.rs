@@ -6,11 +6,10 @@
 use serde_json::Value;
 use tracing::debug;
 
-use super::discovery_context::TypeContext;
-use super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Guidance};
-use super::types::{Correction, CorrectionInfo, Operation};
+use super::types::{Correction, CorrectionInfo, FormatCorrectionField, Operation};
+use crate::brp_tools::brp_type_schema::BrpTypeName;
 use crate::string_traits::JsonFieldAccess;
 use crate::tool::ParameterName;
 
@@ -30,17 +29,23 @@ impl DiscoveryEngine<Guidance> {
                     // Include guidance-only candidates (with metadata/hints but no retry values)
                     corrections.push(correction_info.clone());
                 }
-                Correction::Uncorrectable { type_info, reason } => {
+                Correction::Uncorrectable { type_name, reason } => {
                     debug!(
                         "Guidance Engine: Found metadata for type '{}' but no correction: {}",
-                        type_info.type_name().as_str(),
+                        type_name.as_str(),
                         reason
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
+                    let original_value = self
+                        .context
+                        .extract_value_for_type(type_name)
+                        .unwrap_or(serde_json::Value::Null);
+                    let corrected_value = self.build_corrected_value_from_type_name(type_name);
                     let correction_info = CorrectionInfo {
-                        corrected_value: self.build_corrected_value_from_type_info(type_info),
-                        hint:            reason.to_string(),
-                        type_info:       type_info.clone(),
+                        corrected_value,
+                        hint: reason.to_string(),
+                        type_name: type_name.clone(),
+                        original_value,
                     };
                     corrections.push(correction_info);
                 }
@@ -62,17 +67,25 @@ impl DiscoveryEngine<Guidance> {
         FormatRecoveryResult::NotRecoverable { corrections }
     }
 
-    /// Build a corrected value from type info for guidance
-    fn build_corrected_value_from_type_info(&self, type_info: &TypeContext) -> Value {
+    /// Build a corrected value from type name for guidance
+    fn build_corrected_value_from_type_name(&self, type_name: &BrpTypeName) -> Value {
+        let type_info = match self.context.get_type_info(type_name) {
+            Some(ti) => ti,
+            None => return serde_json::json!({}),
+        };
+
         debug!(
-            "build_corrected_value_from_type_info: Building for type '{}' with operation '{:?}', enum_info present: {}",
-            type_info.type_name().as_str(),
+            "build_corrected_value_from_type_name: Building for type '{}' with operation '{:?}', enum_info present: {}",
+            type_name.as_str(),
             self.operation,
-            type_info.enum_info().is_some()
+            type_info.enum_info.is_some()
         );
 
         // Check if we have examples for this operation
-        if let Some(example) = type_info.get_example_for_operation(self.operation) {
+        if let Some(example) = self
+            .context
+            .get_example_for_operation(type_name, self.operation)
+        {
             debug!(
                 "build_corrected_value_from_type_info: Found example for operation, returning it"
             );
@@ -95,9 +108,12 @@ impl DiscoveryEngine<Guidance> {
                     parameter_name: ParameterName::Component,
                 }] // Available example operations
             );
-            if let Some(mutate_example) = type_info.get_example_for_operation(Operation::Mutate {
-                parameter_name: ParameterName::Component,
-            }) {
+            if let Some(mutate_example) = self.context.get_example_for_operation(
+                type_name,
+                Operation::Mutate {
+                    parameter_name: ParameterName::Component,
+                },
+            ) {
                 debug!(
                     "build_corrected_value_from_type_info: Found mutate example, returning early: {}",
                     serde_json::to_string_pretty(&mutate_example)
@@ -113,16 +129,18 @@ impl DiscoveryEngine<Guidance> {
                 FormatCorrectionField::Hint: "Use appropriate path and value for mutation"
             });
 
-            if !type_info.mutation_paths().is_empty() {
-                let paths: Vec<String> = type_info.mutation_paths().keys().cloned().collect();
-                guidance.insert_field(
-                    FormatCorrectionField::AvailablePaths,
-                    serde_json::json!(paths),
-                );
+            if let Some(mutation_paths) = self.context.mutation_paths(type_name) {
+                if !mutation_paths.is_empty() {
+                    let paths: Vec<String> = mutation_paths.keys().cloned().collect();
+                    guidance.insert_field(
+                        FormatCorrectionField::AvailablePaths,
+                        serde_json::json!(paths),
+                    );
+                }
             }
 
             // Add enum-specific guidance if this is an enum
-            if let Some(enum_info) = type_info.enum_info() {
+            if let Some(enum_info) = self.context.enum_info(type_name) {
                 let variants: Vec<String> =
                     enum_info.iter().map(|v| v.variant_name.clone()).collect();
                 debug!(

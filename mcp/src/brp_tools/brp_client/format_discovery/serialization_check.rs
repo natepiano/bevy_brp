@@ -52,10 +52,9 @@ impl DiscoveryEngine<SerializationCheck> {
         debug!("SerializationCheck: Checking for serialization errors in registry type infos");
 
         // First, check if any types have serialization issues before building corrections
-        let has_serialization_issues = self
-            .context
-            .types()
-            .any(|type_info| type_info.in_registry() && !type_info.is_brp_compatible());
+        let has_serialization_issues = self.context.type_names().any(|type_name| {
+            self.context.in_registry(type_name) && !self.context.is_brp_compatible(type_name)
+        });
 
         if !has_serialization_issues {
             debug!(
@@ -77,22 +76,25 @@ impl DiscoveryEngine<SerializationCheck> {
         );
 
         let corrections: Vec<Correction> = discovery_context
-            .types()
-            .filter(|type_info| type_info.in_registry() && !type_info.is_brp_compatible())
-            .map(|type_info| {
+            .type_names()
+            .filter(|type_name| {
+                discovery_context.in_registry(type_name)
+                    && !discovery_context.is_brp_compatible(type_name)
+            })
+            .map(|type_name| {
                 debug!(
                     "SerializationCheck: Component '{}' lacks serialization, building correction",
-                    type_info.type_name().as_str()
+                    type_name.as_str()
                 );
                 let reason = format!(
                     "Component '{}' lacks serialization support. {}",
-                    type_info.type_name().as_str(),
+                    type_name.as_str(),
                     educational_message
                 );
                 // Since serialization issues can't be fixed by BRP calls, these are always
                 // guidance-only
                 Correction::Uncorrectable {
-                    type_info: type_info.clone(),
+                    type_name: type_name.clone(),
                     reason,
                 }
             })

@@ -21,7 +21,7 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
     pub fn try_corrections(self) -> Either<DiscoveryEngine<Retry>, DiscoveryEngine<Guidance>> {
         debug!(
             "TypeSchemaDiscovery: Attempting discovery for {} types",
-            self.context.types().count()
+            self.context.type_names().count()
         );
 
         // Process all types from TypeSchema registry to build corrections
@@ -29,13 +29,14 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
         // be empty
         let corrections: Vec<Correction> = self
             .context
-            .types()
-            .map(|type_info| {
+            .0
+            .type_names()
+            .map(|type_name| {
                 debug!(
                     "TypeSchemaDiscovery: Processing type '{}' from TypeSchema registry",
-                    type_info.type_name().as_str()
+                    type_name.as_str()
                 );
-                type_info.build_correction(self.operation)
+                self.context.0.to_correction(type_name)
             })
             .collect();
 
@@ -45,7 +46,7 @@ impl DiscoveryEngine<TypeSchemaDiscovery> {
         );
 
         // Extract the discovery context for terminal state creation
-        let discovery_context = self.context.into_inner();
+        let discovery_context = self.context.0;
 
         // Evaluate whether corrections are retryable or guidance-only
         if are_corrections_retryable(&corrections) {

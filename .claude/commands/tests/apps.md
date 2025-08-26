@@ -37,8 +37,9 @@ Validate that the `test_extras_plugin_app` binary works correctly with BRP opera
 
 ### 4. Query Operation - Non-Reflected Component
 - Execute `mcp__brp__bevy_query` for `test_extras_plugin_app::Rotator` component (which lacks Reflect derive)
-- With default `strict: false`: Verify it returns empty results (0 entities)
-- With `strict: true`: Verify it returns error -23402 with message about component not being registered
+- **IMPORTANT**: The `data` parameter is required - use an empty object `{}` if you only want to filter
+- With default `strict: false` and `data: {}`: Verify it returns empty results (0 entities)
+- With `strict: true` and `data: {}`: Verify it returns error -23402 with message about component not being registered
 - This tests proper handling of components that exist in the app but aren't reflection-enabled
 
 ### 5. Mutate Component

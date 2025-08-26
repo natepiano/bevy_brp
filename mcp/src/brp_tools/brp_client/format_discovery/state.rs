@@ -95,12 +95,6 @@ impl SerializationCheck {
     }
 }
 
-impl TypeSchemaDiscovery {
-    pub fn into_inner(self) -> DiscoveryContext {
-        self.0
-    }
-}
-
 impl Retry {
     pub const fn new(context: DiscoveryContext, corrections: Vec<Correction>) -> Self {
         Self {
