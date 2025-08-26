@@ -5,6 +5,7 @@
 //! processing types to provide a clean, stable API contract.
 
 use std::collections::HashMap;
+use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -42,7 +43,7 @@ impl From<BrpSupportedOperation> for String {
 /// This type provides documentation and type safety for strings that represent
 /// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
 /// when used as keys in type information maps.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 pub struct BrpTypeName(String);
 
@@ -170,8 +171,8 @@ impl From<MathComponent> for String {
     }
 }
 
-/// Context for a mutation path describing what kind of mutation this is
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Context for a mutation path describing what kind of mutation this is  
+#[derive(Debug, Clone)]
 pub enum MutationPathKind {
     /// Replace the entire value (root mutation with empty path)
     RootValue { type_name: BrpTypeName },
@@ -235,48 +236,74 @@ impl MutationPathKind {
             }
         }
     }
+
+    /// Get just the variant name for serialization
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            Self::RootValue { .. } => "RootValue",
+            Self::StructField { .. } => "StructField",
+            Self::TupleElement { .. } => "TupleElement",
+            Self::ArrayElement { .. } => "ArrayElement",
+            Self::NestedPath { .. } => "NestedPath",
+        }
+    }
+}
+
+impl Display for MutationPathKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.variant_name())
+    }
+}
+
+impl Serialize for MutationPathKind {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
 }
 
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path
-    pub example:       Value,
+    pub example:            Value,
     /// Path for mutation, e.g., ".translation.x"
-    pub path:          String,
+    pub path:               String,
     /// For enum types, list of valid variant names
-    pub enum_variants: Option<Vec<String>>,
+    pub enum_variants:      Option<Vec<String>>,
     /// Type information for this path
-    pub type_name:     BrpTypeName,
+    pub type_name:          BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub context:       MutationPathKind,
+    pub mutation_path_kind: MutationPathKind,
 }
 
 /// Information about a mutation path that we serialize to our response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct MutationPath {
     /// Human-readable description of what this path mutates
-    pub description:   String,
+    pub description:        String,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name:     BrpTypeName,
+    pub type_name:          BrpTypeName,
     /// Example value for mutations (for non-Option types)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:       Option<Value>,
+    pub example:            Option<Value>,
     /// Example value for setting Some variant (Option types only)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_some:  Option<Value>,
+    pub example_some:       Option<Value>,
     /// Example value for setting None variant (Option types only)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_none:  Option<Value>,
+    pub example_none:       Option<Value>,
     /// List of valid enum variants for this field
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_variants: Option<Vec<String>>,
+    pub enum_variants:      Option<Vec<String>>,
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub note:          Option<String>,
+    pub note:               Option<String>,
     /// Context metadata describing the kind of mutation this path represents
-    pub context:       MutationPathKind,
+    pub mutation_path_kind: MutationPathKind,
 }
 
 impl MutationPath {
@@ -302,7 +329,7 @@ impl MutationPath {
                         "For Option fields: pass the value directly to set Some, null to set None"
                             .to_string(),
                     ),
-                    context: path.context.clone(),
+                    mutation_path_kind: path.mutation_path_kind.clone(),
                 };
             }
         }
@@ -320,7 +347,7 @@ impl MutationPath {
             example_none: None,
             enum_variants: path.enum_variants.clone(),
             note: None,
-            context: path.context.clone(),
+            mutation_path_kind: path.mutation_path_kind.clone(),
         }
     }
 }
@@ -427,7 +454,7 @@ impl TypeKind {
 }
 
 /// response structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeSchemaResponse {
     /// Number of types successfully discovered
     pub discovered_count: usize,

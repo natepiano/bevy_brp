@@ -29,7 +29,7 @@ pub struct TypeSchemaParams {
 }
 
 /// Result for the `brp_type_schema` tool
-#[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
+#[derive(Debug, Clone, Serialize, ResultStruct)]
 pub struct TypeSchemaResult {
     /// The type schema information containing format discovery results
     #[to_result]

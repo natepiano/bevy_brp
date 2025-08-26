@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
@@ -18,7 +18,7 @@ use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
 /// this is all of the information we provide about a type
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeInfo {
     /// Fully-qualified type name
     pub type_name:            BrpTypeName,
@@ -45,6 +45,9 @@ pub struct TypeInfo {
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
     pub schema_info:          Option<SchemaInfo>,
+    /// Type information for direct fields (struct fields only, one level deep)
+    #[serde(skip)]
+    pub field_type_infos:     HashMap<String, TypeInfo>,
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error:                Option<String>,
@@ -58,27 +61,10 @@ impl TypeInfo {
             .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
     }
 
-    /// Get the type name of a field in this struct
-    /// Returns None if this isn't a struct or the field doesn't exist
-    pub fn get_field_type(&self, field_name: &str) -> Option<BrpTypeName> {
-        let schema_info = self.schema_info.as_ref()?;
-        let properties = schema_info.properties.as_ref()?.as_object()?;
-        let field_info = properties.get(field_name)?;
-
-        // Extract the type reference from the field info
-        // Field info typically looks like: {"type": {"$ref": "#/$defs/glam::Vec3"}}
-        let type_ref = field_info.get("type")?.get("$ref")?.as_str()?;
-
-        // Remove the "#/$defs/" prefix to get the type name
-        let type_name = type_ref.strip_prefix("#/$defs/")?;
-        Some(BrpTypeName::from(type_name))
-    }
-
-    /// Check if a field of this struct is a math type
-    pub fn is_field_math_type(&self, field_name: &str) -> bool {
-        self.get_field_type(field_name)
-            .and_then(|type_name| BRP_FORMAT_KNOWLEDGE.get(&type_name))
-            .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
+    /// Get the TypeInfo for a field in this struct
+    /// Returns the pre-built TypeInfo for the field if available
+    pub fn get_field_type_info(&self, field_name: &str) -> Option<&TypeInfo> {
+        self.field_type_infos.get(field_name)
     }
 
     /// Builder method to create `TypeInfo` from schema data
@@ -127,6 +113,13 @@ impl TypeInfo {
         // Extract schema info from registry
         let schema_info = Self::extract_schema_info(type_schema);
 
+        // Build field TypeInfos for struct types (one level deep)
+        let field_type_infos = if type_kind == TypeKind::Struct {
+            Self::build_field_type_infos(type_schema, registry)
+        } else {
+            HashMap::new()
+        };
+
         Self {
             type_name: brp_type_name,
             in_registry: true,
@@ -138,6 +131,7 @@ impl TypeInfo {
             spawn_format,
             enum_info,
             schema_info,
+            field_type_infos,
             error: None,
         }
     }
@@ -155,11 +149,42 @@ impl TypeInfo {
             spawn_format: None,
             enum_info: None,
             schema_info: None,
+            field_type_infos: HashMap::new(),
             error: Some(error_msg),
         }
     }
 
     // Private helper methods (alphabetically ordered)
+
+    /// Build TypeInfos for direct fields of a struct (one level deep)
+    fn build_field_type_infos(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> HashMap<String, TypeInfo> {
+        let mut field_infos = HashMap::new();
+
+        // Extract properties from the schema
+        let Some(properties) = type_schema
+            .get_field(SchemaField::Properties)
+            .and_then(Value::as_object)
+        else {
+            return field_infos;
+        };
+
+        // Build TypeInfo for each field
+        for (field_name, field_info) in properties {
+            if let Some(field_type_name) = SchemaField::extract_field_type(field_info) {
+                // Look up the field type in the registry and build its TypeInfo
+                if let Some(field_schema) = registry.get(&field_type_name) {
+                    let field_type_info =
+                        TypeInfo::from_schema(field_type_name.clone(), field_schema, registry);
+                    field_infos.insert(field_name.clone(), field_type_info);
+                }
+            }
+        }
+
+        field_infos
+    }
 
     /// Build mutation paths for a type using the trait system
     fn build_mutation_paths(
@@ -236,8 +261,10 @@ impl TypeInfo {
                     .and_then(Value::as_str)
                     .and_then(|s| s.strip_prefix("#/$defs/"))
                     .map(BrpTypeName::from)
-                    .map(|ft| Self::build_example_value_for_type(&ft, registry))
-                    .unwrap_or_else(|| json!(null))
+                    .map_or_else(
+                        || json!(null),
+                        |ft| Self::build_example_value_for_type(&ft, registry),
+                    )
             })
             .collect();
 
@@ -275,7 +302,7 @@ impl TypeInfo {
 
         for path in paths {
             // Generate description using the context
-            let description = path.context.description();
+            let description = path.mutation_path_kind.description();
 
             // Check if this is an Option type using the proper wrapper detection
             let is_option = matches!(

@@ -218,11 +218,11 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             RootOrField::Root { type_name } => {
                 // Add root mutation path for the entire array
                 paths.push(MutationPathInternal {
-                    path:          String::new(),
-                    example:       json!(array_example),
-                    enum_variants: None,
-                    type_name:     type_name.clone(),
-                    context:       MutationPathKind::RootValue {
+                    path:               String::new(),
+                    example:            json!(array_example),
+                    enum_variants:      None,
+                    type_name:          type_name.clone(),
+                    mutation_path_kind: MutationPathKind::RootValue {
                         type_name: type_name.clone(),
                     },
                 });
@@ -230,11 +230,11 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                 // Add paths for all array elements
                 for index in 0..array_size {
                     paths.push(MutationPathInternal {
-                        path:          format!("[{index}]"),
-                        example:       example_element.clone(),
-                        enum_variants: None,
-                        type_name:     element_type.clone(),
-                        context:       MutationPathKind::ArrayElement {
+                        path:               format!("[{index}]"),
+                        example:            example_element.clone(),
+                        enum_variants:      None,
+                        type_name:          element_type.clone(),
+                        mutation_path_kind: MutationPathKind::ArrayElement {
                             index,
                             parent_type: type_name.clone(),
                         },
@@ -248,11 +248,11 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             } => {
                 // Add path for the entire array field
                 paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       json!(array_example),
-                    enum_variants: None,
-                    type_name:     field_type.clone(),
-                    context:       MutationPathKind::StructField {
+                    path:               format!(".{field_name}"),
+                    example:            json!(array_example),
+                    enum_variants:      None,
+                    type_name:          field_type.clone(),
+                    mutation_path_kind: MutationPathKind::StructField {
                         field_name:  field_name.clone(),
                         parent_type: parent_type.clone(),
                     },
@@ -261,11 +261,11 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                 // Add paths for all array elements
                 for index in 0..array_size {
                     paths.push(MutationPathInternal {
-                        path:          format!(".{field_name}[{index}]"),
-                        example:       example_element.clone(),
-                        enum_variants: None,
-                        type_name:     element_type.clone(),
-                        context:       MutationPathKind::ArrayElement {
+                        path:               format!(".{field_name}[{index}]"),
+                        example:            example_element.clone(),
+                        enum_variants:      None,
+                        type_name:          element_type.clone(),
+                        mutation_path_kind: MutationPathKind::ArrayElement {
                             index,
                             parent_type: field_type.clone(),
                         },
@@ -303,11 +303,11 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     && let Some(first_variant) = variants.first()
                 {
                     paths.push(MutationPathInternal {
-                        path:          String::new(),
-                        example:       json!(first_variant),
-                        enum_variants: Some(variants.clone()),
-                        type_name:     type_name.clone(),
-                        context:       MutationPathKind::RootValue {
+                        path:               String::new(),
+                        example:            json!(first_variant),
+                        enum_variants:      Some(variants.clone()),
+                        type_name:          type_name.clone(),
+                        mutation_path_kind: MutationPathKind::RootValue {
                             type_name: type_name.clone(),
                         },
                     });
@@ -326,7 +326,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     example: final_example,
                     enum_variants,
                     type_name: field_type.clone(),
-                    context: MutationPathKind::StructField {
+                    mutation_path_kind: MutationPathKind::StructField {
                         field_name:  field_name.clone(),
                         parent_type: parent_type.clone(),
                     },
@@ -474,11 +474,11 @@ impl StructMutationBuilder {
         let final_example = ctx.wrap_example(json!(null));
 
         MutationPathInternal {
-            path:          format!(".{field_name}"),
-            example:       final_example,
-            enum_variants: None,
-            type_name:     field_type.clone(),
-            context:       MutationPathKind::StructField {
+            path:               format!(".{field_name}"),
+            example:            final_example,
+            enum_variants:      None,
+            type_name:          field_type.clone(),
+            mutation_path_kind: MutationPathKind::StructField {
                 field_name:  field_name.to_string(),
                 parent_type: parent_type.clone(),
             },
@@ -514,17 +514,17 @@ impl StructMutationBuilder {
             if let MutationPathKind::StructField {
                 field_name: nested_field,
                 ..
-            } = &nested_path.context
+            } = &nested_path.mutation_path_kind
             {
                 components.push(nested_field.clone());
             }
 
             paths.push(MutationPathInternal {
-                path:          full_path,
-                example:       nested_path.example,
-                enum_variants: nested_path.enum_variants,
-                type_name:     nested_path.type_name.clone(),
-                context:       MutationPathKind::NestedPath {
+                path:               full_path,
+                example:            nested_path.example,
+                enum_variants:      nested_path.enum_variants,
+                type_name:          nested_path.type_name.clone(),
+                mutation_path_kind: MutationPathKind::NestedPath {
                     components,
                     final_type: nested_path.type_name,
                 },
@@ -565,11 +565,11 @@ impl StructMutationBuilder {
             let Some(ft) = field_type else {
                 // No type info, add null mutation path
                 paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       json!(null),
-                    enum_variants: None,
-                    type_name:     BrpTypeName::unknown(),
-                    context:       match &ctx.location {
+                    path:               format!(".{field_name}"),
+                    example:            json!(null),
+                    enum_variants:      None,
+                    type_name:          BrpTypeName::unknown(),
+                    mutation_path_kind: match &ctx.location {
                         RootOrField::Root { type_name } => MutationPathKind::StructField {
                             field_name:  field_name.clone(),
                             parent_type: type_name.clone(),
@@ -657,7 +657,7 @@ impl StructMutationBuilder {
             example: final_example,
             enum_variants,
             type_name: field_type.clone(),
-            context: MutationPathKind::StructField {
+            mutation_path_kind: MutationPathKind::StructField {
                 field_name:  field_name.to_string(),
                 parent_type: parent_type.clone(),
             },
@@ -672,11 +672,11 @@ impl StructMutationBuilder {
                 );
 
                 paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}.{component_name}"),
-                    example:       component_example,
-                    enum_variants: None,
-                    type_name:     BrpTypeName::from("f32"), // Components are always f32
-                    context:       MutationPathKind::NestedPath {
+                    path:               format!(".{field_name}.{component_name}"),
+                    example:            component_example,
+                    enum_variants:      None,
+                    type_name:          BrpTypeName::from("f32"), // Components are always f32
+                    mutation_path_kind: MutationPathKind::NestedPath {
                         components: vec![field_name.to_string(), component_name.to_string()],
                         final_type: BrpTypeName::from("f32"),
                     },
@@ -741,7 +741,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 example,
                 enum_variants: None,
                 type_name: type_name.clone(),
-                context: MutationPathKind::RootValue {
+                mutation_path_kind: MutationPathKind::RootValue {
                     type_name: type_name.clone(),
                 },
             },
@@ -754,7 +754,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 example,
                 enum_variants: None,
                 type_name: field_type.clone(),
-                context: MutationPathKind::StructField {
+                mutation_path_kind: MutationPathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
@@ -774,11 +774,11 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                 .map_or(json!(null), |k| k.example_value.clone());
 
                             paths.push(MutationPathInternal {
-                                path:          format!(".{index}"),
-                                example:       elem_example,
-                                enum_variants: None,
-                                type_name:     element_type,
-                                context:       MutationPathKind::TupleElement {
+                                path:               format!(".{index}"),
+                                example:            elem_example,
+                                enum_variants:      None,
+                                type_name:          element_type,
+                                mutation_path_kind: MutationPathKind::TupleElement {
                                     index,
                                     parent_type: type_name.clone(),
                                 },
@@ -801,11 +801,11 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                 .map_or(json!(null), |k| k.example_value.clone());
 
                             paths.push(MutationPathInternal {
-                                path:          format!(".{field_name}.{index}"),
-                                example:       elem_example,
-                                enum_variants: None,
-                                type_name:     element_type,
-                                context:       MutationPathKind::TupleElement {
+                                path:               format!(".{field_name}.{index}"),
+                                example:            elem_example,
+                                enum_variants:      None,
+                                type_name:          element_type,
+                                mutation_path_kind: MutationPathKind::TupleElement {
                                     index,
                                     parent_type: field_type.clone(),
                                 },
@@ -832,11 +832,11 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         match &ctx.location {
             RootOrField::Root { type_name } => {
                 paths.push(MutationPathInternal {
-                    path:          String::new(),
-                    example:       json!(null),
-                    enum_variants: None,
-                    type_name:     type_name.clone(),
-                    context:       MutationPathKind::RootValue {
+                    path:               String::new(),
+                    example:            json!(null),
+                    enum_variants:      None,
+                    type_name:          type_name.clone(),
+                    mutation_path_kind: MutationPathKind::RootValue {
                         type_name: type_name.clone(),
                     },
                 });
@@ -847,11 +847,11 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                 parent_type,
             } => {
                 paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       json!(null),
-                    enum_variants: None,
-                    type_name:     field_type.clone(),
-                    context:       MutationPathKind::StructField {
+                    path:               format!(".{field_name}"),
+                    example:            json!(null),
+                    enum_variants:      None,
+                    type_name:          field_type.clone(),
+                    mutation_path_kind: MutationPathKind::StructField {
                         field_name:  field_name.clone(),
                         parent_type: parent_type.clone(),
                     },
