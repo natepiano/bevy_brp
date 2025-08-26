@@ -11,7 +11,7 @@ Validate that the `test_extras_plugin_app` binary works correctly with BRP opera
 
 ### 1. BRP Status Check
 - Execute `mcp__brp__brp_status` with app name and port
-- Verify response status is "success" and metadata shows app_running: true, brp_responsive: true
+- Verify response status is "success" and metadata contains app_name, pid, and port fields
 - Confirm app process is detected and BRP is responsive
 
 ### 2. RPC Discovery
