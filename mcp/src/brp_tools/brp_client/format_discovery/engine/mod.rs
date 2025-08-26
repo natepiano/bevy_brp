@@ -3,7 +3,6 @@
 //! This module contains the discovery engine implementation for format recovery.
 
 mod discovery_context;
-mod extras_discovery;
 mod guidance;
 mod orchestrator;
 mod pattern_correction;
@@ -11,6 +10,7 @@ mod recovery_result;
 mod retry;
 mod serialization_check;
 mod state;
+mod type_schema_discovery;
 pub mod types;
 mod unified_types;
 
