@@ -129,7 +129,7 @@ async fn test_orchestrator_type_schema_discovery_path() {
     // 4. All implementation is integrated and functional
 }
 
-// Integration tests for TypeDiscoveryResponse → UnifiedTypeInfo conversion
+// Integration tests for TypeDiscoveryResponse → TypeContext conversion
 // Note: test_enrich_from_extras_full_enrichment and
 // test_registry_schema_to_unified_type_info_conversion removed after replacing direct registry
 // schema conversion with TypeSchemaEngine

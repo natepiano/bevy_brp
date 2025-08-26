@@ -9,8 +9,8 @@ use tracing::debug;
 use super::super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Guidance};
+use super::type_context::TypeContext;
 use super::types::{Correction, CorrectionInfo, CorrectionMethod, Operation};
-use super::unified_types::UnifiedTypeInfo;
 use crate::string_traits::JsonFieldAccess;
 use crate::tool::ParameterName;
 
@@ -65,7 +65,7 @@ impl DiscoveryEngine<Guidance> {
     }
 
     /// Build a corrected value from type info for guidance
-    fn build_corrected_value_from_type_info(&self, type_info: &UnifiedTypeInfo) -> Value {
+    fn build_corrected_value_from_type_info(&self, type_info: &TypeContext) -> Value {
         debug!(
             "build_corrected_value_from_type_info: Building for type '{}' with operation '{:?}', enum_info present: {}",
             type_info.type_name().as_str(),

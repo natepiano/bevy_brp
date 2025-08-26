@@ -3,7 +3,7 @@
 //! Single coherent schema replacing fragmented type conversions. Contains all
 //! discoverable type information in one place to prevent data loss.
 //!
-//! Core types: `UnifiedTypeInfo`, `FormatInfo`, `RegistryStatus`, `SerializationSupport`
+//! Core types: `TypeContext`, `FormatInfo`, `RegistryStatus`, `SerializationSupport`
 
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -12,34 +12,35 @@ use serde::Serialize;
 use serde_json::Value;
 use tracing::debug;
 
-use super::types::{Correction, CorrectionInfo, CorrectionMethod, FormatInfo, Operation};
+use super::types::{Correction, CorrectionInfo, CorrectionMethod, Operation};
 use crate::brp_tools::brp_type_schema::{
     BrpTypeName, EnumVariantInfo, MutationPath, TypeInfo, TypeKind,
 };
-use crate::tool::{BrpMethod, ParameterName};
+use crate::tool::ParameterName;
 
 /// Comprehensive type information unified across all discovery sources
 #[derive(Debug, Clone, Serialize)]
-pub struct UnifiedTypeInfo {
+pub struct TypeContext {
     /// Complete type information from registry
     pub type_info:      TypeInfo,
     /// The original value from parameters
     pub original_value: Value,
-    /// Format-specific data and examples
-    pub format_info:    FormatInfo,
+    /// Mutation path for mutation operations (e.g., ".translation")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mutation_path:  Option<String>,
 }
 
-impl UnifiedTypeInfo {
-    /// Create `UnifiedTypeInfo` from `TypeInfo` (single source of truth constructor)
+impl TypeContext {
+    /// Create `TypeContext` from `TypeInfo` (single source of truth constructor)
     pub fn from_type_info(
-        type_info: TypeInfo, // Take ownership instead of reference
+        type_info: TypeInfo,
         original_value: Value,
-        _method: BrpMethod, // No longer needed for examples
+        mutation_path: Option<String>,
     ) -> Self {
         Self {
             type_info,
             original_value,
-            format_info: FormatInfo::default(), // Only populate if corrections needed
+            mutation_path,
         }
     }
 
@@ -107,20 +108,45 @@ impl UnifiedTypeInfo {
                     self.type_info.type_name
                 );
 
-                // Check if this mutation might be transformable (e.g., math type fields)
-                if self.has_math_type_fields() {
+                // Extract mutation path from original parameters to determine what field is being
+                // mutated
+                let mutation_path = self.extract_mutation_path();
+                debug!(
+                    "Extracted mutation path: '{}'",
+                    mutation_path.as_deref().unwrap_or("(root)")
+                );
+
+                // Check if the specific field being mutated is a math type
+                let is_math_field = if let Some(path) = &mutation_path {
+                    // Field mutation - check if the field's type is a math type
+                    let field_name = path.trim_start_matches('.');
+                    if let Some(field_type_info) = self.type_info.field_type_infos.get(field_name) {
+                        let is_math = field_type_info.is_math_type();
+                        debug!(
+                            "Field '{}' type '{}' is_math_type: {}",
+                            field_name, field_type_info.type_name, is_math
+                        );
+                        is_math
+                    } else {
+                        debug!("Field '{}' not found in field_type_infos", field_name);
+                        false
+                    }
+                } else {
+                    // Root mutation - check if this type itself is a math type
+                    let is_math = self.is_math_type();
                     debug!(
-                        "Type '{}' has math type fields, creating Candidate correction",
-                        self.type_info.type_name
+                        "Root mutation - type '{}' is_math_type: {}",
+                        self.type_info.type_name, is_math
                     );
-                    // For types with math type fields (like Transform), allow transformation
-                    // This will enable retry mode for mutations that can be auto-corrected
+                    is_math
+                };
+
+                if is_math_field {
+                    debug!("Mutation target is a math type, creating Candidate correction");
+                    // This mutation can be auto-corrected - enable retry mode
                     self.to_correction()
                 } else {
-                    debug!(
-                        "Type '{}' has no math type fields, creating Uncorrectable correction",
-                        self.type_info.type_name
-                    );
+                    debug!("Mutation target is not a math type, creating Uncorrectable correction");
                     // Create mutation guidance for non-transformable types
                     let mut hint = format!(
                         "Type '{}' supports mutation. Available paths:\n",
@@ -146,21 +172,9 @@ impl UnifiedTypeInfo {
         }
     }
 
-    /// Check if this type has math type fields that can be transformed
-    fn has_math_type_fields(&self) -> bool {
-        // Check if any of the field types are math types
-        let has_math_fields = self
-            .type_info
-            .field_type_infos
-            .values()
-            .any(|field_type_info| field_type_info.is_math_type());
-        debug!(
-            "has_math_type_fields for '{}': {} (has {} field type infos)",
-            self.type_info.type_name,
-            has_math_fields,
-            self.type_info.field_type_infos.len()
-        );
-        has_math_fields
+    /// Get mutation path for mutation operations
+    fn extract_mutation_path(&self) -> Option<String> {
+        self.mutation_path.clone()
     }
 
     /// Convert this type info to a `Correction`
@@ -196,7 +210,35 @@ impl UnifiedTypeInfo {
             serde_json::to_string(&self.original_value)
                 .unwrap_or_else(|_| "invalid json".to_string())
         );
-        if let Some(transformed_value) = self.transform_value(&self.original_value) {
+
+        // For mutations with a path, use the field's TypeInfo for transformation
+        let transformed_value = if let Some(path) = &self.mutation_path {
+            let field_name = path.trim_start_matches('.');
+            if let Some(field_type_info) = self.type_info.field_type_infos.get(field_name) {
+                debug!(
+                    "Using field '{}' TypeInfo '{}' for transformation",
+                    field_name, field_type_info.type_name
+                );
+                // Create temporary TypeContext for the field to use its transform_value
+                let field_unified = TypeContext::from_type_info(
+                    field_type_info.clone(),
+                    self.original_value.clone(),
+                    None, // Field doesn't have its own mutation path
+                );
+                field_unified.transform_value(&self.original_value)
+            } else {
+                debug!(
+                    "Field '{}' not found in field_type_infos, using parent transformation",
+                    field_name
+                );
+                self.transform_value(&self.original_value)
+            }
+        } else {
+            // No mutation path - use self transformation
+            self.transform_value(&self.original_value)
+        };
+
+        if let Some(transformed_value) = transformed_value {
             tracing::debug!(
                 "Extras Integration: Successfully transformed value to: {}",
                 serde_json::to_string(&transformed_value)

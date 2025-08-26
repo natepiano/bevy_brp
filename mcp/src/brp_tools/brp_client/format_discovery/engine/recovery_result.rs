@@ -160,7 +160,7 @@ impl FormatRecoveryResult {
 #[cfg(test)]
 mod tests {
 
-    // Note: CorrectionInfo.to_json() testing requires creating complex UnifiedTypeInfo instances.
+    // Note: CorrectionInfo.to_json() testing requires creating complex TypeContext instances.
     // The integration tests in format_discovery.md will verify the full flow.
     // The to_json() method implementation ensures identical JSON structure output.
 }

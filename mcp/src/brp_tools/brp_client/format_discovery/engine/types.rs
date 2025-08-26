@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::format_correction_fields::FormatCorrectionField;
-use super::unified_types::UnifiedTypeInfo;
+use super::type_context::TypeContext;
 use crate::error::Error;
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -93,7 +93,7 @@ pub enum Correction {
     Candidate { correction_info: CorrectionInfo },
     /// Correction cannot be applied but metadata was discovered
     Uncorrectable {
-        type_info: UnifiedTypeInfo,
+        type_info: TypeContext,
         reason:    String,
     },
 }
@@ -122,7 +122,7 @@ pub struct CorrectionInfo {
     /// format information for error responses (usage, `valid_values`, examples)
     pub corrected_format:  Option<Value>,
     /// Type information discovered during correction
-    pub type_info:         UnifiedTypeInfo,
+    pub type_info:         TypeContext,
     /// The correction method used
     pub correction_method: CorrectionMethod,
 }
@@ -189,13 +189,4 @@ pub enum CorrectionMethod {
     NestedCorrection,
     /// Field name mapping or aliasing
     FieldMapping,
-}
-
-/// Format-specific information for correction
-#[derive(Debug, Clone, Serialize, Default)]
-pub struct FormatInfo {
-    /// Original format that caused the error (if applicable)
-    pub original_format:  Option<Value>,
-    /// Corrected format to use instead
-    pub corrected_format: Option<Value>,
 }

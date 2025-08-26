@@ -153,8 +153,10 @@ fn build_corrected_params(
                     }
                 } else {
                     // If corrected_value is not an object, it's just the value to set
-                    // Use empty path for direct replacement
-                    params.insert_field(ParameterName::Path, "");
+                    // Preserve the original path from the original parameters
+                    if let Some(original_path) = original_params.get_field(ParameterName::Path) {
+                        params.insert_field(ParameterName::Path, original_path.clone());
+                    }
                     params.insert_field(ParameterName::Value, correction.corrected_value.clone());
                 }
             }

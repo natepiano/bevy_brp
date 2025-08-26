@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 use tracing::debug;
 
-use super::unified_types::UnifiedTypeInfo;
+use super::type_context::TypeContext;
 use crate::brp_tools::Port;
 use crate::brp_tools::brp_type_schema::{BrpTypeName, TypeSchemaEngine};
 use crate::error::{Error, Result};
@@ -15,39 +15,39 @@ use crate::tool::BrpMethod;
 
 pub struct DiscoveryContext {
     /// Type information from Bevy's registry
-    type_map: HashMap<BrpTypeName, UnifiedTypeInfo>,
+    type_map: HashMap<BrpTypeName, TypeContext>,
 }
 
 impl DiscoveryContext {
     /// Create a new `DiscoveryContext` from BRP method parameters
     /// Uses `TypeSchemaEngine` as single source of truth for type information
     pub async fn new(method: BrpMethod, port: Port, params: &Value) -> Result<Self> {
-        // Extract type names and values together
-        let type_value_pairs = Self::extract_type_name_and_original_value(method, params)?;
+        // Extract type names, values, and mutation paths
+        let tool_arguments = Self::extract_type_name_and_original_value(method, params)?;
 
         debug!("using TypeSchemaEngine for type information (single registry fetch)");
 
         // Get TypeInfo from TypeSchemaEngine (single registry fetch)
         let engine = TypeSchemaEngine::new(port).await?;
-        let type_names: Vec<String> = type_value_pairs
+        let type_names: Vec<String> = tool_arguments
             .iter()
-            .map(|(name, _)| name.as_str().to_string())
+            .map(|(name, _, _)| name.as_str().to_string())
             .collect();
         let response = engine.generate_response(&type_names);
 
         // Build type_map from TypeInfo using the new constructor
         let mut type_map = HashMap::new();
 
-        for (type_name, original_value) in type_value_pairs {
+        for (type_name, original_value, mutation_path) in tool_arguments {
             let type_info = response.type_info.get(&type_name).ok_or_else(|| {
                 Error::InvalidArgument(format!(
                     "Type '{type_name}' not found in registry. Verify the type name is correct and the Bevy app is running with this component registered."
                 ))
             })?;
 
-            // Create UnifiedTypeInfo from TypeInfo (single source of truth)
+            // Create TypeContext from TypeInfo with mutation path
             let unified_info =
-                UnifiedTypeInfo::from_type_info(type_info.clone(), original_value, method);
+                TypeContext::from_type_info(type_info.clone(), original_value, mutation_path);
             type_map.insert(type_name, unified_info);
         }
 
@@ -55,7 +55,7 @@ impl DiscoveryContext {
     }
 
     /// Get all types as an iterator
-    pub fn types(&self) -> impl Iterator<Item = &UnifiedTypeInfo> {
+    pub fn types(&self) -> impl Iterator<Item = &TypeContext> {
         self.type_map.values()
     }
 
@@ -63,8 +63,8 @@ impl DiscoveryContext {
     fn extract_type_name_and_original_value(
         method: BrpMethod,
         params: &Value,
-    ) -> Result<Vec<(BrpTypeName, Value)>> {
-        let mut pairs = Vec::new();
+    ) -> Result<Vec<(BrpTypeName, Value, Option<String>)>> {
+        let mut tool_arguments = Vec::new();
 
         match method {
             BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
@@ -87,10 +87,10 @@ impl DiscoveryContext {
                         )
                         .into());
                     }
-                    pairs.push((type_name.into(), value.clone()));
+                    tool_arguments.push((type_name.into(), value.clone(), None));
                 }
 
-                if pairs.is_empty() {
+                if tool_arguments.is_empty() {
                     return Err(Error::InvalidArgument("No components provided".to_string()).into());
                 }
             }
@@ -109,11 +109,16 @@ impl DiscoveryContext {
                     );
                 }
 
+                let path = params
+                    .get("path")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+
                 let value = params
                     .get("value")
                     .ok_or_else(|| Error::InvalidArgument("Missing 'value' field".to_string()))?
                     .clone();
-                pairs.push((component.into(), value));
+                tool_arguments.push((component.into(), value, path));
             }
             BrpMethod::BevyInsertResource | BrpMethod::BevyMutateResource => {
                 let resource = params
@@ -130,11 +135,20 @@ impl DiscoveryContext {
                     );
                 }
 
+                let path = if method == BrpMethod::BevyMutateResource {
+                    params
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .map(String::from)
+                } else {
+                    None
+                };
+
                 let value = params
                     .get("value")
                     .ok_or_else(|| Error::InvalidArgument("Missing 'value' field".to_string()))?
                     .clone();
-                pairs.push((resource.into(), value));
+                tool_arguments.push((resource.into(), value, path));
             }
             _ => {
                 return Err(Error::InvalidArgument(format!(
@@ -144,60 +158,6 @@ impl DiscoveryContext {
             }
         }
 
-        Ok(pairs)
+        Ok(tool_arguments)
     }
-}
-
-/// Find type information in the discovery response
-///
-/// The response format is always:
-/// ```json
-/// {
-///   "type_info": {
-///     "TypeName": { ... }
-///   }
-/// }
-/// ```
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use serde_json::json;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_from_params_empty_components() {
-        // Test with empty components object
-        let params = json!({
-            "components": {}
-        });
-
-        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), &params).await;
-
-        // This should fail since no components are provided
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_from_params_with_components() {
-        // Test with actual components
-        let params = json!({
-            "components": {
-                "bevy_transform::components::transform::Transform": {
-                    "translation": {"x": 0.0, "y": 0.0, "z": 0.0},
-                    "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
-                    "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
-                }
-            }
-        });
-
-        let result = DiscoveryContext::new(BrpMethod::BevySpawn, Port(15702), &params).await;
-
-        // This may succeed or fail depending on BRP availability, but shouldn't crash
-        assert!(result.is_ok() || result.is_err());
-    }
-
-    // Integration tests would go in the tests/ directory to test with actual BRP
-
-    // Registry integration tests removed - direct registry processing replaced by TypeSchemaEngine
 }

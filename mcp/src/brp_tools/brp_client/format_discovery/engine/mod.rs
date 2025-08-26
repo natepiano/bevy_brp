@@ -9,9 +9,9 @@ mod recovery_result;
 mod retry;
 mod serialization_check;
 mod state;
+mod type_context;
 mod type_schema_discovery;
-pub mod types;
-mod unified_types;
+mod types;
 
 // Export new type state API
 pub use orchestrator::discover_format_with_recovery;
