@@ -186,9 +186,7 @@ impl DiscoveryContext {
 
         Ok((type_names, mutation_path))
     }
-}
 
-impl DiscoveryContext {
     // Helper methods for working with types
 
     /// Get type info for a specific type
