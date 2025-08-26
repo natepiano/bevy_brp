@@ -5,7 +5,6 @@
 mod discovery_context;
 mod guidance;
 mod orchestrator;
-mod pattern_correction;
 mod recovery_result;
 mod retry;
 mod serialization_check;
@@ -16,8 +15,7 @@ mod unified_types;
 
 // Export new type state API
 pub use orchestrator::discover_format_with_recovery;
-pub use types::{FormatCorrectionStatus, TransformationResult};
-pub use unified_types::UnifiedTypeInfo;
+pub use types::FormatCorrectionStatus;
 
 // Internal tests
 #[cfg(test)]

@@ -34,12 +34,8 @@ pub struct SerializationCheck(pub DiscoveryContext);
 /// State type for the `TypeSchemaDiscovery` state.
 /// This state holds a discovery context and is responsible for building
 /// corrections from TypeSchema registry data when no serialization issues are found.
+/// This is a terminal state.
 pub struct TypeSchemaDiscovery(pub DiscoveryContext);
-
-/// State type for the `PatternCorrection` state.
-/// This state holds a discovery context and is responsible for applying
-/// pattern-based corrections when TypeSchema discovery is unavailable or fails.
-pub struct PatternCorrection(pub DiscoveryContext);
 
 /// Terminal state for retryable corrections.
 /// This state holds a discovery context and retryable corrections that can
@@ -76,14 +72,6 @@ impl Deref for TypeSchemaDiscovery {
     }
 }
 
-impl Deref for PatternCorrection {
-    type Target = DiscoveryContext;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl Deref for Retry {
     type Target = DiscoveryContext;
 
@@ -108,12 +96,6 @@ impl SerializationCheck {
 }
 
 impl TypeSchemaDiscovery {
-    pub fn into_inner(self) -> DiscoveryContext {
-        self.0
-    }
-}
-
-impl PatternCorrection {
     pub fn into_inner(self) -> DiscoveryContext {
         self.0
     }

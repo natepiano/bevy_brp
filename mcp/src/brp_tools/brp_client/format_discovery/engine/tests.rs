@@ -11,9 +11,8 @@ use super::orchestrator;
 use crate::brp_tools::{BrpClientError, Port};
 use crate::tool::BrpMethod;
 
-// Complete orchestrator flow using new engine only
+// Complete orchestrator flow using simplified 3-state engine
 // Note: The following tests require a running BRP server and have been removed:
-// - test_orchestrator_complete_flow_pattern_correction_terminal
 // - test_orchestrator_serialization_check_terminal
 // - test_orchestrator_mutation_path_error
 // These tests attempted to make HTTP calls to fetch registry schemas but no server was available.
@@ -106,10 +105,8 @@ async fn test_orchestrator_type_schema_discovery_path() {
 
     // Call the orchestrator - this should:
     // 1. Skip serialization check (no "Unknown component type" message)
-    // 2. Transition to TypeSchemaDiscovery state
-    // 3. Call try_corrections()
-    // 4. Transition to PatternCorrection (fallback path)
-    // 5. Process through pattern correction terminal state
+    // 2. Transition to TypeSchemaDiscovery state (terminal)
+    // 3. Call try_corrections() and return either Retry or Guidance
     let result =
         orchestrator::discover_format_with_recovery(method, port, Some(params), error).await;
 
@@ -126,9 +123,9 @@ async fn test_orchestrator_type_schema_discovery_path() {
     }
 
     // The test proves:
-    // 1. The TypeSchemaDiscovery state transitions work correctly
+    // 1. The TypeSchemaDiscovery state works correctly as a terminal state
     // 2. The try_corrections() method is callable and returns proper Either type
-    // 3. The orchestrator properly handles TypeSchemaDiscovery -> PatternCorrection transitions
+    // 3. The orchestrator properly handles the simplified 3-state flow
     // 4. All implementation is integrated and functional
 }
 

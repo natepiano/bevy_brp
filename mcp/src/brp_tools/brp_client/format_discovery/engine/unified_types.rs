@@ -81,11 +81,6 @@ impl UnifiedTypeInfo {
         self.type_info.is_math_type()
     }
 
-    /// Check if this type supports mutation operations
-    pub fn supports_mutation(&self) -> bool {
-        !self.type_info.mutation_paths.is_empty()
-    }
-
     /// Get example for a specific operation
     pub const fn get_example_for_operation(&self, operation: Operation) -> Option<&Value> {
         match operation {
@@ -96,43 +91,80 @@ impl UnifiedTypeInfo {
     }
 
     /// Create appropriate correction based on the operation and context
-    /// Only called from TypeSchema discovery so this indicates the `correction_source`
     /// We check if its a mutation operation - given we are attempting to recover from an error
     /// we can't predict the correct path to use so we provide guidance in an `Uncorrectable`
     /// Otherwise we continue to create a possible `Candidate`
-    pub fn to_correction(&self, operation: Operation) -> Correction {
-        // Check if this is a mutation operation and we have mutation paths
-        if matches!(operation, Operation::Mutate { .. }) && self.supports_mutation() {
-            // Create mutation guidance
-            let mut hint = format!(
-                "Type '{}' supports mutation. Available paths:\n",
-                self.type_info.type_name
-            );
-            for (path, mutation_path) in self.get_mutation_paths() {
-                let _ = writeln!(hint, "  {path} - {}", mutation_path.description);
-            }
+    pub fn build_correction(&self, operation: Operation) -> Correction {
+        debug!(
+            "to_correction called for type '{}' with operation: {:?}",
+            self.type_info.type_name, operation
+        );
 
-            Correction::Uncorrectable {
-                type_info: self.clone(),
-                reason:    hint,
+        match operation {
+            Operation::Mutate { .. } => {
+                debug!(
+                    "This is a mutation operation for type '{}'",
+                    self.type_info.type_name
+                );
+
+                // Check if this mutation might be transformable (e.g., math type fields)
+                if self.has_math_type_fields() {
+                    debug!(
+                        "Type '{}' has math type fields, creating Candidate correction",
+                        self.type_info.type_name
+                    );
+                    // For types with math type fields (like Transform), allow transformation
+                    // This will enable retry mode for mutations that can be auto-corrected
+                    self.to_correction()
+                } else {
+                    debug!(
+                        "Type '{}' has no math type fields, creating Uncorrectable correction",
+                        self.type_info.type_name
+                    );
+                    // Create mutation guidance for non-transformable types
+                    let mut hint = format!(
+                        "Type '{}' supports mutation. Available paths:\n",
+                        self.type_info.type_name
+                    );
+                    for (path, mutation_path) in self.get_mutation_paths() {
+                        let _ = writeln!(hint, "  {path} - {}", mutation_path.description);
+                    }
+
+                    Correction::Uncorrectable {
+                        type_info: self.clone(),
+                        reason:    hint,
+                    }
+                }
             }
-        } else {
-            self.to_spawn_insert_correction()
+            Operation::SpawnInsert { .. } => {
+                debug!(
+                    "This is a spawn/insert operation for type '{}'",
+                    self.type_info.type_name
+                );
+                self.to_correction()
+            }
         }
     }
 
-    /// Convert this type info to a `Correction`
-    fn to_spawn_insert_correction(&self) -> Correction {
+    /// Check if this type has math type fields that can be transformed
+    fn has_math_type_fields(&self) -> bool {
+        // Check if any of the field types are math types
+        let has_math_fields = self
+            .type_info
+            .field_type_infos
+            .values()
+            .any(|field_type_info| field_type_info.is_math_type());
         debug!(
-            "to_correction: Converting type '{}' with enum_info: {}",
+            "has_math_type_fields for '{}': {} (has {} field type infos)",
             self.type_info.type_name,
-            if self.type_info.enum_info.is_some() {
-                "present"
-            } else {
-                "missing"
-            }
+            has_math_fields,
+            self.type_info.field_type_infos.len()
         );
+        has_math_fields
+    }
 
+    /// Convert this type info to a `Correction`
+    fn to_correction(&self) -> Correction {
         // Check if this is an enum with variants - provide guidance only
         if let Some(enum_info) = &self.type_info.enum_info {
             let variant_names: Vec<String> =
@@ -194,8 +226,6 @@ impl UnifiedTypeInfo {
         );
 
         // Cannot transform input - provide guidance with examples
-        // Note: to_correction_internal is only called for SpawnInsert operations (Mutate returns
-        // early)
         let reason = self.get_example_for_operation(Operation::SpawnInsert {
             parameter_name: ParameterName::Components,
         }).map_or_else(|| format!(

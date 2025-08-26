@@ -19,10 +19,8 @@ use crate::tool::BrpMethod;
 /// This orchestrates the entire discovery flow through the type state pattern:
 /// 1. Create engine in `TypeDiscovery` state and initialize with `TypeSchemaEngine` data
 /// 2. Check for serialization issues (`SerializationCheck` state, terminal if issues found)
-/// 3. Try to build corrections from TypeSchema data (`TypeSchemaDiscovery` state, terminal if
-///    corrections found)
-/// 4. Apply pattern-based transformations (`PatternCorrection` state, terminal) returning either
-///    `Retry` or `Guidance`
+/// 3. Try to build corrections from TypeSchema data (`TypeSchemaDiscovery` state, always terminal)
+///    returning either `Retry` or `Guidance`
 pub async fn discover_format_with_recovery(
     method: BrpMethod,
     port: Port,
@@ -34,17 +32,10 @@ pub async fn discover_format_with_recovery(
         Right(early_result) => return Ok(early_result),
     };
 
-    // Chain the discovery strategies - flatten the nested Either structure and walk through the
-    // states systematically - if it's terminal (including the final call totry_pattern_corrections)
-    // then it returns either `Retry` or `Guidance`
+    // Chain the discovery strategies - TypeSchemaDiscovery is now always terminal
     let terminal = engine.check_serialization().either(
         |terminal| terminal,
-        |extras| {
-            extras.try_corrections().either(
-                |terminal| terminal,
-                DiscoveryEngine::try_pattern_corrections,
-            )
-        },
+        |schema_discovery| schema_discovery.try_corrections(),
     );
 
     // Execute terminal state - either retry or provide guidance

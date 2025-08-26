@@ -199,12 +199,3 @@ pub struct FormatInfo {
     /// Corrected format to use instead
     pub corrected_format: Option<Value>,
 }
-
-/// Result of a transformation operation containing the corrected value and a hint
-#[derive(Debug, Clone)]
-pub struct TransformationResult {
-    /// The corrected value after transformation
-    pub corrected_value: Value,
-    /// Human-readable hint about the transformation
-    pub hint:            String,
-}

@@ -61,12 +61,6 @@ impl TypeInfo {
             .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
     }
 
-    /// Get the TypeInfo for a field in this struct
-    /// Returns the pre-built TypeInfo for the field if available
-    pub fn get_field_type_info(&self, field_name: &str) -> Option<&TypeInfo> {
-        self.field_type_infos.get(field_name)
-    }
-
     /// Builder method to create `TypeInfo` from schema data
     pub fn from_schema(
         brp_type_name: BrpTypeName,
