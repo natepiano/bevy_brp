@@ -6,11 +6,11 @@
 use serde_json::Value;
 use tracing::debug;
 
-use super::super::format_correction_fields::FormatCorrectionField;
+use super::discovery_context::TypeContext;
+use super::format_correction_fields::FormatCorrectionField;
 use super::recovery_result::FormatRecoveryResult;
 use super::state::{DiscoveryEngine, Guidance};
-use super::type_context::TypeContext;
-use super::types::{Correction, CorrectionInfo, CorrectionMethod, Operation};
+use super::types::{Correction, CorrectionInfo, Operation};
 use crate::string_traits::JsonFieldAccess;
 use crate::tool::ParameterName;
 
@@ -38,11 +38,9 @@ impl DiscoveryEngine<Guidance> {
                     );
                     // Create a CorrectionInfo from metadata-only result to provide guidance
                     let correction_info = CorrectionInfo {
-                        corrected_value:   self.build_corrected_value_from_type_info(type_info),
-                        hint:              reason.to_string(),
-                        corrected_format:  None,
-                        type_info:         type_info.clone(),
-                        correction_method: CorrectionMethod::DirectReplacement,
+                        corrected_value: self.build_corrected_value_from_type_info(type_info),
+                        hint:            reason.to_string(),
+                        type_info:       type_info.clone(),
                     };
                     corrections.push(correction_info);
                 }

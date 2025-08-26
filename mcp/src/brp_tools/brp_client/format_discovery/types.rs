@@ -2,11 +2,10 @@
 //!
 //! These marker types ensure compile-time state validation for the discovery process.
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::super::format_correction_fields::FormatCorrectionField;
-use super::type_context::TypeContext;
+use super::discovery_context::TypeContext;
+use super::format_correction_fields::FormatCorrectionField;
 use crate::error::Error;
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -108,23 +107,17 @@ pub enum FormatCorrectionStatus {
     NotAttempted,
     /// Format correction was applied and the operation succeeded
     Succeeded,
-    /// Format correction was attempted but the operation still failed
-    AttemptedButFailed,
 }
 
 /// Information about a format correction applied during recovery
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct CorrectionInfo {
     /// Corrected value to use
-    pub corrected_value:   Value,
+    pub corrected_value: Value,
     /// Human-readable explanation of the correction
-    pub hint:              String,
-    /// format information for error responses (usage, `valid_values`, examples)
-    pub corrected_format:  Option<Value>,
+    pub hint:            String,
     /// Type information discovered during correction
-    pub type_info:         TypeContext,
-    /// The correction method used
-    pub correction_method: CorrectionMethod,
+    pub type_info:       TypeContext,
 }
 
 impl CorrectionInfo {
@@ -172,21 +165,4 @@ impl CorrectionInfo {
 
         correction_json
     }
-}
-
-/// Method used to correct a format error
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum CorrectionMethod {
-    /// Direct replacement based on exact type knowledge
-    DirectReplacement,
-    /// Object to array conversion for math types
-    ObjectToArray,
-    /// Array to object conversion
-    ArrayToObject,
-    /// String to enum variant conversion
-    StringToEnum,
-    /// Nested structure correction
-    NestedCorrection,
-    /// Field name mapping or aliasing
-    FieldMapping,
 }

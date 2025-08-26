@@ -19,7 +19,21 @@
 //! - Applies built-in transformations (e.g., Vec3 object→array conversion)
 //! - Always terminal - either returns retry corrections or guidance
 
-mod engine;
+mod discovery_context;
 mod format_correction_fields;
+mod guidance;
+mod orchestrator;
+mod recovery_result;
+mod retry;
+mod serialization_check;
+mod state;
+mod type_schema_discovery;
+mod types;
 
-pub use engine::{FormatCorrectionStatus, discover_format_with_recovery};
+// Export new type state API
+pub use orchestrator::discover_format_with_recovery;
+pub use types::FormatCorrectionStatus;
+
+// Internal tests
+#[cfg(test)]
+mod tests;
