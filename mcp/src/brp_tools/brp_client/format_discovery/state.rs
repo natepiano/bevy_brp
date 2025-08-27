@@ -33,7 +33,7 @@ pub struct SerializationCheck(pub DiscoveryContext);
 
 /// State type for the `TypeSchemaDiscovery` state.
 /// This state holds a discovery context and is responsible for building
-/// corrections from TypeSchema registry data when no serialization issues are found.
+/// corrections from `TypeSchema` registry data when no serialization issues are found.
 /// This is a terminal state.
 pub struct TypeSchemaDiscovery(pub DiscoveryContext);
 

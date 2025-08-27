@@ -30,16 +30,16 @@ pub const BRP_EXTRAS_PREFIX: &str = "brp_extras/";
 /// - "Component '...' is registered but lacks Serialize and Deserialize traits required for spawn
 ///   operations..."
 /// - "The struct accessed doesn't have a '...' field"
-pub const BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE: i32 = -23402;
+pub const BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE: i32 = -23_402;
 /// Basically we're trying to to access a field of a struct or a resource with the wrong path - here
 /// is an example of what would be returned with -23501 when incorrectly trying to modify
 /// `ClearColor`   "Error accessing element with .red access(offset 3): Expected variant field
 /// access to access Struct variant, found a Tuple variant instead."
-pub const BRP_ERROR_ACCESS_ERROR: i32 = -23501;
+pub const BRP_ERROR_ACCESS_ERROR: i32 = -23_501;
 /// "Method '...' not found. This method requires the `bevy_brp_extras` crate to be added to your
 /// Bevy app with the `BrpExtrasPlugin`"
-pub const JSON_RPC_ERROR_METHOD_NOT_FOUND: i32 = -32601;
+pub const JSON_RPC_ERROR_METHOD_NOT_FOUND: i32 = -32_601;
 /// "invalid type: ... expected ..." (parameter validation errors)
-pub const JSON_RPC_ERROR_INVALID_PARAMS: i32 = -32602;
+pub const JSON_RPC_ERROR_INVALID_PARAMS: i32 = -32_602;
 /// "Internal error" (JSON-RPC standard)
-pub const JSON_RPC_ERROR_INTERNAL_ERROR: i32 = -32603;
+pub const JSON_RPC_ERROR_INTERNAL_ERROR: i32 = -32_603;

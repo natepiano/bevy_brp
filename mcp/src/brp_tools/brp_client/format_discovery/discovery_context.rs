@@ -241,52 +241,66 @@ impl DiscoveryContext {
 
     /// Convert this type info to a `Correction`
     pub fn to_correction(&self, type_name: &BrpTypeName) -> Correction {
-        let type_info = match self.get_type_info(type_name) {
-            Some(ti) => ti,
-            None => {
-                return Correction::Uncorrectable {
-                    type_name: type_name.clone(),
-                    reason:    format!("Type '{}' not found in registry", type_name.as_str()),
-                };
-            }
+        let Some(type_info) = self.get_type_info(type_name) else {
+            return Correction::Uncorrectable {
+                type_name: type_name.clone(),
+                reason:    format!("Type '{}' not found in registry", type_name.as_str()),
+            };
         };
 
         // Check if this is an enum with variants - provide guidance only
         if let Some(enum_info) = &type_info.enum_info {
-            let variant_names: Vec<String> =
-                enum_info.iter().map(|v| v.variant_name.clone()).collect();
-
-            let example_variant = variant_names.first().map_or("VariantName", String::as_str);
-
-            let reason = format!(
-                "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}. Use one of these values directly (e.g., \"{}\")",
-                type_name
-                    .as_str()
-                    .split("::")
-                    .last()
-                    .unwrap_or(type_name.as_str()),
-                variant_names.join(", "),
-                example_variant
-            );
-
-            return Correction::Uncorrectable {
-                type_name: type_name.clone(),
-                reason,
-            };
+            return Self::handle_enum_type(type_name, enum_info);
         }
 
-        // Check if we can actually transform the original input
-        // Get the original value for this type from the original params
-        let original_value = match self.extract_value_for_type(type_name) {
-            Some(val) => {
-                debug!(
-                    "Extracted value for type '{}': {}",
-                    type_name.as_str(),
-                    serde_json::to_string(&val).unwrap_or_else(|_| "invalid json".to_string())
-                );
-                val
-            }
-            None => {
+        // Get and validate the original value
+        let original_value = match self.extract_and_validate_value(type_name) {
+            Ok(value) => value,
+            Err(correction) => return correction,
+        };
+
+        tracing::debug!(
+            "Attempting to transform original value for type '{}'",
+            type_name.as_str()
+        );
+
+        // Transform the value based on context
+        let transformed_value = self.get_transformed_value(type_name, type_info, &original_value);
+
+        // Build the final correction
+        self.build_correction_result(type_name, original_value, transformed_value)
+    }
+
+    /// Handle enum types by providing variant guidance
+    fn handle_enum_type(type_name: &BrpTypeName, enum_info: &[EnumVariantInfo]) -> Correction {
+        let variant_names: Vec<String> = enum_info.iter().map(|v| v.variant_name.clone()).collect();
+
+        let example_variant = variant_names.first().map_or("VariantName", String::as_str);
+
+        let reason = format!(
+            "Enum '{}' requires empty path for unit variant mutation. Valid variants: {}. Use one of these values directly (e.g., \"{}\")",
+            type_name
+                .as_str()
+                .split("::")
+                .last()
+                .unwrap_or(type_name.as_str()),
+            variant_names.join(", "),
+            example_variant
+        );
+
+        Correction::Uncorrectable {
+            type_name: type_name.clone(),
+            reason,
+        }
+    }
+
+    /// Extract and validate the original value from the request
+    fn extract_and_validate_value(
+        &self,
+        type_name: &BrpTypeName,
+    ) -> std::result::Result<Value, Correction> {
+        self.extract_value_for_type(type_name).map_or_else(
+            || {
                 // No value was provided in the request
                 debug!(
                     "No value provided for type '{}' in request",
@@ -295,97 +309,126 @@ impl DiscoveryContext {
 
                 // Get an example of the expected format
                 let example = self
-                    .get_example_for_operation(type_name, self.operation.clone())
-                    .map(|ex| {
-                        serde_json::to_string(ex).unwrap_or_else(|_| "valid format".to_string())
-                    })
-                    .unwrap_or_else(|| "correct format (no example available)".to_string());
+                    .get_example_for_operation(type_name, self.operation)
+                    .map_or_else(
+                        || "correct format (no example available)".to_string(),
+                        |ex| {
+                            serde_json::to_string(ex).unwrap_or_else(|_| "valid format".to_string())
+                        },
+                    );
 
-                return Correction::Uncorrectable {
+                Err(Correction::Uncorrectable {
                     type_name: type_name.clone(),
                     reason:    format!(
                         "No value provided for type '{}'. Expected format: {}",
                         type_name.as_str(),
                         example
                     ),
-                };
-            }
-        };
-
-        tracing::debug!(
-            "Attempting to transform original value for type '{}'",
-            type_name.as_str()
-        );
-
-        // For mutations with a path, use the field's TypeInfo for transformation
-        let transformed_value = if let Some(path) = &self.mutation_path {
-            let field_name = path.trim_start_matches('.');
-            if let Some(field_type_info) = type_info.field_type_infos.get(field_name) {
+                })
+            },
+            |val| {
                 debug!(
-                    "Using field '{}' TypeInfo '{}' for transformation",
-                    field_name, field_type_info.type_name
+                    "Extracted value for type '{}': {}",
+                    type_name.as_str(),
+                    serde_json::to_string(&val).unwrap_or_else(|_| "invalid json".to_string())
                 );
-                // For now, use the type's transform on the original value
-                self.transform_value(type_name, &original_value)
-            } else {
-                debug!(
-                    "Field '{}' not found in field_type_infos, using parent transformation",
-                    field_name
-                );
-                self.transform_value(type_name, &original_value)
-            }
-        } else {
-            // No mutation path - use self transformation
-            debug!("No mutation path, using type's own transformation");
-            self.transform_value(type_name, &original_value)
-        };
+                Ok(val)
+            },
+        )
+    }
 
-        if let Some(transformed_value) = transformed_value {
-            debug!(
-                "Successfully transformed value for type '{}'",
-                type_name.as_str()
-            );
-            // We can transform the input - return Corrected with actual transformation
-            let correction_info = CorrectionInfo {
-                corrected_value: transformed_value,
-                hint: format!(
-                    "Transformed {} format for type '{}'",
-                    if original_value.is_object() {
-                        "object"
-                    } else {
-                        "value"
+    /// Get the transformed value based on mutation path context
+    fn get_transformed_value(
+        &self,
+        type_name: &BrpTypeName,
+        type_info: &TypeInfo,
+        original_value: &Value,
+    ) -> Option<Value> {
+        self.mutation_path.as_ref().map_or_else(
+            || {
+                // No mutation path - use self transformation
+                debug!("No mutation path, using type's own transformation");
+                self.transform_value(type_name, original_value)
+            },
+            |path| {
+                let field_name = path.trim_start_matches('.');
+                type_info.field_type_infos.get(field_name).map_or_else(
+                    || {
+                        debug!(
+                            "Field '{}' not found in field_type_infos, using parent transformation",
+                            field_name
+                        );
+                        self.transform_value(type_name, original_value)
                     },
+                    |field_type_info| {
+                        debug!(
+                            "Using field '{}' TypeInfo '{}' for transformation",
+                            field_name, field_type_info.type_name
+                        );
+                        // For now, use the type's transform on the original value
+                        self.transform_value(type_name, original_value)
+                    },
+                )
+            },
+        )
+    }
+
+    /// Build the final correction result based on transformation success
+    fn build_correction_result(
+        &self,
+        type_name: &BrpTypeName,
+        original_value: Value,
+        transformed_value: Option<Value>,
+    ) -> Correction {
+        transformed_value.map_or_else(
+            || {
+                debug!(
+                    "Could not transform value for type '{}' - providing guidance instead",
                     type_name.as_str()
-                ),
-                type_name: type_name.clone(),
-                original_value,
-            };
+                );
 
-            return Correction::Candidate { correction_info };
-        }
+                // Cannot transform input - provide guidance with examples
+                let reason = self.get_example_for_operation(type_name, Operation::SpawnInsert {
+                    parameter_name: ParameterName::Components,
+                }).map_or_else(|| format!(
+                        "Cannot transform input for type '{}'. Type discovered but no format example available.",
+                        type_name.as_str()
+                    ), |spawn_example| format!(
+                        "Cannot transform input for type '{}'. Use this format: {}",
+                        type_name.as_str(),
+                        serde_json::to_string(spawn_example)
+                            .unwrap_or_else(|_| "correct format".to_string())
+                    ));
 
-        debug!(
-            "Could not transform value for type '{}' - providing guidance instead",
-            type_name.as_str()
-        );
+                Correction::Uncorrectable {
+                    type_name: type_name.clone(),
+                    reason,
+                }
+            },
+            |transformed_value| {
+                debug!(
+                    "Successfully transformed value for type '{}'",
+                    type_name.as_str()
+                );
+                // We can transform the input - return Corrected with actual transformation
+                let correction_info = CorrectionInfo {
+                    corrected_value: transformed_value,
+                    hint: format!(
+                        "Transformed {} format for type '{}'",
+                        if original_value.is_object() {
+                            "object"
+                        } else {
+                            "value"
+                        },
+                        type_name.as_str()
+                    ),
+                    type_name: type_name.clone(),
+                    original_value,
+                };
 
-        // Cannot transform input - provide guidance with examples
-        let reason = self.get_example_for_operation(type_name, Operation::SpawnInsert {
-            parameter_name: ParameterName::Components,
-        }).map_or_else(|| format!(
-                "Cannot transform input for type '{}'. Type discovered but no format example available.",
-                type_name.as_str()
-            ), |spawn_example| format!(
-                "Cannot transform input for type '{}'. Use this format: {}",
-                type_name.as_str(),
-                serde_json::to_string(spawn_example)
-                    .unwrap_or_else(|_| "correct format".to_string())
-            ));
-
-        Correction::Uncorrectable {
-            type_name: type_name.clone(),
-            reason,
-        }
+                Correction::Candidate { correction_info }
+            },
+        )
     }
 
     /// Helper method to transform a value with consistent logging
@@ -414,15 +457,12 @@ impl DiscoveryContext {
     pub fn transform_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
         use crate::brp_tools::brp_type_schema::TypeKind;
 
-        let type_info = match self.get_type_info(type_name) {
-            Some(ti) => ti,
-            None => {
-                debug!(
-                    "Cannot transform: type '{}' not found in registry",
-                    type_name.as_str()
-                );
-                return None;
-            }
+        let Some(type_info) = self.get_type_info(type_name) else {
+            debug!(
+                "Cannot transform: type '{}' not found in registry",
+                type_name.as_str()
+            );
+            return None;
         };
 
         let type_kind = type_info
@@ -443,7 +483,7 @@ impl DiscoveryContext {
             type_kind
         );
 
-        let transform_result = match type_kind {
+        match type_kind {
             TypeKind::Enum => self.transform_with_logging(
                 type_name,
                 value,
@@ -452,19 +492,9 @@ impl DiscoveryContext {
             ),
             TypeKind::Struct => {
                 if self.is_math_type(type_name) {
-                    self.transform_with_logging(
-                        type_name,
-                        value,
-                        |ctx, val| ctx.transform_math_value(type_name, val),
-                        "Math type",
-                    )
+                    Self::transform_math_value(type_name, value)
                 } else {
-                    self.transform_with_logging(
-                        type_name,
-                        value,
-                        |ctx, val| ctx.transform_struct_value(type_name, val),
-                        "Struct",
-                    )
+                    Self::transform_struct_value(type_name, value)
                 }
             }
             _ => {
@@ -475,13 +505,11 @@ impl DiscoveryContext {
                 );
                 None
             }
-        };
-
-        transform_result
+        }
     }
 
     /// Transform math type values (Vec2, Vec3, Quat, etc.)
-    fn transform_math_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
+    fn transform_math_value(type_name: &BrpTypeName, value: &Value) -> Option<Value> {
         // Only try to transform if value is an object
         let obj = value.as_object()?;
 
@@ -511,13 +539,13 @@ impl DiscoveryContext {
     }
 
     /// Transform struct values - handles specific known struct types
-    fn transform_struct_value(&self, type_name: &BrpTypeName, value: &Value) -> Option<Value> {
+    fn transform_struct_value(type_name: &BrpTypeName, value: &Value) -> Option<Value> {
         // Only handle specific Transform types we know about
         match type_name.as_str() {
             "bevy_transform::components::transform::Transform"
             | "bevy_transform::components::global_transform::GlobalTransform" => {
                 debug!("Attempting to transform {} component", type_name.as_str());
-                self.transform_bevy_transform_fields(value)
+                Self::transform_bevy_transform_fields(value)
             }
             _ => {
                 // We don't attempt to transform unknown struct types
@@ -530,8 +558,8 @@ impl DiscoveryContext {
         }
     }
 
-    /// Transform the fields of a Transform or GlobalTransform component
-    fn transform_bevy_transform_fields(&self, value: &Value) -> Option<Value> {
+    /// Transform the fields of a Transform or `GlobalTransform` component
+    fn transform_bevy_transform_fields(value: &Value) -> Option<Value> {
         let obj = value.as_object()?;
         let mut result = serde_json::Map::new();
         let mut transformed_any = false;
@@ -555,26 +583,23 @@ impl DiscoveryContext {
                         field_name,
                         field_type.as_str()
                     );
-                    self.transform_math_value(field_type, field_value)
+                    Self::transform_math_value(field_type, field_value)
                 });
 
-            match transformed_value {
-                Some(transformed) => {
-                    debug!(
-                        "Successfully transformed field '{}' from object to array format",
-                        field_name
-                    );
-                    result.insert(field_name.clone(), transformed);
-                    transformed_any = true;
-                }
-                None => {
-                    debug!(
-                        "Field '{}' does not need transformation or cannot be transformed",
-                        field_name
-                    );
-                    // Copy field as-is
-                    result.insert(field_name.clone(), field_value.clone());
-                }
+            if let Some(transformed) = transformed_value {
+                debug!(
+                    "Successfully transformed field '{}' from object to array format",
+                    field_name
+                );
+                result.insert(field_name.clone(), transformed);
+                transformed_any = true;
+            } else {
+                debug!(
+                    "Field '{}' does not need transformation or cannot be transformed",
+                    field_name
+                );
+                // Copy field as-is
+                result.insert(field_name.clone(), field_value.clone());
             }
         }
 

@@ -414,10 +414,10 @@ impl EnumMutationBuilder {
     /// Get variant identifier from schema variant definition
     fn get_variant_identifier(variant: &Value) -> Option<&str> {
         variant.as_str().or_else(|| {
-            variant.as_object().and_then(|obj| {
-                // Object with single key (the variant name)
-                obj.keys().next().map(String::as_str)
-            })
+            // Extract the shortPath field which contains the variant name
+            variant
+                .get_field(SchemaField::ShortPath)
+                .and_then(Value::as_str)
         })
     }
 }

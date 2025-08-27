@@ -1,7 +1,7 @@
 //! `TypeSchemaDiscovery` state implementation
 //!
 //! This module implements the `TypeSchemaDiscovery` state for the discovery engine.
-//! This state builds correction candidates using TypeSchema data from the registry
+//! This state builds correction candidates using `TypeSchema` data from the registry
 //! when no serialization issues are found. This is a terminal state.
 
 use either::Either;
@@ -11,10 +11,10 @@ use super::state::{DiscoveryEngine, Guidance, Retry, TypeSchemaDiscovery};
 use super::types::{Correction, are_corrections_retryable};
 
 impl DiscoveryEngine<TypeSchemaDiscovery> {
-    /// Try to build corrections from TypeSchema data (terminal state)
+    /// Try to build corrections from `TypeSchema` data (terminal state)
     ///
-    /// This method processes types from the TypeSchema registry to build corrections.
-    /// Since every Component/Resource in the registry has mutation support and mutation_paths,
+    /// This method processes types from the `TypeSchema` registry to build corrections.
+    /// Since every Component/Resource in the registry has mutation support and `mutation_paths`,
     /// corrections are always found, making this a terminal state.
     ///
     /// Returns `Either<Retry, Guidance>` based on correction evaluation.

@@ -69,9 +69,8 @@ impl DiscoveryEngine<Guidance> {
 
     /// Build a corrected value from type name for guidance
     fn build_corrected_value_from_type_name(&self, type_name: &BrpTypeName) -> Value {
-        let type_info = match self.context.get_type_info(type_name) {
-            Some(ti) => ti,
-            None => return serde_json::json!({}),
+        let Some(type_info) = self.context.get_type_info(type_name) else {
+            return serde_json::json!({});
         };
 
         debug!(
@@ -129,14 +128,14 @@ impl DiscoveryEngine<Guidance> {
                 FormatCorrectionField::Hint: "Use appropriate path and value for mutation"
             });
 
-            if let Some(mutation_paths) = self.context.mutation_paths(type_name) {
-                if !mutation_paths.is_empty() {
-                    let paths: Vec<String> = mutation_paths.keys().cloned().collect();
-                    guidance.insert_field(
-                        FormatCorrectionField::AvailablePaths,
-                        serde_json::json!(paths),
-                    );
-                }
+            if let Some(mutation_paths) = self.context.mutation_paths(type_name)
+                && !mutation_paths.is_empty()
+            {
+                let paths: Vec<String> = mutation_paths.keys().cloned().collect();
+                guidance.insert_field(
+                    FormatCorrectionField::AvailablePaths,
+                    serde_json::json!(paths),
+                );
             }
 
             // Add enum-specific guidance if this is an enum
