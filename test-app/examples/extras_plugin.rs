@@ -280,6 +280,14 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        bevy::core_pipeline::dof::DepthOfField {
+            mode: bevy::core_pipeline::dof::DepthOfFieldMode::Bokeh,
+            focal_distance: 10.0,
+            sensor_height: 0.024,
+            aperture_f_stops: 2.8,
+            max_circle_of_confusion_diameter: 0.05,
+            max_depth: 1000.0,
+        },
     ));
 
     // Background

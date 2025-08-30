@@ -114,6 +114,7 @@ if 'spawn' in supported_ops:
 **KNOWN ISSUES to handle**:
 - `bevy_ecs::name::Name`: Use plain string instead of struct format
 - Option fields: Use "None" string instead of null
+- **Parameter ordering for bevy_mutate_component**: If you encounter repeated "Unable to extract parameters" errors when calling mcp__brp__bevy_mutate_component, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 #### 2c. Prepare Entity for Mutation Testing
 ```python
@@ -208,13 +209,16 @@ if 'mutate' in supported_ops:
             test_values = [path_info['example_some'], path_info['example_none']]
         
         # Execute mcp__brp__bevy_mutate_component
+        # IMPORTANT: If you get repeated "Unable to extract parameters" errors,
+        # try reordering the parameters. The recommended order is:
+        # entity, component, path, value, port
         try:
             result = mcp__brp__bevy_mutate_component(
-                port=port,
                 entity=entity_id,
                 component=type_name,
                 path=path,
-                value=value
+                value=value,
+                port=port
             )
             # Update status to "Passed" if successful
             test_result["mutation_paths"][i]["status"] = "Passed"

@@ -29,5 +29,27 @@
     "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",
     "spawn_test": "Skipped",
     "mutation_paths": []
+  },
+  {
+    "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".depth_load_op", "status": "Passed"},
+      {"name": ".depth_texture_usages", "status": "Passed"},
+      {"name": ".screen_space_specular_transmission_quality", "status": "Passed"},
+      {"name": ".screen_space_specular_transmission_steps", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_core_pipeline::dof::DepthOfField",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".aperture_f_stops", "status": "Passed"},
+      {"name": ".focal_distance", "status": "Passed"},
+      {"name": ".max_circle_of_confusion_diameter", "status": "Passed"},
+      {"name": ".max_depth", "status": "Passed"},
+      {"name": ".mode", "status": "Passed"},
+      {"name": ".sensor_height", "status": "Passed"}
+    ]
   }
 ]

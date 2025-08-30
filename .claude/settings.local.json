@@ -16,7 +16,8 @@
       "Bash(git diff:*)",
       "mcp__brp__brp_list_logs",
       "mcp__brp__brp_read_log",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "mcp__brp__brp_execute"
     ],
     "deny": [],
     "ask": [],

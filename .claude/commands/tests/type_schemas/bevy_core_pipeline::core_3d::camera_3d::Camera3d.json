@@ -20,17 +20,9 @@
     },
     ".depth_texture_usages": {
       "description": "Mutate the depth_texture_usages field of bevy_core_pipeline::core_3d::camera_3d::Camera3d",
-      "example": [
-        4294967295
-      ],
+      "example": 20,
       "path_kind": "StructField",
       "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage"
-    },
-    ".depth_texture_usages.0": {
-      "description": "Mutate element 0 of bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage",
-      "example": 4294967295,
-      "path_kind": "TupleElement",
-      "type": "u32"
     },
     ".screen_space_specular_transmission_quality": {
       "description": "Mutate the screen_space_specular_transmission_quality field of bevy_core_pipeline::core_3d::camera_3d::Camera3d",
