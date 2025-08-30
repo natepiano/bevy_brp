@@ -1,0 +1,96 @@
+{
+  "type_name": "extras_plugin::TestTupleField",
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    ".color_rgb": {
+      "description": "Mutate the color_rgb field of extras_plugin::TestTupleField",
+      "example": [
+        255,
+        255,
+        255
+      ],
+      "path_kind": "StructField",
+      "type": "(u8, u8, u8)"
+    },
+    ".color_rgb.0": {
+      "description": "Mutate element 0 of (u8, u8, u8)",
+      "example": 255,
+      "path_kind": "TupleElement",
+      "type": "u8"
+    },
+    ".color_rgb.1": {
+      "description": "Mutate element 1 of (u8, u8, u8)",
+      "example": 255,
+      "path_kind": "TupleElement",
+      "type": "u8"
+    },
+    ".color_rgb.2": {
+      "description": "Mutate element 2 of (u8, u8, u8)",
+      "example": 255,
+      "path_kind": "TupleElement",
+      "type": "u8"
+    },
+    ".coords": {
+      "description": "Mutate the coords field of extras_plugin::TestTupleField",
+      "example": [
+        3.1415927410125732,
+        3.1415927410125732
+      ],
+      "path_kind": "StructField",
+      "type": "(f32, f32)"
+    },
+    ".coords.0": {
+      "description": "Mutate element 0 of (f32, f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "TupleElement",
+      "type": "f32"
+    },
+    ".coords.1": {
+      "description": "Mutate element 1 of (f32, f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "TupleElement",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "extras_plugin",
+    "module_path": "extras_plugin",
+    "properties": {
+      "color_rgb": {
+        "type": {
+          "$ref": "#/$defs/(u8, u8, u8)"
+        }
+      },
+      "coords": {
+        "type": {
+          "$ref": "#/$defs/(f32, f32)"
+        }
+      }
+    },
+    "required": [
+      "coords",
+      "color_rgb"
+    ],
+    "type_kind": "Struct"
+  },
+  "spawn_format": {
+    "color_rgb": [
+      255,
+      255,
+      255
+    ],
+    "coords": [
+      3.1415927410125732,
+      3.1415927410125732
+    ]
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

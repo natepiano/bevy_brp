@@ -1,0 +1,40 @@
+{
+  "type_name": "bevy_ui::focus::FocusPolicy",
+  "enum_info": [
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Block"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Pass"
+    }
+  ],
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_ui::focus::FocusPolicy value",
+      "enum_variants": [
+        "Block",
+        "Pass"
+      ],
+      "example": "Block",
+      "path_kind": "RootValue",
+      "type": "bevy_ui::focus::FocusPolicy"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::focus",
+    "type_kind": "Enum"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

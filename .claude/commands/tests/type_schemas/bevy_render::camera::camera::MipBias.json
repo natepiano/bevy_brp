@@ -1,0 +1,32 @@
+{
+  "type_name": "bevy_render::camera::camera::MipBias",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_render::camera::camera::MipBias value",
+      "example": [
+        3.1415927410125732
+      ],
+      "path_kind": "RootValue",
+      "type": "bevy_render::camera::camera::MipBias"
+    },
+    ".0": {
+      "description": "Mutate element 0 of bevy_render::camera::camera::MipBias",
+      "example": 3.1415927410125732,
+      "path_kind": "TupleElement",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::camera::camera",
+    "type_kind": "TupleStruct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

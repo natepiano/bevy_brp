@@ -1,0 +1,142 @@
+{
+  "type_name": "bevy_render::camera::camera::Camera",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".clear_color": {
+      "description": "Mutate the clear_color field of bevy_render::camera::camera::Camera",
+      "enum_variants": [
+        "Default",
+        "Custom",
+        "None"
+      ],
+      "example": "Default",
+      "path_kind": "StructField",
+      "type": "bevy_render::camera::clear_color::ClearColorConfig"
+    },
+    ".hdr": {
+      "description": "Mutate the hdr field of bevy_render::camera::camera::Camera",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    },
+    ".is_active": {
+      "description": "Mutate the is_active field of bevy_render::camera::camera::Camera",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    },
+    ".msaa_writeback": {
+      "description": "Mutate the msaa_writeback field of bevy_render::camera::camera::Camera",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    },
+    ".order": {
+      "description": "Mutate the order field of bevy_render::camera::camera::Camera",
+      "example": -9223372036854775808,
+      "path_kind": "StructField",
+      "type": "isize"
+    },
+    ".sub_camera_view": {
+      "description": "Mutate the sub_camera_view field of bevy_render::camera::camera::Camera",
+      "enum_variants": [
+        "None",
+        "Some"
+      ],
+      "example_none": null,
+      "example_some": "None",
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<bevy_render::camera::camera::SubCameraView>"
+    },
+    ".target": {
+      "description": "Mutate the target field of bevy_render::camera::camera::Camera",
+      "enum_variants": [
+        "Window",
+        "Image",
+        "TextureView"
+      ],
+      "example": {
+        "Window": [
+          null
+        ]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_render::camera::camera::RenderTarget"
+    },
+    ".viewport": {
+      "description": "Mutate the viewport field of bevy_render::camera::camera::Camera",
+      "enum_variants": [
+        "None",
+        "Some"
+      ],
+      "example_none": null,
+      "example_some": "None",
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<bevy_render::camera::camera::Viewport>"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::camera::camera",
+    "properties": {
+      "clear_color": {
+        "type": {
+          "$ref": "#/$defs/bevy_render::camera::clear_color::ClearColorConfig"
+        }
+      },
+      "hdr": {
+        "type": {
+          "$ref": "#/$defs/bool"
+        }
+      },
+      "is_active": {
+        "type": {
+          "$ref": "#/$defs/bool"
+        }
+      },
+      "msaa_writeback": {
+        "type": {
+          "$ref": "#/$defs/bool"
+        }
+      },
+      "order": {
+        "type": {
+          "$ref": "#/$defs/isize"
+        }
+      },
+      "sub_camera_view": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<bevy_render::camera::camera::SubCameraView>"
+        }
+      },
+      "target": {
+        "type": {
+          "$ref": "#/$defs/bevy_render::camera::camera::RenderTarget"
+        }
+      },
+      "viewport": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<bevy_render::camera::camera::Viewport>"
+        }
+      }
+    },
+    "required": [
+      "order",
+      "is_active",
+      "target",
+      "hdr",
+      "msaa_writeback",
+      "clear_color"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "type_name": "extras_plugin::TestEnumWithSerDe",
+  "enum_info": [
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Active"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Inactive"
+    },
+    {
+      "tuple_types": [],
+      "variant_kind": "Tuple",
+      "variant_name": "Special"
+    }
+  ],
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire extras_plugin::TestEnumWithSerDe value",
+      "enum_variants": [
+        "Active",
+        "Inactive",
+        "Special"
+      ],
+      "example": "Active",
+      "path_kind": "RootValue",
+      "type": "extras_plugin::TestEnumWithSerDe"
+    }
+  },
+  "schema_info": {
+    "crate_name": "extras_plugin",
+    "module_path": "extras_plugin",
+    "type_kind": "Enum"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

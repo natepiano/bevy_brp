@@ -1,0 +1,80 @@
+{
+  "type_name": "bevy_ui::ui_node::TextShadow",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".color": {
+      "description": "Mutate the color field of bevy_ui::ui_node::TextShadow",
+      "enum_variants": [
+        "Srgba",
+        "LinearRgba",
+        "Hsla",
+        "Hsva",
+        "Hwba",
+        "Laba",
+        "Lcha",
+        "Oklaba",
+        "Oklcha",
+        "Xyza"
+      ],
+      "example": {
+        "Srgba": [
+          1.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_color::color::Color"
+    },
+    ".offset": {
+      "description": "Mutate the offset field of bevy_ui::ui_node::TextShadow",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".offset.x": {
+      "description": "Mutate the x component of offset (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".offset.y": {
+      "description": "Mutate the y component of offset (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::ui_node",
+    "properties": {
+      "color": {
+        "type": {
+          "$ref": "#/$defs/bevy_color::color::Color"
+        }
+      },
+      "offset": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      }
+    },
+    "required": [
+      "offset",
+      "color"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

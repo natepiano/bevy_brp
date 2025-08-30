@@ -1,0 +1,92 @@
+{
+  "type_name": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".depth_load_op": {
+      "description": "Mutate the depth_load_op field of bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+      "enum_variants": [
+        "Clear",
+        "Load"
+      ],
+      "example": {
+        "Clear": [
+          3.1415927410125732
+        ]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp"
+    },
+    ".depth_texture_usages": {
+      "description": "Mutate the depth_texture_usages field of bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+      "example": [
+        4294967295
+      ],
+      "path_kind": "StructField",
+      "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage"
+    },
+    ".depth_texture_usages.0": {
+      "description": "Mutate element 0 of bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage",
+      "example": 4294967295,
+      "path_kind": "TupleElement",
+      "type": "u32"
+    },
+    ".screen_space_specular_transmission_quality": {
+      "description": "Mutate the screen_space_specular_transmission_quality field of bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+      "enum_variants": [
+        "Low",
+        "Medium",
+        "High",
+        "Ultra"
+      ],
+      "example": "Low",
+      "path_kind": "StructField",
+      "type": "bevy_core_pipeline::core_3d::camera_3d::ScreenSpaceTransmissionQuality"
+    },
+    ".screen_space_specular_transmission_steps": {
+      "description": "Mutate the screen_space_specular_transmission_steps field of bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+      "example": 18446744073709551615,
+      "path_kind": "StructField",
+      "type": "usize"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_core_pipeline",
+    "module_path": "bevy_core_pipeline::core_3d::camera_3d",
+    "properties": {
+      "depth_load_op": {
+        "type": {
+          "$ref": "#/$defs/bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp"
+        }
+      },
+      "depth_texture_usages": {
+        "type": {
+          "$ref": "#/$defs/bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage"
+        }
+      },
+      "screen_space_specular_transmission_quality": {
+        "type": {
+          "$ref": "#/$defs/bevy_core_pipeline::core_3d::camera_3d::ScreenSpaceTransmissionQuality"
+        }
+      },
+      "screen_space_specular_transmission_steps": {
+        "type": {
+          "$ref": "#/$defs/usize"
+        }
+      }
+    },
+    "required": [
+      "depth_load_op",
+      "depth_texture_usages",
+      "screen_space_specular_transmission_steps",
+      "screen_space_specular_transmission_quality"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

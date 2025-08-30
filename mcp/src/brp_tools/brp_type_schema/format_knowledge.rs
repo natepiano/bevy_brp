@@ -413,5 +413,15 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
 
+        // ===== Bevy ECS types =====
+        // Name serializes as a plain string, not as a struct with hash/name fields
+        map.insert(
+            "bevy_ecs::name::Name".into(),
+            BrpFormatKnowledge {
+                example_value:  json!("Entity Name"),
+                subfield_paths: None,
+            },
+        );
+
         map
     });

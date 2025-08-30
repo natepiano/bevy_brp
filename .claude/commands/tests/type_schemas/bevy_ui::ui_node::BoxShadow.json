@@ -1,0 +1,34 @@
+{
+  "type_name": "bevy_ui::ui_node::BoxShadow",
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_ui::ui_node::BoxShadow value",
+      "example": [
+        null
+      ],
+      "path_kind": "RootValue",
+      "type": "bevy_ui::ui_node::BoxShadow"
+    },
+    ".0": {
+      "description": "Mutate element 0 of bevy_ui::ui_node::BoxShadow",
+      "path_kind": "TupleElement",
+      "type": "alloc::vec::Vec<bevy_ui::ui_node::ShadowStyle>"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::ui_node",
+    "type_kind": "TupleStruct"
+  },
+  "spawn_format": null,
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

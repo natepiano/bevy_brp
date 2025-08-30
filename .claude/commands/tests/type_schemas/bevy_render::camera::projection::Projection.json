@@ -1,0 +1,46 @@
+{
+  "type_name": "bevy_render::camera::projection::Projection",
+  "enum_info": [
+    {
+      "tuple_types": [],
+      "variant_kind": "Tuple",
+      "variant_name": "Perspective"
+    },
+    {
+      "tuple_types": [],
+      "variant_kind": "Tuple",
+      "variant_name": "Orthographic"
+    },
+    {
+      "tuple_types": [],
+      "variant_kind": "Tuple",
+      "variant_name": "Custom"
+    }
+  ],
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_render::camera::projection::Projection value",
+      "enum_variants": [
+        "Perspective",
+        "Orthographic",
+        "Custom"
+      ],
+      "example": "Perspective",
+      "path_kind": "RootValue",
+      "type": "bevy_render::camera::projection::Projection"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::camera::projection",
+    "type_kind": "Enum"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

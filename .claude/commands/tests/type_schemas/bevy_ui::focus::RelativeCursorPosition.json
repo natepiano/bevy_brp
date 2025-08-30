@@ -1,0 +1,92 @@
+{
+  "type_name": "bevy_ui::focus::RelativeCursorPosition",
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    ".normalized": {
+      "description": "Mutate the normalized field of bevy_ui::focus::RelativeCursorPosition",
+      "example_none": null,
+      "example_some": [
+        1.0,
+        2.0
+      ],
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<glam::Vec2>"
+    },
+    ".normalized.x": {
+      "description": "Mutate the x component of normalized (type: f32)",
+      "example": {
+        "none": null,
+        "some": 1.0
+      },
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".normalized.y": {
+      "description": "Mutate the y component of normalized (type: f32)",
+      "example": {
+        "none": null,
+        "some": 2.0
+      },
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".normalized_visible_node_rect": {
+      "description": "Mutate the normalized_visible_node_rect field of bevy_ui::focus::RelativeCursorPosition",
+      "example": {
+        "max": [
+          100.0,
+          100.0
+        ],
+        "min": [
+          0.0,
+          0.0
+        ]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_math::rects::rect::Rect"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::focus",
+    "properties": {
+      "normalized": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<glam::Vec2>"
+        }
+      },
+      "normalized_visible_node_rect": {
+        "type": {
+          "$ref": "#/$defs/bevy_math::rects::rect::Rect"
+        }
+      }
+    },
+    "required": [
+      "normalized_visible_node_rect"
+    ],
+    "type_kind": "Struct"
+  },
+  "spawn_format": {
+    "normalized": "None",
+    "normalized_visible_node_rect": {
+      "max": [
+        100.0,
+        100.0
+      ],
+      "min": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

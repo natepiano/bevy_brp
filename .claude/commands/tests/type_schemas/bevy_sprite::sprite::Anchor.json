@@ -1,0 +1,79 @@
+{
+  "type_name": "bevy_sprite::sprite::Anchor",
+  "enum_info": [
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Center"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "BottomLeft"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "BottomCenter"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "BottomRight"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "CenterLeft"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "CenterRight"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "TopLeft"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "TopCenter"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "TopRight"
+    },
+    {
+      "tuple_types": [],
+      "variant_kind": "Tuple",
+      "variant_name": "Custom"
+    }
+  ],
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_sprite::sprite::Anchor value",
+      "enum_variants": [
+        "Center",
+        "BottomLeft",
+        "BottomCenter",
+        "BottomRight",
+        "CenterLeft",
+        "CenterRight",
+        "TopLeft",
+        "TopCenter",
+        "TopRight",
+        "Custom"
+      ],
+      "example": "Center",
+      "path_kind": "RootValue",
+      "type": "bevy_sprite::sprite::Anchor"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_sprite",
+    "module_path": "bevy_sprite::sprite",
+    "type_kind": "Enum"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

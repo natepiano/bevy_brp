@@ -1,0 +1,46 @@
+{
+  "type_name": "bevy_ui::widget::text::TextNodeFlags",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".needs_measure_fn": {
+      "description": "Mutate the needs_measure_fn field of bevy_ui::widget::text::TextNodeFlags",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    },
+    ".needs_recompute": {
+      "description": "Mutate the needs_recompute field of bevy_ui::widget::text::TextNodeFlags",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::widget::text",
+    "properties": {
+      "needs_measure_fn": {
+        "type": {
+          "$ref": "#/$defs/bool"
+        }
+      },
+      "needs_recompute": {
+        "type": {
+          "$ref": "#/$defs/bool"
+        }
+      }
+    },
+    "required": [
+      "needs_measure_fn",
+      "needs_recompute"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

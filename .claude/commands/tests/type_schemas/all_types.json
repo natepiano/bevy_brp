@@ -1,0 +1,305 @@
+[
+  {
+    "type": "bevy_core_pipeline::bloom::settings::Bloom"
+  },
+  {
+    "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening"
+  },
+  {
+    "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d"
+  },
+  {
+    "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d"
+  },
+  {
+    "type": "bevy_core_pipeline::dof::DepthOfField"
+  },
+  {
+    "type": "bevy_core_pipeline::fxaa::Fxaa"
+  },
+  {
+    "type": "bevy_core_pipeline::post_process::ChromaticAberration"
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::DeferredPrepass"
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::DepthPrepass"
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::MotionVectorPrepass"
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::NormalPrepass"
+  },
+  {
+    "type": "bevy_core_pipeline::skybox::Skybox"
+  },
+  {
+    "type": "bevy_core_pipeline::smaa::Smaa"
+  },
+  {
+    "type": "bevy_core_pipeline::tonemapping::DebandDither"
+  },
+  {
+    "type": "bevy_core_pipeline::tonemapping::Tonemapping"
+  },
+  {
+    "type": "bevy_ecs::hierarchy::ChildOf"
+  },
+  {
+    "type": "bevy_ecs::hierarchy::Children"
+  },
+  {
+    "type": "bevy_ecs::name::Name"
+  },
+  {
+    "type": "bevy_input::gamepad::Gamepad"
+  },
+  {
+    "type": "bevy_input::gamepad::GamepadSettings"
+  },
+  {
+    "type": "bevy_mesh::morph::MeshMorphWeights"
+  },
+  {
+    "type": "bevy_mesh::morph::MorphWeights"
+  },
+  {
+    "type": "bevy_mesh::skinning::SkinnedMesh"
+  },
+  {
+    "type": "bevy_render::camera::camera::Camera"
+  },
+  {
+    "type": "bevy_render::camera::camera::CameraMainTextureUsages"
+  },
+  {
+    "type": "bevy_render::camera::camera::CameraRenderGraph"
+  },
+  {
+    "type": "bevy_render::camera::camera::Exposure"
+  },
+  {
+    "type": "bevy_render::camera::camera::MipBias"
+  },
+  {
+    "type": "bevy_render::camera::camera::TemporalJitter"
+  },
+  {
+    "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle"
+  },
+  {
+    "type": "bevy_render::camera::projection::Projection"
+  },
+  {
+    "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling"
+  },
+  {
+    "type": "bevy_render::mesh::components::Mesh2d"
+  },
+  {
+    "type": "bevy_render::mesh::components::Mesh3d"
+  },
+  {
+    "type": "bevy_render::primitives::Aabb"
+  },
+  {
+    "type": "bevy_render::primitives::CascadesFrusta"
+  },
+  {
+    "type": "bevy_render::primitives::CubemapFrusta"
+  },
+  {
+    "type": "bevy_render::primitives::Frustum"
+  },
+  {
+    "type": "bevy_render::sync_world::SyncToRenderWorld"
+  },
+  {
+    "type": "bevy_render::view::ColorGrading"
+  },
+  {
+    "type": "bevy_render::view::Msaa"
+  },
+  {
+    "type": "bevy_render::view::visibility::InheritedVisibility"
+  },
+  {
+    "type": "bevy_render::view::visibility::NoFrustumCulling"
+  },
+  {
+    "type": "bevy_render::view::visibility::ViewVisibility"
+  },
+  {
+    "type": "bevy_render::view::visibility::Visibility"
+  },
+  {
+    "type": "bevy_render::view::visibility::VisibilityClass"
+  },
+  {
+    "type": "bevy_render::view::visibility::VisibleEntities"
+  },
+  {
+    "type": "bevy_render::view::visibility::range::VisibilityRange"
+  },
+  {
+    "type": "bevy_render::view::visibility::render_layers::RenderLayers"
+  },
+  {
+    "type": "bevy_render::view::window::screenshot::Screenshot"
+  },
+  {
+    "type": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>"
+  },
+  {
+    "type": "bevy_sprite::sprite::Anchor"
+  },
+  {
+    "type": "bevy_sprite::sprite::Sprite"
+  },
+  {
+    "type": "bevy_text::bounds::TextBounds"
+  },
+  {
+    "type": "bevy_text::pipeline::TextLayoutInfo"
+  },
+  {
+    "type": "bevy_text::text2d::Text2d"
+  },
+  {
+    "type": "bevy_text::text::ComputedTextBlock"
+  },
+  {
+    "type": "bevy_text::text::TextColor"
+  },
+  {
+    "type": "bevy_text::text::TextFont"
+  },
+  {
+    "type": "bevy_text::text::TextLayout"
+  },
+  {
+    "type": "bevy_text::text::TextSpan"
+  },
+  {
+    "type": "bevy_transform::components::global_transform::GlobalTransform"
+  },
+  {
+    "type": "bevy_transform::components::transform::Transform"
+  },
+  {
+    "type": "bevy_transform::components::transform::TransformTreeChanged"
+  },
+  {
+    "type": "bevy_ui::focus::FocusPolicy"
+  },
+  {
+    "type": "bevy_ui::focus::Interaction"
+  },
+  {
+    "type": "bevy_ui::focus::RelativeCursorPosition"
+  },
+  {
+    "type": "bevy_ui::measurement::ContentSize"
+  },
+  {
+    "type": "bevy_ui::ui_node::BackgroundColor"
+  },
+  {
+    "type": "bevy_ui::ui_node::BorderColor"
+  },
+  {
+    "type": "bevy_ui::ui_node::BorderRadius"
+  },
+  {
+    "type": "bevy_ui::ui_node::BoxShadow"
+  },
+  {
+    "type": "bevy_ui::ui_node::BoxShadowSamples"
+  },
+  {
+    "type": "bevy_ui::ui_node::CalculatedClip"
+  },
+  {
+    "type": "bevy_ui::ui_node::ComputedNode"
+  },
+  {
+    "type": "bevy_ui::ui_node::ComputedNodeTarget"
+  },
+  {
+    "type": "bevy_ui::ui_node::Node"
+  },
+  {
+    "type": "bevy_ui::ui_node::Outline"
+  },
+  {
+    "type": "bevy_ui::ui_node::ScrollPosition"
+  },
+  {
+    "type": "bevy_ui::ui_node::TextShadow"
+  },
+  {
+    "type": "bevy_ui::ui_node::UiAntiAlias"
+  },
+  {
+    "type": "bevy_ui::ui_node::UiTargetCamera"
+  },
+  {
+    "type": "bevy_ui::ui_node::ZIndex"
+  },
+  {
+    "type": "bevy_ui::widget::button::Button"
+  },
+  {
+    "type": "bevy_ui::widget::image::ImageNode"
+  },
+  {
+    "type": "bevy_ui::widget::image::ImageNodeSize"
+  },
+  {
+    "type": "bevy_ui::widget::label::Label"
+  },
+  {
+    "type": "bevy_ui::widget::text::Text"
+  },
+  {
+    "type": "bevy_ui::widget::text::TextNodeFlags"
+  },
+  {
+    "type": "bevy_window::monitor::Monitor"
+  },
+  {
+    "type": "bevy_window::window::PrimaryWindow"
+  },
+  {
+    "type": "bevy_window::window::Window"
+  },
+  {
+    "type": "bevy_winit::cursor::CursorIcon"
+  },
+  {
+    "type": "extras_plugin::TestArrayField"
+  },
+  {
+    "type": "extras_plugin::TestComplexComponent"
+  },
+  {
+    "type": "extras_plugin::TestEnumNoSerDe"
+  },
+  {
+    "type": "extras_plugin::TestEnumWithSerDe"
+  },
+  {
+    "type": "extras_plugin::TestStructNoSerDe"
+  },
+  {
+    "type": "extras_plugin::TestStructWithSerDe"
+  },
+  {
+    "type": "extras_plugin::TestTupleField"
+  },
+  {
+    "type": "extras_plugin::TestTupleStruct"
+  }
+]

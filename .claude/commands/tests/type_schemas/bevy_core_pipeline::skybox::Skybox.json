@@ -1,0 +1,106 @@
+{
+  "type_name": "bevy_core_pipeline::skybox::Skybox",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".brightness": {
+      "description": "Mutate the brightness field of bevy_core_pipeline::skybox::Skybox",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".image": {
+      "description": "Mutate the image field of bevy_core_pipeline::skybox::Skybox",
+      "enum_variants": [
+        "Strong",
+        "Weak"
+      ],
+      "example": {
+        "strong": {
+          "Strong": [
+            {
+              "Strong": [
+                null
+              ]
+            }
+          ]
+        },
+        "weak_placeholder": {
+          "Weak": [
+            {}
+          ]
+        }
+      },
+      "path_kind": "StructField",
+      "type": "bevy_asset::handle::Handle<bevy_image::image::Image>"
+    },
+    ".rotation": {
+      "description": "Mutate the rotation field of bevy_core_pipeline::skybox::Skybox",
+      "example": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Quat"
+    },
+    ".rotation.w": {
+      "description": "Mutate the w component of rotation (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".rotation.x": {
+      "description": "Mutate the x component of rotation (type: f32)",
+      "example": 0.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".rotation.y": {
+      "description": "Mutate the y component of rotation (type: f32)",
+      "example": 0.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".rotation.z": {
+      "description": "Mutate the z component of rotation (type: f32)",
+      "example": 0.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_core_pipeline",
+    "module_path": "bevy_core_pipeline::skybox",
+    "properties": {
+      "brightness": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "image": {
+        "type": {
+          "$ref": "#/$defs/bevy_asset::handle::Handle<bevy_image::image::Image>"
+        }
+      },
+      "rotation": {
+        "type": {
+          "$ref": "#/$defs/glam::Quat"
+        }
+      }
+    },
+    "required": [
+      "image",
+      "brightness",
+      "rotation"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "type_name": "bevy_ui::ui_node::ComputedNodeTarget",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".camera": {
+      "description": "Mutate the camera field of bevy_ui::ui_node::ComputedNodeTarget",
+      "path_kind": "StructField",
+      "type": "bevy_ecs::entity::Entity"
+    },
+    ".physical_size": {
+      "description": "Mutate the physical_size field of bevy_ui::ui_node::ComputedNodeTarget",
+      "path_kind": "StructField",
+      "type": "glam::UVec2"
+    },
+    ".physical_size.x": {
+      "description": "Mutate the x component of physical_size (type: u32)",
+      "example": 4294967295,
+      "path_kind": "NestedPath",
+      "type": "u32"
+    },
+    ".physical_size.y": {
+      "description": "Mutate the y component of physical_size (type: u32)",
+      "example": 4294967295,
+      "path_kind": "NestedPath",
+      "type": "u32"
+    },
+    ".scale_factor": {
+      "description": "Mutate the scale_factor field of bevy_ui::ui_node::ComputedNodeTarget",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::ui_node",
+    "properties": {
+      "camera": {
+        "type": {
+          "$ref": "#/$defs/bevy_ecs::entity::Entity"
+        }
+      },
+      "physical_size": {
+        "type": {
+          "$ref": "#/$defs/glam::UVec2"
+        }
+      },
+      "scale_factor": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      }
+    },
+    "required": [
+      "camera",
+      "scale_factor",
+      "physical_size"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

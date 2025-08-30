@@ -1,0 +1,256 @@
+{
+  "type_name": "bevy_ui::ui_node::ComputedNode",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".border": {
+      "description": "Mutate the border field of bevy_ui::ui_node::ComputedNode",
+      "path_kind": "StructField",
+      "type": "bevy_sprite::texture_slice::border_rect::BorderRect"
+    },
+    ".border.bottom": {
+      "description": "Mutate the bottom component of border (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border.left": {
+      "description": "Mutate the left component of border (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border.right": {
+      "description": "Mutate the right component of border (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border.top": {
+      "description": "Mutate the top component of border (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border_radius": {
+      "description": "Mutate the border_radius field of bevy_ui::ui_node::ComputedNode",
+      "path_kind": "StructField",
+      "type": "bevy_ui::ui_node::ResolvedBorderRadius"
+    },
+    ".border_radius.bottom_left": {
+      "description": "Mutate the bottom_left component of border_radius (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border_radius.bottom_right": {
+      "description": "Mutate the bottom_right component of border_radius (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border_radius.top_left": {
+      "description": "Mutate the top_left component of border_radius (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".border_radius.top_right": {
+      "description": "Mutate the top_right component of border_radius (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".content_size": {
+      "description": "Mutate the content_size field of bevy_ui::ui_node::ComputedNode",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".content_size.x": {
+      "description": "Mutate the x component of content_size (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".content_size.y": {
+      "description": "Mutate the y component of content_size (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".inverse_scale_factor": {
+      "description": "Mutate the inverse_scale_factor field of bevy_ui::ui_node::ComputedNode",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".outline_offset": {
+      "description": "Mutate the outline_offset field of bevy_ui::ui_node::ComputedNode",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".outline_width": {
+      "description": "Mutate the outline_width field of bevy_ui::ui_node::ComputedNode",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".padding": {
+      "description": "Mutate the padding field of bevy_ui::ui_node::ComputedNode",
+      "path_kind": "StructField",
+      "type": "bevy_sprite::texture_slice::border_rect::BorderRect"
+    },
+    ".padding.bottom": {
+      "description": "Mutate the bottom component of padding (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".padding.left": {
+      "description": "Mutate the left component of padding (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".padding.right": {
+      "description": "Mutate the right component of padding (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".padding.top": {
+      "description": "Mutate the top component of padding (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".size": {
+      "description": "Mutate the size field of bevy_ui::ui_node::ComputedNode",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".size.x": {
+      "description": "Mutate the x component of size (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".size.y": {
+      "description": "Mutate the y component of size (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".stack_index": {
+      "description": "Mutate the stack_index field of bevy_ui::ui_node::ComputedNode",
+      "example": 4294967295,
+      "path_kind": "StructField",
+      "type": "u32"
+    },
+    ".unrounded_size": {
+      "description": "Mutate the unrounded_size field of bevy_ui::ui_node::ComputedNode",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".unrounded_size.x": {
+      "description": "Mutate the x component of unrounded_size (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".unrounded_size.y": {
+      "description": "Mutate the y component of unrounded_size (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::ui_node",
+    "properties": {
+      "border": {
+        "type": {
+          "$ref": "#/$defs/bevy_sprite::texture_slice::border_rect::BorderRect"
+        }
+      },
+      "border_radius": {
+        "type": {
+          "$ref": "#/$defs/bevy_ui::ui_node::ResolvedBorderRadius"
+        }
+      },
+      "content_size": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      },
+      "inverse_scale_factor": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "outline_offset": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "outline_width": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "padding": {
+        "type": {
+          "$ref": "#/$defs/bevy_sprite::texture_slice::border_rect::BorderRect"
+        }
+      },
+      "size": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      },
+      "stack_index": {
+        "type": {
+          "$ref": "#/$defs/u32"
+        }
+      },
+      "unrounded_size": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      }
+    },
+    "required": [
+      "stack_index",
+      "size",
+      "content_size",
+      "outline_width",
+      "outline_offset",
+      "unrounded_size",
+      "border",
+      "border_radius",
+      "padding",
+      "inverse_scale_factor"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "type_name": "bevy_window::window::PrimaryWindow",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "schema_info": {
+    "crate_name": "bevy_window",
+    "module_path": "bevy_window::window",
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

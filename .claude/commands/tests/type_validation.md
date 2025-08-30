@@ -1,199 +1,191 @@
 # Type Schema Comprehensive Validation Test
 
 ## Objective
-Systematically validate ALL available types by discovering their schema and attempting to spawn/insert and mutate using every mutation path. This test ensures type schema information is accurate and all operations function correctly.
+Systematically validate all BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `all_types.json` to avoid retesting passed types.
 
 **NOTE**: The extras_plugin app is already running on the specified port - focus on comprehensive type validation.
 
-## CRITICAL INSTRUCTIONS
-- **USE ONLY MCP BRP TOOLS** - Never use bash commands, jq, or external JSON parsing
-- **WORK WITH TOOL RESPONSES DIRECTLY** - Extract data from the structured JSON responses returned by MCP tools
-- **NO EXTERNAL COMMANDS** - All data manipulation must be done within the test logic using tool response data
+## Schema Files Location
+- **Type schemas**: `.claude/commands/tests/type_schemas/`
+- **Progress tracking**: `.claude/commands/tests/type_schemas/all_types.json`
+- **Individual schemas**: `.claude/commands/tests/type_schemas/{type_name}.json`
+
+## Progress Tracking
+
+The test uses `all_types.json` to track testing progress. The file structure is updated from a simple array to include status:
+
+```json
+[
+  {
+    "type": "bevy_ecs::name::Name",
+    "status": "Passed"  // or "Failed"
+  },
+  {
+    "type": "bevy_transform::components::transform::Transform"
+    // No status field means not tested yet
+  }
+]
+```
 
 ## Test Strategy
-1. Discover all available types using `mcp__brp__bevy_list`
-2. Get type schema for ALL discovered types using `mcp__brp__brp_type_schema`
-3. For each type that supports spawn/insert: attempt to spawn using the schema format
-4. For each type that supports mutate: test EVERY mutation path
-5. **STOP ON FIRST FAILURE** to identify issues immediately
+
+1. **Load progress**: Read `all_types.json` to see which types have been tested
+2. **Skip passed types**: Don't retest types marked as "Passed"
+3. **Build todo list**: Create tasks only for untested or failed types
+4. **Test each type**: Load individual schema file and test operations
+5. **Update progress**: Mark types as "Passed" or "Failed" in `all_types.json`
+6. **STOP ON FIRST FAILURE** for immediate issue identification
 
 ## Test Steps
 
-### 1. Discover All Available Component Types
+### 1. Load Progress and Build Todo List
 
-Execute `mcp__brp__bevy_list` with the test port:
-```json
-{
-  "port": [TEST_PORT]
-}
+```python
+import json
+import os
+
+# Load current progress
+with open('.claude/commands/tests/type_schemas/all_types.json', 'r') as f:
+    all_types = json.load(f)
+
+# Convert to dict format if still an array
+if isinstance(all_types, list) and all(isinstance(t, str) for t in all_types):
+    all_types = [{"type": t} for t in all_types]
+
+# Build todo list of untested types
+todo_types = []
+for type_entry in all_types:
+    if isinstance(type_entry, dict):
+        status = type_entry.get("status")
+        if status != "Passed":  # Test if no status or Failed
+            todo_types.append(type_entry["type"])
+    else:  # Legacy format
+        todo_types.append(type_entry)
+
+print(f"Types to test: {len(todo_types)}")
+print(f"Already passed: {len([t for t in all_types if isinstance(t, dict) and t.get('status') == 'Passed'])}")
 ```
 
-**Extract component types from the MCP tool response**: Use the `result` array directly from the tool response - this contains the list of all component type names.
+### 2. Test Each Type
 
-### 2. Batch Type Schema Discovery
+For each type in the todo list:
 
-Execute `mcp__brp__brp_type_schema` with ALL discovered types from step 1:
-```json
-{
-  "types": [/* use the entire result array from bevy_list response */],
-  "port": [TEST_PORT]
-}
+#### 2a. Load Type Schema
+```python
+type_name = todo_types[0]  # Process one at a time
+schema_file = f'.claude/commands/tests/type_schemas/{type_name}.json'
+
+with open(schema_file, 'r') as f:
+    type_schema = json.load(f)
+
+supported_ops = type_schema.get('supported_operations', [])
 ```
 
-**Extract schema data from the MCP tool response**: Use `result.type_info` object directly from the tool response. Each key is a type name, each value contains the schema information.
-
-**VALIDATION CHECKPOINT**: Verify the tool response has `status: "success"` and `result.type_info` contains entries for all requested types.
-
-### 3. Component Spawn/Insert Validation
-
-**Work with schema data directly from tool response**: For each type in the `result.type_info` object from the `brp_type_schema` response:
-
-#### 3a. Check Spawn Support
-If the type's `supported_operations` array contains "spawn":
-- **Extract spawn format directly**: Use the `spawn_format` value from the type's schema data
-- Execute `mcp__brp__bevy_spawn`:
-  ```json
-  {
-    "components": {
-      "[TYPE_NAME]": [SPAWN_FORMAT_VALUE_FROM_SCHEMA]
-    },
-    "port": [TEST_PORT]
-  }
-  ```
-- **CRITICAL SPAWN FAILURE PROTOCOL**:
-  - If spawn fails, IMMEDIATELY:
-    1. Display the actual `spawn_format` JSON value from the schema
-    2. Display the error message from BRP
-    3. Explain WHY it failed (e.g., "Schema provided `[null]` but BRP expects plain u64")
-    4. STOP TESTING - do not continue to other types
-  - If spawn succeeds, extract and record entity ID from the successful response (`result.entity`)
-
-#### 3b. Check Insert Support  
-If the type's `supported_operations` array contains "insert" and we have a spawned entity:
-- **Use the same spawn format**: Take the `spawn_format` value from the schema data
-- Execute `mcp__brp__bevy_insert`:
-  ```json
-  {
-    "entity": [ENTITY_ID_FROM_SPAWN_RESPONSE],
-    "components": {
-      "[TYPE_NAME]": [SPAWN_FORMAT_VALUE_FROM_SCHEMA]
-    },
-    "port": [TEST_PORT]
-  }
-  ```
-- **STOP IF INSERT FAILS**
-
-### 4. Comprehensive Mutation Path Validation
-
-**Work with schema mutation data directly**: For each type where `supported_operations` array contains "mutate":
-
-#### 4a. Prepare Test Entity
-If no entity exists with this component:
-- Spawn entity with the component using the `spawn_format` from schema (if spawn is supported)
-- Or find existing entity with this component using `mcp__brp__bevy_query`
-
-#### 4b. Test Every Mutation Path
-**Use mutation data directly from schema**: For EACH path in the type's `mutation_info` object:
-
-**For standard paths (have `example` field):**
-- **Extract example directly**: Use the `example` value from the mutation path data
-- Execute `mcp__brp__bevy_mutate_component`:
-  ```json
-  {
-    "entity": [ENTITY_ID_FROM_SPAWN_OR_QUERY],
-    "component": "[TYPE_NAME]",
-    "path": "[PATH_KEY_FROM_MUTATION_INFO]",
-    "value": [EXAMPLE_VALUE_FROM_MUTATION_INFO],
-    "port": [TEST_PORT]
-  }
-  ```
-- **STOP IF MUTATION FAILS**
-
-**For enum paths (have `enum_variants` field):**
-- **Use first variant directly**: Take the first value from the `enum_variants` array
-- Execute mutation with the enum variant value
-- **STOP IF MUTATION FAILS**
-
-**For Option paths (have `example_some` and `example_none` fields):**
-- **Test both examples**: Use both `example_some` and `example_none` values from the mutation path data
-- Execute mutations for both cases
-- **STOP IF EITHER MUTATION FAILS**
-
-### 5. Mutation Verification
-
-**Verify changes using MCP tool responses**: After each successful mutation:
-- Execute `mcp__brp__bevy_get` to retrieve the component:
-  ```json
-  {
-    "entity": [ENTITY_ID],
-    "components": ["[TYPE_NAME]"],
-    "port": [TEST_PORT]
-  }
-  ```
-- **Compare values directly**: Use the component data from the `result` object of the get response to verify the mutation took effect
-- **STOP IF VERIFICATION FAILS** - if the retrieved value doesn't match the expected mutated value
-
-### 6. Progress Tracking
-
-Log progress after each type:
-```
-✅ TYPE_NAME: [spawn_status] [insert_status] [X/Y_mutations_tested]
+#### 2b. Test Spawn/Insert Operations
+If "spawn" or "insert" in supported operations:
+```python
+if 'spawn' in supported_ops:
+    spawn_format = type_schema.get('spawn_format')
+    # Execute mcp__brp__bevy_spawn with spawn_format
+    # Record entity ID if successful
 ```
 
-Where:
-- `spawn_status`: "SPAWNED" or "NO_SPAWN_SUPPORT" or "SPAWN_FAILED"
-- `insert_status`: "INSERTED" or "NO_INSERT_SUPPORT" or "INSERT_FAILED"  
-- `X/Y_mutations_tested`: "5/5_PASSED" or "3/5_FAILED_AT_PATH_.translation.x"
+**KNOWN ISSUES to handle**:
+- `bevy_ecs::name::Name`: Use plain string instead of struct format
+- Option fields: Use "None" string instead of null
 
-### 7. Final Summary
+#### 2c. Test All Mutation Paths
+If "mutate" in supported operations:
+```python
+if 'mutate' in supported_ops:
+    mutation_paths = type_schema.get('mutation_paths', {})
+    
+    for path, path_info in mutation_paths.items():
+        # Determine value to use
+        if 'example' in path_info:
+            value = path_info['example']
+        elif 'enum_variants' in path_info:
+            value = path_info['enum_variants'][0]
+        elif 'example_some' in path_info:
+            # Test both Some and None
+            test_values = [path_info['example_some'], path_info['example_none']]
+        
+        # Execute mcp__brp__bevy_mutate_component
+        # Stop on first failure
+```
 
-Provide comprehensive results:
-- Total types tested: X
-- Types with spawn support: Y (Z successful)
-- Types with insert support: A (B successful)
-- Types with mutation support: C (D successful)
-- Total mutation paths tested: E (F successful)
-- First failure point (if any): [TYPE_NAME] [OPERATION] [PATH] [ERROR]
+### 3. Update Progress
+
+After testing each type:
+
+```python
+def update_progress(type_name, status):
+    with open('.claude/commands/tests/type_schemas/all_types.json', 'r') as f:
+        all_types = json.load(f)
+    
+    # Convert to dict format if needed
+    if isinstance(all_types, list) and all(isinstance(t, str) for t in all_types):
+        all_types = [{"type": t} for t in all_types]
+    
+    # Update status
+    for entry in all_types:
+        if entry.get("type") == type_name:
+            entry["status"] = status
+            break
+    
+    # Save updated progress
+    with open('.claude/commands/tests/type_schemas/all_types.json', 'w') as f:
+        json.dump(all_types, f, indent=2)
+```
+
+### 4. Progress Reporting
+
+```
+Testing Progress:
+- Total types: 101
+- Passed: X
+- Failed: Y  
+- Remaining: Z
+
+Current type: [TYPE_NAME]
+- Spawn test: [PASS/FAIL/SKIP]
+- Insert test: [PASS/FAIL/SKIP]
+- Mutation paths: [X/Y passed]
+```
 
 ## Success Criteria
 
 ✅ Test passes when:
-- All discoverable types can be loaded via type schema
-- All spawn operations succeed using schema-provided formats
-- All insert operations succeed using schema-provided formats  
-- ALL mutation paths work using schema-provided examples
-- All mutations can be verified via component retrieval
-- No unexpected failures or inconsistencies
+- All untested types are validated
+- Spawn/insert operations work for supported types
+- All mutation paths work for supported types
+- Progress is saved after each type
 
-## Failure Investigation
+## Failure Handling
 
-**IMMEDIATE STOP CONDITIONS**:
-- Type schema discovery fails
-- Spawn fails for any type that claims spawn support
-- Insert fails for any type that claims insert support
-- ANY mutation path fails using schema-provided examples
-- Mutation verification shows values didn't change as expected
+**On failure**:
+1. Mark type as "Failed" in all_types.json
+2. Record failure details:
+   - Operation that failed (spawn/insert/mutate)
+   - Error message
+   - Path (for mutations)
+3. **STOP TESTING** - don't continue to other types
+4. Save progress so test can resume later
 
-**SPAWN FORMAT FAILURE REPORTING**:
-When a spawn operation fails using the schema-provided format:
-1. **SHOW THE ACTUAL JSON**: Display the exact `spawn_format` value from the schema
-2. **SHOW THE ERROR**: Display the complete error message from BRP
-3. **EXPLAIN THE MISMATCH**: Clearly explain why the schema format doesn't match BRP's expectations
-   - Example: "Schema provides `[null]` (array format) but BRP expects `0` (plain u64)"
-   - Example: "Schema provides `{}` (empty object) but BRP requires all fields populated"
-4. **STOP IMMEDIATELY**: Do not continue testing other types after the first spawn format failure
+## Known Issues
 
-**Investigation Steps**:
-1. Record exact failure point: [TYPE_NAME] [OPERATION] [PATH] [INPUT] [ERROR]
-2. Check if issue is with test logic or schema generation
-3. Verify component/entity state before operation
-4. Compare expected vs actual mutation behavior
-5. Check for serialization/deserialization issues
+Types that require special handling:
+1. **bevy_ecs::name::Name**: Schema shows struct but BRP expects string
+2. **Option fields**: Some types use "None" string vs null
+3. **Handle types**: May have complex serialization
 
-## Notes
+These should be marked with special handling in the test logic.
 
-- This test is **exhaustive** - it validates every type and every mutation path
-- **STOP ON FIRST FAILURE** principle ensures rapid issue identification
-- Test entities are created as needed for mutation testing
-- Progress logging helps identify where validation stands
-- Both positive testing (operations should work) and verification (changes took effect)
+## Resume Capability
+
+The test can be resumed at any time:
+1. Previously passed types are skipped
+2. Failed types can be retried 
+3. Untested types are processed in order
+
+This allows incremental testing and debugging of specific type issues.

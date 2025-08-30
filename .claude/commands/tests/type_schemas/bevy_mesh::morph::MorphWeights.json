@@ -1,0 +1,50 @@
+{
+  "type_name": "bevy_mesh::morph::MorphWeights",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".first_mesh": {
+      "description": "Mutate the first_mesh field of bevy_mesh::morph::MorphWeights",
+      "enum_variants": [
+        "None",
+        "Some"
+      ],
+      "example_none": null,
+      "example_some": "None",
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>"
+    },
+    ".weights": {
+      "description": "Mutate the weights field of bevy_mesh::morph::MorphWeights",
+      "path_kind": "StructField",
+      "type": "alloc::vec::Vec<f32>"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_mesh",
+    "module_path": "bevy_mesh::morph",
+    "properties": {
+      "first_mesh": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<bevy_asset::handle::Handle<bevy_mesh::mesh::Mesh>>"
+        }
+      },
+      "weights": {
+        "type": {
+          "$ref": "#/$defs/alloc::vec::Vec<f32>"
+        }
+      }
+    },
+    "required": [
+      "weights"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

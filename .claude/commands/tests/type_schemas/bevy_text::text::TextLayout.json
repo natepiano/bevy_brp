@@ -1,0 +1,58 @@
+{
+  "type_name": "bevy_text::text::TextLayout",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".justify": {
+      "description": "Mutate the justify field of bevy_text::text::TextLayout",
+      "enum_variants": [
+        "Left",
+        "Center",
+        "Right",
+        "Justified"
+      ],
+      "example": "Left",
+      "path_kind": "StructField",
+      "type": "bevy_text::text::JustifyText"
+    },
+    ".linebreak": {
+      "description": "Mutate the linebreak field of bevy_text::text::TextLayout",
+      "enum_variants": [
+        "WordBoundary",
+        "AnyCharacter",
+        "WordOrCharacter",
+        "NoWrap"
+      ],
+      "example": "WordBoundary",
+      "path_kind": "StructField",
+      "type": "bevy_text::text::LineBreak"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_text",
+    "module_path": "bevy_text::text",
+    "properties": {
+      "justify": {
+        "type": {
+          "$ref": "#/$defs/bevy_text::text::JustifyText"
+        }
+      },
+      "linebreak": {
+        "type": {
+          "$ref": "#/$defs/bevy_text::text::LineBreak"
+        }
+      }
+    },
+    "required": [
+      "justify",
+      "linebreak"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "type_name": "extras_plugin::TestComplexComponent",
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    ".mode": {
+      "description": "Mutate the mode field of extras_plugin::TestComplexComponent",
+      "enum_variants": [
+        "Active",
+        "Inactive",
+        "Special"
+      ],
+      "example": "Active",
+      "path_kind": "StructField",
+      "type": "extras_plugin::TestEnumWithSerDe"
+    },
+    ".optional_value": {
+      "description": "Mutate the optional_value field of extras_plugin::TestComplexComponent",
+      "example_none": null,
+      "example_some": 3.1415927410125732,
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<f32>"
+    },
+    ".points": {
+      "description": "Mutate the points field of extras_plugin::TestComplexComponent",
+      "example": [
+        [
+          1.0,
+          2.0,
+          3.0
+        ],
+        [
+          1.0,
+          2.0,
+          3.0
+        ]
+      ],
+      "path_kind": "StructField",
+      "type": "[glam::Vec3; 2]"
+    },
+    ".points[0]": {
+      "description": "Mutate element [0] of [glam::Vec3; 2]",
+      "example": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "path_kind": "ArrayElement",
+      "type": "glam::Vec3"
+    },
+    ".points[1]": {
+      "description": "Mutate element [1] of [glam::Vec3; 2]",
+      "example": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "path_kind": "ArrayElement",
+      "type": "glam::Vec3"
+    },
+    ".range": {
+      "description": "Mutate the range field of extras_plugin::TestComplexComponent",
+      "example": [
+        3.1415927410125732,
+        3.1415927410125732
+      ],
+      "path_kind": "StructField",
+      "type": "(f32, f32)"
+    },
+    ".range.0": {
+      "description": "Mutate element 0 of (f32, f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "TupleElement",
+      "type": "f32"
+    },
+    ".range.1": {
+      "description": "Mutate element 1 of (f32, f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "TupleElement",
+      "type": "f32"
+    },
+    ".transform": {
+      "description": "Mutate the transform field of extras_plugin::TestComplexComponent",
+      "path_kind": "StructField",
+      "type": "bevy_transform::components::transform::Transform"
+    },
+    ".transform.rotation": {
+      "description": "Mutate the rotation component of transform (type: glam::Quat)",
+      "example": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "path_kind": "NestedPath",
+      "type": "glam::Quat"
+    },
+    ".transform.rotation.w": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.rotation.x": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 0.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.rotation.y": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 0.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.rotation.z": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 0.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.scale": {
+      "description": "Mutate the scale component of transform (type: glam::Vec3)",
+      "example": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "path_kind": "NestedPath",
+      "type": "glam::Vec3"
+    },
+    ".transform.scale.x": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.scale.y": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.scale.z": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 3.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.translation": {
+      "description": "Mutate the translation component of transform (type: glam::Vec3)",
+      "example": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "path_kind": "NestedPath",
+      "type": "glam::Vec3"
+    },
+    ".transform.translation.x": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.translation.y": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".transform.translation.z": {
+      "description": "Mutate nested path: transform (type: f32)",
+      "example": 3.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "extras_plugin",
+    "module_path": "extras_plugin",
+    "properties": {
+      "mode": {
+        "type": {
+          "$ref": "#/$defs/extras_plugin::TestEnumWithSerDe"
+        }
+      },
+      "optional_value": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<f32>"
+        }
+      },
+      "points": {
+        "type": {
+          "$ref": "#/$defs/[glam::Vec3; 2]"
+        }
+      },
+      "range": {
+        "type": {
+          "$ref": "#/$defs/(f32, f32)"
+        }
+      },
+      "transform": {
+        "type": {
+          "$ref": "#/$defs/bevy_transform::components::transform::Transform"
+        }
+      }
+    },
+    "required": [
+      "transform",
+      "mode",
+      "points",
+      "range"
+    ],
+    "type_kind": "Struct"
+  },
+  "spawn_format": {
+    "mode": "Active",
+    "optional_value": "None",
+    "points": [
+      [
+        1.0,
+        2.0,
+        3.0
+      ],
+      [
+        1.0,
+        2.0,
+        3.0
+      ]
+    ],
+    "range": [
+      3.1415927410125732,
+      3.1415927410125732
+    ],
+    "transform": null
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "type_name": "bevy_render::primitives::Aabb",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".center": {
+      "description": "Mutate the center field of bevy_render::primitives::Aabb",
+      "example": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec3A"
+    },
+    ".center.x": {
+      "description": "Mutate the x component of center (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".center.y": {
+      "description": "Mutate the y component of center (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".center.z": {
+      "description": "Mutate the z component of center (type: f32)",
+      "example": 3.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".half_extents": {
+      "description": "Mutate the half_extents field of bevy_render::primitives::Aabb",
+      "example": [
+        1.0,
+        2.0,
+        3.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec3A"
+    },
+    ".half_extents.x": {
+      "description": "Mutate the x component of half_extents (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".half_extents.y": {
+      "description": "Mutate the y component of half_extents (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".half_extents.z": {
+      "description": "Mutate the z component of half_extents (type: f32)",
+      "example": 3.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::primitives",
+    "properties": {
+      "center": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec3A"
+        }
+      },
+      "half_extents": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec3A"
+        }
+      }
+    },
+    "required": [
+      "center",
+      "half_extents"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

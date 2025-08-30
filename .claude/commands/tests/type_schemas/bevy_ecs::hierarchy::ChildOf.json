@@ -1,0 +1,34 @@
+{
+  "type_name": "bevy_ecs::hierarchy::ChildOf",
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_ecs::hierarchy::ChildOf value",
+      "example": [
+        null
+      ],
+      "path_kind": "RootValue",
+      "type": "bevy_ecs::hierarchy::ChildOf"
+    },
+    ".0": {
+      "description": "Mutate element 0 of bevy_ecs::hierarchy::ChildOf",
+      "path_kind": "TupleElement",
+      "type": "bevy_ecs::entity::Entity"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ecs",
+    "module_path": "bevy_ecs::hierarchy",
+    "type_kind": "TupleStruct"
+  },
+  "spawn_format": null,
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

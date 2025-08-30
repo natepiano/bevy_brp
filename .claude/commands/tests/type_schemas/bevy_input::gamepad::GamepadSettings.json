@@ -1,0 +1,148 @@
+{
+  "type_name": "bevy_input::gamepad::GamepadSettings",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".axis_settings": {
+      "description": "Mutate the axis_settings field of bevy_input::gamepad::GamepadSettings",
+      "path_kind": "StructField",
+      "type": "bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadAxis, bevy_input::gamepad::AxisSettings, bevy_platform::hash::FixedHasher>"
+    },
+    ".button_axis_settings": {
+      "description": "Mutate the button_axis_settings field of bevy_input::gamepad::GamepadSettings",
+      "path_kind": "StructField",
+      "type": "bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadButton, bevy_input::gamepad::ButtonAxisSettings, bevy_platform::hash::FixedHasher>"
+    },
+    ".button_settings": {
+      "description": "Mutate the button_settings field of bevy_input::gamepad::GamepadSettings",
+      "path_kind": "StructField",
+      "type": "bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadButton, bevy_input::gamepad::ButtonSettings, bevy_platform::hash::FixedHasher>"
+    },
+    ".default_axis_settings": {
+      "description": "Mutate the default_axis_settings field of bevy_input::gamepad::GamepadSettings",
+      "path_kind": "StructField",
+      "type": "bevy_input::gamepad::AxisSettings"
+    },
+    ".default_axis_settings.deadzone_lowerbound": {
+      "description": "Mutate the deadzone_lowerbound component of default_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_axis_settings.deadzone_upperbound": {
+      "description": "Mutate the deadzone_upperbound component of default_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_axis_settings.livezone_lowerbound": {
+      "description": "Mutate the livezone_lowerbound component of default_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_axis_settings.livezone_upperbound": {
+      "description": "Mutate the livezone_upperbound component of default_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_axis_settings.threshold": {
+      "description": "Mutate the threshold component of default_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_button_axis_settings": {
+      "description": "Mutate the default_button_axis_settings field of bevy_input::gamepad::GamepadSettings",
+      "path_kind": "StructField",
+      "type": "bevy_input::gamepad::ButtonAxisSettings"
+    },
+    ".default_button_axis_settings.high": {
+      "description": "Mutate the high component of default_button_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_button_axis_settings.low": {
+      "description": "Mutate the low component of default_button_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_button_axis_settings.threshold": {
+      "description": "Mutate the threshold component of default_button_axis_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_button_settings": {
+      "description": "Mutate the default_button_settings field of bevy_input::gamepad::GamepadSettings",
+      "path_kind": "StructField",
+      "type": "bevy_input::gamepad::ButtonSettings"
+    },
+    ".default_button_settings.press_threshold": {
+      "description": "Mutate the press_threshold component of default_button_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".default_button_settings.release_threshold": {
+      "description": "Mutate the release_threshold component of default_button_settings (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_input",
+    "module_path": "bevy_input::gamepad",
+    "properties": {
+      "axis_settings": {
+        "type": {
+          "$ref": "#/$defs/bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadAxis, bevy_input::gamepad::AxisSettings, bevy_platform::hash::FixedHasher>"
+        }
+      },
+      "button_axis_settings": {
+        "type": {
+          "$ref": "#/$defs/bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadButton, bevy_input::gamepad::ButtonAxisSettings, bevy_platform::hash::FixedHasher>"
+        }
+      },
+      "button_settings": {
+        "type": {
+          "$ref": "#/$defs/bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadButton, bevy_input::gamepad::ButtonSettings, bevy_platform::hash::FixedHasher>"
+        }
+      },
+      "default_axis_settings": {
+        "type": {
+          "$ref": "#/$defs/bevy_input::gamepad::AxisSettings"
+        }
+      },
+      "default_button_axis_settings": {
+        "type": {
+          "$ref": "#/$defs/bevy_input::gamepad::ButtonAxisSettings"
+        }
+      },
+      "default_button_settings": {
+        "type": {
+          "$ref": "#/$defs/bevy_input::gamepad::ButtonSettings"
+        }
+      }
+    },
+    "required": [
+      "default_button_settings",
+      "default_axis_settings",
+      "default_button_axis_settings",
+      "button_settings",
+      "axis_settings",
+      "button_axis_settings"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

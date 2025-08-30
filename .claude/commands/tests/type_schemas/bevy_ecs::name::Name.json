@@ -1,0 +1,51 @@
+{
+  "type_name": "bevy_ecs::name::Name",
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    ".hash": {
+      "description": "Mutate the hash field of bevy_ecs::name::Name",
+      "example": 18446744073709551615,
+      "path_kind": "StructField",
+      "type": "u64"
+    },
+    ".name": {
+      "description": "Mutate the name field of bevy_ecs::name::Name",
+      "path_kind": "StructField",
+      "type": "alloc::borrow::Cow<str>"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ecs",
+    "module_path": "bevy_ecs::name",
+    "properties": {
+      "hash": {
+        "type": {
+          "$ref": "#/$defs/u64"
+        }
+      },
+      "name": {
+        "type": {
+          "$ref": "#/$defs/alloc::borrow::Cow<str>"
+        }
+      }
+    },
+    "required": [
+      "hash",
+      "name"
+    ],
+    "type_kind": "Struct"
+  },
+  "spawn_format": {
+    "hash": 18446744073709551615,
+    "name": null
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate",
+    "spawn",
+    "insert"
+  ]
+}

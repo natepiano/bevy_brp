@@ -1,0 +1,48 @@
+{
+  "type_name": "bevy_render::view::Msaa",
+  "enum_info": [
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Off"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Sample2"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Sample4"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Sample8"
+    }
+  ],
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_render::view::Msaa value",
+      "enum_variants": [
+        "Off",
+        "Sample2",
+        "Sample4",
+        "Sample8"
+      ],
+      "example": "Off",
+      "path_kind": "RootValue",
+      "type": "bevy_render::view::Msaa"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::view",
+    "type_kind": "Enum"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

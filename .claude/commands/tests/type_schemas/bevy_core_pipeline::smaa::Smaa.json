@@ -1,0 +1,40 @@
+{
+  "type_name": "bevy_core_pipeline::smaa::Smaa",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".preset": {
+      "description": "Mutate the preset field of bevy_core_pipeline::smaa::Smaa",
+      "enum_variants": [
+        "Low",
+        "Medium",
+        "High",
+        "Ultra"
+      ],
+      "example": "Low",
+      "path_kind": "StructField",
+      "type": "bevy_core_pipeline::smaa::SmaaPreset"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_core_pipeline",
+    "module_path": "bevy_core_pipeline::smaa",
+    "properties": {
+      "preset": {
+        "type": {
+          "$ref": "#/$defs/bevy_core_pipeline::smaa::SmaaPreset"
+        }
+      }
+    },
+    "required": [
+      "preset"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

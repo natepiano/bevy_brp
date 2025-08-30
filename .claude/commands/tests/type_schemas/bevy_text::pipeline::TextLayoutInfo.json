@@ -1,0 +1,60 @@
+{
+  "type_name": "bevy_text::pipeline::TextLayoutInfo",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".glyphs": {
+      "description": "Mutate the glyphs field of bevy_text::pipeline::TextLayoutInfo",
+      "path_kind": "StructField",
+      "type": "alloc::vec::Vec<bevy_text::glyph::PositionedGlyph>"
+    },
+    ".size": {
+      "description": "Mutate the size field of bevy_text::pipeline::TextLayoutInfo",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".size.x": {
+      "description": "Mutate the x component of size (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".size.y": {
+      "description": "Mutate the y component of size (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_text",
+    "module_path": "bevy_text::pipeline",
+    "properties": {
+      "glyphs": {
+        "type": {
+          "$ref": "#/$defs/alloc::vec::Vec<bevy_text::glyph::PositionedGlyph>"
+        }
+      },
+      "size": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      }
+    },
+    "required": [
+      "glyphs",
+      "size"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

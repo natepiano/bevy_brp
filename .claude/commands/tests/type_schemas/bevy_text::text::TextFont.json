@@ -1,0 +1,101 @@
+{
+  "type_name": "bevy_text::text::TextFont",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".font": {
+      "description": "Mutate the font field of bevy_text::text::TextFont",
+      "enum_variants": [
+        "Strong",
+        "Weak"
+      ],
+      "example": {
+        "strong": {
+          "Strong": [
+            {
+              "Strong": [
+                null
+              ]
+            }
+          ]
+        },
+        "weak_placeholder": {
+          "Weak": [
+            {}
+          ]
+        }
+      },
+      "path_kind": "StructField",
+      "type": "bevy_asset::handle::Handle<bevy_text::font::Font>"
+    },
+    ".font_size": {
+      "description": "Mutate the font_size field of bevy_text::text::TextFont",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".font_smoothing": {
+      "description": "Mutate the font_smoothing field of bevy_text::text::TextFont",
+      "enum_variants": [
+        "None",
+        "AntiAliased"
+      ],
+      "example": "None",
+      "path_kind": "StructField",
+      "type": "bevy_text::text::FontSmoothing"
+    },
+    ".line_height": {
+      "description": "Mutate the line_height field of bevy_text::text::TextFont",
+      "enum_variants": [
+        "Px",
+        "RelativeToFont"
+      ],
+      "example": {
+        "Px": [
+          3.1415927410125732
+        ]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_text::text::LineHeight"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_text",
+    "module_path": "bevy_text::text",
+    "properties": {
+      "font": {
+        "type": {
+          "$ref": "#/$defs/bevy_asset::handle::Handle<bevy_text::font::Font>"
+        }
+      },
+      "font_size": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "font_smoothing": {
+        "type": {
+          "$ref": "#/$defs/bevy_text::text::FontSmoothing"
+        }
+      },
+      "line_height": {
+        "type": {
+          "$ref": "#/$defs/bevy_text::text::LineHeight"
+        }
+      }
+    },
+    "required": [
+      "font",
+      "font_size",
+      "line_height",
+      "font_smoothing"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

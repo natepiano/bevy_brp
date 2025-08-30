@@ -1,0 +1,49 @@
+{
+  "type_name": "bevy_render::camera::camera::TemporalJitter",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".offset": {
+      "description": "Mutate the offset field of bevy_render::camera::camera::TemporalJitter",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".offset.x": {
+      "description": "Mutate the x component of offset (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".offset.y": {
+      "description": "Mutate the y component of offset (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::camera::camera",
+    "properties": {
+      "offset": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      }
+    },
+    "required": [
+      "offset"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

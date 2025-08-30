@@ -1,0 +1,148 @@
+{
+  "type_name": "bevy_core_pipeline::bloom::settings::Bloom",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".composite_mode": {
+      "description": "Mutate the composite_mode field of bevy_core_pipeline::bloom::settings::Bloom",
+      "enum_variants": [
+        "EnergyConserving",
+        "Additive"
+      ],
+      "example": "EnergyConserving",
+      "path_kind": "StructField",
+      "type": "bevy_core_pipeline::bloom::settings::BloomCompositeMode"
+    },
+    ".high_pass_frequency": {
+      "description": "Mutate the high_pass_frequency field of bevy_core_pipeline::bloom::settings::Bloom",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".intensity": {
+      "description": "Mutate the intensity field of bevy_core_pipeline::bloom::settings::Bloom",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".low_frequency_boost": {
+      "description": "Mutate the low_frequency_boost field of bevy_core_pipeline::bloom::settings::Bloom",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".low_frequency_boost_curvature": {
+      "description": "Mutate the low_frequency_boost_curvature field of bevy_core_pipeline::bloom::settings::Bloom",
+      "example": 3.1415927410125732,
+      "path_kind": "StructField",
+      "type": "f32"
+    },
+    ".max_mip_dimension": {
+      "description": "Mutate the max_mip_dimension field of bevy_core_pipeline::bloom::settings::Bloom",
+      "example": 4294967295,
+      "path_kind": "StructField",
+      "type": "u32"
+    },
+    ".prefilter": {
+      "description": "Mutate the prefilter field of bevy_core_pipeline::bloom::settings::Bloom",
+      "path_kind": "StructField",
+      "type": "bevy_core_pipeline::bloom::settings::BloomPrefilter"
+    },
+    ".prefilter.threshold": {
+      "description": "Mutate the threshold component of prefilter (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".prefilter.threshold_softness": {
+      "description": "Mutate the threshold_softness component of prefilter (type: f32)",
+      "example": 3.1415927410125732,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".scale": {
+      "description": "Mutate the scale field of bevy_core_pipeline::bloom::settings::Bloom",
+      "example": [
+        1.0,
+        2.0
+      ],
+      "path_kind": "StructField",
+      "type": "glam::Vec2"
+    },
+    ".scale.x": {
+      "description": "Mutate the x component of scale (type: f32)",
+      "example": 1.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".scale.y": {
+      "description": "Mutate the y component of scale (type: f32)",
+      "example": 2.0,
+      "path_kind": "NestedPath",
+      "type": "f32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_core_pipeline",
+    "module_path": "bevy_core_pipeline::bloom::settings",
+    "properties": {
+      "composite_mode": {
+        "type": {
+          "$ref": "#/$defs/bevy_core_pipeline::bloom::settings::BloomCompositeMode"
+        }
+      },
+      "high_pass_frequency": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "intensity": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "low_frequency_boost": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "low_frequency_boost_curvature": {
+        "type": {
+          "$ref": "#/$defs/f32"
+        }
+      },
+      "max_mip_dimension": {
+        "type": {
+          "$ref": "#/$defs/u32"
+        }
+      },
+      "prefilter": {
+        "type": {
+          "$ref": "#/$defs/bevy_core_pipeline::bloom::settings::BloomPrefilter"
+        }
+      },
+      "scale": {
+        "type": {
+          "$ref": "#/$defs/glam::Vec2"
+        }
+      }
+    },
+    "required": [
+      "intensity",
+      "low_frequency_boost",
+      "low_frequency_boost_curvature",
+      "high_pass_frequency",
+      "prefilter",
+      "composite_mode",
+      "max_mip_dimension",
+      "scale"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

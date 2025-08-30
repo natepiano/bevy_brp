@@ -1,0 +1,16 @@
+{
+  "type_name": "bevy_render::sync_world::SyncToRenderWorld",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::sync_world",
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

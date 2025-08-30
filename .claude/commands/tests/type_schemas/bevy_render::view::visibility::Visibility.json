@@ -1,0 +1,43 @@
+{
+  "type_name": "bevy_render::view::visibility::Visibility",
+  "enum_info": [
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Inherited"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Hidden"
+    },
+    {
+      "variant_kind": "Unit",
+      "variant_name": "Visible"
+    }
+  ],
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_render::view::visibility::Visibility value",
+      "enum_variants": [
+        "Inherited",
+        "Hidden",
+        "Visible"
+      ],
+      "example": "Inherited",
+      "path_kind": "RootValue",
+      "type": "bevy_render::view::visibility::Visibility"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::view::visibility",
+    "type_kind": "Enum"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

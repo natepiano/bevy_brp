@@ -1,0 +1,45 @@
+{
+  "type_name": "bevy_text::text::ComputedTextBlock",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".entities": {
+      "description": "Mutate the entities field of bevy_text::text::ComputedTextBlock",
+      "path_kind": "StructField",
+      "type": "smallvec::SmallVec<[bevy_text::text::TextEntity; 1]>"
+    },
+    ".needs_rerender": {
+      "description": "Mutate the needs_rerender field of bevy_text::text::ComputedTextBlock",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_text",
+    "module_path": "bevy_text::text",
+    "properties": {
+      "entities": {
+        "type": {
+          "$ref": "#/$defs/smallvec::SmallVec<[bevy_text::text::TextEntity; 1]>"
+        }
+      },
+      "needs_rerender": {
+        "type": {
+          "$ref": "#/$defs/bool"
+        }
+      }
+    },
+    "required": [
+      "entities",
+      "needs_rerender"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "type_name": "bevy_ui::ui_node::CalculatedClip",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".clip": {
+      "description": "Mutate the clip field of bevy_ui::ui_node::CalculatedClip",
+      "example": {
+        "max": [
+          100.0,
+          100.0
+        ],
+        "min": [
+          0.0,
+          0.0
+        ]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_math::rects::rect::Rect"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_ui",
+    "module_path": "bevy_ui::ui_node",
+    "properties": {
+      "clip": {
+        "type": {
+          "$ref": "#/$defs/bevy_math::rects::rect::Rect"
+        }
+      }
+    },
+    "required": [
+      "clip"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "type_name": "bevy_render::view::visibility::ViewVisibility",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_render::view::visibility::ViewVisibility value",
+      "example": [
+        true
+      ],
+      "path_kind": "RootValue",
+      "type": "bevy_render::view::visibility::ViewVisibility"
+    },
+    ".0": {
+      "description": "Mutate element 0 of bevy_render::view::visibility::ViewVisibility",
+      "example": true,
+      "path_kind": "TupleElement",
+      "type": "bool"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::view::visibility",
+    "type_kind": "TupleStruct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

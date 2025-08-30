@@ -7,7 +7,11 @@
       "mcp__brp__bevy_list",
       "mcp__brp__brp_type_schema",
       "mcp__brp__bevy_spawn",
-      "mcp__brp__brp_shutdown"
+      "mcp__brp__brp_shutdown",
+      "Bash(mkdir:*)",
+      "mcp__brp__bevy_query",
+      "mcp__brp__bevy_mutate_component",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": [],

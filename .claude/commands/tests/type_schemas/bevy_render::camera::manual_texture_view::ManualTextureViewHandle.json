@@ -1,0 +1,32 @@
+{
+  "type_name": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_render::camera::manual_texture_view::ManualTextureViewHandle value",
+      "example": [
+        4294967295
+      ],
+      "path_kind": "RootValue",
+      "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle"
+    },
+    ".0": {
+      "description": "Mutate element 0 of bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
+      "example": 4294967295,
+      "path_kind": "TupleElement",
+      "type": "u32"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_render",
+    "module_path": "bevy_render::camera::manual_texture_view",
+    "type_kind": "TupleStruct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

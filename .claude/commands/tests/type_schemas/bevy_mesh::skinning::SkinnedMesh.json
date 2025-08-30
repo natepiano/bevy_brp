@@ -1,0 +1,64 @@
+{
+  "type_name": "bevy_mesh::skinning::SkinnedMesh",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    ".inverse_bindposes": {
+      "description": "Mutate the inverse_bindposes field of bevy_mesh::skinning::SkinnedMesh",
+      "enum_variants": [
+        "Strong",
+        "Weak"
+      ],
+      "example": {
+        "strong": {
+          "Strong": [
+            {
+              "Strong": [
+                null
+              ]
+            }
+          ]
+        },
+        "weak_placeholder": {
+          "Weak": [
+            {}
+          ]
+        }
+      },
+      "path_kind": "StructField",
+      "type": "bevy_asset::handle::Handle<bevy_mesh::skinning::SkinnedMeshInverseBindposes>"
+    },
+    ".joints": {
+      "description": "Mutate the joints field of bevy_mesh::skinning::SkinnedMesh",
+      "path_kind": "StructField",
+      "type": "alloc::vec::Vec<bevy_ecs::entity::Entity>"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_mesh",
+    "module_path": "bevy_mesh::skinning",
+    "properties": {
+      "inverse_bindposes": {
+        "type": {
+          "$ref": "#/$defs/bevy_asset::handle::Handle<bevy_mesh::skinning::SkinnedMeshInverseBindposes>"
+        }
+      },
+      "joints": {
+        "type": {
+          "$ref": "#/$defs/alloc::vec::Vec<bevy_ecs::entity::Entity>"
+        }
+      }
+    },
+    "required": [
+      "inverse_bindposes",
+      "joints"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}

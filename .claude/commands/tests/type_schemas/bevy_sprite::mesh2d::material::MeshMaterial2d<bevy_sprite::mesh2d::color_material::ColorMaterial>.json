@@ -1,0 +1,31 @@
+{
+  "type_name": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>",
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial> value",
+      "example": [
+        null
+      ],
+      "path_kind": "RootValue",
+      "type": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>"
+    },
+    ".0": {
+      "description": "Mutate element 0 of bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>",
+      "path_kind": "TupleElement",
+      "type": "bevy_asset::handle::Handle<bevy_sprite::mesh2d::color_material::ColorMaterial>"
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_sprite",
+    "module_path": "bevy_sprite::mesh2d::material",
+    "type_kind": "TupleStruct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ]
+}
