@@ -117,7 +117,7 @@ impl BrpHttpClient {
             );
             return Err(
                 error_stack::Report::new(Error::JsonRpc("HTTP error".to_string()))
-                    .attach_printable(format!(
+                    .attach(format!(
                         "BRP server returned HTTP error {}: {}",
                         response.status(),
                         response
@@ -125,7 +125,7 @@ impl BrpHttpClient {
                             .canonical_reason()
                             .unwrap_or("Unknown error")
                     ))
-                    .attach_printable(format!(
+                    .attach(format!(
                         "Method: {}, Port: {}",
                         self.method.as_str(),
                         self.port
@@ -215,9 +215,9 @@ impl BrpHttpClient {
         );
 
         Err(error_stack::Report::new(Error::JsonRpc(error_msg))
-            .attach_printable(context_info.join(", "))
-            .attach_printable(format!("Full error: {e:?}"))
-            .attach_printable(format!(
+            .attach(context_info.join(", "))
+            .attach(format!("Full error: {e:?}"))
+            .attach(format!(
                 "Request body (first 500 chars): {}",
                 &request_body.chars().take(500).collect::<String>()
             )))

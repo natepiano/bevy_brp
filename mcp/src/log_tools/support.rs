@@ -128,7 +128,7 @@ where
         .change_context(Error::FileOperation(
             "Failed to read temp directory".to_string(),
         ))
-        .attach_printable(format!("Path: {}", temp_dir.display()))?;
+        .attach(format!("Path: {}", temp_dir.display()))?;
 
     // Process each entry
     for entry in entries {
@@ -136,7 +136,7 @@ where
             .change_context(Error::FileOperation(
                 "Failed to read directory entry".to_string(),
             ))
-            .attach_printable(format!("Directory: {}", temp_dir.display()))?;
+            .attach(format!("Directory: {}", temp_dir.display()))?;
 
         let path = entry.path();
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -149,7 +149,7 @@ where
                 .change_context(Error::FileOperation(
                     "Failed to get file metadata".to_string(),
                 ))
-                .attach_printable(format!("Path: {}", path.display()))?;
+                .attach(format!("Path: {}", path.display()))?;
 
             let log_entry = LogFileEntry {
                 filename: filename.to_string(),
@@ -183,7 +183,7 @@ where
         .change_context(Error::FileOperation(
             "Failed to read temp directory".to_string(),
         ))
-        .attach_printable(format!("Path: {}", temp_dir.display()))?;
+        .attach(format!("Path: {}", temp_dir.display()))?;
 
     // Process each entry
     for entry in entries {
@@ -191,7 +191,7 @@ where
             .change_context(Error::FileOperation(
                 "Failed to read directory entry".to_string(),
             ))
-            .attach_printable(format!("Directory: {}", temp_dir.display()))?;
+            .attach(format!("Directory: {}", temp_dir.display()))?;
 
         let path = entry.path();
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
@@ -204,7 +204,7 @@ where
                 .change_context(Error::FileOperation(
                     "Failed to get file metadata".to_string(),
                 ))
-                .attach_printable(format!("Path: {}", path.display()))?;
+                .attach(format!("Path: {}", path.display()))?;
 
             let log_entry = LogFileEntry {
                 filename: filename.to_string(),

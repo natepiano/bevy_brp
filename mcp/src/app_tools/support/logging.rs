@@ -24,7 +24,7 @@ pub fn create_log_file(
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .change_context(Error::LogOperation("Failed to get timestamp".to_string()))
-        .attach_printable("System time error")?
+        .attach("System time error")?
         .as_millis();
 
     // Get unique counter to prevent filename collisions during concurrent operations
@@ -42,7 +42,7 @@ pub fn create_log_file(
     // Create log file
     let mut log_file = File::create(&log_file_path)
         .change_context(Error::LogOperation("Failed to create log file".to_string()))
-        .attach_printable(format!("Path: {}", log_file_path.display()))?;
+        .attach(format!("Path: {}", log_file_path.display()))?;
 
     // Write header
     writeln!(log_file, "=== Bevy BRP MCP Launch Log ===").change_context(Error::LogOperation(
@@ -81,7 +81,7 @@ pub fn open_log_file_for_redirect(log_file_path: &Path) -> Result<File> {
         .change_context(Error::LogOperation(
             "Failed to open log file for redirect".to_string(),
         ))
-        .attach_printable(format!("Path: {}", log_file_path.display()))
+        .attach(format!("Path: {}", log_file_path.display()))
 }
 
 /// Appends additional text to an existing log file
@@ -92,7 +92,7 @@ pub fn append_to_log_file(log_file_path: &Path, content: &str) -> Result<()> {
         .change_context(Error::LogOperation(
             "Failed to open log file for appending".to_string(),
         ))
-        .attach_printable(format!("Path: {}", log_file_path.display()))?;
+        .attach(format!("Path: {}", log_file_path.display()))?;
 
     write!(file, "{content}").change_context(Error::LogOperation(
         "Failed to write to log file".to_string(),

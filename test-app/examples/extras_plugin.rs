@@ -269,8 +269,12 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
 
 /// Setup UI for keyboard input display
 fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
-    // Camera
-    commands.spawn(Camera2d);
+    // Camera with Bloom for testing
+    commands.spawn((
+        Camera2d,
+        bevy::core_pipeline::bloom::Bloom::default(),
+        bevy::core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening::default(),
+    ));
 
     // Background
     commands

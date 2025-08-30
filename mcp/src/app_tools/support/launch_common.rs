@@ -206,8 +206,8 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
         error_stack::Report::new(Error::FileOrPathNotFound(
             "Invalid manifest path".to_string(),
         ))
-        .attach_printable("No parent directory found")
-        .attach_printable(format!("Path: {}", manifest_path.display()))
+        .attach("No parent directory found")
+        .attach(format!("Path: {}", manifest_path.display()))
     })
 }
 
@@ -217,8 +217,8 @@ pub fn validate_binary_exists(binary_path: &Path, profile: &str) -> Result<()> {
         return Err(error_stack::Report::new(Error::FileOrPathNotFound(
             "Missing binary file".to_string(),
         ))
-        .attach_printable(format!("Binary path: {}", binary_path.display()))
-        .attach_printable(format!(
+        .attach(format!("Binary path: {}", binary_path.display()))
+        .attach(format!(
             "Please build the app with 'cargo build{}' first",
             if profile == "release" {
                 " --release"

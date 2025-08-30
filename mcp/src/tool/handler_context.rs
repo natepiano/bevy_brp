@@ -64,9 +64,9 @@ impl HandlerContext {
                 "Failed to extract parameters for type: {}",
                 std::any::type_name::<T>()
             )))
-            .attach_printable("Parameter validation failed")
-            .attach_printable(format!("Expected type: {}", std::any::type_name::<T>()))
-            .attach_printable(format!("Serde error: {e}"))
+            .attach("Parameter validation failed")
+            .attach(format!("Expected type: {}", std::any::type_name::<T>()))
+            .attach(format!("Serde error: {e}"))
         })
     }
 

@@ -213,8 +213,8 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
             Err(error_stack::Report::new(Error::BrpCommunication(
                 "BRP communication failed".to_string(),
             ))
-            .attach_printable("BRP not responsive")
-            .attach_printable(format!("Port: {port}")))
+            .attach("BRP not responsive")
+            .attach(format!("Port: {port}")))
         }
     }
 }
@@ -256,9 +256,9 @@ fn kill_process(app_name: &str) -> Result<Option<u32>> {
             Err(error_stack::Report::new(Error::ProcessManagement(
                 "Failed to terminate process".to_string(),
             ))
-            .attach_printable(format!("Process name: {app_name}"))
-            .attach_printable(format!("PID: {pid}"))
-            .attach_printable("Failed to send SIGTERM signal"))
+            .attach(format!("Process name: {app_name}"))
+            .attach(format!("PID: {pid}"))
+            .attach("Failed to send SIGTERM signal"))
         }
     })
 }

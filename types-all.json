@@ -1,11 +1,5 @@
 [
   {
-    "type": "bevy_core_pipeline::bloom::settings::Bloom"
-  },
-  {
-    "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening"
-  },
-  {
     "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d"
   },
   {

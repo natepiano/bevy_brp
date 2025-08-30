@@ -192,13 +192,13 @@ impl BrpClient {
                 warn!("BRP execute_brp_method: JSON parsing failed - error={}", e);
                 Err(
                     error_stack::Report::new(Error::JsonRpc("JSON parsing failed".to_string()))
-                        .attach_printable("Failed to parse BRP response JSON")
-                        .attach_printable(format!(
+                        .attach("Failed to parse BRP response JSON")
+                        .attach(format!(
                             "Method: {}, Port: {}",
                             self.method.as_str(),
                             self.port
                         ))
-                        .attach_printable(format!("Error: {e}")),
+                        .attach(format!("Error: {e}")),
                 )
             }
         }

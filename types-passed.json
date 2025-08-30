@@ -1,0 +1,28 @@
+[
+  {
+    "type": "bevy_core_pipeline::bloom::settings::Bloom",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".composite_mode", "status": "Passed"},
+      {"name": ".high_pass_frequency", "status": "Passed"},
+      {"name": ".intensity", "status": "Passed"},
+      {"name": ".low_frequency_boost", "status": "Passed"},
+      {"name": ".low_frequency_boost_curvature", "status": "Passed"},
+      {"name": ".max_mip_dimension", "status": "Passed"},
+      {"name": ".prefilter.threshold", "status": "Passed"},
+      {"name": ".prefilter.threshold_softness", "status": "Passed"},
+      {"name": ".scale", "status": "Passed"},
+      {"name": ".scale.x", "status": "Passed"},
+      {"name": ".scale.y", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".denoise", "status": "Passed"},
+      {"name": ".enabled", "status": "Passed"},
+      {"name": ".sharpening_strength", "status": "Passed"}
+    ]
+  }
+]
