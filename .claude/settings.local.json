@@ -5,7 +5,8 @@
       "mcp__brp__brp_status",
       "mcp__brp__brp_extras_set_window_title",
       "mcp__brp__bevy_list",
-      "mcp__brp__brp_type_schema"
+      "mcp__brp__brp_type_schema",
+      "mcp__brp__bevy_spawn"
     ],
     "deny": [],
     "ask": [],
