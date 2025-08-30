@@ -423,5 +423,18 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
 
+        // ===== Camera3d depth texture usage =====
+        // Camera3dDepthTextureUsage - wrapper around u32 texture usage flags
+        // Valid flags: COPY_SRC=1, COPY_DST=2, TEXTURE_BINDING=4, STORAGE_BINDING=8, RENDER_ATTACHMENT=16
+        // STORAGE_BINDING (8) causes crashes with multisampled textures!
+        // Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT | TEXTURE_BINDING)
+        map.insert(
+            "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage".into(),
+            BrpFormatKnowledge {
+                example_value:  json!(20), // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination
+                subfield_paths: None,
+            },
+        );
+
         map
     });

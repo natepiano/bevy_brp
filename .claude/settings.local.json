@@ -13,7 +13,10 @@
       "mcp__brp__bevy_mutate_component",
       "Bash(git add:*)",
       "Bash(cargo build:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "mcp__brp__brp_list_logs",
+      "mcp__brp__brp_read_log",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "ask": [],

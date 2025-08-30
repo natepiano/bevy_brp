@@ -316,6 +316,8 @@ Current type: [TYPE_NAME]
 ## Failure Handling
 
 **On failure**:
+
+### Standard Failure (bugs, missing components, etc.)
 1. Mark type as "Failed" in types-all.json
 2. Record failure details:
    - Operation that failed (spawn/insert/mutate)
@@ -323,6 +325,57 @@ Current type: [TYPE_NAME]
    - Path (for mutations)
 3. **STOP TESTING** - don't continue to other types
 4. Save progress so test can resume later
+
+### Special Case: Invalid Example Values Causing Crashes
+
+When a type's generated example value causes crashes (e.g., wgpu validation errors, invalid enum variants, etc.):
+
+#### Step 1: Investigate Valid Values
+1. Search the Bevy codebase (`/Users/natemccoy/rust/bevy/`) for:
+   - How the type is defined
+   - Valid enum variants or flag combinations
+   - Default implementations
+   - Usage examples in the codebase
+2. For bitflags types, identify:
+   - Individual flag values and their meanings
+   - Which combinations are valid/invalid
+   - Hardware or API restrictions (e.g., STORAGE_BINDING incompatible with multisampled textures)
+
+#### Step 2: Update format_knowledge.rs
+1. Add ONLY the problematic type to `mcp/src/brp_tools/brp_type_schema/format_knowledge.rs`
+2. Provide a safe, valid example value that won't cause crashes
+3. Document WHY this value is needed (what restriction it avoids)
+4. Example:
+```rust
+// Camera3dDepthTextureUsage - wrapper around u32 texture usage flags
+// Valid flags: COPY_SRC=1, COPY_DST=2, TEXTURE_BINDING=4, STORAGE_BINDING=8, RENDER_ATTACHMENT=16
+// STORAGE_BINDING (8) causes crashes with multisampled textures!
+// Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT | TEXTURE_BINDING)
+map.insert(
+    "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage".into(),
+    BrpFormatKnowledge {
+        example_value:  json!(20), // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination
+        subfield_paths: None,
+    },
+);
+```
+
+#### Step 3: Stop for MCP Tool Reinstall
+1. Save the current test state in types-all.json with a note about the format_knowledge update
+2. **STOP THE TEST** and inform the user:
+   - Format knowledge has been updated for [TYPE_NAME]
+   - User needs to exit and reinstall the MCP tool for changes to take effect
+   - After reinstall, the type schema needs regeneration
+
+#### Step 4: Resume After Reinstall (User re-runs test)
+1. Detect that format_knowledge was updated for a type (check comment in types-all.json)
+2. Regenerate the type schema for that specific type:
+   ```bash
+   # This would regenerate the schema with the new format knowledge
+   # The exact command depends on how schemas are generated
+   ```
+3. The new schema file in `.claude/commands/tests/type_schemas/[TYPE_NAME].json` will now have the safe example value
+4. Resume testing from where it left off
 
 ## Known Issues
 

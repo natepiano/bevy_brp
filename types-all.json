@@ -1,9 +1,18 @@
 [
   {
-    "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d"
-  },
-  {
-    "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d"
+    "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".depth_load_op", "status": "Passed"},
+      {"name": ".depth_texture_usages", "status": "Failed", "error": "App crash: wgpu validation error - Texture usage STORAGE_BINDING is not allowed for multisampled textures when value 4294967295 used"},
+      {"name": ".depth_texture_usages.0", "status": "Untested"},
+      {"name": ".screen_space_specular_transmission_quality", "status": "Untested"},
+      {"name": ".screen_space_specular_transmission_steps", "status": "Untested"}
+    ],
+    "status": "Failed",
+    "failure_reason": "Camera3d mutations cause app crash due to wgpu validation errors with depth_texture_usages",
+    "format_knowledge_updated": true,
+    "format_knowledge_note": "Added Camera3dDepthTextureUsage to format_knowledge.rs with safe value 20 (RENDER_ATTACHMENT | TEXTURE_BINDING) to avoid STORAGE_BINDING crash. User needs to reinstall MCP tool and regenerate schema."
   },
   {
     "type": "bevy_core_pipeline::dof::DepthOfField"

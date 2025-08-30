@@ -24,5 +24,10 @@
       {"name": ".enabled", "status": "Passed"},
       {"name": ".sharpening_strength", "status": "Passed"}
     ]
+  },
+  {
+    "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",
+    "spawn_test": "Skipped",
+    "mutation_paths": []
   }
 ]
