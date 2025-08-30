@@ -6,6 +6,9 @@ use std::str::FromStr;
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
+use super::constants::{
+    DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, MAX_TYPE_RECURSION_DEPTH, SCHEMA_REF_PREFIX,
+};
 use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
 use super::mutation_path_builders::{
     EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField,
@@ -253,7 +256,7 @@ impl TypeInfo {
                 item.get_field(SchemaField::Type)
                     .and_then(|t| t.get("$ref"))
                     .and_then(Value::as_str)
-                    .and_then(|s| s.strip_prefix("#/$defs/"))
+                    .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
                     .map(BrpTypeName::from)
                     .map_or_else(
                         || json!(null),
@@ -264,6 +267,10 @@ impl TypeInfo {
 
         if tuple_examples.is_empty() {
             None
+        } else if tuple_examples.len() == 1 {
+            // Special case: single-field tuple structs are unwrapped by BRP
+            // Return the inner value directly, not as an array
+            tuple_examples.into_iter().next()
         } else {
             Some(Value::Array(tuple_examples))
         }
@@ -274,20 +281,109 @@ impl TypeInfo {
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Value {
+        Self::build_example_value_for_type_with_depth(type_name, registry, 0)
+    }
+
+    /// Build an example value for a specific type with recursion depth tracking
+    fn build_example_value_for_type_with_depth(
+        type_name: &BrpTypeName,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: usize,
+    ) -> Value {
+        // Prevent stack overflow from deep recursion
+        if depth > MAX_TYPE_RECURSION_DEPTH {
+            return json!(null);
+        }
+
         // Check for hardcoded knowledge first
-        BRP_FORMAT_KNOWLEDGE.get(type_name).map_or_else(
-            || {
-                // Check if it's an enum and build example
-                registry.get(type_name).map_or(json!(null), |field_schema| {
-                    let field_kind = TypeKind::from_schema(field_schema, type_name);
-                    match field_kind {
-                        TypeKind::Enum => EnumMutationBuilder::build_enum_example(field_schema),
-                        _ => json!(null),
-                    }
+        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_name) {
+            return hardcoded.example_value.clone();
+        }
+
+        // Check if we have the type in the registry
+        let Some(field_schema) = registry.get(type_name) else {
+            return json!(null);
+        };
+
+        let field_kind = TypeKind::from_schema(field_schema, type_name);
+        match field_kind {
+            TypeKind::Enum => EnumMutationBuilder::build_enum_example(field_schema),
+            TypeKind::Array => {
+                // Handle array types like [f32; 4] or [glam::Vec2; 3]
+                // Arrays have an "items" field with the element type
+                let item_type = field_schema
+                    .get_field(SchemaField::Items)
+                    .and_then(|items| items.get_field(SchemaField::Type))
+                    .and_then(|t| t.get_field(SchemaField::Ref))
+                    .and_then(Value::as_str)
+                    .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX));
+
+                item_type.map_or(json!(null), |item_type_str| {
+                    let item_type_name = BrpTypeName::from(item_type_str);
+                    // Generate example value for the item type
+                    let item_example = Self::build_example_value_for_type_with_depth(
+                        &item_type_name,
+                        registry,
+                        depth + 1,
+                    );
+
+                    // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
+                    let size = type_name
+                        .as_str()
+                        .rsplit_once("; ")
+                        .and_then(|(_, rest)| rest.strip_suffix(']'))
+                        .and_then(|s| s.parse::<usize>().ok())
+                        .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| {
+                            s.min(MAX_EXAMPLE_ARRAY_SIZE)
+                        });
+
+                    // Create array with the appropriate number of elements
+                    let array = vec![item_example; size];
+                    json!(array)
                 })
-            },
-            |hardcoded| hardcoded.example_value.clone(),
-        )
+            }
+            TypeKind::Tuple | TypeKind::TupleStruct => {
+                // Handle tuple types with prefixItems
+                field_schema
+                    .get_field(SchemaField::PrefixItems)
+                    .and_then(Value::as_array)
+                    .map_or(json!(null), |prefix_items| {
+                        let tuple_examples: Vec<Value> = prefix_items
+                            .iter()
+                            .map(|item| {
+                                // Extract type from $ref format using SchemaField enum
+                                item.get_field(SchemaField::Type)
+                                    .and_then(|t| t.get_field(SchemaField::Ref))
+                                    .and_then(Value::as_str)
+                                    .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
+                                    .map(BrpTypeName::from)
+                                    .map_or_else(
+                                        || json!(null),
+                                        |ft| {
+                                            Self::build_example_value_for_type_with_depth(
+                                                &ft,
+                                                registry,
+                                                depth + 1,
+                                            )
+                                        },
+                                    )
+                            })
+                            .collect();
+
+                        if tuple_examples.is_empty() {
+                            json!(null)
+                        } else {
+                            json!(tuple_examples)
+                        }
+                    })
+            }
+            TypeKind::Struct => {
+                // For struct types referenced in fields, we typically want just null
+                // The parent struct will build the full nested structure if needed
+                json!(null)
+            }
+            _ => json!(null),
+        }
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`

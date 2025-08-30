@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
+use super::constants::SCHEMA_REF_PREFIX;
 use super::type_info::TypeInfo;
 use crate::string_traits::JsonFieldAccess;
 
@@ -171,7 +172,7 @@ impl From<MathComponent> for String {
     }
 }
 
-/// Context for a mutation path describing what kind of mutation this is  
+/// Context for a mutation path describing what kind of mutation this is
 #[derive(Debug, Clone)]
 pub enum MutationPathKind {
     /// Replace the entire value (root mutation with empty path)
@@ -380,6 +381,7 @@ pub enum ReflectTrait {
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaField {
     CrateName,
+    Items,
     Kind,
     ModulePath,
     OneOf,
@@ -403,7 +405,7 @@ impl SchemaField {
             .get_field(Self::Type)
             .and_then(|t| t.get_field(Self::Ref))
             .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix("#/$defs/"))
+            .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
             .map(BrpTypeName::from)
     }
 }

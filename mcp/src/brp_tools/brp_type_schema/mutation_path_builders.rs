@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 use tracing::warn;
 
+use super::constants::SCHEMA_REF_PREFIX;
 use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
 use super::response_types::{
     BrpTypeName, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
@@ -194,7 +195,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             .and_then(|v| v.get_field(SchemaField::Type))
             .and_then(|t| t.get_field(SchemaField::Ref))
             .and_then(Value::as_str)
-            .and_then(|s| s.strip_prefix("#/$defs/"))
+            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
             .map_or_else(BrpTypeName::unknown, BrpTypeName::from);
 
         // Build example element from hardcoded knowledge
@@ -378,7 +379,7 @@ impl EnumMutationBuilder {
                         .and_then(|t| t.get_field(SchemaField::Ref))
                         .and_then(Value::as_str)
                 {
-                    let inner_type = type_ref.strip_prefix("#/$defs/").unwrap_or(type_ref);
+                    let inner_type = type_ref.strip_prefix(SCHEMA_REF_PREFIX).unwrap_or(type_ref);
 
                     let inner_value = if inner_type.contains("Srgba") {
                         json!({

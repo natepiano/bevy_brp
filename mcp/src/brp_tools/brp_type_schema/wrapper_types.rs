@@ -12,6 +12,7 @@ use super::response_types::BrpTypeName;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum WrapperVariant {
     Some,
+    #[allow(dead_code)]
     None,
     Strong,
     Weak,
@@ -35,8 +36,8 @@ impl WrapperType {
     }
 
     /// Build JSON for `Option::None` variant
-    fn wrap_none() -> Value {
-        json!(WrapperVariant::None.to_string())
+    const fn wrap_none() -> Value {
+        Value::Null
     }
 
     /// Build JSON for `Handle::Strong` variant

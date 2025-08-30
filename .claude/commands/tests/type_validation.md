@@ -60,7 +60,13 @@ If the type's `supported_operations` array contains "spawn":
     "port": [TEST_PORT]
   }
   ```
-- **STOP IF SPAWN FAILS** - Extract and record entity ID from the successful response (`result.entity`)
+- **CRITICAL SPAWN FAILURE PROTOCOL**:
+  - If spawn fails, IMMEDIATELY:
+    1. Display the actual `spawn_format` JSON value from the schema
+    2. Display the error message from BRP
+    3. Explain WHY it failed (e.g., "Schema provided `[null]` but BRP expects plain u64")
+    4. STOP TESTING - do not continue to other types
+  - If spawn succeeds, extract and record entity ID from the successful response (`result.entity`)
 
 #### 3b. Check Insert Support  
 If the type's `supported_operations` array contains "insert" and we have a spawned entity:
@@ -167,6 +173,15 @@ Provide comprehensive results:
 - Insert fails for any type that claims insert support
 - ANY mutation path fails using schema-provided examples
 - Mutation verification shows values didn't change as expected
+
+**SPAWN FORMAT FAILURE REPORTING**:
+When a spawn operation fails using the schema-provided format:
+1. **SHOW THE ACTUAL JSON**: Display the exact `spawn_format` value from the schema
+2. **SHOW THE ERROR**: Display the complete error message from BRP
+3. **EXPLAIN THE MISMATCH**: Clearly explain why the schema format doesn't match BRP's expectations
+   - Example: "Schema provides `[null]` (array format) but BRP expects `0` (plain u64)"
+   - Example: "Schema provides `{}` (empty object) but BRP requires all fields populated"
+4. **STOP IMMEDIATELY**: Do not continue testing other types after the first spawn format failure
 
 **Investigation Steps**:
 1. Record exact failure point: [TYPE_NAME] [OPERATION] [PATH] [INPUT] [ERROR]
