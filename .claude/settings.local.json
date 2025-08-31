@@ -17,7 +17,10 @@
       "mcp__brp__brp_list_logs",
       "mcp__brp__brp_read_log",
       "Bash(rg:*)",
-      "mcp__brp__brp_execute"
+      "mcp__brp__brp_execute",
+      "Bash(jq:*)",
+      "mcp__brp__bevy_registry_schema",
+      "mcp__brp__bevy_get"
     ],
     "deny": [],
     "ask": [],

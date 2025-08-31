@@ -1,50 +1,5 @@
 [
   {
-    "type": "bevy_core_pipeline::fxaa::Fxaa"
-  },
-  {
-    "type": "bevy_core_pipeline::post_process::ChromaticAberration"
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::DeferredPrepass"
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::DepthPrepass"
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::MotionVectorPrepass"
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::NormalPrepass"
-  },
-  {
-    "type": "bevy_core_pipeline::skybox::Skybox"
-  },
-  {
-    "type": "bevy_core_pipeline::smaa::Smaa"
-  },
-  {
-    "type": "bevy_core_pipeline::tonemapping::DebandDither"
-  },
-  {
-    "type": "bevy_core_pipeline::tonemapping::Tonemapping"
-  },
-  {
-    "type": "bevy_ecs::hierarchy::ChildOf"
-  },
-  {
-    "type": "bevy_ecs::hierarchy::Children"
-  },
-  {
-    "type": "bevy_ecs::name::Name"
-  },
-  {
-    "type": "bevy_input::gamepad::Gamepad"
-  },
-  {
-    "type": "bevy_input::gamepad::GamepadSettings"
-  },
-  {
     "type": "bevy_mesh::morph::MeshMorphWeights"
   },
   {

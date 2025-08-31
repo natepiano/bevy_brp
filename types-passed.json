@@ -3,26 +3,26 @@
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
     "spawn_test": "Skipped",
     "mutation_paths": [
-      {"name": ".composite_mode", "status": "Passed"},
-      {"name": ".high_pass_frequency", "status": "Passed"},
-      {"name": ".intensity", "status": "Passed"},
-      {"name": ".low_frequency_boost", "status": "Passed"},
-      {"name": ".low_frequency_boost_curvature", "status": "Passed"},
-      {"name": ".max_mip_dimension", "status": "Passed"},
-      {"name": ".prefilter.threshold", "status": "Passed"},
-      {"name": ".prefilter.threshold_softness", "status": "Passed"},
-      {"name": ".scale", "status": "Passed"},
-      {"name": ".scale.x", "status": "Passed"},
-      {"name": ".scale.y", "status": "Passed"}
+      { "name": ".composite_mode", "status": "Passed" },
+      { "name": ".high_pass_frequency", "status": "Passed" },
+      { "name": ".intensity", "status": "Passed" },
+      { "name": ".low_frequency_boost", "status": "Passed" },
+      { "name": ".low_frequency_boost_curvature", "status": "Passed" },
+      { "name": ".max_mip_dimension", "status": "Passed" },
+      { "name": ".prefilter.threshold", "status": "Passed" },
+      { "name": ".prefilter.threshold_softness", "status": "Passed" },
+      { "name": ".scale", "status": "Passed" },
+      { "name": ".scale.x", "status": "Passed" },
+      { "name": ".scale.y", "status": "Passed" }
     ]
   },
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
     "spawn_test": "Skipped",
     "mutation_paths": [
-      {"name": ".denoise", "status": "Passed"},
-      {"name": ".enabled", "status": "Passed"},
-      {"name": ".sharpening_strength", "status": "Passed"}
+      { "name": ".denoise", "status": "Passed" },
+      { "name": ".enabled", "status": "Passed" },
+      { "name": ".sharpening_strength", "status": "Passed" }
     ]
   },
   {
@@ -34,22 +34,161 @@
     "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
     "spawn_test": "Skipped",
     "mutation_paths": [
-      {"name": ".depth_load_op", "status": "Passed"},
-      {"name": ".depth_texture_usages", "status": "Passed"},
-      {"name": ".screen_space_specular_transmission_quality", "status": "Passed"},
-      {"name": ".screen_space_specular_transmission_steps", "status": "Passed"}
+      { "name": ".depth_load_op", "status": "Passed" },
+      { "name": ".depth_texture_usages", "status": "Passed" },
+      {
+        "name": ".screen_space_specular_transmission_quality",
+        "status": "Passed"
+      },
+      {
+        "name": ".screen_space_specular_transmission_steps",
+        "status": "Passed"
+      }
     ]
   },
   {
     "type": "bevy_core_pipeline::dof::DepthOfField",
     "spawn_test": "Skipped",
     "mutation_paths": [
-      {"name": ".aperture_f_stops", "status": "Passed"},
-      {"name": ".focal_distance", "status": "Passed"},
-      {"name": ".max_circle_of_confusion_diameter", "status": "Passed"},
-      {"name": ".max_depth", "status": "Passed"},
-      {"name": ".mode", "status": "Passed"},
-      {"name": ".sensor_height", "status": "Passed"}
+      { "name": ".aperture_f_stops", "status": "Passed" },
+      { "name": ".focal_distance", "status": "Passed" },
+      { "name": ".max_circle_of_confusion_diameter", "status": "Passed" },
+      { "name": ".max_depth", "status": "Passed" },
+      { "name": ".mode", "status": "Passed" },
+      { "name": ".sensor_height", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_core_pipeline::fxaa::Fxaa",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".edge_threshold", "status": "Passed" },
+      { "name": ".edge_threshold_min", "status": "Passed" },
+      { "name": ".enabled", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_core_pipeline::post_process::ChromaticAberration",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".color_lut", "status": "Passed" },
+      { "name": ".intensity", "status": "Passed" },
+      { "name": ".max_samples", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::DeferredPrepass",
+    "spawn_test": "Skipped",
+    "mutation_paths": []
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::DepthPrepass",
+    "spawn_test": "Skipped",
+    "mutation_paths": []
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::MotionVectorPrepass",
+    "spawn_test": "Skipped",
+    "mutation_paths": []
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::NormalPrepass",
+    "spawn_test": "Skipped",
+    "mutation_paths": []
+  },
+  {
+    "type": "bevy_core_pipeline::skybox::Skybox",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".brightness", "status": "Passed" },
+      { "name": ".image", "status": "Passed" },
+      { "name": ".rotation", "status": "Passed" },
+      { "name": ".rotation.w", "status": "Passed" },
+      { "name": ".rotation.x", "status": "Passed" },
+      { "name": ".rotation.y", "status": "Passed" },
+      { "name": ".rotation.z", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_core_pipeline::smaa::Smaa",
+    "spawn_test": "Skipped",
+    "mutation_paths": [{ "name": ".preset", "status": "Passed" }]
+  },
+  {
+    "type": "bevy_core_pipeline::tonemapping::DebandDither",
+    "spawn_test": "Skipped",
+    "mutation_paths": [{ "name": "", "status": "Passed" }]
+  },
+  {
+    "type": "bevy_core_pipeline::tonemapping::Tonemapping",
+    "spawn_test": "Skipped",
+    "mutation_paths": [{ "name": "", "status": "Passed" }]
+  },
+  {
+    "type": "bevy_ecs::name::Name",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      { "name": ".name", "status": "Passed" },
+      { "name": ".hash", "status": "Skipped", "note": "hash is computed" }
+    ],
+    "note": "Spawn with string, not struct"
+  },
+  {
+    "type": "bevy_ecs::hierarchy::ChildOf",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      { "name": "", "status": "Failed", "error": "Component is immutable" },
+      { "name": ".0", "status": "Failed", "error": "Component is immutable" }
+    ],
+    "note": "Immutable component - mutations cause panic"
+  },
+  {
+    "type": "bevy_ecs::hierarchy::Children",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Failed",
+        "error": "Component is immutable"
+      }
+    ],
+    "note": "Immutable component - mutations cause panic"
+  },
+  {
+    "type": "bevy_input::gamepad::Gamepad",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".product_id", "status": "Passed" },
+      { "name": ".vendor_id", "status": "Passed" },
+      { "name": ".analog", "status": "Skipped", "note": "Complex HashMap serialization issues" },
+      { "name": ".analog.axis_data", "status": "Skipped", "note": "HashMap<GamepadInput, f32> serialization issues" },
+      { "name": ".digital", "status": "Skipped", "note": "Complex ButtonInput serialization issues" },
+      { "name": ".digital.just_pressed", "status": "Skipped", "note": "HashSet<GamepadButton> serialization issues" },
+      { "name": ".digital.just_released", "status": "Skipped", "note": "HashSet<GamepadButton> serialization issues" },
+      { "name": ".digital.pressed", "status": "Skipped", "note": "HashSet<GamepadButton> serialization issues" }
+    ],
+    "note": "Basic Option<u16> mutations work, but HashMap/HashSet fields cause query serialization errors"
+  },
+  {
+    "type": "bevy_input::gamepad::GamepadSettings",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".axis_settings", "status": "Passed" },
+      { "name": ".button_axis_settings", "status": "Passed" },
+      { "name": ".button_settings", "status": "Passed" },
+      { "name": ".default_axis_settings", "status": "Passed" },
+      { "name": ".default_axis_settings.deadzone_lowerbound", "status": "Passed" },
+      { "name": ".default_axis_settings.deadzone_upperbound", "status": "Passed" },
+      { "name": ".default_axis_settings.livezone_lowerbound", "status": "Passed" },
+      { "name": ".default_axis_settings.livezone_upperbound", "status": "Passed" },
+      { "name": ".default_axis_settings.threshold", "status": "Passed" },
+      { "name": ".default_button_axis_settings", "status": "Passed" },
+      { "name": ".default_button_axis_settings.high", "status": "Passed" },
+      { "name": ".default_button_axis_settings.low", "status": "Passed" },
+      { "name": ".default_button_axis_settings.threshold", "status": "Passed" },
+      { "name": ".default_button_settings", "status": "Passed" },
+      { "name": ".default_button_settings.press_threshold", "status": "Passed" },
+      { "name": ".default_button_settings.release_threshold", "status": "Passed" }
     ]
   }
 ]
