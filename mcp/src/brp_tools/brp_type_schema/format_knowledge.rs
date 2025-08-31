@@ -438,5 +438,17 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
 
+        // ===== Transform types =====
+        // GlobalTransform - wraps glam::Affine3A but serializes as flat array of 12 f32 values
+        // Format: [matrix_row1(3), matrix_row2(3), matrix_row3(3), translation(3)]
+        // Registry shows nested object but BRP actually expects flat array
+        map.insert(
+            "bevy_transform::components::global_transform::GlobalTransform".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
+                subfield_paths: None, // Affine matrices don't have simple component access
+            },
+        );
+
         map
     });

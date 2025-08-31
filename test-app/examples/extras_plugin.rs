@@ -21,6 +21,7 @@ use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
+use bevy::ui::BoxShadowSamples;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
@@ -404,6 +405,13 @@ fn spawn_render_entities(commands: &mut Commands) {
         CascadesFrusta::default(),
         Name::new("CascadesFrustaTestEntity"),
     ));
+
+    // Entity with Text2d for testing mutations
+    commands.spawn((
+        bevy::text::Text2d("Hello Text2d".to_string()),
+        Transform::from_xyz(50.0, 50.0, 0.0),
+        Name::new("Text2dTestEntity"),
+    ));
 }
 
 /// Setup UI for keyboard input display
@@ -451,6 +459,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                         ..default()
                     },
                     BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
+                    BoxShadowSamples(4),
                 ))
                 .with_children(|parent| {
                     // Keyboard display text
@@ -465,6 +474,12 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                         },
                         TextColor(Color::WHITE),
                         KeyboardDisplayText,
+                        bevy::text::TextBounds {
+                            width: Some(400.0),
+                            height: Some(200.0),
+                        },
+                        bevy::text::TextSpan("Test TextSpan Component".to_string()),
+                        Name::new("TextBoundsTestEntity"),
                     ));
                 });
         });

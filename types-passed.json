@@ -1176,5 +1176,286 @@
         "status": "Passed"
       }
     ]
+  },
+  {
+    "type": "bevy_text::bounds::TextBounds",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".height",
+        "status": "Passed"
+      },
+      {
+        "name": ".width",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::pipeline::TextLayoutInfo",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".glyphs",
+        "status": "Skipped",
+        "note": "Complex Vec type not tested"
+      },
+      {
+        "name": ".size",
+        "status": "Passed"
+      },
+      {
+        "name": ".size.x",
+        "status": "Passed"
+      },
+      {
+        "name": ".size.y",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::text2d::Text2d",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::text::ComputedTextBlock",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".entities",
+        "status": "Skipped",
+        "note": "Complex SmallVec type not tested"
+      },
+      {
+        "name": ".needs_rerender",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::text::TextColor",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::text::TextFont",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".font",
+        "status": "Skipped",
+        "note": "Complex Handle type not tested"
+      },
+      {
+        "name": ".font_size",
+        "status": "Passed"
+      },
+      {
+        "name": ".font_smoothing",
+        "status": "Passed"
+      },
+      {
+        "name": ".line_height",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::text::TextLayout",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".justify",
+        "status": "Passed"
+      },
+      {
+        "name": ".linebreak",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_text::text::TextSpan",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_transform::components::global_transform::GlobalTransform",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ],
+    "note": "Fixed format knowledge issue - now uses flat array of 12 f32 values"
+  },
+  {
+    "type": "bevy_transform::components::transform::TransformTreeChanged",
+    "spawn_test": "Passed",
+    "mutation_paths": [],
+    "note": "Empty unit struct - spawns with null, no mutations to test"
+  },
+  {
+    "type": "bevy_ui::focus::FocusPolicy",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::focus::Interaction",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::focus::RelativeCursorPosition",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": ".normalized",
+        "status": "Passed"
+      },
+      {
+        "name": ".normalized_visible_node_rect",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::measurement::ContentSize",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate. Root mutation works with empty object."
+  },
+  {
+    "type": "bevy_ui::ui_node::BackgroundColor",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::BorderColor",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::BorderRadius",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": ".top_left",
+        "status": "Passed"
+      },
+      {
+        "name": ".top_right",
+        "status": "Passed"
+      },
+      {
+        "name": ".bottom_left",
+        "status": "Passed"
+      },
+      {
+        "name": ".bottom_right",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::BoxShadow",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::BoxShadowSamples",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::CalculatedClip",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".clip",
+        "status": "Skipped",
+        "note": "No entities found with this component - likely computed by UI system"
+      }
+    ]
   }
 ]

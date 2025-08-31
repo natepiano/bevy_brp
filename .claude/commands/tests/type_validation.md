@@ -9,10 +9,9 @@ Systematically validate ALL BRP component types by testing spawn/insert and muta
 
 **IMPORTANT**: For types that only support mutations (no Serialize/Deserialize) and don't exist in the running app:
 1. Modify `test-app/examples/extras_plugin.rs` to add the component to an entity
-2. Build the modified example
-3. Restart the app with the new component
-4. Then test mutations on the newly available component
-5. **CONTINUE TO NEXT TYPE** - Do not stop after adding components unless there's a build or test failure
+2. Restart the app (auto-builds and launches with the new component)
+3. Then test mutations on the newly available component
+4. **CONTINUE TO NEXT TYPE** - Do not stop after adding components unless there's a build or test failure
 
 ## Schema Source
 - **Type schemas**: Retrieved dynamically via `mcp__brp__brp_type_schema` tool
@@ -52,7 +51,22 @@ When a type fully passes (spawn test passed/skipped AND all mutation paths passe
 3. **Build todo list**: Create tasks only for untested or failed types
 4. **Test each type**: Load individual schema file and test operations
 5. **Update progress**: Mark types as "Passed" or "Failed" in `types-all.json`
-6. **STOP ON FIRST FAILURE ONLY** - Continue testing all types unless an actual failure occurs. Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
+6. **STOP ON FIRST FAILURE OR FORMAT KNOWLEDGE ISSUE** - Continue testing all types unless an actual failure occurs OR a type's schema format doesn't match BRP's actual serialization format (requiring format_knowledge.rs updates). Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
+
+## CRITICAL EXECUTION REQUIREMENTS
+
+**PROGRESS UPDATE ENFORCEMENT**:
+1. You MUST update progress files immediately after completing each type
+2. You MUST NOT proceed to the next type until progress files are updated
+3. You MUST NOT batch progress updates for multiple types
+4. Failure to follow this will be considered a critical test execution error
+
+**EXECUTION ORDER FOR EACH TYPE**:
+1. Get type schema
+2. Test spawn operations (if supported)
+3. Test all mutation paths (if supported)  
+4. **IMMEDIATELY update types-passed.json and types-all.json**
+5. **ONLY THEN proceed to next type**
 
 ## Test Steps
 
@@ -103,7 +117,10 @@ type_schema = schema_result['types'][type_name]
 supported_ops = type_schema.get('supported_operations', [])
 ```
 
-#### 2b. Test Spawn Operations
+#### 2b. Test Spawn Operations - FORMAT KNOWLEDGE CHECK
+
+**CRITICAL**: If spawn fails with format/serialization errors, STOP THE TEST IMMEDIATELY and update format_knowledge.rs!
+
 ```python
 test_result = {
     "type": type_name,
@@ -113,14 +130,21 @@ test_result = {
 
 if 'spawn' in supported_ops:
     spawn_format = type_schema.get('spawn_format')
-    # Execute mcp__brp__bevy_spawn with spawn_format
-    # Record entity ID if successful
-    test_result["spawn_test"] = "Passed"  # or "Failed" if error
+    try:
+        # Execute mcp__brp__bevy_spawn with spawn_format
+        result = mcp__brp__bevy_spawn(components={type_name: spawn_format})
+        test_result["spawn_test"] = "Passed"
+    except Exception as e:
+        if "invalid type" in str(e) or "expected" in str(e):
+            # FORMAT KNOWLEDGE ISSUE - STOP TEST IMMEDIATELY
+            # Follow Step 2: Update format_knowledge.rs workflow
+            return "STOP_FOR_FORMAT_KNOWLEDGE"
+        else:
+            test_result["spawn_test"] = "Failed"
 ```
 
 **KNOWN ISSUES to handle**:
 - `bevy_ecs::name::Name`: Use plain string instead of struct format
-- Option fields: Use "None" string instead of null
 - **Parameter ordering for bevy_mutate_component**: If you encounter repeated "Unable to extract parameters" errors when calling mcp__brp__bevy_mutate_component, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 #### 2c. Prepare Entity for Mutation Testing
@@ -136,6 +160,13 @@ if 'mutate' in supported_ops and 'spawn' not in supported_ops:
     
     if query_result["metadata"]["entity_count"] == 0:
         # No entities exist - need to add to extras_plugin.rs
+        # CRITICAL: NO EXCEPTIONS - Add ANY component that supports mutations
+        # regardless of whether it appears to be:
+        # - Computed by systems
+        # - Auto-generated  
+        # - "System-managed"
+        # - "Not meant to be manually added"
+        # The test protocol requires testing ALL mutation-capable components
         print(f"No entities with {type_name} found. Adding to extras_plugin.rs...")
         
         # 1. Edit extras_plugin.rs to add the component
@@ -146,26 +177,19 @@ if 'mutate' in supported_ops and 'spawn' not in supported_ops:
         # - Transform-related: Add to existing entity with Transform
         # Default: Create new test entity in setup_test_entities()
         
-        # 2. Build the modified example
-        result = bash("cargo build --example extras_plugin")
-        if result.returncode != 0:
-            test_result["spawn_test"] = "Failed"
-            test_result["error"] = f"Failed to build after adding {type_name}"
-            return test_result
-        
-        # 3. Shutdown current app
+        # 2. Shutdown current app
         mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)
         
-        # 4. Relaunch with updated code
+        # 3. Relaunch with updated code (auto-builds before launching)
         mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)
         
-        # 5. Set window title
+        # 4. Set window title
         mcp__brp__brp_extras_set_window_title(
             port=20116, 
             title="type_validation test - port 20116"
         )
         
-        # 6. Query again to get entity ID
+        # 5. Query again to get entity ID
         query_result = mcp__brp__bevy_query(
             port=20116,
             filter={"with": [type_name]},
@@ -247,9 +271,16 @@ if 'mutate' in supported_ops:
         TodoWrite(todos=mutation_todos)
 ```
 
-### 3. Update Progress
+### 3. Update Progress - MANDATORY AFTER EACH TYPE
 
-After testing each type (but DO NOT STOP - continue to the next type automatically):
+**CRITICAL**: IMMEDIATELY after completing ALL tests for a type (spawn + all mutations), you MUST update the progress files before proceeding to the next type. This is non-negotiable.
+
+After testing each type:
+1. **IMMEDIATELY update types-passed.json** if the type fully passed
+2. **IMMEDIATELY remove the type from types-all.json** 
+3. **ONLY THEN continue to the next type**
+
+**FAILURE TO UPDATE PROGRESS IMMEDIATELY WILL BE CONSIDERED A TEST EXECUTION ERROR**
 
 **IMPORTANT**: Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
 
@@ -304,9 +335,17 @@ def update_progress(test_result):
             json.dump(all_types, f, indent=2)
 ```
 
-### 4. Progress Reporting
+### 4. Progress File Updates vs Progress Reporting
 
-**CRITICAL - DO NOT STOP TO REPORT PROGRESS**: Progress tracking happens ONLY through the JSON files. DO NOT provide summaries, progress reports, or status updates to the user. The test must run continuously through ALL types without any interruption for reporting. Any progress reporting shown here is for internal logging only, NOT for stopping the test to communicate with the user.
+**MANDATORY PROGRESS FILE UPDATES**: After each type is completed, you MUST immediately update the JSON files:
+- Add passed types to `types-passed.json` 
+- Remove completed types from `types-all.json`
+
+**NO PROGRESS REPORTING TO USER**: Do NOT stop to provide summaries, progress reports, or status updates to the user. The JSON file updates are mandatory, but user communication about progress is forbidden.
+
+**DISTINCTION**: 
+- JSON file updates = REQUIRED immediately after each type
+- User progress reports = FORBIDDEN
 
 ```
 Testing Progress:
@@ -392,14 +431,34 @@ map.insert(
 2. The BRP type schema tool will now automatically provide the safe example value from format_knowledge
 3. Resume testing from where it left off
 
-## Known Issues
+## CRITICAL: No Component Exceptions
 
-Types that require special handling:
-1. **bevy_ecs::name::Name**: Schema shows struct but BRP expects string
-2. **Option fields**: Some types use "None" string vs null
-3. **Handle types**: May have complex serialization
+**There are NO exceptions for any component types.** If a component:
+1. Supports mutations (`'mutate' in supported_ops`)
+2. Has no existing entities (`entity_count == 0`)
 
-These should be marked with special handling in the test logic.
+Then it MUST be added to extras_plugin.rs regardless of assumptions about:
+- Whether it's "computed" 
+- Whether it's "system-managed"
+- Whether it "should" be manually added
+- Any other reasoning
+
+**The protocol is absolute: Test ALL mutation-capable components.**
+
+## Known Issues - STOPPING CONDITIONS
+
+**CRITICAL**: Any of these issues require IMMEDIATE test stopping and format_knowledge.rs updates:
+
+Types that require special handling and will cause **IMMEDIATE TEST STOPPING**:
+1. **Schema format mismatch**: When BRP rejects a format that the schema tool generated (like GlobalTransform expecting flat array vs nested object)
+2. **bevy_ecs::name::Name**: Schema shows struct but BRP expects string
+3. **Option fields**: Some types use "None" string vs null
+4. **Handle types**: May have complex serialization
+5. **Math types**: May serialize as arrays vs objects (like Vec3, GlobalTransform)
+
+**When you encounter ANY schema format error from BRP, STOP IMMEDIATELY and follow the format knowledge workflow.**
+
+These should be marked with special handling in the test logic, but more importantly, **they require stopping the test to update format_knowledge.rs**.
 
 ## Resume Capability
 

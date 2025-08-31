@@ -95,7 +95,7 @@ impl TypeInfo {
         let can_spawn = supported_operations.contains(&BrpSupportedOperation::Spawn)
             || supported_operations.contains(&BrpSupportedOperation::Insert);
         let spawn_format = if can_spawn {
-            Self::build_spawn_format(type_schema, registry, &type_kind)
+            Self::build_spawn_format(type_schema, registry, &type_kind, &brp_type_name)
         } else {
             None
         };
@@ -204,7 +204,13 @@ impl TypeInfo {
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         type_kind: &TypeKind,
+        type_name: &BrpTypeName,
     ) -> Option<Value> {
+        // Check for hardcoded format knowledge first - this fixes GlobalTransform and other types
+        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_name) {
+            return Some(hardcoded.example_value.clone());
+        }
+
         match type_kind {
             TypeKind::TupleStruct | TypeKind::Tuple => {
                 Self::build_tuple_spawn_format(type_schema, registry)
@@ -319,6 +325,13 @@ impl TypeInfo {
         // Check for hardcoded knowledge first
         if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_name) {
             return hardcoded.example_value.clone();
+        }
+
+        // Check for wrapper types (Option, Handle) and use their default examples
+        if let Some((wrapper_type, _)) = WrapperType::detect(type_name.as_str()) {
+            // For wrapper types, use the wrapper's default example
+            // This handles Option::None -> null, Handle::Weak -> {"Weak": {}}
+            return wrapper_type.default_example();
         }
 
         // Check if we have the type in the registry
