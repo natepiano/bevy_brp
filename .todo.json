@@ -1,233 +1,219 @@
 [
   {
-    "id": "1",
-    "content": "Create window_title.rs handler in extras/src",
-    "status": "completed",
+    "id": "phase1_add_example_variants",
+    "content": "Phase 1: Add new types - Add example_variants field to MutationPath struct",
+    "status": "pending",
     "priority": "high",
-    "notes": "Created window_title.rs handler with proper parameter extraction, window query, and response formatting"
+    "notes": ""
   },
   {
-    "id": "2",
-    "content": "Run cargo build && cargo +nightly fmt in extras crate",
-    "status": "completed",
+    "id": "phase1_add_enum_variant_info",
+    "content": "Phase 1: Add new EnumVariantInfo enum alongside existing struct (both coexist)",
+    "status": "pending",
     "priority": "high",
-    "notes": "Successfully built and formatted extras crate with no errors"
+    "notes": ""
   },
   {
-    "id": "3",
-    "content": "Add window_title module declaration to extras/src/lib.rs",
-    "status": "completed",
+    "id": "phase1_build_check",
+    "content": "Run cargo build && cargo +nightly fmt after Phase 1 additions",
+    "status": "pending",
     "priority": "high",
-    "notes": "Added window_title module declaration at the end of module list in alphabetical order"
+    "notes": ""
   },
   {
-    "id": "4",
-    "content": "Update doc comment in extras/src/lib.rs to include set_window_title",
-    "status": "completed",
+    "id": "phase2_extract_tuple_types",
+    "content": "Phase 2: Add helper functions - extract_tuple_types with depth parameter",
+    "status": "pending",
     "priority": "high",
-    "notes": "Added set_window_title method to BRP methods documentation list"
+    "notes": ""
   },
   {
-    "id": "5",
-    "content": "Run cargo build && cargo +nightly fmt in extras crate after lib.rs changes",
-    "status": "completed",
+    "id": "phase2_extract_struct_fields",
+    "content": "Phase 2: Add extract_struct_fields helper function with depth parameter",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful with no errors, only warnings. PrimaryWindow import fixed compilation issues"
+    "notes": ""
   },
   {
-    "id": "6",
-    "content": "Add set_window_title method registration in extras/src/plugin.rs",
-    "status": "completed",
+    "id": "phase2_from_schema_variant",
+    "content": "Phase 2: Add EnumVariantInfo::from_schema_variant() constructor method",
+    "status": "pending",
     "priority": "high",
-    "notes": "Added window_title import, method registration, and updated plugin documentation"
+    "notes": ""
   },
   {
-    "id": "7",
-    "content": "Update log_initialization in extras/src/plugin.rs to include set_window_title",
-    "status": "completed",
+    "id": "phase2_build_example",
+    "content": "Phase 2: Add EnumVariantInfo::build_example() method",
+    "status": "pending",
     "priority": "high",
-    "notes": "Added trace log for set_window_title method in log_initialization function"
+    "notes": ""
   },
   {
-    "id": "8",
-    "content": "Run cargo build && cargo +nightly fmt in extras crate after plugin changes",
-    "status": "completed",
+    "id": "phase2_build_all_enum_examples",
+    "content": "Phase 2: Add build_all_enum_examples function",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful with warnings only, no errors. Plugin registration working correctly"
+    "notes": ""
   },
   {
-    "id": "9",
-    "content": "Run cargo clippy on extras crate and fix issues",
-    "status": "completed",
+    "id": "phase2_build_check",
+    "content": "Run cargo build && cargo +nightly fmt after Phase 2 helpers",
+    "status": "pending",
     "priority": "high",
-    "notes": "Fixed deprecated get_single_mut (now single_mut) and added backticks to doc comment"
+    "notes": ""
   },
   {
-    "id": "10",
-    "content": "Create brp_extras_set_window_title.rs in mcp/src/brp_tools/tools",
-    "status": "completed",
+    "id": "phase3_extract_enum_variants_new",
+    "content": "Phase 3: Add extract_enum_variants_new function alongside existing one",
+    "status": "pending",
     "priority": "high",
-    "notes": "Created parameter and result structs with proper macro attributes for MCP tool integration"
+    "notes": ""
   },
   {
-    "id": "11",
-    "content": "Run cargo build && cargo +nightly fmt in mcp crate after creating struct file",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Build successful in mcp crate with new structs file"
-  },
-  {
-    "id": "12",
-    "content": "Add module declaration in mcp/src/brp_tools/tools/mod.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added brp_extras_set_window_title module declaration in alphabetical order"
-  },
-  {
-    "id": "13",
-    "content": "Add exports to mcp/src/brp_tools/mod.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added pub use statements for SetWindowTitleParams and SetWindowTitleResult"
-  },
-  {
-    "id": "14",
-    "content": "Run cargo build && cargo +nightly fmt in mcp crate after module updates",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Build successful after adding custom extraction operations to macro. Fixed 'Unknown computed operation' errors"
-  },
-  {
-    "id": "15",
-    "content": "Add imports for SetWindowTitleParams and SetWindowTitleResult in tool_name.rs",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added SetWindowTitleParams and SetWindowTitleResult to brp_tools imports in alphabetical order"
-  },
-  {
-    "id": "16",
-    "content": "Add BrpExtrasSetWindowTitle variant to ToolName enum",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added BrpExtrasSetWindowTitle variant with proper brp_tool annotation and parameters"
-  },
-  {
-    "id": "17",
-    "content": "Run cargo build && cargo +nightly fmt after ToolName enum change",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Expected compilation errors - need to add annotation, parameters, and get_tool_fn cases plus help text file"
-  },
-  {
-    "id": "18",
-    "content": "Add annotation case for BrpExtrasSetWindowTitle",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added annotation with ToolCategory::Extras and EnvironmentImpact::None"
-  },
-  {
-    "id": "19",
-    "content": "Add parameters case for BrpExtrasSetWindowTitle",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added parameters case with build_parameters_from::<SetWindowTitleParams>"
-  },
-  {
-    "id": "20",
-    "content": "Add get_tool_fn case for BrpExtrasSetWindowTitle",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Added get_tool_fn case with Arc::new(BrpExtrasSetWindowTitle)"
-  },
-  {
-    "id": "21",
-    "content": "Run cargo build && cargo +nightly fmt after all tool_name.rs changes",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Build successful after fixing EnvironmentImpact::AdditiveIdempotent and creating help text file"
-  },
-  {
-    "id": "22",
-    "content": "Run cargo clippy on mcp crate and fix issues",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Clippy passed with no warnings or errors"
-  },
-  {
-    "id": "23",
-    "content": "Create help text file mcp/help_text/brp_extras_set_window_title.txt",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Created help text file with usage examples and prerequisites"
-  },
-  {
-    "id": "24",
-    "content": "Run full workspace cargo build && cargo +nightly fmt",
-    "status": "completed",
-    "priority": "high",
-    "notes": "Full workspace build successful, all crates compiled cleanly"
-  },
-  {
-    "id": "25",
+    "id": "phase3_clippy_check",
     "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Clippy passed with no warnings on entire workspace"
+    "notes": ""
   },
   {
-    "id": "26",
-    "content": "Update extras_plugin.rs example to demonstrate window title change",
-    "status": "completed",
+    "id": "phase4_update_from_mutation_path",
+    "content": "Phase 4: Update MutationPath::from_mutation_path to populate example_variants for enums",
+    "status": "pending",
     "priority": "high",
-    "notes": "Added WindowTitleTimer resource, update_window_title system, and curl example for window title changes"
+    "notes": ""
   },
   {
-    "id": "27",
-    "content": "Run cargo build --example extras_plugin",
-    "status": "completed",
+    "id": "phase4_compute_enum_variants",
+    "content": "Phase 4: Add compute_enum_variants method to MutationPath",
+    "status": "pending",
     "priority": "high",
-    "notes": "Build successful after adding PrimaryWindow import and fixing deprecated get_single_mut()"
+    "notes": ""
   },
   {
-    "id": "28",
-    "content": "Create window_title.md test file in .claude/commands/tests",
-    "status": "completed",
+    "id": "phase4_pattern_matching",
+    "content": "Phase 4: Update all enum processing to use new EnumVariantInfo enum with pattern matching",
+    "status": "pending",
     "priority": "high",
-    "notes": "Skipped - user has different testing plan"
+    "notes": ""
   },
   {
-    "id": "29",
-    "content": "Run cargo nextest run",
-    "status": "completed",
+    "id": "phase4_build_check",
+    "content": "Run cargo build && cargo +nightly fmt after Phase 4 updates",
+    "status": "pending",
     "priority": "high",
-    "notes": "No unit tests exist in workspace - normal for this project"
+    "notes": ""
   },
   {
-    "id": "30",
+    "id": "phase4_verify_tests",
+    "content": "Verify all tests pass with both old and new code paths working",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_serde_getter",
+    "content": "Phase 5: Add serde getter attribute to enum_variants field in MutationPath",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_private_field",
+    "content": "Phase 5: Change enum_variants field visibility from pub to private",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_remove_old_struct",
+    "content": "Phase 5: Remove old EnumVariantInfoOld struct",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_remove_enum_variant_kind",
+    "content": "Phase 5: Remove EnumVariantKind enum entirely",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_rename_functions",
+    "content": "Phase 5: Delete old extract_enum_variants and rename new version",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_update_call_sites",
+    "content": "Phase 5: Update all remaining call sites to use new signatures",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_build_check",
+    "content": "Run cargo build && cargo +nightly fmt after Phase 5 removals",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase5_clippy_final",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase6_nextest",
+    "content": "Phase 6: Run cargo nextest run to verify all functionality",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase6_test_anchor",
+    "content": "Phase 6: Test with Anchor enum to verify multiple examples generated",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "phase6_cleanup",
+    "content": "Phase 6: Clean up any temporary compatibility code",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "final_test_check",
     "content": "STOP if test failures - review with user",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "No failures - no tests to fail"
+    "notes": ""
   },
   {
-    "id": "31",
+    "id": "final_stop",
     "content": "Subagent: STOP and return control",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Implementation complete"
+    "notes": ""
   },
   {
-    "id": "32",
+    "id": "code_review",
     "content": "Main: Task new subagent for code review (read-only)",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Optional - user can request if desired"
+    "notes": ""
   },
   {
-    "id": "33",
+    "id": "review_with_user",
     "content": "Review suggestions with user",
-    "status": "completed",
+    "status": "pending",
     "priority": "high",
-    "notes": "Ready for user review"
+    "notes": ""
   }
 ]
