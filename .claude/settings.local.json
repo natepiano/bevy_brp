@@ -22,7 +22,10 @@
       "mcp__brp__bevy_registry_schema",
       "mcp__brp__bevy_get",
       "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_mesh-0.16.1/src/**)",
-      "Bash(cargo metadata:*)"
+      "Bash(cargo metadata:*)",
+      "Bash(for type in bevy_render::camera::manual_texture_view::ManualTextureViewHandle bevy_render::camera::projection::Projection bevy_render::experimental::occlusion_culling::OcclusionCulling bevy_render::mesh::components::Mesh2d bevy_render::mesh::components::Mesh3d)",
+      "Bash(do echo \"=== $type ===\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": [],

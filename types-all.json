@@ -1,11 +1,5 @@
 [
   {
-    "type": "bevy_render::camera::camera::MipBias"
-  },
-  {
-    "type": "bevy_render::camera::camera::TemporalJitter"
-  },
-  {
     "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle"
   },
   {
@@ -181,9 +175,6 @@
   },
   {
     "type": "bevy_window::window::PrimaryWindow"
-  },
-  {
-    "type": "bevy_window::window::Window"
   },
   {
     "type": "bevy_winit::cursor::CursorIcon"

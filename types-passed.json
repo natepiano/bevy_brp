@@ -312,5 +312,86 @@
     "mutation_paths": [
       { "name": "", "status": "Known Limitation", "note": "Type lacks ReflectSerialize" }
     ]
+  },
+  {
+    "type": "bevy_render::camera::camera::MipBias",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": "", "status": "Known Limitation", "note": "Type not publicly exposed" },
+      { "name": ".0", "status": "Known Limitation", "note": "Type not publicly exposed" }
+    ]
+  },
+  {
+    "type": "bevy_render::camera::camera::TemporalJitter",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": "", "status": "Known Limitation", "note": "Type not publicly exposed" }
+    ]
+  },
+  {
+    "type": "bevy_window::window::Window",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {"name": ".canvas", "status": "Passed"},
+      {"name": ".clip_children", "status": "Passed"},
+      {"name": ".composite_alpha_mode", "status": "Passed"},
+      {"name": ".cursor_options", "status": "Skipped", "note": "Struct field not tested directly"},
+      {"name": ".cursor_options.grab_mode", "status": "Passed"},
+      {"name": ".cursor_options.hit_test", "status": "Passed"},
+      {"name": ".cursor_options.visible", "status": "Passed"},
+      {"name": ".decorations", "status": "Passed"},
+      {"name": ".desired_maximum_frame_latency", "status": "Passed"},
+      {"name": ".enabled_buttons", "status": "Skipped", "note": "Struct field not tested directly"},
+      {"name": ".enabled_buttons.close", "status": "Passed"},
+      {"name": ".enabled_buttons.maximize", "status": "Passed"},
+      {"name": ".enabled_buttons.minimize", "status": "Passed"},
+      {"name": ".fit_canvas_to_parent", "status": "Passed"},
+      {"name": ".focused", "status": "Passed"},
+      {"name": ".fullsize_content_view", "status": "Passed"},
+      {"name": ".has_shadow", "status": "Passed"},
+      {"name": ".ime_enabled", "status": "Passed"},
+      {"name": ".ime_position", "status": "Passed"},
+      {"name": ".ime_position.x", "status": "Passed"},
+      {"name": ".ime_position.y", "status": "Passed"},
+      {"name": ".internal", "status": "Skipped", "note": "Struct field not tested directly"},
+      {"name": ".internal.drag_move_request", "status": "Passed"},
+      {"name": ".internal.drag_resize_request", "status": "Passed"},
+      {"name": ".internal.maximize_request", "status": "Passed"},
+      {"name": ".internal.minimize_request", "status": "Passed"},
+      {"name": ".internal.physical_cursor_position", "status": "Passed"},
+      {"name": ".mode", "status": "Passed"},
+      {"name": ".movable_by_window_background", "status": "Passed"},
+      {"name": ".name", "status": "Passed"},
+      {"name": ".position", "status": "Passed"},
+      {"name": ".prefers_home_indicator_hidden", "status": "Passed"},
+      {"name": ".prefers_status_bar_hidden", "status": "Passed"},
+      {"name": ".present_mode", "status": "Passed"},
+      {"name": ".prevent_default_event_handling", "status": "Passed"},
+      {"name": ".recognize_doubletap_gesture", "status": "Passed"},
+      {"name": ".recognize_pan_gesture", "status": "Passed"},
+      {"name": ".recognize_pinch_gesture", "status": "Passed"},
+      {"name": ".recognize_rotation_gesture", "status": "Passed"},
+      {"name": ".resizable", "status": "Passed"},
+      {"name": ".resize_constraints", "status": "Skipped", "note": "Struct field not tested directly"},
+      {"name": ".resize_constraints.max_height", "status": "Passed"},
+      {"name": ".resize_constraints.max_width", "status": "Passed"},
+      {"name": ".resize_constraints.min_height", "status": "Passed"},
+      {"name": ".resize_constraints.min_width", "status": "Passed"},
+      {"name": ".resolution", "status": "Skipped", "note": "Struct field not tested directly"},
+      {"name": ".resolution.physical_height", "status": "Passed"},
+      {"name": ".resolution.physical_width", "status": "Passed"},
+      {"name": ".resolution.scale_factor", "status": "Passed"},
+      {"name": ".resolution.scale_factor_override", "status": "Passed"},
+      {"name": ".skip_taskbar", "status": "Passed"},
+      {"name": ".title", "status": "Passed"},
+      {"name": ".titlebar_show_buttons", "status": "Passed"},
+      {"name": ".titlebar_show_title", "status": "Passed"},
+      {"name": ".titlebar_shown", "status": "Passed"},
+      {"name": ".titlebar_transparent", "status": "Passed"},
+      {"name": ".transparent", "status": "Passed"},
+      {"name": ".visible", "status": "Passed"},
+      {"name": ".window_level", "status": "Passed"},
+      {"name": ".window_theme", "status": "Passed"}
+    ]
   }
 ]
