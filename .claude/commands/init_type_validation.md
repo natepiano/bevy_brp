@@ -41,7 +41,9 @@ result = mcp__brp__bevy_list(port=20116)
 This returns an array of all registered component type names.
 
 ### 4. Create the tracking file
-Create `.claude/commands/type_validation.json` with the following structure:
+**IMPORTANT: Use the Write tool to create a new file. Do NOT use the Edit tool on any existing file.**
+
+Write a new `.claude/commands/type_validation.json` file with the following structure:
 
 ```python
 import json
@@ -59,7 +61,8 @@ for component_type in components:
         "notes": ""
     })
 
-# Write to file
+# Use the Write tool to create a fresh file (this will overwrite any existing file)
+# DO NOT use Edit tool - always create a new file with Write
 with open('.claude/commands/type_validation.json', 'w') as f:
     json.dump(validation_data, f, indent=2)
 ```
@@ -84,9 +87,10 @@ mcp__brp__brp_shutdown(
 ## Important Notes
 
 - **Port**: Uses port 20116 by default (same as type_validation test)
-- **Overwrites**: This command will overwrite any existing tracking file
+- **Overwrites**: This command will overwrite any existing tracking file by using the Write tool to create a completely new file
 - **Fresh start**: All types will be marked as "untested" regardless of previous test results
 - **Component discovery**: Only components registered with BRP reflection will be included
+- **File Creation**: ALWAYS use the Write tool to create a new file. NEVER use the Edit tool to modify an existing type_validation.json file
 
 ## Error Handling
 
