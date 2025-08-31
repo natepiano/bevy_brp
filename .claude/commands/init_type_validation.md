@@ -41,31 +41,21 @@ result = mcp__brp__bevy_list(port=20116)
 This returns an array of all registered component type names.
 
 ### 4. Create the tracking file
-**IMPORTANT: Use the Write tool to create a new file. Do NOT use the Edit tool on any existing file.**
+**IMPORTANT: Use a bash command with jq to create the file quickly and reliably.**
 
-Write a new `.claude/commands/type_validation.json` file with the following structure:
+After getting the component list from step 3, create the tracking file using this bash command:
 
-```python
-import json
-
-# Get the component list from step 3
-components = result["result"]  # Array of type names
-
-# Build the tracking structure
-validation_data = []
-for component_type in components:
-    validation_data.append({
-        "type": component_type,
-        "spawn_test": "untested",
-        "mutation_tests": "untested",
-        "notes": ""
-    })
-
-# Use the Write tool to create a fresh file (this will overwrite any existing file)
-# DO NOT use Edit tool - always create a new file with Write
-with open('.claude/commands/type_validation.json', 'w') as f:
-    json.dump(validation_data, f, indent=2)
+```bash
+# Extract the component list from result["result"] and format it as JSON array
+# Then use jq to transform each type into the tracking structure
+echo '[
+    "component_type_1",
+    "component_type_2",
+    # ... all component types from result["result"] ...
+]' | jq 'map({type: ., spawn_test: "untested", mutation_tests: "untested", notes: ""})' > .claude/commands/type_validation.json
 ```
+
+This approach is fast and reliable - it creates the file immediately without any blocking issues.
 
 ### 5. Report results
 ```
