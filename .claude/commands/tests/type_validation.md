@@ -71,143 +71,66 @@ When a type is tested, update its status in place:
 
 ### 0. Display Progress Statistics
 
-First, display the current test progress statistics using jq:
+First, analyze the current test progress by reading the JSON file:
 
-```bash
-# Display test statistics
-jq -r '
-  def count_tested: 
-    map(select(
-      (.spawn_test == "passed" or .spawn_test == "skipped") and 
-      (.mutation_tests == "passed" or .mutation_tests == "n/a")
-    )) | length;
-  
-  def count_untested:
-    map(select(
-      (.spawn_test == "untested" or .mutation_tests == "untested") or
-      ((.spawn_test != "passed" and .spawn_test != "skipped") or 
-       (.mutation_tests != "passed" and .mutation_tests != "n/a"))
-    )) | length;
-  
-  "Total types: \(length)",
-  "Tested types: \(count_tested)",
-  "Untested types: \(count_untested)"
-' test-app/examples/type_validation.json
-```
+1. Use the Read tool to load `test-app/examples/type_validation.json`
+2. Parse the JSON content to count:
+   - Total types
+   - Tested types (where spawn_test is "passed"/"skipped" AND mutation_tests is "passed"/"n/a")
+   - Untested types (remaining)
+3. Display the statistics
+
+**NOTE**: Use only the Read/Write/Edit tools for all file operations. Process JSON data directly in the agent's logic without Python scripts or bash commands.
 
 ### 1. Load Progress and Build Todo List
 
-```python
-import json
-import os
-
-# Load current progress
-with open('test-app/examples/type_validation.json', 'r') as f:
-    all_types = json.load(f)
-
-# Build todo list of untested types
-todo_types = []
-for type_entry in all_types:
-    # Test if type is not fully passed
-    if type_entry["spawn_test"] != "passed" or type_entry["mutation_tests"] != "passed":
-        # Skip types that are n/a for mutations if spawn is passed/skipped
-        if type_entry["spawn_test"] in ["passed", "skipped"] and type_entry["mutation_tests"] == "n/a":
-            continue  # This type is fully tested
-        todo_types.append(type_entry["type"])
-
-print(f"Types to test: {len(todo_types)}")
-print(f"Already passed: {len(all_types) - len(todo_types)}")
-```
+1. Use Read tool to load `test-app/examples/type_validation.json`
+2. Parse the JSON to identify untested types:
+   - Types where spawn_test is "untested" OR
+   - Types where mutation_tests is "untested" OR
+   - Types that failed previously (not "passed"/"skipped" for spawn, not "passed"/"n/a" for mutations)
+3. Skip types that are fully tested (spawn is "passed"/"skipped" AND mutations are "passed"/"n/a")
+4. Build a list of type names that need testing
 
 ### 2. Test Each Type
 
 For each type in the todo list:
 
 #### 2a. Get Type Schema from BRP Tool and Initialize Mutation Paths
-```python
-type_name = todo_types[0]  # Process one at a time
 
-# Get type schema using the BRP type schema tool
-schema_result = mcp__brp__brp_type_schema(
-    types=[type_name],
-    port=20116  # Use the test port
-)
-
-# Extract the schema for this type
-type_schema = schema_result['types'][type_name]
-supported_ops = type_schema.get('supported_operations', [])
-
-# IMMEDIATELY update the JSON file with discovered mutation paths set to "untested"
-if 'mutate' in supported_ops:
-    mutation_paths = type_schema.get('mutation_paths', {})
-    
-    # Load the progress file
-    with open('test-app/examples/type_validation.json', 'r') as f:
-        all_types = json.load(f)
-    
-    # Find and update the type entry with mutation paths
-    for i, entry in enumerate(all_types):
-        if entry["type"] == type_name:
-            # Initialize mutation_paths with all paths set to "untested"
-            all_types[i]["mutation_paths"] = {path: "untested" for path in mutation_paths.keys()}
-            break
-    
-    # Write back immediately
-    with open('test-app/examples/type_validation.json', 'w') as f:
-        json.dump(all_types, f, indent=2)
-```
+For each type to test:
+1. Call `mcp__brp__brp_type_schema` with the type name and port 20116
+2. Extract supported operations and mutation paths from the result
+3. If mutations are supported:
+   - Read the current `test-app/examples/type_validation.json`
+   - Find the type entry and add mutation_paths field with all discovered paths set to "untested"
+   - Write the updated JSON back using the Write tool
 
 #### 2b. Test Spawn Operations - FORMAT KNOWLEDGE CHECK
 
 **CRITICAL**: If spawn fails with format/serialization errors, STOP THE TEST IMMEDIATELY and update format_knowledge.rs!
 
-```python
-test_result = {
-    "type": type_name,
-    "spawn_test": "Skipped",  # Default if no Serialize/Deserialize
-    "mutation_paths": []
-}
-
-if 'spawn' in supported_ops:
-    spawn_format = type_schema.get('spawn_format')
-    try:
-        # Execute mcp__brp__bevy_spawn with spawn_format
-        result = mcp__brp__bevy_spawn(components={type_name: spawn_format})
-        test_result["spawn_test"] = "Passed"
-    except Exception as e:
-        if "invalid type" in str(e) or "expected" in str(e):
-            # FORMAT KNOWLEDGE ISSUE - STOP TEST IMMEDIATELY
-            # Follow Step 2: Update format_knowledge.rs workflow
-            return "STOP_FOR_FORMAT_KNOWLEDGE"
-        else:
-            test_result["spawn_test"] = "Failed"
-```
+1. Check if 'spawn' is in supported_operations
+2. If yes, get the spawn_format from the type schema
+3. Call `mcp__brp__bevy_spawn` with the type and spawn_format
+4. If successful, mark spawn_test as "passed"
+5. If it fails with "invalid type" or "expected" errors:
+   - This is a FORMAT KNOWLEDGE ISSUE
+   - STOP THE TEST IMMEDIATELY
+   - Update format_knowledge.rs following the workflow
+6. For other failures, mark as "failed"
+7. If spawn not supported, mark as "skipped"
 
 **Parameter ordering for bevy_mutate_component**: If you encounter repeated "Unable to extract parameters" errors when calling mcp__brp__bevy_mutate_component, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 #### 2c. Prepare Entity for Mutation Testing
-```python
-# For types that only support mutation (no spawn/insert)
-if 'mutate' in supported_ops and 'spawn' not in supported_ops:
-    # Query to check if any entities with this component exist
-    query_result = mcp__brp__bevy_query(
-        port=20116,
-        filter={"with": [type_name]},
-        data={"components": [type_name]}
-    )
-    
-    if query_result["metadata"]["entity_count"] == 0:
-        # No entities exist - need to add to extras_plugin.rs
-        # CRITICAL: NO EXCEPTIONS - Add ANY component that supports mutations
-        # regardless of whether it appears to be:
-        # - Computed by systems
-        # - Auto-generated  
-        # - "System-managed"
-        # - "Not meant to be manually added"
-        # The test protocol requires testing ALL mutation-capable components
-        print(f"No entities with {type_name} found. Adding to extras_plugin.rs...")
-        
-        # 1. Edit extras_plugin.rs to add the component
+
+For types that only support mutation (no spawn/insert):
+
+1. Use `mcp__brp__bevy_query` to check if any entities with this component exist
+2. If entity_count is 0:
+   - **CRITICAL**: NO EXCEPTIONS - Add ANY component that supports mutations
+   - Edit extras_plugin.rs to add the component
         # Determine where to add based on component type:
         # - Camera-related (Bloom, Camera3d, etc): Add to camera spawn
         # - UI-related: Add to UI entity spawns
@@ -260,79 +183,23 @@ if 'mutate' in supported_ops and 'spawn' not in supported_ops:
 ```
 
 #### 2d. Test All Mutation Paths
-```python
-if 'mutate' in supported_ops:
-    mutation_paths = type_schema.get('mutation_paths', {})
-    
-    # Create todo items for each mutation path
-    mutation_todos = []
-    for path in mutation_paths.keys():
-        mutation_todos.append({
-            "content": f"Test mutation path {path}",
-            "status": "pending",
-            "activeForm": f"Testing mutation path {path}"
-        })
-    
-    # Add mutation paths to TodoWrite tool
-    TodoWrite(todos=mutation_todos)
-    
-    # Track overall success for aggregate status
-    all_mutations_passed = True
-    
-    # Now test each mutation path
-    for i, path in enumerate(mutation_paths.keys()):
-        path_info = mutation_paths[path]
-        
-        # Mark current mutation as in_progress in todo list
-        mutation_todos[i]["status"] = "in_progress"
-        TodoWrite(todos=mutation_todos)
-        
-        # Determine value to use
-        if 'example' in path_info:
-            value = path_info['example']
-        elif 'enum_variants' in path_info:
-            value = path_info['enum_variants'][0]
-        elif 'example_some' in path_info:
-            # Test both Some and None
-            test_values = [path_info['example_some'], path_info['example_none']]
-        
-        # Execute mcp__brp__bevy_mutate_component
-        # IMPORTANT: If you get repeated "Unable to extract parameters" errors,
-        # try reordering the parameters. The recommended order is:
-        # entity, component, path, value, port
-        try:
-            result = mcp__brp__bevy_mutate_component(
-                entity=entity_id,
-                component=type_name,
-                path=path,
-                value=value,
-                port=port
-            )
-            # Update this specific path to "passed" in the JSON file
-            update_mutation_path_status(type_name, path, "passed")
-            mutation_todos[i]["status"] = "completed"
-        except Exception as e:
-            # Update this specific path to "failed" in the JSON file
-            update_mutation_path_status(type_name, path, "failed")
-            all_mutations_passed = False
-            mutation_todos[i]["status"] = "completed"
-            
-            # Update todo list before stopping
-            TodoWrite(todos=mutation_todos)
-            
-            # Stop on first failure
-            print(f"FAILURE: Mutation path {path} failed with error: {e}")
-            break
-        
-        # Update todo list after each successful test
-        TodoWrite(todos=mutation_todos)
-    
-    # Update the aggregate mutation_tests status based on all path results
-    if all_mutations_passed:
-        update_aggregate_mutation_status(type_name, "passed")
-    else:
-        update_aggregate_mutation_status(type_name, "failed")
-```
+
+If mutations are supported:
+
+1. Get mutation_paths from the type schema
+2. For each mutation path:
+   - Determine the test value from path_info (example, enum_variants[0], or example_some/none)
+   - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, and port
+   - **IMPORTANT**: If you get repeated "Unable to extract parameters" errors, try reordering parameters: entity, component, path, value, port
+   - If successful:
+     - Update the path status to "passed" in the JSON file
+   - If failed:
+     - Update the path status to "failed" in the JSON file
+     - Stop testing this type and move to the next
+3. After all paths tested:
+   - If all passed, set mutation_tests to "passed"
+   - If any failed, set mutation_tests to "failed"
+   - If no paths exist, set mutation_tests to "n/a"
 
 ### 3. Update Progress - MANDATORY AFTER EACH TYPE
 
@@ -344,70 +211,41 @@ After testing each type:
 
 **FAILURE TO UPDATE PROGRESS IMMEDIATELY WILL BE CONSIDERED A TEST EXECUTION ERROR**
 
-**IMPORTANT**: Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
+**IMPORTANT**: 
+- Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
+- Do NOT use bash commands like jq with redirects/pipes to edit JSON files - use Read/Write or Edit tools instead
+- Always use proper file editing tools (Read/Write, Edit, MultiEdit) to update JSON files
 
-```python
-def update_mutation_path_status(type_name, path, status):
-    """Update the status of a specific mutation path immediately after testing."""
-    # Load the progress file
-    with open('test-app/examples/type_validation.json', 'r') as f:
-        all_types = json.load(f)
-    
-    # Find and update the specific path
-    for i, entry in enumerate(all_types):
-        if entry["type"] == type_name:
-            if "mutation_paths" not in all_types[i]:
-                all_types[i]["mutation_paths"] = {}
-            all_types[i]["mutation_paths"][path] = status
-            break
-    
-    # Write back immediately
-    with open('test-app/examples/type_validation.json', 'w') as f:
-        json.dump(all_types, f, indent=2)
+### Progress Update Implementation
 
-def update_aggregate_mutation_status(type_name, status):
-    """Update the aggregate mutation_tests status based on all path results."""
-    # Load the progress file
-    with open('test-app/examples/type_validation.json', 'r') as f:
-        all_types = json.load(f)
-    
-    # Find and update the aggregate status
-    for i, entry in enumerate(all_types):
-        if entry["type"] == type_name:
-            all_types[i]["mutation_tests"] = status
-            break
-    
-    # Write back immediately
-    with open('test-app/examples/type_validation.json', 'w') as f:
-        json.dump(all_types, f, indent=2)
+**CRITICAL**: Use the Read and Write tools, NOT bash commands, to update the JSON files. This ensures the test can run unattended without requiring user approval for file modifications.
 
-def update_progress(type_name, spawn_result, mutation_result, notes=""):
-    # Load the progress file
-    # DO NOT create backup files - git provides version control
-    with open('.claude/commands/type_validation.json', 'r') as f:
-        all_types = json.load(f)
-    
-    # Find and update the type entry
-    for i, entry in enumerate(all_types):
-        if entry["type"] == type_name:
-            # Update spawn test status
-            if spawn_result is not None:
-                all_types[i]["spawn_test"] = spawn_result  # "passed", "failed", or "skipped"
-            
-            # Update mutation test status (this should already be set by update_aggregate_mutation_status)
-            if mutation_result is not None:
-                all_types[i]["mutation_tests"] = mutation_result  # "passed", "failed", or "n/a"
-            
-            # Add any notes
-            if notes:
-                all_types[i]["notes"] = notes
-            
-            break
-    
-    # Write the updated progress back
-    with open('test-app/examples/type_validation.json', 'w') as f:
-        json.dump(all_types, f, indent=2)
-```
+For updating type status after testing:
+1. Use Read tool to load the current JSON file
+2. Parse the JSON data and find the entry to update
+3. Modify the entry with new status/paths/notes
+4. Use Write tool to save the updated JSON back to the file
+
+Example workflow for updating a type's status:
+1. Use Read tool to get the current content of `test-app/examples/type_validation.json`
+2. Parse the JSON data internally
+3. Find the entry matching the type name and update:
+   - spawn_test: "passed", "failed", or "skipped"
+   - mutation_tests: "passed", "failed", or "n/a"
+   - mutation_paths: Object with path statuses
+   - notes: Any relevant notes
+4. Use Write tool to save the complete updated JSON back to the file
+
+**NEVER use bash commands like:**
+- `jq 'map(...)' file.json > /tmp/updated.json && mv /tmp/updated.json file.json`
+- `jq ... file.json | tee file.json`
+- Any command involving `>`, `>>`, or file redirection that requires approval
+
+**ALWAYS use file editing tools that don't require approval:**
+- Read tool to get file contents
+- Write tool to save complete updated contents
+- Edit tool for specific string replacements
+- MultiEdit for multiple changes in one operation
 
 ### 4. Progress File Updates vs Progress Reporting
 

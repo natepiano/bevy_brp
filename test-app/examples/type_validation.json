@@ -22,13 +22,13 @@
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
     "spawn_test": "skipped",
-    "mutation_tests": "failed",
+    "mutation_tests": "passed",
     "mutation_paths": {
-      ".denoise": "untested",
-      ".enabled": "untested",
-      ".sharpening_strength": "untested"
+      ".denoise": "passed",
+      ".enabled": "passed",
+      ".sharpening_strength": "passed"
     },
-    "notes": "No Serialize/Deserialize. Component causes ViewCasPipeline errors when added - stopping to investigate"
+    "notes": "No Serialize/Deserialize - spawn skipped. Screenshot component was causing spawn issues."
   },
   {
     "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",

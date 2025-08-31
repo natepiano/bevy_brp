@@ -450,22 +450,15 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
 
     // 3D Camera with minimal components
     commands.spawn((
-        Camera3d {
-            depth_texture_usages: (TextureUsages::RENDER_ATTACHMENT
-                | TextureUsages::TEXTURE_BINDING)
-                .into(),
-            ..default()
-        },
+        Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         ContrastAdaptiveSharpening {
             enabled: false,
             ..default()
         },
         ManualTextureViewHandle(0), // For testing mutations
-        bevy::render::view::window::screenshot::Screenshot(bevy::render::camera::RenderTarget::Window(bevy::window::WindowRef::Primary)),
         DepthPrepass,               // Required for OcclusionCulling
-        OcclusionCulling, /* For testing mutations */
-                                    /* Removed tested components: DepthOfField, tonemapping */
+        OcclusionCulling,           /* For testing mutations */
     ));
 
     // Background
