@@ -992,5 +992,11 @@
       }
     ],
     "note": "Spawn and mutations working correctly"
+  },
+  {
+    "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty marker component - no mutations to test. Requires DepthPrepass and proper depth_texture_usages on Camera3d"
   }
 ]

@@ -11,8 +11,8 @@ Systematically validate all BRP component types by testing spawn/insert and muta
 3. Restart the app with the new component
 4. Then test mutations on the newly available component
 
-## Schema Files Location
-- **Individual type schemas**: `.claude/commands/tests/type_schemas/{type_name}.json`
+## Schema Source
+- **Type schemas**: Retrieved dynamically via `mcp__brp__brp_type_schema` tool
 - **Progress tracking (all types)**: `types-all.json` (project root)
 - **Progress tracking (passed)**: `types-passed.json` (project root)
 
@@ -85,14 +85,18 @@ print(f"Already passed: {len([t for t in all_types if isinstance(t, dict) and t.
 
 For each type in the todo list:
 
-#### 2a. Load Type Schema
+#### 2a. Get Type Schema from BRP Tool
 ```python
 type_name = todo_types[0]  # Process one at a time
-schema_file = f'.claude/commands/tests/type_schemas/{type_name}.json'
 
-with open(schema_file, 'r') as f:
-    type_schema = json.load(f)
+# Get type schema using the BRP type schema tool
+schema_result = mcp__brp__brp_type_schema(
+    types=[type_name],
+    port=20116  # Use the test port
+)
 
+# Extract the schema for this type
+type_schema = schema_result['types'][type_name]
 supported_ops = type_schema.get('supported_operations', [])
 ```
 
@@ -369,17 +373,12 @@ map.insert(
 2. **STOP THE TEST** and inform the user:
    - Format knowledge has been updated for [TYPE_NAME]
    - User needs to exit and reinstall the MCP tool for changes to take effect
-   - After reinstall, the type schema needs regeneration
+   - After reinstall, the type schema tool will automatically use the new format knowledge
 
 #### Step 4: Resume After Reinstall (User re-runs test)
 1. Detect that format_knowledge was updated for a type (check comment in types-all.json)
-2. Regenerate the type schema for that specific type:
-   ```bash
-   # This would regenerate the schema with the new format knowledge
-   # The exact command depends on how schemas are generated
-   ```
-3. The new schema file in `.claude/commands/tests/type_schemas/[TYPE_NAME].json` will now have the safe example value
-4. Resume testing from where it left off
+2. The BRP type schema tool will now automatically provide the safe example value from format_knowledge
+3. Resume testing from where it left off
 
 ## Known Issues
 

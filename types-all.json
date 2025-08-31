@@ -1,12 +1,5 @@
 [
   {
-    "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling",
-    "spawn_test": "Skipped",
-    "mutation_paths": [],
-    "status": "Failed",
-    "note": "Causes app crash - requires specific texture usage flags for depth texture"
-  },
-  {
     "type": "bevy_render::primitives::Aabb"
   },
   {

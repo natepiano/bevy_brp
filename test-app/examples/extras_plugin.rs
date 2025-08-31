@@ -11,13 +11,15 @@
 
 use std::time::Instant;
 
+use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::core_pipeline::Skybox;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::render::camera::ManualTextureViewHandle;
+use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
-use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
+use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
@@ -366,11 +368,15 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
 
     // 3D Camera with minimal components
     commands.spawn((
-        Camera3d::default(),
+        Camera3d {
+            depth_texture_usages: (TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING).into(),
+            ..default()
+        },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ManualTextureViewHandle(0), /* For testing mutations */
-                                    /* Removed tested components: DepthOfField, prepasses,
-                                     * tonemapping */
+        ManualTextureViewHandle(0), // For testing mutations
+        DepthPrepass,                // Required for OcclusionCulling
+        OcclusionCulling::default(), // For testing mutations
+        /* Removed tested components: DepthOfField, tonemapping */
     ));
 
     // Background
