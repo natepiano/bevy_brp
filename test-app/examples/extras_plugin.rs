@@ -12,13 +12,15 @@
 use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
-use bevy::input::keyboard::KeyboardInput;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
-use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
-use bevy_mesh::skinning::SkinnedMesh;
+use bevy::render::camera::ManualTextureViewHandle;
+use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
+use bevy_mesh::skinning::SkinnedMesh;
 use serde::{Deserialize, Serialize};
 
 /// Resource to track keyboard input history
@@ -187,10 +189,7 @@ fn main() {
 struct CurrentPort(u16);
 
 /// Setup a skybox with a simple cube texture for testing mutations
-fn setup_skybox_test(
-    mut commands: Commands,
-    mut images: ResMut<Assets<Image>>,
-) {
+fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     // Create a simple 1x6 pixel image (6 faces stacked vertically)
     // This will be reinterpreted as a cube texture
     let size = 1;
@@ -199,11 +198,11 @@ fn setup_skybox_test(
         // Each face is 1x1 pixel, gray color
         data.extend_from_slice(&[128, 128, 128, 255]);
     }
-    
+
     let mut image = Image::new_fill(
         bevy::render::render_resource::Extent3d {
-            width: size,
-            height: size * 6, // Stack 6 faces vertically
+            width:                 size,
+            height:                size * 6, // Stack 6 faces vertically
             depth_or_array_layers: 1,
         },
         bevy::render::render_resource::TextureDimension::D2,
@@ -211,26 +210,26 @@ fn setup_skybox_test(
         bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
         bevy::render::render_asset::RenderAssetUsages::RENDER_WORLD,
     );
-    
+
     // Reinterpret as cube texture (height/width = 6)
     image.reinterpret_stacked_2d_as_array(image.height() / image.width());
     image.texture_view_descriptor = Some(TextureViewDescriptor {
         dimension: Some(TextureViewDimension::Cube),
         ..default()
     });
-    
+
     let image_handle = images.add(image);
-    
+
     // Spawn an entity with Skybox for testing mutations
     commands.spawn((
         Skybox {
-            image: image_handle,
+            image:      image_handle,
             brightness: 1000.0,
-            rotation: Quat::IDENTITY,
+            rotation:   Quat::IDENTITY,
         },
         Name::new("SkyboxTestEntity"),
     ));
-    
+
     info!("Skybox test entity created with cube texture");
 }
 
@@ -325,10 +324,7 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     ));
 
     // Entity with Gamepad for testing mutations
-    commands.spawn((
-        Gamepad::default(),
-        Name::new("GamepadTestEntity"),
-    ));
+    commands.spawn((Gamepad::default(), Name::new("GamepadTestEntity")));
 
     // Entity with GamepadSettings for testing mutations
     commands.spawn((
@@ -343,16 +339,16 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     ));
 
     // Entity with MorphWeights for testing mutations
-    commands.spawn((
-        MorphWeights::default(),
-        Name::new("MorphWeightsTestEntity"),
-    ));
+    commands.spawn((MorphWeights::default(), Name::new("MorphWeightsTestEntity")));
 
     // Entity with SkinnedMesh for testing mutations
-    commands.spawn((
-        SkinnedMesh::default(),
-        Name::new("SkinnedMeshTestEntity"),
-    ));
+    commands.spawn((SkinnedMesh::default(), Name::new("SkinnedMeshTestEntity")));
+
+    // Entity with Mesh2d for testing mutations
+    commands.spawn((Mesh2d(Handle::default()), Name::new("Mesh2dTestEntity")));
+
+    // Entity with Mesh3d for testing mutations
+    commands.spawn((Mesh3d(Handle::default()), Name::new("Mesh3dTestEntity")));
 
     info!(
         "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",
@@ -372,7 +368,9 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        // Removed tested components: DepthOfField, prepasses, tonemapping
+        ManualTextureViewHandle(0), /* For testing mutations */
+                                    /* Removed tested components: DepthOfField, prepasses,
+                                     * tonemapping */
     ));
 
     // Background

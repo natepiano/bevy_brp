@@ -214,6 +214,33 @@ impl TypeInfo {
         }
     }
 
+    /// Extract type name from a $ref field in schema
+    ///
+    /// Handles the common pattern of extracting a type reference from:
+    /// ```json
+    /// { "type": { "$ref": "#/$defs/TypeName" } }
+    /// ```
+    fn extract_type_ref_from_field(field: &Value) -> Option<BrpTypeName> {
+        field
+            .get_field(SchemaField::Type)
+            .and_then(|t| t.get("$ref"))
+            .and_then(Value::as_str)
+            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
+            .map(BrpTypeName::from)
+    }
+
+    /// Extract type name from a type field using SchemaField::Ref
+    ///
+    /// Similar to extract_type_ref_from_field but uses SchemaField::Ref
+    /// for accessing the $ref field
+    fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
+        type_value
+            .get_field(SchemaField::Ref)
+            .and_then(Value::as_str)
+            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
+            .map(BrpTypeName::from)
+    }
+
     /// Build spawn format for struct types with named properties
     fn build_struct_spawn_format(
         type_schema: &Value,
@@ -252,16 +279,10 @@ impl TypeInfo {
         let tuple_examples: Vec<Value> = prefix_items
             .iter()
             .map(|item| {
-                // Extract type from $ref format
-                item.get_field(SchemaField::Type)
-                    .and_then(|t| t.get("$ref"))
-                    .and_then(Value::as_str)
-                    .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-                    .map(BrpTypeName::from)
-                    .map_or_else(
-                        || json!(null),
-                        |ft| Self::build_example_value_for_type(&ft, registry),
-                    )
+                Self::extract_type_ref_from_field(item).map_or_else(
+                    || json!(null),
+                    |ft| Self::build_example_value_for_type(&ft, registry),
+                )
             })
             .collect();
 
@@ -277,7 +298,7 @@ impl TypeInfo {
     }
 
     /// Build an example value for a specific type
-    fn build_example_value_for_type(
+    pub fn build_example_value_for_type(
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Value {
@@ -307,19 +328,16 @@ impl TypeInfo {
 
         let field_kind = TypeKind::from_schema(field_schema, type_name);
         match field_kind {
-            TypeKind::Enum => EnumMutationBuilder::build_enum_example(field_schema),
+            TypeKind::Enum => EnumMutationBuilder::build_enum_example(field_schema, registry),
             TypeKind::Array => {
                 // Handle array types like [f32; 4] or [glam::Vec2; 3]
                 // Arrays have an "items" field with the element type
                 let item_type = field_schema
                     .get_field(SchemaField::Items)
                     .and_then(|items| items.get_field(SchemaField::Type))
-                    .and_then(|t| t.get_field(SchemaField::Ref))
-                    .and_then(Value::as_str)
-                    .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX));
+                    .and_then(Self::extract_type_ref_with_schema_field);
 
-                item_type.map_or(json!(null), |item_type_str| {
-                    let item_type_name = BrpTypeName::from(item_type_str);
+                item_type.map_or(json!(null), |item_type_name| {
                     // Generate example value for the item type
                     let item_example = Self::build_example_value_for_type_with_depth(
                         &item_type_name,
@@ -351,12 +369,8 @@ impl TypeInfo {
                         let tuple_examples: Vec<Value> = prefix_items
                             .iter()
                             .map(|item| {
-                                // Extract type from $ref format using SchemaField enum
                                 item.get_field(SchemaField::Type)
-                                    .and_then(|t| t.get_field(SchemaField::Ref))
-                                    .and_then(Value::as_str)
-                                    .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-                                    .map(BrpTypeName::from)
+                                    .and_then(Self::extract_type_ref_with_schema_field)
                                     .map_or_else(
                                         || json!(null),
                                         |ft| {
@@ -378,9 +392,12 @@ impl TypeInfo {
                     })
             }
             TypeKind::Struct => {
-                // For struct types referenced in fields, we typically want just null
-                // The parent struct will build the full nested structure if needed
-                json!(null)
+                // Build struct example from properties
+                if let Some(properties) = field_schema.get_field(SchemaField::Properties) {
+                    EnumMutationBuilder::build_struct_example_from_properties(properties, registry)
+                } else {
+                    json!(null)
+                }
             }
             _ => json!(null),
         }
@@ -452,10 +469,7 @@ impl TypeInfo {
                 .map(|items| {
                     items
                         .iter()
-                        .filter_map(|item| {
-                            item.get_field(SchemaField::Type).and_then(Value::as_str)
-                        })
-                        .map(BrpTypeName::from)
+                        .filter_map(Self::extract_type_ref_from_field)
                         .collect()
                 })
         } else {

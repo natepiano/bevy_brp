@@ -1,3 +1,4 @@
+use error_stack::Report;
 use thiserror::Error;
 
 use crate::tool::ResultStruct;
@@ -10,7 +11,7 @@ const MSG_MISSING_PREFIX: &str = "Missing";
 const MSG_UNEXPECTED_PREFIX: &str = "Unexpected";
 
 /// Result type for the `bevy_brp_mcp` library
-pub type Result<T> = error_stack::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, Report<Error>>;
 
 // Internal error types for detailed error categorization
 #[derive(Error)]

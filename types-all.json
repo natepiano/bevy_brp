@@ -1,18 +1,10 @@
 [
   {
-    "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle"
-  },
-  {
-    "type": "bevy_render::camera::projection::Projection"
-  },
-  {
-    "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling"
-  },
-  {
-    "type": "bevy_render::mesh::components::Mesh2d"
-  },
-  {
-    "type": "bevy_render::mesh::components::Mesh3d"
+    "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "status": "Failed",
+    "note": "Causes app crash - requires specific texture usage flags for depth texture"
   },
   {
     "type": "bevy_render::primitives::Aabb"
@@ -181,9 +173,6 @@
   },
   {
     "type": "extras_plugin::TestArrayField"
-  },
-  {
-    "type": "extras_plugin::TestComplexComponent"
   },
   {
     "type": "extras_plugin::TestEnumNoSerDe"

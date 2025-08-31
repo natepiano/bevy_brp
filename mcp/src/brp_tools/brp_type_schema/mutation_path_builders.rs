@@ -16,9 +16,21 @@ use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
 use super::response_types::{
     BrpTypeName, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
+use super::type_info::TypeInfo;
 use super::wrapper_types::WrapperType;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
+
+/// Extract type name from a type field using SchemaField::Ref
+///
+/// Helper for extracting type references from schema fields
+fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
+    type_value
+        .get_field(SchemaField::Ref)
+        .and_then(Value::as_str)
+        .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
+        .map(BrpTypeName::from)
+}
 
 /// Context for building mutation paths - handles root vs field scenarios
 /// necessary because Struct, specifically, allows us to recurse down a level
@@ -193,10 +205,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         let element_type = schema
             .get("items")
             .and_then(|v| v.get_field(SchemaField::Type))
-            .and_then(|t| t.get_field(SchemaField::Ref))
-            .and_then(Value::as_str)
-            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-            .map_or_else(BrpTypeName::unknown, BrpTypeName::from);
+            .and_then(extract_type_ref_with_schema_field)
+            .unwrap_or_else(BrpTypeName::unknown);
 
         // Build example element from hardcoded knowledge
         let example_element = BRP_FORMAT_KNOWLEDGE
@@ -295,17 +305,17 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
         // Extract enum variants from schema
         let enum_variants = Self::extract_enum_variants(schema);
-        let enum_example = Self::build_enum_example(schema);
+        let enum_example = Self::build_enum_example(schema, ctx.registry);
 
         match &ctx.location {
             RootOrField::Root { type_name } => {
                 // For root enum mutations, add a root path with all variants
                 if let Some(ref variants) = enum_variants
-                    && let Some(first_variant) = variants.first()
+                    && !variants.is_empty()
                 {
                     paths.push(MutationPathInternal {
                         path:          String::new(),
-                        example:       json!(first_variant),
+                        example:       enum_example,
                         enum_variants: Some(variants.clone()),
                         type_name:     type_name.clone(),
                         path_kind:     MutationPathKind::RootValue {
@@ -354,7 +364,10 @@ impl EnumMutationBuilder {
     }
 
     /// Build example value for an enum type
-    pub fn build_enum_example(schema: &Value) -> Value {
+    ///
+    /// For tuple/newtype variants, builds proper examples based on the inner type
+    /// by looking up struct definitions in the registry.
+    pub fn build_enum_example(schema: &Value, registry: &HashMap<BrpTypeName, Value>) -> Value {
         if let Some(one_of) = schema
             .get_field(SchemaField::OneOf)
             .and_then(Value::as_array)
@@ -372,36 +385,45 @@ impl EnumMutationBuilder {
                 .get_field(SchemaField::PrefixItems)
                 .and_then(Value::as_array)
             {
-                // Tuple variant
-                if let Some(first_item) = prefix_items.first()
-                    && let Some(type_ref) = first_item
-                        .get_field(SchemaField::Type)
-                        .and_then(|t| t.get_field(SchemaField::Ref))
-                        .and_then(Value::as_str)
-                {
-                    let inner_type = type_ref.strip_prefix(SCHEMA_REF_PREFIX).unwrap_or(type_ref);
+                // Tuple variant (including newtype variants)
+                if prefix_items.len() == 1 {
+                    // Newtype variant - single field tuple
+                    if let Some(first_item) = prefix_items.first()
+                        && let Some(inner_type_name) = first_item
+                            .get_field(SchemaField::Type)
+                            .and_then(extract_type_ref_with_schema_field)
+                    {
+                        // Build proper example for the inner type
+                        let inner_value =
+                            Self::build_variant_data_example(&inner_type_name, registry);
 
-                    let inner_value = if inner_type.contains("Srgba") {
-                        json!({
-                            "red": 1.0,
-                            "green": 0.0,
-                            "blue": 0.0,
-                            "alpha": 1.0
+                        // For newtype variants, BRP expects the struct directly, not in an array
+                        return json!({
+                            variant_name: inner_value
+                        });
+                    }
+                } else if !prefix_items.is_empty() {
+                    // Multi-field tuple variant (rare in Bevy)
+                    let tuple_values: Vec<Value> = prefix_items
+                        .iter()
+                        .map(|item| {
+                            item.get_field(SchemaField::Type)
+                                .and_then(extract_type_ref_with_schema_field)
+                                .map(|t| Self::build_variant_data_example(&t, registry))
+                                .unwrap_or(json!(null))
                         })
-                    } else {
-                        BRP_FORMAT_KNOWLEDGE
-                            .get(&BrpTypeName::from(inner_type))
-                            .map_or(json!(null), |k| k.example_value.clone())
-                    };
+                        .collect();
 
                     return json!({
-                        variant_name: [inner_value]
+                        variant_name: tuple_values
                     });
                 }
-            } else if first_variant.get_field(SchemaField::Properties).is_some() {
-                // Struct variant
+            } else if let Some(properties) = first_variant.get_field(SchemaField::Properties) {
+                // Struct variant - build example from properties
+                let struct_example =
+                    Self::build_struct_example_from_properties(properties, registry);
                 return json!({
-                    variant_name: {}
+                    variant_name: struct_example
                 });
             }
 
@@ -420,6 +442,38 @@ impl EnumMutationBuilder {
                 .get_field(SchemaField::ShortPath)
                 .and_then(Value::as_str)
         })
+    }
+
+    /// Build example data for enum variant inner types
+    fn build_variant_data_example(
+        type_name: &BrpTypeName,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Value {
+        // Use the existing TypeInfo helper that already handles all the complexity
+        TypeInfo::build_example_value_for_type(type_name, registry)
+    }
+
+    /// Build example struct from properties
+    pub fn build_struct_example_from_properties(
+        properties: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Value {
+        let Some(props_map) = properties.as_object() else {
+            return json!({});
+        };
+
+        let mut example = serde_json::Map::new();
+
+        for (field_name, field_schema) in props_map {
+            // Use TypeInfo to build example for each field type
+            let field_value = SchemaField::extract_field_type(field_schema)
+                .map(|field_type| TypeInfo::build_example_value_for_type(&field_type, registry))
+                .unwrap_or(json!(null));
+
+            example.insert(field_name.clone(), field_value);
+        }
+
+        json!(example)
     }
 }
 
@@ -709,7 +763,14 @@ impl TupleMutationBuilder {
                             .map_or(json!(null), |k| k.example_value.clone())
                     })
                     .collect();
-                json!(elements)
+
+                // Special case: single-field tuple structs are unwrapped by BRP
+                // Return the inner value directly, not as an array
+                if elements.len() == 1 {
+                    elements.into_iter().next().unwrap_or(json!(null))
+                } else {
+                    json!(elements)
+                }
             },
         )
     }
