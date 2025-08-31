@@ -23,6 +23,7 @@ use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
+use bevy_winit::cursor::CursorIcon;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
 use serde::{Deserialize, Serialize};
@@ -309,6 +310,12 @@ fn spawn_visual_entities(commands: &mut Commands) {
 
     // Entity with Anchor for testing mutations
     commands.spawn((bevy::sprite::Anchor::Center, Name::new("AnchorTestEntity")));
+
+    // Entity with CursorIcon for testing mutations
+    commands.spawn((
+        CursorIcon::System(bevy::window::SystemCursorIcon::Default),
+        Name::new("CursorIconTestEntity"),
+    ));
 
     // Entity with PointLight which will automatically get CubemapFrusta due to required components
     commands.spawn((

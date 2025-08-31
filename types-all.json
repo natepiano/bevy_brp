@@ -1,11 +1,5 @@
 [
   {
-    "type": "bevy_window::monitor::Monitor"
-  },
-  {
-    "type": "bevy_window::window::PrimaryWindow"
-  },
-  {
     "type": "bevy_winit::cursor::CursorIcon"
   },
   {

@@ -7,6 +7,7 @@ resolver = "2"
 # Bevy with no default features - each crate specifies what it needs
 bevy = { version = "0.16.1", default-features = false }
 bevy_mesh = { version = "0.16.1" }
+bevy_winit = { version = "0.16.1" }
 
 # Core dependencies (shared between extras and mcp)
 anyhow = "1.0"
