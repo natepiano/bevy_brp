@@ -1,8 +1,5 @@
 [
   {
-    "type": "bevy_sprite::sprite::Anchor"
-  },
-  {
     "type": "bevy_text::bounds::TextBounds"
   },
   {

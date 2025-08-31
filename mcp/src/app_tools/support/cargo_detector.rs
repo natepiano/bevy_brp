@@ -1,17 +1,36 @@
 //! Simple cargo detector based on `bevy_brp_tool`
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use anyhow::{Context, Result};
 use cargo_metadata::{Metadata, MetadataCommand, Package};
+use serde::Serialize;
+use strum::{AsRefStr, Display, EnumString};
 
 /// Type of Bevy target
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize)]
+#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum TargetType {
     /// A binary application target
     App,
     /// An example target
     Example,
+}
+
+impl TargetType {
+    /// Add cargo-specific arguments for this target type
+    pub fn add_cargo_args(self, cmd: &mut Command, target_name: &str) {
+        match self {
+            Self::App => {
+                cmd.arg("--bin").arg(target_name);
+            }
+            Self::Example => {
+                cmd.arg("--example").arg(target_name);
+            }
+        }
+    }
 }
 
 /// Unified information about a Bevy target (app or example)

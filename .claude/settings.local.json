@@ -28,7 +28,8 @@
       "Bash(done)",
       "Bash(cargo:*)",
       "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render-0.16.1/src/view/visibility/**)",
-      "mcp__brp__bevy_insert"
+      "mcp__brp__bevy_insert",
+      "mcp__brp__brp_launch_bevy_app"
     ],
     "deny": [],
     "ask": [],

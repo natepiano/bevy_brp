@@ -240,6 +240,18 @@ fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) 
 fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     info!("Setting up test entities...");
 
+    spawn_transform_entities(&mut commands);
+    spawn_visual_entities(&mut commands);
+    spawn_test_component_entities(&mut commands);
+    spawn_render_entities(&mut commands);
+
+    info!(
+        "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",
+        port.0
+    );
+}
+
+fn spawn_transform_entities(commands: &mut Commands) {
     // Entity with Transform and Name
     commands.spawn((Transform::from_xyz(1.0, 2.0, 3.0), Name::new("TestEntity1")));
 
@@ -266,11 +278,13 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Visibility::default(),
         bevy::render::view::visibility::VisibilityRange {
             start_margin: 0.0..10.0,
-            end_margin: 90.0..100.0,
-            use_aabb: false,
+            end_margin:   90.0..100.0,
+            use_aabb:     false,
         },
     ));
+}
 
+fn spawn_visual_entities(commands: &mut Commands) {
     // Entity with Sprite component for testing mutation paths
     commands.spawn((
         Sprite {
@@ -286,6 +300,29 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         bevy::render::view::visibility::RenderLayers::layer(1),
     ));
 
+    // Entity with SMAA for testing mutations (separate from cameras to avoid conflicts)
+    commands.spawn((
+        bevy::core_pipeline::smaa::Smaa::default(),
+        Name::new("SmaaTestEntity"),
+    ));
+
+    // Entity with Anchor for testing mutations
+    commands.spawn((bevy::sprite::Anchor::Center, Name::new("AnchorTestEntity")));
+
+    // Entity with PointLight which will automatically get CubemapFrusta due to required components
+    commands.spawn((
+        bevy::pbr::PointLight {
+            intensity: 1500.0,
+            color: Color::WHITE,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(4.0, 8.0, 4.0),
+        Name::new("PointLightTestEntity"),
+    ));
+}
+
+fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestArrayField component
     commands.spawn((
         TestArrayField {
@@ -326,12 +363,6 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Name::new("TestComplexEntity"),
     ));
 
-    // Entity with SMAA for testing mutations (separate from cameras to avoid conflicts)
-    commands.spawn((
-        bevy::core_pipeline::smaa::Smaa::default(),
-        Name::new("SmaaTestEntity"),
-    ));
-
     // Entity with Gamepad for testing mutations
     commands.spawn((Gamepad::default(), Name::new("GamepadTestEntity")));
 
@@ -340,7 +371,9 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         GamepadSettings::default(),
         Name::new("GamepadSettingsTestEntity"),
     ));
+}
 
+fn spawn_render_entities(commands: &mut Commands) {
     // Entity with MeshMorphWeights for testing mutations
     if let Ok(morph_weights) = MeshMorphWeights::new(vec![0.5, 1.0, 0.75]) {
         commands.spawn((morph_weights, Name::new("MeshMorphWeightsTestEntity")));
@@ -371,23 +404,6 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         CascadesFrusta::default(),
         Name::new("CascadesFrustaTestEntity"),
     ));
-
-    // Entity with PointLight which will automatically get CubemapFrusta due to required components
-    commands.spawn((
-        bevy::pbr::PointLight {
-            intensity: 1500.0,
-            color: Color::WHITE,
-            shadows_enabled: false,
-            ..default()
-        },
-        Transform::from_xyz(4.0, 8.0, 4.0),
-        Name::new("PointLightTestEntity"),
-    ));
-
-    info!(
-        "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",
-        port.0
-    );
 }
 
 /// Setup UI for keyboard input display

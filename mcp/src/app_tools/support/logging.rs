@@ -12,12 +12,14 @@ use crate::error::{Error, Result};
 static LOG_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Create a log file for a Bevy app launch
+use super::cargo_detector::TargetType;
+
 pub fn create_log_file(
     name: &str,
-    launch_type: &str,
+    target_type: TargetType,
     profile: &str,
     binary_path: &Path,
-    working_dir: &Path,
+    manifest_dir: &Path,
     port: Option<Port>,
 ) -> Result<(PathBuf, File)> {
     // Generate unique log file name in temp directory
@@ -51,7 +53,7 @@ pub fn create_log_file(
     writeln!(log_file, "Started at: {:?}", std::time::SystemTime::now()).change_context(
         Error::LogOperation("Failed to write to log file".to_string()),
     )?;
-    writeln!(log_file, "{launch_type}: {name}").change_context(Error::LogOperation(
+    writeln!(log_file, "{target_type}: {name}").change_context(Error::LogOperation(
         "Failed to write to log file".to_string(),
     ))?;
     writeln!(log_file, "Profile: {profile}").change_context(Error::LogOperation(
@@ -60,7 +62,7 @@ pub fn create_log_file(
     writeln!(log_file, "Binary: {}", binary_path.display()).change_context(Error::LogOperation(
         "Failed to write to log file".to_string(),
     ))?;
-    writeln!(log_file, "Working directory: {}", working_dir.display()).change_context(
+    writeln!(log_file, "Working directory: {}", manifest_dir.display()).change_context(
         Error::LogOperation("Failed to write to log file".to_string()),
     )?;
     writeln!(log_file, "============================================\n").change_context(

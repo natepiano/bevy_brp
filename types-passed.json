@@ -1166,5 +1166,15 @@
         "status": "Passed"
       }
     ]
+  },
+  {
+    "type": "bevy_sprite::sprite::Anchor",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      }
+    ]
   }
 ]

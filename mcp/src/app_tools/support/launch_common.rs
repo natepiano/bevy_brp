@@ -7,9 +7,7 @@ use chrono::Utc;
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
-use super::errors::{
-    BuildRequiredError, NoTargetsFoundError, PathDisambiguationError, TargetNotFoundAtSpecifiedPath,
-};
+use super::errors::{NoTargetsFoundError, PathDisambiguationError, TargetNotFoundAtSpecifiedPath};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ParamStruct, ToolFn, ToolResult};
 
@@ -88,7 +86,6 @@ pub struct LaunchResult {
     message_template:   String,
 }
 
-use crate::app_tools::constants::{TARGET_TYPE_APP, TARGET_TYPE_EXAMPLE};
 use crate::brp_tools::{BRP_PORT_ENV_VAR, Port};
 
 /// Parameters extracted from launch requests
@@ -164,8 +161,8 @@ pub trait FromLaunchParams: LaunchConfigTrait + Sized + Send + Sync {
 
 /// Trait for configuring launch behavior for different target types (app vs example)
 pub trait LaunchConfigTrait {
-    /// The target type constant ("app" or "example")
-    const TARGET_TYPE: &'static str;
+    /// The target type constant (App or Example)
+    const TARGET_TYPE: TargetType;
 
     /// Get the name of the target being launched
     fn target_name(&self) -> &str;
@@ -182,11 +179,20 @@ pub trait LaunchConfigTrait {
     /// Build the command to execute
     fn build_command(&self, target: &super::cargo_detector::BevyTarget) -> Command;
 
-    /// Validate the target before launch (e.g., check if binary exists)
-    fn validate_target(&self, target: &super::cargo_detector::BevyTarget) -> Result<()>;
-
     /// Get any extra log info specific to this target type
     fn extra_log_info(&self, target: &super::cargo_detector::BevyTarget) -> Option<String>;
+
+    /// Ensure the target is built, blocking until compilation completes if needed
+    /// Returns the build state indicating whether it was fresh, rebuilt, or not found
+    fn ensure_built(&self, target: &super::cargo_detector::BevyTarget) -> Result<BuildState> {
+        let manifest_dir = validate_manifest_directory(&target.manifest_path)?;
+        run_cargo_build(
+            self.target_name(),
+            Self::TARGET_TYPE,
+            self.profile(),
+            manifest_dir,
+        )
+    }
 
     /// Convert to unified `LaunchResult` on success
     fn to_launch_result(
@@ -211,25 +217,6 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
     })
 }
 
-/// Validates that a binary exists at the given path
-pub fn validate_binary_exists(binary_path: &Path, profile: &str) -> Result<()> {
-    if !binary_path.exists() {
-        return Err(error_stack::Report::new(Error::FileOrPathNotFound(
-            "Missing binary file".to_string(),
-        ))
-        .attach(format!("Binary path: {}", binary_path.display()))
-        .attach(format!(
-            "Please build the app with 'cargo build{}' first",
-            if profile == "release" {
-                " --release"
-            } else {
-                ""
-            }
-        )));
-    }
-    Ok(())
-}
-
 /// Sets BRP-related environment variables on a command
 ///
 /// Currently sets:
@@ -244,9 +231,9 @@ pub fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
 /// Setup logging for launch operations and return log file handles
 pub fn setup_launch_logging(
     name: &str,
-    name_type: &str, // "App" or "Example"
+    target_type: TargetType,
     profile: &str,
-    command_or_binary: &Path,
+    binary_path: &Path,
     manifest_dir: &Path,
     port: Option<Port>,
     extra_log_info: Option<&str>,
@@ -254,15 +241,9 @@ pub fn setup_launch_logging(
     use super::logging;
 
     // Create log file
-    let (log_file_path, _) = logging::create_log_file(
-        name,
-        name_type,
-        profile,
-        command_or_binary,
-        manifest_dir,
-        port,
-    )
-    .map_err(|e| Error::tool_call_failed(format!("Failed to create log file: {e}")))?;
+    let (log_file_path, _) =
+        logging::create_log_file(name, target_type, profile, binary_path, manifest_dir, port)
+            .map_err(|e| Error::tool_call_failed(format!("Failed to create log file: {e}")))?;
 
     // Add extra info to log file if provided
     if let Some(extra_info) = extra_log_info {
@@ -304,6 +285,138 @@ pub fn build_app_command(binary_path: &Path, port: Option<Port>) -> Command {
     let mut cmd = Command::new(binary_path);
     set_brp_env_vars(&mut cmd, port);
     cmd
+}
+
+use super::cargo_detector::TargetType;
+
+/// Represents the state of a build target after cargo build
+#[derive(Debug, Clone, Copy)]
+pub enum BuildState {
+    NotFound,
+    Fresh,
+    Rebuilt,
+}
+
+/// Build a cargo command for the given target
+fn build_cargo_command(
+    target_name: &str,
+    target_type: TargetType,
+    profile: &str,
+    manifest_dir: &Path,
+) -> Command {
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(manifest_dir);
+    cmd.arg("build");
+
+    // Add target-specific arguments
+    target_type.add_cargo_args(&mut cmd, target_name);
+
+    // Add profile flag if release
+    if profile == "release" {
+        cmd.arg("--release");
+    }
+
+    // Use JSON output to track freshness
+    cmd.arg("--message-format=json");
+
+    cmd
+}
+
+/// Execute cargo build command and validate output
+fn execute_build_command(
+    cmd: &mut Command,
+    target_name: &str,
+    target_type: TargetType,
+    profile: &str,
+    manifest_dir: &Path,
+) -> Result<std::process::Output> {
+    use tracing::debug;
+
+    debug!(
+        "Running cargo build for {} '{}' with args: {:?}",
+        target_type, target_name, cmd
+    );
+
+    let output = cmd.output().map_err(|e| {
+        Error::ProcessManagement(format!(
+            "Failed to run cargo build for {target_type} '{target_name}' (profile: {profile}, dir: {}): {e}",
+            manifest_dir.display()
+        ))
+    })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(Error::ProcessManagement(format!(
+            "Cargo build failed for {target_type} '{target_name}' (profile: {profile}, dir: {}): {stderr}",
+            manifest_dir.display()
+        ))
+        .into());
+    }
+
+    Ok(output)
+}
+
+/// Parse cargo build JSON output to determine build state
+fn parse_build_output(stdout: &[u8], target_name: &str) -> BuildState {
+    use serde_json::Value;
+
+    let stdout_str = String::from_utf8_lossy(stdout);
+
+    for line in stdout_str.lines() {
+        if let Ok(json) = serde_json::from_str::<Value>(line)
+            && let Some(target) = json.get("target")
+            && let Some(name) = target.get("name")
+            && name.as_str() == Some(target_name)
+        {
+            return json
+                .get("fresh")
+                .and_then(serde_json::Value::as_bool)
+                .map_or(BuildState::Rebuilt, |is_fresh| {
+                    if is_fresh {
+                        BuildState::Fresh
+                    } else {
+                        BuildState::Rebuilt
+                    }
+                });
+        }
+    }
+
+    BuildState::NotFound
+}
+
+/// Log the build result based on build state
+fn log_build_result(build_state: BuildState, target_name: &str, target_type: TargetType) {
+    use tracing::{debug, info};
+
+    match build_state {
+        BuildState::NotFound => {
+            debug!(
+                "Target '{}' not found in build output, assuming it was built",
+                target_name
+            );
+        }
+        BuildState::Fresh => {
+            debug!("{} '{}' was already up to date", target_type, target_name);
+        }
+        BuildState::Rebuilt => {
+            info!("{} '{}' was built successfully", target_type, target_name);
+        }
+    }
+}
+
+/// Run cargo build for a target and block until completion
+pub fn run_cargo_build(
+    target_name: &str,
+    target_type: TargetType,
+    profile: &str,
+    manifest_dir: &Path,
+) -> Result<BuildState> {
+    let mut cmd = build_cargo_command(target_name, target_type, profile, manifest_dir);
+    let output = execute_build_command(&mut cmd, target_name, target_type, profile, manifest_dir)?;
+    let build_state = parse_build_output(&output.stdout, target_name);
+    log_build_result(build_state, target_name, target_type);
+
+    Ok(build_state)
 }
 
 /// Execute the process and build the launch result
@@ -395,15 +508,10 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
 ) -> Result<super::cargo_detector::BevyTarget> {
-    use super::cargo_detector::TargetType;
     use super::scanning;
 
-    // Determine target type
-    let target_type = if T::TARGET_TYPE == TARGET_TYPE_APP {
-        TargetType::App
-    } else {
-        TargetType::Example
-    };
+    // Get the target type from the config
+    let target_type = T::TARGET_TYPE;
 
     // First, find all targets with the given name to check for duplicates
     let all_targets =
@@ -484,28 +592,6 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
         }
     };
 
-    // Validate the target
-    if let Err(e) = config.validate_target(&target) {
-        // Check if this is a build required error (missing binary)
-        if matches!(e.current_context(), Error::FileOrPathNotFound(_)) {
-            let build_required_error = BuildRequiredError::new(
-                config.target_name().to_string(),
-                T::TARGET_TYPE.to_string(),
-                config.profile().to_string(),
-            );
-            Err(Error::Structured {
-                result: Box::new(build_required_error),
-            })?;
-        }
-
-        // For other validation errors, use generic error
-        let error_details = create_error_details(config, None);
-        return Err(Report::new(Error::tool_call_failed_with_details(
-            (*e.current_context()).to_string(),
-            error_details,
-        )));
-    }
-
     Ok(target)
 }
 
@@ -543,6 +629,23 @@ pub fn launch_target<T: LaunchConfigTrait>(
         }
     };
 
+    // Ensure the target is built (blocks until compilation completes if needed)
+    let build_state = config.ensure_built(&target)?;
+    match build_state {
+        BuildState::Fresh => {
+            use tracing::debug;
+            debug!("Target was already up to date, launching immediately");
+        }
+        BuildState::Rebuilt => {
+            use tracing::debug;
+            debug!("Target was rebuilt before launch");
+        }
+        BuildState::NotFound => {
+            use tracing::warn;
+            warn!("Target not found in build output but build succeeded");
+        }
+    }
+
     // Prepare launch environment
     let (cmd, manifest_dir, log_file_path, log_file_for_redirect) =
         prepare_launch_environment(config, &target)?;
@@ -571,7 +674,7 @@ impl FromLaunchParams for LaunchConfig<App> {
 }
 
 impl LaunchConfigTrait for LaunchConfig<App> {
-    const TARGET_TYPE: &'static str = TARGET_TYPE_APP;
+    const TARGET_TYPE: TargetType = TargetType::App;
 
     fn target_name(&self) -> &str {
         &self.target_name
@@ -591,11 +694,6 @@ impl LaunchConfigTrait for LaunchConfig<App> {
 
     fn build_command(&self, target: &super::cargo_detector::BevyTarget) -> Command {
         build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
-    }
-
-    fn validate_target(&self, target: &super::cargo_detector::BevyTarget) -> Result<()> {
-        let binary_path = target.get_binary_path(self.profile());
-        validate_binary_exists(&binary_path, self.profile())
     }
 
     fn extra_log_info(&self, _target: &super::cargo_detector::BevyTarget) -> Option<String> {
@@ -646,7 +744,7 @@ impl FromLaunchParams for LaunchConfig<Example> {
 }
 
 impl LaunchConfigTrait for LaunchConfig<Example> {
-    const TARGET_TYPE: &'static str = TARGET_TYPE_EXAMPLE;
+    const TARGET_TYPE: TargetType = TargetType::Example;
 
     fn target_name(&self) -> &str {
         &self.target_name
@@ -666,11 +764,6 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
 
     fn build_command(&self, _target: &super::cargo_detector::BevyTarget) -> Command {
         build_cargo_example_command(&self.target_name, self.profile(), Some(self.port))
-    }
-
-    fn validate_target(&self, _target: &super::cargo_detector::BevyTarget) -> Result<()> {
-        // Examples don't need binary validation - cargo will build them if needed
-        Ok(())
     }
 
     fn extra_log_info(&self, target: &super::cargo_detector::BevyTarget) -> Option<String> {
