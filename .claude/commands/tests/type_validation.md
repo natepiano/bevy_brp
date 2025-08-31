@@ -29,15 +29,18 @@ Each type entry has the following structure:
   "type": "bevy_transform::components::transform::Transform",
   "spawn_test": "untested",  // "untested", "passed", "failed", "skipped" (if no Serialize/Deserialize)
   "mutation_tests": "untested",  // "untested", "passed", "failed", "n/a" (if no mutations)
+  "mutation_paths": {},  // Object with path as key, status as value (e.g., {".translation.x": "passed", ".rotation": "failed"})
   "notes": ""  // Additional notes about failures or special cases
 }
 ```
 
-**IMPORTANT**: When testing mutations, track each individual path result separately in the notes field if needed, but update the overall `mutation_tests` field to reflect the aggregate status.
+**IMPORTANT**: When testing mutations, track each individual path result in the `mutation_paths` object. The overall `mutation_tests` field should reflect the aggregate status (all passed = "passed", any failed = "failed", no mutations = "n/a").
 
 When a type is tested, update its status in place:
+- **FIRST**: When getting the type schema, immediately update `mutation_paths` with ALL discovered paths set to "untested" (e.g., `{".translation.x": "untested", ".rotation": "untested"}`)
 - Change `spawn_test` from "untested" to "passed", "failed", or "skipped"
-- Change `mutation_tests` from "untested" to "passed", "failed", or "n/a"
+- Update each path in `mutation_paths` from "untested" to "passed" or "failed" as you test them
+- Change `mutation_tests` from "untested" to "passed", "failed", or "n/a" based on aggregate results
 - Add any relevant notes about failures or special handling
 
 ## Test Strategy
@@ -94,7 +97,7 @@ print(f"Already passed: {len(all_types) - len(todo_types)}")
 
 For each type in the todo list:
 
-#### 2a. Get Type Schema from BRP Tool
+#### 2a. Get Type Schema from BRP Tool and Initialize Mutation Paths
 ```python
 type_name = todo_types[0]  # Process one at a time
 
@@ -107,6 +110,25 @@ schema_result = mcp__brp__brp_type_schema(
 # Extract the schema for this type
 type_schema = schema_result['types'][type_name]
 supported_ops = type_schema.get('supported_operations', [])
+
+# IMMEDIATELY update the JSON file with discovered mutation paths set to "untested"
+if 'mutate' in supported_ops:
+    mutation_paths = type_schema.get('mutation_paths', {})
+    
+    # Load the progress file
+    with open('.claude/commands/type_validation.json', 'r') as f:
+        all_types = json.load(f)
+    
+    # Find and update the type entry with mutation paths
+    for i, entry in enumerate(all_types):
+        if entry["type"] == type_name:
+            # Initialize mutation_paths with all paths set to "untested"
+            all_types[i]["mutation_paths"] = {path: "untested" for path in mutation_paths.keys()}
+            break
+    
+    # Write back immediately
+    with open('.claude/commands/type_validation.json', 'w') as f:
+        json.dump(all_types, f, indent=2)
 ```
 
 #### 2b. Test Spawn Operations - FORMAT KNOWLEDGE CHECK
@@ -196,10 +218,6 @@ if 'mutate' in supported_ops and 'spawn' not in supported_ops:
 if 'mutate' in supported_ops:
     mutation_paths = type_schema.get('mutation_paths', {})
     
-    # FIRST: Create all mutation_paths with "Untested" status
-    for path in mutation_paths.keys():
-        test_result["mutation_paths"].append({"name": path, "status": "Untested"})
-    
     # Create todo items for each mutation path
     mutation_todos = []
     for path in mutation_paths.keys():
@@ -211,6 +229,9 @@ if 'mutate' in supported_ops:
     
     # Add mutation paths to TodoWrite tool
     TodoWrite(todos=mutation_todos)
+    
+    # Track overall success for aggregate status
+    all_mutations_passed = True
     
     # Now test each mutation path
     for i, path in enumerate(mutation_paths.keys()):
@@ -241,13 +262,13 @@ if 'mutate' in supported_ops:
                 value=value,
                 port=port
             )
-            # Update status to "Passed" if successful
-            test_result["mutation_paths"][i]["status"] = "Passed"
+            # Update this specific path to "passed" in the JSON file
+            update_mutation_path_status(type_name, path, "passed")
             mutation_todos[i]["status"] = "completed"
         except Exception as e:
-            # Update status to "Failed" on error
-            test_result["mutation_paths"][i]["status"] = "Failed"
-            test_result["mutation_paths"][i]["error"] = str(e)
+            # Update this specific path to "failed" in the JSON file
+            update_mutation_path_status(type_name, path, "failed")
+            all_mutations_passed = False
             mutation_todos[i]["status"] = "completed"
             
             # Update todo list before stopping
@@ -259,6 +280,12 @@ if 'mutate' in supported_ops:
         
         # Update todo list after each successful test
         TodoWrite(todos=mutation_todos)
+    
+    # Update the aggregate mutation_tests status based on all path results
+    if all_mutations_passed:
+        update_aggregate_mutation_status(type_name, "passed")
+    else:
+        update_aggregate_mutation_status(type_name, "failed")
 ```
 
 ### 3. Update Progress - MANDATORY AFTER EACH TYPE
@@ -274,6 +301,40 @@ After testing each type:
 **IMPORTANT**: Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
 
 ```python
+def update_mutation_path_status(type_name, path, status):
+    """Update the status of a specific mutation path immediately after testing."""
+    # Load the progress file
+    with open('.claude/commands/type_validation.json', 'r') as f:
+        all_types = json.load(f)
+    
+    # Find and update the specific path
+    for i, entry in enumerate(all_types):
+        if entry["type"] == type_name:
+            if "mutation_paths" not in all_types[i]:
+                all_types[i]["mutation_paths"] = {}
+            all_types[i]["mutation_paths"][path] = status
+            break
+    
+    # Write back immediately
+    with open('.claude/commands/type_validation.json', 'w') as f:
+        json.dump(all_types, f, indent=2)
+
+def update_aggregate_mutation_status(type_name, status):
+    """Update the aggregate mutation_tests status based on all path results."""
+    # Load the progress file
+    with open('.claude/commands/type_validation.json', 'r') as f:
+        all_types = json.load(f)
+    
+    # Find and update the aggregate status
+    for i, entry in enumerate(all_types):
+        if entry["type"] == type_name:
+            all_types[i]["mutation_tests"] = status
+            break
+    
+    # Write back immediately
+    with open('.claude/commands/type_validation.json', 'w') as f:
+        json.dump(all_types, f, indent=2)
+
 def update_progress(type_name, spawn_result, mutation_result, notes=""):
     # Load the progress file
     # DO NOT create backup files - git provides version control
@@ -287,7 +348,7 @@ def update_progress(type_name, spawn_result, mutation_result, notes=""):
             if spawn_result is not None:
                 all_types[i]["spawn_test"] = spawn_result  # "passed", "failed", or "skipped"
             
-            # Update mutation test status
+            # Update mutation test status (this should already be set by update_aggregate_mutation_status)
             if mutation_result is not None:
                 all_types[i]["mutation_tests"] = mutation_result  # "passed", "failed", or "n/a"
             

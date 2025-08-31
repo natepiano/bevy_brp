@@ -12,6 +12,7 @@
 use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
+use bevy::core_pipeline::bloom::Bloom;
 use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
@@ -442,7 +443,8 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     // Camera with minimal effects to avoid visual artifacts
     commands.spawn((
         Camera2d,
-        // Removed tested components: Bloom, ContrastAdaptiveSharpening, Fxaa, ChromaticAberration
+        Bloom::default(),
+        // Removed tested components: ContrastAdaptiveSharpening, Fxaa, ChromaticAberration
     ));
 
     // 3D Camera with minimal components
