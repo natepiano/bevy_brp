@@ -264,6 +264,11 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Transform::from_xyz(0.0, 0.0, 0.0),
         Name::new("VisibleEntity"),
         Visibility::default(),
+        bevy::render::view::visibility::VisibilityRange {
+            start_margin: 0.0..10.0,
+            end_margin: 90.0..100.0,
+            use_aabb: false,
+        },
     ));
 
     // Entity with Sprite component for testing mutation paths
@@ -278,6 +283,7 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         },
         Transform::from_xyz(100.0, 100.0, 0.0),
         Name::new("TestSprite"),
+        bevy::render::view::visibility::RenderLayers::layer(1),
     ));
 
     // Entity with TestArrayField component
@@ -354,6 +360,12 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     // Entity with Mesh3d for testing mutations
     commands.spawn((Mesh3d(Handle::default()), Name::new("Mesh3dTestEntity")));
 
+    // Entity with MeshMaterial2d<ColorMaterial> for testing mutations
+    commands.spawn((
+        bevy::prelude::MeshMaterial2d::<bevy::prelude::ColorMaterial>(Handle::default()),
+        Name::new("MeshMaterial2dTestEntity"),
+    ));
+
     // Entity with CascadesFrusta for testing mutations
     commands.spawn((
         CascadesFrusta::default(),
@@ -396,6 +408,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         ManualTextureViewHandle(0), // For testing mutations
+        bevy::render::view::window::screenshot::Screenshot(bevy::render::camera::RenderTarget::Window(bevy::window::WindowRef::Primary)),
         DepthPrepass,               // Required for OcclusionCulling
         OcclusionCulling, /* For testing mutations */
                                     /* Removed tested components: DepthOfField, tonemapping */

@@ -306,7 +306,7 @@ def update_progress(test_result):
 
 ### 4. Progress Reporting
 
-**IMPORTANT**: Progress reporting is for logging only - DO NOT STOP for progress reports. Continue testing all types sequentially.
+**CRITICAL - DO NOT STOP TO REPORT PROGRESS**: Progress tracking happens ONLY through the JSON files. DO NOT provide summaries, progress reports, or status updates to the user. The test must run continuously through ALL types without any interruption for reporting. Any progress reporting shown here is for internal logging only, NOT for stopping the test to communicate with the user.
 
 ```
 Testing Progress:
@@ -321,7 +321,7 @@ Current type: [TYPE_NAME]
 - Mutation paths: [X/Y passed]
 ```
 
-**After reporting progress, immediately continue to the next type without stopping.**
+**This format is ONLY for internal logging. NEVER stop the test to show this to the user.**
 
 ## Success Criteria
 

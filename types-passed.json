@@ -1048,5 +1048,123 @@
     "spawn_test": "Skipped",
     "mutation_paths": [],
     "note": "Empty struct - no fields to mutate"
+  },
+  {
+    "type": "bevy_render::primitives::Frustum",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate"
+  },
+  {
+    "type": "bevy_render::sync_world::SyncToRenderWorld",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate"
+  },
+  {
+    "type": "bevy_render::view::ColorGrading",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".global.exposure", "status": "Passed"},
+      {"name": ".global.hue", "status": "Passed"},
+      {"name": ".global.midtones_range", "status": "Failed", "note": "Range<f32> lacks ReflectDeserialize"},
+      {"name": ".global.post_saturation", "status": "Passed"},
+      {"name": ".global.temperature", "status": "Passed"},
+      {"name": ".global.tint", "status": "Passed"},
+      {"name": ".shadows.contrast", "status": "Passed"},
+      {"name": ".shadows.gain", "status": "Passed"},
+      {"name": ".shadows.gamma", "status": "Passed"},
+      {"name": ".shadows.lift", "status": "Passed"},
+      {"name": ".shadows.saturation", "status": "Passed"},
+      {"name": ".midtones.contrast", "status": "Passed"},
+      {"name": ".midtones.gain", "status": "Passed"},
+      {"name": ".midtones.gamma", "status": "Passed"},
+      {"name": ".midtones.lift", "status": "Passed"},
+      {"name": ".midtones.saturation", "status": "Passed"},
+      {"name": ".highlights.contrast", "status": "Passed"},
+      {"name": ".highlights.gain", "status": "Passed"},
+      {"name": ".highlights.gamma", "status": "Passed"},
+      {"name": ".highlights.lift", "status": "Passed"},
+      {"name": ".highlights.saturation", "status": "Passed"}
+    ],
+    "note": "Most mutations work except Range<f32> field"
+  },
+  {
+    "type": "bevy_render::view::Msaa",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": "", "status": "Passed"}
+    ],
+    "note": "Enum type with unit variants"
+  },
+  {
+    "type": "bevy_render::view::visibility::InheritedVisibility",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".0", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_render::view::visibility::NoFrustumCulling",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate"
+  },
+  {
+    "type": "bevy_render::view::visibility::ViewVisibility",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".0", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_render::view::visibility::VisibilityClass",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".0", "status": "Failed", "error": "TypeId not registered for reflection", "note": "SmallVec<[core::any::TypeId; 1]> cannot be mutated through BRP"}
+    ]
+  },
+  {
+    "type": "bevy_render::view::visibility::VisibleEntities",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate"
+  },
+  {
+    "type": "bevy_render::view::visibility::render_layers::RenderLayers",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".0", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_render::view::visibility::range::VisibilityRange",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".end_margin", "status": "Failed", "error": "Range<f32> missing ReflectDeserialize"},
+      {"name": ".start_margin", "status": "Failed", "error": "Range<f32> missing ReflectDeserialize"},
+      {"name": ".use_aabb", "status": "Passed"}
+    ],
+    "note": "Partial pass - boolean field works but Range<f32> fields cannot be mutated"
+  },
+  {
+    "type": "bevy_render::view::window::screenshot::Screenshot",
+    "spawn_test": "Failed",
+    "mutation_paths": [],
+    "note": "Cannot spawn/insert - no Serialize/Deserialize and format not discoverable"
+  },
+  {
+    "type": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
   }
 ]

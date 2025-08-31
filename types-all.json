@@ -1,44 +1,5 @@
 [
   {
-    "type": "bevy_render::primitives::Frustum"
-  },
-  {
-    "type": "bevy_render::sync_world::SyncToRenderWorld"
-  },
-  {
-    "type": "bevy_render::view::ColorGrading"
-  },
-  {
-    "type": "bevy_render::view::Msaa"
-  },
-  {
-    "type": "bevy_render::view::visibility::InheritedVisibility"
-  },
-  {
-    "type": "bevy_render::view::visibility::NoFrustumCulling"
-  },
-  {
-    "type": "bevy_render::view::visibility::ViewVisibility"
-  },
-  {
-    "type": "bevy_render::view::visibility::VisibilityClass"
-  },
-  {
-    "type": "bevy_render::view::visibility::VisibleEntities"
-  },
-  {
-    "type": "bevy_render::view::visibility::range::VisibilityRange"
-  },
-  {
-    "type": "bevy_render::view::visibility::render_layers::RenderLayers"
-  },
-  {
-    "type": "bevy_render::view::window::screenshot::Screenshot"
-  },
-  {
-    "type": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>"
-  },
-  {
     "type": "bevy_sprite::sprite::Anchor"
   },
   {
