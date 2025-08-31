@@ -364,6 +364,22 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestComplexEntity"),
     ));
 
+    // Entity with TestEnumNoSerDe
+    commands.spawn((
+        TestEnumNoSerDe::Inactive,
+        Name::new("TestEnumNoSerDeEntity"),
+    ));
+
+    // Entity with TestStructNoSerDe
+    commands.spawn((
+        TestStructNoSerDe {
+            value:   123.45,
+            name:    "test_struct".to_string(),
+            enabled: true,
+        },
+        Name::new("TestStructNoSerDeEntity"),
+    ));
+
     // Entity with Gamepad for testing mutations
     commands.spawn((Gamepad::default(), Name::new("GamepadTestEntity")));
 
@@ -482,6 +498,23 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                             height: Some(200.0),
                         },
                         bevy::text::TextSpan("Test TextSpan Component".to_string()),
+                        bevy::prelude::TextShadow {
+                            offset: Vec2::new(2.0, 2.0),
+                            color: Color::srgba(0.0, 0.0, 0.0, 0.5),
+                        },
+                        bevy::prelude::UiAntiAlias::On,
+                        bevy::prelude::UiTargetCamera(Entity::PLACEHOLDER),
+                        bevy::prelude::Button,
+                        bevy::prelude::Label,
+                        bevy::prelude::ImageNode {
+                            image: Handle::default(),
+                            color: Color::WHITE,
+                            flip_x: false,
+                            flip_y: false,
+                            image_mode: bevy::prelude::NodeImageMode::Auto,
+                            rect: None,
+                            texture_atlas: None,
+                        },
                         Name::new("TextBoundsTestEntity"),
                     ));
                 });

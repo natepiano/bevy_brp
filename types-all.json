@@ -1,53 +1,5 @@
 [
   {
-    "type": "bevy_ui::ui_node::CalculatedClip"
-  },
-  {
-    "type": "bevy_ui::ui_node::ComputedNode"
-  },
-  {
-    "type": "bevy_ui::ui_node::ComputedNodeTarget"
-  },
-  {
-    "type": "bevy_ui::ui_node::Node"
-  },
-  {
-    "type": "bevy_ui::ui_node::Outline"
-  },
-  {
-    "type": "bevy_ui::ui_node::ScrollPosition"
-  },
-  {
-    "type": "bevy_ui::ui_node::TextShadow"
-  },
-  {
-    "type": "bevy_ui::ui_node::UiAntiAlias"
-  },
-  {
-    "type": "bevy_ui::ui_node::UiTargetCamera"
-  },
-  {
-    "type": "bevy_ui::ui_node::ZIndex"
-  },
-  {
-    "type": "bevy_ui::widget::button::Button"
-  },
-  {
-    "type": "bevy_ui::widget::image::ImageNode"
-  },
-  {
-    "type": "bevy_ui::widget::image::ImageNodeSize"
-  },
-  {
-    "type": "bevy_ui::widget::label::Label"
-  },
-  {
-    "type": "bevy_ui::widget::text::Text"
-  },
-  {
-    "type": "bevy_ui::widget::text::TextNodeFlags"
-  },
-  {
     "type": "bevy_window::monitor::Monitor"
   },
   {

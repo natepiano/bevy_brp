@@ -1,5 +1,136 @@
 [
   {
+    "type": "bevy_ui::widget::image::ImageNode",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".color", "status": "Passed"},
+      {"name": ".flip_x", "status": "Passed"},
+      {"name": ".flip_y", "status": "Passed"},
+      {"name": ".image", "status": "Passed"},
+      {"name": ".image_mode", "status": "Passed"},
+      {"name": ".rect", "status": "Passed"},
+      {"name": ".texture_atlas", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_ui::widget::image::ImageNodeSize",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".size", "status": "Passed"},
+      {"name": ".size.x", "status": "Passed"},
+      {"name": ".size.y", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_ui::widget::label::Label",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": "", "status": "Passed"}
+    ],
+    "note": "Empty struct - root mutation works with empty object"
+  },
+  {
+    "type": "bevy_ui::widget::text::Text",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": "", "status": "Passed"},
+      {"name": ".0", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_ui::widget::text::TextNodeFlags",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {"name": ".needs_measure_fn", "status": "Passed"},
+      {"name": ".needs_recompute", "status": "Passed"}
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::CalculatedClip",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".clip",
+        "status": "Failed",
+        "error": "No entities found with this component - likely computed by UI system when clipping is needed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::ComputedNode",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".border.bottom",
+        "status": "Passed"
+      },
+      {
+        "name": ".size.x",
+        "status": "Passed"
+      },
+      {
+        "name": ".stack_index",
+        "status": "Passed"
+      },
+      {
+        "name": ".border_radius.top_left",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::ComputedNodeTarget",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".scale_factor",
+        "status": "Passed"
+      },
+      {
+        "name": ".physical_size.x",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::Node",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": ".width",
+        "status": "Passed"
+      },
+      {
+        "name": ".flex_direction",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::ScrollPosition",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".offset_x",
+        "status": "Passed"
+      },
+      {
+        "name": ".offset_y",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::ZIndex",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
     "spawn_test": "Skipped",
     "mutation_paths": [
@@ -1455,6 +1586,111 @@
         "name": ".clip",
         "status": "Skipped",
         "note": "No entities found with this component - likely computed by UI system"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::Outline",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      {
+        "name": ".color",
+        "status": "Passed"
+      },
+      {
+        "name": ".offset",
+        "status": "Passed"
+      },
+      {
+        "name": ".width",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::TextShadow",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".color",
+        "status": "Passed"
+      },
+      {
+        "name": ".offset",
+        "status": "Passed"
+      },
+      {
+        "name": ".offset.x",
+        "status": "Passed"
+      },
+      {
+        "name": ".offset.y",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::UiAntiAlias",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::ui_node::UiTargetCamera",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": "",
+        "status": "Passed"
+      },
+      {
+        "name": ".0",
+        "status": "Passed"
+      }
+    ]
+  },
+  {
+    "type": "bevy_ui::widget::button::Button",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate"
+  },
+  {
+    "type": "bevy_ui::widget::image::ImageNode",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".color",
+        "status": "Passed"
+      },
+      {
+        "name": ".flip_x",
+        "status": "Passed"
+      },
+      {
+        "name": ".flip_y",
+        "status": "Passed"
+      },
+      {
+        "name": ".image",
+        "status": "Skipped",
+        "note": "Complex Handle type not tested"
+      },
+      {
+        "name": ".image_mode",
+        "status": "Passed"
+      },
+      {
+        "name": ".rect",
+        "status": "Passed"
+      },
+      {
+        "name": ".texture_atlas",
+        "status": "Passed"
       }
     ]
   }

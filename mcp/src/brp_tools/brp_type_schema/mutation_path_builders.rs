@@ -644,11 +644,15 @@ impl StructMutationBuilder {
             // Check if this is a wrapper type (Option, Handle) first
             let wrapper_info = WrapperType::detect(ft.as_str());
 
-            // For wrapper types, check the inner type for hardcoded knowledge
-            let type_to_check = wrapper_info.as_ref().map_or(&ft, |(_, inner)| inner);
+            // Check for hardcoded knowledge - first try the full type, then inner type for wrappers
+            let hardcoded = BRP_FORMAT_KNOWLEDGE.get(&ft).or_else(|| {
+                // For wrapper types, check the inner type for hardcoded knowledge
+                wrapper_info
+                    .as_ref()
+                    .and_then(|(_, inner)| BRP_FORMAT_KNOWLEDGE.get(inner))
+            });
 
-            // Check for hardcoded math types (Vec3, Quat, etc.) first
-            if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_to_check) {
+            if let Some(hardcoded) = hardcoded {
                 // Get enum variants if this is an enum
                 let enum_variants = if wrapper_info.is_none() {
                     ctx.get_type_schema(&ft).and_then(|schema| {
@@ -702,10 +706,23 @@ impl StructMutationBuilder {
         let mut paths = Vec::new();
 
         // Build main path with appropriate example format
-        let final_example = wrapper_info.as_ref().map_or_else(
-            || hardcoded.example_value.clone(),
-            |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
-        );
+        // When format knowledge exists for wrapper types, use it directly without wrapper
+        // transformation This fixes Handle<Image> where format knowledge provides the
+        // correct Weak format but wrapper.mutation_examples() wraps it in incorrect complex
+        // format
+        let final_example =
+            if wrapper_info.is_some() && BRP_FORMAT_KNOWLEDGE.contains_key(field_type) {
+                // Use format knowledge directly when the full wrapper type (e.g., Handle<Image>)
+                // has format knowledge This avoids wrapping the correct format in
+                // incorrect wrapper mutation examples
+                hardcoded.example_value.clone()
+            } else {
+                // Use wrapper transformation when hardcoded knowledge comes from inner type
+                wrapper_info.as_ref().map_or_else(
+                    || hardcoded.example_value.clone(),
+                    |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
+                )
+            };
 
         paths.push(MutationPathInternal {
             path: format!(".{field_name}"),

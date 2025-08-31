@@ -23,8 +23,8 @@ pub struct BrpFormatKnowledge {
 
 /// Static map of hardcoded BRP format knowledge
 /// This captures the serialization rules that can't be derived from registry
-pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledge>> =
-    LazyLock::new(|| {
+pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledge>> = LazyLock::new(
+    || {
         let mut map = HashMap::new();
 
         // ===== Numeric types =====
@@ -277,6 +277,76 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
 
+        // Integer vectors
+        map.insert(
+            "glam::IVec2".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([0, 0]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(0)),
+                    (MathComponent::Y, json!(0)),
+                ]),
+            },
+        );
+        map.insert(
+            "glam::IVec3".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([0, 0, 0]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(0)),
+                    (MathComponent::Y, json!(0)),
+                    (MathComponent::Z, json!(0)),
+                ]),
+            },
+        );
+        map.insert(
+            "glam::IVec4".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([0, 0, 0, 0]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(0)),
+                    (MathComponent::Y, json!(0)),
+                    (MathComponent::Z, json!(0)),
+                    (MathComponent::W, json!(0)),
+                ]),
+            },
+        );
+
+        // Unsigned vectors
+        map.insert(
+            "glam::UVec2".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([0, 0]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(0)),
+                    (MathComponent::Y, json!(0)),
+                ]),
+            },
+        );
+        map.insert(
+            "glam::UVec3".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([0, 0, 0]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(0)),
+                    (MathComponent::Y, json!(0)),
+                    (MathComponent::Z, json!(0)),
+                ]),
+            },
+        );
+        map.insert(
+            "glam::UVec4".into(),
+            BrpFormatKnowledge {
+                example_value:  json!([0, 0, 0, 0]),
+                subfield_paths: Some(vec![
+                    (MathComponent::X, json!(0)),
+                    (MathComponent::Y, json!(0)),
+                    (MathComponent::Z, json!(0)),
+                    (MathComponent::W, json!(0)),
+                ]),
+            },
+        );
+
         // Quaternion
         map.insert(
             "bevy_math::quat::Quat".into(),
@@ -450,5 +520,17 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
 
+        // ===== Asset Handle types =====
+        // Handle<T> types - use Weak variant with UUID format for mutations
+        // Schema provides non-functional examples, but this format works
+        map.insert(
+            "bevy_asset::handle::Handle<bevy_image::image::Image>".into(),
+            BrpFormatKnowledge {
+                example_value: json!({"Weak": {"Uuid": {"uuid": "12345678-1234-1234-1234-123456789012"}}}),
+                subfield_paths: None,
+            },
+        );
+
         map
-    });
+    },
+);

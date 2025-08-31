@@ -65,8 +65,8 @@ When a type fully passes (spawn test passed/skipped AND all mutation paths passe
 1. Get type schema
 2. Test spawn operations (if supported)
 3. Test all mutation paths (if supported)  
-4. **IMMEDIATELY update types-passed.json and types-all.json**
-5. **ONLY THEN proceed to next type**
+4. **IMMEDIATELY update types-passed.json and types-all.json and continue to next type**
+5. **This is a single continuous action - do not pause between steps**
 
 ## Test Steps
 
@@ -143,9 +143,7 @@ if 'spawn' in supported_ops:
             test_result["spawn_test"] = "Failed"
 ```
 
-**KNOWN ISSUES to handle**:
-- `bevy_ecs::name::Name`: Use plain string instead of struct format
-- **Parameter ordering for bevy_mutate_component**: If you encounter repeated "Unable to extract parameters" errors when calling mcp__brp__bevy_mutate_component, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
+**Parameter ordering for bevy_mutate_component**: If you encounter repeated "Unable to extract parameters" errors when calling mcp__brp__bevy_mutate_component, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 #### 2c. Prepare Entity for Mutation Testing
 ```python
@@ -273,12 +271,12 @@ if 'mutate' in supported_ops:
 
 ### 3. Update Progress - MANDATORY AFTER EACH TYPE
 
-**CRITICAL**: IMMEDIATELY after completing ALL tests for a type (spawn + all mutations), you MUST update the progress files before proceeding to the next type. This is non-negotiable.
+**CRITICAL**: IMMEDIATELY after completing ALL tests for a type (spawn + all mutations), you MUST update the progress files and seamlessly continue to the next type in one continuous flow. Do not pause or wait between these actions.
 
 After testing each type:
 1. **IMMEDIATELY update types-passed.json** if the type fully passed
 2. **IMMEDIATELY remove the type from types-all.json** 
-3. **ONLY THEN continue to the next type**
+3. **IMMEDIATELY continue to the next type without pausing**
 
 **FAILURE TO UPDATE PROGRESS IMMEDIATELY WILL BE CONSIDERED A TEST EXECUTION ERROR**
 
@@ -344,8 +342,9 @@ def update_progress(test_result):
 **NO PROGRESS REPORTING TO USER**: Do NOT stop to provide summaries, progress reports, or status updates to the user. The JSON file updates are mandatory, but user communication about progress is forbidden.
 
 **DISTINCTION**: 
-- JSON file updates = REQUIRED immediately after each type
+- JSON file updates = REQUIRED as part of continuous flow to next type
 - User progress reports = FORBIDDEN
+- Pausing between types = FORBIDDEN
 
 ```
 Testing Progress:
