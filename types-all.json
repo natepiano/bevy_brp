@@ -1,26 +1,5 @@
 [
   {
-    "type": "bevy_mesh::morph::MeshMorphWeights"
-  },
-  {
-    "type": "bevy_mesh::morph::MorphWeights"
-  },
-  {
-    "type": "bevy_mesh::skinning::SkinnedMesh"
-  },
-  {
-    "type": "bevy_render::camera::camera::Camera"
-  },
-  {
-    "type": "bevy_render::camera::camera::CameraMainTextureUsages"
-  },
-  {
-    "type": "bevy_render::camera::camera::CameraRenderGraph"
-  },
-  {
-    "type": "bevy_render::camera::camera::Exposure"
-  },
-  {
     "type": "bevy_render::camera::camera::MipBias"
   },
   {
@@ -72,9 +51,6 @@
     "type": "bevy_render::view::visibility::ViewVisibility"
   },
   {
-    "type": "bevy_render::view::visibility::Visibility"
-  },
-  {
     "type": "bevy_render::view::visibility::VisibilityClass"
   },
   {
@@ -94,9 +70,6 @@
   },
   {
     "type": "bevy_sprite::sprite::Anchor"
-  },
-  {
-    "type": "bevy_sprite::sprite::Sprite"
   },
   {
     "type": "bevy_text::bounds::TextBounds"
@@ -124,9 +97,6 @@
   },
   {
     "type": "bevy_transform::components::global_transform::GlobalTransform"
-  },
-  {
-    "type": "bevy_transform::components::transform::Transform"
   },
   {
     "type": "bevy_transform::components::transform::TransformTreeChanged"
@@ -232,9 +202,6 @@
   },
   {
     "type": "extras_plugin::TestStructNoSerDe"
-  },
-  {
-    "type": "extras_plugin::TestStructWithSerDe"
   },
   {
     "type": "extras_plugin::TestTupleField"

@@ -15,7 +15,10 @@ use bevy::core_pipeline::Skybox;
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::prelude::*;
+use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
+use bevy_mesh::skinning::SkinnedMesh;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
+use bevy::render::camera::camera::{MipBias, TemporalJitter};
 use bevy_brp_extras::BrpExtrasPlugin;
 use serde::{Deserialize, Serialize};
 
@@ -332,6 +335,24 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         GamepadSettings::default(),
         Name::new("GamepadSettingsTestEntity"),
+    ));
+
+    // Entity with MeshMorphWeights for testing mutations
+    commands.spawn((
+        MeshMorphWeights::new(vec![0.5, 1.0, 0.75]).unwrap(),
+        Name::new("MeshMorphWeightsTestEntity"),
+    ));
+
+    // Entity with MorphWeights for testing mutations
+    commands.spawn((
+        MorphWeights::default(),
+        Name::new("MorphWeightsTestEntity"),
+    ));
+
+    // Entity with SkinnedMesh for testing mutations
+    commands.spawn((
+        SkinnedMesh::default(),
+        Name::new("SkinnedMeshTestEntity"),
     ));
 
     info!(

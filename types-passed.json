@@ -190,5 +190,127 @@
       { "name": ".default_button_settings.press_threshold", "status": "Passed" },
       { "name": ".default_button_settings.release_threshold", "status": "Passed" }
     ]
+  },
+  {
+    "type": "bevy_mesh::morph::MeshMorphWeights",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".weights", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_mesh::morph::MorphWeights",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".first_mesh", "status": "Passed" },
+      { "name": ".weights", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_mesh::skinning::SkinnedMesh",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".joints", "status": "Passed" },
+      { 
+        "name": ".inverse_bindposes", 
+        "status": "Known Limitation", 
+        "note": "Handle<T> with Strong variant lacks ReflectDeserialize - Bevy limitation"
+      }
+    ]
+  },
+  {
+    "type": "bevy_render::camera::camera::Camera",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".clear_color", "status": "Passed" },
+      { "name": ".hdr", "status": "Passed" },
+      { "name": ".is_active", "status": "Passed" },
+      { "name": ".msaa_writeback", "status": "Passed" },
+      { "name": ".order", "status": "Passed" },
+      { "name": ".sub_camera_view", "status": "Passed" },
+      { "name": ".target", "status": "Passed" },
+      { "name": ".viewport", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_render::camera::camera::CameraMainTextureUsages",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { 
+        "name": "", 
+        "status": "Known Limitation", 
+        "note": "Type lacks ReflectSerialize - cannot query or test mutations"
+      }
+    ]
+  },
+  {
+    "type": "bevy_render::camera::camera::CameraRenderGraph",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { 
+        "name": "", 
+        "status": "Known Limitation", 
+        "note": "Type lacks ReflectSerialize - cannot query or test mutations"
+      }
+    ]
+  },
+  {
+    "type": "bevy_render::view::visibility::Visibility",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": "", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_transform::components::transform::Transform",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      { "name": ".translation", "status": "Passed" },
+      { "name": ".translation.x", "status": "Passed" },
+      { "name": ".translation.y", "status": "Passed" },
+      { "name": ".translation.z", "status": "Passed" },
+      { "name": ".rotation", "status": "Passed" },
+      { "name": ".rotation.x", "status": "Passed" },
+      { "name": ".rotation.y", "status": "Passed" },
+      { "name": ".rotation.z", "status": "Passed" },
+      { "name": ".rotation.w", "status": "Passed" },
+      { "name": ".scale", "status": "Passed" },
+      { "name": ".scale.x", "status": "Passed" },
+      { "name": ".scale.y", "status": "Passed" },
+      { "name": ".scale.z", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_sprite::sprite::Sprite",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": ".anchor", "status": "Passed" },
+      { "name": ".color", "status": "Passed" },
+      { "name": ".custom_size", "status": "Passed" },
+      { "name": ".custom_size.x", "status": "Passed" },
+      { "name": ".custom_size.y", "status": "Passed" },
+      { "name": ".flip_x", "status": "Passed" },
+      { "name": ".flip_y", "status": "Passed" },
+      { "name": ".image", "status": "Known Limitation", "note": "Handle type" },
+      { "name": ".image_mode", "status": "Passed" },
+      { "name": ".rect", "status": "Passed" },
+      { "name": ".texture_atlas", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "extras_plugin::TestStructWithSerDe",
+    "spawn_test": "Passed",
+    "mutation_paths": [
+      { "name": ".enabled", "status": "Passed" },
+      { "name": ".name", "status": "Passed" },
+      { "name": ".value", "status": "Passed" }
+    ]
+  },
+  {
+    "type": "bevy_render::camera::camera::Exposure",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      { "name": "", "status": "Known Limitation", "note": "Type lacks ReflectSerialize" }
+    ]
   }
 ]

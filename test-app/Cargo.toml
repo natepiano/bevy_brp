@@ -25,10 +25,12 @@ path = "examples/no_extras_plugin.rs"
 
 [dependencies]
 bevy_brp_extras = { path = "../extras" }
+bevy_mesh       = { workspace = true }
 serde           = { workspace = true }
 # Test apps use same features as extras
 bevy = { workspace = true, features = [
   "bevy_core_pipeline",
+  "bevy_gltf",
   "bevy_log",
   "bevy_remote",
   "bevy_render",
