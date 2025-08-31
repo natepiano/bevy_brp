@@ -1,8 +1,5 @@
 [
   {
-    "type": "bevy_render::primitives::CubemapFrusta"
-  },
-  {
     "type": "bevy_render::primitives::Frustum"
   },
   {

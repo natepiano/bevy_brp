@@ -360,6 +360,18 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
         Name::new("CascadesFrustaTestEntity"),
     ));
 
+    // Entity with PointLight which will automatically get CubemapFrusta due to required components
+    commands.spawn((
+        bevy::pbr::PointLight {
+            intensity: 1500.0,
+            color: Color::WHITE,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(4.0, 8.0, 4.0),
+        Name::new("PointLightTestEntity"),
+    ));
+
     info!(
         "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",
         port.0

@@ -181,16 +181,19 @@ Configuration: Port [PORT], App [APP_NAME]
 - Interact with the test process if they choose
 
 **When test_name is "type_validation":**
-1. **Launch App**: Use launch_instruction to start the app on the test's specified port
-2. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
-3. **Set Window Title**: Set title to "type_validation test - port [PORT]"
-4. **Execute Test DIRECTLY**: 
+1. **Check Existing App**: Use `brp_status` to check if extras_plugin is already running on port 20116
+   - If running with BRP responding: Skip to step 5 (Execute Test DIRECTLY)
+   - If not running or BRP not responding: Continue with launch procedure
+2. **Launch App**: Use launch_instruction to start the app on the test's specified port
+3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
+4. **Set Window Title**: Set title to "type_validation test - port [PORT]"
+5. **Execute Test DIRECTLY**: 
    - Read and execute the test file `.claude/commands/tests/type_validation.md` directly
    - DO NOT use Task tool or subagent
    - Execute ALL test steps in the main conversation
    - **CONTINUE TESTING ALL TYPES** - Do not stop unless there's a failure or the user manually interrupts
    - Test ALL types in types-all.json sequentially without stopping for progress reports or successful completions
-5. **Cleanup**: Shutdown app using shutdown_instruction ONLY after ALL types are tested or a failure occurs
+6. **Cleanup**: Shutdown app using shutdown_instruction ONLY after ALL types are tested or a failure occurs
 
 ### Single Test Execution (for non-type_validation tests)
 
