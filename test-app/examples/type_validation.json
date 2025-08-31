@@ -32,57 +32,86 @@
   },
   {
     "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No Serialize/Deserialize - spawn skipped. No mutations available."
   },
   {
     "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".depth_load_op": "passed",
+      ".depth_texture_usages": "passed",
+      ".screen_space_specular_transmission_quality": "passed",
+      ".screen_space_specular_transmission_steps": "passed"
+    },
+    "notes": "No Serialize/Deserialize - spawn skipped"
   },
   {
     "type": "bevy_core_pipeline::dof::DepthOfField",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".aperture_f_stops": "passed",
+      ".focal_distance": "passed",
+      ".max_circle_of_confusion_diameter": "passed",
+      ".max_depth": "passed",
+      ".mode": "passed",
+      ".sensor_height": "passed"
+    },
+    "notes": "No Serialize/Deserialize - spawn skipped. Added to extras_plugin.rs for testing."
   },
   {
     "type": "bevy_core_pipeline::fxaa::Fxaa",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".edge_threshold": "passed",
+      ".edge_threshold_min": "passed",
+      ".enabled": "passed"
+    },
+    "notes": "No Serialize/Deserialize - spawn skipped. Added to extras_plugin.rs for testing."
   },
   {
     "type": "bevy_core_pipeline::post_process::ChromaticAberration",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color_lut": "passed",
+      ".intensity": "passed",
+      ".max_samples": "passed"
+    },
+    "notes": "No Serialize/Deserialize - spawn skipped. Added to extras_plugin.rs for testing."
   },
   {
     "type": "bevy_core_pipeline::prepass::DeferredPrepass",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
   },
   {
     "type": "bevy_core_pipeline::prepass::DepthPrepass",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
   },
   {
     "type": "bevy_core_pipeline::prepass::MotionVectorPrepass",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
   },
   {
     "type": "bevy_core_pipeline::prepass::NormalPrepass",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
   },
   {
     "type": "bevy_core_pipeline::skybox::Skybox",
