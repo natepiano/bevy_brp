@@ -19,6 +19,7 @@ use bevy::prelude::*;
 use bevy::render::camera::ManualTextureViewHandle;
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
+use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -352,6 +353,12 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
 
     // Entity with Mesh3d for testing mutations
     commands.spawn((Mesh3d(Handle::default()), Name::new("Mesh3dTestEntity")));
+
+    // Entity with CascadesFrusta for testing mutations
+    commands.spawn((
+        CascadesFrusta::default(),
+        Name::new("CascadesFrustaTestEntity"),
+    ));
 
     info!(
         "Test entities spawned (including Sprite and test components). BRP server running on http://localhost:{}",

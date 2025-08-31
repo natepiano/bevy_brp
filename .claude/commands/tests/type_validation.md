@@ -1,7 +1,9 @@
 # Type Schema Comprehensive Validation Test
 
 ## Objective
-Systematically validate all BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `types-all.json` to avoid retesting passed types.
+Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `types-all.json` to avoid retesting passed types.
+
+**CRITICAL**: Test ALL types in sequence without stopping unless there's an actual failure. Do not stop for progress updates, successful completions, or user checkpoints. The user will manually interrupt if needed.
 
 **NOTE**: The extras_plugin app is already running on the specified port - focus on comprehensive type validation.
 
@@ -10,6 +12,7 @@ Systematically validate all BRP component types by testing spawn/insert and muta
 2. Build the modified example
 3. Restart the app with the new component
 4. Then test mutations on the newly available component
+5. **CONTINUE TO NEXT TYPE** - Do not stop after adding components unless there's a build or test failure
 
 ## Schema Source
 - **Type schemas**: Retrieved dynamically via `mcp__brp__brp_type_schema` tool
@@ -49,7 +52,7 @@ When a type fully passes (spawn test passed/skipped AND all mutation paths passe
 3. **Build todo list**: Create tasks only for untested or failed types
 4. **Test each type**: Load individual schema file and test operations
 5. **Update progress**: Mark types as "Passed" or "Failed" in `types-all.json`
-6. **STOP ON FIRST FAILURE** for immediate issue identification
+6. **STOP ON FIRST FAILURE ONLY** - Continue testing all types unless an actual failure occurs. Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
 
 ## Test Steps
 
@@ -246,7 +249,7 @@ if 'mutate' in supported_ops:
 
 ### 3. Update Progress
 
-After testing each type:
+After testing each type (but DO NOT STOP - continue to the next type automatically):
 
 **IMPORTANT**: Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
 
@@ -303,6 +306,8 @@ def update_progress(test_result):
 
 ### 4. Progress Reporting
 
+**IMPORTANT**: Progress reporting is for logging only - DO NOT STOP for progress reports. Continue testing all types sequentially.
+
 ```
 Testing Progress:
 - Total types: 101
@@ -316,13 +321,17 @@ Current type: [TYPE_NAME]
 - Mutation paths: [X/Y passed]
 ```
 
+**After reporting progress, immediately continue to the next type without stopping.**
+
 ## Success Criteria
 
 ✅ Test passes when:
-- All untested types are validated
+- All untested types are validated (test ALL types in sequence without stopping)
 - Spawn/insert operations work for supported types
 - All mutation paths work for supported types
-- Progress is saved after each type
+- Progress is saved after each type (but continue to next type immediately)
+
+**IMPORTANT**: The test executor should process ALL types in types-all.json sequentially without stopping unless there's an actual failure. User interruption is their choice, not the executor's responsibility.
 
 ## Failure Handling
 
@@ -334,8 +343,8 @@ Current type: [TYPE_NAME]
    - Operation that failed (spawn/insert/mutate)
    - Error message
    - Path (for mutations)
-3. **STOP TESTING** - don't continue to other types
-4. Save progress so test can resume later
+3. **STOP TESTING** - Only stop when there's an actual failure
+4. Save progress so test can resume later if stopped due to failure
 
 ### Special Case: Invalid Example Values Causing Crashes
 
@@ -399,4 +408,6 @@ The test can be resumed at any time:
 2. Failed types can be retried 
 3. Untested types are processed in order
 
-This allows incremental testing and debugging of specific type issues.
+**IMPORTANT**: Resume capability exists for when tests are stopped due to failures or manual user intervention. The test executor should NOT proactively stop for checkpoints, progress reports, or successful completions. Process all types continuously unless an actual failure occurs.
+
+This allows incremental testing and debugging of specific type issues when failures occur.

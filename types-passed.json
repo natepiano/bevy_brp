@@ -1036,5 +1036,11 @@
         "status": "Passed"
       }
     ]
+  },
+  {
+    "type": "bevy_render::primitives::CascadesFrusta",
+    "spawn_test": "Skipped",
+    "mutation_paths": [],
+    "note": "Empty struct - no fields to mutate"
   }
 ]
