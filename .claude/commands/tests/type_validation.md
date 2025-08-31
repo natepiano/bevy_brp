@@ -1,7 +1,7 @@
 # Type Schema Comprehensive Validation Test
 
 ## Objective
-Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `.claude/commands/type_validation.json` to avoid retesting passed types.
+Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `test-app/examples/type_validation.json` to avoid retesting passed types.
 
 **CRITICAL**: Test ALL types in sequence without stopping unless there's an actual failure. Do not stop for progress updates, successful completions, or user checkpoints. The user will manually interrupt if needed.
 
@@ -15,12 +15,12 @@ Systematically validate ALL BRP component types by testing spawn/insert and muta
 
 ## Schema Source
 - **Type schemas**: Retrieved dynamically via `mcp__brp__brp_type_schema` tool
-- **Progress tracking**: `.claude/commands/type_validation.json` (single file tracking all types)
+- **Progress tracking**: `test-app/examples/type_validation.json` (single file tracking all types)
 
 ## Progress Tracking
 
 The test uses a single JSON file to track testing progress:
-- `.claude/commands/type_validation.json`: Contains all types with their current test status
+- `test-app/examples/type_validation.json`: Contains all types with their current test status
 
 Each type entry has the following structure:
 
@@ -45,11 +45,11 @@ When a type is tested, update its status in place:
 
 ## Test Strategy
 
-1. **Load progress**: Read `.claude/commands/type_validation.json` to see which types have been tested
+1. **Load progress**: Read `test-app/examples/type_validation.json` to see which types have been tested
 2. **Skip passed types**: Don't retest types where both spawn_test and mutation_tests are "passed"
 3. **Build todo list**: Create tasks only for untested or failed types
 4. **Test each type**: Load individual schema file and test operations
-5. **Update progress**: Update type status in `.claude/commands/type_validation.json`
+5. **Update progress**: Update type status in `test-app/examples/type_validation.json`
 6. **STOP ON FIRST FAILURE OR FORMAT KNOWLEDGE ISSUE** - Continue testing all types unless an actual failure occurs OR a type's schema format doesn't match BRP's actual serialization format (requiring format_knowledge.rs updates). Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
 
 ## CRITICAL EXECUTION REQUIREMENTS
@@ -64,10 +64,36 @@ When a type is tested, update its status in place:
 1. Get type schema
 2. Test spawn operations (if supported)
 3. Test all mutation paths (if supported)  
-4. **IMMEDIATELY update type status in .claude/commands/type_validation.json and continue to next type**
+4. **IMMEDIATELY update type status in test-app/examples/type_validation.json and continue to next type**
 5. **This is a single continuous action - do not pause between steps**
 
 ## Test Steps
+
+### 0. Display Progress Statistics
+
+First, display the current test progress statistics using jq:
+
+```bash
+# Display test statistics
+jq -r '
+  def count_tested: 
+    map(select(
+      (.spawn_test == "passed" or .spawn_test == "skipped") and 
+      (.mutation_tests == "passed" or .mutation_tests == "n/a")
+    )) | length;
+  
+  def count_untested:
+    map(select(
+      (.spawn_test == "untested" or .mutation_tests == "untested") or
+      ((.spawn_test != "passed" and .spawn_test != "skipped") or 
+       (.mutation_tests != "passed" and .mutation_tests != "n/a"))
+    )) | length;
+  
+  "Total types: \(length)",
+  "Tested types: \(count_tested)",
+  "Untested types: \(count_untested)"
+' test-app/examples/type_validation.json
+```
 
 ### 1. Load Progress and Build Todo List
 
@@ -76,7 +102,7 @@ import json
 import os
 
 # Load current progress
-with open('.claude/commands/type_validation.json', 'r') as f:
+with open('test-app/examples/type_validation.json', 'r') as f:
     all_types = json.load(f)
 
 # Build todo list of untested types
@@ -116,7 +142,7 @@ if 'mutate' in supported_ops:
     mutation_paths = type_schema.get('mutation_paths', {})
     
     # Load the progress file
-    with open('.claude/commands/type_validation.json', 'r') as f:
+    with open('test-app/examples/type_validation.json', 'r') as f:
         all_types = json.load(f)
     
     # Find and update the type entry with mutation paths
@@ -127,7 +153,7 @@ if 'mutate' in supported_ops:
             break
     
     # Write back immediately
-    with open('.claude/commands/type_validation.json', 'w') as f:
+    with open('test-app/examples/type_validation.json', 'w') as f:
         json.dump(all_types, f, indent=2)
 ```
 
@@ -207,6 +233,26 @@ if 'mutate' in supported_ops and 'spawn' not in supported_ops:
             filter={"with": [type_name]},
             data={"components": [type_name]}
         )
+        
+        # 6. CRITICAL: Check if component still doesn't exist after restart
+        if query_result["metadata"]["entity_count"] == 0:
+            # Component addition caused build or runtime error
+            # Check the log for errors
+            # Common issues:
+            # - Missing required components/bundles
+            # - Incompatible component combinations
+            # - Component requires specific setup/initialization
+            # - System pipeline conflicts (e.g., ViewCasPipeline errors)
+            
+            # Mark as failed and STOP testing
+            update_progress(type_name, "skipped", "failed", 
+                          "Component causes errors when added - stopping to investigate")
+            print(f"ERROR: {type_name} still not found after adding to extras_plugin.rs")
+            print("Check log for errors. Common issues:")
+            print("- Missing required components")
+            print("- Incompatible combinations")
+            print("- Pipeline conflicts")
+            return "STOP_FOR_COMPONENT_ERROR"
     
     # Get entity ID for mutation testing
     if query_result["metadata"]["entity_count"] > 0:
@@ -293,7 +339,7 @@ if 'mutate' in supported_ops:
 **CRITICAL**: IMMEDIATELY after completing ALL tests for a type (spawn + all mutations), you MUST update the progress file and seamlessly continue to the next type in one continuous flow. Do not pause or wait between these actions.
 
 After testing each type:
-1. **IMMEDIATELY update the type's status in .claude/commands/type_validation.json**
+1. **IMMEDIATELY update the type's status in test-app/examples/type_validation.json**
 2. **IMMEDIATELY continue to the next type without pausing**
 
 **FAILURE TO UPDATE PROGRESS IMMEDIATELY WILL BE CONSIDERED A TEST EXECUTION ERROR**
@@ -304,7 +350,7 @@ After testing each type:
 def update_mutation_path_status(type_name, path, status):
     """Update the status of a specific mutation path immediately after testing."""
     # Load the progress file
-    with open('.claude/commands/type_validation.json', 'r') as f:
+    with open('test-app/examples/type_validation.json', 'r') as f:
         all_types = json.load(f)
     
     # Find and update the specific path
@@ -316,13 +362,13 @@ def update_mutation_path_status(type_name, path, status):
             break
     
     # Write back immediately
-    with open('.claude/commands/type_validation.json', 'w') as f:
+    with open('test-app/examples/type_validation.json', 'w') as f:
         json.dump(all_types, f, indent=2)
 
 def update_aggregate_mutation_status(type_name, status):
     """Update the aggregate mutation_tests status based on all path results."""
     # Load the progress file
-    with open('.claude/commands/type_validation.json', 'r') as f:
+    with open('test-app/examples/type_validation.json', 'r') as f:
         all_types = json.load(f)
     
     # Find and update the aggregate status
@@ -332,7 +378,7 @@ def update_aggregate_mutation_status(type_name, status):
             break
     
     # Write back immediately
-    with open('.claude/commands/type_validation.json', 'w') as f:
+    with open('test-app/examples/type_validation.json', 'w') as f:
         json.dump(all_types, f, indent=2)
 
 def update_progress(type_name, spawn_result, mutation_result, notes=""):
@@ -359,14 +405,14 @@ def update_progress(type_name, spawn_result, mutation_result, notes=""):
             break
     
     # Write the updated progress back
-    with open('.claude/commands/type_validation.json', 'w') as f:
+    with open('test-app/examples/type_validation.json', 'w') as f:
         json.dump(all_types, f, indent=2)
 ```
 
 ### 4. Progress File Updates vs Progress Reporting
 
 **MANDATORY PROGRESS FILE UPDATES**: After each type is completed, you MUST immediately update the JSON file:
-- Update the type's status in `.claude/commands/type_validation.json`
+- Update the type's status in `test-app/examples/type_validation.json`
 
 **NO PROGRESS REPORTING TO USER**: Do NOT stop to provide summaries, progress reports, or status updates to the user. The JSON file updates are mandatory, but user communication about progress is forbidden.
 
@@ -405,7 +451,7 @@ Current type: [TYPE_NAME]
 **On failure**:
 
 ### Standard Failure (bugs, missing components, etc.)
-1. Mark type as "failed" in .claude/commands/type_validation.json
+1. Mark type as "failed" in test-app/examples/type_validation.json
 2. Record failure details:
    - Operation that failed (spawn/insert/mutate)
    - Error message
@@ -448,14 +494,14 @@ map.insert(
 ```
 
 #### Step 3: Stop for MCP Tool Reinstall
-1. Save the current test state in .claude/commands/type_validation.json with a note about the format_knowledge update
+1. Save the current test state in test-app/examples/type_validation.json with a note about the format_knowledge update
 2. **STOP THE TEST** and inform the user:
    - Format knowledge has been updated for [TYPE_NAME]
    - User needs to exit and reinstall the MCP tool for changes to take effect
    - After reinstall, the type schema tool will automatically use the new format knowledge
 
 #### Step 4: Resume After Reinstall (User re-runs test)
-1. Detect that format_knowledge was updated for a type (check notes field in .claude/commands/type_validation.json)
+1. Detect that format_knowledge was updated for a type (check notes field in test-app/examples/type_validation.json)
 2. The BRP type schema tool will now automatically provide the safe example value from format_knowledge
 3. Resume testing from where it left off
 

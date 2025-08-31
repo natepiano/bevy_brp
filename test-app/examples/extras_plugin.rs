@@ -13,6 +13,7 @@ use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::bloom::Bloom;
+use bevy::core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
 use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
@@ -456,6 +457,10 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
             ..default()
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ContrastAdaptiveSharpening {
+            enabled: false,
+            ..default()
+        },
         ManualTextureViewHandle(0), // For testing mutations
         bevy::render::view::window::screenshot::Screenshot(bevy::render::camera::RenderTarget::Window(bevy::window::WindowRef::Primary)),
         DepthPrepass,               // Required for OcclusionCulling

@@ -1,15 +1,34 @@
 [
   {
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".composite_mode": "passed",
+      ".high_pass_frequency": "passed",
+      ".intensity": "passed",
+      ".low_frequency_boost": "passed",
+      ".low_frequency_boost_curvature": "passed",
+      ".max_mip_dimension": "passed",
+      ".prefilter": "passed",
+      ".prefilter.threshold": "passed",
+      ".prefilter.threshold_softness": "passed",
+      ".scale": "passed",
+      ".scale.x": "passed",
+      ".scale.y": "passed"
+    },
+    "notes": "No Serialize/Deserialize - spawn skipped"
   },
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "failed",
+    "mutation_paths": {
+      ".denoise": "untested",
+      ".enabled": "untested",
+      ".sharpening_strength": "untested"
+    },
+    "notes": "No Serialize/Deserialize. Component causes ViewCasPipeline errors when added - stopping to investigate"
   },
   {
     "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",
