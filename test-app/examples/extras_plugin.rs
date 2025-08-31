@@ -11,8 +11,8 @@
 
 use std::time::Instant;
 
-use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::core_pipeline::Skybox;
+use bevy::core_pipeline::prepass::DepthPrepass;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
@@ -335,10 +335,11 @@ fn setup_test_entities(mut commands: Commands, port: Res<CurrentPort>) {
     ));
 
     // Entity with MeshMorphWeights for testing mutations
-    commands.spawn((
-        MeshMorphWeights::new(vec![0.5, 1.0, 0.75]).unwrap(),
-        Name::new("MeshMorphWeightsTestEntity"),
-    ));
+    if let Ok(morph_weights) = MeshMorphWeights::new(vec![0.5, 1.0, 0.75]) {
+        commands.spawn((morph_weights, Name::new("MeshMorphWeightsTestEntity")));
+    } else {
+        error!("Failed to create MeshMorphWeights with test values");
+    }
 
     // Entity with MorphWeights for testing mutations
     commands.spawn((MorphWeights::default(), Name::new("MorphWeightsTestEntity")));
@@ -369,14 +370,16 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     // 3D Camera with minimal components
     commands.spawn((
         Camera3d {
-            depth_texture_usages: (TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING).into(),
+            depth_texture_usages: (TextureUsages::RENDER_ATTACHMENT
+                | TextureUsages::TEXTURE_BINDING)
+                .into(),
             ..default()
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         ManualTextureViewHandle(0), // For testing mutations
-        DepthPrepass,                // Required for OcclusionCulling
-        OcclusionCulling::default(), // For testing mutations
-        /* Removed tested components: DepthOfField, tonemapping */
+        DepthPrepass,               // Required for OcclusionCulling
+        OcclusionCulling, /* For testing mutations */
+                                    /* Removed tested components: DepthOfField, tonemapping */
     ));
 
     // Background

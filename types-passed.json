@@ -998,5 +998,43 @@
     "spawn_test": "Skipped",
     "mutation_paths": [],
     "note": "Empty marker component - no mutations to test. Requires DepthPrepass and proper depth_texture_usages on Camera3d"
+  },
+  {
+    "type": "bevy_render::primitives::Aabb",
+    "spawn_test": "Skipped",
+    "mutation_paths": [
+      {
+        "name": ".center",
+        "status": "Passed"
+      },
+      {
+        "name": ".center.x",
+        "status": "Passed"
+      },
+      {
+        "name": ".center.y",
+        "status": "Passed"
+      },
+      {
+        "name": ".center.z",
+        "status": "Passed"
+      },
+      {
+        "name": ".half_extents",
+        "status": "Passed"
+      },
+      {
+        "name": ".half_extents.x",
+        "status": "Passed"
+      },
+      {
+        "name": ".half_extents.y",
+        "status": "Passed"
+      },
+      {
+        "name": ".half_extents.z",
+        "status": "Passed"
+      }
+    ]
   }
 ]

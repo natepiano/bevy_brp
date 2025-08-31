@@ -21,7 +21,7 @@ use super::wrapper_types::WrapperType;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
-/// Extract type name from a type field using SchemaField::Ref
+/// Extract type name from a type field using `SchemaField::Ref`
 ///
 /// Helper for extracting type references from schema fields
 fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {

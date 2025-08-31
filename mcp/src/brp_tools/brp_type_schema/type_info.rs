@@ -229,9 +229,9 @@ impl TypeInfo {
             .map(BrpTypeName::from)
     }
 
-    /// Extract type name from a type field using SchemaField::Ref
+    /// Extract type name from a type field using `SchemaField::Ref`
     ///
-    /// Similar to extract_type_ref_from_field but uses SchemaField::Ref
+    /// Similar to `extract_type_ref_from_field` but uses `SchemaField::Ref`
     /// for accessing the $ref field
     fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
         type_value
@@ -393,11 +393,13 @@ impl TypeInfo {
             }
             TypeKind::Struct => {
                 // Build struct example from properties
-                if let Some(properties) = field_schema.get_field(SchemaField::Properties) {
-                    EnumMutationBuilder::build_struct_example_from_properties(properties, registry)
-                } else {
-                    json!(null)
-                }
+                field_schema
+                    .get_field(SchemaField::Properties)
+                    .map_or(json!(null), |properties| {
+                        EnumMutationBuilder::build_struct_example_from_properties(
+                            properties, registry,
+                        )
+                    })
             }
             _ => json!(null),
         }

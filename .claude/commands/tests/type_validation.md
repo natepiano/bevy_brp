@@ -248,6 +248,8 @@ if 'mutate' in supported_ops:
 
 After testing each type:
 
+**IMPORTANT**: Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
+
 ```python
 def update_progress(test_result):
     type_name = test_result["type"]
@@ -259,6 +261,7 @@ def update_progress(test_result):
     if spawn_ok and mutations_ok:
         # Move to types-passed.json
         # Load or create types-passed.json
+        # DO NOT create backup files - git provides version control
         try:
             with open('types-passed.json', 'r') as f:
                 passed_types = json.load(f)

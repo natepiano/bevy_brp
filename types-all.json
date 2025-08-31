@@ -1,8 +1,5 @@
 [
   {
-    "type": "bevy_render::primitives::Aabb"
-  },
-  {
     "type": "bevy_render::primitives::CascadesFrusta"
   },
   {

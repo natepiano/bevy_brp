@@ -25,7 +25,8 @@
       "Bash(cargo metadata:*)",
       "Bash(for type in bevy_render::camera::manual_texture_view::ManualTextureViewHandle bevy_render::camera::projection::Projection bevy_render::experimental::occlusion_culling::OcclusionCulling bevy_render::mesh::components::Mesh2d bevy_render::mesh::components::Mesh3d)",
       "Bash(do echo \"=== $type ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(cargo:*)"
     ],
     "deny": [],
     "ask": [],
