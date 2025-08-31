@@ -19,7 +19,7 @@ This will overwrite any existing `type_validation.json` file with a fresh one co
 ```bash
 mcp__brp__brp_launch_bevy_example(
     example_name="extras_plugin",
-    port=20116
+    port=22222
 )
 ```
 
@@ -27,7 +27,7 @@ mcp__brp__brp_launch_bevy_example(
 ```bash
 mcp__brp__brp_status(
     app_name="extras_plugin",
-    port=20116
+    port=22222
 )
 ```
 
@@ -35,7 +35,7 @@ Wait for confirmation that BRP is responding before proceeding.
 
 ### 3. Get list of all component types
 ```bash
-result = mcp__brp__bevy_list(port=20116)
+result = mcp__brp__bevy_list(port=22222)
 ```
 
 This returns an array of all registered component type names.
@@ -70,13 +70,12 @@ If you don't need the app running after initialization:
 ```bash
 mcp__brp__brp_shutdown(
     app_name="extras_plugin",
-    port=20116
+    port=22222
 )
 ```
 
 ## Important Notes
 
-- **Port**: Uses port 20116 by default (same as type_validation test)
 - **Overwrites**: This command will overwrite any existing tracking file by using the Write tool to create a completely new file
 - **Fresh start**: All types will be marked as "untested" regardless of previous test results
 - **Component discovery**: Only components registered with BRP reflection will be included
@@ -85,7 +84,7 @@ mcp__brp__brp_shutdown(
 ## Error Handling
 
 If the app fails to launch:
-- Check if port 20116 is already in use
+- Check if port 22222 is already in use
 - Ensure the extras_plugin example is built
 
 If BRP doesn't respond:
