@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use tracing::warn;
 
 use super::constants::SCHEMA_REF_PREFIX;
-use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
+use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey};
 use super::response_types::{
     BrpTypeName, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
@@ -210,7 +210,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 
         // Build example element from hardcoded knowledge
         let example_element = BRP_FORMAT_KNOWLEDGE
-            .get(&element_type)
+            .get(&FormatKnowledgeKey::exact(&element_type))
             .map_or(json!(null), |k| k.example_value.clone());
 
         // Determine array size from type name (e.g., "[Vec3; 3]" -> 3)
@@ -645,12 +645,14 @@ impl StructMutationBuilder {
             let wrapper_info = WrapperType::detect(ft.as_str());
 
             // Check for hardcoded knowledge - first try the full type, then inner type for wrappers
-            let hardcoded = BRP_FORMAT_KNOWLEDGE.get(&ft).or_else(|| {
-                // For wrapper types, check the inner type for hardcoded knowledge
-                wrapper_info
-                    .as_ref()
-                    .and_then(|(_, inner)| BRP_FORMAT_KNOWLEDGE.get(inner))
-            });
+            let hardcoded = BRP_FORMAT_KNOWLEDGE
+                .get(&FormatKnowledgeKey::exact(&ft))
+                .or_else(|| {
+                    // For wrapper types, check the inner type for hardcoded knowledge
+                    wrapper_info.as_ref().and_then(|(_, inner)| {
+                        BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(inner))
+                    })
+                });
 
             if let Some(hardcoded) = hardcoded {
                 // Get enum variants if this is an enum
@@ -710,19 +712,20 @@ impl StructMutationBuilder {
         // transformation This fixes Handle<Image> where format knowledge provides the
         // correct Weak format but wrapper.mutation_examples() wraps it in incorrect complex
         // format
-        let final_example =
-            if wrapper_info.is_some() && BRP_FORMAT_KNOWLEDGE.contains_key(field_type) {
-                // Use format knowledge directly when the full wrapper type (e.g., Handle<Image>)
-                // has format knowledge This avoids wrapping the correct format in
-                // incorrect wrapper mutation examples
-                hardcoded.example_value.clone()
-            } else {
-                // Use wrapper transformation when hardcoded knowledge comes from inner type
-                wrapper_info.as_ref().map_or_else(
-                    || hardcoded.example_value.clone(),
-                    |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
-                )
-            };
+        let final_example = if wrapper_info.is_some()
+            && BRP_FORMAT_KNOWLEDGE.contains_key(&FormatKnowledgeKey::exact(field_type))
+        {
+            // Use format knowledge directly when the full wrapper type (e.g., Handle<Image>)
+            // has format knowledge This avoids wrapping the correct format in
+            // incorrect wrapper mutation examples
+            hardcoded.example_value.clone()
+        } else {
+            // Use wrapper transformation when hardcoded knowledge comes from inner type
+            wrapper_info.as_ref().map_or_else(
+                || hardcoded.example_value.clone(),
+                |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
+            )
+        };
 
         paths.push(MutationPathInternal {
             path: format!(".{field_name}"),
@@ -776,7 +779,7 @@ impl TupleMutationBuilder {
                     .iter()
                     .map(|item| {
                         SchemaField::extract_field_type(item)
-                            .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&t))
+                            .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(&t)))
                             .map_or(json!(null), |k| k.example_value.clone())
                     })
                     .collect();
@@ -849,7 +852,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     for (index, element_info) in items.iter().enumerate() {
                         if let Some(element_type) = SchemaField::extract_field_type(element_info) {
                             let elem_example = BRP_FORMAT_KNOWLEDGE
-                                .get(&element_type)
+                                .get(&FormatKnowledgeKey::exact(&element_type))
                                 .map_or(json!(null), |k| k.example_value.clone());
 
                             paths.push(MutationPathInternal {
@@ -876,7 +879,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     for (index, element_info) in items.iter().enumerate() {
                         if let Some(element_type) = SchemaField::extract_field_type(element_info) {
                             let elem_example = BRP_FORMAT_KNOWLEDGE
-                                .get(&element_type)
+                                .get(&FormatKnowledgeKey::exact(&element_type))
                                 .map_or(json!(null), |k| k.example_value.clone());
 
                             paths.push(MutationPathInternal {

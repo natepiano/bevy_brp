@@ -9,7 +9,28 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
-use super::response_types::{BrpTypeName, MathComponent};
+use super::response_types::MathComponent;
+
+/// Format knowledge key for matching types
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FormatKnowledgeKey {
+    /// Exact type name match (current behavior)
+    Exact(String),
+    /// Generic type match - matches base type ignoring type parameters
+    Generic(String),
+}
+
+impl FormatKnowledgeKey {
+    /// Create an exact match key
+    pub fn exact(s: impl Into<String>) -> Self {
+        Self::Exact(s.into())
+    }
+
+    /// Create a generic match key
+    pub fn generic(s: impl Into<String>) -> Self {
+        Self::Generic(s.into())
+    }
+}
 
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
@@ -23,90 +44,90 @@ pub struct BrpFormatKnowledge {
 
 /// Static map of hardcoded BRP format knowledge
 /// This captures the serialization rules that can't be derived from registry
-pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledge>> = LazyLock::new(
-    || {
+pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<FormatKnowledgeKey, BrpFormatKnowledge>> =
+    LazyLock::new(|| {
         let mut map = HashMap::new();
 
         // ===== Numeric types =====
         map.insert(
-            "i8".into(),
+            FormatKnowledgeKey::exact("i8"),
             BrpFormatKnowledge {
                 example_value:  json!(-128),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "i16".into(),
+            FormatKnowledgeKey::exact("i16"),
             BrpFormatKnowledge {
                 example_value:  json!(-32768),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "i32".into(),
+            FormatKnowledgeKey::exact("i32"),
             BrpFormatKnowledge {
                 example_value:  json!(-2_147_483_648),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "i64".into(),
+            FormatKnowledgeKey::exact("i64"),
             BrpFormatKnowledge {
                 example_value:  json!(-9_223_372_036_854_775_808_i64),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "i128".into(),
+            FormatKnowledgeKey::exact("i128"),
             BrpFormatKnowledge {
                 example_value:  json!("-170141183460469231731687303715884105728"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "u8".into(),
+            FormatKnowledgeKey::exact("u8"),
             BrpFormatKnowledge {
                 example_value:  json!(255),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "u16".into(),
+            FormatKnowledgeKey::exact("u16"),
             BrpFormatKnowledge {
                 example_value:  json!(65535),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "u32".into(),
+            FormatKnowledgeKey::exact("u32"),
             BrpFormatKnowledge {
                 example_value:  json!(4_294_967_295_u32),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "u64".into(),
+            FormatKnowledgeKey::exact("u64"),
             BrpFormatKnowledge {
                 example_value:  json!(18_446_744_073_709_551_615_u64),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "u128".into(),
+            FormatKnowledgeKey::exact("u128"),
             BrpFormatKnowledge {
                 example_value:  json!("340282366920938463463374607431768211455"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "f32".into(),
+            FormatKnowledgeKey::exact("f32"),
             BrpFormatKnowledge {
                 example_value:  json!(std::f32::consts::PI),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "f64".into(),
+            FormatKnowledgeKey::exact("f64"),
             BrpFormatKnowledge {
                 example_value:  json!(std::f64::consts::PI),
                 subfield_paths: None,
@@ -115,14 +136,14 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // ===== Size types =====
         map.insert(
-            "isize".into(),
+            FormatKnowledgeKey::exact("isize"),
             BrpFormatKnowledge {
                 example_value:  json!(-9_223_372_036_854_775_808_i64),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "usize".into(),
+            FormatKnowledgeKey::exact("usize"),
             BrpFormatKnowledge {
                 example_value:  json!(18_446_744_073_709_551_615_u64),
                 subfield_paths: None,
@@ -131,42 +152,42 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // ===== Text types =====
         map.insert(
-            "alloc::string::String".into(),
+            FormatKnowledgeKey::exact("alloc::string::String"),
             BrpFormatKnowledge {
                 example_value:  json!("Hello, World!"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "std::string::String".into(),
+            FormatKnowledgeKey::exact("std::string::String"),
             BrpFormatKnowledge {
                 example_value:  json!("Hello, World!"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "String".into(),
+            FormatKnowledgeKey::exact("String"),
             BrpFormatKnowledge {
                 example_value:  json!("Hello, World!"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "&str".into(),
+            FormatKnowledgeKey::exact("&str"),
             BrpFormatKnowledge {
                 example_value:  json!("static string"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "str".into(),
+            FormatKnowledgeKey::exact("str"),
             BrpFormatKnowledge {
                 example_value:  json!("static string"),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "char".into(),
+            FormatKnowledgeKey::exact("char"),
             BrpFormatKnowledge {
                 example_value:  json!('A'),
                 subfield_paths: None,
@@ -175,7 +196,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // ===== Boolean =====
         map.insert(
-            "bool".into(),
+            FormatKnowledgeKey::exact("bool"),
             BrpFormatKnowledge {
                 example_value:  json!(true),
                 subfield_paths: None,
@@ -185,7 +206,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         // ===== Bevy math types (these serialize as arrays, not objects!) =====
         // Vec2
         map.insert(
-            "bevy_math::vec2::Vec2".into(),
+            FormatKnowledgeKey::exact("bevy_math::vec2::Vec2"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0]),
                 subfield_paths: Some(vec![
@@ -195,7 +216,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::Vec2".into(),
+            FormatKnowledgeKey::exact("glam::Vec2"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0]),
                 subfield_paths: Some(vec![
@@ -207,7 +228,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // Vec3
         map.insert(
-            "bevy_math::vec3::Vec3".into(),
+            FormatKnowledgeKey::exact("bevy_math::vec3::Vec3"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
@@ -218,7 +239,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "bevy_math::vec3a::Vec3A".into(),
+            FormatKnowledgeKey::exact("bevy_math::vec3a::Vec3A"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
@@ -229,7 +250,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::Vec3".into(),
+            FormatKnowledgeKey::exact("glam::Vec3"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
@@ -240,7 +261,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::Vec3A".into(),
+            FormatKnowledgeKey::exact("glam::Vec3A"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0]),
                 subfield_paths: Some(vec![
@@ -253,7 +274,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // Vec4
         map.insert(
-            "bevy_math::vec4::Vec4".into(),
+            FormatKnowledgeKey::exact("bevy_math::vec4::Vec4"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0, 4.0]),
                 subfield_paths: Some(vec![
@@ -265,7 +286,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::Vec4".into(),
+            FormatKnowledgeKey::exact("glam::Vec4"),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 2.0, 3.0, 4.0]),
                 subfield_paths: Some(vec![
@@ -279,7 +300,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // Integer vectors
         map.insert(
-            "glam::IVec2".into(),
+            FormatKnowledgeKey::exact("glam::IVec2"),
             BrpFormatKnowledge {
                 example_value:  json!([0, 0]),
                 subfield_paths: Some(vec![
@@ -289,7 +310,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::IVec3".into(),
+            FormatKnowledgeKey::exact("glam::IVec3"),
             BrpFormatKnowledge {
                 example_value:  json!([0, 0, 0]),
                 subfield_paths: Some(vec![
@@ -300,7 +321,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::IVec4".into(),
+            FormatKnowledgeKey::exact("glam::IVec4"),
             BrpFormatKnowledge {
                 example_value:  json!([0, 0, 0, 0]),
                 subfield_paths: Some(vec![
@@ -314,7 +335,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // Unsigned vectors
         map.insert(
-            "glam::UVec2".into(),
+            FormatKnowledgeKey::exact("glam::UVec2"),
             BrpFormatKnowledge {
                 example_value:  json!([0, 0]),
                 subfield_paths: Some(vec![
@@ -324,7 +345,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::UVec3".into(),
+            FormatKnowledgeKey::exact("glam::UVec3"),
             BrpFormatKnowledge {
                 example_value:  json!([0, 0, 0]),
                 subfield_paths: Some(vec![
@@ -335,7 +356,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::UVec4".into(),
+            FormatKnowledgeKey::exact("glam::UVec4"),
             BrpFormatKnowledge {
                 example_value:  json!([0, 0, 0, 0]),
                 subfield_paths: Some(vec![
@@ -349,7 +370,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // Quaternion
         map.insert(
-            "bevy_math::quat::Quat".into(),
+            FormatKnowledgeKey::exact("bevy_math::quat::Quat"),
             BrpFormatKnowledge {
                 example_value:  json!([0.0, 0.0, 0.0, 1.0]),
                 subfield_paths: Some(vec![
@@ -361,7 +382,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::Quat".into(),
+            FormatKnowledgeKey::exact("glam::Quat"),
             BrpFormatKnowledge {
                 example_value:  json!([0.0, 0.0, 0.0, 1.0]),
                 subfield_paths: Some(vec![
@@ -375,35 +396,35 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // Matrices
         map.insert(
-            "bevy_math::mat2::Mat2".into(),
+            FormatKnowledgeKey::exact("bevy_math::mat2::Mat2"),
             BrpFormatKnowledge {
                 example_value:  json!([[1.0, 0.0], [0.0, 1.0]]),
                 subfield_paths: None, // Matrices don't have simple component access
             },
         );
         map.insert(
-            "glam::Mat2".into(),
+            FormatKnowledgeKey::exact("glam::Mat2"),
             BrpFormatKnowledge {
                 example_value:  json!([[1.0, 0.0], [0.0, 1.0]]),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "bevy_math::mat3::Mat3".into(),
+            FormatKnowledgeKey::exact("bevy_math::mat3::Mat3"),
             BrpFormatKnowledge {
                 example_value:  json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "glam::Mat3".into(),
+            FormatKnowledgeKey::exact("glam::Mat3"),
             BrpFormatKnowledge {
                 example_value:  json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "bevy_math::mat4::Mat4".into(),
+            FormatKnowledgeKey::exact("bevy_math::mat4::Mat4"),
             BrpFormatKnowledge {
                 example_value:  json!([
                     [1.0, 0.0, 0.0, 0.0],
@@ -415,7 +436,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
             },
         );
         map.insert(
-            "glam::Mat4".into(),
+            FormatKnowledgeKey::exact("glam::Mat4"),
             BrpFormatKnowledge {
                 example_value:  json!([
                     [1.0, 0.0, 0.0, 0.0],
@@ -429,7 +450,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // ===== Bevy math Rect =====
         map.insert(
-            "bevy_math::rects::rect::Rect".into(),
+            FormatKnowledgeKey::exact("bevy_math::rects::rect::Rect"),
             BrpFormatKnowledge {
                 example_value:  json!({
                     "min": [0.0, 0.0],
@@ -444,7 +465,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         // Color enum - tuple variants with flat array of RGBA values
         // Note: BRP mutations expect [r, g, b, a] array, not the struct wrapper
         map.insert(
-            "bevy_color::color::Color".into(),
+            FormatKnowledgeKey::exact("bevy_color::color::Color"),
             BrpFormatKnowledge {
                 example_value:  json!({"Srgba": [1.0, 0.0, 0.0, 1.0]}),
                 subfield_paths: None,
@@ -453,21 +474,21 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // ===== Collections =====
         map.insert(
-            "alloc::vec::Vec".into(),
+            FormatKnowledgeKey::generic("alloc::vec::Vec"),
             BrpFormatKnowledge {
                 example_value:  json!([]),
                 subfield_paths: None, // Collections have index access, not component access
             },
         );
         map.insert(
-            "std::collections::HashMap".into(),
+            FormatKnowledgeKey::generic("std::collections::HashMap"),
             BrpFormatKnowledge {
                 example_value:  json!({}),
                 subfield_paths: None,
             },
         );
         map.insert(
-            "std::collections::BTreeMap".into(),
+            FormatKnowledgeKey::generic("std::collections::BTreeMap"),
             BrpFormatKnowledge {
                 example_value:  json!({}),
                 subfield_paths: None,
@@ -476,7 +497,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
 
         // ===== Option types =====
         map.insert(
-            "core::option::Option".into(),
+            FormatKnowledgeKey::generic("core::option::Option"),
             BrpFormatKnowledge {
                 example_value:  json!(null),
                 subfield_paths: None,
@@ -486,7 +507,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         // ===== Bevy ECS types =====
         // Name serializes as a plain string, not as a struct with hash/name fields
         map.insert(
-            "bevy_ecs::name::Name".into(),
+            FormatKnowledgeKey::exact("bevy_ecs::name::Name"),
             BrpFormatKnowledge {
                 example_value:  json!("Entity Name"),
                 subfield_paths: None,
@@ -500,7 +521,9 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         // textures! Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT |
         // TEXTURE_BINDING)
         map.insert(
-            "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage".into(),
+            FormatKnowledgeKey::exact(
+                "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage",
+            ),
             BrpFormatKnowledge {
                 example_value:  json!(20), /* RENDER_ATTACHMENT | TEXTURE_BINDING - safe
                                             * combination */
@@ -513,7 +536,9 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         // Format: [matrix_row1(3), matrix_row2(3), matrix_row3(3), translation(3)]
         // Registry shows nested object but BRP actually expects flat array
         map.insert(
-            "bevy_transform::components::global_transform::GlobalTransform".into(),
+            FormatKnowledgeKey::exact(
+                "bevy_transform::components::global_transform::GlobalTransform",
+            ),
             BrpFormatKnowledge {
                 example_value:  json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
                 subfield_paths: None, // Affine matrices don't have simple component access
@@ -524,7 +549,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         // Handle<T> types - use Weak variant with UUID format for mutations
         // Schema provides non-functional examples, but this format works
         map.insert(
-            "bevy_asset::handle::Handle<bevy_image::image::Image>".into(),
+            FormatKnowledgeKey::exact("bevy_asset::handle::Handle<bevy_image::image::Image>"),
             BrpFormatKnowledge {
                 example_value: json!({"Weak": {"Uuid": {"uuid": "12345678-1234-1234-1234-123456789012"}}}),
                 subfield_paths: None,
@@ -532,5 +557,4 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<BrpTypeName, BrpFormatKnowledg
         );
 
         map
-    },
-);
+    });

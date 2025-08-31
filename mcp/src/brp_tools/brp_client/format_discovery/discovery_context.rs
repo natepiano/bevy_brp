@@ -13,8 +13,8 @@ use tracing::debug;
 use super::types::{Correction, CorrectionInfo, Operation};
 use crate::brp_tools::Port;
 use crate::brp_tools::brp_type_schema::{
-    BRP_FORMAT_KNOWLEDGE, BrpTypeName, EnumVariantInfo, MathComponent, MutationPath, TypeInfo,
-    TypeSchemaEngine,
+    BRP_FORMAT_KNOWLEDGE, BrpTypeName, EnumVariantInfo, FormatKnowledgeKey, MathComponent,
+    MutationPath, TypeInfo, TypeSchemaEngine,
 };
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
@@ -514,7 +514,7 @@ impl DiscoveryContext {
         let obj = value.as_object()?;
 
         // Get the format knowledge for this type
-        let format_knowledge = BRP_FORMAT_KNOWLEDGE.get(type_name)?;
+        let format_knowledge = BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(type_name))?;
 
         // Only math types have subfield_paths
         let subfield_paths = format_knowledge.subfield_paths.as_ref()?;

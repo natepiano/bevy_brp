@@ -1,0 +1,794 @@
+[
+  {
+    "type": "bevy_core_pipeline::bloom::settings::Bloom",
+    "spawn_test": "blah",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::dof::DepthOfField",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::fxaa::Fxaa",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::post_process::ChromaticAberration",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::DeferredPrepass",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::DepthPrepass",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::MotionVectorPrepass",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::prepass::NormalPrepass",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::skybox::Skybox",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::smaa::Smaa",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::tonemapping::DebandDither",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_core_pipeline::tonemapping::Tonemapping",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ecs::hierarchy::ChildOf",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ecs::hierarchy::Children",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ecs::name::Name",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_gltf::assets::GltfExtras",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_gltf::assets::GltfMaterialExtras",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_gltf::assets::GltfMaterialName",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_gltf::assets::GltfMeshExtras",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_gltf::assets::GltfSceneExtras",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_input::gamepad::Gamepad",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_input::gamepad::GamepadSettings",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_mesh::morph::MeshMorphWeights",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_mesh::morph::MorphWeights",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_mesh::skinning::SkinnedMesh",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::cluster::ClusterConfig",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::components::CascadesVisibleEntities",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::components::CubemapVisibleEntities",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::components::VisibleMeshEntities",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::decal::clustered::ClusteredDecal",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::fog::DistanceFog",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::CascadeShadowConfig",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::Cascades",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::NotShadowCaster",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::NotShadowReceiver",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::ShadowFilteringMethod",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::ambient_light::AmbientLight",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::directional_light::DirectionalLight",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::point_light::PointLight",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light::spot_light::SpotLight",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light_probe::LightProbe",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light_probe::environment_map::EnvironmentMapLight",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::light_probe::irradiance_volume::IrradianceVolume",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::ssao::ScreenSpaceAmbientOcclusion",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::ssr::ScreenSpaceReflections",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::volumetric_fog::VolumetricFog",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_pbr::volumetric_fog::VolumetricLight",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::camera::Camera",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::camera::CameraMainTextureUsages",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::camera::CameraRenderGraph",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::camera::Exposure",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::camera::MipBias",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::camera::TemporalJitter",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::camera::projection::Projection",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::mesh::components::Mesh2d",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::mesh::components::Mesh3d",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::primitives::Aabb",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::primitives::CascadesFrusta",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::primitives::CubemapFrusta",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::primitives::Frustum",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::sync_world::SyncToRenderWorld",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::ColorGrading",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::Msaa",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::InheritedVisibility",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::NoFrustumCulling",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::ViewVisibility",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::Visibility",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::VisibilityClass",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::VisibleEntities",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::range::VisibilityRange",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::visibility::render_layers::RenderLayers",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_render::view::window::screenshot::Screenshot",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_scene::components::DynamicSceneRoot",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_scene::components::SceneRoot",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_sprite::sprite::Anchor",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_sprite::sprite::Sprite",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::bounds::TextBounds",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::pipeline::TextLayoutInfo",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::text2d::Text2d",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::text::ComputedTextBlock",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::text::TextColor",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::text::TextFont",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::text::TextLayout",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_text::text::TextSpan",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_transform::components::global_transform::GlobalTransform",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_transform::components::transform::Transform",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_transform::components::transform::TransformTreeChanged",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::focus::FocusPolicy",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::focus::Interaction",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::focus::RelativeCursorPosition",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::measurement::ContentSize",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::BackgroundColor",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::BorderColor",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::BorderRadius",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::BoxShadow",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::BoxShadowSamples",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::CalculatedClip",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::ComputedNode",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::ComputedNodeTarget",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::Node",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::Outline",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::ScrollPosition",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::TextShadow",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::UiAntiAlias",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::UiTargetCamera",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::ui_node::ZIndex",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::widget::button::Button",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::widget::image::ImageNode",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::widget::image::ImageNodeSize",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::widget::label::Label",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::widget::text::Text",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_ui::widget::text::TextNodeFlags",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_window::monitor::Monitor",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_window::window::PrimaryWindow",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_window::window::Window",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "bevy_winit::cursor::CursorIcon",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestArrayField",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestComplexComponent",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestEnumNoSerDe",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestEnumWithSerDe",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestStructNoSerDe",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestStructWithSerDe",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestTupleField",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  },
+  {
+    "type": "extras_plugin::TestTupleStruct",
+    "spawn_test": "untested",
+    "mutation_tests": "untested",
+    "notes": ""
+  }
+]

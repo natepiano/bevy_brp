@@ -23,9 +23,9 @@ use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
-use bevy_winit::cursor::CursorIcon;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
+use bevy_winit::cursor::CursorIcon;
 use serde::{Deserialize, Serialize};
 
 /// Resource to track keyboard input history

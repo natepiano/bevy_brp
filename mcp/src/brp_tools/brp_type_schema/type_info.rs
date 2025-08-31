@@ -9,7 +9,7 @@ use serde_json::{Map, Value, json};
 use super::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, MAX_TYPE_RECURSION_DEPTH, SCHEMA_REF_PREFIX,
 };
-use super::format_knowledge::BRP_FORMAT_KNOWLEDGE;
+use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey};
 use super::mutation_path_builders::{
     EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField,
 };
@@ -60,7 +60,7 @@ impl TypeInfo {
     /// Check if this type is a math type (based on BRP format knowledge)
     pub fn is_math_type(&self) -> bool {
         BRP_FORMAT_KNOWLEDGE
-            .get(&self.type_name)
+            .get(&FormatKnowledgeKey::exact(&self.type_name))
             .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
     }
 
@@ -207,7 +207,15 @@ impl TypeInfo {
         type_name: &BrpTypeName,
     ) -> Option<Value> {
         // Check for hardcoded format knowledge first - this fixes GlobalTransform and other types
-        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_name) {
+        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(type_name)) {
+            return Some(hardcoded.example_value.clone());
+        }
+
+        // Try generic match by stripping type parameters
+        if let Some(generic_type) = type_name.as_str().split('<').next()
+            && let Some(hardcoded) =
+                BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::generic(generic_type))
+        {
             return Some(hardcoded.example_value.clone());
         }
 
@@ -322,8 +330,16 @@ impl TypeInfo {
             return json!(null);
         }
 
-        // Check for hardcoded knowledge first
-        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(type_name) {
+        // Check for hardcoded knowledge first - try exact match
+        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(type_name)) {
+            return hardcoded.example_value.clone();
+        }
+
+        // Try generic match by stripping type parameters
+        if let Some(generic_type) = type_name.as_str().split('<').next()
+            && let Some(hardcoded) =
+                BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::generic(generic_type))
+        {
             return hardcoded.example_value.clone();
         }
 

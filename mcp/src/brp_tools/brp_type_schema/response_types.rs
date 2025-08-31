@@ -81,6 +81,18 @@ impl From<&String> for BrpTypeName {
     }
 }
 
+impl From<BrpTypeName> for String {
+    fn from(type_name: BrpTypeName) -> Self {
+        type_name.0
+    }
+}
+
+impl From<&BrpTypeName> for String {
+    fn from(type_name: &BrpTypeName) -> Self {
+        type_name.0.clone()
+    }
+}
+
 impl std::fmt::Display for BrpTypeName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
