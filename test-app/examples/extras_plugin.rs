@@ -18,7 +18,6 @@ use bevy::prelude::*;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
-use bevy::render::camera::camera::{MipBias, TemporalJitter};
 use bevy_brp_extras::BrpExtrasPlugin;
 use serde::{Deserialize, Serialize};
 
