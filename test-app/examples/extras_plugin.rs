@@ -21,7 +21,7 @@ use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
-use bevy::ui::BoxShadowSamples;
+use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
@@ -460,6 +460,9 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                     },
                     BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
                     BoxShadowSamples(4),
+                    CalculatedClip {
+                        clip: bevy::math::Rect::from_corners(Vec2::ZERO, Vec2::new(100.0, 100.0))
+                    },
                 ))
                 .with_children(|parent| {
                     // Keyboard display text
