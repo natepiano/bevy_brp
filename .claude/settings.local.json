@@ -54,9 +54,12 @@
       "Read(/Users/natemccoy/.claude/commands/**)",
       "Read(/Users/natemccoy/**)",
       "Bash(zoxide query:*)",
-      "Bash(echo $HOME)"
+      "Bash(echo $HOME)",
+      "Bash(git commit:*)"
     ],
-    "deny": ["Bash(sed:*)"],
+    "deny": [
+      "Bash(sed:*)"
+    ],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
