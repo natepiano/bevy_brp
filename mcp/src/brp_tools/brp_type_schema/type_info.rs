@@ -102,7 +102,7 @@ impl TypeInfo {
 
         // Build enum info if it's an enum
         let enum_info = if type_kind == TypeKind::Enum {
-            Self::extract_enum_info(type_schema)
+            Self::extract_enum_info(type_schema, registry)
         } else {
             None
         };
@@ -472,14 +472,17 @@ impl TypeInfo {
     }
 
     /// Extract enum information from schema
-    fn extract_enum_info(type_schema: &Value) -> Option<Vec<EnumVariantInfo>> {
+    fn extract_enum_info(
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Option<Vec<EnumVariantInfo>> {
         let one_of = type_schema
             .get_field(SchemaField::OneOf)
             .and_then(Value::as_array)?;
 
         let variants: Vec<EnumVariantInfo> = one_of
             .iter()
-            .filter_map(|v| EnumVariantInfo::from_schema_variant(v, &HashMap::new(), 0))
+            .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, 0))
             .collect();
 
         Some(variants)

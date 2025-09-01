@@ -123,7 +123,9 @@ For each type to test:
 6. For other failures, mark as "failed"
 7. If spawn not supported, mark as "skipped"
 
-**Parameter ordering for bevy_mutate_component**: If you encounter repeated "Unable to extract parameters" errors when calling mcp__brp__bevy_mutate_component, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
+**Parameter formatting for bevy_mutate_component**: 
+- **CRITICAL PATH FORMAT**: For empty paths, pass `""` (empty string), NEVER `"\"\""` (quoted string). The latter causes "Expected variant field access" errors.
+- If you encounter repeated "Unable to extract parameters" errors, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 #### 2c. Prepare Entity for Mutation Testing
 
@@ -192,6 +194,7 @@ If mutations are supported:
 2. For each mutation path:
    - Determine the test value from path_info (example, enum_variants[0], or example_some/none)
    - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, and port
+   - **CRITICAL PATH FORMAT**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
    - **IMPORTANT**: If you get repeated "Unable to extract parameters" errors, try reordering parameters: entity, component, path, value, port
    - If successful:
      - Update the path status to "passed" in the JSON file
@@ -350,11 +353,7 @@ Then it MUST be added to extras_plugin.rs regardless of assumptions about:
 **CRITICAL**: Any of these issues require IMMEDIATE test stopping and format_knowledge.rs updates:
 
 Types that require special handling and will cause **IMMEDIATE TEST STOPPING**:
-1. **Schema format mismatch**: When BRP rejects a format that the schema tool generated (like GlobalTransform expecting flat array vs nested object)
-2. **bevy_ecs::name::Name**: Schema shows struct but BRP expects string
-3. **Option fields**: Some types use "None" string vs null
-4. **Handle types**: May have complex serialization
-5. **Math types**: May serialize as arrays vs objects (like Vec3, GlobalTransform)
+1. **Schema format mismatch**: When BRP rejects a format that the schema tool generated
 
 **When you encounter ANY schema format error from BRP, STOP IMMEDIATELY and follow the format knowledge workflow.**
 

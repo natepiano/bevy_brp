@@ -408,21 +408,21 @@
   },
   {
     "type": "bevy_pbr::volumetric_fog::VolumetricFog",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
     "mutation_paths": {
-      ".ambient_color": "untested",
-      ".ambient_intensity": "untested",
-      ".jitter": "untested",
-      ".step_count": "untested"
+      ".ambient_color": "passed",
+      ".ambient_intensity": "passed",
+      ".jitter": "passed",
+      ".step_count": "passed"
     },
-    "notes": ""
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::volumetric_fog::VolumetricLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "notes": "Unit struct - no mutations available"
   },
   {
     "type": "bevy_render::camera::camera::Camera",
@@ -435,33 +435,42 @@
   },
   {
     "type": "bevy_render::camera::camera::CameraMainTextureUsages",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "ReflectDeserialize not registered - serialization issues"
   },
   {
     "type": "bevy_render::camera::camera::CameraRenderGraph",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "ReflectDeserialize not registered - serialization issues"
   },
   {
     "type": "bevy_render::camera::camera::Exposure",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "ReflectDeserialize not registered - serialization issues"
   },
   {
     "type": "bevy_render::camera::camera::MipBias",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_render::camera::camera::TemporalJitter",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".offset": "passed",
+      ".offset.x": "passed",
+      ".offset.y": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
@@ -474,9 +483,12 @@
   },
   {
     "type": "bevy_render::camera::projection::Projection",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum type - root mutation works, no spawn support"
   },
   {
     "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling",
@@ -504,15 +516,28 @@
   },
   {
     "type": "bevy_render::primitives::Aabb",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".center": "passed",
+      ".center.x": "passed",
+      ".center.y": "passed", 
+      ".center.z": "passed",
+      ".half_extents": "passed",
+      ".half_extents.x": "passed",
+      ".half_extents.y": "passed",
+      ".half_extents.z": "passed"
+    },
+    "notes": "No spawn support - all mutations work"
   },
   {
     "type": "bevy_render::primitives::CascadesFrusta",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Unit struct - root mutation only"
   },
   {
     "type": "bevy_render::primitives::CubemapFrusta",

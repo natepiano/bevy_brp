@@ -29,7 +29,10 @@ use bevy::pbr::{
     LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections, VolumetricFog,
 };
 use bevy::prelude::*;
-use bevy::render::camera::ManualTextureViewHandle;
+use bevy::render::camera::{
+    CameraMainTextureUsages, CameraRenderGraph, Exposure, ManualTextureViewHandle, MipBias,
+    TemporalJitter,
+};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
@@ -584,12 +587,16 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        CameraMainTextureUsages::default(), // For testing mutations
         ContrastAdaptiveSharpening {
             enabled: false,
             ..default()
         },
         DepthOfField::default(),                // For testing mutations
+        Exposure::default(),                    // For testing mutations
         Fxaa::default(),                        // For testing mutations
+        MipBias(0.0),                           // For testing mutations
+        TemporalJitter::default(),              // For testing mutations
         ChromaticAberration::default(),         // For testing mutations
         ManualTextureViewHandle(0),             // For testing mutations
         OcclusionCulling,                       /* For testing mutations */

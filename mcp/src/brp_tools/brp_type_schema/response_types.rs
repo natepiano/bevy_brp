@@ -199,7 +199,14 @@ impl EnumVariantInfo {
                     .iter()
                     .map(|t| TypeInfo::build_example_value_for_type(t, registry))
                     .collect();
-                serde_json::json!({ name: tuple_values })
+                // For single-element tuples (newtype pattern), unwrap the single value
+                // For multi-element tuples, use array format
+                let content = if tuple_values.len() == 1 {
+                    tuple_values.into_iter().next().unwrap()
+                } else {
+                    serde_json::Value::Array(tuple_values)
+                };
+                serde_json::json!({ name: content })
             }
             Self::Struct(name, fields) => {
                 let struct_obj: serde_json::Map<String, Value> = fields
@@ -267,7 +274,8 @@ fn extract_tuple_types(
     prefix_items
         .iter()
         .filter_map(|item| {
-            item.get_field(SchemaField::Ref)
+            item.get_field(SchemaField::Type)
+                .and_then(|t| t.get_field(SchemaField::Ref))
                 .and_then(Value::as_str)
                 .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
                 .map(BrpTypeName::from)
