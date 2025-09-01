@@ -61,6 +61,18 @@ impl BrpTypeName {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Get the type string for comparison
+    /// This is an alias for `as_str()` but with clearer intent
+    pub fn type_string(&self) -> &str {
+        &self.0
+    }
+
+    /// Extract the base type name by stripping generic parameters
+    /// For example: `Vec<String>` returns `Some("Vec")`
+    pub fn base_type(&self) -> Option<&str> {
+        self.0.split('<').next()
+    }
 }
 
 impl From<&str> for BrpTypeName {

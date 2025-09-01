@@ -305,7 +305,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
         // Extract enum variants from schema
         let enum_variants = Self::extract_enum_variants(schema);
-        let enum_example = Self::build_enum_example(schema, ctx.registry);
+        let enum_example = Self::build_enum_example(schema, ctx.registry, Some(ctx.type_name()));
 
         match &ctx.location {
             RootOrField::Root { type_name } => {
@@ -367,7 +367,11 @@ impl EnumMutationBuilder {
     /// Updated to use type-safe pattern matching instead of conditional chains.
     /// For tuple/newtype variants, builds proper examples based on the inner type
     /// by looking up struct definitions in the registry.
-    pub fn build_enum_example(schema: &Value, registry: &HashMap<BrpTypeName, Value>) -> Value {
+    pub fn build_enum_example(
+        schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        enum_type: Option<&BrpTypeName>,
+    ) -> Value {
         if let Some(one_of) = schema
             .get_field(SchemaField::OneOf)
             .and_then(Value::as_array)
@@ -386,8 +390,12 @@ impl EnumMutationBuilder {
                         EnumVariantInfo::Tuple(name, types) => {
                             if types.len() == 1 {
                                 // Newtype variant - single field tuple
-                                let inner_value =
-                                    Self::build_variant_data_example(&types[0], registry);
+                                let inner_value = Self::build_variant_data_example(
+                                    &types[0],
+                                    registry,
+                                    enum_type,
+                                    Some(&name),
+                                );
 
                                 // For newtype variants, BRP expects the struct directly, not in an
                                 // array
@@ -398,7 +406,14 @@ impl EnumMutationBuilder {
                                 // Multi-field tuple variant (rare in Bevy)
                                 let tuple_values: Vec<Value> = types
                                     .iter()
-                                    .map(|t| Self::build_variant_data_example(t, registry))
+                                    .map(|t| {
+                                        Self::build_variant_data_example(
+                                            t,
+                                            registry,
+                                            enum_type,
+                                            Some(&name),
+                                        )
+                                    })
                                     .collect();
 
                                 json!({
@@ -416,7 +431,12 @@ impl EnumMutationBuilder {
                                 .map(|f| {
                                     (
                                         f.field_name.clone(),
-                                        Self::build_variant_data_example(&f.type_name, registry),
+                                        Self::build_variant_data_example(
+                                            &f.type_name,
+                                            registry,
+                                            enum_type,
+                                            Some(&name),
+                                        ),
                                     )
                                 })
                                 .collect();
@@ -437,8 +457,25 @@ impl EnumMutationBuilder {
     fn build_variant_data_example(
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
+        enum_type: Option<&BrpTypeName>,
+        variant_name: Option<&str>,
     ) -> Value {
-        // Use the existing TypeInfo helper that already handles all the complexity
+        // Check for enum variant-specific knowledge first
+        if let Some(enum_type) = enum_type
+            && let Some(variant_name) = variant_name
+        {
+            let variant_key = FormatKnowledgeKey::EnumVariant {
+                enum_type:       enum_type.to_string(),
+                variant_name:    variant_name.to_string(),
+                variant_pattern: format!("{variant_name}({type_name})"),
+            };
+
+            if let Some(knowledge) = BRP_FORMAT_KNOWLEDGE.get(&variant_key) {
+                return knowledge.example_value.clone();
+            }
+        }
+
+        // Fall back to the existing TypeInfo helper that already handles all the complexity
         TypeInfo::build_example_value_for_type(type_name, registry)
     }
 

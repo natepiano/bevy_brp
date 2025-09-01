@@ -51,9 +51,12 @@
       "mcp__brp__brp_list_active_watches",
       "Bash(find:*)",
       "Read(/Users/natemccoy/.claude/commands/**)",
-      "Read(/Users/natemccoy/.claude/commands/**)"
+      "Read(/Users/natemccoy/.claude/commands/**)",
+      "Read(/Users/natemccoy/**)",
+      "Bash(zoxide query:*)",
+      "Bash(echo $HOME)"
     ],
-    "deny": [],
+    "deny": ["Bash(sed:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",

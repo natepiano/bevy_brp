@@ -341,7 +341,9 @@ impl TypeInfo {
 
         let field_kind = TypeKind::from_schema(field_schema, type_name);
         match field_kind {
-            TypeKind::Enum => EnumMutationBuilder::build_enum_example(field_schema, registry),
+            TypeKind::Enum => {
+                EnumMutationBuilder::build_enum_example(field_schema, registry, Some(type_name))
+            }
             TypeKind::Array => {
                 // Handle array types like [f32; 4] or [glam::Vec2; 3]
                 // Arrays have an "items" field with the element type

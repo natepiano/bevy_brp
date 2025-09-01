@@ -9,8 +9,6 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
-use super::response_types::BrpTypeName;
-
 use super::constants::{
     TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2, TYPE_BEVY_MAT3,
     TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
@@ -21,7 +19,7 @@ use super::constants::{
     TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
     TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
 };
-use super::response_types::MathComponent;
+use super::response_types::{BrpTypeName, MathComponent};
 
 /// Controls how mutation paths are generated for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,10 +39,10 @@ pub enum FormatKnowledgeKey {
     Generic(String),
     /// Enum variant-specific match for context-aware examples
     EnumVariant {
-        /// e.g., "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp"
-        enum_type: String,
+        /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
+        enum_type:       String,
         /// e.g., "Clear"
-        variant_name: String,
+        variant_name:    String,
         /// e.g., "Clear(f32)" - matches tuple variants with specific types
         variant_pattern: String,
     },
@@ -64,40 +62,43 @@ impl FormatKnowledgeKey {
     /// Resolve example value using enum dispatch instead of external conditionals
     pub fn resolve_example_value(&self, type_name: &BrpTypeName) -> Option<Value> {
         match self {
-            Self::Exact(exact_type) if exact_type == type_name.as_str() => {
-                BRP_FORMAT_KNOWLEDGE.get(self).map(|k| k.example_value.clone())
+            Self::Exact(exact_type) if exact_type == type_name.type_string() => {
+                BRP_FORMAT_KNOWLEDGE
+                    .get(self)
+                    .map(|k| k.example_value.clone())
             }
             Self::Exact(_) => None, // Exact type doesn't match
             Self::Generic(generic_type) => {
-                let base_type = type_name.as_str().split('<').next()?;
+                let base_type = type_name.base_type()?;
                 if base_type == generic_type {
-                    BRP_FORMAT_KNOWLEDGE.get(self).map(|k| k.example_value.clone())
+                    BRP_FORMAT_KNOWLEDGE
+                        .get(self)
+                        .map(|k| k.example_value.clone())
                 } else {
                     None
                 }
             }
             Self::EnumVariant { .. } => {
                 // Context-aware matching logic for enum variants
-                BRP_FORMAT_KNOWLEDGE.get(self).map(|k| k.example_value.clone())
+                BRP_FORMAT_KNOWLEDGE
+                    .get(self)
+                    .map(|k| k.example_value.clone())
             }
         }
     }
 
     /// Try to resolve example value by iterating through all knowledge keys
     pub fn find_example_value_for_type(type_name: &BrpTypeName) -> Option<Value> {
-        // Try exact match first
-        if let Some(value) = FormatKnowledgeKey::exact(type_name.as_str()).resolve_example_value(type_name) {
-            return Some(value);
-        }
-        
-        // Try generic match by stripping type parameters
-        if let Some(generic_type) = type_name.as_str().split('<').next() {
-            if let Some(value) = FormatKnowledgeKey::generic(generic_type).resolve_example_value(type_name) {
-                return Some(value);
-            }
-        }
-        
-        None
+        let resolvers: Vec<Box<dyn Fn() -> Option<Value>>> = vec![
+            Box::new(|| Self::exact(type_name.type_string()).resolve_example_value(type_name)),
+            Box::new(|| {
+                type_name
+                    .base_type()
+                    .and_then(|generic| Self::generic(generic).resolve_example_value(type_name))
+            }),
+        ];
+
+        resolvers.iter().find_map(|resolver| resolver())
     }
 }
 
@@ -576,6 +577,18 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<FormatKnowledgeKey, BrpFormatK
             BrpFormatKnowledge::simple(
                 json!({"Weak": {"Uuid": {"uuid": "12345678-1234-1234-1234-123456789012"}}}),
             ),
+        );
+
+        // ===== Camera3d depth load operation =====
+        // Camera3d depth clear value - must be in range [0.0, 1.0] for valid GPU operations
+        map.insert(
+            FormatKnowledgeKey::EnumVariant {
+                enum_type:       "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp"
+                    .to_string(),
+                variant_name:    "Clear".to_string(),
+                variant_pattern: "Clear(f32)".to_string(),
+            },
+            BrpFormatKnowledge::simple(json!(0.5)), // Safe middle value in [0.0, 1.0] range
         );
 
         map
