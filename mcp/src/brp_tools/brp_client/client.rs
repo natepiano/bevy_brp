@@ -211,11 +211,12 @@ impl BrpClient {
             r"Unknown component type: `([^`]+)`",
             r"([a-zA-Z0-9_:]+) is invalid:",
         ];
-        
+
         ERROR_PATTERNS
             .iter()
             .filter_map(|pattern| {
-                regex::Regex::new(pattern).ok()
+                regex::Regex::new(pattern)
+                    .ok()
                     .and_then(|regex| regex.captures(error_msg))
                     .and_then(|caps| caps.get(1))
                     .map(|m| (*m.as_str()).to_string())

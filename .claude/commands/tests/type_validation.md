@@ -37,10 +37,9 @@ Each type entry has the following structure:
 **IMPORTANT**: When testing mutations, track each individual path result in the `mutation_paths` object. The overall `mutation_tests` field should reflect the aggregate status (all passed = "passed", any failed = "failed", no mutations = "n/a").
 
 When a type is tested, update its status in place:
-- **FIRST**: When getting the type schema, immediately update `mutation_paths` with ALL discovered paths set to "untested" (e.g., `{".translation.x": "untested", ".rotation": "untested"}`)
-- Change `spawn_test` from "untested" to "passed", "failed", or "skipped"
+- Only test types where `spawn_test` is "untested" - change to "passed" or "failed" 
 - Update each path in `mutation_paths` from "untested" to "passed" or "failed" as you test them
-- Change `mutation_tests` from "untested" to "passed", "failed", or "n/a" based on aggregate results
+- Only test types where `mutation_tests` is "untested" - change to "passed" or "failed"
 - Add any relevant notes about failures or special handling
 
 ## Test Strategy
@@ -82,31 +81,112 @@ The following actions constitute test execution failures:
 
 Load the progress file and immediately begin testing untested types. Do NOT display statistics, counts, or summaries.
 
-**NOTE**: Use only the Read/Write/Edit tools for all file operations. Process JSON data directly in the agent's logic without Python scripts or bash commands.
+**NOTE**: Use Read/Write/Edit tools for progress updates during testing. Use bash commands only for initial batch number management as specified below.
 
 ### 1. Load Progress and Build Todo List
 
 1. Use Read tool to load `test-app/examples/type_validation.json`
-2. Parse the JSON to identify untested types:
+2. **Clear all batch numbers first**: Use bash command to set all batch_number fields to empty string
+3. **Assign batch numbers to untested types only**: Use bash command with jq to assign batch numbers (1, 2, 3, etc.) in groups of 10 to types that need testing
+4. Parse the JSON to identify untested types:
    - Types where spawn_test is "untested" OR
    - Types where mutation_tests is "untested" OR
    - Types that failed previously (not "passed"/"skipped" for spawn, not "passed"/"n/a" for mutations)
-3. Skip types that are fully tested (spawn is "passed"/"skipped" AND mutations are "passed"/"n/a")
-4. Build a list of type names that need testing
+5. Skip types that are fully tested (spawn is "passed"/"skipped" AND mutations are "passed"/"n/a")
+6. Build a list of type names that need testing
 
-### 2. Test Each Type
+#### Batch Number Management
 
-For each type in the todo list:
+**Step 1: Clear all batch numbers**
+```bash
+jq 'map(.batch_number = "")' test-app/examples/type_validation.json > /tmp/cleared.json && mv /tmp/cleared.json test-app/examples/type_validation.json
+```
 
-#### 2a. Get Type Schema from BRP Tool and Initialize Mutation Paths
+**Step 2: Assign batch numbers to untested types only**
+```bash
+jq '
+  # First pass: identify untested types and assign sequential numbers
+  [.[] | select(.spawn_test == "untested" or .mutation_tests == "untested")] as $untested_types |
+  
+  # Second pass: update the original array
+  map(
+    if (.spawn_test == "untested" or .mutation_tests == "untested") then
+      . + {"batch_number": (($untested_types | map(.type) | index(.type)) / 10 + 1 | floor | tostring)}
+    else
+      .
+    end
+  )
+' test-app/examples/type_validation.json > /tmp/batched.json && mv /tmp/batched.json test-app/examples/type_validation.json
+```
 
-For each type to test:
+This ensures that:
+- All previously tested types have empty batch_number 
+- Only untested types get assigned batch numbers (1, 2, 3, etc.)
+- Batch numbers are assigned in groups of 10
+
+### 2. Test Types in Parallel Batches
+
+Process types in batches of up to 10, using parallel subagents for each batch:
+
+1. **Group types by batch_number**: Collect all types with the same batch_number (1, 2, 3, etc.)
+2. **Process each batch sequentially**: Test batch 1, then batch 2, etc.
+3. **Within each batch, use parallel subagents**: Launch one subagent per type in the batch
+4. **Stop on any batch failure**: If any subagent in a batch reports failure, stop testing
+
+#### Batch Processing Logic
+
+For each batch (1, 2, 3, etc.):
+
+1. **Collect batch types**: Get all types with the current batch_number
+2. **Launch parallel subagents**: Create one Task tool call per type in the batch
+3. **Wait for all subagents to complete**: Gather results from all subagents in the batch
+4. **Check for failures**: If any subagent reports failure, stop testing
+5. **Continue to next batch**: If all passed, process the next batch_number
+
+#### Parallel Subagent Execution
+
+For each batch, launch subagents in parallel using multiple Task tool calls:
+
+```bash
+# Example for batch 1 with 3 types
+Task(
+    description="Test type A",
+    subagent_type="general-purpose", 
+    prompt="Test bevy_ui::widget::Type1 using port 20116. Follow the Individual Type Testing Instructions below. Return PASS/FAIL and update test-app/examples/type_validation.json with results."
+)
+Task(
+    description="Test type B", 
+    subagent_type="general-purpose",
+    prompt="Test bevy_ui::widget::Type2 using port 20116. Follow the Individual Type Testing Instructions below. Return PASS/FAIL and update test-app/examples/type_validation.json with results."
+)
+Task(
+    description="Test type C",
+    subagent_type="general-purpose", 
+    prompt="Test bevy_ui::widget::Type3 using port 20116. Follow the Individual Type Testing Instructions below. Return PASS/FAIL and update test-app/examples/type_validation.json with results."
+)
+```
+
+**Wait for all subagents to complete, then check results:**
+- If ALL subagents return PASS: Continue to next batch
+- If ANY subagent returns FAIL: Stop testing immediately
+
+#### Individual Type Testing Instructions (For Subagents)
+
+Each subagent receives these instructions for testing a single assigned type:
+
+**Your task**: Test the assigned component type completely - both spawn operations and all mutation paths.
+
+**Critical requirements**:
+1. Use port 20116 for all BRP operations
+2. Update test-app/examples/type_validation.json with your results immediately after testing
+3. Return "PASS" if all tests succeed, "FAIL" if any test fails or encounters errors
+4. Do not test other types - only the one assigned to you
+
+#### 2a. Get Type Schema from BRP Tool
+
+For the assigned type:
 1. Call `mcp__brp__brp_type_schema` with the type name and port 20116
 2. Extract supported operations and mutation paths from the result
-3. If mutations are supported:
-   - Read the current `test-app/examples/type_validation.json`
-   - Find the type entry and add mutation_paths field with all discovered paths set to "untested"
-   - Write the updated JSON back using the Write tool
 
 #### 2b. Test Spawn Operations - FORMAT KNOWLEDGE CHECK
 
@@ -186,12 +266,19 @@ For types that only support mutation (no spawn/insert):
         entity_id = query_result["result"][0]["entity"]
 ```
 
-#### 2d. Test All Mutation Paths
+#### 2d. Test All Mutation Paths - NO EXCEPTIONS OR SHORTCUTS
+
+**CRITICAL REQUIREMENT**: You MUST test EVERY SINGLE mutation path discovered by the schema tool. There are NO exceptions, shortcuts, or "representative sampling" allowed.
 
 If mutations are supported:
 
 1. Get mutation_paths from the type schema
-2. For each mutation path:
+2. **MANDATORY**: Test EVERY mutation path without exception:
+   - Even if a type has 50+ mutation paths (like `bevy_ui::ui_node::Node`), you MUST test ALL of them
+   - Even if paths seem "similar" or "redundant", you MUST test ALL of them
+   - Even if testing seems "tedious" or "repetitive", you MUST test ALL of them
+   - **NO SHORTCUTS ALLOWED**: You cannot skip paths, group them, or do "representative testing"
+3. For each mutation path:
    - Determine the test value from path_info (example, enum_variants[0], or example_some/none)
    - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, and port
    - **CRITICAL PATH FORMAT**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
@@ -201,10 +288,12 @@ If mutations are supported:
    - If failed:
      - Update the path status to "failed" in the JSON file
      - Stop testing this type and move to the next
-3. After all paths tested:
+4. After all paths tested:
    - If all passed, set mutation_tests to "passed"
    - If any failed, set mutation_tests to "failed"
    - If no paths exist, set mutation_tests to "n/a"
+
+**VALIDATION REQUIREMENT**: The final `mutation_paths` object in the JSON file MUST contain an entry for every single path returned by the schema tool. Missing paths indicate incomplete testing and constitute a test execution failure.
 
 ### 3. Update Progress - MANDATORY AFTER EACH TYPE
 

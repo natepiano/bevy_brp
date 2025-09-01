@@ -54,7 +54,7 @@ After getting the component list from step 3, create the tracking file using thi
 
 ```bash
 # Extract the component list from result["result"] and format it as JSON array
-# Filter out excluded types, then transform each type into the tracking structure
+# Filter out excluded types, then transform each type into the tracking structure with batch numbers
 echo '[
     "component_type_1",
     "component_type_2",
@@ -76,22 +76,94 @@ echo '[
     . != "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>" and
     . != "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>"
   )) |
-  map({type: ., spawn_test: "untested", mutation_tests: "untested", notes: ""})
+  map({type: ., spawn_test: "untested", mutation_tests: "untested", mutation_paths: {}, batch_number: "", notes: ""})
 ' > test-app/examples/type_validation.json
 ```
 
 This approach is fast and reliable - it creates the file immediately without any blocking issues.
 
-### 5. Report results
-```
-✅ Initialized type validation tracking file
-- Total types: [count]
-- File location: test-app/examples/type_validation.json
-- All types marked as "untested"
+### 5. Discover type capabilities and populate mutation paths using type schema
+**IMPORTANT: This step enhances the initial file with spawn capability detection and detailed mutation path information.**
+
+After creating the basic tracking file, discover type capabilities and mutation paths for all types:
+
+1. **Read the created tracking file**:
+   ```bash
+   # Use Read tool to load test-app/examples/type_validation.json
+   # Extract the list of type names for processing
+   ```
+
+2. **Process types in batches** (10 types at a time for efficiency):
+   ```bash
+   mcp__brp__brp_type_schema(
+       port=22222,
+       types=[batch_of_10_types]
+   )
+   ```
+
+3. **For each batch result, analyze each type's capabilities**:
+   - Extract `supported_operations` from the schema response
+   - **Spawn capability**: If `spawn` is in `supported_operations`, keep `spawn_test: "untested"`. If not, set `spawn_test: "skipped"`
+   - Extract `mutation_info` from the schema response
+   - **Mutation capability**: If mutations are supported, get all available `mutation_paths` and set each to "untested". If no mutations available, set `mutation_tests: "n/a"`
+
+4. **Update tracking file with discovered information**:
+   - Use MultiEdit tool to update multiple type entries at once
+   - For each type in the batch, update:
+     - `spawn_test`: "untested" or "skipped" based on spawn support
+     - `mutation_tests`: "untested" or "n/a" based on mutation support  
+     - `mutation_paths`: populated object or empty `{}` based on available paths
+
+5. **Repeat for all batches** until all types have their capabilities and mutation paths populated
+
+**Expected final format after this step:**
+```json
+{
+  "type": "bevy_transform::components::transform::Transform",
+  "spawn_test": "untested",
+  "mutation_tests": "untested", 
+  "mutation_paths": {
+    ".translation.x": "untested",
+    ".translation.y": "untested", 
+    ".translation.z": "untested",
+    ".rotation.x": "untested",
+    ".rotation.y": "untested",
+    ".rotation.z": "untested",
+    ".rotation.w": "untested",
+    ".scale.x": "untested",
+    ".scale.y": "untested", 
+    ".scale.z": "untested"
+  },
+  "batch_number": "",
+  "notes": ""
+}
 ```
 
-### 6. Cleanup (optional)
-If you don't need the app running after initialization:
+**For types without spawn support:**
+```json
+{
+  "type": "bevy_pbr::components::VisibleMeshEntities",
+  "spawn_test": "skipped",
+  "mutation_tests": "n/a",
+  "mutation_paths": {},
+  "batch_number": "",
+  "notes": ""
+}
+```
+
+This approach creates a fully initialized tracking file where the test runner can immediately begin testing without needing to discover type capabilities or mutation paths.
+
+### 6. Report results
+```
+✅ Initialized type validation tracking file with full type capability discovery
+- Total types: [count]
+- File location: test-app/examples/type_validation.json
+- Spawn capabilities discovered (untested/skipped)
+- Mutation paths populated (untested/n/a)
+```
+
+### 7. Cleanup
+Shutdown the app after initialization:
 ```bash
 mcp__brp__brp_shutdown(
     app_name="extras_plugin",
@@ -126,14 +198,18 @@ After running this command, the file will contain:
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
     "spawn_test": "untested",
     "mutation_tests": "untested",
+    "mutation_paths": {},
+    "batch_number": 1,
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
     "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "mutation_tests": "untested", 
+    "mutation_paths": {},
+    "batch_number": 1,
     "notes": ""
   },
-  // ... all other types ...
+  // ... all other types with batch_number assigned (1-based, groups of 10) ...
 ]
 ```

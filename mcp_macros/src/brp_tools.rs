@@ -146,6 +146,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
         if !tool_attrs.brp_method.is_empty() {
             let method = &tool_attrs.brp_method;
             brp_method_variants.push(quote! {
+                #[serde(rename = #method)]
                 #variant_name
             });
 
@@ -197,7 +198,7 @@ pub fn derive_brp_tools_impl(input: TokenStream) -> TokenStream {
         }
 
         /// Enum containing only tool variants that have BRP methods
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
         pub enum BrpMethod {
             #(#brp_method_variants,)*
         }

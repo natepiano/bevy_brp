@@ -36,10 +36,10 @@ use bevy::prelude::*;
 use bevy::render::camera::{
     CameraMainTextureUsages, Exposure, ManualTextureViewHandle, MipBias, TemporalJitter,
 };
-use bevy::render::view::ColorGrading;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
+use bevy::render::view::ColorGrading;
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -648,7 +648,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         CameraMainTextureUsages::default(), // For testing mutations
-        ColorGrading::default(), // For testing mutations
+        ColorGrading::default(),            // For testing mutations
         ContrastAdaptiveSharpening {
             enabled: false,
             ..default()

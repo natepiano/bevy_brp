@@ -743,230 +743,495 @@
   },
   {
     "type": "bevy_text::text::ComputedTextBlock",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".entities": "skipped",
+      ".needs_rerender": "passed"
+    },
+    "notes": "entities skipped - complex SmallVec type"
   },
   {
     "type": "bevy_text::text::TextColor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_text::text::TextFont",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".font": "skipped",
+      ".font_size": "passed",
+      ".font_smoothing": "passed",
+      ".line_height": "passed"
+    },
+    "notes": "font skipped - requires asset handle"
   },
   {
     "type": "bevy_text::text::TextLayout",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".justify": "passed",
+      ".linebreak": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_text::text::TextSpan",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_transform::components::global_transform::GlobalTransform",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_transform::components::transform::Transform",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".rotation": "passed",
+      ".rotation.w": "passed",
+      ".rotation.x": "passed",
+      ".rotation.y": "passed",
+      ".rotation.z": "passed",
+      ".scale": "passed",
+      ".scale.x": "passed",
+      ".scale.y": "passed",
+      ".scale.z": "passed",
+      ".translation": "passed",
+      ".translation.x": "passed",
+      ".translation.y": "passed",
+      ".translation.z": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_transform::components::transform::TransformTreeChanged",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "Unit struct with no mutation paths"
   },
   {
     "type": "bevy_ui::focus::FocusPolicy",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::focus::Interaction",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::focus::RelativeCursorPosition",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".normalized": "passed",
+      ".normalized.x": "passed",
+      ".normalized.y": "passed",
+      ".normalized_visible_node_rect": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::measurement::ContentSize",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Root mutation works but schema discovery shows no mutation_paths - possible bug"
   },
   {
     "type": "bevy_ui::ui_node::BackgroundColor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::BorderColor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::BorderRadius",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".bottom_left": "passed",
+      ".bottom_right": "passed",
+      ".top_left": "passed",
+      ".top_right": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::BoxShadow",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::BoxShadowSamples",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::CalculatedClip",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {
+      ".clip": "skipped"
+    },
+    "notes": "No entities exist - computed component"
   },
   {
     "type": "bevy_ui::ui_node::ComputedNode",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".border": "passed",
+      ".border.bottom": "passed",
+      ".border.left": "passed",
+      ".border.right": "passed",
+      ".border.top": "passed",
+      ".border_radius": "passed",
+      ".border_radius.bottom_left": "passed",
+      ".border_radius.bottom_right": "passed",
+      ".border_radius.top_left": "passed",
+      ".border_radius.top_right": "passed",
+      ".content_size": "passed",
+      ".content_size.x": "passed",
+      ".content_size.y": "passed",
+      ".inverse_scale_factor": "passed",
+      ".outline_offset": "passed",
+      ".outline_width": "passed",
+      ".padding": "passed",
+      ".padding.bottom": "passed",
+      ".padding.left": "passed",
+      ".padding.right": "passed",
+      ".padding.top": "passed",
+      ".size": "passed",
+      ".size.x": "passed",
+      ".size.y": "passed",
+      ".stack_index": "passed",
+      ".unrounded_size": "passed",
+      ".unrounded_size.x": "passed",
+      ".unrounded_size.y": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::ComputedNodeTarget",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".camera": "passed",
+      ".physical_size": "passed",
+      ".physical_size.x": "passed",
+      ".physical_size.y": "passed",
+      ".scale_factor": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::Node",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".align_content": "passed",
+      ".align_items": "passed",
+      ".align_self": "passed",
+      ".aspect_ratio": "passed",
+      ".border": "passed",
+      ".border.bottom": "passed",
+      ".border.left": "passed",
+      ".border.right": "passed",
+      ".border.top": "passed",
+      ".bottom": "passed",
+      ".box_sizing": "passed",
+      ".column_gap": "passed",
+      ".display": "passed",
+      ".flex_basis": "passed",
+      ".flex_direction": "passed",
+      ".flex_grow": "passed",
+      ".flex_shrink": "passed",
+      ".flex_wrap": "passed",
+      ".grid_auto_columns": "passed",
+      ".grid_auto_flow": "passed",
+      ".grid_auto_rows": "passed",
+      ".grid_column": "passed",
+      ".grid_column.end": "passed",
+      ".grid_column.span": "passed",
+      ".grid_column.start": "passed",
+      ".grid_row": "passed",
+      ".grid_row.end": "passed",
+      ".grid_row.span": "passed",
+      ".grid_row.start": "passed",
+      ".grid_template_columns": "passed",
+      ".grid_template_rows": "passed",
+      ".height": "passed",
+      ".justify_content": "passed",
+      ".justify_items": "passed",
+      ".justify_self": "passed",
+      ".left": "passed",
+      ".margin": "passed",
+      ".margin.bottom": "passed",
+      ".margin.left": "passed",
+      ".margin.right": "passed",
+      ".margin.top": "passed",
+      ".max_height": "passed",
+      ".max_width": "passed",
+      ".min_height": "passed",
+      ".min_width": "passed",
+      ".overflow": "passed",
+      ".overflow.x": "passed",
+      ".overflow.y": "passed",
+      ".overflow_clip_margin": "passed",
+      ".overflow_clip_margin.margin": "passed",
+      ".overflow_clip_margin.visual_box": "passed",
+      ".padding": "passed",
+      ".padding.bottom": "passed",
+      ".padding.left": "passed",
+      ".padding.right": "passed",
+      ".padding.top": "passed",
+      ".position_type": "passed",
+      ".right": "passed",
+      ".row_gap": "passed",
+      ".top": "passed",
+      ".width": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::Outline",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".offset": "passed",
+      ".width": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::ScrollPosition",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".offset_x": "passed",
+      ".offset_y": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::TextShadow",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".offset": "passed",
+      ".offset.x": "passed",
+      ".offset.y": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::UiAntiAlias",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::UiTargetCamera",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::ui_node::ZIndex",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::widget::button::Button",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "Unit struct with no mutation paths"
   },
   {
     "type": "bevy_ui::widget::image::ImageNode",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".flip_x": "passed",
+      ".flip_y": "passed",
+      ".image": "passed",
+      ".image_mode": "passed",
+      ".rect": "passed",
+      ".texture_atlas": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::widget::image::ImageNodeSize",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".size": "passed",
+      ".size.x": "passed",
+      ".size.y": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::widget::label::Label",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::widget::text::Text",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ui::widget::text::TextNodeFlags",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".needs_measure_fn": "passed",
+      ".needs_recompute": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_window::monitor::Monitor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".name": "passed",
+      ".physical_height": "passed",
+      ".physical_position": "passed",
+      ".physical_position.x": "passed",
+      ".physical_position.y": "passed",
+      ".physical_width": "passed",
+      ".refresh_rate_millihertz": "passed",
+      ".scale_factor": "passed",
+      ".video_modes": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_window::window::PrimaryWindow",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_window::window::Window",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "failed",
+    "mutation_paths": {
+      ".canvas": "failed"
+    },
+    "notes": "App crashed during .canvas mutation - spawn worked but mutation testing incomplete"
   },
   {
     "type": "bevy_winit::cursor::CursorIcon",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "extras_plugin::TestArrayField",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".values": "passed",
+      ".values[0]": "passed",
+      ".values[1]": "passed",
+      ".values[2]": "passed",
+      ".values[3]": "passed",
+      ".vertices": "passed",
+      ".vertices[0]": "passed",
+      ".vertices[1]": "passed",
+      ".vertices[2]": "passed"
+    },
     "notes": ""
   },
   {

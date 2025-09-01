@@ -13,7 +13,9 @@ use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
     /// The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')
-    pub method: String,
+    /// Note: `BrpMethod` deserializes from BRP method strings using `#[serde(rename)]`
+    /// attributes generated in `mcp_macros/src/brp_tools.rs`
+    pub method: BrpMethod,
     /// Optional parameters for the method, as a JSON object or array
     #[to_metadata(skip_if_none)]
     pub params: Option<serde_json::Value>,
@@ -48,20 +50,8 @@ impl ToolFn for BrpExecute {
             let params: ExecuteParams = ctx.extract_parameter_values()?;
             let port = params.port;
 
-            // For brp_execute, parse user input to BrpMethod
-            let Some(brp_method) = BrpMethod::from_str(&params.method) else {
-                return Ok(ToolResult {
-                    result: Err(Error::InvalidArgument(format!(
-                        "Unknown BRP method: {}",
-                        params.method
-                    ))
-                    .into()),
-                    params: Some(params),
-                });
-            };
-
             let client = BrpClient::new(
-                brp_method,            // Parsed BRP method
+                params.method,         // Direct use of typed BRP method
                 port,                  // Use typed port parameter
                 params.params.clone(), // User-provided params (already Option<Value>)
             );

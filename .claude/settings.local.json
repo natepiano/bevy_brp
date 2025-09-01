@@ -56,7 +56,8 @@
       "Bash(zoxide query:*)",
       "Bash(echo $HOME)",
       "Bash(git commit:*)",
-      "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_pbr-0.16.1/src/light_probe/**)"
+      "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_pbr-0.16.1/src/light_probe/**)",
+      "mcp__brp__brp_set_tracing_level"
     ],
     "deny": [
       "Bash(sed:*)"
