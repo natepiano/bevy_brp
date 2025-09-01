@@ -49,21 +49,12 @@ pub struct TypeInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub schema_info:          Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
-    #[serde(skip)]
-    pub field_type_infos:     HashMap<String, TypeInfo>,
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error:                Option<String>,
 }
 
 impl TypeInfo {
-    /// Check if this type is a math type (based on BRP format knowledge)
-    pub fn is_math_type(&self) -> bool {
-        BRP_FORMAT_KNOWLEDGE
-            .get(&FormatKnowledgeKey::exact(&self.type_name))
-            .is_some_and(|knowledge| knowledge.subfield_paths.is_some())
-    }
-
     /// Builder method to create `TypeInfo` from schema data
     pub fn from_schema(
         brp_type_name: BrpTypeName,
@@ -110,13 +101,6 @@ impl TypeInfo {
         // Extract schema info from registry
         let schema_info = Self::extract_schema_info(type_schema);
 
-        // Build field TypeInfos for struct types (one level deep)
-        let field_type_infos = if type_kind == TypeKind::Struct {
-            Self::build_field_type_infos(type_schema, registry)
-        } else {
-            HashMap::new()
-        };
-
         Self {
             type_name: brp_type_name,
             in_registry: true,
@@ -128,7 +112,6 @@ impl TypeInfo {
             spawn_format,
             enum_info,
             schema_info,
-            field_type_infos,
             error: None,
         }
     }
@@ -146,42 +129,11 @@ impl TypeInfo {
             spawn_format: None,
             enum_info: None,
             schema_info: None,
-            field_type_infos: HashMap::new(),
             error: Some(error_msg),
         }
     }
 
     // Private helper methods (alphabetically ordered)
-
-    /// Build `TypeInfos` for direct fields of a struct (one level deep)
-    fn build_field_type_infos(
-        type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> HashMap<String, Self> {
-        let mut field_infos = HashMap::new();
-
-        // Extract properties from the schema
-        let Some(properties) = type_schema
-            .get_field(SchemaField::Properties)
-            .and_then(Value::as_object)
-        else {
-            return field_infos;
-        };
-
-        // Build TypeInfo for each field
-        for (field_name, field_info) in properties {
-            if let Some(field_type_name) = SchemaField::extract_field_type(field_info) {
-                // Look up the field type in the registry and build its TypeInfo
-                if let Some(field_schema) = registry.get(&field_type_name) {
-                    let field_type_info =
-                        Self::from_schema(field_type_name.clone(), field_schema, registry);
-                    field_infos.insert(field_name.clone(), field_type_info);
-                }
-            }
-        }
-
-        field_infos
-    }
 
     /// Build mutation paths for a type using the trait system
     fn build_mutation_paths(

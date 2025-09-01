@@ -193,16 +193,18 @@ async fn try_graceful_shutdown(port: Port) -> Result<Option<serde_json::Value>> 
         }
         Ok(ResponseStatus::Error(brp_error)) => {
             // Check if this is a method not found error (bevy_brp_extras not available)
-            if brp_error.code == JSON_RPC_ERROR_METHOD_NOT_FOUND {
+            if brp_error.get_code() == JSON_RPC_ERROR_METHOD_NOT_FOUND {
                 debug!(
                     "BRP extras method not found (code {}): {}",
-                    brp_error.code, brp_error.message
+                    brp_error.get_code(),
+                    brp_error.get_message()
                 );
             } else {
                 // Other BRP errors also indicate graceful shutdown failed
                 debug!(
                     "BRP extras returned error (code {}): {}",
-                    brp_error.code, brp_error.message
+                    brp_error.get_code(),
+                    brp_error.get_message()
                 );
             }
             Ok(None)

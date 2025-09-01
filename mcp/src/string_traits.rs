@@ -14,9 +14,6 @@ pub trait JsonFieldAccess {
     /// Get field value as string
     fn get_field_str<T: AsRef<str>>(&self, field: T) -> Option<&str>;
 
-    /// Get field value as mutable object
-    fn get_field_object_mut<T: AsRef<str>>(&mut self, field: T) -> Option<&mut Map<String, Value>>;
-
     /// Insert field with value using any type that converts to String and any value that can become
     /// JSON
     fn insert_field<F, V>(&mut self, field: F, value: V)
@@ -32,10 +29,6 @@ impl JsonFieldAccess for Value {
 
     fn get_field_str<T: AsRef<str>>(&self, field: T) -> Option<&str> {
         self.get(field.as_ref()).and_then(Self::as_str)
-    }
-
-    fn get_field_object_mut<T: AsRef<str>>(&mut self, field: T) -> Option<&mut Map<String, Self>> {
-        self.get_mut(field.as_ref()).and_then(Self::as_object_mut)
     }
 
     fn insert_field<F, V>(&mut self, field: F, value: V)
@@ -56,10 +49,6 @@ impl JsonFieldAccess for Map<String, Value> {
 
     fn get_field_str<T: AsRef<str>>(&self, field: T) -> Option<&str> {
         self.get(field.as_ref()).and_then(Value::as_str)
-    }
-
-    fn get_field_object_mut<T: AsRef<str>>(&mut self, field: T) -> Option<&mut Map<String, Value>> {
-        self.get_mut(field.as_ref()).and_then(Value::as_object_mut)
     }
 
     fn insert_field<F, V>(&mut self, field: F, value: V)

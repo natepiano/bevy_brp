@@ -12,7 +12,7 @@ use crate::shared::{ComputedField, extract_field_data};
 /// Attributes for #[brp_result(...)]
 #[derive(Default)]
 struct BrpResultAttrs {
-    format_discovery: bool,
+    enhanced_errors: bool,
 }
 
 /// Parse #[brp_result(...)] attribute
@@ -23,10 +23,10 @@ fn parse_brp_result_attr(attrs: &[syn::Attribute]) -> Option<BrpResultAttrs> {
 
             // Parse attribute arguments if any
             let _ = attr.parse_nested_meta(|meta| {
-                if meta.path.is_ident("format_discovery") {
+                if meta.path.is_ident("enhanced_errors") {
                     let value = meta.value()?;
                     let lit: syn::LitBool = value.parse()?;
-                    result.format_discovery = lit.value();
+                    result.enhanced_errors = lit.value();
                 }
                 Ok(())
             });
@@ -140,14 +140,20 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         quote! {}
     };
 
-    // Generate ResultStructBrpExt trait implementation if #[brp_result] is present
-    let result_struct_brp_ext_impl = if let Some(ref attrs) = brp_attrs {
-        let execute_mode = if attrs.format_discovery {
-            quote! { crate::brp_tools::ExecuteMode::WithFormatDiscovery }
-        } else {
-            quote! { crate::brp_tools::ExecuteMode::Standard }
-        };
+    // Generate BrpToolConfig trait implementation if #[brp_result] is present
+    let brp_tool_config_impl = if let Some(ref attrs) = brp_attrs {
+        let enhanced_errors = attrs.enhanced_errors;
+        quote! {
+            impl crate::brp_tools::BrpToolConfig for #struct_name {
+                const ENHANCED_ERRORS: bool = #enhanced_errors;
+            }
+        }
+    } else {
+        quote! {}
+    };
 
+    // Generate ResultStructBrpExt trait implementation if #[brp_result] is present
+    let result_struct_brp_ext_impl = if let Some(_attrs) = brp_attrs {
         quote! {
             impl crate::brp_tools::ResultStructBrpExt for #struct_name {
                 type Args = (
@@ -155,10 +161,6 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
                     Option<Vec<serde_json::Value>>,
                     Option<crate::brp_tools::FormatCorrectionStatus>,
                 );
-
-                fn brp_tool_execute_mode() -> crate::brp_tools::ExecuteMode {
-                    #execute_mode
-                }
 
                 fn from_brp_client_response(args: Self::Args) -> crate::error::Result<Self> {
                     Self::from_brp_client_response(args.0, args.1, args.2)
@@ -192,6 +194,8 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         }
 
         #from_brp_client_response_impl
+
+        #brp_tool_config_impl
 
         #result_struct_brp_ext_impl
 

@@ -1,458 +1,744 @@
 [
   {
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".composite_mode": "passed",
+      ".high_pass_frequency": "passed",
+      ".intensity": "passed",
+      ".low_frequency_boost": "passed",
+      ".low_frequency_boost_curvature": "passed",
+      ".max_mip_dimension": "passed",
+      ".prefilter": "passed",
+      ".prefilter.threshold": "passed",
+      ".prefilter.threshold_softness": "passed",
+      ".scale": "passed",
+      ".scale.x": "passed",
+      ".scale.y": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".denoise": "passed",
+      ".enabled": "passed",
+      ".sharpening_strength": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".depth_load_op": "passed",
+      ".depth_texture_usages": "passed",
+      ".screen_space_specular_transmission_quality": "passed",
+      ".screen_space_specular_transmission_steps": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::dof::DepthOfField",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".aperture_f_stops": "passed",
+      ".focal_distance": "passed",
+      ".max_circle_of_confusion_diameter": "passed",
+      ".max_depth": "passed",
+      ".mode": "passed",
+      ".sensor_height": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::fxaa::Fxaa",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".edge_threshold": "passed",
+      ".edge_threshold_min": "passed",
+      ".enabled": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::post_process::ChromaticAberration",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color_lut": "skipped",
+      ".intensity": "passed",
+      ".max_samples": "passed"
+    },
+    "notes": "color_lut skipped - requires valid image handle"
   },
   {
     "type": "bevy_core_pipeline::skybox::Skybox",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".brightness": "passed",
+      ".image": "skipped",
+      ".rotation": "passed",
+      ".rotation.w": "passed",
+      ".rotation.x": "passed",
+      ".rotation.y": "passed",
+      ".rotation.z": "passed"
+    },
+    "notes": "image skipped - requires valid image handle"
   },
   {
     "type": "bevy_core_pipeline::smaa::Smaa",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".preset": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::tonemapping::DebandDither",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_core_pipeline::tonemapping::Tonemapping",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_ecs::name::Name",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_gltf::assets::GltfExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_gltf::assets::GltfMaterialExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_gltf::assets::GltfMaterialName",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_gltf::assets::GltfMeshExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_gltf::assets::GltfSceneExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_input::gamepad::Gamepad",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".product_id": "passed",
+      ".vendor_id": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_input::gamepad::GamepadSettings",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".default_button_settings.press_threshold": "passed",
+      ".default_button_settings.release_threshold": "passed",
+      ".default_axis_settings.threshold": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_mesh::morph::MeshMorphWeights",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".weights": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_mesh::morph::MorphWeights",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".weights": "passed",
+      ".first_mesh": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_mesh::skinning::SkinnedMesh",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".joints": "passed"
+    },
+    "notes": "inverse_bindposes skipped - requires asset handle"
   },
   {
     "type": "bevy_pbr::cluster::ClusterConfig",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::components::CascadesVisibleEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_pbr::components::CubemapVisibleEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_pbr::components::VisibleMeshEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_pbr::decal::clustered::ClusteredDecal",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".image": "skipped",
+      ".tag": "passed"
+    },
+    "notes": "image skipped - requires valid handle"
   },
   {
     "type": "bevy_pbr::fog::DistanceFog",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".directional_light_color": "passed",
+      ".directional_light_exponent": "passed",
+      ".falloff": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light::CascadeShadowConfig",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".bounds": "passed",
+      ".minimum_distance": "passed",
+      ".overlap_proportion": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light::Cascades",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".cascades": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light::ShadowFilteringMethod",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light::ambient_light::AmbientLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {},
+    "notes": "No entities exist - resource component"
   },
   {
     "type": "bevy_pbr::light::directional_light::DirectionalLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".illuminance": "passed",
+      ".shadows_enabled": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light::point_light::PointLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".intensity": "passed",
+      ".range": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light::spot_light::SpotLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".color": "passed",
+      ".intensity": "passed",
+      ".outer_angle": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::light_probe::LightProbe",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_pbr::light_probe::environment_map::EnvironmentMapLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".affects_lightmapped_mesh_diffuse": "passed",
+      ".diffuse_map": "skipped",
+      ".intensity": "passed",
+      ".rotation": "passed",
+      ".rotation.w": "passed",
+      ".rotation.x": "passed",
+      ".rotation.y": "passed",
+      ".rotation.z": "passed",
+      ".specular_map": "skipped"
+    },
+    "notes": "diffuse_map and specular_map skipped - require valid image handles"
   },
   {
     "type": "bevy_pbr::light_probe::irradiance_volume::IrradianceVolume",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
-  },
-  {
-    "type": "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
-  },
-  {
-    "type": "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".affects_lightmapped_meshes": "passed",
+      ".intensity": "passed",
+      ".voxels": "skipped"
+    },
+    "notes": "voxels skipped - requires valid image handle"
   },
   {
     "type": "bevy_pbr::ssao::ScreenSpaceAmbientOcclusion",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".constant_object_thickness": "passed",
+      ".quality_level": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::ssr::ScreenSpaceReflections",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".bisection_steps": "passed",
+      ".linear_march_exponent": "passed",
+      ".linear_steps": "passed",
+      ".perceptual_roughness_threshold": "passed",
+      ".thickness": "passed",
+      ".use_secant": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_pbr::volumetric_fog::VolumetricFog",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".ambient_color": "passed",
+      ".ambient_intensity": "passed",
+      ".jitter": "passed",
+      ".step_count": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::camera::camera::Camera",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".clear_color": "passed",
+      ".hdr": "passed",
+      ".is_active": "passed",
+      ".msaa_writeback": "passed",
+      ".order": "passed",
+      ".sub_camera_view": "passed",
+      ".target": "passed",
+      ".viewport": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::camera::camera::CameraMainTextureUsages",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "failed",
+    "mutation_paths": {
+      "": "failed"
+    },
+    "notes": "Component lacks ReflectDeserialize - mutation not supported"
   },
   {
     "type": "bevy_render::camera::camera::CameraRenderGraph",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "failed",
+    "mutation_paths": {
+      "": "failed"
+    },
+    "notes": "Component lacks ReflectDeserialize - mutation not supported"
   },
   {
     "type": "bevy_render::camera::camera::Exposure",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "failed",
+    "mutation_paths": {
+      "": "failed"
+    },
+    "notes": "Component lacks ReflectDeserialize - mutation not supported"
   },
   {
     "type": "bevy_render::camera::camera::MipBias",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::camera::camera::TemporalJitter",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".offset": "passed",
+      ".offset.x": "passed",
+      ".offset.y": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::camera::projection::Projection",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::mesh::components::Mesh2d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Root path mutation skipped - requires asset handle"
   },
   {
     "type": "bevy_render::mesh::components::Mesh3d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Root path mutation skipped - requires asset handle"
   },
   {
     "type": "bevy_render::primitives::Aabb",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".center": "passed",
+      ".center.x": "passed",
+      ".center.y": "passed",
+      ".center.z": "passed",
+      ".half_extents": "passed",
+      ".half_extents.x": "passed",
+      ".half_extents.y": "passed",
+      ".half_extents.z": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::primitives::CascadesFrusta",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_render::primitives::CubemapFrusta",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_render::primitives::Frustum",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_render::sync_world::SyncToRenderWorld",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_render::view::ColorGrading",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "failed",
+    "mutation_tests": "failed",
+    "mutation_paths": {
+      ".global.exposure": "failed"
+    },
+    "notes": "Cannot reflect component - midtones_range field has core::ops::Range<f32> without ReflectDeserialize"
   },
   {
     "type": "bevy_render::view::Msaa",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {},
+    "notes": "No entities exist - resource component"
   },
   {
     "type": "bevy_render::view::visibility::InheritedVisibility",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::view::visibility::NoFrustumCulling",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_render::view::visibility::ViewVisibility",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::view::visibility::Visibility",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_render::view::visibility::VisibilityClass",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {
+      "": "skipped",
+      ".0": "skipped"
+    },
+    "notes": "Contains SmallVec<TypeId> - complex inner type mutation skipped"
   },
   {
     "type": "bevy_render::view::visibility::VisibleEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "mutation_paths": {},
+    "notes": "No mutation paths available"
   },
   {
     "type": "bevy_render::view::visibility::range::VisibilityRange",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".end_margin": "skipped",
+      ".start_margin": "skipped",
+      ".use_aabb": "passed"
+    },
+    "notes": "Range<f32> fields skipped - no ReflectDeserialize support"
   },
   {
     "type": "bevy_render::view::visibility::render_layers::RenderLayers",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {
+      "": "skipped",
+      ".0": "skipped"
+    },
+    "notes": "Contains SmallVec<u64> - complex inner type mutation skipped"
   },
   {
     "type": "bevy_render::view::window::screenshot::Screenshot",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {
+      "": "skipped",
+      ".0": "skipped"
+    },
+    "notes": "No entities exist - screenshot request component"
   },
   {
     "type": "bevy_scene::components::DynamicSceneRoot",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {
+      "": "skipped",
+      ".0": "skipped"
+    },
+    "notes": "No entities exist - requires DynamicScene asset handle"
   },
   {
     "type": "bevy_scene::components::SceneRoot",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
-  },
-  {
-    "type": "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "mutation_paths": {
+      "": "skipped",
+      ".0": "skipped"
+    },
+    "notes": "No entities exist - requires Scene asset handle"
   },
   {
     "type": "bevy_sprite::sprite::Anchor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_sprite::sprite::Sprite",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".anchor": "passed",
+      ".color": "passed",
+      ".custom_size": "passed",
+      ".custom_size.x": "failed",
+      ".custom_size.y": "skipped",
+      ".flip_x": "passed",
+      ".flip_y": "passed",
+      ".image": "skipped",
+      ".image_mode": "passed",
+      ".rect": "passed",
+      ".texture_atlas": "skipped"
+    },
+    "notes": "custom_size.x/y failed - nested Vec2 access issue; image/texture_atlas skipped - require asset handles"
   },
   {
     "type": "bevy_text::bounds::TextBounds",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".width": "passed",
+      ".height": "passed"
+    },
     "notes": ""
   },
   {
     "type": "bevy_text::pipeline::TextLayoutInfo",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".glyphs": "skipped",
+      ".size": "passed",
+      ".size.x": "passed",
+      ".size.y": "passed"
+    },
+    "notes": "glyphs skipped - complex Vec<PositionedGlyph> type"
   },
   {
     "type": "bevy_text::text2d::Text2d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
     "notes": ""
   },
   {

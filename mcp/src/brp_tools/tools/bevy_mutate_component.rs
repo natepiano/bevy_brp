@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::brp_tools::{FormatCorrectionStatus, Port};
+use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/mutate_component` tool
 #[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -31,27 +31,12 @@ pub struct MutateComponentParams {
 
 /// Result for the `bevy/mutate_component` tool
 #[derive(Serialize, ResultStruct)]
-#[brp_result(format_discovery = true)]
+#[brp_result(enhanced_errors = true)]
 pub struct MutateComponentResult {
     /// The raw BRP response data (empty for mutate)
     #[serde(skip_serializing_if = "Option::is_none")]
     #[to_result(skip_if_none)]
     pub result: Option<Value>,
-
-    /// Format corrections applied during execution
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub format_corrections: Option<Vec<serde_json::Value>>,
-
-    /// Whether format discovery was applied
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub format_corrected: Option<FormatCorrectionStatus>,
-
-    /// Warning message when format corrections were applied
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[to_metadata(skip_if_none)]
-    pub warning: Option<String>,
 
     /// Message template for formatting responses
     #[to_message(message_template = "Mutated {component} for entity {entity}")]

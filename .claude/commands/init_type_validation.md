@@ -50,6 +50,7 @@ After getting the component list from step 3, create the tracking file using thi
 - `Camera2d`: Has serialization problems with BRP  
 - Prepass components: Internal rendering components not meant for direct testing
 - `NotShadowCaster`/`NotShadowReceiver`/`VolumetricLight`/`OcclusionCulling`: Unit struct marker components with no spawn support and no mutation paths
+- `MeshMaterial3d` types: Asset handle serialization issues - BRP cannot serialize `Arc<StrongHandle>` (missing `ReflectSerialize` registration)
 
 ```bash
 # Extract the component list from result["result"] and format it as JSON array
@@ -70,7 +71,10 @@ echo '[
     . != "bevy_pbr::light::NotShadowCaster" and
     . != "bevy_pbr::light::NotShadowReceiver" and
     . != "bevy_pbr::volumetric_fog::VolumetricLight" and
-    . != "bevy_render::experimental::occlusion_culling::OcclusionCulling"
+    . != "bevy_render::experimental::occlusion_culling::OcclusionCulling" and
+    . != "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>" and
+    . != "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>" and
+    . != "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>"
   )) |
   map({type: ., spawn_test: "untested", mutation_tests: "untested", notes: ""})
 ' > test-app/examples/type_validation.json

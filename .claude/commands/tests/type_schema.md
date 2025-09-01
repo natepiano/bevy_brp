@@ -203,7 +203,38 @@ mcp__brp__bevy_spawn with parameters:
 - Error with type_schema for both Transform and Name
 - Each type shows correct format in type_schema field
 
-#### 9c. Test Non-Transformable Input Error
+#### 9c. Test Mutation Format Error with Type Schema Embedding
+
+**STEP 1**: Query for an entity with Transform:
+- Tool: mcp__brp__bevy_query
+- Use filter: {"with": ["bevy_transform::components::transform::Transform"]}
+
+**STEP 2**: Attempt mutation with INCORRECT object format (should be array):
+```json
+mcp__brp__bevy_mutate_component with parameters:
+{
+  "entity": [USE_ENTITY_ID_FROM_QUERY],
+  "component": "bevy_transform::components::transform::Transform",
+  "path": ".translation",
+  "value": {"x": 100.0, "y": 200.0, "z": 300.0},
+  "port": 20114
+}
+```
+
+**Expected Error Response**:
+- Status: "error"
+- Message contains: "Format error - see 'type_schema' field for correct format"
+- error_info contains:
+  - original_error: The BRP mutation error message
+  - type_schema: Embedded type_schema for Transform showing correct array format
+  - Should show `.translation` expects `[f32, f32, f32]` not `{x, y, z}` object
+
+**STEP 3**: Verify mutation-specific type_schema contains:
+- Transform mutation_paths including `.translation` with correct array format
+- Transform spawn_format showing proper Vec3 array structure
+- Clear guidance that Vec3 fields require `[x, y, z]` array format
+
+#### 9d. Test Non-Transformable Input Error
 
 **STEP 1**: Test completely malformed input:
 ```json
@@ -222,7 +253,7 @@ mcp__brp__bevy_insert with parameters:
 - Clear indication that format cannot be corrected automatically
 - type_schema shows expected Transform structure
 
-#### 9d. Test Component Without Serialize/Deserialize - Spawn Failure
+#### 9e. Test Component Without Serialize/Deserialize - Spawn Failure
 
 **STEP 1**: Attempt to spawn Visibility (lacks Serialize/Deserialize):
 ```json
@@ -240,7 +271,7 @@ mcp__brp__bevy_spawn with parameters:
 - Error message mentions Serialize/Deserialize requirements
 - May include type_schema showing component is in registry but not spawnable
 
-#### 9e. Test Enum Mutation Error Guidance
+#### 9f. Test Enum Mutation Error Guidance
 
 **STEP 1**: Query for entity with Visibility:
 - Tool: mcp__brp__bevy_query
@@ -276,6 +307,7 @@ mcp__brp__bevy_mutate_component with parameters:
 - Tool provides comprehensive type information for BRP operations
 - **Format errors include embedded type_schema for failed types**
 - **Type extraction works from both parameters and error messages**
+- **Mutation format errors include embedded type_schema information**
 - **Error guidance is clear and actionable for self-correction**
 
 ## Failure Investigation

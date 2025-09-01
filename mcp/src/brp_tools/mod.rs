@@ -10,8 +10,8 @@ mod watch_tools;
 // We export `JSON_RPC_ERROR_METHOD_NOT_FOUND` so that the `brp_shutdown` tool can determine if
 // `brp_mcp_extras` is available
 pub use brp_client::{
-    BrpClient, BrpClientError, ExecuteMode, FormatCorrectionStatus,
-    JSON_RPC_ERROR_METHOD_NOT_FOUND, ResponseStatus, ResultStructBrpExt,
+    BrpClient, BrpToolConfig, FormatCorrectionStatus, JSON_RPC_ERROR_METHOD_NOT_FOUND,
+    ResponseStatus, ResultStructBrpExt,
 };
 //
 // Export brp_type_schema tool

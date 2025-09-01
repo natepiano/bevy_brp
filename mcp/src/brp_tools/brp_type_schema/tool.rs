@@ -95,7 +95,7 @@ impl TypeSchemaEngine {
         // Fetch full registry from BRP
         let client = BrpClient::new(BrpMethod::BevyRegistrySchema, port, Some(json!({})));
 
-        match client.execute_raw().await {
+        match client.execute_direct_internal_no_enhancement().await {
             Ok(ResponseStatus::Success(Some(registry_data))) => {
                 // Convert to HashMap with BrpTypeName keys
                 let mut registry_map = HashMap::new();

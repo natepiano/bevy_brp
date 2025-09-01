@@ -24,14 +24,19 @@ use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::post_process::ChromaticAberration;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
+use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::decal::clustered::ClusteredDecal;
+use bevy::pbr::irradiance_volume::IrradianceVolume;
+use bevy::pbr::prelude::EnvironmentMapLight;
 use bevy::pbr::{
-    LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections, VolumetricFog,
+    ExtendedMaterial, LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion,
+    ScreenSpaceReflections, StandardMaterial, VolumetricFog,
 };
 use bevy::prelude::*;
 use bevy::render::camera::{
     CameraMainTextureUsages, Exposure, ManualTextureViewHandle, MipBias, TemporalJitter,
 };
+use bevy::render::view::ColorGrading;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
@@ -210,7 +215,10 @@ fn main() {
         // Register gamepad types for BRP access
         .register_type::<Gamepad>()
         .register_type::<GamepadSettings>()
-        .add_systems(Startup, (setup_test_entities, setup_ui))
+        .add_systems(
+            Startup,
+            (setup_test_entities, setup_test_materials, setup_ui),
+        )
         .add_systems(PostStartup, setup_skybox_test)
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
         .run();
@@ -568,6 +576,62 @@ fn spawn_render_entities(commands: &mut Commands) {
 
     // Entity with LightProbe for testing mutations
     commands.spawn((LightProbe, Name::new("LightProbeTestEntity")));
+
+    // Entity with EnvironmentMapLight for testing mutations
+    commands.spawn((
+        EnvironmentMapLight::default(),
+        Name::new("EnvironmentMapLightTestEntity"),
+    ));
+
+    // Entity with IrradianceVolume for testing mutations
+    commands.spawn((
+        IrradianceVolume::default(),
+        Name::new("IrradianceVolumeTestEntity"),
+    ));
+}
+
+/// Setup test entities with materials for mutation testing
+fn setup_test_materials(
+    mut commands: Commands,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut extended_materials: ResMut<
+        Assets<ExtendedMaterial<StandardMaterial, ForwardDecalMaterialExt>>,
+    >,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    // Create a standard material
+    let standard_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(1.0, 0.0, 0.0),
+        ..default()
+    });
+
+    // Create an extended material for decals
+    let extended_material = extended_materials.add(ExtendedMaterial {
+        base:      StandardMaterial {
+            base_color: Color::srgb(0.0, 1.0, 0.0),
+            ..default()
+        },
+        extension: ForwardDecalMaterialExt::default(),
+    });
+
+    // Create a basic mesh
+    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
+
+    // Entity with StandardMaterial
+    commands.spawn((
+        MeshMaterial3d(standard_material.clone()),
+        Mesh3d(mesh.clone()),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Name::new("StandardMaterialTestEntity"),
+    ));
+
+    // Entity with ExtendedMaterial
+    commands.spawn((
+        MeshMaterial3d(extended_material.clone()),
+        Mesh3d(mesh.clone()),
+        Transform::from_xyz(2.0, 0.0, 0.0),
+        Name::new("ExtendedMaterialTestEntity"),
+    ));
 }
 
 /// Setup UI for keyboard input display
@@ -584,6 +648,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         CameraMainTextureUsages::default(), // For testing mutations
+        ColorGrading::default(), // For testing mutations
         ContrastAdaptiveSharpening {
             enabled: false,
             ..default()

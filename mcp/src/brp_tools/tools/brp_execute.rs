@@ -82,7 +82,7 @@ impl ToolFn for BrpExecute {
                     params: Some(params),
                 }),
                 ResponseStatus::Error(err) => Ok(ToolResult {
-                    result: Err(Error::tool_call_failed(err.message).into()),
+                    result: Err(Error::tool_call_failed(err.get_message()).into()),
                     params: Some(params),
                 }),
             }

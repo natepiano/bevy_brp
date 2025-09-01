@@ -11,12 +11,13 @@ use tracing::warn;
 
 use super::super::Port;
 use super::constants::{BRP_EXTRAS_PREFIX, JSON_RPC_ERROR_METHOD_NOT_FOUND};
-use super::format_discovery;
 use super::http_client::BrpHttpClient;
 use super::types::{
-    BrpClientCallJsonResponse, BrpClientError, ExecuteMode, ResponseStatus, ResultStructBrpExt,
+    BrpClientCallJsonResponse, BrpClientError, BrpToolConfig, Operation, ResponseStatus,
+    ResultStructBrpExt,
 };
 use crate::brp_tools::FormatCorrectionStatus;
+use crate::brp_tools::brp_type_schema::TypeSchemaEngine;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -65,9 +66,9 @@ impl BrpClient {
     /// 3. On format errors, attempts format discovery if the result type supports it
     /// 4. Retries with corrected format if discovery succeeds
     ///
-    /// Format discovery is only attempted for result types with `ExecuteMode::WithFormatDiscovery`.
-    /// Result types with `ExecuteMode::DirectOnly` will return errors immediately without
-    /// discovery.
+    /// Enhanced error handling is only attempted for result types with
+    /// `BrpToolConfig::ENHANCED_ERRORS = true`. Result types with `ENHANCED_ERRORS = false`
+    /// will return errors immediately without enhanced error information.
     pub async fn execute<R>(&self) -> Result<R>
     where
         R: ResultStructBrpExt<
@@ -76,7 +77,8 @@ impl BrpClient {
                     Option<Vec<Value>>,
                     Option<FormatCorrectionStatus>,
                 ),
-            > + Send
+            > + BrpToolConfig
+            + Send
             + 'static,
     {
         // ALWAYS execute direct first
@@ -92,18 +94,21 @@ impl BrpClient {
                 ))
             }
             ResponseStatus::Error(err) => {
-                // Only try format discovery if: 1) format error, 2) type supports it
-                if err.is_format_error()
-                    && matches!(R::brp_tool_execute_mode(), ExecuteMode::WithFormatDiscovery)
-                {
-                    // Try format discovery and maybe retry with corrected format
-                    self.try_format_recovery::<R>(&err).await
+                // Check if this result type supports enhanced errors
+                if R::ENHANCED_ERRORS && err.is_format_error() {
+                    // Enhanced error handling - embed type_schema information
+                    match self.create_enhanced_format_error(&err).await {
+                        Ok(_) => unreachable!("Enhanced format error should always return Err"),
+                        Err(error_report) => Err(error_report),
+                    }
                 } else {
-                    // Regular error - no format discovery
-                    Err(
-                        Error::tool_call_failed(format!("{} (error {})", err.message, err.code))
-                            .into(),
-                    )
+                    // Regular error - no enhanced error handling
+                    Err(Error::tool_call_failed(format!(
+                        "{} (error {})",
+                        err.get_message(),
+                        err.get_code()
+                    ))
+                    .into())
                 }
             }
         }
@@ -121,6 +126,25 @@ impl BrpClient {
     /// - Testing and diagnostic scenarios
     pub async fn execute_raw(&self) -> Result<ResponseStatus> {
         self.execute_direct_internal().await
+    }
+
+    /// Raw BRP execution without any error enhancement (used internally to prevent recursion)
+    ///
+    /// This method is identical to `execute_direct_internal()` but bypasses all error enhancement
+    /// to prevent recursion when `TypeSchemaEngine` needs to fetch registry data.
+    pub async fn execute_direct_internal_no_enhancement(&self) -> Result<ResponseStatus> {
+        // Create HTTP client with our data
+        let http_client = BrpHttpClient::new(self.method, self.port, self.params.clone());
+
+        // Send HTTP request (includes status check)
+        let response = http_client.send_request().await?;
+
+        // Parse JSON-RPC response
+        let brp_response = self.parse_json_response(response).await?;
+
+        // Convert to BrpClientResult with special handling for bevy_brp_extras
+        // NO ERROR ENHANCEMENT - return directly
+        Ok(self.to_response_status(brp_response))
     }
 
     /// Execute the BRP request and return a streaming response
@@ -158,29 +182,6 @@ impl BrpClient {
         Ok(self.to_response_status(brp_response))
     }
 
-    /// Try format recovery and retry with corrected format
-    async fn try_format_recovery<R>(&self, original_error: &BrpClientError) -> Result<R>
-    where
-        R: ResultStructBrpExt<
-                Args = (
-                    Option<Value>,
-                    Option<Vec<Value>>,
-                    Option<FormatCorrectionStatus>,
-                ),
-            > + Send
-            + 'static,
-    {
-        // Execute discovery and recovery through orchestrator
-        format_discovery::discover_format_with_recovery(
-            self.method,
-            self.port,
-            self.params.clone(),
-            original_error.clone(),
-        )
-        .await?
-        .into_typed_result::<R>(original_error)
-    }
-
     /// Parse the JSON response from the BRP call to a running bevy app
     async fn parse_json_response(
         &self,
@@ -202,6 +203,82 @@ impl BrpClient {
                 )
             }
         }
+    }
+
+    /// Extract type names from BRP error messages using regex patterns
+    fn extract_types_from_error_message(error_msg: &str) -> Vec<String> {
+        const ERROR_PATTERNS: &[&str] = &[
+            r"Unknown component type: `([^`]+)`",
+            r"([a-zA-Z0-9_:]+) is invalid:",
+        ];
+        
+        ERROR_PATTERNS
+            .iter()
+            .filter_map(|pattern| {
+                regex::Regex::new(pattern).ok()
+                    .and_then(|regex| regex.captures(error_msg))
+                    .and_then(|caps| caps.get(1))
+                    .map(|m| (*m.as_str()).to_string())
+            })
+            .collect()
+    }
+
+    /// Enhanced format error creation with type schema embedding
+    async fn create_enhanced_format_error(&self, error: &BrpClientError) -> Result<ResponseStatus> {
+        // Step 1: Try parameter-based extraction using Operation enum
+        let mut extracted_types = Vec::new();
+        if let Ok(operation) = Operation::try_from(self.method) {
+            let params = self.params.as_ref().unwrap_or(&serde_json::Value::Null);
+            extracted_types = operation.extract_type_names(params);
+        }
+
+        // Step 2: Fallback to error message parsing if parameter extraction failed
+        if extracted_types.is_empty() {
+            extracted_types = Self::extract_types_from_error_message(error.get_message());
+        }
+
+        // Step 3: Handle results based on whether types were extracted
+        if extracted_types.is_empty() {
+            Self::create_minimal_type_schema_error(error)
+        } else {
+            self.create_full_type_schema_error(error, extracted_types)
+                .await
+        }
+    }
+
+    /// Create minimal error when no types can be extracted
+    fn create_minimal_type_schema_error(error: &BrpClientError) -> Result<ResponseStatus> {
+        Err(Error::tool_call_failed_with_details(
+            "Format error occurred but could not extract type information",
+            serde_json::json!({
+                "original_error": error.get_message(),
+                "type_schema": {
+                    "help": "Unable to determine specific types that failed. Use the brp_type_schema tool to get format information for the types you're working with.",
+                    "suggested_action": "Check your BRP method parameters and ensure they match expected structure"
+                }
+            }),
+        )
+        .into())
+    }
+
+    /// Create full error with type schema embedded for extracted types
+    async fn create_full_type_schema_error(
+        &self,
+        error: &BrpClientError,
+        extracted_types: Vec<String>,
+    ) -> Result<ResponseStatus> {
+        // Create TypeSchemaEngine and generate response for extracted types
+        let engine = TypeSchemaEngine::new(self.port).await?;
+        let type_schema_response = engine.generate_response(&extracted_types);
+
+        Err(Error::tool_call_failed_with_details(
+            "Format error - see 'type_schema' field for correct format",
+            serde_json::json!({
+                "original_error": error.get_message(),
+                "type_schema": type_schema_response
+            }),
+        )
+        .into())
     }
 
     /// Convert the response JSON to a `ResponseStatus`
