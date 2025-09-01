@@ -9,13 +9,13 @@ use serde_json::{Map, Value, json};
 use super::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, MAX_TYPE_RECURSION_DEPTH, SCHEMA_REF_PREFIX,
 };
-use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey};
+use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey, Knowledge};
 use super::mutation_path_builders::{
     EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField,
 };
 use super::response_types::{
-    BrpSupportedOperation, BrpTypeName, EnumVariantInfo, EnumVariantKind, MutationPath,
-    MutationPathInternal, ReflectTrait, SchemaField, SchemaInfo, TypeKind,
+    BrpSupportedOperation, BrpTypeName, EnumVariantInfo, MutationPath, MutationPathInternal,
+    ReflectTrait, SchemaField, SchemaInfo, TypeKind,
 };
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
@@ -435,7 +435,11 @@ impl TypeInfo {
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
-    fn convert_mutation_paths(paths: &[MutationPathInternal]) -> HashMap<String, MutationPath> {
+    fn convert_mutation_paths(
+        paths: &[MutationPathInternal],
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> HashMap<String, MutationPath> {
         let mut result = HashMap::new();
 
         for path in paths {
@@ -449,7 +453,13 @@ impl TypeInfo {
             );
 
             // Create MutationPathInfo from MutationPath
-            let path_info = MutationPath::from_mutation_path(path, description, is_option);
+            let path_info = MutationPath::from_mutation_path(
+                path,
+                description,
+                is_option,
+                type_schema,
+                registry,
+            );
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."
@@ -469,73 +479,10 @@ impl TypeInfo {
 
         let variants: Vec<EnumVariantInfo> = one_of
             .iter()
-            .filter_map(Self::extract_enum_variant)
+            .filter_map(|v| EnumVariantInfo::from_schema_variant(v, &HashMap::new(), 0))
             .collect();
 
         Some(variants)
-    }
-
-    /// Extract a single enum variant from schema
-    fn extract_enum_variant(v: &Value) -> Option<EnumVariantInfo> {
-        let name = Self::get_variant_identifier(v)?;
-
-        // Use the explicit kind field if available, otherwise infer from structure
-        let variant_type = v
-            .get_field(SchemaField::Kind)
-            .and_then(Value::as_str)
-            .and_then(|s| EnumVariantKind::from_str(s).ok())
-            .unwrap_or_else(|| {
-                if v.is_string() {
-                    // Simple string variant
-                } else {
-                    // Object without explicit kind = unit variant with metadata
-                }
-                EnumVariantKind::Unit
-            });
-
-        // Extract tuple types if present
-        let tuple_types = if variant_type == EnumVariantKind::Tuple {
-            v.get_field(SchemaField::PrefixItems)
-                .and_then(Value::as_array)
-                .map(|items| {
-                    items
-                        .iter()
-                        .filter_map(Self::extract_type_ref_from_field)
-                        .collect()
-                })
-        } else {
-            None
-        };
-
-        // Extract struct fields if present
-        let fields = if variant_type == EnumVariantKind::Struct {
-            v.get_field(SchemaField::Properties)
-                .and_then(Value::as_object)
-                .map(|props| {
-                    props
-                        .iter()
-                        .map(|(field_name, field_value)| {
-                            let type_name = field_value
-                                .get_field(SchemaField::Type)
-                                .and_then(Value::as_str)
-                                .unwrap_or("unknown");
-                            super::response_types::EnumFieldInfo {
-                                field_name: field_name.clone(),
-                                type_name:  BrpTypeName::from(type_name),
-                            }
-                        })
-                        .collect()
-                })
-        } else {
-            None
-        };
-
-        Some(EnumVariantInfo {
-            variant_name: name.to_string(),
-            variant_kind: variant_type,
-            fields,
-            tuple_types,
-        })
     }
 
     /// Extract reflect types from a registry schema
@@ -606,8 +553,29 @@ impl TypeInfo {
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> HashMap<String, MutationPath> {
+        // Check if this type has format knowledge with TreatAsValue
+        let format_knowledge =
+            BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(brp_type_name.to_string()));
+
+        if let Some(knowledge) = format_knowledge
+            && let Knowledge::TreatAsValue { simplified_type } = &knowledge.mutation_knowledge
+        {
+            // For types that should be treated as values, only provide a root mutation
+            let mut paths = HashMap::new();
+
+            let root_mutation = MutationPath::new_root_value(
+                brp_type_name.clone(),
+                knowledge.example_value.clone(),
+                simplified_type.clone(),
+            );
+
+            paths.insert(String::new(), root_mutation);
+            return paths;
+        }
+
+        // Use the normal registry-derived mutation paths
         let mutation_paths_vec = Self::build_mutation_paths(brp_type_name, type_schema, registry);
-        Self::convert_mutation_paths(&mutation_paths_vec)
+        Self::convert_mutation_paths(&mutation_paths_vec, type_schema, registry)
     }
 
     /// Get supported BRP operations based on reflection traits
@@ -638,15 +606,5 @@ impl TypeInfo {
         }
 
         operations
-    }
-
-    /// Extract variant identifier from either string or object representation
-    /// This returns the discriminant/name that identifies which variant this is,
-    /// regardless of whether the variant contains data
-    fn get_variant_identifier(v: &Value) -> Option<&str> {
-        v.as_str().map_or_else(
-            || v.get_field(SchemaField::ShortPath).and_then(Value::as_str),
-            Some,
-        )
     }
 }

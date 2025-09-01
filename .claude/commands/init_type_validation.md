@@ -47,12 +47,23 @@ After getting the component list from step 3, create the tracking file using thi
 
 ```bash
 # Extract the component list from result["result"] and format it as JSON array
-# Then use jq to transform each type into the tracking structure
+# Filter out excluded types, then transform each type into the tracking structure
 echo '[
     "component_type_1",
     "component_type_2",
     # ... all component types from result["result"] ...
-]' | jq 'map({type: ., spawn_test: "untested", mutation_tests: "untested", notes: ""})' > test-app/examples/type_validation.json
+]' | jq '
+  map(select(
+    . != "bevy_ecs::hierarchy::ChildOf" and 
+    . != "bevy_ecs::hierarchy::Children" and
+    . != "bevy_core_pipeline::core_2d::camera_2d::Camera2d" and
+    . != "bevy_core_pipeline::prepass::DeferredPrepass" and
+    . != "bevy_core_pipeline::prepass::DepthPrepass" and
+    . != "bevy_core_pipeline::prepass::MotionVectorPrepass" and
+    . != "bevy_core_pipeline::prepass::NormalPrepass"
+  )) |
+  map({type: ., spawn_test: "untested", mutation_tests: "untested", notes: ""})
+' > test-app/examples/type_validation.json
 ```
 
 This approach is fast and reliable - it creates the file immediately without any blocking issues.

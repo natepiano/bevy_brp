@@ -14,7 +14,7 @@ use tracing::warn;
 use super::constants::SCHEMA_REF_PREFIX;
 use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey};
 use super::response_types::{
-    BrpTypeName, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
+    BrpTypeName, EnumVariantInfo, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
 use super::type_info::TypeInfo;
 use super::wrapper_types::WrapperType;
@@ -352,19 +352,19 @@ impl MutationPathBuilder for EnumMutationBuilder {
 impl EnumMutationBuilder {
     /// Extract enum variants from type schema
     pub fn extract_enum_variants(type_schema: &Value) -> Option<Vec<String>> {
-        type_schema
-            .get_field(SchemaField::OneOf)
-            .and_then(Value::as_array)
-            .map(|one_of| {
-                one_of
-                    .iter()
-                    .filter_map(|v| Self::get_variant_identifier(v).map(String::from))
-                    .collect()
-            })
+        use super::response_types::extract_enum_variants as extract_variants_new;
+
+        let variants = extract_variants_new(type_schema, &HashMap::new(), 0);
+        if variants.is_empty() {
+            None
+        } else {
+            Some(variants.iter().map(|v| v.name().to_string()).collect())
+        }
     }
 
     /// Build example value for an enum type
     ///
+    /// Updated to use type-safe pattern matching instead of conditional chains.
     /// For tuple/newtype variants, builds proper examples based on the inner type
     /// by looking up struct definitions in the registry.
     pub fn build_enum_example(schema: &Value, registry: &HashMap<BrpTypeName, Value>) -> Value {
@@ -373,75 +373,64 @@ impl EnumMutationBuilder {
             .and_then(Value::as_array)
             && let Some(first_variant) = one_of.first()
         {
-            let Some(variant_name) = Self::get_variant_identifier(first_variant) else {
-                return json!(null);
-            };
+            // Use the new type-safe EnumVariantInfo with pattern matching instead of conditional
+            // chains
+            EnumVariantInfo::from_schema_variant(first_variant, registry, 0).map_or(
+                json!(null),
+                |variant_info| {
+                    match variant_info {
+                        EnumVariantInfo::Unit(name) => {
+                            // Simple unit variant - just return the string
+                            json!(name)
+                        }
+                        EnumVariantInfo::Tuple(name, types) => {
+                            if types.len() == 1 {
+                                // Newtype variant - single field tuple
+                                let inner_value =
+                                    Self::build_variant_data_example(&types[0], registry);
 
-            // Check variant type to build appropriate example
-            if first_variant.is_string() {
-                // Simple unit variant - just return the string
-                return json!(variant_name);
-            } else if let Some(prefix_items) = first_variant
-                .get_field(SchemaField::PrefixItems)
-                .and_then(Value::as_array)
-            {
-                // Tuple variant (including newtype variants)
-                if prefix_items.len() == 1 {
-                    // Newtype variant - single field tuple
-                    if let Some(first_item) = prefix_items.first()
-                        && let Some(inner_type_name) = first_item
-                            .get_field(SchemaField::Type)
-                            .and_then(extract_type_ref_with_schema_field)
-                    {
-                        // Build proper example for the inner type
-                        let inner_value =
-                            Self::build_variant_data_example(&inner_type_name, registry);
+                                // For newtype variants, BRP expects the struct directly, not in an
+                                // array
+                                json!({
+                                    name: inner_value
+                                })
+                            } else if !types.is_empty() {
+                                // Multi-field tuple variant (rare in Bevy)
+                                let tuple_values: Vec<Value> = types
+                                    .iter()
+                                    .map(|t| Self::build_variant_data_example(t, registry))
+                                    .collect();
 
-                        // For newtype variants, BRP expects the struct directly, not in an array
-                        return json!({
-                            variant_name: inner_value
-                        });
+                                json!({
+                                    name: tuple_values
+                                })
+                            } else {
+                                // Empty tuple - treat as unit variant
+                                json!(name)
+                            }
+                        }
+                        EnumVariantInfo::Struct(name, fields) => {
+                            // Struct variant - build example from fields
+                            let struct_obj: serde_json::Map<String, Value> = fields
+                                .iter()
+                                .map(|f| {
+                                    (
+                                        f.field_name.clone(),
+                                        Self::build_variant_data_example(&f.type_name, registry),
+                                    )
+                                })
+                                .collect();
+
+                            json!({
+                                name: struct_obj
+                            })
+                        }
                     }
-                } else if !prefix_items.is_empty() {
-                    // Multi-field tuple variant (rare in Bevy)
-                    let tuple_values: Vec<Value> = prefix_items
-                        .iter()
-                        .map(|item| {
-                            item.get_field(SchemaField::Type)
-                                .and_then(extract_type_ref_with_schema_field)
-                                .map(|t| Self::build_variant_data_example(&t, registry))
-                                .unwrap_or(json!(null))
-                        })
-                        .collect();
-
-                    return json!({
-                        variant_name: tuple_values
-                    });
-                }
-            } else if let Some(properties) = first_variant.get_field(SchemaField::Properties) {
-                // Struct variant - build example from properties
-                let struct_example =
-                    Self::build_struct_example_from_properties(properties, registry);
-                return json!({
-                    variant_name: struct_example
-                });
-            }
-
-            // Fallback for unit variants
-            json!(variant_name)
+                },
+            )
         } else {
             json!(null)
         }
-    }
-
-    /// Get variant identifier from schema variant definition
-    fn get_variant_identifier(variant: &Value) -> Option<&str> {
-        variant.as_str().or_else(|| {
-            // Extract the shortPath field which contains the variant name
-            variant
-                .get_field(SchemaField::ShortPath)
-                .and_then(Value::as_str)
-        })
     }
 
     /// Build example data for enum variant inner types
@@ -596,8 +585,25 @@ impl StructMutationBuilder {
     fn build_property_paths(ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let Some(schema) = ctx.require_schema() else {
+        let properties = Self::extract_properties(ctx)?;
+        if properties.is_empty() {
             return Ok(paths);
+        }
+
+        for (field_name, field_info) in properties {
+            let field_paths = Self::build_single_property_paths(ctx, &field_name, field_info)?;
+            paths.extend(field_paths);
+        }
+
+        Ok(paths)
+    }
+
+    /// Extract properties from the schema
+    fn extract_properties<'a>(
+        ctx: &'a MutationPathContext<'_>,
+    ) -> Result<Vec<(String, &'a Value)>> {
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(Vec::new());
         };
 
         let Some(properties) = schema
@@ -608,92 +614,124 @@ impl StructMutationBuilder {
                 type_name = %ctx.type_name(),
                 "No properties field found in struct schema - mutation paths may be incomplete"
             );
-            return Ok(paths);
+            return Ok(Vec::new());
         };
 
-        // For each property, we need to build field mutation paths
-        // This requires calling back into the main mutation path building system
-        for (field_name, field_info) in properties {
-            // Extract field type from field info
-            let field_type = SchemaField::extract_field_type(field_info);
+        Ok(properties.iter().map(|(k, v)| (k.clone(), v)).collect())
+    }
 
-            let Some(ft) = field_type else {
-                // No type info, add null mutation path
-                paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       json!(null),
-                    enum_variants: None,
-                    type_name:     BrpTypeName::unknown(),
-                    path_kind:     match &ctx.location {
-                        RootOrField::Root { type_name } => MutationPathKind::StructField {
-                            field_name:  field_name.clone(),
-                            parent_type: type_name.clone(),
-                        },
-                        RootOrField::Field {
-                            field_type: parent_type,
-                            ..
-                        } => MutationPathKind::StructField {
-                            field_name:  field_name.clone(),
-                            parent_type: parent_type.clone(),
-                        },
-                    },
-                });
-                continue;
-            };
+    /// Build mutation paths for a single property
+    fn build_single_property_paths(
+        ctx: &MutationPathContext<'_>,
+        field_name: &str,
+        field_info: &Value,
+    ) -> Result<Vec<MutationPathInternal>> {
+        // Extract field type from field info
+        let field_type = SchemaField::extract_field_type(field_info);
 
-            // Check if this is a wrapper type (Option, Handle) first
-            let wrapper_info = WrapperType::detect(ft.as_str());
+        let Some(ft) = field_type else {
+            return Ok(vec![Self::build_null_mutation_path(ctx, field_name)]);
+        };
 
-            // Check for hardcoded knowledge - first try the full type, then inner type for wrappers
-            let hardcoded = BRP_FORMAT_KNOWLEDGE
-                .get(&FormatKnowledgeKey::exact(&ft))
-                .or_else(|| {
-                    // For wrapper types, check the inner type for hardcoded knowledge
-                    wrapper_info.as_ref().and_then(|(_, inner)| {
-                        BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(inner))
-                    })
-                });
+        // Check if this is a wrapper type (Option, Handle) first
+        let wrapper_info = WrapperType::detect(ft.as_str());
 
-            if let Some(hardcoded) = hardcoded {
-                // Get enum variants if this is an enum
-                let enum_variants = if wrapper_info.is_none() {
-                    ctx.get_type_schema(&ft).and_then(|schema| {
-                        if TypeKind::from_schema(schema, &ft) == TypeKind::Enum {
-                            EnumMutationBuilder::extract_enum_variants(schema)
-                        } else {
-                            None
-                        }
-                    })
-                } else {
-                    None
-                };
-
-                let parent_type = ctx.type_name();
-                paths.extend(Self::build_hardcoded_paths(
-                    field_name,
-                    &ft,
-                    hardcoded,
-                    wrapper_info,
-                    enum_variants,
-                    parent_type,
-                ));
-                continue;
-            }
-
-            // Look up the field type in the registry to determine its kind
-            let field_type_schema = ctx.get_type_schema(&ft);
-            let field_type_kind = field_type_schema
-                .map_or(TypeKind::Value, |schema| TypeKind::from_schema(schema, &ft));
-
-            // Create a field context for this property
-            let field_ctx = ctx.create_field_context(field_name, &ft, wrapper_info);
-
-            // Dispatch to the appropriate builder based on field type kind
-            let field_paths = field_type_kind.build_paths(&field_ctx)?;
-            paths.extend(field_paths);
+        // Try to handle with hardcoded knowledge first
+        if let Some(paths) =
+            Self::try_build_hardcoded_paths(ctx, field_name, &ft, wrapper_info.as_ref())
+        {
+            return Ok(paths);
         }
 
-        Ok(paths)
+        // Fall back to type-based building
+        Self::build_type_based_paths(ctx, field_name, &ft, wrapper_info)
+    }
+
+    /// Build a null mutation path for fields without type information
+    fn build_null_mutation_path(
+        ctx: &MutationPathContext<'_>,
+        field_name: &str,
+    ) -> MutationPathInternal {
+        MutationPathInternal {
+            path:          format!(".{field_name}"),
+            example:       json!(null),
+            enum_variants: None,
+            type_name:     BrpTypeName::unknown(),
+            path_kind:     match &ctx.location {
+                RootOrField::Root { type_name } => MutationPathKind::StructField {
+                    field_name:  field_name.to_string(),
+                    parent_type: type_name.clone(),
+                },
+                RootOrField::Field {
+                    field_type: parent_type,
+                    ..
+                } => MutationPathKind::StructField {
+                    field_name:  field_name.to_string(),
+                    parent_type: parent_type.clone(),
+                },
+            },
+        }
+    }
+
+    /// Try to build paths using hardcoded knowledge
+    fn try_build_hardcoded_paths(
+        ctx: &MutationPathContext<'_>,
+        field_name: &str,
+        field_type: &BrpTypeName,
+        wrapper_info: Option<&(WrapperType, BrpTypeName)>,
+    ) -> Option<Vec<MutationPathInternal>> {
+        // Check for hardcoded knowledge - first try the full type, then inner type for wrappers
+        let hardcoded = BRP_FORMAT_KNOWLEDGE
+            .get(&FormatKnowledgeKey::exact(field_type))
+            .or_else(|| {
+                // For wrapper types, check the inner type for hardcoded knowledge
+                wrapper_info.and_then(|(_, inner)| {
+                    BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(inner))
+                })
+            })?;
+
+        // Get enum variants if this is an enum
+        let enum_variants = if wrapper_info.is_none() {
+            ctx.get_type_schema(field_type).and_then(|schema| {
+                if TypeKind::from_schema(schema, field_type) == TypeKind::Enum {
+                    EnumMutationBuilder::extract_enum_variants(schema)
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        };
+
+        let parent_type = ctx.type_name();
+        Some(Self::build_hardcoded_paths(
+            field_name,
+            field_type,
+            hardcoded,
+            wrapper_info.cloned(),
+            enum_variants,
+            parent_type,
+        ))
+    }
+
+    /// Build paths based on the field's type kind
+    fn build_type_based_paths(
+        ctx: &MutationPathContext<'_>,
+        field_name: &str,
+        field_type: &BrpTypeName,
+        wrapper_info: Option<(WrapperType, BrpTypeName)>,
+    ) -> Result<Vec<MutationPathInternal>> {
+        // Look up the field type in the registry to determine its kind
+        let field_type_schema = ctx.get_type_schema(field_type);
+        let field_type_kind = field_type_schema.map_or(TypeKind::Value, |schema| {
+            TypeKind::from_schema(schema, field_type)
+        });
+
+        // Create a field context for this property
+        let field_ctx = ctx.create_field_context(field_name, field_type, wrapper_info);
+
+        // Dispatch to the appropriate builder based on field type kind
+        field_type_kind.build_paths(&field_ctx)
     }
 
     /// Build paths for types with hardcoded knowledge (Vec3, Quat, etc.)

@@ -273,7 +273,7 @@ impl DiscoveryContext {
 
     /// Handle enum types by providing variant guidance
     fn handle_enum_type(type_name: &BrpTypeName, enum_info: &[EnumVariantInfo]) -> Correction {
-        let variant_names: Vec<String> = enum_info.iter().map(|v| v.variant_name.clone()).collect();
+        let variant_names: Vec<String> = enum_info.iter().map(EnumVariantInfo::name).map(str::to_string).collect();
 
         let example_variant = variant_names.first().map_or("VariantName", String::as_str);
 
@@ -619,7 +619,7 @@ impl DiscoveryContext {
             // Handle string to enum variant conversion
             if let Some(str_val) = value.as_str() {
                 // Check if string matches a variant name
-                if enum_info.iter().any(|v| v.variant_name == str_val) {
+                if enum_info.iter().any(|v| v.name() == str_val) {
                     // For unit variants, just return the string
                     return Some(Value::String(str_val.to_string()));
                 }

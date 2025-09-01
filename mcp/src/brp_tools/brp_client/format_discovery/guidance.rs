@@ -141,7 +141,7 @@ impl DiscoveryEngine<Guidance> {
             // Add enum-specific guidance if this is an enum
             if let Some(enum_info) = self.context.enum_info(type_name) {
                 let variants: Vec<String> =
-                    enum_info.iter().map(|v| v.variant_name.clone()).collect();
+                    enum_info.iter().map(|v| v.name().to_string()).collect();
                 debug!(
                     "build_corrected_value_from_type_info: Adding enum guidance with {} variants: {:?}",
                     variants.len(),

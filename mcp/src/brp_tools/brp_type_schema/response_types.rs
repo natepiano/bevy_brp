@@ -141,31 +141,232 @@ pub struct EnumFieldInfo {
     pub type_name:  BrpTypeName,
 }
 
-/// Information about an enum variant
+/// Type-safe enum variant information - replaces `EnumVariantInfoOld`
+/// This enum makes invalid states impossible to construct
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumVariantInfo {
-    /// Name of the variant
-    pub variant_name: String,
-    /// Type of the variant (Unit, Tuple, Struct)
-    pub variant_kind: EnumVariantKind,
-    /// Fields for struct variants
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub fields:       Option<Vec<EnumFieldInfo>>,
-    /// Types for tuple variants
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tuple_types:  Option<Vec<BrpTypeName>>,
+pub enum EnumVariantInfo {
+    /// Unit variant - just the variant name
+    Unit(String),
+    /// Tuple variant - name and guaranteed tuple types
+    Tuple(String, Vec<BrpTypeName>),
+    /// Struct variant - name and guaranteed struct fields
+    Struct(String, Vec<EnumFieldInfo>),
 }
 
-/// Enum variant classification
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString, Serialize, Deserialize,
-)]
-#[serde(rename_all = "PascalCase")]
-#[strum(serialize_all = "PascalCase")]
-pub enum EnumVariantKind {
-    Tuple,
-    Struct,
-    Unit,
+impl EnumVariantInfo {
+    /// Get the variant name regardless of variant type
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
+        }
+    }
+
+    /// Constructor that infers variant type from JSON structure
+    /// instead of relying on separate enum classification
+    pub fn from_schema_variant(
+        v: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: usize,
+    ) -> Option<Self> {
+        let name = extract_variant_name(v)?;
+
+        // Infer variant type from JSON structure, not from string parsing
+        if v.is_string() {
+            Some(Self::Unit(name))
+        } else if let Some(prefix_items) = v
+            .get_field(SchemaField::PrefixItems)
+            .and_then(Value::as_array)
+        {
+            let types = extract_tuple_types(prefix_items, registry, depth);
+            Some(Self::Tuple(name, types))
+        } else if let Some(properties) = v
+            .get_field(SchemaField::Properties)
+            .and_then(Value::as_object)
+        {
+            let fields = extract_struct_fields(properties, registry, depth);
+            Some(Self::Struct(name, fields))
+        } else {
+            Some(Self::Unit(name)) // Default fallback
+        }
+    }
+
+    /// Build example JSON for this enum variant
+    pub fn build_example(&self, registry: &HashMap<BrpTypeName, Value>, _depth: usize) -> Value {
+        match self {
+            Self::Unit(name) => serde_json::json!(name),
+            Self::Tuple(name, types) => {
+                let tuple_values: Vec<Value> = types
+                    .iter()
+                    .map(|t| TypeInfo::build_example_value_for_type(t, registry))
+                    .collect();
+                serde_json::json!({ name: tuple_values })
+            }
+            Self::Struct(name, fields) => {
+                let struct_obj: serde_json::Map<String, Value> = fields
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.field_name.clone(),
+                            TypeInfo::build_example_value_for_type(&f.type_name, registry),
+                        )
+                    })
+                    .collect();
+                serde_json::json!({ name: struct_obj })
+            }
+        }
+    }
+}
+
+/// Helper function to extract variant name from schema variant
+fn extract_variant_name(v: &Value) -> Option<String> {
+    // For unit variants, the value is just a string
+    if let Value::String(s) = v {
+        return Some(s.clone());
+    }
+
+    // For tuple/struct variants, look for the shortPath field
+    v.get_field(SchemaField::ShortPath)
+        .and_then(Value::as_str)
+        .map(String::from)
+}
+
+/// Helper function to check if recursion depth exceeds the maximum allowed
+fn check_depth_exceeded(depth: usize, operation: &str) -> bool {
+    if depth > crate::brp_tools::brp_type_schema::constants::MAX_TYPE_RECURSION_DEPTH {
+        tracing::warn!("Max recursion depth reached while {operation}, using fallback");
+        true
+    } else {
+        false
+    }
+}
+
+/// Create a fallback type for when depth is exceeded
+fn create_fallback_type() -> BrpTypeName {
+    BrpTypeName::from("f32")
+}
+
+/// Create a fallback field for struct variants when depth is exceeded
+fn create_fallback_field() -> EnumFieldInfo {
+    EnumFieldInfo {
+        field_name: "value".to_string(),
+        type_name:  create_fallback_type(),
+    }
+}
+
+/// Helper function to extract tuple types from prefixItems with depth control
+/// This prevents stack overflow when processing deeply nested tuple structures
+fn extract_tuple_types(
+    prefix_items: &[Value],
+    _registry: &HashMap<BrpTypeName, Value>,
+    depth: usize,
+) -> Vec<BrpTypeName> {
+    if check_depth_exceeded(depth, "extracting tuple types") {
+        return vec![create_fallback_type()];
+    }
+
+    prefix_items
+        .iter()
+        .filter_map(|item| {
+            item.get_field(SchemaField::Ref)
+                .and_then(Value::as_str)
+                .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
+                .map(BrpTypeName::from)
+        })
+        .collect()
+}
+
+/// Helper function to extract struct fields from properties with depth control
+/// This prevents stack overflow when processing deeply nested struct structures
+fn extract_struct_fields(
+    properties: &serde_json::Map<String, Value>,
+    _registry: &HashMap<BrpTypeName, Value>,
+    depth: usize,
+) -> Vec<EnumFieldInfo> {
+    if check_depth_exceeded(depth, "extracting struct fields") {
+        return vec![create_fallback_field()];
+    }
+
+    properties
+        .iter()
+        .filter_map(|(field_name, field_schema)| {
+            SchemaField::extract_field_type(field_schema).map(|type_name| EnumFieldInfo {
+                field_name: field_name.clone(),
+                type_name,
+            })
+        })
+        .collect()
+}
+
+/// Build all enum examples - generates one example per unique variant type signature
+pub fn build_all_enum_examples(
+    schema: &Value,
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: usize,
+) -> HashMap<String, Value> {
+    let variants = extract_enum_variants(schema, registry, depth);
+
+    // Group variants by their type signature and generate one example per group
+    let mut examples = HashMap::new();
+    let mut seen_unit = false;
+    let mut seen_tuples: HashMap<Vec<BrpTypeName>, String> = HashMap::new();
+    let mut seen_structs: HashMap<Vec<(String, BrpTypeName)>, String> = HashMap::new();
+
+    for variant in variants {
+        match &variant {
+            EnumVariantInfo::Unit(name) => {
+                if !seen_unit {
+                    examples.insert(name.clone(), serde_json::json!(name));
+                    seen_unit = true;
+                }
+            }
+            EnumVariantInfo::Tuple(name, types) => {
+                if !seen_tuples.contains_key(types) {
+                    let example = variant.build_example(registry, depth);
+                    examples.insert(name.clone(), example);
+                    seen_tuples.insert(types.clone(), name.clone());
+                }
+            }
+            EnumVariantInfo::Struct(name, fields) => {
+                let field_sig: Vec<(String, BrpTypeName)> = fields
+                    .iter()
+                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
+                    .collect();
+                if let std::collections::hash_map::Entry::Vacant(e) = seen_structs.entry(field_sig)
+                {
+                    let example = variant.build_example(registry, depth);
+                    examples.insert(name.clone(), example);
+                    e.insert(name.clone());
+                }
+            }
+        }
+    }
+
+    examples
+}
+
+/// Extract enum variants using the new `EnumVariantInfo` enum
+pub fn extract_enum_variants(
+    type_schema: &Value,
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: usize,
+) -> Vec<EnumVariantInfo> {
+    type_schema
+        .get_field(SchemaField::OneOf)
+        .and_then(Value::as_array)
+        .map(|variants| {
+            variants
+                .iter()
+                .enumerate()
+                .filter_map(|(i, v)| {
+                    EnumVariantInfo::from_schema_variant(v, registry, depth)
+                        .or_else(|| {
+                            tracing::warn!("Failed to parse enum variant {i} in schema - this is unexpected as BRP should provide valid variants");
+                            None
+                        })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Math type component names
@@ -185,7 +386,7 @@ impl From<MathComponent> for String {
 }
 
 /// Context for a mutation path describing what kind of mutation this is
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum MutationPathKind {
     /// Replace the entire value (root mutation with empty path)
     RootValue { type_name: BrpTypeName },
@@ -293,38 +494,62 @@ pub struct MutationPathInternal {
 }
 
 /// Information about a mutation path that we serialize to our response
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Human-readable description of what this path mutates
-    pub description:   String,
+    pub description:      String,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name:     BrpTypeName,
+    pub type_name:        BrpTypeName,
     /// Example value for mutations (for non-Option types)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:       Option<Value>,
+    pub example:          Option<Value>,
     /// Example value for setting Some variant (Option types only)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_some:  Option<Value>,
+    pub example_some:     Option<Value>,
     /// Example value for setting None variant (Option types only)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_none:  Option<Value>,
+    pub example_none:     Option<Value>,
     /// List of valid enum variants for this field
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_variants: Option<Vec<String>>,
+    pub enum_variants:    Option<Vec<String>>,
+    /// Example values for enum variants (maps variant names to example JSON)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example_variants: Option<HashMap<String, Value>>,
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub note:          Option<String>,
+    pub note:             Option<String>,
     /// Context metadata describing the kind of mutation this path represents
-    pub path_kind:     MutationPathKind,
+    pub path_kind:        MutationPathKind,
 }
 
 impl MutationPath {
+    /// Create a root value mutation with a simplified type name
+    pub fn new_root_value(
+        type_name: BrpTypeName,
+        example_value: Value,
+        simplified_type: String,
+    ) -> Self {
+        Self {
+            description:      format!("Replace the entire {type_name} value"),
+            type_name:        BrpTypeName::from(simplified_type),
+            example:          Some(example_value),
+            example_some:     None,
+            example_none:     None,
+            enum_variants:    None,
+            example_variants: None,
+            note:             None,
+            path_kind:        MutationPathKind::RootValue { type_name },
+        }
+    }
+
     /// Create from internal `MutationPath` with proper formatting logic
     pub fn from_mutation_path(
         path: &MutationPathInternal,
         description: String,
         is_option: bool,
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
         if is_option {
             // For Option types, check if we have the special format
@@ -338,6 +563,7 @@ impl MutationPath {
                     example_some: Some(some_val.clone()),
                     example_none: Some(none_val.clone()),
                     enum_variants: path.enum_variants.clone(),
+                    example_variants: None, // Options don't use enum examples
                     note: Some(
                         "For Option fields: pass the value directly to set Some, null to set None"
                             .to_string(),
@@ -348,6 +574,25 @@ impl MutationPath {
         }
 
         // Regular non-Option path
+        let example_variants = if path.enum_variants.is_some() {
+            // This is an enum type - generate example variants using the new system
+            let examples = build_all_enum_examples(type_schema, registry, 0);
+            if examples.is_empty() {
+                None
+            } else {
+                Some(examples)
+            }
+        } else {
+            None
+        };
+
+        // Compute enum_variants from example_variants keys (alphabetically sorted)
+        let enum_variants = example_variants.as_ref().map(|variants| {
+            let mut keys: Vec<String> = variants.keys().cloned().collect();
+            keys.sort(); // Alphabetical sorting for consistency
+            keys
+        });
+
         Self {
             description,
             type_name: path.type_name.clone(),
@@ -358,7 +603,8 @@ impl MutationPath {
             },
             example_some: None,
             example_none: None,
-            enum_variants: path.enum_variants.clone(),
+            enum_variants,
+            example_variants,
             note: None,
             path_kind: path.path_kind.clone(),
         }

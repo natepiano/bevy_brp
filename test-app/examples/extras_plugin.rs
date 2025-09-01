@@ -14,7 +14,10 @@ use std::time::Instant;
 use bevy::core_pipeline::Skybox;
 use bevy::core_pipeline::bloom::Bloom;
 use bevy::core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening;
-use bevy::core_pipeline::prepass::DepthPrepass;
+use bevy::core_pipeline::dof::DepthOfField;
+use bevy::core_pipeline::fxaa::Fxaa;
+use bevy::core_pipeline::post_process::ChromaticAberration;
+use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
@@ -22,7 +25,7 @@ use bevy::render::camera::ManualTextureViewHandle;
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
-use bevy::render::render_resource::{TextureUsages, TextureViewDescriptor, TextureViewDimension};
+use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -92,13 +95,26 @@ struct TestStructNoSerDe {
 }
 
 /// Test component enum WITH Serialize/Deserialize
+/// This enum has all three variant types for testing enum example generation:
+/// - Unit variants (Active, Inactive)
+/// - Tuple variant (Special)
+/// - Struct variant (Custom)
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 enum TestEnumWithSerDe {
+    /// Unit variant 1
     Active,
+    /// Unit variant 2 (default)
     #[default]
     Inactive,
+    /// Tuple variant with multiple fields
     Special(String, u32),
+    /// Struct variant with named fields
+    Custom {
+        name:    String,
+        value:   f32,
+        enabled: bool,
+    },
 }
 
 /// Test component enum WITHOUT Serialize/Deserialize (only Reflect)
@@ -329,6 +345,53 @@ fn spawn_visual_entities(commands: &mut Commands) {
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
         Name::new("PointLightTestEntity"),
+        bevy::pbr::NotShadowCaster,
+        bevy::pbr::NotShadowReceiver,
+        bevy::pbr::ShadowFilteringMethod::default(),
+    ));
+
+    // Entity with DirectionalLight for testing mutations
+    commands.spawn((
+        bevy::pbr::DirectionalLight {
+            color: Color::WHITE,
+            illuminance: 10000.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_4)),
+        Name::new("DirectionalLightTestEntity"),
+        bevy::pbr::CascadeShadowConfig::default(),
+        bevy::pbr::Cascades::default(),
+    ));
+
+    // Entity with SpotLight for testing mutations
+    commands.spawn((
+        bevy::pbr::SpotLight {
+            color: Color::WHITE,
+            intensity: 2000.0,
+            range: 10.0,
+            radius: 0.1,
+            shadows_enabled: true,
+            inner_angle: 0.6,
+            outer_angle: 0.8,
+            ..default()
+        },
+        Transform::from_xyz(0.0, 4.0, 0.0),
+        Name::new("SpotLightTestEntity"),
+    ));
+
+    // Entity with DistanceFog for testing mutations
+    commands.spawn((
+        bevy::pbr::DistanceFog {
+            color: Color::srgba(0.35, 0.48, 0.66, 1.0),
+            directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.5),
+            directional_light_exponent: 8.0,
+            falloff: bevy::pbr::FogFalloff::Linear {
+                start: 5.0,
+                end: 20.0,
+            },
+        },
+        Name::new("DistanceFogTestEntity"),
     ));
 }
 
@@ -361,17 +424,24 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestTupleStructEntity"),
     ));
 
-    // Entity with TestComplexComponent
+    // Entity with TestComplexComponent using the struct variant
     commands.spawn((
         TestComplexComponent {
             transform:      Transform::from_xyz(5.0, 10.0, 15.0),
-            mode:           TestEnumWithSerDe::Active,
+            mode:           TestEnumWithSerDe::Custom {
+                name:    "test_custom".to_string(),
+                value:   42.5,
+                enabled: true,
+            },
             points:         [Vec3::new(1.0, 2.0, 3.0), Vec3::new(4.0, 5.0, 6.0)],
             range:          (0.0, 100.0),
             optional_value: Some(50.0),
         },
         Name::new("TestComplexEntity"),
     ));
+
+    // Entity with TestEnumWithSerDe standalone for easy testing
+    commands.spawn((TestEnumWithSerDe::Active, Name::new("TestEnumEntity")));
 
     // Entity with TestEnumNoSerDe
     commands.spawn((
@@ -396,6 +466,44 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     commands.spawn((
         GamepadSettings::default(),
         Name::new("GamepadSettingsTestEntity"),
+    ));
+
+    // Entity with GltfExtras for testing mutations
+    commands.spawn((
+        bevy::gltf::GltfExtras {
+            value: "test gltf extras".to_string(),
+        },
+        Name::new("GltfExtrasTestEntity"),
+    ));
+
+    // Entity with GltfMaterialExtras for testing mutations
+    commands.spawn((
+        bevy::gltf::GltfMaterialExtras {
+            value: "test material extras".to_string(),
+        },
+        Name::new("GltfMaterialExtrasTestEntity"),
+    ));
+
+    // Entity with GltfMaterialName for testing mutations
+    commands.spawn((
+        bevy::gltf::GltfMaterialName("test material name".to_string()),
+        Name::new("GltfMaterialNameTestEntity"),
+    ));
+
+    // Entity with GltfMeshExtras for testing mutations
+    commands.spawn((
+        bevy::gltf::GltfMeshExtras {
+            value: "test mesh extras".to_string(),
+        },
+        Name::new("GltfMeshExtrasTestEntity"),
+    ));
+
+    // Entity with GltfSceneExtras for testing mutations
+    commands.spawn((
+        bevy::gltf::GltfSceneExtras {
+            value: "test scene extras".to_string(),
+        },
+        Name::new("GltfSceneExtrasTestEntity"),
     ));
 }
 
@@ -437,6 +545,15 @@ fn spawn_render_entities(commands: &mut Commands) {
         Transform::from_xyz(50.0, 50.0, 0.0),
         Name::new("Text2dTestEntity"),
     ));
+
+    // Entity with ClusteredDecal for testing mutations
+    commands.spawn((
+        ClusteredDecal {
+            image: Handle::default(),
+            tag: 1,
+        },
+        Name::new("ClusteredDecalTestEntity"),
+    ));
 }
 
 /// Setup UI for keyboard input display
@@ -456,9 +573,11 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
             enabled: false,
             ..default()
         },
-        ManualTextureViewHandle(0), // For testing mutations
-        DepthPrepass,               // Required for OcclusionCulling
-        OcclusionCulling,           /* For testing mutations */
+        DepthOfField::default(),        // For testing mutations
+        Fxaa::default(),                // For testing mutations
+        ChromaticAberration::default(), // For testing mutations
+        ManualTextureViewHandle(0),     // For testing mutations
+        OcclusionCulling,               /* For testing mutations */
     ));
 
     // Background

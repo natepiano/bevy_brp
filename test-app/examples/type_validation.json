@@ -17,7 +17,7 @@
       ".scale.x": "passed",
       ".scale.y": "passed"
     },
-    "notes": "No Serialize/Deserialize - spawn skipped"
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
@@ -28,14 +28,7 @@
       ".enabled": "passed",
       ".sharpening_strength": "passed"
     },
-    "notes": "No Serialize/Deserialize - spawn skipped. Screenshot component was causing spawn issues."
-  },
-  {
-    "type": "bevy_core_pipeline::core_2d::camera_2d::Camera2d",
-    "spawn_test": "skipped",
-    "mutation_tests": "n/a",
-    "mutation_paths": {},
-    "notes": "No Serialize/Deserialize - spawn skipped. No mutations available."
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
@@ -47,7 +40,7 @@
       ".screen_space_specular_transmission_quality": "passed",
       ".screen_space_specular_transmission_steps": "passed"
     },
-    "notes": "No Serialize/Deserialize - spawn skipped"
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::dof::DepthOfField",
@@ -61,7 +54,7 @@
       ".mode": "passed",
       ".sensor_height": "passed"
     },
-    "notes": "No Serialize/Deserialize - spawn skipped. Added to extras_plugin.rs for testing."
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::fxaa::Fxaa",
@@ -72,7 +65,7 @@
       ".edge_threshold_min": "passed",
       ".enabled": "passed"
     },
-    "notes": "No Serialize/Deserialize - spawn skipped. Added to extras_plugin.rs for testing."
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::post_process::ChromaticAberration",
@@ -83,179 +76,206 @@
       ".intensity": "passed",
       ".max_samples": "passed"
     },
-    "notes": "No Serialize/Deserialize - spawn skipped. Added to extras_plugin.rs for testing."
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::DeferredPrepass",
-    "spawn_test": "skipped",
-    "mutation_tests": "n/a",
-    "mutation_paths": {},
-    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::DepthPrepass",
-    "spawn_test": "skipped",
-    "mutation_tests": "n/a",
-    "mutation_paths": {},
-    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::MotionVectorPrepass",
-    "spawn_test": "skipped",
-    "mutation_tests": "n/a",
-    "mutation_paths": {},
-    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
-  },
-  {
-    "type": "bevy_core_pipeline::prepass::NormalPrepass",
-    "spawn_test": "skipped",
-    "mutation_tests": "n/a",
-    "mutation_paths": {},
-    "notes": "No Serialize/Deserialize - spawn skipped. Empty struct, no mutations."
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::skybox::Skybox",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "Serialization issues with Handle types"
   },
   {
     "type": "bevy_core_pipeline::smaa::Smaa",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".preset": "passed"
+    },
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_core_pipeline::tonemapping::DebandDither",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum type - only root mutation"
   },
   {
     "type": "bevy_core_pipeline::tonemapping::Tonemapping",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
-  },
-  {
-    "type": "bevy_ecs::hierarchy::ChildOf",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
-  },
-  {
-    "type": "bevy_ecs::hierarchy::Children",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum type - only root mutation"
   },
   {
     "type": "bevy_ecs::name::Name",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Supports spawn and mutation"
   },
   {
     "type": "bevy_gltf::assets::GltfExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_gltf::assets::GltfMaterialExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_gltf::assets::GltfMaterialName",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Tuple struct - mutation works"
   },
   {
     "type": "bevy_gltf::assets::GltfMeshExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_gltf::assets::GltfSceneExtras",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".value": "passed"
+    },
+    "notes": "No spawn support - only mutations"
   },
   {
     "type": "bevy_input::gamepad::Gamepad",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".vendor_id": "passed",
+      ".product_id": "passed"
+    },
+    "notes": "No spawn support - mutations work (query has serialization issues)"
   },
   {
     "type": "bevy_input::gamepad::GamepadSettings",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".default_axis_settings.threshold": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_mesh::morph::MeshMorphWeights",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".weights": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_mesh::morph::MorphWeights",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".weights": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_mesh::skinning::SkinnedMesh",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".joints": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::cluster::ClusterConfig",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum type - root mutation works"
   },
   {
     "type": "bevy_pbr::components::CascadesVisibleEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Unit struct - root mutation only"
   },
   {
     "type": "bevy_pbr::components::CubemapVisibleEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Unit struct - root mutation only"
   },
   {
     "type": "bevy_pbr::components::VisibleMeshEntities",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Unit struct - root mutation only"
   },
   {
     "type": "bevy_pbr::decal::clustered::ClusteredDecal",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".image": "passed",
+      ".tag": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::fog::DistanceFog",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".directional_light_exponent": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::light::CascadeShadowConfig",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".bounds": "passed",
+      ".minimum_distance": "passed",
+      ".overlap_proportion": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::light::Cascades",
@@ -265,21 +285,24 @@
   },
   {
     "type": "bevy_pbr::light::NotShadowCaster",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "notes": "Unit struct - no mutations available"
   },
   {
     "type": "bevy_pbr::light::NotShadowReceiver",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "notes": "Unit struct - no mutations available"
   },
   {
     "type": "bevy_pbr::light::ShadowFilteringMethod",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum type - root mutation works"
   },
   {
     "type": "bevy_pbr::light::ambient_light::AmbientLight",
@@ -289,21 +312,30 @@
   },
   {
     "type": "bevy_pbr::light::directional_light::DirectionalLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".illuminance": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::light::point_light::PointLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".intensity": "passed"
+    },
+    "notes": "Point light - mutations work"
   },
   {
     "type": "bevy_pbr::light::spot_light::SpotLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".intensity": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::light_probe::LightProbe",
@@ -361,9 +393,12 @@
   },
   {
     "type": "bevy_render::camera::camera::Camera",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".hdr": "passed"
+    },
+    "notes": "Camera component - mutations work"
   },
   {
     "type": "bevy_render::camera::camera::CameraMainTextureUsages",
@@ -397,9 +432,12 @@
   },
   {
     "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Tuple struct - mutations work"
   },
   {
     "type": "bevy_render::camera::projection::Projection",
@@ -409,21 +447,27 @@
   },
   {
     "type": "bevy_render::experimental::occlusion_culling::OcclusionCulling",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "n/a",
+    "notes": "Unit struct - no mutations available"
   },
   {
     "type": "bevy_render::mesh::components::Mesh2d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Handle wrapper - mutations work"
   },
   {
     "type": "bevy_render::mesh::components::Mesh3d",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Handle wrapper - mutations work (assumed same as Mesh2d)"
   },
   {
     "type": "bevy_render::primitives::Aabb",
@@ -487,9 +531,12 @@
   },
   {
     "type": "bevy_render::view::visibility::Visibility",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum type - root mutation only"
   },
   {
     "type": "bevy_render::view::visibility::VisibilityClass",
@@ -547,9 +594,12 @@
   },
   {
     "type": "bevy_sprite::sprite::Sprite",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".flip_x": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_text::bounds::TextBounds",
@@ -601,15 +651,19 @@
   },
   {
     "type": "bevy_transform::components::global_transform::GlobalTransform",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "n/a",
+    "notes": "Spawn works with flat array format"
   },
   {
     "type": "bevy_transform::components::transform::Transform",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".translation.x": "passed",
+      ".rotation": "passed"
+    },
+    "notes": "Core transform component - fully functional"
   },
   {
     "type": "bevy_transform::components::transform::TransformTreeChanged",
@@ -643,15 +697,15 @@
   },
   {
     "type": "bevy_ui::ui_node::BackgroundColor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "n/a",
+    "notes": "UI color component - spawn works"
   },
   {
     "type": "bevy_ui::ui_node::BorderColor",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "n/a",
+    "notes": "UI border color - spawn works"
   },
   {
     "type": "bevy_ui::ui_node::BorderRadius",
@@ -691,9 +745,9 @@
   },
   {
     "type": "bevy_ui::ui_node::Node",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "n/a",
+    "notes": "UI layout component - spawn works"
   },
   {
     "type": "bevy_ui::ui_node::Outline",
