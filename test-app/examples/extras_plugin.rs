@@ -30,10 +30,8 @@ use bevy::pbr::{
 };
 use bevy::prelude::*;
 use bevy::render::camera::{
-    CameraMainTextureUsages, CameraRenderGraph, Exposure, ManualTextureViewHandle, MipBias,
-    TemporalJitter,
+    CameraMainTextureUsages, Exposure, ManualTextureViewHandle, MipBias, TemporalJitter,
 };
-use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
@@ -356,8 +354,6 @@ fn spawn_visual_entities(commands: &mut Commands) {
         },
         Transform::from_xyz(4.0, 8.0, 4.0),
         Name::new("PointLightTestEntity"),
-        bevy::pbr::NotShadowCaster,
-        bevy::pbr::NotShadowReceiver,
         bevy::pbr::ShadowFilteringMethod::default(),
     ));
 
@@ -599,7 +595,6 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         TemporalJitter::default(),              // For testing mutations
         ChromaticAberration::default(),         // For testing mutations
         ManualTextureViewHandle(0),             // For testing mutations
-        OcclusionCulling,                       /* For testing mutations */
         ScreenSpaceAmbientOcclusion::default(), // For testing mutations
         ScreenSpaceReflections::default(),      // For testing mutations
         VolumetricFog::default(),               // For testing mutations

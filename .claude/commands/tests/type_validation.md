@@ -288,51 +288,16 @@ Example workflow for updating a type's status:
 3. **STOP TESTING** - Only stop when there's an actual failure
 4. Save progress so test can resume later if stopped due to failure
 
-### Special Case: Invalid Example Values Causing Crashes
+### Special Case: Format Knowledge Issues
 
-When a type's generated example value causes crashes (e.g., wgpu validation errors, invalid enum variants, etc.):
+When encountering format/serialization errors that indicate schema format mismatches:
 
-#### Step 1: Investigate Valid Values
-1. Search the Bevy codebase (`/Users/natemccoy/rust/bevy/`) for:
-   - How the type is defined
-   - Valid enum variants or flag combinations
-   - Default implementations
-   - Usage examples in the codebase
-2. For bitflags types, identify:
-   - Individual flag values and their meanings
-   - Which combinations are valid/invalid
-   - Hardware or API restrictions (e.g., STORAGE_BINDING incompatible with multisampled textures)
-
-#### Step 2: Update format_knowledge.rs
-1. Add ONLY the problematic type to `mcp/src/brp_tools/brp_type_schema/format_knowledge.rs`
-2. Provide a safe, valid example value that won't cause crashes
-3. Document WHY this value is needed (what restriction it avoids)
-4. Example:
-```rust
-// Camera3dDepthTextureUsage - wrapper around u32 texture usage flags
-// Valid flags: COPY_SRC=1, COPY_DST=2, TEXTURE_BINDING=4, STORAGE_BINDING=8, RENDER_ATTACHMENT=16
-// STORAGE_BINDING (8) causes crashes with multisampled textures!
-// Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT | TEXTURE_BINDING)
-map.insert(
-    "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage".into(),
-    BrpFormatKnowledge {
-        example_value:  json!(20), // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination
-        subfield_paths: None,
-    },
-);
-```
-
-#### Step 3: Stop for MCP Tool Reinstall
-1. Save the current test state in test-app/examples/type_validation.json with a note about the format_knowledge update
-2. **STOP THE TEST** and inform the user:
-   - Format knowledge has been updated for [TYPE_NAME]
-   - User needs to exit and reinstall the MCP tool for changes to take effect
-   - After reinstall, the type schema tool will automatically use the new format knowledge
-
-#### Step 4: Resume After Reinstall (User re-runs test)
-1. Detect that format_knowledge was updated for a type (check notes field in test-app/examples/type_validation.json)
-2. The BRP type schema tool will now automatically provide the safe example value from format_knowledge
-3. Resume testing from where it left off
+1. **STOP THE TEST IMMEDIATELY** 
+2. Report the format knowledge issue to the user:
+   - Type name that caused the issue
+   - Error details 
+   - Request user guidance on format_knowledge.rs updates
+3. Save current progress and await user instructions
 
 ## CRITICAL: No Component Exceptions
 

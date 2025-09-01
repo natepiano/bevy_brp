@@ -202,7 +202,8 @@ impl EnumVariantInfo {
                 // For single-element tuples (newtype pattern), unwrap the single value
                 // For multi-element tuples, use array format
                 let content = if tuple_values.len() == 1 {
-                    tuple_values.into_iter().next().unwrap()
+                    // Safe: we just checked length is 1, so index 0 exists
+                    tuple_values[0].clone()
                 } else {
                     serde_json::Value::Array(tuple_values)
                 };

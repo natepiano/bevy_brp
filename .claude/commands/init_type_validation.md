@@ -45,6 +45,12 @@ This returns an array of all registered component type names.
 
 After getting the component list from step 3, create the tracking file using this bash command:
 
+**Note on excluded types:**
+- `ChildOf`/`Children`: Hierarchy components that cause BRP issues
+- `Camera2d`: Has serialization problems with BRP  
+- Prepass components: Internal rendering components not meant for direct testing
+- `NotShadowCaster`/`NotShadowReceiver`/`VolumetricLight`/`OcclusionCulling`: Unit struct marker components with no spawn support and no mutation paths
+
 ```bash
 # Extract the component list from result["result"] and format it as JSON array
 # Filter out excluded types, then transform each type into the tracking structure
@@ -60,7 +66,11 @@ echo '[
     . != "bevy_core_pipeline::prepass::DeferredPrepass" and
     . != "bevy_core_pipeline::prepass::DepthPrepass" and
     . != "bevy_core_pipeline::prepass::MotionVectorPrepass" and
-    . != "bevy_core_pipeline::prepass::NormalPrepass"
+    . != "bevy_core_pipeline::prepass::NormalPrepass" and
+    . != "bevy_pbr::light::NotShadowCaster" and
+    . != "bevy_pbr::light::NotShadowReceiver" and
+    . != "bevy_pbr::volumetric_fog::VolumetricLight" and
+    . != "bevy_render::experimental::occlusion_culling::OcclusionCulling"
   )) |
   map({type: ., spawn_test: "untested", mutation_tests: "untested", notes: ""})
 ' > test-app/examples/type_validation.json
