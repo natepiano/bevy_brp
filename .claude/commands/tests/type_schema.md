@@ -145,6 +145,125 @@ For each mutation context type, perform ONE representative mutation and verify:
 
 **Non-Serializable**: Mutate `.flip_x` to true on Sprite → Verify with `bevy_get`
 
+### 9. Type Schema in Error Responses
+
+Test that format errors include embedded type_schema information for self-correction.
+
+#### 9a. Test Format Error with Type Schema Embedding
+
+**STEP 1**: Query for an entity with Transform:
+- Tool: mcp__brp__bevy_query
+- Use filter: {"with": ["bevy_transform::components::transform::Transform"]}
+
+**STEP 2**: Attempt insert with INCORRECT object format:
+```json
+mcp__brp__bevy_insert with parameters:
+{
+  "entity": [USE_ENTITY_ID_FROM_QUERY],
+  "components": {
+    "bevy_transform::components::transform::Transform": {
+      "translation": {"x": 10.0, "y": 20.0, "z": 30.0},
+      "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+      "scale": {"x": 2.0, "y": 2.0, "z": 2.0}
+    }
+  },
+  "port": 20114
+}
+```
+
+**Expected Error Response**:
+- Status: "error"
+- Message contains: "Format error - see 'type_schema' field for correct format"
+- error_info contains:
+  - original_error: The BRP error message
+  - type_schema: Embedded type_schema for Transform with correct array format
+
+**STEP 3**: Verify type_schema in error contains:
+- Transform spawn_format showing correct array format for Vec3 fields
+- Transform mutation_paths for reference
+- Same structure as direct brp_type_schema response
+
+#### 9b. Test Multiple Type Errors
+
+**STEP 1**: Attempt spawn with multiple incorrect formats:
+```json
+mcp__brp__bevy_spawn with parameters:
+{
+  "components": {
+    "bevy_transform::components::transform::Transform": {
+      "translation": {"x": 5.0, "y": 15.0, "z": 25.0}
+    },
+    "bevy_ecs::name::Name": 123
+  },
+  "port": 20114
+}
+```
+
+**Expected Result**:
+- Error with type_schema for both Transform and Name
+- Each type shows correct format in type_schema field
+
+#### 9c. Test Non-Transformable Input Error
+
+**STEP 1**: Test completely malformed input:
+```json
+mcp__brp__bevy_insert with parameters:
+{
+  "entity": [USE_ENTITY_ID_FROM_QUERY],
+  "components": {
+    "bevy_transform::components::transform::Transform": 123
+  },
+  "port": 20114
+}
+```
+
+**Expected Result**:
+- Error response with type_schema guidance
+- Clear indication that format cannot be corrected automatically
+- type_schema shows expected Transform structure
+
+#### 9d. Test Component Without Serialize/Deserialize - Spawn Failure
+
+**STEP 1**: Attempt to spawn Visibility (lacks Serialize/Deserialize):
+```json
+mcp__brp__bevy_spawn with parameters:
+{
+  "components": {
+    "bevy_render::view::visibility::Visibility": "Visible"
+  },
+  "port": 20114
+}
+```
+
+**Expected Result**:
+- Error indicating component lacks required traits
+- Error message mentions Serialize/Deserialize requirements
+- May include type_schema showing component is in registry but not spawnable
+
+#### 9e. Test Enum Mutation Error Guidance
+
+**STEP 1**: Query for entity with Visibility:
+- Tool: mcp__brp__bevy_query
+- Filter: {"with": ["bevy_render::view::visibility::Visibility"]}
+
+**STEP 2**: Attempt mutation with INCORRECT enum syntax:
+```json
+mcp__brp__bevy_mutate_component with parameters:
+{
+  "entity": [USE_ENTITY_ID_FROM_QUERY],
+  "component": "bevy_render::view::visibility::Visibility",
+  "path": ".Visible",
+  "value": {},
+  "port": 20114
+}
+```
+
+**Expected Result**:
+- Error with helpful guidance about enum mutation
+- error_info includes:
+  - hint about using empty path for enums
+  - valid_values array: ["Visible", "Hidden", "Inherited"]
+  - examples of correct usage
 
 ## Success Criteria
 
@@ -155,6 +274,9 @@ For each mutation context type, perform ONE representative mutation and verify:
 - Functional mutations work for all context types
 - Components without Serialize can be mutated but not spawned
 - Tool provides comprehensive type information for BRP operations
+- **Format errors include embedded type_schema for failed types**
+- **Type extraction works from both parameters and error messages**
+- **Error guidance is clear and actionable for self-correction**
 
 ## Failure Investigation
 
@@ -163,3 +285,5 @@ If test fails:
 2. Verify types exist in registry
 3. Compare actual vs expected mutation paths
 4. Check if mutations are succeeding
+5. **Verify error responses include type_schema field**
+6. **Check type extraction logic in error handling**
