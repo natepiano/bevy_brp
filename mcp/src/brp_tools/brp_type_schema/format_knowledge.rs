@@ -9,7 +9,16 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
-use super::constants::*;
+use super::constants::{
+    TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2, TYPE_BEVY_MAT3,
+    TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
+    TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_F32, TYPE_F64, TYPE_GLAM_IVEC2,
+    TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3, TYPE_GLAM_MAT4,
+    TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4, TYPE_GLAM_VEC2,
+    TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32, TYPE_I64,
+    TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
+    TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
+};
 use super::response_types::MathComponent;
 
 /// Controls how mutation paths are generated for a type
@@ -56,7 +65,7 @@ pub struct BrpFormatKnowledge {
 
 impl BrpFormatKnowledge {
     /// Create a simple knowledge entry with no subfields
-    pub fn simple(example_value: Value) -> Self {
+    pub const fn simple(example_value: Value) -> Self {
         Self {
             example_value,
             subfield_paths: None,
@@ -65,7 +74,10 @@ impl BrpFormatKnowledge {
     }
 
     /// Create a knowledge entry with math component subfields
-    pub fn with_components(example_value: Value, components: Vec<(MathComponent, Value)>) -> Self {
+    pub const fn with_components(
+        example_value: Value,
+        components: Vec<(MathComponent, Value)>,
+    ) -> Self {
         Self {
             example_value,
             subfield_paths: Some(components),
@@ -74,7 +86,7 @@ impl BrpFormatKnowledge {
     }
 
     /// Create a knowledge entry that should be treated as a simple value
-    pub fn as_value(example_value: Value, simplified_type: String) -> Self {
+    pub const fn as_value(example_value: Value, simplified_type: String) -> Self {
         Self {
             example_value,
             subfield_paths: None,
@@ -281,10 +293,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<FormatKnowledgeKey, BrpFormatK
             FormatKnowledgeKey::exact(TYPE_GLAM_IVEC2),
             BrpFormatKnowledge::with_components(
                 json!([0, 0]),
-                vec![
-                    (MathComponent::X, json!(0)),
-                    (MathComponent::Y, json!(0)),
-                ],
+                vec![(MathComponent::X, json!(0)), (MathComponent::Y, json!(0))],
             ),
         );
         map.insert(
@@ -316,10 +325,7 @@ pub static BRP_FORMAT_KNOWLEDGE: LazyLock<HashMap<FormatKnowledgeKey, BrpFormatK
             FormatKnowledgeKey::exact(TYPE_GLAM_UVEC2),
             BrpFormatKnowledge::with_components(
                 json!([0, 0]),
-                vec![
-                    (MathComponent::X, json!(0)),
-                    (MathComponent::Y, json!(0)),
-                ],
+                vec![(MathComponent::X, json!(0)), (MathComponent::Y, json!(0))],
             ),
         );
         map.insert(

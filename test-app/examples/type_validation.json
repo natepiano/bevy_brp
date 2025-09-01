@@ -279,9 +279,12 @@
   },
   {
     "type": "bevy_pbr::light::Cascades",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".cascades": "passed"
+    },
+    "notes": "Complex EntityHashMap structure - basic mutation works"
   },
   {
     "type": "bevy_pbr::light::NotShadowCaster",
@@ -306,9 +309,14 @@
   },
   {
     "type": "bevy_pbr::light::ambient_light::AmbientLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".affects_lightmapped_meshes": "passed",
+      ".brightness": "passed",
+      ".color": "passed"
+    },
+    "notes": "Resource type - mutations work via resource methods"
   },
   {
     "type": "bevy_pbr::light::directional_light::DirectionalLight",
@@ -339,50 +347,75 @@
   },
   {
     "type": "bevy_pbr::light_probe::LightProbe",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Unit struct - root mutation only"
   },
   {
     "type": "bevy_pbr::light_probe::environment_map::EnvironmentMapLight",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "No entities exist - would need to add to app"
   },
   {
     "type": "bevy_pbr::light_probe::irradiance_volume::IrradianceVolume",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "No entities exist - would need to add to app"
   },
   {
     "type": "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "failed",
+    "notes": "Cannot add to test app - private modules prevent importing ExtendedMaterial types"
   },
   {
     "type": "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed",
+      ".0": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::ssao::ScreenSpaceAmbientOcclusion",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".constant_object_thickness": "passed",
+      ".quality_level": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::ssr::ScreenSpaceReflections",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".bisection_steps": "passed",
+      ".linear_march_exponent": "passed",
+      ".linear_steps": "passed",
+      ".perceptual_roughness_threshold": "passed",
+      ".thickness": "passed",
+      ".use_secant": "passed"
+    },
+    "notes": "No spawn support - mutations work"
   },
   {
     "type": "bevy_pbr::volumetric_fog::VolumetricFog",
     "spawn_test": "untested",
     "mutation_tests": "untested",
+    "mutation_paths": {
+      ".ambient_color": "untested",
+      ".ambient_intensity": "untested",
+      ".jitter": "untested",
+      ".step_count": "untested"
+    },
     "notes": ""
   },
   {
@@ -513,21 +546,27 @@
   },
   {
     "type": "bevy_render::view::visibility::InheritedVisibility",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Visibility tuple struct - mutations work"
   },
   {
     "type": "bevy_render::view::visibility::NoFrustumCulling",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "skipped",
+    "notes": "No entities exist - would need to add to app"
   },
   {
     "type": "bevy_render::view::visibility::ViewVisibility",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".0": "passed"
+    },
+    "notes": "Visibility tuple struct - mutations work"
   },
   {
     "type": "bevy_render::view::visibility::Visibility",
@@ -847,33 +886,57 @@
   },
   {
     "type": "extras_plugin::TestArrayField",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".values": "passed",
+      ".values[0]": "passed",
+      ".vertices": "passed",
+      ".vertices[0]": "passed"
+    },
+    "notes": "Array field mutations work - supports spawn/insert"
   },
   {
     "type": "extras_plugin::TestComplexComponent",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".transform.translation.x": "passed",
+      ".points[1]": "passed",
+      ".mode": "passed",
+      ".optional_value": "passed",
+      ".range.0": "passed"
+    },
+    "notes": "Complex nested mutations work - supports spawn/insert"
   },
   {
     "type": "extras_plugin::TestEnumNoSerDe",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum mutations work - no spawn/insert (no SerDe)"
   },
   {
     "type": "extras_plugin::TestEnumWithSerDe",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "passed",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      "": "passed"
+    },
+    "notes": "Enum with variants - supports spawn/insert and mutations"
   },
   {
     "type": "extras_plugin::TestStructNoSerDe",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "notes": ""
+    "spawn_test": "skipped",
+    "mutation_tests": "passed",
+    "mutation_paths": {
+      ".enabled": "passed",
+      ".name": "passed",
+      ".value": "passed"
+    },
+    "notes": "Struct mutations work - no spawn/insert (no SerDe)"
   },
   {
     "type": "extras_plugin::TestStructWithSerDe",

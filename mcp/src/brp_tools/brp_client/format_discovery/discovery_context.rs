@@ -273,7 +273,11 @@ impl DiscoveryContext {
 
     /// Handle enum types by providing variant guidance
     fn handle_enum_type(type_name: &BrpTypeName, enum_info: &[EnumVariantInfo]) -> Correction {
-        let variant_names: Vec<String> = enum_info.iter().map(EnumVariantInfo::name).map(str::to_string).collect();
+        let variant_names: Vec<String> = enum_info
+            .iter()
+            .map(EnumVariantInfo::name)
+            .map(str::to_string)
+            .collect();
 
         let example_variant = variant_names.first().map_or("VariantName", String::as_str);
 

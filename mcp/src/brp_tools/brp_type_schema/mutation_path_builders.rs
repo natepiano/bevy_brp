@@ -585,7 +585,7 @@ impl StructMutationBuilder {
     fn build_property_paths(ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
-        let properties = Self::extract_properties(ctx)?;
+        let properties = Self::extract_properties(ctx);
         if properties.is_empty() {
             return Ok(paths);
         }
@@ -599,11 +599,9 @@ impl StructMutationBuilder {
     }
 
     /// Extract properties from the schema
-    fn extract_properties<'a>(
-        ctx: &'a MutationPathContext<'_>,
-    ) -> Result<Vec<(String, &'a Value)>> {
+    fn extract_properties<'a>(ctx: &'a MutationPathContext<'_>) -> Vec<(String, &'a Value)> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(Vec::new());
+            return Vec::new();
         };
 
         let Some(properties) = schema
@@ -614,10 +612,10 @@ impl StructMutationBuilder {
                 type_name = %ctx.type_name(),
                 "No properties field found in struct schema - mutation paths may be incomplete"
             );
-            return Ok(Vec::new());
+            return Vec::new();
         };
 
-        Ok(properties.iter().map(|(k, v)| (k.clone(), v)).collect())
+        properties.iter().map(|(k, v)| (k.clone(), v)).collect()
     }
 
     /// Build mutation paths for a single property

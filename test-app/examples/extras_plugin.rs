@@ -9,6 +9,11 @@
 //!
 //! Used by the test suite to validate all extras functionality.
 
+// NOTE: Clippy false positive - incorrectly flags `TestEnumWithSerDe::Custom` variant fields
+// (`name`, `value`, `enabled`) as "underscore-prefixed bindings" when they clearly don't start
+// with underscores. Remove this allow attribute when clippy/rustc is fixed.
+#![allow(clippy::used_underscore_binding)]
+
 use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
@@ -17,9 +22,12 @@ use bevy::core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpenin
 use bevy::core_pipeline::dof::DepthOfField;
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::post_process::ChromaticAberration;
-use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
+use bevy::pbr::decal::clustered::ClusteredDecal;
+use bevy::pbr::{
+    LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections, VolumetricFog,
+};
 use bevy::prelude::*;
 use bevy::render::camera::ManualTextureViewHandle;
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
@@ -383,12 +391,12 @@ fn spawn_visual_entities(commands: &mut Commands) {
     // Entity with DistanceFog for testing mutations
     commands.spawn((
         bevy::pbr::DistanceFog {
-            color: Color::srgba(0.35, 0.48, 0.66, 1.0),
-            directional_light_color: Color::srgba(1.0, 0.95, 0.85, 0.5),
+            color:                      Color::srgba(0.35, 0.48, 0.66, 1.0),
+            directional_light_color:    Color::srgba(1.0, 0.95, 0.85, 0.5),
             directional_light_exponent: 8.0,
-            falloff: bevy::pbr::FogFalloff::Linear {
+            falloff:                    bevy::pbr::FogFalloff::Linear {
                 start: 5.0,
-                end: 20.0,
+                end:   20.0,
             },
         },
         Name::new("DistanceFogTestEntity"),
@@ -525,7 +533,11 @@ fn spawn_render_entities(commands: &mut Commands) {
     commands.spawn((Mesh2d(Handle::default()), Name::new("Mesh2dTestEntity")));
 
     // Entity with Mesh3d for testing mutations
-    commands.spawn((Mesh3d(Handle::default()), Name::new("Mesh3dTestEntity")));
+    commands.spawn((
+        Mesh3d(Handle::default()),
+        Name::new("Mesh3dTestEntity"),
+        MeshMaterial3d::<StandardMaterial>(Handle::default()),
+    ));
 
     // Entity with MeshMaterial2d<ColorMaterial> for testing mutations
     commands.spawn((
@@ -550,10 +562,13 @@ fn spawn_render_entities(commands: &mut Commands) {
     commands.spawn((
         ClusteredDecal {
             image: Handle::default(),
-            tag: 1,
+            tag:   1,
         },
         Name::new("ClusteredDecalTestEntity"),
     ));
+
+    // Entity with LightProbe for testing mutations
+    commands.spawn((LightProbe, Name::new("LightProbeTestEntity")));
 }
 
 /// Setup UI for keyboard input display
@@ -573,11 +588,14 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
             enabled: false,
             ..default()
         },
-        DepthOfField::default(),        // For testing mutations
-        Fxaa::default(),                // For testing mutations
-        ChromaticAberration::default(), // For testing mutations
-        ManualTextureViewHandle(0),     // For testing mutations
-        OcclusionCulling,               /* For testing mutations */
+        DepthOfField::default(),                // For testing mutations
+        Fxaa::default(),                        // For testing mutations
+        ChromaticAberration::default(),         // For testing mutations
+        ManualTextureViewHandle(0),             // For testing mutations
+        OcclusionCulling,                       /* For testing mutations */
+        ScreenSpaceAmbientOcclusion::default(), // For testing mutations
+        ScreenSpaceReflections::default(),      // For testing mutations
+        VolumetricFog::default(),               // For testing mutations
     ));
 
     // Background

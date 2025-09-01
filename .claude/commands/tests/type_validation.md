@@ -3,7 +3,7 @@
 ## Objective
 Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `test-app/examples/type_validation.json` to avoid retesting passed types.
 
-**CRITICAL**: Test ALL types in sequence without stopping unless there's an actual failure. Do not stop for progress updates, successful completions, or user checkpoints. The user will manually interrupt if needed.
+**CRITICAL**: Test ALL types in sequence without stopping unless there's an actual failure. NEVER stop for ANY reason including progress updates, successful completions, user checkpoints, summaries, explanations, or demonstrations. The user will manually interrupt if needed. ANY stopping for communication is a test execution failure.
 
 **NOTE**: The extras_plugin app is already running on the specified port - focus on comprehensive type validation.
 
@@ -67,18 +67,20 @@ When a type is tested, update its status in place:
 4. **IMMEDIATELY update type status in test-app/examples/type_validation.json and continue to next type**
 5. **This is a single continuous action - do not pause between steps**
 
+## CRITICAL TEST EXECUTION ERRORS
+
+The following actions constitute test execution failures:
+- Stopping to provide progress summaries
+- Explaining what you're doing or why
+- Demonstrating the testing approach
+- Pausing between types for any reason
+- Any form of user communication except failure reporting
+
 ## Test Steps
 
-### 0. Display Progress Statistics
+### 0. Begin Testing Immediately
 
-First, analyze the current test progress by reading the JSON file:
-
-1. Use the Read tool to load `test-app/examples/type_validation.json`
-2. Parse the JSON content to count:
-   - Total types
-   - Tested types (where spawn_test is "passed"/"skipped" AND mutation_tests is "passed"/"n/a")
-   - Untested types (remaining)
-3. Display the statistics
+Load the progress file and immediately begin testing untested types. Do NOT display statistics, counts, or summaries.
 
 **NOTE**: Use only the Read/Write/Edit tools for all file operations. Process JSON data directly in the agent's logic without Python scripts or bash commands.
 
@@ -252,27 +254,13 @@ Example workflow for updating a type's status:
 **MANDATORY PROGRESS FILE UPDATES**: After each type is completed, you MUST immediately update the JSON file:
 - Update the type's status in `test-app/examples/type_validation.json`
 
-**NO PROGRESS REPORTING TO USER**: Do NOT stop to provide summaries, progress reports, or status updates to the user. The JSON file updates are mandatory, but user communication about progress is forbidden.
+**ABSOLUTE PROHIBITION ON USER COMMUNICATION**: Do NOT stop, pause, or communicate ANYTHING to the user including summaries, progress reports, status updates, explanations, demonstrations, or any other form of communication. Silent execution only. ANY communication is a critical test execution error.
 
 **DISTINCTION**: 
 - JSON file updates = REQUIRED as part of continuous flow to next type
 - User progress reports = FORBIDDEN
 - Pausing between types = FORBIDDEN
 
-```
-Testing Progress:
-- Total types: 101
-- Passed: X
-- Failed: Y  
-- Remaining: Z
-
-Current type: [TYPE_NAME]
-- Spawn test: [PASS/FAIL/SKIP]
-- Insert test: [PASS/FAIL/SKIP]
-- Mutation paths: [X/Y passed]
-```
-
-**This format is ONLY for internal logging. NEVER stop the test to show this to the user.**
 
 ## Success Criteria
 
