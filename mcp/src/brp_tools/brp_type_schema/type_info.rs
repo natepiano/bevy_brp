@@ -206,17 +206,9 @@ impl TypeInfo {
         type_kind: &TypeKind,
         type_name: &BrpTypeName,
     ) -> Option<Value> {
-        // Check for hardcoded format knowledge first - this fixes GlobalTransform and other types
-        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(type_name)) {
-            return Some(hardcoded.example_value.clone());
-        }
-
-        // Try generic match by stripping type parameters
-        if let Some(generic_type) = type_name.as_str().split('<').next()
-            && let Some(hardcoded) =
-                BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::generic(generic_type))
-        {
-            return Some(hardcoded.example_value.clone());
+        // Use enum dispatch for format knowledge lookup
+        if let Some(example_value) = FormatKnowledgeKey::find_example_value_for_type(type_name) {
+            return Some(example_value);
         }
 
         match type_kind {
@@ -330,17 +322,9 @@ impl TypeInfo {
             return json!(null);
         }
 
-        // Check for hardcoded knowledge first - try exact match
-        if let Some(hardcoded) = BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(type_name)) {
-            return hardcoded.example_value.clone();
-        }
-
-        // Try generic match by stripping type parameters
-        if let Some(generic_type) = type_name.as_str().split('<').next()
-            && let Some(hardcoded) =
-                BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::generic(generic_type))
-        {
-            return hardcoded.example_value.clone();
+        // Use enum dispatch for format knowledge lookup
+        if let Some(example_value) = FormatKnowledgeKey::find_example_value_for_type(type_name) {
+            return example_value;
         }
 
         // Check for wrapper types (Option, Handle) and use their default examples

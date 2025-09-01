@@ -50,6 +50,7 @@
       "mcp__brp__bevy_remove_resource",
       "mcp__brp__brp_list_active_watches",
       "Bash(find:*)",
+      "Read(/Users/natemccoy/.claude/commands/**)",
       "Read(/Users/natemccoy/.claude/commands/**)"
     ],
     "deny": [],

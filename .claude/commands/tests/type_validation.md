@@ -63,7 +63,7 @@ When a type is tested, update its status in place:
 **EXECUTION ORDER FOR EACH TYPE**:
 1. Get type schema
 2. Test spawn operations (if supported)
-3. Test all mutation paths (if supported)  
+3. Test all mutation paths (if supported)
 4. **IMMEDIATELY update type status in test-app/examples/type_validation.json and continue to next type**
 5. **This is a single continuous action - do not pause between steps**
 
@@ -123,7 +123,7 @@ For each type to test:
 6. For other failures, mark as "failed"
 7. If spawn not supported, mark as "skipped"
 
-**Parameter formatting for bevy_mutate_component**: 
+**Parameter formatting for bevy_mutate_component**:
 - **CRITICAL PATH FORMAT**: For empty paths, pass `""` (empty string), NEVER `"\"\""` (quoted string). The latter causes "Expected variant field access" errors.
 - If you encounter repeated "Unable to extract parameters" errors, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
@@ -141,26 +141,26 @@ For types that only support mutation (no spawn/insert):
         # - Render/visibility: Add to visible entities
         # - Transform-related: Add to existing entity with Transform
         # Default: Create new test entity in setup_test_entities()
-        
+
         # 2. Shutdown current app
         mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)
-        
+
         # 3. Relaunch with updated code (auto-builds before launching)
         mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)
-        
+
         # 4. Set window title
         mcp__brp__brp_extras_set_window_title(
-            port=20116, 
+            port=20116,
             title="type_validation test - port 20116"
         )
-        
+
         # 5. Query again to get entity ID
         query_result = mcp__brp__bevy_query(
             port=20116,
             filter={"with": [type_name]},
             data={"components": [type_name]}
         )
-        
+
         # 6. CRITICAL: Check if component still doesn't exist after restart
         if query_result["metadata"]["entity_count"] == 0:
             # Component addition caused build or runtime error
@@ -170,9 +170,9 @@ For types that only support mutation (no spawn/insert):
             # - Incompatible component combinations
             # - Component requires specific setup/initialization
             # - System pipeline conflicts (e.g., ViewCasPipeline errors)
-            
+
             # Mark as failed and STOP testing
-            update_progress(type_name, "skipped", "failed", 
+            update_progress(type_name, "skipped", "failed",
                           "Component causes errors when added - stopping to investigate")
             print(f"ERROR: {type_name} still not found after adding to extras_plugin.rs")
             print("Check log for errors. Common issues:")
@@ -180,7 +180,7 @@ For types that only support mutation (no spawn/insert):
             print("- Incompatible combinations")
             print("- Pipeline conflicts")
             return "STOP_FOR_COMPONENT_ERROR"
-    
+
     # Get entity ID for mutation testing
     if query_result["metadata"]["entity_count"] > 0:
         entity_id = query_result["result"][0]["entity"]
@@ -216,7 +216,7 @@ After testing each type:
 
 **FAILURE TO UPDATE PROGRESS IMMEDIATELY WILL BE CONSIDERED A TEST EXECUTION ERROR**
 
-**IMPORTANT**: 
+**IMPORTANT**:
 - Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
 - Do NOT use bash commands like jq with redirects/pipes to edit JSON files - use Read/Write or Edit tools instead
 - Always use proper file editing tools (Read/Write, Edit, MultiEdit) to update JSON files
@@ -259,7 +259,7 @@ Example workflow for updating a type's status:
 
 **ABSOLUTE PROHIBITION ON USER COMMUNICATION**: Do NOT stop, pause, or communicate ANYTHING to the user including summaries, progress reports, status updates, explanations, demonstrations, or any other form of communication. Silent execution only. ANY communication is a critical test execution error.
 
-**DISTINCTION**: 
+**DISTINCTION**:
 - JSON file updates = REQUIRED as part of continuous flow to next type
 - User progress reports = FORBIDDEN
 - Pausing between types = FORBIDDEN
@@ -288,14 +288,29 @@ Example workflow for updating a type's status:
 3. **STOP TESTING** - Only stop when there's an actual failure
 4. Save progress so test can resume later if stopped due to failure
 
+### Special Case: Application Crash During Testing
+
+When the application crashes or becomes unresponsive during testing (HTTP request failures, connection errors):
+
+1. **SAFETY CLEANUP**: Run `mcp__brp__brp_shutdown` as safety cleanup (even if it fails due to crash)
+2. **RESTART APPLICATION**:
+   - Launch extras_plugin again: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
+   - Verify BRP connectivity: `mcp__brp__brp_status`
+   - Set window title: `mcp__brp__brp_extras_set_window_title`
+3. **MARK CRASH TYPE**: Update the current type's progress with:
+   - spawn_test or mutation_tests: "failed"
+   - notes: "App crashed during [operation] - [specific mutation path if applicable]"
+4. **CONTINUE TESTING**: Resume with the next type in the sequence
+5. **FAILURE THRESHOLD**: If the same type crashes the app 2+ times, STOP testing and report the issue
+
 ### Special Case: Format Knowledge Issues
 
 When encountering format/serialization errors that indicate schema format mismatches:
 
-1. **STOP THE TEST IMMEDIATELY** 
+1. **STOP THE TEST IMMEDIATELY**
 2. Report the format knowledge issue to the user:
    - Type name that caused the issue
-   - Error details 
+   - Error details
    - Request user guidance on format_knowledge.rs updates
 3. Save current progress and await user instructions
 
@@ -306,7 +321,7 @@ When encountering format/serialization errors that indicate schema format mismat
 2. Has no existing entities (`entity_count == 0`)
 
 Then it MUST be added to extras_plugin.rs regardless of assumptions about:
-- Whether it's "computed" 
+- Whether it's "computed"
 - Whether it's "system-managed"
 - Whether it "should" be manually added
 - Any other reasoning
@@ -328,7 +343,7 @@ These should be marked with special handling in the test logic, but more importa
 
 The test can be resumed at any time:
 1. Previously passed types are skipped
-2. Failed types can be retried 
+2. Failed types can be retried
 3. Untested types are processed in order
 
 **IMPORTANT**: Resume capability exists for when tests are stopped due to failures or manual user intervention. The test executor should NOT proactively stop for checkpoints, progress reports, or successful completions. Process all types continuously unless an actual failure occurs.

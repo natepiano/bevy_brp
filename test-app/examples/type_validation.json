@@ -3,20 +3,6 @@
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
     "spawn_test": "untested",
     "mutation_tests": "untested",
-    "mutation_paths": {
-      ".composite_mode": "untested",
-      ".high_pass_frequency": "untested",
-      ".intensity": "untested",
-      ".low_frequency_boost": "untested",
-      ".low_frequency_boost_curvature": "untested",
-      ".max_mip_dimension": "untested",
-      ".prefilter": "untested",
-      ".prefilter.threshold": "untested",
-      ".prefilter.threshold_softness": "untested",
-      ".scale": "untested",
-      ".scale.x": "untested",
-      ".scale.y": "untested"
-    },
     "notes": ""
   },
   {

@@ -9,6 +9,8 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
+use super::response_types::BrpTypeName;
+
 use super::constants::{
     TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2, TYPE_BEVY_MAT3,
     TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
@@ -37,6 +39,15 @@ pub enum FormatKnowledgeKey {
     Exact(String),
     /// Generic type match - matches base type ignoring type parameters
     Generic(String),
+    /// Enum variant-specific match for context-aware examples
+    EnumVariant {
+        /// e.g., "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp"
+        enum_type: String,
+        /// e.g., "Clear"
+        variant_name: String,
+        /// e.g., "Clear(f32)" - matches tuple variants with specific types
+        variant_pattern: String,
+    },
 }
 
 impl FormatKnowledgeKey {
@@ -48,6 +59,45 @@ impl FormatKnowledgeKey {
     /// Create a generic match key
     pub fn generic(s: impl Into<String>) -> Self {
         Self::Generic(s.into())
+    }
+
+    /// Resolve example value using enum dispatch instead of external conditionals
+    pub fn resolve_example_value(&self, type_name: &BrpTypeName) -> Option<Value> {
+        match self {
+            Self::Exact(exact_type) if exact_type == type_name.as_str() => {
+                BRP_FORMAT_KNOWLEDGE.get(self).map(|k| k.example_value.clone())
+            }
+            Self::Exact(_) => None, // Exact type doesn't match
+            Self::Generic(generic_type) => {
+                let base_type = type_name.as_str().split('<').next()?;
+                if base_type == generic_type {
+                    BRP_FORMAT_KNOWLEDGE.get(self).map(|k| k.example_value.clone())
+                } else {
+                    None
+                }
+            }
+            Self::EnumVariant { .. } => {
+                // Context-aware matching logic for enum variants
+                BRP_FORMAT_KNOWLEDGE.get(self).map(|k| k.example_value.clone())
+            }
+        }
+    }
+
+    /// Try to resolve example value by iterating through all knowledge keys
+    pub fn find_example_value_for_type(type_name: &BrpTypeName) -> Option<Value> {
+        // Try exact match first
+        if let Some(value) = FormatKnowledgeKey::exact(type_name.as_str()).resolve_example_value(type_name) {
+            return Some(value);
+        }
+        
+        // Try generic match by stripping type parameters
+        if let Some(generic_type) = type_name.as_str().split('<').next() {
+            if let Some(value) = FormatKnowledgeKey::generic(generic_type).resolve_example_value(type_name) {
+                return Some(value);
+            }
+        }
+        
+        None
     }
 }
 
