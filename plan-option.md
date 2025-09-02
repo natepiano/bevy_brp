@@ -883,6 +883,24 @@ paths.push(MutationPathInternal {
 - **Description**: Proposed checking if Option inner types are mutatable before generating paths
 - **Reason**: Investigation revealed plan-opaque.md's `type_supports_mutation` method already provides complete recursive validation for Option<NonMutableType> cases, preventing path generation for Options containing non-mutatable inner types
 
+### IMPLEMENTATION-002: Add comprehensive path validation in build_paths implementations
+- **Status**: Investigated and Rejected
+- **Category**: IMPLEMENTATION
+- **Description**: Proposed adding syntax validation for generated mutation paths
+- **Reason**: Investigation found path generation is already reliable with zero evidence of invalid paths. BRP provides comprehensive validation at consumption time (the right layer). All paths come from validated sources (schema properties, iteration indices). Extensive tests confirm correctness. Would be premature optimization solving a non-existent problem.
+
+### IMPLEMENTATION-003: Add defensive programming for schema field extraction
+- **Status**: Investigated and Rejected
+- **Category**: IMPLEMENTATION
+- **Description**: Proposed adding defensive checks for missing schema fields with warn-and-continue behavior
+- **Reason**: Investigation revealed missing properties fields are structurally impossible for struct types based on BRP schema generation. Current error handling already logs warnings and returns empty paths appropriately. The proposed approach would hide real bugs that indicate serious schema corruption. Missing properties warrants investigation, not silent continuation.
+
+### SIMPLIFICATION-002: Consolidate duplicate Option checking logic across builders
+- **Status**: SKIPPED
+- **Category**: SIMPLIFICATION
+- **Description**: Proposed extracting Option detection logic into helper methods on MutationPathContext
+- **Reason**: User decision - not needed for current implementation
+
 ## DESIGN REVIEW AGREEMENT: SIMPLIFICATION-001 - Remove redundant error improvement Phase 3 from plan
 
 **Plan Status**: ✅ APPROVED - Removed from plan

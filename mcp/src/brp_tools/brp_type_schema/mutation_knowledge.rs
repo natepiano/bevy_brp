@@ -602,38 +602,5 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             MutationKnowledge::simple(json!(0.5)), // Safe middle value in [0.0, 1.0] range
         );
 
-        // ===== Non-mutatable types =====
-        // Handle<SkinnedMeshInverseBindposes> - inner type not in registry, causes null examples
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_SKINNED_MESH_INVERSE_BINDPOSES_HANDLE),
-            MutationKnowledge::not_mutatable("Handle type with inner SkinnedMeshInverseBindposes not in registry - cannot generate valid mutation examples"),
-        );
-
-        // Types missing ReflectDeserialize registration - identified by type validation tests
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_CAMERA_RENDER_GRAPH),
-            MutationKnowledge::not_mutatable(
-                "Missing ReflectDeserialize registration prevents mutation operations",
-            ),
-        );
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_CAMERA_EXPOSURE),
-            MutationKnowledge::not_mutatable(
-                "Missing ReflectDeserialize registration prevents mutation operations",
-            ),
-        );
-        map.insert(
-            KnowledgeKey::exact(TYPE_BEVY_ARC_STRONG_HANDLE),
-            MutationKnowledge::not_mutatable(
-                "Missing ReflectDeserialize registration prevents mutation operations",
-            ),
-        );
-        map.insert(
-            KnowledgeKey::exact(TYPE_CORE_RANGE_F32),
-            MutationKnowledge::not_mutatable(
-                "Missing ReflectDeserialize registration prevents mutation operations",
-            ),
-        );
-
         map
     });

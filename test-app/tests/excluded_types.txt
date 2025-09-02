@@ -1,0 +1,54 @@
+# Excluded Types for Type Validation Testing
+# These types are known to cause issues with BRP type schema discovery
+# One type per line, comments start with #
+
+# Hierarchy components - internal ECS structure
+bevy_ecs::hierarchy::ChildOf
+bevy_ecs::hierarchy::Children
+
+# Camera components with complex internal state
+bevy_core_pipeline::core_2d::camera_2d::Camera2d
+bevy_render::camera::manual_texture_view::ManualTextureViewHandle
+bevy_render::camera::projection::Projection
+bevy_render::camera::camera::CameraMainTextureUsages
+
+# Prepass components
+bevy_core_pipeline::prepass::DeferredPrepass
+bevy_core_pipeline::prepass::DepthPrepass
+bevy_core_pipeline::prepass::MotionVectorPrepass
+bevy_core_pipeline::prepass::NormalPrepass
+
+# Light and shadow components
+bevy_pbr::light::NotShadowCaster
+bevy_pbr::light::NotShadowReceiver
+bevy_pbr::volumetric_fog::VolumetricLight
+bevy_pbr::light_probe::LightProbe
+
+# Visibility and culling components
+bevy_pbr::components::CascadesVisibleEntities
+bevy_pbr::components::CubemapVisibleEntities
+bevy_pbr::components::VisibleMeshEntities
+bevy_render::experimental::occlusion_culling::OcclusionCulling
+bevy_render::view::visibility::NoFrustumCulling
+bevy_render::view::visibility::VisibleEntities
+
+# Frustum components
+bevy_render::primitives::CascadesFrusta
+bevy_render::primitives::CubemapFrusta
+bevy_render::primitives::Frustum
+
+# Material components with complex generics
+bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>
+bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>
+bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>
+
+# Sync and rendering internals
+bevy_render::sync_world::SyncToRenderWorld
+
+# UI measurement and widget internals
+bevy_ui::measurement::ContentSize
+bevy_ui::widget::button::Button
+bevy_ui::widget::label::Label
+
+# Window markers
+bevy_window::window::PrimaryWindow
