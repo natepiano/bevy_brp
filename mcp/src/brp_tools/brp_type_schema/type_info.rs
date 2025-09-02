@@ -20,6 +20,37 @@ use super::response_types::{
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
+/// Represents the mutation state of a type based on its mutation paths
+#[derive(Debug, Clone, PartialEq)]
+enum MutationState {
+    /// All mutation paths are mutatable
+    All,
+    /// Some mutation paths are mutatable, others are not
+    Some,
+    /// No mutation paths are mutatable
+    None,
+}
+
+impl MutationState {
+    fn from_paths(paths: &HashMap<String, MutationPath>) -> Self {
+        let mutatable_count = paths
+            .values()
+            .filter(|path| {
+                !matches!(
+                    path.path_kind,
+                    super::response_types::MutationPathKind::NotMutatable
+                )
+            })
+            .count();
+
+        match (mutatable_count, paths.len()) {
+            (0, _) => Self::None,
+            (n, total) if n == total => Self::All,
+            _ => Self::Some,
+        }
+    }
+}
+
 /// this is all of the information we provide about a type
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeInfo {
@@ -81,6 +112,22 @@ impl TypeInfo {
         } else {
             HashMap::new()
         };
+
+        // Check mutation state and update supported operations accordingly
+        let mut supported_operations = supported_operations;
+        if !mutation_paths.is_empty() {
+            let mutation_state = MutationState::from_paths(&mutation_paths);
+
+            match mutation_state {
+                MutationState::None => {
+                    // Remove Mutate from supported operations
+                    supported_operations.retain(|op| *op != BrpSupportedOperation::Mutate);
+                }
+                MutationState::Some | MutationState::All => {
+                    // Keep mutation support for partial or full mutability
+                }
+            }
+        }
 
         // Build spawn format if spawn/insert is supported
         let can_spawn = supported_operations.contains(&BrpSupportedOperation::Spawn)
