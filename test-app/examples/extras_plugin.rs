@@ -619,7 +619,7 @@ fn setup_test_materials(
 
     // Entity with StandardMaterial
     commands.spawn((
-        MeshMaterial3d(standard_material.clone()),
+        MeshMaterial3d(standard_material),
         Mesh3d(mesh.clone()),
         Transform::from_xyz(0.0, 0.0, 0.0),
         Name::new("StandardMaterialTestEntity"),
@@ -627,8 +627,8 @@ fn setup_test_materials(
 
     // Entity with ExtendedMaterial
     commands.spawn((
-        MeshMaterial3d(extended_material.clone()),
-        Mesh3d(mesh.clone()),
+        MeshMaterial3d(extended_material),
+        Mesh3d(mesh),
         Transform::from_xyz(2.0, 0.0, 0.0),
         Name::new("ExtendedMaterialTestEntity"),
     ));

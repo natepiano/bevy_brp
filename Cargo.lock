@@ -440,7 +440,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_extras"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "bevy",
  "reqwest",
@@ -453,7 +453,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_mcp"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -489,7 +489,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_brp_mcp_macros"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "heck",
  "proc-macro2",

@@ -4,14 +4,15 @@
 This command initializes or reinitializes the type validation tracking file (`test-app/examples/type_validation.json`) by:
 1. Launching the extras_plugin example app
 2. Getting the list of all registered component types via BRP
-3. Creating a fresh tracking file with all types marked as "untested"
+3. Creating a fresh tracking file with all types marked appropriately
+4. Discovering actual spawn and mutation capabilities for ALL types systematically
 
 ## Usage
 ```
 /init_type_validation
 ```
 
-This will overwrite any existing `type_validation.json` file with a fresh one containing all currently registered types.
+This will overwrite any existing `type_validation.json` file with a fresh one containing all currently registered types with their actual capabilities discovered.
 
 ## Execution Steps
 
@@ -40,176 +41,109 @@ result = mcp__brp__bevy_list(port=22222)
 
 This returns an array of all registered component type names.
 
-### 4. Create the tracking file
-**IMPORTANT: Use a bash command with jq to create the file quickly and reliably.**
+### 4. Call brp_type_schema with filtered types
+**IMPORTANT: DO NOT create any intermediate files, Python scripts, or helper files. Call brp_type_schema directly with the filtered list.**
 
-After getting the component list from step 3, create the tracking file using this bash command:
+Call `mcp__brp__brp_type_schema` with ALL types EXCEPT these problematic ones:
+- `bevy_ecs::hierarchy::ChildOf`
+- `bevy_ecs::hierarchy::Children`
+- `bevy_core_pipeline::core_2d::camera_2d::Camera2d`
+- `bevy_core_pipeline::prepass::DeferredPrepass`
+- `bevy_core_pipeline::prepass::DepthPrepass`
+- `bevy_core_pipeline::prepass::MotionVectorPrepass`
+- `bevy_core_pipeline::prepass::NormalPrepass`
+- `bevy_pbr::light::NotShadowCaster`
+- `bevy_pbr::light::NotShadowReceiver`
+- `bevy_pbr::volumetric_fog::VolumetricLight`
+- `bevy_render::experimental::occlusion_culling::OcclusionCulling`
+- `bevy_render::camera::manual_texture_view::ManualTextureViewHandle`
+- `bevy_render::camera::projection::Projection`
+- `bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>`
+- `bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>`
+- `bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>`
+- `bevy_pbr::components::CascadesVisibleEntities`
+- `bevy_pbr::components::CubemapVisibleEntities`
+- `bevy_pbr::components::VisibleMeshEntities`
+- `bevy_pbr::light_probe::LightProbe`
+- `bevy_render::primitives::CascadesFrusta`
+- `bevy_render::primitives::CubemapFrusta`
+- `bevy_render::primitives::Frustum`
+- `bevy_render::sync_world::SyncToRenderWorld`
+- `bevy_render::view::visibility::NoFrustumCulling`
+- `bevy_render::view::visibility::VisibleEntities`
+- `bevy_ui::measurement::ContentSize`
+- `bevy_ui::widget::button::Button`
+- `bevy_ui::widget::label::Label`
+- `bevy_window::window::PrimaryWindow`
 
-**Note on excluded types:**
-- `ChildOf`/`Children`: Hierarchy components that cause BRP issues
-- `Camera2d`: Has serialization problems with BRP  
-- Prepass components: Internal rendering components not meant for direct testing
-- `NotShadowCaster`/`NotShadowReceiver`/`VolumetricLight`/`OcclusionCulling`: Unit struct marker components with no spawn support and no mutation paths
-- `MeshMaterial3d` types: Asset handle serialization issues - BRP cannot serialize `Arc<StrongHandle>` (missing `ReflectSerialize` registration)
+Build the types array directly in the tool call by filtering the result from step 3.
+The tool will automatically save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_type_schema_12345.json`).
+
+### 5. Transform the result with jq
+**CRITICAL: This is a REAL bash command to execute, NOT pseudocode. Use the actual filepath returned from step 4.**
+
+Execute this exact jq command using the Bash tool, replacing `FILEPATH` with the actual path from step 4:
 
 ```bash
-# Extract the component list from result["result"] and format it as JSON array
-# Filter out excluded types, then transform each type into the tracking structure with batch numbers
-echo '[
-    "component_type_1",
-    "component_type_2",
-    # ... all component types from result["result"] ...
-]' | jq '
-  map(select(
-    . != "bevy_ecs::hierarchy::ChildOf" and 
-    . != "bevy_ecs::hierarchy::Children" and
-    . != "bevy_core_pipeline::core_2d::camera_2d::Camera2d" and
-    . != "bevy_core_pipeline::prepass::DeferredPrepass" and
-    . != "bevy_core_pipeline::prepass::DepthPrepass" and
-    . != "bevy_core_pipeline::prepass::MotionVectorPrepass" and
-    . != "bevy_core_pipeline::prepass::NormalPrepass" and
-    . != "bevy_pbr::light::NotShadowCaster" and
-    . != "bevy_pbr::light::NotShadowReceiver" and
-    . != "bevy_pbr::volumetric_fog::VolumetricLight" and
-    . != "bevy_render::experimental::occlusion_culling::OcclusionCulling" and
-    . != "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::extended_material::ExtendedMaterial<bevy_pbr::pbr_material::StandardMaterial, bevy_pbr::decal::forward::ForwardDecalMaterialExt>>" and
-    . != "bevy_pbr::mesh_material::MeshMaterial3d<bevy_pbr::pbr_material::StandardMaterial>" and
-    . != "bevy_sprite::mesh2d::material::MeshMaterial2d<bevy_sprite::mesh2d::color_material::ColorMaterial>"
-  )) |
-  map({type: ., spawn_test: "untested", mutation_tests: "untested", mutation_paths: {}, batch_number: "", notes: ""})
-' > test-app/examples/type_validation.json
+jq '
+.type_info | to_entries | [.[] | . as $item | .key as $idx | {
+  type: .value.type_name,
+  spawn_test: (if (.value.supported_operations // []) | contains(["spawn", "insert"]) then "untested" else "skipped" end),
+  mutation_tests: (if (.value.mutation_paths // {}) | length > 0 then "untested" else "n/a" end),
+  mutation_paths: ((.value.mutation_paths // {}) | to_entries | map({key: .key, value: "untested"}) | from_entries),
+  batch_number: 1,
+  notes: (if (.value.supported_operations // []) | contains(["spawn", "insert"]) | not then "No spawn/insert support" 
+         elif (.value.mutation_paths // {}) | length == 0 then "No mutation paths" 
+         else "" end)
+}] | to_entries | map(.value + {batch_number: ((.key / 10) | floor + 1)})' FILEPATH > test-app/examples/type_validation.json
 ```
 
-This approach is fast and reliable - it creates the file immediately without any blocking issues.
+**Note:** The batch numbering is done in two stages because the type_info keys are strings (type names), not numeric indices. First we build the array with placeholder batch numbers, then use `to_entries` to get numeric indices and calculate proper batch numbers.
 
-### 5. Discover type capabilities and populate mutation paths using type schema
-**IMPORTANT: This step enhances the initial file with spawn capability detection and detailed mutation path information.**
+This command directly creates `test-app/examples/type_validation.json` from the BRP response.
 
-After creating the basic tracking file, discover type capabilities and mutation paths for all types:
+### 6. Verify final file structure
+The completed file should have:
+- All types with spawn capabilities properly identified (expect many spawn-capable types, not just a few)
+- All types with proper mutation paths populated from actual BRP discovery
+- Batch numbers assigned sequentially (10 types per batch: batch 1 = types 0-9, batch 2 = types 10-19, etc.)
 
-1. **Read the created tracking file**:
-   ```bash
-   # Use Read tool to load test-app/examples/type_validation.json
-   # Extract the list of type names for processing
-   ```
+Types that support spawn typically have:
+- `has_deserialize: true` and `has_serialize: true` in the BRP response
+- A `spawn_format` field in the BRP response
+- `["query", "get", "mutate", "spawn", "insert"]` in supported_operations
 
-2. **Process types in batches** (10 types at a time for efficiency):
-   ```bash
-   mcp__brp__brp_type_schema(
-       port=22222,
-       types=[batch_of_10_types]
-   )
-   ```
-
-3. **For each batch result, analyze each type's capabilities**:
-   - Extract `supported_operations` from the schema response
-   - **Spawn capability**: If `spawn` is in `supported_operations`, keep `spawn_test: "untested"`. If not, set `spawn_test: "skipped"`
-   - Extract `mutation_info` from the schema response
-   - **Mutation capability**: If mutations are supported, get all available `mutation_paths` and set each to "untested". If no mutations available, set `mutation_tests: "n/a"`
-
-4. **Update tracking file with discovered information**:
-   - Use MultiEdit tool to update multiple type entries at once
-   - For each type in the batch, update:
-     - `spawn_test`: "untested" or "skipped" based on spawn support
-     - `mutation_tests`: "untested" or "n/a" based on mutation support  
-     - `mutation_paths`: populated object or empty `{}` based on available paths
-
-5. **Repeat for all batches** until all types have their capabilities and mutation paths populated
-
-**Expected final format after this step:**
-```json
-{
-  "type": "bevy_transform::components::transform::Transform",
-  "spawn_test": "untested",
-  "mutation_tests": "untested", 
-  "mutation_paths": {
-    ".translation.x": "untested",
-    ".translation.y": "untested", 
-    ".translation.z": "untested",
-    ".rotation.x": "untested",
-    ".rotation.y": "untested",
-    ".rotation.z": "untested",
-    ".rotation.w": "untested",
-    ".scale.x": "untested",
-    ".scale.y": "untested", 
-    ".scale.z": "untested"
-  },
-  "batch_number": "",
-  "notes": ""
-}
+### 7. Report results
+```bash
+# Generate summary statistics
+echo "✅ Initialized type validation tracking file with complete capability discovery"
+jq -r '
+  "- Total types: " + (. | length | tostring) + "\n" +
+  "- Spawn-capable types: " + ([.[] | select(.spawn_test == "untested")] | length | tostring) + "\n" +
+  "- Types with mutations: " + ([.[] | select(.mutation_tests == "untested")] | length | tostring) + "\n" +
+  "- Types with no capabilities: " + ([.[] | select(.spawn_test == "skipped" and .mutation_tests == "n/a")] | length | tostring)
+' test-app/examples/type_validation.json
 ```
 
-**For types without spawn support:**
-```json
-{
-  "type": "bevy_pbr::components::VisibleMeshEntities",
-  "spawn_test": "skipped",
-  "mutation_tests": "n/a",
-  "mutation_paths": {},
-  "batch_number": "",
-  "notes": ""
-}
-```
-
-This approach creates a fully initialized tracking file where the test runner can immediately begin testing without needing to discover type capabilities or mutation paths.
-
-### 6. Report results
-```
-✅ Initialized type validation tracking file with full type capability discovery
-- Total types: [count]
-- File location: test-app/examples/type_validation.json
-- Spawn capabilities discovered (untested/skipped)
-- Mutation paths populated (untested/n/a)
-```
-
-### 7. Cleanup
-Shutdown the app after initialization:
+### 9. Cleanup
+Shutdown the app:
 ```bash
 mcp__brp__brp_shutdown(
-    app_name="extras_plugin",
+    app_name="extras_plugin", 
     port=22222
 )
 ```
 
-## Important Notes
+## Critical Success Factors
 
-- **Overwrites**: This command will overwrite any existing tracking file by using the Write tool to create a completely new file
-- **Fresh start**: All types will be marked as "untested" regardless of previous test results
-- **Component discovery**: Only components registered with BRP reflection will be included
-- **File Creation**: ALWAYS use the Write tool to create a new file. NEVER use the Edit tool to modify an existing type_validation.json file
-- **File Location**: The file is now stored in `test-app/examples/` instead of `.claude/commands/` to avoid requiring approval for edits
+1. **NO intermediate files** - Do NOT create Python scripts, temp files, or any other files
+2. **Direct tool usage only** - Use only MCP tools and the single jq command shown
+3. **Single output file** - Only create/modify `test-app/examples/type_validation.json`
+4. **Use actual BRP responses** - Base spawn/mutation decisions on `supported_operations` and `mutation_paths` from BRP
+5. **Execute jq command exactly** - The jq command in step 5 is a REAL command to execute with Bash, not pseudocode
 
-## Error Handling
+## Expected Results
 
-If the app fails to launch:
-- Check if port 22222 is already in use
-- Ensure the extras_plugin example is built
-
-If BRP doesn't respond:
-- Verify the app includes the RemotePlugin
-- Check that the app launched successfully
-
-## Example Output
-
-After running this command, the file will contain:
-```json
-[
-  {
-    "type": "bevy_core_pipeline::bloom::settings::Bloom",
-    "spawn_test": "untested",
-    "mutation_tests": "untested",
-    "mutation_paths": {},
-    "batch_number": 1,
-    "notes": ""
-  },
-  {
-    "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
-    "spawn_test": "untested",
-    "mutation_tests": "untested", 
-    "mutation_paths": {},
-    "batch_number": 1,
-    "notes": ""
-  },
-  // ... all other types with batch_number assigned (1-based, groups of 10) ...
-]
-```
+- Spawn-capable types: Types with Serialize/Deserialize traits (Name, Transform, Node, Window, BackgroundColor, test components, etc.)
+- Non-spawn types: Most rendering/internal components (Sprite, Camera components, visibility components, etc.)
+- All types should have their actual mutation paths populated, not empty objects

@@ -8,7 +8,7 @@ license     = "MIT OR Apache-2.0"
 name        = "bevy_brp_mcp_macros"
 readme      = "README.md"
 repository  = "https://github.com/natepiano/bevy_brp/mcp_macros"
-version     = "0.2.1"
+version     = "0.3.0"
 
 [lib]
 proc-macro = true

@@ -3,15 +3,34 @@
 ## Objective
 Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `test-app/examples/type_validation.json` to avoid retesting passed types.
 
-**CRITICAL**: Test ALL types in sequence without stopping unless there's an actual failure. NEVER stop for ANY reason including progress updates, successful completions, user checkpoints, summaries, explanations, or demonstrations. The user will manually interrupt if needed. ANY stopping for communication is a test execution failure.
+**CRITICAL EXECUTION REQUIREMENTS**:
+1. **ALWAYS reassign batch numbers** - Even if batch numbers exist, clear and reassign them EVERY time the test runs
+2. **ALWAYS use parallel subagents** - Launch 10 parallel subagents per batch, one subagent per type
+3. **Main agent orchestrates, subagents test** - The main agent NEVER tests types directly; it only manages batches and launches subagents
+4. **Test ALL types without stopping** - Continue through all batches unless there's an actual failure
 
-**NOTE**: The extras_plugin app is already running on the specified port - focus on comprehensive type validation.
+**EXECUTION ARCHITECTURE**:
+- **Main Agent (You)**: Clears/assigns batch numbers, launches subagents, monitors results, manages app restarts if needed
+- **Subagents**: Each tests exactly ONE type - gets schema, tests spawn, tests all mutations, updates JSON
+- **Parallelism**: 10 subagents run simultaneously per batch (all launched in one message)
 
-**IMPORTANT**: For types that only support mutations (no Serialize/Deserialize) and don't exist in the running app:
-1. Modify `test-app/examples/extras_plugin.rs` to add the component to an entity
-2. Restart the app (auto-builds and launches with the new component)
-3. Then test mutations on the newly available component
-4. **CONTINUE TO NEXT TYPE** - Do not stop after adding components unless there's a build or test failure
+**BATCH STRUCTURE**:
+- Batch 1: Types 0-9 (up to 10 types)
+- Batch 2: Types 10-19 (up to 10 types)  
+- Batch 3: Types 20-29 (up to 10 types)
+- And so on...
+
+**NOTE**: The extras_plugin app is already running on the specified port - subagents will connect to it for testing.
+
+**COMPONENT NOT FOUND HANDLING** (Main Agent Only):
+When ANY subagent returns "COMPONENT_NOT_FOUND":
+1. Stop all testing immediately
+2. Identify which component(s) need to be added from subagent reports
+3. Modify `test-app/examples/extras_plugin.rs` to add the missing component(s)
+4. Shutdown the app: `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
+5. Relaunch with auto-build: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
+6. Reset window title: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
+7. Retry the SAME batch (do not reassign batch numbers)
 
 ## Schema Source
 - **Type schemas**: Retrieved dynamically via `mcp__brp__brp_type_schema` tool
@@ -49,7 +68,7 @@ When a type is tested, update its status in place:
 3. **Build todo list**: Create tasks only for untested or failed types
 4. **Test each type**: Load individual schema file and test operations
 5. **Update progress**: Update type status in `test-app/examples/type_validation.json`
-6. **STOP ON FIRST FAILURE OR FORMAT KNOWLEDGE ISSUE** - Continue testing all types unless an actual failure occurs OR a type's schema format doesn't match BRP's actual serialization format (requiring format_knowledge.rs updates). Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
+6. **STOP ON FIRST FAILURE** - Continue testing all types unless an actual failure occurs. Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
 
 ## CRITICAL EXECUTION REQUIREMENTS
 
@@ -77,61 +96,77 @@ The following actions constitute test execution failures:
 
 ## Test Steps
 
-### 0. Begin Testing Immediately
+### 0. Test Execution Model
 
-Load the progress file and immediately begin testing untested types. Do NOT display statistics, counts, or summaries.
+**EXECUTION MODEL**: The main agent (you) ALWAYS orchestrates the test by launching parallel subagents. This is NOT optional - parallel subagents are REQUIRED for testing individual types.
+
+1. Main agent: Manages batches, launches subagents, monitors results, handles app restarts
+2. Subagents: Test individual types (one subagent per type) and update JSON directly
+3. Parallelism: Up to 10 subagents run simultaneously per batch
+
+Do NOT display statistics, counts, or summaries.
 
 **NOTE**: Use Read/Write/Edit tools for progress updates during testing. Use bash commands only for initial batch number management as specified below.
 
-### 1. Load Progress and Build Todo List
+### 1. Load Progress and Reassign Batch Numbers (MANDATORY EVERY RUN)
+
+**CRITICAL**: This step is MANDATORY even if batch numbers already exist. We ALWAYS clear and reassign to ensure correct batching.
 
 1. Use Read tool to load `test-app/examples/type_validation.json`
-2. **Clear all batch numbers first**: Use bash command to set all batch_number fields to empty string
-3. **Assign batch numbers to untested types only**: Use bash command with jq to assign batch numbers (1, 2, 3, etc.) in groups of 10 to types that need testing
-4. Parse the JSON to identify untested types:
+2. **MANDATORY: Clear all batch numbers**: Use bash command to set ALL batch_number fields to null
+3. **MANDATORY: Assign new batch numbers**: Assign batch numbers ONLY to untested types in groups of 10
+4. Identify untested types:
    - Types where spawn_test is "untested" OR
    - Types where mutation_tests is "untested" OR
    - Types that failed previously (not "passed"/"skipped" for spawn, not "passed"/"n/a" for mutations)
 5. Skip types that are fully tested (spawn is "passed"/"skipped" AND mutations are "passed"/"n/a")
-6. Build a list of type names that need testing
+6. The resulting batches will be used for parallel subagent testing
 
 #### Batch Number Management
 
-**Step 1: Clear all batch numbers**
+**Step 1: Clear all batch numbers (in place)**
+Use Bash tool to run this command (requires permission):
 ```bash
-jq 'map(.batch_number = "")' test-app/examples/type_validation.json > /tmp/cleared.json && mv /tmp/cleared.json test-app/examples/type_validation.json
+jq 'map(.batch_number = null)' test-app/examples/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/examples/type_validation.json
 ```
 
-**Step 2: Assign batch numbers to untested types only**
+**Step 2: Assign batch numbers to untested types only (in place)**
+Use Bash tool to run this command (requires permission):
 ```bash
 jq '
-  # First pass: identify untested types and assign sequential numbers
-  [.[] | select(.spawn_test == "untested" or .mutation_tests == "untested")] as $untested_types |
+  # First, number only untested types sequentially
+  [.[] | select(.spawn_test == "untested" or .mutation_tests == "untested")] as $untested |
   
-  # Second pass: update the original array
+  # Create a lookup map of untested types with their batch numbers
+  ($untested | to_entries | map({key: .value.type, value: ((.key / 10) | floor + 1)}) | from_entries) as $batch_map |
+  
+  # Update each type in place
   map(
     if (.spawn_test == "untested" or .mutation_tests == "untested") then
-      . + {"batch_number": (($untested_types | map(.type) | index(.type)) / 10 + 1 | floor | tostring)}
+      .batch_number = $batch_map[.type]
     else
-      .
+      .batch_number = null
     end
   )
-' test-app/examples/type_validation.json > /tmp/batched.json && mv /tmp/batched.json test-app/examples/type_validation.json
+' test-app/examples/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/examples/type_validation.json
 ```
 
 This ensures that:
-- All previously tested types have empty batch_number 
-- Only untested types get assigned batch numbers (1, 2, 3, etc.)
-- Batch numbers are assigned in groups of 10
+- All previously tested types have null batch_number
+- Only untested types get assigned numeric batch numbers (1, 2, 3, etc.)
+- Batch numbers are assigned in groups of 10 (0-9 → batch 1, 10-19 → batch 2, etc.)
 
-### 2. Test Types in Parallel Batches
+### 2. Test Types Using Parallel Subagents (10 Types Per Batch)
 
-Process types in batches of up to 10, using parallel subagents for each batch:
+**EXECUTION MODEL**: The main agent orchestrates; subagents do the actual testing.
 
-1. **Group types by batch_number**: Collect all types with the same batch_number (1, 2, 3, etc.)
-2. **Process each batch sequentially**: Test batch 1, then batch 2, etc.
-3. **Within each batch, use parallel subagents**: Launch one subagent per type in the batch
-4. **Stop on any batch failure**: If any subagent in a batch reports failure, stop testing
+1. **Process batches sequentially**: Test batch 1, wait for completion, then batch 2, etc.
+2. **For EACH batch, launch up to 10 parallel subagents**: 
+   - One subagent per type in the batch
+   - All subagents in a batch run simultaneously
+   - Example: Batch 1 with 10 types = 10 parallel subagents running at once
+3. **Wait for ALL subagents in the batch to complete** before proceeding
+4. **Stop on any failure**: If ANY subagent reports FAIL, stop the entire test immediately
 
 #### Batch Processing Logic
 
@@ -145,165 +180,134 @@ For each batch (1, 2, 3, etc.):
 
 #### Parallel Subagent Execution
 
-For each batch, launch subagents in parallel using multiple Task tool calls:
+**CRITICAL**: Launch ALL subagents for a batch in a SINGLE message with multiple Task tool calls.
 
-```bash
-# Example for batch 1 with 3 types
+**Template for EACH subagent task**:
+```python
 Task(
-    description="Test type A",
+    description="Test [short_name]",
     subagent_type="general-purpose", 
-    prompt="Test bevy_ui::widget::Type1 using port 20116. Follow the Individual Type Testing Instructions below. Return PASS/FAIL and update test-app/examples/type_validation.json with results."
-)
-Task(
-    description="Test type B", 
-    subagent_type="general-purpose",
-    prompt="Test bevy_ui::widget::Type2 using port 20116. Follow the Individual Type Testing Instructions below. Return PASS/FAIL and update test-app/examples/type_validation.json with results."
-)
-Task(
-    description="Test type C",
-    subagent_type="general-purpose", 
-    prompt="Test bevy_ui::widget::Type3 using port 20116. Follow the Individual Type Testing Instructions below. Return PASS/FAIL and update test-app/examples/type_validation.json with results."
+    prompt="""Test the type: [full::qualified::type::name]
+
+[Copy the ENTIRE <TestInstructions> section content here - all 6 steps and critical rules]
+
+Return only "PASS" or "FAIL" as your final response."""
 )
 ```
 
-**Wait for all subagents to complete, then check results:**
-- If ALL subagents return PASS: Continue to next batch
-- If ANY subagent returns FAIL: Stop testing immediately
+**Execution Pattern**:
+1. Identify all types in current batch (up to 10)
+2. Create one Task call for EACH type using the template above
+3. Send ALL Task calls in a SINGLE message to run in parallel
+4. Wait for ALL subagents to complete
+5. Check results:
+   - If ANY returns "COMPONENT_NOT_FOUND": 
+     - Stop all testing
+     - Add the missing component to extras_plugin.rs
+     - Restart the app (shutdown, relaunch with auto-build)
+     - Retry the SAME batch (do not reassign batch numbers)
+   - If ANY returns "FAIL" (including "FAIL - JSON_UPDATE_FAILED"): 
+     - Stop testing immediately
+     - Report the specific failure reason to the user
+     - For JSON_UPDATE_FAILED: Discuss the issue before proceeding
+   - If ALL return "PASS": Continue to next batch
 
 #### Individual Type Testing Instructions (For Subagents)
 
 Each subagent receives these instructions for testing a single assigned type:
 
-**Your task**: Test the assigned component type completely - both spawn operations and all mutation paths.
+<TestInstructions>
+**Your Task**: Test ONLY the assigned component type - both spawn operations and all mutation paths.
 
-**Critical requirements**:
-1. Use port 20116 for all BRP operations
-2. Update test-app/examples/type_validation.json with your results immediately after testing
-3. Return "PASS" if all tests succeed, "FAIL" if any test fails or encounters errors
-4. Do not test other types - only the one assigned to you
+**Port**: Use port 20116 for ALL BRP operations.
 
-#### 2a. Get Type Schema from BRP Tool
+**Sequential Steps to Execute**:
 
-For the assigned type:
-1. Call `mcp__brp__brp_type_schema` with the type name and port 20116
-2. Extract supported operations and mutation paths from the result
+1. **Get Type Schema**
+   - Call `mcp__brp__brp_type_schema` with your assigned type name and port 20116
+   - Extract `supported_operations`, `mutation_paths`, and `spawn_format` from the result
+   - If the type is not in registry, mark as failed and STOP
 
-#### 2b. Test Spawn Operations - FORMAT KNOWLEDGE CHECK
+2. **Test Spawn/Insert Operations**
+   - Check if 'spawn' or 'insert' is in `supported_operations`
+   - If YES:
+     - Get the `spawn_format` from the schema
+     - Call `mcp__brp__bevy_spawn` with the type and spawn_format
+     - If successful: Mark `spawn_test` as "passed"
+     - If fails: Mark as "failed" with error details
+   - If NO spawn/insert support: Mark `spawn_test` as "skipped" with note "No spawn/insert support"
 
-**CRITICAL**: If spawn fails with format/serialization errors, STOP THE TEST IMMEDIATELY and update format_knowledge.rs!
+3. **Prepare for Mutation Testing**
+   - Check if 'mutate' is in `supported_operations`
+   - If NO: Mark `mutation_tests` as "n/a" and skip to step 5
+   - If YES: Use `mcp__brp__bevy_query` to find an entity with this component
+   - If no entity exists (entity_count == 0):
+     - Update JSON file with note: "COMPONENT_NOT_FOUND - needs extras_plugin.rs update"
+     - Return "COMPONENT_NOT_FOUND" (special status for main agent to handle)
 
-1. Check if 'spawn' is in supported_operations
-2. If yes, get the spawn_format from the type schema
-3. Call `mcp__brp__bevy_spawn` with the type and spawn_format
-4. If successful, mark spawn_test as "passed"
-5. If it fails with "invalid type" or "expected" errors:
-   - This is a FORMAT KNOWLEDGE ISSUE
-   - STOP THE TEST IMMEDIATELY
-   - Update format_knowledge.rs following the workflow
-6. For other failures, mark as "failed"
-7. If spawn not supported, mark as "skipped"
+4. **Test ALL Mutation Paths**
+   - For EACH path in `mutation_paths` (no exceptions, test them ALL):
+     - Determine test value from the path_info (use example value provided)
+     - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, port 20116
+     - CRITICAL: For empty paths use `""` not `"\"\""`
+     - If successful: Mark this path as "passed" in mutation_paths object
+     - If failed: Mark this path as "failed" and continue to next path
+   - After testing ALL paths:
+     - If all passed: Set `mutation_tests` to "passed"
+     - If any failed: Set `mutation_tests` to "failed"
+     - If no paths exist: Set `mutation_tests` to "n/a"
 
-**Parameter formatting for bevy_mutate_component**:
-- **CRITICAL PATH FORMAT**: For empty paths, pass `""` (empty string), NEVER `"\"\""` (quoted string). The latter causes "Expected variant field access" errors.
-- If you encounter repeated "Unable to extract parameters" errors, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
+5. **Update Progress File (MANDATORY - FAILURE TO UPDATE IS A TEST FAILURE)**
+   - **CRITICAL**: You MUST update the JSON file. Not updating is a FAIL condition.
+   - Use Read tool to load `test-app/examples/type_validation.json`
+   - Find your type's entry and update:
+     - `spawn_test`: "passed", "failed", or "skipped"
+     - `mutation_tests`: "passed", "failed", or "n/a"
+     - `mutation_paths`: Object with each path's result
+     - `notes`: Any relevant failure details
+   - Use Write tool to save the updated JSON
+   - If Write fails due to conflict: Wait 2 seconds, re-read the file, and try update again (max 3 retries)
+   - **VERIFICATION**: After Write, use Read tool again to verify your updates were saved
+   - If updates were NOT saved after all retries, this is a CRITICAL FAILURE
 
-#### 2c. Prepare Entity for Mutation Testing
+6. **Verify Update Success (MANDATORY)**
+   - Use Read tool to load `test-app/examples/type_validation.json` one final time
+   - Verify that your type's entry has been updated with your test results
+   - If the type still shows "untested" or doesn't reflect your changes:
+     - Return "FAIL - JSON_UPDATE_FAILED: Failed to update type_validation.json after [number] attempts. Reason: [specific error or issue encountered]"
+   - Only proceed to step 7 if the update was successful
 
-For types that only support mutation (no spawn/insert):
+7. **Return Result**
+   - Return "PASS" if all applicable tests passed AND JSON was successfully updated
+   - Return "FAIL" if any test failed
+   - Return "FAIL - JSON_UPDATE_FAILED: [reason]" if JSON update failed
+   - Return "COMPONENT_NOT_FOUND" if component doesn't exist in app (step 3)
 
-1. Use `mcp__brp__bevy_query` to check if any entities with this component exist
-2. If entity_count is 0:
-   - **CRITICAL**: NO EXCEPTIONS - Add ANY component that supports mutations
-   - Edit extras_plugin.rs to add the component
-        # Determine where to add based on component type:
-        # - Camera-related (Bloom, Camera3d, etc): Add to camera spawn
-        # - UI-related: Add to UI entity spawns
-        # - Render/visibility: Add to visible entities
-        # - Transform-related: Add to existing entity with Transform
-        # Default: Create new test entity in setup_test_entities()
+**CRITICAL RULES**:
+- Test ONLY your assigned type - do not test any other types
+- Test EVERY mutation path - no shortcuts or sampling
+- **MANDATORY**: Update the JSON file before returning - failure to update = test FAIL
+- **MANDATORY**: Verify the JSON update was successful - unverified update = test FAIL
+- Use port 20116 for all BRP operations
+- If component doesn't exist in app, that's a FAILURE not a skip
+- If JSON update fails, return "FAIL - JSON_UPDATE_FAILED" with specific reason
+</TestInstructions>
 
-        # 2. Shutdown current app
-        mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)
 
-        # 3. Relaunch with updated code (auto-builds before launching)
-        mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)
 
-        # 4. Set window title
-        mcp__brp__brp_extras_set_window_title(
-            port=20116,
-            title="type_validation test - port 20116"
-        )
+### 3. Batch Completion and Progress Updates
 
-        # 5. Query again to get entity ID
-        query_result = mcp__brp__bevy_query(
-            port=20116,
-            filter={"with": [type_name]},
-            data={"components": [type_name]}
-        )
+**CRITICAL**: After each batch completes, check subagent results and update progress.
 
-        # 6. CRITICAL: Check if component still doesn't exist after restart
-        if query_result["metadata"]["entity_count"] == 0:
-            # Component addition caused build or runtime error
-            # Check the log for errors
-            # Common issues:
-            # - Missing required components/bundles
-            # - Incompatible component combinations
-            # - Component requires specific setup/initialization
-            # - System pipeline conflicts (e.g., ViewCasPipeline errors)
+After each batch:
+1. **Collect subagent results**: Each subagent reports PASS/FAIL for their assigned type
+2. **Check for failures**: If any subagent reports FAIL, stop testing immediately
+3. **Verify progress updates**: Each subagent should have updated test-app/examples/type_validation.json
+4. **Continue to next batch**: If all subagents report PASS, process the next batch_number
 
-            # Mark as failed and STOP testing
-            update_progress(type_name, "skipped", "failed",
-                          "Component causes errors when added - stopping to investigate")
-            print(f"ERROR: {type_name} still not found after adding to extras_plugin.rs")
-            print("Check log for errors. Common issues:")
-            print("- Missing required components")
-            print("- Incompatible combinations")
-            print("- Pipeline conflicts")
-            return "STOP_FOR_COMPONENT_ERROR"
+**Subagent Responsibility**: Each subagent MUST update the JSON file with their type's test results before returning PASS/FAIL.
 
-    # Get entity ID for mutation testing
-    if query_result["metadata"]["entity_count"] > 0:
-        entity_id = query_result["result"][0]["entity"]
-```
-
-#### 2d. Test All Mutation Paths - NO EXCEPTIONS OR SHORTCUTS
-
-**CRITICAL REQUIREMENT**: You MUST test EVERY SINGLE mutation path discovered by the schema tool. There are NO exceptions, shortcuts, or "representative sampling" allowed.
-
-If mutations are supported:
-
-1. Get mutation_paths from the type schema
-2. **MANDATORY**: Test EVERY mutation path without exception:
-   - Even if a type has 50+ mutation paths (like `bevy_ui::ui_node::Node`), you MUST test ALL of them
-   - Even if paths seem "similar" or "redundant", you MUST test ALL of them
-   - Even if testing seems "tedious" or "repetitive", you MUST test ALL of them
-   - **NO SHORTCUTS ALLOWED**: You cannot skip paths, group them, or do "representative testing"
-3. For each mutation path:
-   - Determine the test value from path_info (example, enum_variants[0], or example_some/none)
-   - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, and port
-   - **CRITICAL PATH FORMAT**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
-   - **IMPORTANT**: If you get repeated "Unable to extract parameters" errors, try reordering parameters: entity, component, path, value, port
-   - If successful:
-     - Update the path status to "passed" in the JSON file
-   - If failed:
-     - Update the path status to "failed" in the JSON file
-     - Stop testing this type and move to the next
-4. After all paths tested:
-   - If all passed, set mutation_tests to "passed"
-   - If any failed, set mutation_tests to "failed"
-   - If no paths exist, set mutation_tests to "n/a"
-
-**VALIDATION REQUIREMENT**: The final `mutation_paths` object in the JSON file MUST contain an entry for every single path returned by the schema tool. Missing paths indicate incomplete testing and constitute a test execution failure.
-
-### 3. Update Progress - MANDATORY AFTER EACH TYPE
-
-**CRITICAL**: IMMEDIATELY after completing ALL tests for a type (spawn + all mutations), you MUST update the progress file and seamlessly continue to the next type in one continuous flow. Do not pause or wait between these actions.
-
-After testing each type:
-1. **IMMEDIATELY update the type's status in test-app/examples/type_validation.json**
-2. **IMMEDIATELY continue to the next type without pausing**
-
-**FAILURE TO UPDATE PROGRESS IMMEDIATELY WILL BE CONSIDERED A TEST EXECUTION ERROR**
+**FAILURE TO UPDATE PROGRESS BY SUBAGENTS WILL BE CONSIDERED A TEST EXECUTION ERROR**
 
 **IMPORTANT**:
 - Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
@@ -357,12 +361,13 @@ Example workflow for updating a type's status:
 ## Success Criteria
 
 ✅ Test passes when:
-- All untested types are validated (test ALL types in sequence without stopping)
-- Spawn/insert operations work for supported types
+- All batches with untested types are processed in parallel
+- All subagents in each batch report PASS
+- Spawn/insert operations work for supported types  
 - All mutation paths work for supported types
-- Progress is saved after each type (but continue to next type immediately)
+- Progress is saved by each subagent for their assigned type
 
-**IMPORTANT**: The test executor should process ALL types in types-all.json sequentially without stopping unless there's an actual failure. User interruption is their choice, not the executor's responsibility.
+**IMPORTANT**: The test executor should process ALL batches sequentially, with parallel subagent testing within each batch, without stopping unless there's an actual failure. User interruption is their choice, not the executor's responsibility.
 
 ## Failure Handling
 
@@ -392,16 +397,6 @@ When the application crashes or becomes unresponsive during testing (HTTP reques
 4. **CONTINUE TESTING**: Resume with the next type in the sequence
 5. **FAILURE THRESHOLD**: If the same type crashes the app 2+ times, STOP testing and report the issue
 
-### Special Case: Format Knowledge Issues
-
-When encountering format/serialization errors that indicate schema format mismatches:
-
-1. **STOP THE TEST IMMEDIATELY**
-2. Report the format knowledge issue to the user:
-   - Type name that caused the issue
-   - Error details
-   - Request user guidance on format_knowledge.rs updates
-3. Save current progress and await user instructions
 
 ## CRITICAL: No Component Exceptions
 
@@ -419,14 +414,11 @@ Then it MUST be added to extras_plugin.rs regardless of assumptions about:
 
 ## Known Issues - STOPPING CONDITIONS
 
-**CRITICAL**: Any of these issues require IMMEDIATE test stopping and format_knowledge.rs updates:
+**CRITICAL**: These issues require IMMEDIATE test stopping:
 
-Types that require special handling and will cause **IMMEDIATE TEST STOPPING**:
-1. **Schema format mismatch**: When BRP rejects a format that the schema tool generated
-
-**When you encounter ANY schema format error from BRP, STOP IMMEDIATELY and follow the format knowledge workflow.**
-
-These should be marked with special handling in the test logic, but more importantly, **they require stopping the test to update format_knowledge.rs**.
+1. **Schema format mismatch**: When BRP rejects a format that the schema tool generated - mark as FAILED
+2. **Component not found**: When a mutation-only component doesn't exist - handled by main agent restart
+3. **Any test failure**: Stop entire test suite on first failure
 
 ## Resume Capability
 

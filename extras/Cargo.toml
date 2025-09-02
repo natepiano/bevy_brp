@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 name = "bevy_brp_extras"
 readme = "README.md"
 repository = "https://github.com/natepiano/bevy_brp/extras"
-version = "0.2.1"
+version = "0.3.0"
 
 [dependencies]
 # Extras needs many Bevy features
