@@ -33,8 +33,6 @@ if [ ! -f "$VALIDATION_FILE" ]; then
     exit 1
 fi
 
-# Create backup
-cp "$VALIDATION_FILE" "${VALIDATION_FILE}.bak"
 
 # Merge results into validation file
 jq --slurpfile results "$RESULTS_FILE" '

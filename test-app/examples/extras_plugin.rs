@@ -38,6 +38,7 @@ use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
 use bevy::render::view::ColorGrading;
+use bevy::render::view::window::screenshot::Screenshot;
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -213,6 +214,8 @@ fn main() {
         // Register gamepad types for BRP access
         .register_type::<Gamepad>()
         .register_type::<GamepadSettings>()
+        // Register Screenshot type for BRP access
+        .register_type::<Screenshot>()
         .add_systems(
             Startup,
             (setup_test_entities, setup_test_materials, setup_ui),
@@ -599,6 +602,12 @@ fn spawn_render_entities(commands: &mut Commands) {
         AmbientLight::default(),
         Transform::from_xyz(100.0, 100.0, 100.0),
         Name::new("AmbientLightTestEntity"),
+    ));
+
+    // Entity with Screenshot for testing mutations
+    commands.spawn((
+        Screenshot::primary_window(),
+        Name::new("ScreenshotTestEntity"),
     ));
 }
 

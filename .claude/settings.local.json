@@ -66,7 +66,8 @@
       "Read(/Users/natemccoy/.claude/commands/**)",
       "Read(/Users/natemccoy/.claude/commands/**)",
       "Bash(./test-app/tests/transform_brp_response.sh:*)",
-      "Bash(./test-app/tests/type_validation_stats.sh:*)"
+      "Bash(./test-app/tests/type_validation_stats.sh:*)",
+      "Bash(./test-app/tests/merge_batch_results.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"

@@ -187,8 +187,8 @@ When you get examples from `brp_type_schema`, pay EXTREME attention to the type:
 
 After each batch completes:
 1. Collect all subagent results into a single JSON array
-2. Write results array to temp file: `/tmp/batch_results_${batch_number}.json`
-3. Execute merge script: `./test-app/tests/merge_batch_results.sh /tmp/batch_results_${batch_number}.json test-app/tests/type_validation.json`
+2. Write results array to temp file: `test-app/tests/batch_results_${batch_number}.json`
+3. Execute merge script: `./test-app/tests/merge_batch_results.sh test-app/tests/batch_results_${batch_number}.json test-app/tests/type_validation.json`
 4. **CRITICAL FAILURE HANDLING**:
    - Script exit code 0: All passed, continue to next batch
    - Script exit code 2: Failures detected - **STOP IMMEDIATELY**

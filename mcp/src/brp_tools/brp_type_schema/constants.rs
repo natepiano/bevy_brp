@@ -78,12 +78,3 @@ pub const TYPE_GLAM_MAT4: &str = "glam::Mat4";
 pub const TYPE_BEVY_COLOR: &str = "bevy_color::color::Color";
 pub const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
 pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image::image::Image>";
-pub const TYPE_BEVY_SKINNED_MESH_INVERSE_BINDPOSES_HANDLE: &str =
-    "bevy_asset::handle::Handle<bevy_mesh::skinning::SkinnedMeshInverseBindposes>";
-
-// Failed mutation types - missing ReflectDeserialize registration
-pub const TYPE_BEVY_CAMERA_RENDER_GRAPH: &str = "bevy_render::camera::camera::CameraRenderGraph";
-pub const TYPE_BEVY_CAMERA_EXPOSURE: &str = "bevy_render::camera::camera::Exposure";
-pub const TYPE_BEVY_ARC_STRONG_HANDLE: &str =
-    "bevy_platform::sync::Arc<bevy_asset::handle::StrongHandle>";
-pub const TYPE_CORE_RANGE_F32: &str = "core::ops::Range<f32>";

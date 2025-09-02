@@ -10,16 +10,14 @@ use std::sync::LazyLock;
 use serde_json::{Value, json};
 
 use super::constants::{
-    TYPE_ALLOC_STRING, TYPE_BEVY_ARC_STRONG_HANDLE, TYPE_BEVY_CAMERA_EXPOSURE,
-    TYPE_BEVY_CAMERA_RENDER_GRAPH, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2,
-    TYPE_BEVY_MAT3, TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT,
-    TYPE_BEVY_SKINNED_MESH_INVERSE_BINDPOSES_HANDLE, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
-    TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_CORE_RANGE_F32, TYPE_F32, TYPE_F64,
-    TYPE_GLAM_IVEC2, TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3,
-    TYPE_GLAM_MAT4, TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4,
-    TYPE_GLAM_VEC2, TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32,
-    TYPE_I64, TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8,
-    TYPE_U16, TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
+    TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2, TYPE_BEVY_MAT3,
+    TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
+    TYPE_BEVY_VEC3A, TYPE_BEVY_VEC4, TYPE_BOOL, TYPE_CHAR, TYPE_F32, TYPE_F64, TYPE_GLAM_IVEC2,
+    TYPE_GLAM_IVEC3, TYPE_GLAM_IVEC4, TYPE_GLAM_MAT2, TYPE_GLAM_MAT3, TYPE_GLAM_MAT4,
+    TYPE_GLAM_QUAT, TYPE_GLAM_UVEC2, TYPE_GLAM_UVEC3, TYPE_GLAM_UVEC4, TYPE_GLAM_VEC2,
+    TYPE_GLAM_VEC3, TYPE_GLAM_VEC3A, TYPE_GLAM_VEC4, TYPE_I8, TYPE_I16, TYPE_I32, TYPE_I64,
+    TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
+    TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
 };
 use super::response_types::{BrpTypeName, MathComponent};
 
@@ -30,8 +28,6 @@ pub enum KnowledgeGuidance {
     Teach,
     /// Treat as a simple value with only root mutation, using the specified type name
     TreatAsValue { simplified_type: String },
-    /// This type cannot be mutated - provide explanatory reason to coding agent
-    NotMutatable { reason: String },
 }
 
 /// Format knowledge key for matching types
@@ -146,17 +142,6 @@ impl MutationKnowledge {
             example_value,
             subfield_paths: None,
             guidance: KnowledgeGuidance::TreatAsValue { simplified_type },
-        }
-    }
-
-    /// Create a knowledge entry for non-mutatable types with explanatory reason
-    pub fn not_mutatable(reason: impl Into<String>) -> Self {
-        Self {
-            example_value:  Value::Null,
-            subfield_paths: None,
-            guidance:       KnowledgeGuidance::NotMutatable {
-                reason: reason.into(),
-            },
         }
     }
 }

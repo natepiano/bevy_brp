@@ -16,14 +16,12 @@ use tracing::warn;
 enum HardcodedPathsResult {
     /// Hardcoded knowledge handled this type with these paths
     Handled(Vec<MutationPathInternal>),
-    /// Hardcoded knowledge says this type cannot be mutated with explanatory reason
-    NotMutatable(String),
     /// No hardcoded knowledge found, should try fallback approach
     Fallback,
 }
 
 use super::constants::SCHEMA_REF_PREFIX;
-use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, MutationKnowledge};
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, MutationKnowledge};
 use super::response_types::{
     BrpTypeName, EnumVariantInfo, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
@@ -172,7 +170,10 @@ impl<'a> MutationPathContext<'a> {
         let type_kind = TypeKind::from_schema(schema, type_name);
 
         match type_kind {
-            TypeKind::Value => false, // Opaque types never mutatable
+            TypeKind::Value => {
+                // Value types are mutatable only if they have serialization support
+                self.value_type_has_serialization(type_name)
+            }
             TypeKind::List | TypeKind::Array => {
                 // Check if element type supports mutation
                 if let Some(items) = schema.get("items")
@@ -759,9 +760,6 @@ impl StructMutationBuilder {
             let field_paths =
                 match Self::try_build_hardcoded_paths(ctx, &field_name, &ft, wrapper_info.as_ref())
                 {
-                    HardcodedPathsResult::NotMutatable(reason) => {
-                        vec![Self::build_not_mutatable_path(&field_name, &ft, reason)]
-                    }
                     HardcodedPathsResult::Handled(field_paths) => field_paths,
                     HardcodedPathsResult::Fallback => {
                         Self::build_type_based_paths(ctx, &field_name, &ft, wrapper_info)?
@@ -838,15 +836,6 @@ impl StructMutationBuilder {
             return HardcodedPathsResult::Fallback;
         };
 
-        // Handle different knowledge variants
-        match &hardcoded.guidance {
-            KnowledgeGuidance::NotMutatable { reason } => {
-                return HardcodedPathsResult::NotMutatable(reason.clone());
-            }
-            KnowledgeGuidance::TreatAsValue { .. } | KnowledgeGuidance::Teach => {
-                // TreatAsValue is handled elsewhere in get_mutation_paths - continue for now
-            }
-        }
 
         // Get enum variants if this is an enum
         let enum_variants = if wrapper_info.is_none() {
