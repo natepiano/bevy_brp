@@ -14,18 +14,30 @@ if [ ! -f "$JSON_FILE" ]; then
     exit 1
 fi
 
+echo "Resetting failed tests to untested..."
+# Reset all failed tests to untested and clear fail_reason
+jq 'map(
+  if .test_status == "failed" then
+    .test_status = "untested" |
+    .fail_reason = ""
+  else
+    .
+  end
+)' "$JSON_FILE" > /tmp/type_validation_temp.json && \
+    mv /tmp/type_validation_temp.json "$JSON_FILE"
+
 echo "Clearing existing batch numbers..."
 # Clear all batch numbers
 jq 'map(.batch_number = null)' "$JSON_FILE" > /tmp/type_validation_temp.json && \
     mv /tmp/type_validation_temp.json "$JSON_FILE"
 
-echo "Assigning batch numbers to untested/failed types..."
+echo "Assigning batch numbers to untested types..."
 # Assign batch numbers to untested types only (divide by BATCH_SIZE)
 jq --argjson batch_size "$BATCH_SIZE" '
-  [.[] | select(.test_status == "untested" or .test_status == "failed")] as $untested |
+  [.[] | select(.test_status == "untested")] as $untested |
   ($untested | to_entries | map({key: .value.type, value: ((.key / $batch_size) | floor + 1)}) | from_entries) as $batch_map |
   map(
-    if (.test_status == "untested" or .test_status == "failed") then
+    if .test_status == "untested" then
       .batch_number = $batch_map[.type]
     else
       .batch_number = null
