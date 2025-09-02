@@ -21,6 +21,14 @@ pub enum WrapperVariant {
 /// Well-known wrapper types that we handle specially
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum WrapperType {
+    /// Option wrapper type
+    /// 
+    /// IMPORTANT BRP LIMITATION: Option-wrapped types cannot have nested field mutations.
+    /// The BRP protocol treats Option as an enum with tuple variants (None, Some(value))
+    /// which blocks field access to the inner value. Only whole-field mutations are supported:
+    /// - `.field = null` for None
+    /// - `.field = value` for Some(value) 
+    /// - `.field.subfield` is NOT supported and will fail with variant access error
     #[strum(serialize = "core::option::Option")]
     Option,
     #[strum(serialize = "bevy_asset::handle::Handle")]
