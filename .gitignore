@@ -1,4 +1,3 @@
 **/target/
-/plan*
 /test-app/tests/type_validation.json
 /.ropeproject/
