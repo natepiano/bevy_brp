@@ -137,7 +137,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": ""
   },
   {
@@ -147,7 +147,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -157,7 +157,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -168,7 +168,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -178,7 +178,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -188,7 +188,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -205,7 +205,7 @@
       ".product_id": "untested",
       ".vendor_id": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -230,7 +230,7 @@
       ".default_button_settings.press_threshold": "untested",
       ".default_button_settings.release_threshold": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -240,7 +240,7 @@
     "mutation_paths": {
       ".weights": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -251,7 +251,7 @@
       ".first_mesh": "untested",
       ".weights": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -262,7 +262,7 @@
       ".joints": "untested",
       "inverse_bindposes": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -272,7 +272,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -283,7 +283,7 @@
       ".image": "untested",
       ".tag": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -296,7 +296,7 @@
       ".directional_light_exponent": "untested",
       ".falloff": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -308,7 +308,7 @@
       ".minimum_distance": "untested",
       ".overlap_proportion": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -319,7 +319,7 @@
       ".cascades": "untested",
       ".cascades.0": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -329,7 +329,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -341,7 +341,7 @@
       ".brightness": "untested",
       ".color": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -356,7 +356,7 @@
       ".shadow_normal_bias": "untested",
       ".shadows_enabled": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -374,7 +374,7 @@
       ".shadow_normal_bias": "untested",
       ".shadows_enabled": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -394,7 +394,7 @@
       ".shadow_normal_bias": "untested",
       ".shadows_enabled": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -412,7 +412,7 @@
       ".rotation.z": "untested",
       ".specular_map": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -424,7 +424,7 @@
       ".intensity": "untested",
       ".voxels": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -435,7 +435,7 @@
       ".constant_object_thickness": "untested",
       ".quality_level": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -450,7 +450,7 @@
       ".thickness": "untested",
       ".use_secant": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -463,7 +463,7 @@
       ".jitter": "untested",
       ".step_count": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -480,7 +480,7 @@
       ".target": "untested",
       ".viewport": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -490,7 +490,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -500,7 +500,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -510,7 +510,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -521,7 +521,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -533,7 +533,7 @@
       ".offset.x": "untested",
       ".offset.y": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -544,7 +544,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -555,7 +555,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -572,7 +572,7 @@
       ".half_extents.y": "untested",
       ".half_extents.z": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -583,10 +583,10 @@
       ".global": "untested",
       ".global.exposure": "untested",
       ".global.hue": "untested",
-      ".global.midtones_range": "untested",
       ".global.post_saturation": "untested",
       ".global.temperature": "untested",
       ".global.tint": "untested",
+      ".globalmidtones_range": "untested",
       ".highlights": "untested",
       ".highlights.contrast": "untested",
       ".highlights.gain": "untested",
@@ -606,7 +606,7 @@
       ".shadows.lift": "untested",
       ".shadows.saturation": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -616,7 +616,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -627,7 +627,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -638,7 +638,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -648,7 +648,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -659,7 +659,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -667,11 +667,11 @@
     "spawn_test": "skipped",
     "mutation_tests": "untested",
     "mutation_paths": {
-      ".end_margin": "untested",
-      ".start_margin": "untested",
-      ".use_aabb": "untested"
+      ".use_aabb": "untested",
+      "end_margin": "untested",
+      "start_margin": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -682,7 +682,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -693,7 +693,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -704,7 +704,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -715,7 +715,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -725,7 +725,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -745,7 +745,7 @@
       ".rect": "untested",
       ".texture_atlas": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -756,7 +756,7 @@
       ".height": "untested",
       ".width": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -769,7 +769,7 @@
       ".size.x": "untested",
       ".size.y": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -780,7 +780,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -791,7 +791,7 @@
       ".entities": "untested",
       ".needs_rerender": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -802,7 +802,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -815,7 +815,7 @@
       ".font_smoothing": "untested",
       ".line_height": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -826,7 +826,7 @@
       ".justify": "untested",
       ".linebreak": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -837,7 +837,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -848,7 +848,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -870,7 +870,7 @@
       ".translation.y": "untested",
       ".translation.z": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -878,7 +878,7 @@
     "spawn_test": "untested",
     "mutation_tests": "n/a",
     "mutation_paths": {},
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": "No mutation paths"
   },
   {
@@ -888,7 +888,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -898,7 +898,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -911,7 +911,7 @@
       ".normalized.y": "untested",
       ".normalized_visible_node_rect": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -922,7 +922,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -933,7 +933,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -946,7 +946,7 @@
       ".top_left": "untested",
       ".top_right": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -957,7 +957,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": ""
   },
   {
@@ -968,7 +968,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -978,7 +978,7 @@
     "mutation_paths": {
       ".clip": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -1015,7 +1015,7 @@
       ".unrounded_size.x": "untested",
       ".unrounded_size.y": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -1029,7 +1029,7 @@
       ".physical_size.y": "untested",
       ".scale_factor": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -1099,7 +1099,7 @@
       ".top": "untested",
       ".width": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1111,7 +1111,7 @@
       ".offset": "untested",
       ".width": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1122,7 +1122,7 @@
       ".offset_x": "untested",
       ".offset_y": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1135,7 +1135,7 @@
       ".offset.x": "untested",
       ".offset.y": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1145,7 +1145,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1156,7 +1156,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1167,7 +1167,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1183,7 +1183,7 @@
       ".rect": "untested",
       ".texture_atlas": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1195,7 +1195,7 @@
       ".size.x": "untested",
       ".size.y": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1206,7 +1206,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1217,7 +1217,7 @@
       ".needs_measure_fn": "untested",
       ".needs_recompute": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1235,7 +1235,7 @@
       ".scale_factor": "untested",
       ".video_modes": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1304,7 +1304,7 @@
       ".window_level": "untested",
       ".window_theme": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1314,7 +1314,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1332,7 +1332,7 @@
       ".vertices[1]": "untested",
       ".vertices[2]": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1363,7 +1363,7 @@
       ".transform.translation.y": "untested",
       ".transform.translation.z": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1373,7 +1373,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1383,7 +1383,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1395,7 +1395,7 @@
       ".name": "untested",
       ".value": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -1407,7 +1407,7 @@
       ".name": "untested",
       ".value": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 5,
     "notes": ""
   },
   {
@@ -1423,7 +1423,7 @@
       ".coords.0": "untested",
       ".coords.1": "untested"
     },
-    "batch_number": 11,
+    "batch_number": 6,
     "notes": ""
   },
   {
@@ -1436,7 +1436,7 @@
       ".1": "untested",
       ".2": "untested"
     },
-    "batch_number": 11,
+    "batch_number": 6,
     "notes": ""
   }
 ]

@@ -95,10 +95,10 @@ jq '
   notes: (if (.value.supported_operations // []) | contains(["spawn", "insert"]) | not then "No spawn/insert support" 
          elif (.value.mutation_paths // {}) | length == 0 then "No mutation paths" 
          else "" end)
-}] | to_entries | map(.value + {batch_number: ((.key / 10) | floor + 1)})' FILEPATH > test-app/examples/type_validation.json
+}] | to_entries | map(.value + {batch_number: ((.key / 20) | floor + 1)})' FILEPATH > test-app/examples/type_validation.json
 ```
 
-**Note:** The batch numbering is done in two stages because the type_info keys are strings (type names), not numeric indices. First we build the array with placeholder batch numbers, then use `to_entries` to get numeric indices and calculate proper batch numbers.
+**Note:** The batch numbering is done in two stages because the type_info keys are strings (type names), not numeric indices. First we build the array with placeholder batch numbers, then use `to_entries` to get numeric indices and calculate proper batch numbers (20 types per batch).
 
 This command directly creates `test-app/examples/type_validation.json` from the BRP response.
 
@@ -106,7 +106,7 @@ This command directly creates `test-app/examples/type_validation.json` from the 
 The completed file should have:
 - All types with spawn capabilities properly identified (expect many spawn-capable types, not just a few)
 - All types with proper mutation paths populated from actual BRP discovery
-- Batch numbers assigned sequentially (10 types per batch: batch 1 = types 0-9, batch 2 = types 10-19, etc.)
+- Batch numbers assigned sequentially (20 types per batch: batch 1 = types 1-20, batch 2 = types 21-40, etc.)
 
 Types that support spawn typically have:
 - `has_deserialize: true` and `has_serialize: true` in the BRP response

@@ -5,19 +5,19 @@ Systematically validate ALL BRP component types by testing spawn/insert and muta
 
 **CRITICAL EXECUTION REQUIREMENTS**:
 1. **ALWAYS reassign batch numbers** - Even if batch numbers exist, clear and reassign them EVERY time the test runs
-2. **ALWAYS use parallel subagents** - Launch 10 parallel subagents per batch, one subagent per type
+2. **ALWAYS use parallel subagents** - Launch 10 parallel subagents per batch, with each subagent testing 2 types
 3. **Main agent orchestrates, subagents test** - The main agent NEVER tests types directly; it only manages batches and launches subagents
 4. **Test ALL types without stopping** - Continue through all batches unless there's an actual failure
 
 **EXECUTION ARCHITECTURE**:
 - **Main Agent (You)**: Clears/assigns batch numbers, launches subagents, collects structured results, performs single atomic JSON update, manages app restarts if needed
-- **Subagents**: Each tests exactly ONE type - gets schema, tests spawn, tests all mutations, returns structured results (NO JSON updates)
-- **Parallelism**: 10 subagents run simultaneously per batch (all launched in one message)
+- **Subagents**: Each tests exactly TWO types - gets schema for each, tests spawn, tests all mutations, returns structured results (NO JSON updates)
+- **Parallelism**: 10 subagents run simultaneously per batch, each handling 2 types (all launched in one message)
 
 **BATCH STRUCTURE**:
-- Batch 1: Types 0-9 (up to 10 types)
-- Batch 2: Types 10-19 (up to 10 types)  
-- Batch 3: Types 20-29 (up to 10 types)
+- Batch 1: Types 1-20 (up to 20 types, 10 subagents × 2 types each)
+- Batch 2: Types 21-40 (up to 20 types, 10 subagents × 2 types each)  
+- Batch 3: Types 41-60 (up to 20 types, 10 subagents × 2 types each)
 - And so on...
 
 **NOTE**: The extras_plugin app is already running on the specified port - subagents will connect to it for testing.
@@ -64,8 +64,8 @@ When a type is tested, update its status in place:
 ## Test Strategy
 
 1. **Load progress**: Read `test-app/examples/type_validation.json` to identify untested types
-2. **Assign batches**: Group untested types into batches of 10 for parallel processing  
-3. **Launch subagents**: Process each batch with parallel subagents, one per type
+2. **Assign batches**: Group untested types into batches of 20 for parallel processing  
+3. **Launch subagents**: Process each batch with 10 parallel subagents, each testing 2 types
 4. **Collect results**: Gather structured results from all subagents in the batch
 5. **Update progress**: Main agent performs atomic JSON updates with all batch results
 6. **Continue or stop**: Process next batch if all passed, stop on any failure
@@ -73,7 +73,7 @@ When a type is tested, update its status in place:
 ## CRITICAL EXECUTION REQUIREMENTS
 
 **BATCH PROCESSING MODEL**:
-1. Process types in batches of up to 10 parallel subagents
+1. Process types in batches of up to 20 types using 10 parallel subagents (2 types per subagent)
 2. Main agent collects all subagent results before updating JSON
 3. Atomic JSON updates after each complete batch
 4. Stop testing immediately on any failure or COMPONENT_NOT_FOUND
@@ -111,7 +111,7 @@ Do NOT display statistics, counts, or summaries.
    - Types where mutation_tests is "untested" OR
    - Types that failed previously (not "passed"/"skipped" for spawn, not "passed"/"n/a" for mutations)
 5. Skip types that are fully tested (spawn is "passed"/"skipped" AND mutations are "passed"/"n/a")
-6. The resulting batches will be used for parallel subagent testing
+6. The resulting batches of 20 types will be used for parallel subagent testing (10 subagents × 2 types each)
 
 #### Batch Number Management
 
@@ -129,7 +129,7 @@ jq '
   [.[] | select(.spawn_test == "untested" or .mutation_tests == "untested")] as $untested |
   
   # Create a lookup map of untested types with their batch numbers
-  ($untested | to_entries | map({key: .value.type, value: ((.key / 10) | floor + 1)}) | from_entries) as $batch_map |
+  ($untested | to_entries | map({key: .value.type, value: ((.key / 20) | floor + 1)}) | from_entries) as $batch_map |
   
   # Update each type in place
   map(
@@ -145,17 +145,17 @@ jq '
 This ensures that:
 - All previously tested types have null batch_number
 - Only untested types get assigned numeric batch numbers (1, 2, 3, etc.)
-- Batch numbers are assigned in groups of 10 (0-9 → batch 1, 10-19 → batch 2, etc.)
+- Batch numbers are assigned in groups of 20 (1-20 → batch 1, 21-40 → batch 2, etc.)
 
-### 2. Test Types Using Parallel Subagents (10 Types Per Batch)
+### 2. Test Types Using Parallel Subagents (20 Types Per Batch)
 
 **EXECUTION MODEL**: The main agent orchestrates; subagents do the actual testing.
 
 1. **Process batches sequentially**: Test batch 1, wait for completion, then batch 2, etc.
 2. **For EACH batch, launch up to 10 parallel subagents**: 
-   - One subagent per type in the batch
+   - Each subagent tests 2 types from the batch
    - All subagents in a batch run simultaneously
-   - Example: Batch 1 with 10 types = 10 parallel subagents running at once
+   - Example: Batch 1 with 20 types = 10 parallel subagents, each testing 2 types
 3. **Wait for ALL subagents in the batch to complete** before proceeding
 4. **Stop on any failure**: If ANY subagent reports FAIL, stop the entire test immediately
 
@@ -164,7 +164,7 @@ This ensures that:
 For each batch (1, 2, 3, etc.):
 
 1. **Collect batch types**: Get all types with the current batch_number
-2. **Launch parallel subagents**: Create one Task tool call per type in the batch
+2. **Launch parallel subagents**: Create one Task tool call per pair of types (10 subagents total)
 3. **Wait for all subagents to complete**: Gather results from all subagents in the batch
 4. **Check for failures**: If any subagent reports failure, stop testing
 5. **Continue to next batch**: If all passed, process the next batch_number
@@ -176,24 +176,26 @@ For each batch (1, 2, 3, etc.):
 **Template for EACH subagent task**:
 ```python
 Task(
-    description="Test [short_name] (batch [X], test [Y]/[BatchSize])",
+    description="Test [short_name_1] + [short_name_2] (batch [X], subagent [Y]/10)",
     subagent_type="general-purpose", 
-    prompt="""Test the type: [full::qualified::type::name]
+    prompt="""Test these TWO types: 
+1. [full::qualified::type::name_1]
+2. [full::qualified::type::name_2]
 
 [Copy the ENTIRE <TestInstructions> section content here - all testing steps and critical rules]
 
-Return structured JSON result ONLY as your final response."""
+Return structured JSON array with results for BOTH types as your final response."""
 )
 ```
 
 Where:
 - `[X]` = batch number (1, 2, 3, etc.)
-- `[Y]` = position within batch (1, 2, 3, etc.)
-- `[BatchSize]` = actual number of types in this batch (typically 10, but may be less for final batch)
+- `[Y]` = subagent number within batch (1, 2, 3, etc., up to 10)
+- Each subagent tests exactly 2 types from the batch
 
 **Execution Pattern**:
-1. Identify all types in current batch (up to 10)
-2. Create one Task call for EACH type using the template above
+1. Identify all types in current batch (up to 20)
+2. Group types into pairs and create one Task call for EACH pair (up to 10 Task calls)
 3. Send ALL Task calls in a SINGLE message to run in parallel
 4. Wait for ALL subagents to complete
 5. **Process Results and Update JSON**:
@@ -212,29 +214,36 @@ Where:
 
 #### Individual Type Testing Instructions (For Subagents)
 
-Each subagent receives these instructions for testing a single assigned type:
+Each subagent receives these instructions for testing TWO assigned types:
 
 <TestInstructions>
-**Your Task**: Test ONLY the assigned component type - both spawn operations and all mutation paths. Return structured results to main agent.
+**Your Task**: Test ONLY the TWO assigned component types according to what the JSON file indicates needs testing. Return structured results array to main agent.
 
 **Port**: Use port 20116 for ALL BRP operations.
 
 **CRITICAL**: You MUST NOT update any JSON files. Return structured results only.
 
-**Sequential Steps to Execute**:
+**CRITICAL**: The JSON file is the single source of truth for what tests to perform:
+- Only test spawn if `spawn_test` is "untested" (ignore if "skipped")  
+- Only test mutations if `mutation_tests` is "untested"
+
+**Sequential Steps to Execute for EACH of your 2 assigned types**:
 
 1. **Get Type Schema**
-   - Call `mcp__brp__brp_type_schema` with your assigned type name and port 20116
+   - Call `mcp__brp__brp_type_schema` with the type name and port 20116
    - Extract `supported_operations`, `mutation_paths`, and `spawn_format` from the result
-   - If the type is not in registry, return failure result and STOP
+   - If the type is not in registry, return failure result for that type and continue with the other type
 
-2. **Test Spawn/Insert Operations** (Only if supported)
-   - Check if 'spawn' or 'insert' is in `supported_operations`
-   - If YES:
-     - Get the `spawn_format` from the schema
+2. **Test Spawn/Insert Operations** (Only if JSON file shows "untested")
+   - **CRITICAL**: Only test spawn if the type's `spawn_test` field in the JSON file is "untested"
+   - If `spawn_test` is "untested":
+     - Get the `spawn_format` from schema
      - Call `mcp__brp__bevy_spawn` with the type and spawn_format
      - Record result as "passed" or "failed"
-   - If NO spawn/insert support: Skip spawn testing
+     - Set `spawn_test_attempted: true`
+   - If `spawn_test` is "skipped": 
+     - Do NOT attempt spawn testing
+     - Set `spawn_test_attempted: false`
 
 3. **Prepare for Mutation Testing** 
    - Check if 'mutate' is in `supported_operations`
@@ -255,23 +264,39 @@ Each subagent receives these instructions for testing a single assigned type:
        - Record result as "passed" or "failed" for each path
    - Continue testing ALL paths even if some fail
 
-5. **Return Structured Result**
-   Return ONLY this JSON structure as your final response:
+5. **Return Structured Results**
+   Return ONLY this JSON array as your final response:
    ```json
-   {
-     "type": "[full::qualified::type::name]",
-     "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
-     "spawn_test_attempted": true|false,
-     "spawn_test": "passed|failed",
-     "mutation_tests_attempted": true|false, 
-     "mutation_tests": "passed|failed",
-     "mutation_paths": {
-       ".path1": "passed|failed|skipped",
-       ".path2": "passed|failed|skipped"
+   [
+     {
+       "type": "[full::qualified::type::name_1]",
+       "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
+       "spawn_test_attempted": true|false,
+       "spawn_test": "passed|failed",
+       "mutation_tests_attempted": true|false, 
+       "mutation_tests": "passed|failed",
+       "mutation_paths": {
+         ".path1": "passed|failed|skipped",
+         ".path2": "passed|failed|skipped"
+       },
+       "notes": "Any error details or explanations",
+       "error_details": "Specific failure information if status is FAIL"
      },
-     "notes": "Any error details or explanations",
-     "error_details": "Specific failure information if status is FAIL"
-   }
+     {
+       "type": "[full::qualified::type::name_2]",
+       "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
+       "spawn_test_attempted": true|false,
+       "spawn_test": "passed|failed",
+       "mutation_tests_attempted": true|false, 
+       "mutation_tests": "passed|failed",
+       "mutation_paths": {
+         ".path1": "passed|failed|skipped",
+         ".path2": "passed|failed|skipped"
+       },
+       "notes": "Any error details or explanations",
+       "error_details": "Specific failure information if status is FAIL"
+     }
+   ]
    ```
 
 **Result Status Rules**:
@@ -288,12 +313,12 @@ Each subagent receives these instructions for testing a single assigned type:
 - **CRITICAL**: Paths may ONLY be marked "skipped" if `path_kind` is `"NotMutatable"` - no other reason is valid
 
 **CRITICAL RULES**:
-- Test ONLY your assigned type - do not test any other types
-- Examine EVERY mutation path - no shortcuts or sampling
+- Test ONLY your 2 assigned types - do not test any other types
+- Examine EVERY mutation path for both types - no shortcuts or sampling
 - **STRICT SKIPPING RULE**: Only skip mutation paths if `path_kind` is `"NotMutatable"` - no other reason is valid
 - **DO NOT update any JSON files** - return results only
 - Use port 20116 for all BRP operations
-- Return the JSON structure above as your ONLY response
+- Return the JSON array structure above as your ONLY response
 </TestInstructions>
 
 
@@ -346,8 +371,8 @@ After each batch:
 
 **Subagent Result to JSON Mapping**:
 ```
-subagent.spawn_test_attempted = true → json.spawn_test = subagent.spawn_test
-subagent.spawn_test_attempted = false → json.spawn_test = "skipped" (or leave existing)
+subagent.spawn_test_attempted = true → json.spawn_test = subagent.spawn_test ("passed" or "failed")
+subagent.spawn_test_attempted = false → json.spawn_test = "skipped" (component lacks spawn support)
 subagent.mutation_tests_attempted = true → json.mutation_tests = subagent.mutation_tests  
 subagent.mutation_tests_attempted = false → json.mutation_tests = unchanged
 subagent.mutation_paths → json.mutation_paths (direct copy, includes "skipped" for NotMutatable paths)
