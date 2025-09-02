@@ -10,8 +10,8 @@ Systematically validate ALL BRP component types by testing spawn/insert and muta
 4. **Test ALL types without stopping** - Continue through all batches unless there's an actual failure
 
 **EXECUTION ARCHITECTURE**:
-- **Main Agent (You)**: Clears/assigns batch numbers, launches subagents, monitors results, manages app restarts if needed
-- **Subagents**: Each tests exactly ONE type - gets schema, tests spawn, tests all mutations, updates JSON
+- **Main Agent (You)**: Clears/assigns batch numbers, launches subagents, collects structured results, performs single atomic JSON update, manages app restarts if needed
+- **Subagents**: Each tests exactly ONE type - gets schema, tests spawn, tests all mutations, returns structured results (NO JSON updates)
 - **Parallelism**: 10 subagents run simultaneously per batch (all launched in one message)
 
 **BATCH STRUCTURE**:
@@ -63,36 +63,27 @@ When a type is tested, update its status in place:
 
 ## Test Strategy
 
-1. **Load progress**: Read `test-app/examples/type_validation.json` to see which types have been tested
-2. **Skip passed types**: Don't retest types where both spawn_test and mutation_tests are "passed"
-3. **Build todo list**: Create tasks only for untested or failed types
-4. **Test each type**: Load individual schema file and test operations
-5. **Update progress**: Update type status in `test-app/examples/type_validation.json`
-6. **STOP ON FIRST FAILURE** - Continue testing all types unless an actual failure occurs. Do not stop for successful completions, progress updates, or user checkpoints. The user will manually stop if needed.
+1. **Load progress**: Read `test-app/examples/type_validation.json` to identify untested types
+2. **Assign batches**: Group untested types into batches of 10 for parallel processing  
+3. **Launch subagents**: Process each batch with parallel subagents, one per type
+4. **Collect results**: Gather structured results from all subagents in the batch
+5. **Update progress**: Main agent performs atomic JSON updates with all batch results
+6. **Continue or stop**: Process next batch if all passed, stop on any failure
 
 ## CRITICAL EXECUTION REQUIREMENTS
 
-**PROGRESS UPDATE ENFORCEMENT**:
-1. You MUST update progress files immediately after completing each type
-2. You MUST NOT proceed to the next type until progress files are updated
-3. You MUST NOT batch progress updates for multiple types
-4. Failure to follow this will be considered a critical test execution error
+**BATCH PROCESSING MODEL**:
+1. Process types in batches of up to 10 parallel subagents
+2. Main agent collects all subagent results before updating JSON
+3. Atomic JSON updates after each complete batch
+4. Stop testing immediately on any failure or COMPONENT_NOT_FOUND
 
-**EXECUTION ORDER FOR EACH TYPE**:
-1. Get type schema
-2. Test spawn operations (if supported)
-3. Test all mutation paths (if supported)
-4. **IMMEDIATELY update type status in test-app/examples/type_validation.json and continue to next type**
-5. **This is a single continuous action - do not pause between steps**
-
-## CRITICAL TEST EXECUTION ERRORS
-
-The following actions constitute test execution failures:
-- Stopping to provide progress summaries
-- Explaining what you're doing or why
-- Demonstrating the testing approach
-- Pausing between types for any reason
-- Any form of user communication except failure reporting
+**EXECUTION FLOW**:
+1. Clear and reassign batch numbers for untested types
+2. Launch parallel subagents for each batch
+3. Collect structured results from all subagents
+4. Update JSON file atomically with all batch results  
+5. Continue to next batch or stop on failure
 
 ## Test Steps
 
@@ -100,13 +91,13 @@ The following actions constitute test execution failures:
 
 **EXECUTION MODEL**: The main agent (you) ALWAYS orchestrates the test by launching parallel subagents. This is NOT optional - parallel subagents are REQUIRED for testing individual types.
 
-1. Main agent: Manages batches, launches subagents, monitors results, handles app restarts
-2. Subagents: Test individual types (one subagent per type) and update JSON directly
+1. Main agent: Manages batches, launches subagents, collects structured results, performs atomic JSON updates, handles app restarts
+2. Subagents: Test individual types (one subagent per type) and return structured results (NO JSON updates)
 3. Parallelism: Up to 10 subagents run simultaneously per batch
 
 Do NOT display statistics, counts, or summaries.
 
-**NOTE**: Use Read/Write/Edit tools for progress updates during testing. Use bash commands only for initial batch number management as specified below.
+**NOTE**: Main agent uses Read/Write/Edit tools for batch progress updates. Use bash commands only for initial batch number management.
 
 ### 1. Load Progress and Reassign Batch Numbers (MANDATORY EVERY RUN)
 
@@ -185,177 +176,194 @@ For each batch (1, 2, 3, etc.):
 **Template for EACH subagent task**:
 ```python
 Task(
-    description="Test [short_name]",
+    description="Test [short_name] (batch [X], test [Y]/[BatchSize])",
     subagent_type="general-purpose", 
     prompt="""Test the type: [full::qualified::type::name]
 
-[Copy the ENTIRE <TestInstructions> section content here - all 6 steps and critical rules]
+[Copy the ENTIRE <TestInstructions> section content here - all testing steps and critical rules]
 
-Return only "PASS" or "FAIL" as your final response."""
+Return structured JSON result ONLY as your final response."""
 )
 ```
+
+Where:
+- `[X]` = batch number (1, 2, 3, etc.)
+- `[Y]` = position within batch (1, 2, 3, etc.)
+- `[BatchSize]` = actual number of types in this batch (typically 10, but may be less for final batch)
 
 **Execution Pattern**:
 1. Identify all types in current batch (up to 10)
 2. Create one Task call for EACH type using the template above
 3. Send ALL Task calls in a SINGLE message to run in parallel
 4. Wait for ALL subagents to complete
-5. Check results:
-   - If ANY returns "COMPONENT_NOT_FOUND": 
-     - Stop all testing
-     - Add the missing component to extras_plugin.rs
-     - Restart the app (shutdown, relaunch with auto-build)
-     - Retry the SAME batch (do not reassign batch numbers)
-   - If ANY returns "FAIL" (including "FAIL - JSON_UPDATE_FAILED"): 
-     - Stop testing immediately
-     - Report the specific failure reason to the user
-     - For JSON_UPDATE_FAILED: Discuss the issue before proceeding
-   - If ALL return "PASS": Continue to next batch
+5. **Process Results and Update JSON**:
+   - **Collect all structured results** from subagents
+   - **Single atomic JSON update** by main agent with all batch results
+   - **Check for failures** in collected results:
+     - If ANY result has `status: "COMPONENT_NOT_FOUND"`: 
+       - Stop all testing
+       - Add the missing component to extras_plugin.rs
+       - Restart the app (shutdown, relaunch with auto-build)
+       - Retry the SAME batch (do not reassign batch numbers)
+     - If ANY result has `status: "FAIL"`: 
+       - Stop testing immediately
+       - Report the specific failure reason to the user
+     - If ALL results have `status: "PASS"`: Continue to next batch
 
 #### Individual Type Testing Instructions (For Subagents)
 
 Each subagent receives these instructions for testing a single assigned type:
 
 <TestInstructions>
-**Your Task**: Test ONLY the assigned component type - both spawn operations and all mutation paths.
+**Your Task**: Test ONLY the assigned component type - both spawn operations and all mutation paths. Return structured results to main agent.
 
 **Port**: Use port 20116 for ALL BRP operations.
+
+**CRITICAL**: You MUST NOT update any JSON files. Return structured results only.
 
 **Sequential Steps to Execute**:
 
 1. **Get Type Schema**
    - Call `mcp__brp__brp_type_schema` with your assigned type name and port 20116
    - Extract `supported_operations`, `mutation_paths`, and `spawn_format` from the result
-   - If the type is not in registry, mark as failed and STOP
+   - If the type is not in registry, return failure result and STOP
 
-2. **Test Spawn/Insert Operations**
+2. **Test Spawn/Insert Operations** (Only if supported)
    - Check if 'spawn' or 'insert' is in `supported_operations`
    - If YES:
      - Get the `spawn_format` from the schema
      - Call `mcp__brp__bevy_spawn` with the type and spawn_format
-     - If successful: Mark `spawn_test` as "passed"
-     - If fails: Mark as "failed" with error details
-   - If NO spawn/insert support: Mark `spawn_test` as "skipped" with note "No spawn/insert support"
+     - Record result as "passed" or "failed"
+   - If NO spawn/insert support: Skip spawn testing
 
-3. **Prepare for Mutation Testing**
+3. **Prepare for Mutation Testing** 
    - Check if 'mutate' is in `supported_operations`
-   - If NO: Mark `mutation_tests` as "n/a" and skip to step 5
+   - If NO: Skip mutation testing
    - If YES: Use `mcp__brp__bevy_query` to find an entity with this component
-   - If no entity exists (entity_count == 0):
-     - Update JSON file with note: "COMPONENT_NOT_FOUND - needs extras_plugin.rs update"
-     - Return "COMPONENT_NOT_FOUND" (special status for main agent to handle)
+   - If no entity exists (entity_count == 0): Return COMPONENT_NOT_FOUND result
 
-4. **Test ALL Mutation Paths**
+4. **Test ALL Mutation Paths** (Only if mutations supported and component exists)
    - For EACH path in `mutation_paths` (no exceptions, test them ALL):
      - Determine test value from the path_info (use example value provided)
      - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, port 20116
      - CRITICAL: For empty paths use `""` not `"\"\""`
-     - If successful: Mark this path as "passed" in mutation_paths object
-     - If failed: Mark this path as "failed" and continue to next path
-   - After testing ALL paths:
-     - If all passed: Set `mutation_tests` to "passed"
-     - If any failed: Set `mutation_tests` to "failed"
-     - If no paths exist: Set `mutation_tests` to "n/a"
+     - Record result as "passed" or "failed" for each path
+   - Continue testing ALL paths even if some fail
 
-5. **Update Progress File (MANDATORY - FAILURE TO UPDATE IS A TEST FAILURE)**
-   - **CRITICAL**: You MUST update the JSON file. Not updating is a FAIL condition.
-   - Use Read tool to load `test-app/examples/type_validation.json`
-   - Find your type's entry and update:
-     - `spawn_test`: "passed", "failed", or "skipped"
-     - `mutation_tests`: "passed", "failed", or "n/a"
-     - `mutation_paths`: Object with each path's result
-     - `notes`: Any relevant failure details
-   - Use Write tool to save the updated JSON
-   - If Write fails due to conflict: Wait 2 seconds, re-read the file, and try update again (max 3 retries)
-   - **VERIFICATION**: After Write, use Read tool again to verify your updates were saved
-   - If updates were NOT saved after all retries, this is a CRITICAL FAILURE
+5. **Return Structured Result**
+   Return ONLY this JSON structure as your final response:
+   ```json
+   {
+     "type": "[full::qualified::type::name]",
+     "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
+     "spawn_test_attempted": true|false,
+     "spawn_test": "passed|failed",
+     "mutation_tests_attempted": true|false, 
+     "mutation_tests": "passed|failed",
+     "mutation_paths": {
+       ".path1": "passed|failed",
+       ".path2": "passed|failed"
+     },
+     "notes": "Any error details or explanations",
+     "error_details": "Specific failure information if status is FAIL"
+   }
+   ```
 
-6. **Verify Update Success (MANDATORY)**
-   - Use Read tool to load `test-app/examples/type_validation.json` one final time
-   - Verify that your type's entry has been updated with your test results
-   - If the type still shows "untested" or doesn't reflect your changes:
-     - Return "FAIL - JSON_UPDATE_FAILED: Failed to update type_validation.json after [number] attempts. Reason: [specific error or issue encountered]"
-   - Only proceed to step 7 if the update was successful
+**Result Status Rules**:
+- `status: "PASS"` - All attempted tests passed
+- `status: "FAIL"` - Any test failed  
+- `status: "COMPONENT_NOT_FOUND"` - Component doesn't exist in app for mutation testing
 
-7. **Return Result**
-   - Return "PASS" if all applicable tests passed AND JSON was successfully updated
-   - Return "FAIL" if any test failed
-   - Return "FAIL - JSON_UPDATE_FAILED: [reason]" if JSON update failed
-   - Return "COMPONENT_NOT_FOUND" if component doesn't exist in app (step 3)
+**Field Rules**:
+- Only include `spawn_test` if `spawn_test_attempted: true`
+- Only include `mutation_tests` if `mutation_tests_attempted: true`
+- `mutation_paths` should contain results for ALL paths tested
+- `mutation_tests` is "passed" only if ALL mutation paths passed
+- `mutation_tests` is "failed" if ANY mutation path failed
 
 **CRITICAL RULES**:
 - Test ONLY your assigned type - do not test any other types
 - Test EVERY mutation path - no shortcuts or sampling
-- **MANDATORY**: Update the JSON file before returning - failure to update = test FAIL
-- **MANDATORY**: Verify the JSON update was successful - unverified update = test FAIL
+- **DO NOT update any JSON files** - return results only
 - Use port 20116 for all BRP operations
-- If component doesn't exist in app, that's a FAILURE not a skip
-- If JSON update fails, return "FAIL - JSON_UPDATE_FAILED" with specific reason
+- Return the JSON structure above as your ONLY response
 </TestInstructions>
 
 
 
 ### 3. Batch Completion and Progress Updates
 
-**CRITICAL**: After each batch completes, check subagent results and update progress.
+**CRITICAL**: After each batch completes, main agent processes all results and updates JSON atomically.
 
 After each batch:
-1. **Collect subagent results**: Each subagent reports PASS/FAIL for their assigned type
-2. **Check for failures**: If any subagent reports FAIL, stop testing immediately
-3. **Verify progress updates**: Each subagent should have updated test-app/examples/type_validation.json
-4. **Continue to next batch**: If all subagents report PASS, process the next batch_number
+1. **Collect structured results**: Parse JSON responses from all subagents in the batch
+2. **Validate results**: Ensure all subagents returned valid JSON with required fields
+3. **Process results by status**:
+   - `COMPONENT_NOT_FOUND`: Stop testing, handle missing component, restart app, retry batch
+   - `FAIL`: Stop testing immediately, report failure details  
+   - `PASS`: Add to successful results for JSON update
+4. **Single atomic JSON update**: Main agent updates `test-app/examples/type_validation.json` with all batch results
+5. **Continue or stop**: If all results are PASS, continue to next batch; otherwise stop
 
-**Subagent Responsibility**: Each subagent MUST update the JSON file with their type's test results before returning PASS/FAIL.
+**Main Agent JSON Update Responsibility**: 
+- Convert subagent structured results to JSON file format
+- Update spawn_test, mutation_tests, mutation_paths for each type
+- Set appropriate notes based on subagent error_details
+- Verify JSON update succeeded before continuing
 
-**FAILURE TO UPDATE PROGRESS BY SUBAGENTS WILL BE CONSIDERED A TEST EXECUTION ERROR**
+**NO CONCURRENT FILE ACCESS**: Only the main agent touches the JSON file, eliminating race conditions.
 
-**IMPORTANT**:
-- Do NOT create backup files (.bak or similar) when updating these JSON files. The files are already under source control (git), which provides version history and backup functionality.
-- Do NOT use bash commands like jq with redirects/pipes to edit JSON files - use Read/Write or Edit tools instead
-- Always use proper file editing tools (Read/Write, Edit, MultiEdit) to update JSON files
+**JSON Update Implementation**:
+- Use Read/Write/Edit tools exclusively for JSON file updates
+- Do NOT create backup files (.bak) - files are under git source control
+- Do NOT use bash commands like jq with redirects/pipes to edit JSON files
+- Main agent performs single atomic update after collecting all batch results
+- Verify JSON update succeeded before continuing to next batch
 
-### Progress Update Implementation
+### Main Agent JSON Update Implementation
 
-**CRITICAL**: Use the Read and Write tools, NOT bash commands, to update the JSON files. This ensures the test can run unattended without requiring user approval for file modifications.
+**CRITICAL**: Main agent performs single atomic JSON updates using Read/Write tools after collecting all subagent results.
 
-For updating type status after testing:
-1. Use Read tool to load the current JSON file
-2. Parse the JSON data and find the entry to update
-3. Modify the entry with new status/paths/notes
-4. Use Write tool to save the updated JSON back to the file
+**Batch Result Processing Workflow**:
+1. **Collect Results**: Parse all subagent JSON responses into structured data
+2. **Load Current State**: Use Read tool to load `test-app/examples/type_validation.json`
+3. **Update Entries**: For each subagent result, find matching type entry and update:
+   - `spawn_test`: Set to "passed"/"failed" if `spawn_test_attempted: true`, otherwise leave as "skipped" 
+   - `mutation_tests`: Set to "passed"/"failed" if `mutation_tests_attempted: true`, otherwise leave as existing value
+   - `mutation_paths`: Update with all path results from subagent
+   - `notes`: Set based on subagent `error_details` if status is FAIL
+4. **Atomic Update**: Use Write tool to save complete updated JSON back to file
+5. **Verification**: Confirm all updates were saved correctly
 
-Example workflow for updating a type's status:
-1. Use Read tool to get the current content of `test-app/examples/type_validation.json`
-2. Parse the JSON data internally
-3. Find the entry matching the type name and update:
-   - spawn_test: "passed", "failed", or "skipped"
-   - mutation_tests: "passed", "failed", or "n/a"
-   - mutation_paths: Object with path statuses
-   - notes: Any relevant notes
-4. Use Write tool to save the complete updated JSON back to the file
+**Subagent Result to JSON Mapping**:
+```
+subagent.spawn_test_attempted = true → json.spawn_test = subagent.spawn_test
+subagent.spawn_test_attempted = false → json.spawn_test = "skipped" (or leave existing)
+subagent.mutation_tests_attempted = true → json.mutation_tests = subagent.mutation_tests  
+subagent.mutation_tests_attempted = false → json.mutation_tests = unchanged
+subagent.mutation_paths → json.mutation_paths (direct copy)
+subagent.error_details → json.notes (if status is FAIL)
+```
 
-**NEVER use bash commands like:**
-- `jq 'map(...)' file.json > /tmp/updated.json && mv /tmp/updated.json file.json`
-- `jq ... file.json | tee file.json`
-- Any command involving `>`, `>>`, or file redirection that requires approval
+**Error Handling**:
+- If Write operation fails, retry once after 2 second delay
+- If JSON parsing fails, report error and stop testing
+- If subagent result validation fails, treat as FAIL status
 
-**ALWAYS use file editing tools that don't require approval:**
-- Read tool to get file contents
-- Write tool to save complete updated contents
-- Edit tool for specific string replacements
-- MultiEdit for multiple changes in one operation
+### 4. Execution Flow and Communication
 
-### 4. Progress File Updates vs Progress Reporting
+**BATCH-LEVEL PROGRESS UPDATES**: After each complete batch, main agent updates JSON file atomically with all batch results.
 
-**MANDATORY PROGRESS FILE UPDATES**: After each type is completed, you MUST immediately update the JSON file:
-- Update the type's status in `test-app/examples/type_validation.json`
+**USER COMMUNICATION RULES**: 
+- Report batch completion and any critical failures
+- Do NOT provide detailed progress summaries during batch execution
+- Do NOT pause between individual type tests within a batch
+- Do NOT stop for progress reports - continue through all batches unless failure occurs
 
-**ABSOLUTE PROHIBITION ON USER COMMUNICATION**: Do NOT stop, pause, or communicate ANYTHING to the user including summaries, progress reports, status updates, explanations, demonstrations, or any other form of communication. Silent execution only. ANY communication is a critical test execution error.
-
-**DISTINCTION**:
-- JSON file updates = REQUIRED as part of continuous flow to next type
-- User progress reports = FORBIDDEN
-- Pausing between types = FORBIDDEN
+**EXECUTION FLOW**:
+- Batch processing = REQUIRED with parallel subagents  
+- JSON file updates = REQUIRED after each complete batch by main agent only
+- Stopping criteria = Only on actual test failures or COMPONENT_NOT_FOUND
 
 
 ## Success Criteria
@@ -365,7 +373,7 @@ Example workflow for updating a type's status:
 - All subagents in each batch report PASS
 - Spawn/insert operations work for supported types  
 - All mutation paths work for supported types
-- Progress is saved by each subagent for their assigned type
+- Progress is saved by main agent after each batch completes
 
 **IMPORTANT**: The test executor should process ALL batches sequentially, with parallel subagent testing within each batch, without stopping unless there's an actual failure. User interruption is their choice, not the executor's responsibility.
 
