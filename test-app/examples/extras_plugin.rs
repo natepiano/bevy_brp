@@ -659,7 +659,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ColorGrading::default(),            // For testing mutations
+        ColorGrading::default(), // For testing mutations
         ContrastAdaptiveSharpening {
             enabled: false,
             ..default()
