@@ -40,9 +40,10 @@ Systematically validate ALL BRP component types by testing spawn/insert and muta
 
 ## Execution Architecture
 
-- **Main Agent**: Manages batches, launches subagents, collects results, performs atomic JSON updates, handles app restarts
+- **Main Agent**: Manages batches, launches subagents, collects results, executes merge script, handles app restarts
 - **Subagents**: Test assigned types, return structured results (NO JSON updates)
 - **Parallelism**: Up to MAX_SUBAGENTS run simultaneously per batch
+- **Fast Updates**: Pre-built shell script merges results in milliseconds
 
 ## Schema and Progress Tracking
 
@@ -87,7 +88,7 @@ Process each batch sequentially, with parallel subagents within each batch:
    - Each Task receives exactly TYPES_PER_SUBAGENT types (except possibly the last)
    - **ALL Tasks MUST be sent in a SINGLE message** to run in parallel
 4. Wait for ALL subagents to complete before proceeding
-5. Process results and update JSON atomically
+5. Collect results and execute merge script
 
 **EXECUTION REQUIREMENT**: Never send Tasks one at a time. Always batch ALL Task calls for the entire batch into a single message with multiple tool invocations to ensure parallel execution.
 
@@ -185,14 +186,24 @@ When you get examples from `brp_type_schema`, pay EXTREME attention to the type:
 ### 4. Batch Result Processing (Main Agent)
 
 After each batch completes:
-1. Collect all subagent results
-2. Update JSON atomically using Read/Write tools (save passed types first)
-3. **CRITICAL FAILURE HANDLING**:
-   - `COMPONENT_NOT_FOUND`: Add component to extras_plugin.rs, restart app, retry batch
-   - `FAIL`: **STOP IMMEDIATELY** - Do NOT continue to next batch. Report failures and exit.
-   - `PASS` (ALL types): Only if ALL types pass, continue to next batch
+1. Collect all subagent results into a single JSON array
+2. Write results array to temp file: `/tmp/batch_results_${batch_number}.json`
+3. Execute merge script: `./test-app/tests/merge_batch_results.sh /tmp/batch_results_${batch_number}.json test-app/tests/type_validation.json`
+4. **CRITICAL FAILURE HANDLING**:
+   - Script exit code 0: All passed, continue to next batch
+   - Script exit code 2: Failures detected - **STOP IMMEDIATELY**
+   - `COMPONENT_NOT_FOUND` in results: Add component to extras_plugin.rs, restart app, retry batch
 
-**NO EXCEPTIONS**: If even ONE type fails, STOP the entire test. Do not rationalize continuing.
+**Result Collection Format** (write this exact structure to temp file):
+```json
+[
+  {"type": "full::type::name", "status": "PASS", "fail_reason": ""},
+  {"type": "other::type", "status": "FAIL", "fail_reason": "Error message"},
+  {"type": "third::type", "status": "COMPONENT_NOT_FOUND", "fail_reason": "Component not registered"}
+]
+```
+
+**NO EXCEPTIONS**: The merge script will detect failures and exit with code 2. If this happens, STOP the entire test.
 
 ## Component Not Found Handling
 
@@ -226,6 +237,6 @@ If app crashes during testing:
 ## Key Principles
 
 - **No exceptions**: Test ALL mutation-capable components
-- **Atomic updates**: Only main agent updates JSON, once per batch
+- **Batch updates**: Merge script updates JSON once per batch
 - **Continuous execution**: Don't stop unless actual failure
 - **Resume capability**: Can restart from any saved state
