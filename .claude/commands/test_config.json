@@ -118,15 +118,5 @@
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools with port: 20110 parameter as instructed (may use multiple apps for testing)",
     "shutdown_instruction": "Shutdown any launched apps cleanly",
     "test_objective": "Test path parameter handling for duplicate names"
-  },
-  {
-    "test_name": "type_validation",
-    "test_file": ".claude/commands/tests/type_validation.md",
-    "port": 20116,
-    "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20116",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20116 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Comprehensive validation of all types - spawn/insert/mutate every discoverable type and path"
   }
 ]

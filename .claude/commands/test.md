@@ -173,29 +173,7 @@ Configuration: Port [PORT], App [APP_NAME]
 3. **Validate**: If test not found, report error and list available test names
 4. **Execute Test**: If found, run the single test using appropriate strategy
 
-### Special Exception: type_validation Test
-
-**IMPORTANT**: The `type_validation` test is a special case that must be executed directly by the main agent (not delegated to a subagent via Task tool). This allows the user to:
-- Stop the test at any point and ask questions (but the test should continue unless the user actually stops it)
-- Observe the test execution in real-time
-- Interact with the test process if they choose
-
-**When test_name is "type_validation":**
-1. **Check Existing App**: Use `brp_status` to check if extras_plugin is already running on port 20116
-   - If running with BRP responding: Skip to step 5 (Execute Test DIRECTLY)
-   - If not running or BRP not responding: Continue with launch procedure
-2. **Launch App**: Use launch_instruction to start the app on the test's specified port
-3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
-4. **Set Window Title**: Set title to "type_validation test - port [PORT]"
-5. **Execute Test DIRECTLY**: 
-   - Read and execute the test file `.claude/commands/tests/type_validation.md` directly
-   - DO NOT use Task tool or subagent
-   - Execute ALL test steps in the main conversation
-   - **CONTINUE TESTING ALL TYPES** - Do not stop unless there's a failure or the user manually interrupts
-   - Test ALL types in types-all.json sequentially without stopping for progress reports or successful completions
-6. **Cleanup**: Shutdown app using shutdown_instruction ONLY after ALL types are tested or a failure occurs
-
-### Single Test Execution (for non-type_validation tests)
+### Single Test Execution
 
 **For tests where app_name is a specific app (not "various" or "N/A"):**
 1. **Launch App**: Use launch_instruction to start the app on the test's specified port
@@ -243,14 +221,11 @@ Example: /test extras
 **Execute tests PARALLEL_TESTS at a time with continuous execution:**
 
 1. **Load Configuration**: Read `test_config.json`
-2. **EXCLUDE type_validation**: 
-   - Filter out any test where `test_name` is "type_validation"
-   - This test requires interactive execution and must be run separately with `/test type_validation`
-3. **Categorize Remaining Tests**:
+2. **Categorize Tests**:
    - **Dedicated app tests**: Use DedicatedAppPrompt (no app management)
    - **Self-managed tests**: Use SelfManagedPrompt (handle own apps)
-4. **Continuous Execution Loop**:
-   - Launch PARALLEL_TESTS tests from queue using appropriate templates (excluding type_validation)
+3. **Continuous Execution Loop**:
+   - Launch PARALLEL_TESTS tests from queue using appropriate templates
    - Monitor for failures and stop immediately on first failure
    - Continue until all tests complete or failure detected
 
@@ -282,21 +257,17 @@ Example: /test extras
 # BRP Test Suite - Consolidated Results
 
 ## Overall Statistics
-- **Total Tests**: [Count from test_config.json minus 1 for type_validation]
-- **Executed**: X (excluding type_validation)
+- **Total Tests**: [Count from test_config.json]
+- **Executed**: X
 - **Passed**: X
 - **Failed**: 0 (execution stops on first failure)
 - **Skipped**: Y
-- **Excluded**: 1 (type_validation - requires interactive execution via `/test type_validation`)
 - **Critical Issues**: 0 (execution stops on critical issues)
 - **Total Execution Time**: ~X minutes (continuous parallel)
 - **Execution Strategy**: PARALLEL_TESTS tests at a time with continuous execution
 
 ## Test Results Summary
 [List each test by name with its result count, avoiding duplication]
-
-## ⚠️ EXCLUDED TESTS
-- **type_validation**: Requires interactive execution - run with `/test type_validation`
 
 ## ⚠️ SKIPPED TESTS
 [List of skipped tests with reasons]

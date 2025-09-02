@@ -1,5 +1,23 @@
 # Type Schema Comprehensive Validation Test
 
+## Usage
+`/type_validation` - Validates ALL BRP component types by testing spawn/insert and mutation operations.
+
+## Execution Instructions
+
+1. **Check App Status**: Use `brp_status` to check if extras_plugin is running on port 20116
+   - If running with BRP responding: Skip to step 5
+   - If not running or BRP not responding: Continue with step 2
+2. **Launch App**: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
+3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on port 20116
+4. **Set Window Title**: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
+5. **Execute Test**: 
+   - Execute all test procedures below
+   - Use parallel subagents for type testing within batches
+   - Continue testing ALL types sequentially
+   - Only stop on failure or user interruption
+6. **Cleanup**: Shutdown app using `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)` after completion or failure
+
 ## Configuration Constants
 ```
 BATCH_SIZE = 30              # Types per batch

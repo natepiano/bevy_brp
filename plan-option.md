@@ -870,6 +870,19 @@ paths.push(MutationPathInternal {
 - **Description**: Proposed replacing string-based type matching with registry lookups
 - **Reason**: Investigation revealed minimal hardcoded checks (only one "f32" for math components), registry validation already exists extensively, and hardcoded knowledge captures BRP-specific serialization rules that can't be derived from registry schemas. Current approach correctly balances registry validation with essential domain knowledge.
 
+### ⚠️ PREJUDICE WARNING - DESIGN-003: Add consistent error propagation for malformed Option schemas
+- **Status**: PERMANENTLY REJECTED
+- **Category**: DESIGN
+- **Description**: Proposed adding error boundaries and validation around Option schema parsing
+- **Reason**: Reviewer repeatedly suggested validating BRP-provided types despite prior decisions
+- **Critical Note**: DO NOT SUGGEST THIS AGAIN - We rely on BRP to provide valid types as already established in the plan
+
+### DESIGN-004: Add mutation safety validation for Option inner type constraints
+- **Status**: SKIPPED
+- **Category**: DESIGN
+- **Description**: Proposed checking if Option inner types are mutatable before generating paths
+- **Reason**: Investigation revealed plan-opaque.md's `type_supports_mutation` method already provides complete recursive validation for Option<NonMutableType> cases, preventing path generation for Options containing non-mutatable inner types
+
 ## DESIGN REVIEW AGREEMENT: SIMPLIFICATION-001 - Remove redundant error improvement Phase 3 from plan
 
 **Plan Status**: ✅ APPROVED - Removed from plan
