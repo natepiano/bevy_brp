@@ -1,0 +1,163 @@
+[
+  {
+    "id": "001",
+    "content": "Add RegistryLookupResult enum near top of mutation_path_builders.rs (TYPE-SYSTEM-001)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "002",
+    "content": "Run cargo build && cargo +nightly fmt after adding enum",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "003",
+    "content": "Replace struct field registry check logic with RegistryLookupResult enum (DESIGN-007)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "004",
+    "content": "Run cargo build && cargo +nightly fmt after struct field changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "005",
+    "content": "Add build_tuple_element_path helper method to TupleMutationBuilder (DESIGN-003)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "006",
+    "content": "Replace duplicated tuple element logic with helper method calls",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "007",
+    "content": "Run cargo build && cargo +nightly fmt after tuple refactoring",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "008",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "009",
+    "content": "Fix any clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "010",
+    "content": "Add propagate_tuple_struct_immutability method to TupleMutationBuilder (SIMPLIFICATION-004)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "011",
+    "content": "Call propagate_tuple_struct_immutability in TupleMutationBuilder::build_paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "012",
+    "content": "Run cargo build && cargo +nightly fmt after tuple propagation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "013",
+    "content": "Add propagate_struct_immutability method to StructMutationBuilder (IMPLEMENTATION-006)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "014",
+    "content": "Call propagate_struct_immutability in StructMutationBuilder::build_paths",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "015",
+    "content": "Run cargo build && cargo +nightly fmt after struct propagation",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "016",
+    "content": "Add MutationState enum to type_info.rs (TYPE-SYSTEM-002)",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "017",
+    "content": "Update TypeInfo::from_schema to use MutationState for operation filtering",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "018",
+    "content": "Run cargo build && cargo +nightly fmt after type_info changes",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "019",
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "020",
+    "content": "Fix any remaining clippy issues",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "021",
+    "content": "Run cargo nextest run to validate all tests pass",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "022",
+    "content": "Test VisibilityClass with brp_type_schema on port 20116",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  },
+  {
+    "id": "023",
+    "content": "Verify mutation paths marked as NotMutatable and no mutate in supported_operations",
+    "status": "pending",
+    "priority": "high",
+    "notes": ""
+  }
+]
