@@ -62,7 +62,9 @@
       "Bash(rm:*)",
       "Read(/tmp/**)",
       "Bash(mv:*)",
-      "Bash(./test-app/tests/renumber_batches.sh:*)"
+      "Bash(./test-app/tests/renumber_batches.sh:*)",
+      "Read(/Users/natemccoy/.claude/commands/**)",
+      "Read(/Users/natemccoy/.claude/commands/**)"
     ],
     "deny": [
       "Bash(sed:*)"
