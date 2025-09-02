@@ -4,15 +4,15 @@
 This command initializes or reinitializes the type validation tracking file (`test-app/examples/type_validation.json`) by:
 1. Launching the extras_plugin example app
 2. Getting the list of all registered component types via BRP
-3. Creating a fresh tracking file with all types marked appropriately
-4. Discovering actual spawn and mutation capabilities for ALL types systematically
+3. Creating a fresh tracking file with all types marked as "untested"
+4. Discovering spawn support and mutation paths for ALL types systematically
 
 ## Usage
 ```
 /init_type_validation
 ```
 
-This will overwrite any existing `type_validation.json` file with a fresh one containing all currently registered types with their actual capabilities discovered.
+This will overwrite any existing `type_validation.json` file with a fresh one containing all currently registered types ready for testing.
 
 ## Execution Steps
 
@@ -75,6 +75,9 @@ Call `mcp__brp__brp_type_schema` with ALL types EXCEPT these problematic ones:
 - `bevy_ui::widget::button::Button`
 - `bevy_ui::widget::label::Label`
 - `bevy_window::window::PrimaryWindow`
+- `bevy_render::camera::camera::CameraMainTextureUsages`
+- `bevy_render::camera::camera::CameraRenderGraph`
+- `bevy_render::camera::camera::Exposure`
 
 Build the types array directly in the tool call by filtering the result from step 3.
 The tool will automatically save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_type_schema_12345.json`).
@@ -88,25 +91,24 @@ Execute this exact jq command using the Bash tool, replacing `FILEPATH` with the
 jq '
 .type_info | to_entries | [.[] | . as $item | .key as $idx | {
   type: .value.type_name,
-  spawn_test: (if (.value.supported_operations // []) | contains(["spawn", "insert"]) then "untested" else "skipped" end),
-  mutation_tests: (if (.value.mutation_paths // {}) | length > 0 then "untested" else "n/a" end),
-  mutation_paths: ((.value.mutation_paths // {}) | to_entries | map({key: .key, value: "untested"}) | from_entries),
-  batch_number: 1,
-  notes: (if (.value.supported_operations // []) | contains(["spawn", "insert"]) | not then "No spawn/insert support" 
-         elif (.value.mutation_paths // {}) | length == 0 then "No mutation paths" 
-         else "" end)
-}] | to_entries | map(.value + {batch_number: ((.key / 20) | floor + 1)})' FILEPATH > test-app/tests/type_validation.json
+  spawn_support: (if (.value.supported_operations // []) | contains(["spawn", "insert"]) then "supported" else "not_supported" end),
+  mutation_paths: ((.value.mutation_paths // {}) | keys),
+  test_status: "untested",
+  batch_number: null,
+  fail_reason: ""
+}]' FILEPATH > test-app/tests/type_validation.json
 ```
 
-**Note:** The batch numbering is done in two stages because the type_info keys are strings (type names), not numeric indices. First we build the array with placeholder batch numbers, then use `to_entries` to get numeric indices and calculate proper batch numbers (20 types per batch).
+**Note:** All types are initialized with `batch_number: null` - batch assignment will be done separately.
 
 This command directly creates `test-app/tests/type_validation.json` from the BRP response.
 
 ### 6. Verify final file structure
 The completed file should have:
-- All types with spawn capabilities properly identified (expect many spawn-capable types, not just a few)
-- All types with proper mutation paths populated from actual BRP discovery
-- Batch numbers assigned sequentially (20 types per batch: batch 1 = types 1-20, batch 2 = types 21-40, etc.)
+- All types with spawn support properly identified (`"supported"` or `"not_supported"`)
+- All types with mutation paths listed as arrays
+- All types starting with `test_status: "untested"`
+- All types starting with `batch_number: null` (batch assignment done separately)
 
 Types that support spawn typically have:
 - `has_deserialize: true` and `has_serialize: true` in the BRP response
@@ -119,10 +121,10 @@ Types that support spawn typically have:
 echo "✅ Initialized type validation tracking file with complete capability discovery"
 jq -r '
   "- Total types: " + (. | length | tostring) + "\n" +
-  "- Spawn-capable types: " + ([.[] | select(.spawn_test == "untested")] | length | tostring) + "\n" +
-  "- Types with mutations: " + ([.[] | select(.mutation_tests == "untested")] | length | tostring) + "\n" +
-  "- Types with no capabilities: " + ([.[] | select(.spawn_test == "skipped" and .mutation_tests == "n/a")] | length | tostring)
-' test-app/examples/type_validation.json
+  "- Spawn-supported types: " + ([.[] | select(.spawn_support == "supported")] | length | tostring) + "\n" +
+  "- Types with mutations: " + ([.[] | select(.mutation_paths | length > 0)] | length | tostring) + "\n" +
+  "- Types with no capabilities: " + ([.[] | select(.spawn_support == "not_supported" and (.mutation_paths | length == 0))] | length | tostring)
+' test-app/tests/type_validation.json
 ```
 
 ### 9. Cleanup
@@ -138,12 +140,13 @@ mcp__brp__brp_shutdown(
 
 1. **NO intermediate files** - Do NOT create Python scripts, temp files, or any other files
 2. **Direct tool usage only** - Use only MCP tools and the single jq command shown
-3. **Single output file** - Only create/modify `test-app/examples/type_validation.json`
-4. **Use actual BRP responses** - Base spawn/mutation decisions on `supported_operations` and `mutation_paths` from BRP
+3. **Single output file** - Only create/modify `test-app/tests/type_validation.json`
+4. **Use actual BRP responses** - Base spawn support and mutation paths on actual BRP discovery
 5. **Execute jq command exactly** - The jq command in step 5 is a REAL command to execute with Bash, not pseudocode
 
 ## Expected Results
 
-- Spawn-capable types: Types with Serialize/Deserialize traits (Name, Transform, Node, Window, BackgroundColor, test components, etc.)
-- Non-spawn types: Most rendering/internal components (Sprite, Camera components, visibility components, etc.)
-- All types should have their actual mutation paths populated, not empty objects
+- Spawn-supported types: Types with Serialize/Deserialize traits (Name, Transform, Node, Window, BackgroundColor, test components, etc.)
+- Non-spawn types: Most rendering/internal components (Sprite, Camera components, visibility components, etc.)  
+- All types should have their actual mutation paths populated as arrays
+- All types start with `test_status: "untested"` and empty `fail_reason`

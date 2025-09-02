@@ -189,9 +189,25 @@ impl MutationPathBuilder for TypeKind {
             Self::Enum => EnumMutationBuilder.build_paths(ctx),
             Self::Struct => StructMutationBuilder.build_paths(ctx),
             Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx),
-            Self::List | Self::Map | Self::Option | Self::Value => {
+            Self::List | Self::Map | Self::Option => {
                 // For these types, build a simple standard path
                 DefaultMutationBuilder.build_paths(ctx)
+            }
+            Self::Value => {
+                // Value types (opaque types in Bevy's reflection system) cannot be mutated
+                let reason = "Opaque type - cannot be mutated through Bevy's reflection system. \
+                              This type is treated as a black box and does not support field access \
+                              or mutation operations.";
+                
+                let path = match &ctx.location {
+                    RootOrField::Root { type_name } => {
+                        StructMutationBuilder::build_not_mutatable_path("", type_name, reason.to_string())
+                    }
+                    RootOrField::Field { field_name, field_type, .. } => {
+                        StructMutationBuilder::build_not_mutatable_path(field_name, field_type, reason.to_string())
+                    }
+                };
+                Ok(vec![path])
             }
         }
     }

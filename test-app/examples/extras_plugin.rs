@@ -33,9 +33,7 @@ use bevy::pbr::{
     ScreenSpaceReflections, StandardMaterial, VolumetricFog,
 };
 use bevy::prelude::*;
-use bevy::render::camera::{
-    CameraMainTextureUsages, Exposure, ManualTextureViewHandle, MipBias, TemporalJitter,
-};
+use bevy::render::camera::{MipBias, TemporalJitter};
 use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
@@ -577,6 +575,12 @@ fn spawn_render_entities(commands: &mut Commands) {
     // Entity with LightProbe for testing mutations
     commands.spawn((LightProbe, Name::new("LightProbeTestEntity")));
 
+    // Entity with ClusterConfig for testing mutations
+    commands.spawn((
+        bevy::pbr::ClusterConfig::default(),
+        Name::new("ClusterConfigTestEntity"),
+    ));
+
     // Entity with EnvironmentMapLight for testing mutations
     commands.spawn((
         EnvironmentMapLight::default(),
@@ -655,19 +659,16 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
-        CameraMainTextureUsages::default(), // For testing mutations
         ColorGrading::default(),            // For testing mutations
         ContrastAdaptiveSharpening {
             enabled: false,
             ..default()
         },
         DepthOfField::default(),                // For testing mutations
-        Exposure::default(),                    // For testing mutations
         Fxaa::default(),                        // For testing mutations
         MipBias(0.0),                           // For testing mutations
         TemporalJitter::default(),              // For testing mutations
         ChromaticAberration::default(),         // For testing mutations
-        ManualTextureViewHandle(0),             // For testing mutations
         ScreenSpaceAmbientOcclusion::default(), // For testing mutations
         ScreenSpaceReflections::default(),      // For testing mutations
         VolumetricFog::default(),               // For testing mutations
@@ -723,8 +724,6 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                         },
                         bevy::prelude::UiAntiAlias::On,
                         bevy::prelude::UiTargetCamera(Entity::PLACEHOLDER),
-                        bevy::prelude::Button,
-                        bevy::prelude::Label,
                         bevy::prelude::ImageNode {
                             image: Handle::default(),
                             color: Color::WHITE,
