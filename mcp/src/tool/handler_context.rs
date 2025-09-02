@@ -140,10 +140,7 @@ impl HandlerContext {
     }
 
     /// Format framework errors
-    pub fn format_framework_error(
-        &self,
-        error: error_stack::Report<crate::error::Error>,
-    ) -> CallToolResult {
+    pub fn format_framework_error(&self, error: error_stack::Report<Error>) -> CallToolResult {
         let tool_name = self.tool_def.tool_name;
         let call_info = tool_name.get_call_info();
 

@@ -8,6 +8,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use super::errors::{NoTargetsFoundError, PathDisambiguationError, TargetNotFoundAtSpecifiedPath};
+use crate::app_tools::support::cargo_detector::BevyTarget;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ParamStruct, ToolFn, ToolResult};
 
@@ -177,14 +178,14 @@ pub trait LaunchConfigTrait {
     fn port(&self) -> Port;
 
     /// Build the command to execute
-    fn build_command(&self, target: &super::cargo_detector::BevyTarget) -> Command;
+    fn build_command(&self, target: &BevyTarget) -> Command;
 
     /// Get any extra log info specific to this target type
-    fn extra_log_info(&self, target: &super::cargo_detector::BevyTarget) -> Option<String>;
+    fn extra_log_info(&self, target: &BevyTarget) -> Option<String>;
 
     /// Ensure the target is built, blocking until compilation completes if needed
     /// Returns the build state indicating whether it was fresh, rebuilt, or not found
-    fn ensure_built(&self, target: &super::cargo_detector::BevyTarget) -> Result<BuildState> {
+    fn ensure_built(&self, target: &BevyTarget) -> Result<BuildState> {
         let manifest_dir = validate_manifest_directory(&target.manifest_path)?;
         run_cargo_build(
             self.target_name(),
@@ -202,7 +203,7 @@ pub trait LaunchConfigTrait {
         working_directory: PathBuf,
         launch_duration_ms: u64,
         launch_timestamp: String,
-        target: &super::cargo_detector::BevyTarget,
+        target: &BevyTarget,
     ) -> LaunchResult;
 }
 
@@ -426,7 +427,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
     manifest_dir: &Path,
     log_file_path: PathBuf,
     log_file_for_redirect: std::fs::File,
-    target: &super::cargo_detector::BevyTarget,
+    target: &BevyTarget,
     launch_start: std::time::Instant,
 ) -> Result<LaunchResult> {
     use super::process;
@@ -461,7 +462,7 @@ fn execute_and_build_result<T: LaunchConfigTrait>(
 /// Prepare the launch environment including command, logging, and directory setup
 fn prepare_launch_environment<T: LaunchConfigTrait>(
     config: &T,
-    target: &super::cargo_detector::BevyTarget,
+    target: &BevyTarget,
 ) -> Result<(Command, PathBuf, PathBuf, std::fs::File)> {
     // Get manifest directory
     let manifest_dir = validate_manifest_directory(&target.manifest_path)?;
@@ -507,7 +508,7 @@ fn create_error_details<T: LaunchConfigTrait>(
 fn find_and_validate_target<T: LaunchConfigTrait>(
     config: &T,
     search_paths: &[PathBuf],
-) -> Result<super::cargo_detector::BevyTarget> {
+) -> Result<BevyTarget> {
     use super::scanning;
 
     // Get the target type from the config
@@ -692,11 +693,11 @@ impl LaunchConfigTrait for LaunchConfig<App> {
         self.port
     }
 
-    fn build_command(&self, target: &super::cargo_detector::BevyTarget) -> Command {
+    fn build_command(&self, target: &BevyTarget) -> Command {
         build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
     }
 
-    fn extra_log_info(&self, _target: &super::cargo_detector::BevyTarget) -> Option<String> {
+    fn extra_log_info(&self, _target: &BevyTarget) -> Option<String> {
         None
     }
 
@@ -707,7 +708,7 @@ impl LaunchConfigTrait for LaunchConfig<App> {
         working_directory: PathBuf,
         launch_duration_ms: u64,
         launch_timestamp: String,
-        target: &super::cargo_detector::BevyTarget,
+        target: &BevyTarget,
     ) -> LaunchResult {
         let workspace = target
             .workspace_root
@@ -762,11 +763,11 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
         self.port
     }
 
-    fn build_command(&self, _target: &super::cargo_detector::BevyTarget) -> Command {
+    fn build_command(&self, _target: &BevyTarget) -> Command {
         build_cargo_example_command(&self.target_name, self.profile(), Some(self.port))
     }
 
-    fn extra_log_info(&self, target: &super::cargo_detector::BevyTarget) -> Option<String> {
+    fn extra_log_info(&self, target: &BevyTarget) -> Option<String> {
         Some(format!("Package: {}", target.package_name))
     }
 
@@ -777,7 +778,7 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
         working_directory: PathBuf,
         launch_duration_ms: u64,
         launch_timestamp: String,
-        target: &super::cargo_detector::BevyTarget,
+        target: &BevyTarget,
     ) -> LaunchResult {
         let workspace = target
             .workspace_root

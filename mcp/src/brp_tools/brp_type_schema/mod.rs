@@ -5,7 +5,7 @@
 //! serialization knowledge to provide accurate format discovery for BRP operations.
 
 mod constants;
-mod format_knowledge;
+mod mutation_knowledge;
 mod mutation_path_builders;
 mod response_types;
 mod tool;

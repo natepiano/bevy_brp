@@ -11,13 +11,25 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 use tracing::warn;
 
+/// Result of attempting to build mutation paths using hardcoded knowledge
+#[derive(Debug)]
+enum HardcodedPathsResult {
+    /// Hardcoded knowledge handled this type with these paths
+    Handled(Vec<MutationPathInternal>),
+    /// Hardcoded knowledge says this type cannot be mutated with explanatory reason
+    NotMutatable(String),
+    /// No hardcoded knowledge found, should try fallback approach
+    Fallback,
+}
+
 use super::constants::SCHEMA_REF_PREFIX;
-use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey};
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, MutationKnowledge};
 use super::response_types::{
     BrpTypeName, EnumVariantInfo, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
 };
 use super::type_info::TypeInfo;
 use super::wrapper_types::WrapperType;
+use crate::brp_tools::brp_type_schema::mutation_knowledge::KnowledgeKey;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
@@ -209,8 +221,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             .unwrap_or_else(BrpTypeName::unknown);
 
         // Build example element from hardcoded knowledge
-        let example_element = BRP_FORMAT_KNOWLEDGE
-            .get(&FormatKnowledgeKey::exact(&element_type))
+        let example_element = BRP_MUTATION_KNOWLEDGE
+            .get(&KnowledgeKey::exact(&element_type))
             .map_or(json!(null), |k| k.example_value.clone());
 
         // Determine array size from type name (e.g., "[Vec3; 3]" -> 3)
@@ -464,13 +476,13 @@ impl EnumMutationBuilder {
         if let Some(enum_type) = enum_type
             && let Some(variant_name) = variant_name
         {
-            let variant_key = FormatKnowledgeKey::EnumVariant {
+            let variant_key = KnowledgeKey::EnumVariant {
                 enum_type:       enum_type.to_string(),
                 variant_name:    variant_name.to_string(),
                 variant_pattern: format!("{variant_name}({type_name})"),
             };
 
-            if let Some(knowledge) = BRP_FORMAT_KNOWLEDGE.get(&variant_key) {
+            if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&variant_key) {
                 return knowledge.example_value.clone();
             }
         }
@@ -628,8 +640,30 @@ impl StructMutationBuilder {
         }
 
         for (field_name, field_info) in properties {
-            let field_paths = Self::build_single_property_paths(ctx, &field_name, field_info)?;
-            paths.extend(field_paths);
+            // Extract field type to check for skip directive
+            let field_type = SchemaField::extract_field_type(field_info);
+            let Some(ft) = field_type else {
+                paths.push(Self::build_null_mutation_path(ctx, &field_name));
+                continue;
+            };
+
+            let wrapper_info = WrapperType::detect(ft.as_str());
+
+            // Check hardcoded knowledge first
+            match Self::try_build_hardcoded_paths(ctx, &field_name, &ft, wrapper_info.as_ref()) {
+                HardcodedPathsResult::NotMutatable(reason) => {
+                    paths.push(Self::build_not_mutatable_path(&field_name, &ft, reason));
+                }
+                HardcodedPathsResult::Handled(field_paths) => {
+                    paths.extend(field_paths);
+                }
+                HardcodedPathsResult::Fallback => {
+                    // Fall back to type-based building
+                    let field_paths =
+                        Self::build_type_based_paths(ctx, &field_name, &ft, wrapper_info)?;
+                    paths.extend(field_paths);
+                }
+            }
         }
 
         Ok(paths)
@@ -653,33 +687,6 @@ impl StructMutationBuilder {
         };
 
         properties.iter().map(|(k, v)| (k.clone(), v)).collect()
-    }
-
-    /// Build mutation paths for a single property
-    fn build_single_property_paths(
-        ctx: &MutationPathContext<'_>,
-        field_name: &str,
-        field_info: &Value,
-    ) -> Result<Vec<MutationPathInternal>> {
-        // Extract field type from field info
-        let field_type = SchemaField::extract_field_type(field_info);
-
-        let Some(ft) = field_type else {
-            return Ok(vec![Self::build_null_mutation_path(ctx, field_name)]);
-        };
-
-        // Check if this is a wrapper type (Option, Handle) first
-        let wrapper_info = WrapperType::detect(ft.as_str());
-
-        // Try to handle with hardcoded knowledge first
-        if let Some(paths) =
-            Self::try_build_hardcoded_paths(ctx, field_name, &ft, wrapper_info.as_ref())
-        {
-            return Ok(paths);
-        }
-
-        // Fall back to type-based building
-        Self::build_type_based_paths(ctx, field_name, &ft, wrapper_info)
     }
 
     /// Build a null mutation path for fields without type information
@@ -714,16 +721,28 @@ impl StructMutationBuilder {
         field_name: &str,
         field_type: &BrpTypeName,
         wrapper_info: Option<&(WrapperType, BrpTypeName)>,
-    ) -> Option<Vec<MutationPathInternal>> {
+    ) -> HardcodedPathsResult {
         // Check for hardcoded knowledge - first try the full type, then inner type for wrappers
-        let hardcoded = BRP_FORMAT_KNOWLEDGE
-            .get(&FormatKnowledgeKey::exact(field_type))
+        let Some(hardcoded) = BRP_MUTATION_KNOWLEDGE
+            .get(&KnowledgeKey::exact(field_type))
             .or_else(|| {
                 // For wrapper types, check the inner type for hardcoded knowledge
-                wrapper_info.and_then(|(_, inner)| {
-                    BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(inner))
-                })
-            })?;
+                wrapper_info
+                    .and_then(|(_, inner)| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(inner)))
+            })
+        else {
+            return HardcodedPathsResult::Fallback;
+        };
+
+        // Handle different knowledge variants
+        match &hardcoded.guidance {
+            KnowledgeGuidance::NotMutatable { reason } => {
+                return HardcodedPathsResult::NotMutatable(reason.clone());
+            }
+            KnowledgeGuidance::TreatAsValue { .. } | KnowledgeGuidance::Teach => {
+                // TreatAsValue is handled elsewhere in get_mutation_paths - continue for now
+            }
+        }
 
         // Get enum variants if this is an enum
         let enum_variants = if wrapper_info.is_none() {
@@ -739,14 +758,15 @@ impl StructMutationBuilder {
         };
 
         let parent_type = ctx.type_name();
-        Some(Self::build_hardcoded_paths(
+        let paths = Self::build_hardcoded_paths(
             field_name,
             field_type,
             hardcoded,
             wrapper_info.cloned(),
             enum_variants,
             parent_type,
-        ))
+        );
+        HardcodedPathsResult::Handled(paths)
     }
 
     /// Build paths based on the field's type kind
@@ -773,7 +793,7 @@ impl StructMutationBuilder {
     pub fn build_hardcoded_paths(
         field_name: &str,
         field_type: &BrpTypeName,
-        hardcoded: &super::format_knowledge::BrpFormatKnowledge,
+        hardcoded: &MutationKnowledge,
         wrapper_info: Option<(WrapperType, BrpTypeName)>,
         enum_variants: Option<Vec<String>>,
         parent_type: &BrpTypeName,
@@ -786,7 +806,7 @@ impl StructMutationBuilder {
         // correct Weak format but wrapper.mutation_examples() wraps it in incorrect complex
         // format
         let final_example = if wrapper_info.is_some()
-            && BRP_FORMAT_KNOWLEDGE.contains_key(&FormatKnowledgeKey::exact(field_type))
+            && BRP_MUTATION_KNOWLEDGE.contains_key(&KnowledgeKey::exact(field_type))
         {
             // Use format knowledge directly when the full wrapper type (e.g., Handle<Image>)
             // has format knowledge This avoids wrapping the correct format in
@@ -852,7 +872,7 @@ impl TupleMutationBuilder {
                     .iter()
                     .map(|item| {
                         SchemaField::extract_field_type(item)
-                            .and_then(|t| BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(&t)))
+                            .and_then(|t| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&t)))
                             .map_or(json!(null), |k| k.example_value.clone())
                     })
                     .collect();
@@ -924,8 +944,8 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
                         if let Some(element_type) = SchemaField::extract_field_type(element_info) {
-                            let elem_example = BRP_FORMAT_KNOWLEDGE
-                                .get(&FormatKnowledgeKey::exact(&element_type))
+                            let elem_example = BRP_MUTATION_KNOWLEDGE
+                                .get(&KnowledgeKey::exact(&element_type))
                                 .map_or(json!(null), |k| k.example_value.clone());
 
                             paths.push(MutationPathInternal {
@@ -951,8 +971,8 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
                         if let Some(element_type) = SchemaField::extract_field_type(element_info) {
-                            let elem_example = BRP_FORMAT_KNOWLEDGE
-                                .get(&FormatKnowledgeKey::exact(&element_type))
+                            let elem_example = BRP_MUTATION_KNOWLEDGE
+                                .get(&KnowledgeKey::exact(&element_type))
                                 .map_or(json!(null), |k| k.example_value.clone());
 
                             paths.push(MutationPathInternal {
@@ -1015,5 +1035,25 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         }
 
         Ok(paths)
+    }
+}
+
+impl StructMutationBuilder {
+    /// Build a mutation path for non-mutatable types with explanatory reason
+    fn build_not_mutatable_path(
+        field_name: &str,
+        field_type: &BrpTypeName,
+        reason: String,
+    ) -> MutationPathInternal {
+        MutationPathInternal {
+            path:          field_name.to_string(),
+            example:       json!({
+                "NotMutatable": reason,
+                "agent_directive": "This path cannot be mutated - do not attempt mutation operations"
+            }),
+            enum_variants: None,
+            type_name:     field_type.clone(),
+            path_kind:     MutationPathKind::NotMutatable,
+        }
     }
 }

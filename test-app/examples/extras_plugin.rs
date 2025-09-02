@@ -29,7 +29,7 @@ use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::pbr::irradiance_volume::IrradianceVolume;
 use bevy::pbr::prelude::EnvironmentMapLight;
 use bevy::pbr::{
-    ExtendedMaterial, LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion,
+    AmbientLight, ExtendedMaterial, LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion,
     ScreenSpaceReflections, StandardMaterial, VolumetricFog,
 };
 use bevy::prelude::*;
@@ -587,6 +587,14 @@ fn spawn_render_entities(commands: &mut Commands) {
     commands.spawn((
         IrradianceVolume::default(),
         Name::new("IrradianceVolumeTestEntity"),
+    ));
+
+    // Entity with AmbientLight (requires Camera) for testing mutations
+    commands.spawn((
+        Camera3d::default(),
+        AmbientLight::default(),
+        Transform::from_xyz(100.0, 100.0, 100.0),
+        Name::new("AmbientLightTestEntity"),
     ));
 }
 

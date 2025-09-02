@@ -14,7 +14,7 @@ use serde_json::{Value, json};
 use super::response_types::{BrpTypeName, TypeSchemaResponse, TypeSchemaSummary};
 use super::type_info::TypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Parameters for the `brp_type_schema` tool
@@ -109,10 +109,9 @@ impl TypeSchemaEngine {
 
                 Ok(registry_map)
             }
-            Ok(_) => Err(crate::error::Error::BrpCommunication(
-                "Registry call returned no data".to_string(),
-            )
-            .into()),
+            Ok(_) => {
+                Err(Error::BrpCommunication("Registry call returned no data".to_string()).into())
+            }
             Err(e) => Err(e),
         }
     }

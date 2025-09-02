@@ -48,16 +48,16 @@ Each type entry has the following structure:
   "type": "bevy_transform::components::transform::Transform",
   "spawn_test": "untested",  // "untested", "passed", "failed", "skipped" (if no Serialize/Deserialize)
   "mutation_tests": "untested",  // "untested", "passed", "failed", "n/a" (if no mutations)
-  "mutation_paths": {},  // Object with path as key, status as value (e.g., {".translation.x": "passed", ".rotation": "failed"})
+  "mutation_paths": {},  // Object with path as key, status as value (e.g., {".translation.x": "passed", ".rotation": "failed", ".inverse_bindposes": "skipped"})
   "notes": ""  // Additional notes about failures or special cases
 }
 ```
 
-**IMPORTANT**: When testing mutations, track each individual path result in the `mutation_paths` object. The overall `mutation_tests` field should reflect the aggregate status (all passed = "passed", any failed = "failed", no mutations = "n/a").
+**IMPORTANT**: When testing mutations, track each individual path result in the `mutation_paths` object. The overall `mutation_tests` field should reflect the aggregate status (all testable paths passed = "passed", any testable path failed = "failed", no mutations = "n/a"). Paths marked "skipped" due to NotMutatable status do not count as failures.
 
 When a type is tested, update its status in place:
 - Only test types where `spawn_test` is "untested" - change to "passed" or "failed" 
-- Update each path in `mutation_paths` from "untested" to "passed" or "failed" as you test them
+- Update each path in `mutation_paths` from "untested" to "passed", "failed", or "skipped" (only for NotMutatable paths) as you examine them
 - Only test types where `mutation_tests` is "untested" - change to "passed" or "failed"
 - Add any relevant notes about failures or special handling
 
@@ -243,11 +243,16 @@ Each subagent receives these instructions for testing a single assigned type:
    - If no entity exists (entity_count == 0): Return COMPONENT_NOT_FOUND result
 
 4. **Test ALL Mutation Paths** (Only if mutations supported and component exists)
-   - For EACH path in `mutation_paths` (no exceptions, test them ALL):
-     - Determine test value from the path_info (use example value provided)
-     - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, port 20116
-     - CRITICAL: For empty paths use `""` not `"\"\""`
-     - Record result as "passed" or "failed" for each path
+   - For EACH path in `mutation_paths` (no exceptions, examine them ALL):
+     - **FIRST: Check path_kind**: If `path_kind` is `"NotMutatable"`:
+       - Mark this path as "skipped" with note about NotMutatable reason
+       - Do NOT attempt mutation on this path
+       - Continue to next path
+     - **ONLY if path_kind is NOT NotMutatable**: 
+       - Determine test value from the path_info (use example value provided)
+       - Call `mcp__brp__bevy_mutate_component` with entity, component, path, value, port 20116
+       - CRITICAL: For empty paths use `""` not `"\"\""`
+       - Record result as "passed" or "failed" for each path
    - Continue testing ALL paths even if some fail
 
 5. **Return Structured Result**
@@ -261,8 +266,8 @@ Each subagent receives these instructions for testing a single assigned type:
      "mutation_tests_attempted": true|false, 
      "mutation_tests": "passed|failed",
      "mutation_paths": {
-       ".path1": "passed|failed",
-       ".path2": "passed|failed"
+       ".path1": "passed|failed|skipped",
+       ".path2": "passed|failed|skipped"
      },
      "notes": "Any error details or explanations",
      "error_details": "Specific failure information if status is FAIL"
@@ -277,13 +282,15 @@ Each subagent receives these instructions for testing a single assigned type:
 **Field Rules**:
 - Only include `spawn_test` if `spawn_test_attempted: true`
 - Only include `mutation_tests` if `mutation_tests_attempted: true`
-- `mutation_paths` should contain results for ALL paths tested
-- `mutation_tests` is "passed" only if ALL mutation paths passed
-- `mutation_tests` is "failed" if ANY mutation path failed
+- `mutation_paths` should contain results for ALL paths examined
+- `mutation_tests` is "passed" only if ALL testable mutation paths passed (skipped paths don't count as failures)
+- `mutation_tests` is "failed" if ANY testable mutation path failed
+- **CRITICAL**: Paths may ONLY be marked "skipped" if `path_kind` is `"NotMutatable"` - no other reason is valid
 
 **CRITICAL RULES**:
 - Test ONLY your assigned type - do not test any other types
-- Test EVERY mutation path - no shortcuts or sampling
+- Examine EVERY mutation path - no shortcuts or sampling
+- **STRICT SKIPPING RULE**: Only skip mutation paths if `path_kind` is `"NotMutatable"` - no other reason is valid
 - **DO NOT update any JSON files** - return results only
 - Use port 20116 for all BRP operations
 - Return the JSON structure above as your ONLY response
@@ -299,11 +306,11 @@ After each batch:
 1. **Collect structured results**: Parse JSON responses from all subagents in the batch
 2. **Validate results**: Ensure all subagents returned valid JSON with required fields
 3. **Process results by status**:
-   - `COMPONENT_NOT_FOUND`: Stop testing, handle missing component, restart app, retry batch
-   - `FAIL`: Stop testing immediately, report failure details  
+   - `FAIL`: Separate failed results for later handling
    - `PASS`: Add to successful results for JSON update
-4. **Single atomic JSON update**: Main agent updates `test-app/examples/type_validation.json` with all batch results
-5. **Continue or stop**: If all results are PASS, continue to next batch; otherwise stop
+4. **Update passed types FIRST**: Main agent updates `test-app/examples/type_validation.json` with ONLY the passed results
+5. **Handle failures AFTER update**: If any results failed, stop testing and report failure details after saving passed results
+6. **Continue or stop**: If all results are PASS, continue to next batch; otherwise stop after updating passed types
 
 **Main Agent JSON Update Responsibility**: 
 - Convert subagent structured results to JSON file format
@@ -326,14 +333,16 @@ After each batch:
 
 **Batch Result Processing Workflow**:
 1. **Collect Results**: Parse all subagent JSON responses into structured data
-2. **Load Current State**: Use Read tool to load `test-app/examples/type_validation.json`
-3. **Update Entries**: For each subagent result, find matching type entry and update:
-   - `spawn_test`: Set to "passed"/"failed" if `spawn_test_attempted: true`, otherwise leave as "skipped" 
-   - `mutation_tests`: Set to "passed"/"failed" if `mutation_tests_attempted: true`, otherwise leave as existing value
+2. **Separate by Status**: Group results into PASS and FAIL categories
+3. **Load Current State**: Use Read tool to load `test-app/examples/type_validation.json`
+4. **Update PASSED Entries ONLY**: For each PASSED subagent result, find matching type entry and update:
+   - `spawn_test`: Set to "passed" if `spawn_test_attempted: true`, otherwise leave as "skipped" 
+   - `mutation_tests`: Set to "passed" if `mutation_tests_attempted: true`, otherwise leave as existing value
    - `mutation_paths`: Update with all path results from subagent
-   - `notes`: Set based on subagent `error_details` if status is FAIL
-4. **Atomic Update**: Use Write tool to save complete updated JSON back to file
-5. **Verification**: Confirm all updates were saved correctly
+   - `notes`: Clear any previous failure notes
+5. **Atomic Update**: Use Write tool to save complete updated JSON back to file
+6. **Verification**: Confirm all updates were saved correctly
+7. **Handle Failures**: After successful update of passed types, process any FAIL results
 
 **Subagent Result to JSON Mapping**:
 ```
@@ -341,7 +350,7 @@ subagent.spawn_test_attempted = true → json.spawn_test = subagent.spawn_test
 subagent.spawn_test_attempted = false → json.spawn_test = "skipped" (or leave existing)
 subagent.mutation_tests_attempted = true → json.mutation_tests = subagent.mutation_tests  
 subagent.mutation_tests_attempted = false → json.mutation_tests = unchanged
-subagent.mutation_paths → json.mutation_paths (direct copy)
+subagent.mutation_paths → json.mutation_paths (direct copy, includes "skipped" for NotMutatable paths)
 subagent.error_details → json.notes (if status is FAIL)
 ```
 

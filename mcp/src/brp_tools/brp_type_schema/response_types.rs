@@ -431,6 +431,8 @@ pub enum MutationPathKind {
         components: Vec<String>,
         final_type: BrpTypeName,
     },
+    /// Path cannot be mutated - explanatory reason provided in example
+    NotMutatable,
 }
 
 impl MutationPathKind {
@@ -469,6 +471,9 @@ impl MutationPathKind {
                     )
                 }
             }
+            Self::NotMutatable => {
+                "Path cannot be mutated - see example for explanation".to_string()
+            }
         }
     }
 
@@ -480,6 +485,7 @@ impl MutationPathKind {
             Self::TupleElement { .. } => "TupleElement",
             Self::ArrayElement { .. } => "ArrayElement",
             Self::NestedPath { .. } => "NestedPath",
+            Self::NotMutatable => "NotMutatable",
         }
     }
 }

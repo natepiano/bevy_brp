@@ -9,7 +9,7 @@ use serde_json::{Map, Value, json};
 use super::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, MAX_TYPE_RECURSION_DEPTH, SCHEMA_REF_PREFIX,
 };
-use super::format_knowledge::{BRP_FORMAT_KNOWLEDGE, FormatKnowledgeKey, Knowledge};
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_path_builders::{
     EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField,
 };
@@ -159,7 +159,7 @@ impl TypeInfo {
         type_name: &BrpTypeName,
     ) -> Option<Value> {
         // Use enum dispatch for format knowledge lookup
-        if let Some(example_value) = FormatKnowledgeKey::find_example_value_for_type(type_name) {
+        if let Some(example_value) = KnowledgeKey::find_example_value_for_type(type_name) {
             return Some(example_value);
         }
 
@@ -275,15 +275,21 @@ impl TypeInfo {
         }
 
         // Use enum dispatch for format knowledge lookup
-        if let Some(example_value) = FormatKnowledgeKey::find_example_value_for_type(type_name) {
+        if let Some(example_value) = KnowledgeKey::find_example_value_for_type(type_name) {
             return example_value;
         }
 
-        // Check for wrapper types (Option, Handle) and use their default examples
-        if let Some((wrapper_type, _)) = WrapperType::detect(type_name.as_str()) {
-            // For wrapper types, use the wrapper's default example
-            // This handles Option::None -> null, Handle::Weak -> {"Weak": {}}
-            return wrapper_type.default_example();
+        // Check for wrapper types (Option, Handle) and build proper examples
+        if let Some((wrapper_type, inner_type)) = WrapperType::detect(type_name.as_str()) {
+            // Build example for the inner type first, fall back to default if building fails
+            let inner_example =
+                Self::build_example_value_for_type_with_depth(&inner_type, registry, depth + 1);
+            // If inner example is null or failed, use wrapper default instead
+            if inner_example.is_null() {
+                return wrapper_type.default_example();
+            }
+            // Return wrapped example (e.g., {"Some": inner} or {"Strong": [inner]})
+            return wrapper_type.wrap_example(inner_example);
         }
 
         // Check if we have the type in the registry
@@ -496,10 +502,10 @@ impl TypeInfo {
     ) -> HashMap<String, MutationPath> {
         // Check if this type has format knowledge with TreatAsValue
         let format_knowledge =
-            BRP_FORMAT_KNOWLEDGE.get(&FormatKnowledgeKey::exact(brp_type_name.to_string()));
+            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(brp_type_name.to_string()));
 
         if let Some(knowledge) = format_knowledge
-            && let Knowledge::TreatAsValue { simplified_type } = &knowledge.mutation_knowledge
+            && let KnowledgeGuidance::TreatAsValue { simplified_type } = &knowledge.guidance
         {
             // For types that should be treated as values, only provide a root mutation
             let mut paths = HashMap::new();

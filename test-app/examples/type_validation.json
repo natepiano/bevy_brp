@@ -2,47 +2,47 @@
   {
     "type": "bevy_core_pipeline::bloom::settings::Bloom",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      ".composite_mode": "passed",
-      ".high_pass_frequency": "passed",
-      ".intensity": "passed",
-      ".low_frequency_boost": "passed",
-      ".low_frequency_boost_curvature": "passed",
-      ".max_mip_dimension": "passed",
-      ".prefilter": "passed",
-      ".prefilter.threshold": "passed",
-      ".prefilter.threshold_softness": "passed",
-      ".scale": "passed",
-      ".scale.x": "passed",
-      ".scale.y": "passed"
+      ".composite_mode": "untested",
+      ".high_pass_frequency": "untested",
+      ".intensity": "untested",
+      ".low_frequency_boost": "untested",
+      ".low_frequency_boost_curvature": "untested",
+      ".max_mip_dimension": "untested",
+      ".prefilter": "untested",
+      ".prefilter.threshold": "untested",
+      ".prefilter.threshold_softness": "untested",
+      ".scale": "untested",
+      ".scale.x": "untested",
+      ".scale.y": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
     "type": "bevy_core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpening",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      ".denoise": "passed",
-      ".enabled": "passed",
-      ".sharpening_strength": "passed"
+      ".denoise": "untested",
+      ".enabled": "untested",
+      ".sharpening_strength": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
     "type": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      ".depth_load_op": "passed",
-      ".depth_texture_usages": "passed",
-      ".screen_space_specular_transmission_quality": "passed",
-      ".screen_space_specular_transmission_steps": "passed"
+      ".depth_load_op": "untested",
+      ".depth_texture_usages": "untested",
+      ".screen_space_specular_transmission_quality": "untested",
+      ".screen_space_specular_transmission_steps": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -75,29 +75,29 @@
   {
     "type": "bevy_core_pipeline::post_process::ChromaticAberration",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      ".color_lut": "passed",
-      ".intensity": "passed",
-      ".max_samples": "passed"
+      ".color_lut": "untested",
+      ".intensity": "untested",
+      ".max_samples": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
     "type": "bevy_core_pipeline::skybox::Skybox",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      ".brightness": "passed",
-      ".image": "passed",
-      ".rotation": "passed",
-      ".rotation.w": "passed",
-      ".rotation.x": "passed",
-      ".rotation.y": "passed",
-      ".rotation.z": "passed"
+      ".brightness": "untested",
+      ".image": "untested",
+      ".rotation": "untested",
+      ".rotation.w": "untested",
+      ".rotation.x": "untested",
+      ".rotation.y": "untested",
+      ".rotation.z": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -113,21 +113,21 @@
   {
     "type": "bevy_core_pipeline::tonemapping::DebandDither",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      "": "passed"
+      "": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
     "type": "bevy_core_pipeline::tonemapping::Tonemapping",
     "spawn_test": "skipped",
-    "mutation_tests": "passed",
+    "mutation_tests": "untested",
     "mutation_paths": {
-      "": "passed"
+      "": "untested"
     },
-    "batch_number": null,
+    "batch_number": 1,
     "notes": "No spawn/insert support"
   },
   {
@@ -137,7 +137,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": ""
   },
   {
@@ -147,7 +147,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -157,7 +157,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -168,7 +168,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -178,7 +178,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -188,7 +188,7 @@
     "mutation_paths": {
       ".value": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -205,7 +205,7 @@
       ".product_id": "untested",
       ".vendor_id": "untested"
     },
-    "batch_number": 1,
+    "batch_number": 2,
     "notes": "No spawn/insert support"
   },
   {
@@ -259,10 +259,10 @@
     "spawn_test": "skipped",
     "mutation_tests": "untested",
     "mutation_paths": {
-      ".inverse_bindposes": "untested",
-      ".joints": "untested"
+      ".joints": "untested",
+      "inverse_bindposes": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -272,7 +272,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -283,7 +283,7 @@
       ".image": "untested",
       ".tag": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -296,7 +296,7 @@
       ".directional_light_exponent": "untested",
       ".falloff": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -308,7 +308,7 @@
       ".minimum_distance": "untested",
       ".overlap_proportion": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -319,7 +319,7 @@
       ".cascades": "untested",
       ".cascades.0": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -329,7 +329,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 2,
+    "batch_number": 3,
     "notes": "No spawn/insert support"
   },
   {
@@ -394,7 +394,7 @@
       ".shadow_normal_bias": "untested",
       ".shadows_enabled": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -412,7 +412,7 @@
       ".rotation.z": "untested",
       ".specular_map": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -424,7 +424,7 @@
       ".intensity": "untested",
       ".voxels": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -435,7 +435,7 @@
       ".constant_object_thickness": "untested",
       ".quality_level": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -450,7 +450,7 @@
       ".thickness": "untested",
       ".use_secant": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -463,7 +463,7 @@
       ".jitter": "untested",
       ".step_count": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -480,7 +480,7 @@
       ".target": "untested",
       ".viewport": "untested"
     },
-    "batch_number": 3,
+    "batch_number": 4,
     "notes": "No spawn/insert support"
   },
   {
@@ -521,7 +521,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -533,7 +533,7 @@
       ".offset.x": "untested",
       ".offset.y": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -544,7 +544,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -555,7 +555,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -572,7 +572,7 @@
       ".half_extents.y": "untested",
       ".half_extents.z": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -606,7 +606,7 @@
       ".shadows.lift": "untested",
       ".shadows.saturation": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -616,7 +616,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 4,
+    "batch_number": 5,
     "notes": "No spawn/insert support"
   },
   {
@@ -659,7 +659,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -671,7 +671,7 @@
       ".start_margin": "untested",
       ".use_aabb": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -682,7 +682,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -693,7 +693,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -704,7 +704,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -715,7 +715,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -725,7 +725,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 5,
+    "batch_number": 6,
     "notes": "No spawn/insert support"
   },
   {
@@ -780,7 +780,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": "No spawn/insert support"
   },
   {
@@ -791,7 +791,7 @@
       ".entities": "untested",
       ".needs_rerender": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": "No spawn/insert support"
   },
   {
@@ -802,7 +802,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": "No spawn/insert support"
   },
   {
@@ -815,7 +815,7 @@
       ".font_smoothing": "untested",
       ".line_height": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": "No spawn/insert support"
   },
   {
@@ -826,7 +826,7 @@
       ".justify": "untested",
       ".linebreak": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": "No spawn/insert support"
   },
   {
@@ -837,7 +837,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": "No spawn/insert support"
   },
   {
@@ -848,7 +848,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 6,
+    "batch_number": 7,
     "notes": ""
   },
   {
@@ -898,7 +898,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": ""
   },
   {
@@ -911,7 +911,7 @@
       ".normalized.y": "untested",
       ".normalized_visible_node_rect": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": ""
   },
   {
@@ -922,7 +922,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": ""
   },
   {
@@ -933,7 +933,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": ""
   },
   {
@@ -946,7 +946,7 @@
       ".top_left": "untested",
       ".top_right": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": ""
   },
   {
@@ -957,7 +957,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": ""
   },
   {
@@ -968,7 +968,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 7,
+    "batch_number": 8,
     "notes": "No spawn/insert support"
   },
   {
@@ -1099,7 +1099,7 @@
       ".top": "untested",
       ".width": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": ""
   },
   {
@@ -1111,7 +1111,7 @@
       ".offset": "untested",
       ".width": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": ""
   },
   {
@@ -1122,7 +1122,7 @@
       ".offset_x": "untested",
       ".offset_y": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": "No spawn/insert support"
   },
   {
@@ -1135,7 +1135,7 @@
       ".offset.x": "untested",
       ".offset.y": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": "No spawn/insert support"
   },
   {
@@ -1145,7 +1145,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": "No spawn/insert support"
   },
   {
@@ -1156,7 +1156,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": "No spawn/insert support"
   },
   {
@@ -1167,7 +1167,7 @@
       "": "untested",
       ".0": "untested"
     },
-    "batch_number": 8,
+    "batch_number": 9,
     "notes": "No spawn/insert support"
   },
   {
@@ -1217,7 +1217,7 @@
       ".needs_measure_fn": "untested",
       ".needs_recompute": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": "No spawn/insert support"
   },
   {
@@ -1235,7 +1235,7 @@
       ".scale_factor": "untested",
       ".video_modes": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": ""
   },
   {
@@ -1304,7 +1304,7 @@
       ".window_level": "untested",
       ".window_theme": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": ""
   },
   {
@@ -1314,7 +1314,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": "No spawn/insert support"
   },
   {
@@ -1332,7 +1332,7 @@
       ".vertices[1]": "untested",
       ".vertices[2]": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": ""
   },
   {
@@ -1363,7 +1363,7 @@
       ".transform.translation.y": "untested",
       ".transform.translation.z": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": ""
   },
   {
@@ -1373,7 +1373,7 @@
     "mutation_paths": {
       "": "untested"
     },
-    "batch_number": 9,
+    "batch_number": 10,
     "notes": "No spawn/insert support"
   },
   {
@@ -1423,7 +1423,7 @@
       ".coords.0": "untested",
       ".coords.1": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 11,
     "notes": ""
   },
   {
@@ -1436,7 +1436,7 @@
       ".1": "untested",
       ".2": "untested"
     },
-    "batch_number": 10,
+    "batch_number": 11,
     "notes": ""
   }
 ]

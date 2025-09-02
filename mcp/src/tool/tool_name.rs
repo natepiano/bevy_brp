@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use strum::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
 use super::annotations::{Annotation, EnvironmentImpact, ToolCategory};
-use super::parameters;
 use super::types::ErasedToolFn;
+use super::{ToolDef, parameters};
 use crate::app_tools::{
     self, LaunchBevyAppParams, LaunchBevyExampleParams, ListBevyApps, ListBevyExamples,
     ListBrpApps, Shutdown, ShutdownParams, Status, StatusParams,
@@ -607,8 +607,8 @@ impl ToolName {
     }
 
     /// Convert this tool name to a complete `ToolDef`
-    pub fn to_tool_def(self) -> crate::tool::ToolDef {
-        crate::tool::ToolDef {
+    pub fn to_tool_def(self) -> ToolDef {
+        ToolDef {
             tool_name:   self,
             annotations: self.get_annotations(),
             handler:     self.create_handler(),
@@ -617,7 +617,7 @@ impl ToolName {
     }
 
     /// Get all tool definitions for registration with the MCP service
-    pub fn get_all_tool_definitions() -> Vec<crate::tool::ToolDef> {
+    pub fn get_all_tool_definitions() -> Vec<ToolDef> {
         use strum::IntoEnumIterator;
 
         Self::iter().map(Self::to_tool_def).collect()
