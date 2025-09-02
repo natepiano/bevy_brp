@@ -47,25 +47,16 @@ Each type entry structure:
 
 ### 1. Load Progress and Reassign Batch Numbers (MANDATORY)
 
-Always clear and reassign batch numbers, even if they exist:
+Always clear and reassign batch numbers using the renumbering script:
 
 ```bash
-# Clear all batch numbers
-jq 'map(.batch_number = null)' test-app/tests/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/tests/type_validation.json
-
-# Assign batch numbers to untested types only (divide by BATCH_SIZE)
-jq '
-  [.[] | select(.test_status == "untested" or .test_status == "failed")] as $untested |
-  ($untested | to_entries | map({key: .value.type, value: ((.key / 30) | floor + 1)}) | from_entries) as $batch_map |
-  map(
-    if (.test_status == "untested" or .test_status == "failed") then
-      .batch_number = $batch_map[.type]
-    else
-      .batch_number = null
-    end
-  )
-' test-app/tests/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/tests/type_validation.json
+./test-app/tests/renumber_batches.sh
 ```
+
+This script will:
+- Clear all existing batch numbers
+- Assign new batch numbers to untested/failed types (BATCH_SIZE=30 per batch)
+- Display statistics about types to be tested
 
 ### 2. Test Types Using Parallel Subagents
 
@@ -136,6 +127,41 @@ Return structured JSON array with results for ALL assigned types."""
 - Strings: Use quoted strings
 - Enums: Use variant names from examples
 - Skip paths with `path_kind: "NotMutatable"`
+
+**CRITICAL TYPE HANDLING - NUMBERS MUST BE NUMBERS**:
+When you get examples from `brp_type_schema`, pay EXTREME attention to the type:
+- If the example is a number (like `20` or `3.14`), you MUST pass it as a JSON number
+- If the example is a string (like `"example"`), pass it as a JSON string
+- **NEVER** convert numbers to strings - this will cause "invalid type: string \"20\", expected u32" errors
+- For numeric types (u32, usize, f32, etc.), the value in your mutation call MUST be:
+  - CORRECT: `"value": 20` (raw number in JSON)
+  - WRONG: `"value": "20"` (string representation - THIS WILL FAIL)
+- When the schema shows `"example": 20`, this means use the number 20, NOT the string "20"
+
+**CRITICAL Parameter Formatting**:
+- **Empty paths**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
+- **Parameter ordering**: If you encounter repeated "Unable to extract parameters" errors when calling `mcp__brp__bevy_mutate_component`, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
+
+**Example of CORRECT mutation calls**:
+```json
+// For a u32 field - use raw number
+{
+  "entity": 123,
+  "component": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+  "path": ".depth_texture_usages",
+  "value": 20,  // ← NUMBER, not "20" string!
+  "port": 20116
+}
+
+// For a string field - use quoted string
+{
+  "entity": 123,
+  "component": "bevy_ecs::name::Name",
+  "path": "",
+  "value": "Entity Name",  // ← STRING is correct here
+  "port": 20116
+}
+```
 </TestInstructions>
 
 ### 4. Batch Result Processing (Main Agent)

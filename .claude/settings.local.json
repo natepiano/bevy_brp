@@ -61,7 +61,8 @@
       "Bash(chmod:*)",
       "Bash(rm:*)",
       "Read(/tmp/**)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(./test-app/tests/renumber_batches.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
