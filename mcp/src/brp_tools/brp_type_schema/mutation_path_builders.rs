@@ -42,6 +42,11 @@ fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName>
         .map(BrpTypeName::from)
 }
 
+/// Helper to get a schema field as an array
+fn get_schema_field_as_array(schema: &Value, field: SchemaField) -> Option<&Vec<Value>> {
+    schema.get_field(field).and_then(Value::as_array)
+}
+
 /// Context for building mutation paths - handles root vs field scenarios
 /// necessary because Struct, specifically, allows us to recurse down a level
 /// for complex types that have Struct fields
@@ -159,86 +164,32 @@ impl<'a> MutationPathContext<'a> {
         }
     }
 
-    /// Check if a type actually supports mutation by examining its schema
-    fn type_supports_mutation(&self, type_name: &BrpTypeName) -> bool {
-        // Get the schema for the type
-        let Some(schema) = self.get_type_schema(type_name) else {
-            return false; // Not in registry = not mutatable
-        };
-
-        // Check the type kind
-        let type_kind = TypeKind::from_schema(schema, type_name);
-
-        match type_kind {
-            TypeKind::Value => {
-                // Value types are mutatable only if they have serialization support
-                self.value_type_has_serialization(type_name)
-            }
-            TypeKind::List | TypeKind::Array => {
-                // Check if element type supports mutation
-                if let Some(items) = schema.get("items")
-                    && let Some(item_type_ref) = items.get("type").and_then(|t| t.get("$ref"))
-                    && let Some(item_type) = Self::extract_type_from_ref(item_type_ref)
-                {
-                    return self.type_supports_mutation(&item_type);
-                }
-                false // Can't determine element type = not mutatable
-            }
-            TypeKind::Map => {
-                // Check if value type supports mutation
-                if let Some(value_type) = Self::extract_map_value_type(schema) {
-                    return self.type_supports_mutation(&value_type);
-                }
-                false
-            }
-            TypeKind::Option => {
-                // Check if inner type supports mutation
-                if let Some(inner_type) = Self::extract_option_inner_type(schema) {
-                    return self.type_supports_mutation(&inner_type);
-                }
-                false
-            }
-            // Structs, Tuples, Enums generally support mutation
-            // (but their fields might not)
-            TypeKind::Struct | TypeKind::Tuple | TypeKind::TupleStruct | TypeKind::Enum => true,
-        }
+    /// Helper to get a schema field as an array
+    fn get_schema_field_as_array<'b>(
+        &self,
+        schema: &'b Value,
+        field: SchemaField,
+    ) -> Option<&'b Vec<Value>> {
+        get_schema_field_as_array(schema, field)
     }
 
-    /// Extract type name from a JSON schema $ref
-    fn extract_type_from_ref(ref_value: &Value) -> Option<BrpTypeName> {
-        ref_value
-            .as_str()
-            .and_then(|s| s.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from)
-    }
+    /// Check if a value type has serialization support
+    /// Used to determine if opaque Value types like String can be mutated
+    fn value_type_has_serialization(&self, type_name: &BrpTypeName) -> bool {
+        use super::response_types::ReflectTrait;
 
-    /// Extract the value type from a Map schema
-    fn extract_map_value_type(schema: &Value) -> Option<BrpTypeName> {
-        schema
-            .get("additionalProperties")
-            .and_then(|props| props.get("type"))
-            .and_then(|t| t.get("$ref"))
-            .and_then(Self::extract_type_from_ref)
-    }
+        self.get_type_schema(type_name).is_some_and(|schema| {
+            let reflect_types: Vec<ReflectTrait> =
+                get_schema_field_as_array(schema, SchemaField::ReflectTypes)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|v| v.as_str())
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
 
-    /// Extract the inner type from an Option schema
-    fn extract_option_inner_type(schema: &Value) -> Option<BrpTypeName> {
-        schema
-            .get("oneOf")
-            .and_then(|variants| variants.as_array())
-            .and_then(|arr| {
-                arr.iter().find(|v| {
-                    v.get("typePath")
-                        .and_then(|p| p.as_str())
-                        .is_some_and(|s| s.ends_with("::Some"))
-                })
-            })
-            .and_then(|some_variant| some_variant.get("prefixItems"))
-            .and_then(|items| items.as_array())
-            .and_then(|arr| arr.first())
-            .and_then(|item| item.get("type"))
-            .and_then(|t| t.get("$ref"))
-            .and_then(Self::extract_type_from_ref)
+            reflect_types.contains(&ReflectTrait::Serialize)
+                && reflect_types.contains(&ReflectTrait::Deserialize)
+        })
     }
 }
 
@@ -274,30 +225,36 @@ impl MutationPathBuilder for TypeKind {
                 DefaultMutationBuilder.build_paths(ctx)
             }
             Self::Value => {
-                // Value types (opaque types in Bevy's reflection system) cannot be mutated
-                let reason = "Opaque type - cannot be mutated through Bevy's reflection system. \
-                              This type is treated as a black box and does not support field access \
-                              or mutation operations.";
+                // Check if this value type has serialization support
+                if ctx.value_type_has_serialization(ctx.type_name()) {
+                    // Serializable value types like String can be mutated
+                    DefaultMutationBuilder.build_paths(ctx)
+                } else {
+                    // Non-serializable value types remain non-mutatable
+                    let reason = "Opaque type without serialization support - cannot be mutated \
+                                  through Bevy's reflection system. This type is treated as a black box \
+                                  and does not support field access or mutation operations.";
 
-                let path = match &ctx.location {
-                    RootOrField::Root { type_name } => {
-                        StructMutationBuilder::build_not_mutatable_path(
-                            "",
-                            type_name,
+                    let path = match &ctx.location {
+                        RootOrField::Root { type_name } => {
+                            StructMutationBuilder::build_not_mutatable_path(
+                                "",
+                                type_name,
+                                reason.to_string(),
+                            )
+                        }
+                        RootOrField::Field {
+                            field_name,
+                            field_type,
+                            ..
+                        } => StructMutationBuilder::build_not_mutatable_path(
+                            field_name,
+                            field_type,
                             reason.to_string(),
-                        )
-                    }
-                    RootOrField::Field {
-                        field_name,
-                        field_type,
-                        ..
-                    } => StructMutationBuilder::build_not_mutatable_path(
-                        field_name,
-                        field_type,
-                        reason.to_string(),
-                    ),
-                };
-                Ok(vec![path])
+                        ),
+                    };
+                    Ok(vec![path])
+                }
             }
         }
     }
@@ -490,9 +447,7 @@ impl EnumMutationBuilder {
         registry: &HashMap<BrpTypeName, Value>,
         enum_type: Option<&BrpTypeName>,
     ) -> Value {
-        if let Some(one_of) = schema
-            .get_field(SchemaField::OneOf)
-            .and_then(Value::as_array)
+        if let Some(one_of) = get_schema_field_as_array(schema, SchemaField::OneOf)
             && let Some(first_variant) = one_of.first()
         {
             // Use the new type-safe EnumVariantInfo with pattern matching instead of conditional
@@ -836,7 +791,6 @@ impl StructMutationBuilder {
             return HardcodedPathsResult::Fallback;
         };
 
-
         // Get enum variants if this is an enum
         let enum_variants = if wrapper_info.is_none() {
             ctx.get_type_schema(field_type).and_then(|schema| {
@@ -869,22 +823,9 @@ impl StructMutationBuilder {
         field_type: &BrpTypeName,
         wrapper_info: Option<(WrapperType, BrpTypeName)>,
     ) -> Result<Vec<MutationPathInternal>> {
-        // Check if field type supports mutation
-        if !ctx.type_supports_mutation(field_type) {
-            let reason = format!("Type {} does not support mutation", field_type.as_str());
-            return Ok(vec![Self::build_not_mutatable_path(
-                field_name, field_type, reason,
-            )]);
-        }
-
-        // Type supports mutation, continue with normal processing
+        // Get schema for field type
         let Some(field_type_schema) = ctx.get_type_schema(field_type) else {
-            // This should not happen since type_supports_mutation returned true,
-            // but handle gracefully just in case
-            let reason = format!(
-                "Type {} supports mutation but schema not found",
-                field_type.as_str()
-            );
+            let reason = format!("Type {} not found in schema registry", field_type.as_str());
             return Ok(vec![Self::build_not_mutatable_path(
                 field_name, field_type, reason,
             )]);
@@ -894,7 +835,7 @@ impl StructMutationBuilder {
         // Create a field context for this property
         let field_ctx = ctx.create_field_context(field_name, field_type, wrapper_info);
 
-        // Dispatch to the appropriate builder based on field type kind
+        // Dispatch to the appropriate builder - it will naturally determine mutability
         type_kind.build_paths(&field_ctx)
     }
 
@@ -999,34 +940,25 @@ impl TupleMutationBuilder {
 
     /// Build a mutation path for a single tuple element with registry checking
     fn build_tuple_element_path(
-        ctx: &MutationPathContext,
         index: usize,
         element_info: &Value,
         path_prefix: &str,
         parent_type: &BrpTypeName,
     ) -> Option<MutationPathInternal> {
-        let element_type = SchemaField::extract_field_type(element_info)?;
+        let element_type = SchemaField::extract_field_type(element_info).or_else(|| {
+            warn!(
+                "Failed to extract element type for tuple index {} in {}",
+                index, parent_type
+            );
+            None
+        })?;
         let path = if path_prefix.is_empty() {
             format!(".{index}")
         } else {
             format!("{path_prefix}.{index}")
         };
 
-        // Check if the type supports mutation (not just if it's in registry)
-        if !ctx.type_supports_mutation(&element_type) {
-            return Some(MutationPathInternal {
-                path,
-                example: json!({
-                    "NotMutatable": format!("Type {} does not support mutation", element_type),
-                    "agent_directive": "This type or its inner types cannot be mutated through BRP"
-                }),
-                enum_variants: None,
-                type_name: element_type,
-                path_kind: MutationPathKind::NotMutatable,
-            });
-        }
-
-        // Type supports mutation, build normal path
+        // Build example value, let the type system determine if it's mutatable
         let elem_example = BRP_MUTATION_KNOWLEDGE
             .get(&KnowledgeKey::exact(&element_type))
             .map_or(json!(null), |k| k.example_value.clone());
@@ -1077,9 +1009,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         };
 
         // Get prefix items (tuple elements) from schema
-        let prefix_items = schema
-            .get_field(SchemaField::PrefixItems)
-            .and_then(Value::as_array);
+        let prefix_items = ctx.get_schema_field_as_array(schema, SchemaField::PrefixItems);
 
         // Build example tuple value using the extracted method
         let example = Self::build_tuple_example(
@@ -1123,7 +1053,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
                         if let Some(path) =
-                            Self::build_tuple_element_path(ctx, index, element_info, "", type_name)
+                            Self::build_tuple_element_path(index, element_info, "", type_name)
                         {
                             paths.push(path);
                         }
@@ -1139,7 +1069,6 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 if let Some(items) = prefix_items {
                     for (index, element_info) in items.iter().enumerate() {
                         if let Some(path) = Self::build_tuple_element_path(
-                            ctx,
                             index,
                             element_info,
                             &format!(".{field_name}"),

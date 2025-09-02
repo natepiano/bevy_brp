@@ -20,33 +20,27 @@ use super::response_types::{
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
-/// Represents the mutation state of a type based on its mutation paths
+/// Represents mutation support status for a type
 #[derive(Debug, Clone, PartialEq)]
-enum MutationState {
-    /// All mutation paths are mutatable
-    All,
-    /// Some mutation paths are mutatable, others are not
-    Some,
-    /// No mutation paths are mutatable
-    None,
+enum MutationSupport {
+    /// At least one mutation path is mutatable
+    Supported,
+    /// No mutation paths are mutatable  
+    NotSupported,
 }
 
-impl MutationState {
+impl MutationSupport {
     fn from_paths(paths: &HashMap<String, MutationPath>) -> Self {
-        let mutatable_count = paths
-            .values()
-            .filter(|path| {
-                !matches!(
-                    path.path_kind,
-                    super::response_types::MutationPathKind::NotMutatable
-                )
-            })
-            .count();
-
-        match (mutatable_count, paths.len()) {
-            (0, _) => Self::None,
-            (n, total) if n == total => Self::All,
-            _ => Self::Some,
+        let has_mutatable = paths.values().any(|path| {
+            !matches!(
+                path.path_kind,
+                super::response_types::MutationPathKind::NotMutatable
+            )
+        });
+        if has_mutatable {
+            Self::Supported
+        } else {
+            Self::NotSupported
         }
     }
 }
@@ -105,28 +99,16 @@ impl TypeInfo {
         // Get supported operations
         let supported_operations = Self::get_supported_operations(&reflect_types);
 
-        // Only get mutation paths if mutation is supported
-        let can_mutate = supported_operations.contains(&BrpSupportedOperation::Mutate);
-        let mutation_paths = if can_mutate {
-            Self::get_mutation_paths(&brp_type_name, type_schema, registry)
-        } else {
-            HashMap::new()
-        };
+        // Always build mutation paths to determine actual mutation support
+        let mutation_paths = Self::get_mutation_paths(&brp_type_name, type_schema, registry);
 
-        // Check mutation state and update supported operations accordingly
+        // Check mutation support using the MutationSupport enum
+        let mutation_support = MutationSupport::from_paths(&mutation_paths);
+
+        // Earn mutation support based on actual capability
         let mut supported_operations = supported_operations;
-        if !mutation_paths.is_empty() {
-            let mutation_state = MutationState::from_paths(&mutation_paths);
-
-            match mutation_state {
-                MutationState::None => {
-                    // Remove Mutate from supported operations
-                    supported_operations.retain(|op| *op != BrpSupportedOperation::Mutate);
-                }
-                MutationState::Some | MutationState::All => {
-                    // Keep mutation support for partial or full mutability
-                }
-            }
+        if matches!(mutation_support, MutationSupport::Supported) {
+            supported_operations.push(BrpSupportedOperation::Mutate);
         }
 
         // Build spawn format if spawn/insert is supported
@@ -583,20 +565,16 @@ impl TypeInfo {
 
         if has_component {
             operations.push(BrpSupportedOperation::Get);
-            // Mutation only requires reflection support (being in the registry)
-            operations.push(BrpSupportedOperation::Mutate);
             if has_serialize && has_deserialize {
                 operations.push(BrpSupportedOperation::Spawn);
                 operations.push(BrpSupportedOperation::Insert);
             }
         }
 
-        if has_resource {
-            // Mutation only requires reflection support (being in the registry)
-            operations.push(BrpSupportedOperation::Mutate);
-            if has_serialize && has_deserialize {
-                operations.push(BrpSupportedOperation::Insert);
-            }
+        if has_resource && has_serialize && has_deserialize {
+            // Resources support Insert but mutation capability is determined dynamically
+            // based on actual mutation path analysis in from_schema()
+            operations.push(BrpSupportedOperation::Insert);
         }
 
         operations
