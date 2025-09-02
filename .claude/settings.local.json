@@ -60,7 +60,8 @@
       "mcp__brp__brp_set_tracing_level",
       "Bash(chmod:*)",
       "Bash(rm:*)",
-      "Read(/tmp/**)"
+      "Read(/tmp/**)",
+      "Bash(mv:*)"
     ],
     "deny": [
       "Bash(sed:*)"
