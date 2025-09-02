@@ -1,0 +1,107 @@
+[
+  {
+    "id": "phase1_add_method",
+    "content": "PHASE 1: Add missing value_type_has_serialization method to MutationPathContext (IMPLEMENTATION-001 & 002)",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Add method to mcp/src/brp_tools/brp_type_schema/mutation_path_builders.rs in MutationPathContext impl block with proper imports"
+  },
+  {
+    "id": "phase1_build1", 
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Build after adding missing method"
+  },
+  {
+    "id": "phase1_value_logic",
+    "content": "Update TypeKind::Value mutation logic to use serialization checking instead of always NotMutatable",
+    "status": "pending", 
+    "priority": "high",
+    "notes": "Modify TypeKind::Value match arm in mutation_path_builders.rs lines 276-301 to check serialization support"
+  },
+  {
+    "id": "phase1_build2",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors", 
+    "status": "pending",
+    "priority": "high",
+    "notes": "Build after updating Value type logic"
+  },
+  {
+    "id": "phase2_remove_upfront",
+    "content": "PHASE 2: Remove upfront Mutate assignment from get_supported_operations() (Step 1)",
+    "status": "pending",
+    "priority": "high", 
+    "notes": "Remove lines in type_info.rs that add Mutate operation upfront for Components and Resources"
+  },
+  {
+    "id": "phase2_build1",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Build after removing upfront Mutate assignment"
+  },
+  {
+    "id": "phase2_post_build_analysis",
+    "content": "Add post-build mutation analysis to from_schema() method (Step 2)", 
+    "status": "pending",
+    "priority": "high",
+    "notes": "Add logic to check mutation paths and add Mutate operation if any mutatable paths exist"
+  },
+  {
+    "id": "phase2_simplify_enum",
+    "content": "Simplify MutationState enum to MutationSupport with only Supported/NotSupported variants (SIMPLIFICATION-001)",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Replace MutationState enum with simpler MutationSupport enum in type_info.rs"
+  },
+  {
+    "id": "phase2_build2", 
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Build after adding post-build analysis and enum simplification"
+  },
+  {
+    "id": "clippy_check",
+    "content": "Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`",
+    "status": "pending", 
+    "priority": "high",
+    "notes": "Check for clippy issues after Phase 2 changes"
+  },
+  {
+    "id": "clippy_fix",
+    "content": "Fix all clippy issues following warning rules",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Fix any clippy warnings without adding #[allow(dead_code)]"
+  },
+  {
+    "id": "phase3_remove_method",
+    "content": "PHASE 3: Remove type_supports_mutation() method entirely (Step 3)",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Remove type_supports_mutation() method from mutation_path_builders.rs to eliminate circular dependency"
+  },
+  {
+    "id": "phase3_build",
+    "content": "Run `cargo build && cargo +nightly fmt` and fix errors",
+    "status": "pending",
+    "priority": "high", 
+    "notes": "Build after removing obsolete method"
+  },
+  {
+    "id": "test_run",
+    "content": "Run `cargo nextest run`",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Run tests to validate implementation"
+  },
+  {
+    "id": "test_failure_check", 
+    "content": "STOP if test failures - review with user",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Stop for user review if any test failures occur"
+  }
+]
