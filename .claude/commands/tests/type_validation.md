@@ -1,7 +1,7 @@
 # Type Schema Comprehensive Validation Test
 
 ## Objective
-Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `test-app/examples/type_validation.json` to avoid retesting passed types.
+Systematically validate ALL BRP component types by testing spawn/insert and mutation operations using individual type schema files. This test tracks progress in `test-app/tests/type_validation.json` to avoid retesting passed types.
 
 **CRITICAL EXECUTION REQUIREMENTS**:
 1. **ALWAYS reassign batch numbers** - Even if batch numbers exist, clear and reassign them EVERY time the test runs
@@ -34,12 +34,12 @@ When ANY subagent returns "COMPONENT_NOT_FOUND":
 
 ## Schema Source
 - **Type schemas**: Retrieved dynamically via `mcp__brp__brp_type_schema` tool
-- **Progress tracking**: `test-app/examples/type_validation.json` (single file tracking all types)
+- **Progress tracking**: `test-app/tests/type_validation.json` (single file tracking all types)
 
 ## Progress Tracking
 
 The test uses a single JSON file to track testing progress:
-- `test-app/examples/type_validation.json`: Contains all types with their current test status
+- `test-app/tests/type_validation.json`: Contains all types with their current test status
 
 Each type entry has the following structure:
 
@@ -63,7 +63,7 @@ When a type is tested, update its status in place:
 
 ## Test Strategy
 
-1. **Load progress**: Read `test-app/examples/type_validation.json` to identify untested types
+1. **Load progress**: Read `test-app/tests/type_validation.json` to identify untested types
 2. **Assign batches**: Group untested types into batches of 20 for parallel processing  
 3. **Launch subagents**: Process each batch with 10 parallel subagents, each testing 2 types
 4. **Collect results**: Gather structured results from all subagents in the batch
@@ -92,7 +92,7 @@ When a type is tested, update its status in place:
 **EXECUTION MODEL**: The main agent (you) ALWAYS orchestrates the test by launching parallel subagents. This is NOT optional - parallel subagents are REQUIRED for testing individual types.
 
 1. Main agent: Manages batches, launches subagents, collects structured results, performs atomic JSON updates, handles app restarts
-2. Subagents: Test individual types (one subagent per type) and return structured results (NO JSON updates)
+2. Subagents: Test two types each (two types per subagent) and return structured results (NO JSON updates)
 3. Parallelism: Up to 10 subagents run simultaneously per batch
 
 Do NOT display statistics, counts, or summaries.
@@ -103,9 +103,9 @@ Do NOT display statistics, counts, or summaries.
 
 **CRITICAL**: This step is MANDATORY even if batch numbers already exist. We ALWAYS clear and reassign to ensure correct batching.
 
-1. Use Read tool to load `test-app/examples/type_validation.json`
+1. Use Read tool to load `test-app/tests/type_validation.json`
 2. **MANDATORY: Clear all batch numbers**: Use bash command to set ALL batch_number fields to null
-3. **MANDATORY: Assign new batch numbers**: Assign batch numbers ONLY to untested types in groups of 10
+3. **MANDATORY: Assign new batch numbers**: Assign batch numbers ONLY to untested types in groups of 20
 4. Identify untested types:
    - Types where spawn_test is "untested" OR
    - Types where mutation_tests is "untested" OR
@@ -118,7 +118,7 @@ Do NOT display statistics, counts, or summaries.
 **Step 1: Clear all batch numbers (in place)**
 Use Bash tool to run this command (requires permission):
 ```bash
-jq 'map(.batch_number = null)' test-app/examples/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/examples/type_validation.json
+jq 'map(.batch_number = null)' test-app/tests/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/tests/type_validation.json
 ```
 
 **Step 2: Assign batch numbers to untested types only (in place)**
@@ -139,7 +139,7 @@ jq '
       .batch_number = null
     end
   )
-' test-app/examples/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/examples/type_validation.json
+' test-app/tests/type_validation.json > /tmp/type_validation_temp.json && mv /tmp/type_validation_temp.json test-app/tests/type_validation.json
 ```
 
 This ensures that:
@@ -333,7 +333,7 @@ After each batch:
 3. **Process results by status**:
    - `FAIL`: Separate failed results for later handling
    - `PASS`: Add to successful results for JSON update
-4. **Update passed types FIRST**: Main agent updates `test-app/examples/type_validation.json` with ONLY the passed results
+4. **Update passed types FIRST**: Main agent updates `test-app/tests/type_validation.json` with ONLY the passed results
 5. **Handle failures AFTER update**: If any results failed, stop testing and report failure details after saving passed results
 6. **Continue or stop**: If all results are PASS, continue to next batch; otherwise stop after updating passed types
 
@@ -359,7 +359,7 @@ After each batch:
 **Batch Result Processing Workflow**:
 1. **Collect Results**: Parse all subagent JSON responses into structured data
 2. **Separate by Status**: Group results into PASS and FAIL categories
-3. **Load Current State**: Use Read tool to load `test-app/examples/type_validation.json`
+3. **Load Current State**: Use Read tool to load `test-app/tests/type_validation.json`
 4. **Update PASSED Entries ONLY**: For each PASSED subagent result, find matching type entry and update:
    - `spawn_test`: Set to "passed" if `spawn_test_attempted: true`, otherwise leave as "skipped" 
    - `mutation_tests`: Set to "passed" if `mutation_tests_attempted: true`, otherwise leave as existing value
@@ -416,7 +416,7 @@ subagent.error_details → json.notes (if status is FAIL)
 **On failure**:
 
 ### Standard Failure (bugs, missing components, etc.)
-1. Mark type as "failed" in test-app/examples/type_validation.json
+1. Mark type as "failed" in test-app/tests/type_validation.json
 2. Record failure details:
    - Operation that failed (spawn/insert/mutate)
    - Error message
