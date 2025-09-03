@@ -137,7 +137,13 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 1. **Get Type Schema** - Call `mcp__brp__brp_type_schema`
 2. **Test Spawn** (if supported) - Use spawn_format from schema
-3. **Prepare Mutations** - Query for entity with component
+3. **Prepare Mutations** - Query for entity with component using:
+   ```json
+   {
+     "filter": {"with": ["component::type::name"]},
+     "data": {"components": []}
+   }
+   ```
 4. **Test Mutations** - Test each path from mutation_paths array
 5. **Return Results** - Structured JSON for all types
 
@@ -222,7 +228,9 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
 After each batch completes:
 
 1. **Collect results**: Gather all subagent results into a single JSON array
-2. **Write to temp file**: Use the Write tool to save results array to `$TMPDIR/batch_results_${batch_number}.json`
+2. **Write to temp file**: **MANDATORY** - Use the Write tool to save results array to `$TMPDIR/batch_results_${batch_number}.json`
+   - **NEVER use bash commands like `cat >` or `echo >` for writing JSON files**
+   - **ALWAYS use the Write tool** - this prevents permission interruptions
 3. **Execute merge script**: Run `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json test-app/tests/type_validation.json`
 4. **Handle merge results**:
    - Script exit code 0: All passed, continue to next batch
