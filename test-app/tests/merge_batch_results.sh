@@ -38,14 +38,18 @@ fi
 jq --slurpfile results "$RESULTS_FILE" '
   . as $validation |
   $results[0] as $batch_results |
+  # Create a lookup map from batch results for efficient access
+  ($batch_results | map({key: .type, value: .}) | from_entries) as $result_map |
+  # Map over all validation entries, updating only those with results
   $validation | map(
     . as $entry |
-    ($batch_results[] | select(.type == $entry.type)) as $result |
-    if $result then
+    if $result_map[.type] then
+      # Update entry with test result
       $entry | 
-      .test_status = (if $result.status == "PASS" then "passed" else "failed" end) |
-      .fail_reason = $result.fail_reason
+      .test_status = (if $result_map[.type].status == "PASS" then "passed" else "failed" end) |
+      .fail_reason = $result_map[.type].fail_reason
     else
+      # Keep entry unchanged if no result for this type
       $entry
     end
   )
