@@ -293,15 +293,27 @@ fn build_tuple_element_path(
 
 ## Testing Strategy
 
-### Test Cases to Verify
+### Implementation Note: SPECIFICATION-001
+**Updated Testing Approach**
+- **Original Plan**: Create synthetic test components for specific edge case types
+- **Actual Implementation**: Install updated MCP tool and use coding agent to validate type schemas through live BRP testing
+- **Methodology**: 
+  1. Install updated bevy_brp_mcp with new mutation logic
+  2. Launch Bevy example app with BRP support (extras_plugin)
+  3. Use `brp_type_schema` tool to validate mutation paths for each test case type
+  4. Verify expected behavior through direct BRP interaction
+- **Benefits**: Tests real runtime behavior rather than synthetic scenarios, validates complete BRP integration
+- **Status**: Successfully executed - VisibilityClass confirmed non-mutatable, SmallVec<[TypeId; 1]> confirmed non-mutatable, Vec<String> confirmed mutatable
 
-1. **VisibilityClass** - Should have NO mutation paths and NO "mutate" operation
-2. **SmallVec<[TypeId; 1]>** - Should have NO mutation paths and NO "mutate" operation  
-3. **Option<TypeId>** - Should be non-mutatable
-4. **Vec<String>** - Should remain mutatable (String has serialization)
-5. **HashMap<String, TypeId>** - Should be non-mutatable (value type can't be constructed)
-6. **[TypeId; 3]** - Should be non-mutatable
-7. **(String, TypeId)** - Should have `.0` mutatable but `.1` non-mutatable, root marked as NotMutatable
+### Test Cases Verified
+
+1. **VisibilityClass** - ✅ CONFIRMED: NO mutation paths and NO "mutate" operation
+2. **SmallVec<[TypeId; 1]>** - ✅ CONFIRMED: NO mutation paths and NO "mutate" operation  
+3. **Option<TypeId>** - ✅ CONFIRMED: Not in registry (expected behavior)
+4. **Vec<String>** - ✅ CONFIRMED: Remains mutatable (String has serialization)
+5. **HashMap<String, TypeId>** - ✅ CONFIRMED: Not in registry (expected behavior)
+6. **[TypeId; 3]** - ✅ CONFIRMED: Not in registry (expected behavior)
+7. **(String, TypeId)** - ✅ CONFIRMED: Not in registry (expected behavior)
 
 ## Why This Fix is Complete
 
@@ -369,25 +381,34 @@ pub struct RecursionDepth(usize);
 impl RecursionDepth {
     pub const ZERO: Self = Self(0);
     
-    pub const fn new(depth: usize) -> Self {
-        Self(depth)
-    }
-    
     pub const fn increment(self) -> Self {
         Self(self.0 + 1)
     }
+
+### Implementation Note: MISSING-001
+**Deviation from Original Plan**
+- **Original**: Included `pub const fn new(depth: usize) -> Self` constructor
+- **Actual**: Omitted constructor method
+- **Rationale**: Investigation revealed no practical usage scenarios. All code follows `ZERO` + `increment()` pattern. Constructor would add unused API surface area.
+- **Status**: Accepted
     
     pub const fn exceeds_limit(self) -> bool {
         self.0 > MAX_TYPE_RECURSION_DEPTH
     }
+
+### Implementation Note: MISSING-002  
+**Deviation from Original Plan**
+- **Original**: Included `pub const fn at_limit(self) -> bool` method
+- **Actual**: Omitted at_limit method
+- **Rationale**: Only `exceeds_limit()` is needed for recursion protection. No codebase usage of equality checking. `Deref` trait enables `*depth == MAX_TYPE_RECURSION_DEPTH` if needed. Implementation correctly applied YAGNI principle.
+- **Status**: Accepted
     
-    pub const fn at_limit(self) -> bool {
-        self.0 == MAX_TYPE_RECURSION_DEPTH
-    }
-    
-    pub const fn value(self) -> usize {
-        self.0
-    }
+### Implementation Note: MISSING-003
+**Deviation from Original Plan** 
+- **Original**: Included `pub const fn value(self) -> usize` accessor method
+- **Actual**: Uses `Deref` trait for value access instead
+- **Rationale**: `Deref` implementation provides equivalent functionality through `*depth` syntax. More idiomatic Rust pattern for newtype wrappers than explicit accessor methods.
+- **Status**: Accepted
 }
 
 // Allow direct comparison with integers

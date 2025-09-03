@@ -9,6 +9,8 @@ pub const SCHEMA_REF_PREFIX: &str = "#/$defs/";
 // EXAMPLE GENERATION CONSTANTS
 // ============================================================================
 
+use std::ops::Deref;
+
 /// Default size for generated example arrays when size cannot be parsed
 pub const DEFAULT_EXAMPLE_ARRAY_SIZE: usize = 3;
 
@@ -17,6 +19,31 @@ pub const MAX_EXAMPLE_ARRAY_SIZE: usize = 10;
 
 /// Maximum recursion depth for type example generation to prevent stack overflow
 pub const MAX_TYPE_RECURSION_DEPTH: usize = 10;
+
+/// Type-safe wrapper for recursion depth tracking
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RecursionDepth(usize);
+
+impl RecursionDepth {
+    pub const ZERO: Self = Self(0);
+
+    pub const fn increment(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    pub const fn exceeds_limit(self) -> bool {
+        self.0 > MAX_TYPE_RECURSION_DEPTH
+    }
+}
+
+// Allow direct comparison with integers
+impl Deref for RecursionDepth {
+    type Target = usize;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 // ============================================================================
 // TYPE NAME CONSTANTS

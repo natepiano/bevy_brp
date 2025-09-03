@@ -76,7 +76,10 @@
       "Read(/Users/natemccoy/.claude/commands/shared/**)",
       "Read(/Users/natemccoy/.claude/commands/**)",
       "Read(/Users/natemccoy/.claude/commands/shared/**)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(echo $TMPDIR)",
+      "WebSearch",
+      "WebFetch(domain:cloudartisan.com)"
     ],
     "deny": [
       "Bash(sed:*)"

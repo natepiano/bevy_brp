@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use super::constants::{
-    DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, MAX_TYPE_RECURSION_DEPTH, SCHEMA_REF_PREFIX,
+    DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth, SCHEMA_REF_PREFIX,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_path_builders::{
@@ -289,17 +289,17 @@ impl TypeInfo {
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Value {
-        Self::build_example_value_for_type_with_depth(type_name, registry, 0)
+        Self::build_example_value_for_type_with_depth(type_name, registry, RecursionDepth::ZERO)
     }
 
     /// Build an example value for a specific type with recursion depth tracking
     fn build_example_value_for_type_with_depth(
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
-        depth: usize,
+        depth: RecursionDepth,
     ) -> Value {
         // Prevent stack overflow from deep recursion
-        if depth > MAX_TYPE_RECURSION_DEPTH {
+        if depth.exceeds_limit() {
             return json!(null);
         }
 
@@ -312,7 +312,7 @@ impl TypeInfo {
         if let Some((wrapper_type, inner_type)) = WrapperType::detect(type_name.as_str()) {
             // Build example for the inner type first, fall back to default if building fails
             let inner_example =
-                Self::build_example_value_for_type_with_depth(&inner_type, registry, depth + 1);
+                Self::build_example_value_for_type_with_depth(&inner_type, registry, depth.increment());
             // If inner example is null or failed, use wrapper default instead
             if inner_example.is_null() {
                 return wrapper_type.default_example();
@@ -344,7 +344,7 @@ impl TypeInfo {
                     let item_example = Self::build_example_value_for_type_with_depth(
                         &item_type_name,
                         registry,
-                        depth + 1,
+                        depth.increment(),
                     );
 
                     // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
@@ -379,7 +379,7 @@ impl TypeInfo {
                                             Self::build_example_value_for_type_with_depth(
                                                 &ft,
                                                 registry,
-                                                depth + 1,
+                                                depth.increment(),
                                             )
                                         },
                                     )

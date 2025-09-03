@@ -1,72 +1,51 @@
 # Type Schema Comprehensive Validation Test
 
-## Usage
-`/type_validation` - Validates ALL BRP component types by testing spawn/insert and mutation operations.
+## Overview
 
-## Execution Instructions
+**Command**: `/type_validation`
 
-1. **Check Status**: Use `brp_status` to check if extras_plugin is running on port 20116
-   - If running with BRP responding: Skip to step 5
-   - If not running or BRP not responding: Continue with step 2
-2. **Launch Example**: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
-3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on port 20116
-4. **Set Window Title**: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
-5. **Execute Test**: 
-   - Execute all test procedures below
-   - Use parallel subagents for type testing within batches
-   - Continue testing ALL types sequentially
-   - Only stop on failure or user interruption
-6. **Cleanup**: Shutdown example using `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)` after completion or failure
+**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `test-app/tests/type_validation.json` with simple pass/fail status for each type.
 
-## Configuration Constants
+**Process Summary**: Renumber batches → Launch/verify app → Test types in parallel batches → Process results → Cleanup
+
+**Configuration**:
 ```
 BATCH_SIZE = 30              # Types per batch
 MAX_SUBAGENTS = 10           # Parallel subagents per batch  
 TYPES_PER_SUBAGENT = 3       # Types each subagent tests
+PORT = 20116                 # BRP port for testing
 ```
-
-## Objective
-Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. This test tracks progress in `test-app/tests/type_validation.json` with simple pass/fail status for each type.
 
 ## Critical Execution Requirements
 
-1. **ALWAYS reassign batch numbers** - Clear and reassign every run
-2. **ALWAYS use parallel subagents** - Launch MAX_SUBAGENTS in parallel per batch
+**Core Rules**:
+1. **ALWAYS reassign batch numbers** - Clear and reassign every run using renumber script
+2. **ALWAYS use parallel subagents** - Launch MAX_SUBAGENTS in parallel per batch  
 3. **Main agent orchestrates, subagents test** - Main agent never tests directly
-4. **STOP ON ANY FAILURE** - If ANY type fails in a batch, STOP IMMEDIATELY. Do not continue to next batch.
+4. **STOP ON ANY FAILURE** - If ANY type fails in a batch, STOP IMMEDIATELY. Do not continue to next batch
 5. **Simple pass/fail per type** - One overall result per type
 
-**FAILURE MEANS STOP**: When any subagent reports a FAIL status, the entire test suite MUST stop. Save progress and report the failure to the user. DO NOT CONTINUE testing subsequent batches.
+**Failure Handling**:
+- **FAILURE MEANS STOP**: When any subagent reports a FAIL status, the entire test suite MUST stop
+- Save progress and report the failure to the user
+- **DO NOT CONTINUE** testing subsequent batches after any failure
+- Test can be resumed later after fixing issues
 
-## Execution Architecture
+**App Management**:
+- Only ONE extras_plugin should run on port 20116
+- Subagents MUST NOT launch apps - they use the existing app
+- Main agent handles ALL app lifecycle (launch/restart/shutdown)
 
-- **Main Agent**: Manages batches, launches subagents, collects results, executes merge script, handles app restarts
-- **Subagents**: Test assigned types, return structured results (NO JSON updates)
-- **Parallelism**: Up to MAX_SUBAGENTS run simultaneously per batch
-- **Fast Updates**: Pre-built shell script merges results in milliseconds
+**Common Failure Prevention**:
+- **JSON Number Types**: ALL numeric primitives (u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64) MUST be JSON numbers, not strings
+- **Critical Error**: `"invalid type: string"` means YOU serialized a number wrong - fix and retry before marking as FAIL
+- **Large Numbers**: Even huge numbers like 18446744073709551615 are JSON numbers, not strings
 
-## Schema and Progress Tracking
+## Complete Execution Procedure
 
-- **Type schemas**: Retrieved via `mcp__brp__brp_type_schema` 
-- **Progress file**: `test-app/tests/type_validation.json`
+### Step 1: Batch Setup and Renumbering
 
-Each type entry structure:
-```json
-{
-  "type": "bevy_transform::components::transform::Transform",
-  "spawn_support": "supported",  
-  "mutation_paths": [".translation.x", ".rotation", ".scale"],  
-  "test_status": "untested",  
-  "batch_number": 1,
-  "fail_reason": ""  
-}
-```
-
-## Test Execution Steps
-
-### 1. Load Progress and Reassign Batch Numbers (MANDATORY)
-
-Always clear and reassign batch numbers using the renumbering script:
+**MANDATORY FIRST STEP**: Always clear and reassign batch numbers using the renumbering script:
 
 ```bash
 ./test-app/tests/renumber_batches.sh
@@ -77,23 +56,33 @@ This script will:
 - Assign new batch numbers to untested/failed types (BATCH_SIZE=30 per batch)
 - Display statistics about types to be tested
 
-### 2. Test Types Using Parallel Subagents
+### Step 2: Application Management
+
+1. **Check Status**: Use `mcp__brp__brp_status(app_name="extras_plugin", port=20116)` to check if extras_plugin is running
+   - If running with BRP responding: Skip to Step 3
+   - If not running or BRP not responding: Continue with launch procedure
+
+2. **Launch Example**: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
+
+3. **Verify Launch**: Use `mcp__brp__brp_status` to confirm BRP connectivity on port 20116
+
+4. **Set Window Title**: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
 
 Process each batch sequentially, with parallel subagents within each batch:
 
-1. Identify all types in current batch (up to BATCH_SIZE types)
-2. Divide types into groups of TYPES_PER_SUBAGENT each
-3. **CRITICAL**: Create one Task tool call for EACH group
-   - Number of Tasks = ceil(types_in_batch / TYPES_PER_SUBAGENT)
+1. **Identify batch types**: Get all types in current batch (up to BATCH_SIZE types)
+2. **Divide into groups**: Split types into groups of TYPES_PER_SUBAGENT each
+3. **Launch parallel subagents**:
+   - Create one Task tool call for EACH group
+   - Number of Tasks = ceil(types_in_batch / TYPES_PER_SUBAGENT)  
    - Each Task receives exactly TYPES_PER_SUBAGENT types (except possibly the last)
    - **ALL Tasks MUST be sent in a SINGLE message** to run in parallel
-4. Wait for ALL subagents to complete before proceeding
-5. Collect results and execute merge script
+4. **Wait for completion**: Wait for ALL subagents to complete before proceeding
+5. **Process results**: Collect results and execute merge script
 
 **EXECUTION REQUIREMENT**: Never send Tasks one at a time. Always batch ALL Task calls for the entire batch into a single message with multiple tool invocations to ensure parallel execution.
 
-#### Parallel Subagent Template
-
+**Subagent Template**:
 ```python
 Task(
     description="Test [concatenate all short type names with ' + '] (batch [X], subagent [Y]/[MAX_SUBAGENTS])",
@@ -103,13 +92,13 @@ Task(
 Test these types: 
 [List all assigned full::qualified::type::names here, one per line]
 
-[Include ENTIRE TestInstructions section]
+[Include ENTIRE TestInstructions section below]
 
 Return structured JSON array with results for ALL assigned types."""
 )
 ```
 
-### 3. Individual Type Testing (Subagent Instructions)
+### Step 4: Individual Type Testing (Subagent Instructions)
 
 <TestInstructions>
 ⚠️ **CRITICAL - WHAT YOU MUST NOT DO** ⚠️
@@ -228,16 +217,17 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
 ```
 </TestInstructions>
 
-### 4. Batch Result Processing (Main Agent)
+### Step 5: Batch Result Processing
 
 After each batch completes:
-1. Collect all subagent results into a single JSON array
-2. Write results array to temp file: `$TMPDIR/batch_results_${batch_number}.json`
-3. Execute merge script: `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json test-app/tests/type_validation.json`
-4. **CRITICAL FAILURE HANDLING**:
+
+1. **Collect results**: Gather all subagent results into a single JSON array
+2. **Write to temp file**: Use the Write tool to save results array to `$TMPDIR/batch_results_${batch_number}.json`
+3. **Execute merge script**: Run `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json test-app/tests/type_validation.json`
+4. **Handle merge results**:
    - Script exit code 0: All passed, continue to next batch
    - Script exit code 2: Failures detected - **STOP IMMEDIATELY**
-   - `COMPONENT_NOT_FOUND` in results: Add component to extras_plugin.rs, restart app, retry batch
+   - `COMPONENT_NOT_FOUND` in results: Handle missing component (see Step 6)
 
 **Result Collection Format** (write this exact structure to temp file):
 ```json
@@ -250,38 +240,62 @@ After each batch completes:
 
 **NO EXCEPTIONS**: The merge script will detect failures and exit with code 2. If this happens, STOP the entire test.
 
-## Component Not Found Handling
+### Step 6: Component Not Found Handling
 
 When subagent returns `COMPONENT_NOT_FOUND`:
-1. Stop testing
+1. Stop current testing
 2. Add missing component to `test-app/examples/extras_plugin.rs`
-3. Shutdown example: `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
+3. Shutdown: `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
 4. Relaunch: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
 5. Reset title: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
 6. Retry SAME batch
 
-## Application Crash Handling
+### Step 7: Cleanup
+
+After completion or failure:
+- Shutdown example using `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
+
+## Reference Information
+
+### Progress Tracking Schema
+
+**Type schemas**: Retrieved via `mcp__brp__brp_type_schema`  
+**Progress file**: `test-app/tests/type_validation.json`
+
+Each type entry structure:
+```json
+{
+  "type": "bevy_transform::components::transform::Transform",
+  "spawn_support": "supported",  
+  "mutation_paths": [".translation.x", ".rotation", ".scale"],  
+  "test_status": "untested",  
+  "batch_number": 1,
+  "fail_reason": ""  
+}
+```
+
+### Application Crash Handling
 
 If app crashes during testing:
 1. Run `mcp__brp__brp_shutdown` (safety cleanup)
-2. Restart application
+2. Restart application 
 3. Mark type as failed with reason "App crashed during [operation]"
 4. Continue with next type
 5. Stop if same type crashes 2+ times
 
-## Success/Failure Criteria
+### Success/Failure Criteria
 
 **Success**: ALL types in ALL batches pass their tests (spawn if supported, all mutations)
 
 **Failure**: ANY single type fails = IMMEDIATE STOP
 - Save progress for the passed types
-- Report which types failed and why
+- Report which types failed and why  
 - **DO NOT CONTINUE TO NEXT BATCH**
 - Test can be resumed later after fixing issues
 
-## Key Principles
+### Execution Architecture
 
-- **No exceptions**: Test ALL mutation-capable components
-- **Batch updates**: Merge script updates JSON once per batch
-- **Continuous execution**: Don't stop unless actual failure
-- **Resume capability**: Can restart from any saved state
+- **Main Agent**: Manages batches, launches subagents, collects results, executes merge script, handles app restarts
+- **Subagents**: Test assigned types, return structured results (NO JSON updates)
+- **Parallelism**: Up to MAX_SUBAGENTS run simultaneously per batch
+- **Fast Updates**: Pre-built shell script merges results in milliseconds
