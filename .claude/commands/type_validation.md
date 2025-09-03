@@ -110,9 +110,22 @@ Return structured JSON array with results for ALL assigned types."""
 ### 3. Individual Type Testing (Subagent Instructions)
 
 <TestInstructions>
+⚠️ **WARNING - MOST COMMON FAILURE CAUSE** ⚠️
+The #1 reason tests fail is passing numbers as strings in JSON!
+- ❌ WRONG: `"value": "42"` or `"value": "3.14"` or `"value": "18446744073709551615"`  
+- ✅ RIGHT: `"value": 42` or `"value": 3.14` or `"value": 18446744073709551615`
+ALL primitive number types (u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64) MUST be JSON numbers!
+If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it and retry!
+
 **Your Task**: Test ALL assigned component types with simple pass/fail results. Return structured results array to main agent.
 
 **Port**: Use port 20116 for ALL BRP operations.
+
+**BEFORE YOU START - CRITICAL CHECKLIST**:
+□ I understand that ALL numeric types (f32, u32, i32, usize, etc.) must be JSON numbers, not strings
+□ I understand that large numbers like 18446744073709551615 are STILL JSON numbers, not strings
+□ I understand that if I get "invalid type: string" errors, it's MY mistake and I must retry with proper types
+□ I will NOT mark a type as FAIL on first type error - I will fix my JSON and retry
 
 **CRITICAL**: 
 - Do NOT update any JSON files
@@ -149,13 +162,29 @@ Return structured JSON array with results for ALL assigned types."""
 
 **CRITICAL TYPE HANDLING - NUMBERS MUST BE NUMBERS**:
 When you get examples from `brp_type_schema`, pay EXTREME attention to the type:
-- If the example is a number (like `20` or `3.14`), you MUST pass it as a JSON number
+- If the example is a primitive number type (f32, u32, i32, usize, f64, u64, i64, etc.), you MUST pass it as a JSON number
 - If the example is a string (like `"example"`), pass it as a JSON string
 - **NEVER** convert numbers to strings - this will cause "invalid type: string \"20\", expected u32" errors
-- For numeric types (u32, usize, f32, etc.), the value in your mutation call MUST be:
+- For ALL numeric primitive types (u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64), the value in your mutation call MUST be:
   - CORRECT: `"value": 20` (raw number in JSON)
+  - CORRECT: `"value": 3.14` (raw number in JSON)
+  - CORRECT: `"value": 18446744073709551615` (raw number in JSON, even for huge numbers!)
   - WRONG: `"value": "20"` (string representation - THIS WILL FAIL)
+  - WRONG: `"value": "3.14"` (string representation - THIS WILL FAIL)
+  - WRONG: `"value": "18446744073709551615"` (string representation - THIS WILL FAIL)
 - When the schema shows `"example": 20`, this means use the number 20, NOT the string "20"
+- **SPECIAL ATTENTION**: Large numbers like `usize::MAX` (18446744073709551615) are STILL numbers, not strings!
+
+**TYPE ERROR RECOVERY**:
+If you get "invalid type: string \"X\", expected TYPE" errors:
+1. **STOP! DO NOT mark as FAIL yet** - this is YOUR serialization error, not a component issue!
+2. You passed a number as a string. Fix it immediately:
+   - Remove quotes from ALL numbers: `"3.14"` → `3.14`
+   - Remove quotes from ALL booleans: `"false"` → `false`
+   - Remove quotes from LARGE numbers: `"18446744073709551615"` → `18446744073709551615`
+3. Retry the mutation with corrected JSON number type
+4. Only mark FAIL if the retry with proper number types also fails
+5. **REMEMBER**: Getting this error means YOU made a mistake, not the component
 
 **CRITICAL Parameter Formatting**:
 - **Empty paths**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
@@ -187,8 +216,8 @@ When you get examples from `brp_type_schema`, pay EXTREME attention to the type:
 
 After each batch completes:
 1. Collect all subagent results into a single JSON array
-2. Write results array to temp file: `test-app/tests/batch_results_${batch_number}.json`
-3. Execute merge script: `./test-app/tests/merge_batch_results.sh test-app/tests/batch_results_${batch_number}.json test-app/tests/type_validation.json`
+2. Write results array to temp file: `$TMPDIR/batch_results_${batch_number}.json`
+3. Execute merge script: `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json test-app/tests/type_validation.json`
 4. **CRITICAL FAILURE HANDLING**:
    - Script exit code 0: All passed, continue to next batch
    - Script exit code 2: Failures detected - **STOP IMMEDIATELY**
