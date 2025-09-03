@@ -73,7 +73,8 @@
       "Read(/Users/natemccoy/.claude/commands/shared/**)",
       "Bash(git rm:*)",
       "Read(/Users/natemccoy/.claude/commands/**)",
-      "Read(/Users/natemccoy/.claude/commands/shared/**)"
+      "Read(/Users/natemccoy/.claude/commands/shared/**)",
+      "Read(/Users/natemccoy/.claude/commands/**)"
     ],
     "deny": [
       "Bash(sed:*)"
