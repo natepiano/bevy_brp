@@ -79,7 +79,10 @@
       "Bash(cat:*)",
       "Bash(echo $TMPDIR)",
       "WebSearch",
-      "WebFetch(domain:cloudartisan.com)"
+      "WebFetch(domain:cloudartisan.com)",
+      "Bash(touch:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [
       "Bash(sed:*)"
