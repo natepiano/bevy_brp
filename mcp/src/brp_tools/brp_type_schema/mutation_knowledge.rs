@@ -155,43 +155,43 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Numeric types =====
         map.insert(
             KnowledgeKey::exact(TYPE_I8),
-            MutationKnowledge::simple(json!(-128)),
+            MutationKnowledge::simple(json!(42)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I16),
-            MutationKnowledge::simple(json!(-32768)),
+            MutationKnowledge::simple(json!(1000)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I32),
-            MutationKnowledge::simple(json!(-2_147_483_648)),
+            MutationKnowledge::simple(json!(100_000)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I64),
-            MutationKnowledge::simple(json!(-9_223_372_036_854_775_808_i64)),
+            MutationKnowledge::simple(json!(1_000_000_000_i64)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I128),
-            MutationKnowledge::simple(json!("-170141183460469231731687303715884105728")),
+            MutationKnowledge::simple(json!("123456789012345678901234567890")),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U8),
-            MutationKnowledge::simple(json!(255)),
+            MutationKnowledge::simple(json!(128)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U16),
-            MutationKnowledge::simple(json!(65535)),
+            MutationKnowledge::simple(json!(5000)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U32),
-            MutationKnowledge::simple(json!(4_294_967_295_u32)),
+            MutationKnowledge::simple(json!(1_000_000_u32)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U64),
-            MutationKnowledge::simple(json!(18_446_744_073_709_551_615_u64)),
+            MutationKnowledge::simple(json!(10_000_000_000_u64)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U128),
-            MutationKnowledge::simple(json!("340282366920938463463374607431768211455")),
+            MutationKnowledge::simple(json!("987654321098765432109876543210")),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F32),
@@ -205,11 +205,11 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Size types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ISIZE),
-            MutationKnowledge::simple(json!(-9_223_372_036_854_775_808_i64)),
+            MutationKnowledge::simple(json!(1_000_000_i64)),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_USIZE),
-            MutationKnowledge::simple(json!(18_446_744_073_709_551_615_u64)),
+            MutationKnowledge::simple(json!(2_000_000_u64)),
         );
 
         // ===== Text types =====
