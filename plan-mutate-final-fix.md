@@ -60,27 +60,63 @@ fn type_supports_mutation_with_depth(&self, type_name: &BrpTypeName, depth: usiz
             self.value_type_has_serialization(type_name)
         }
         TypeKind::List | TypeKind::Array => {
-            // Extract and check element type
-            self.extract_list_element_type(schema)
-                .map_or(false, |elem_type| self.type_supports_mutation_with_depth(&elem_type, depth + 1))
+            // Extract and check element type with explicit error handling
+            match self.extract_list_element_type(schema) {
+                Some(elem_type) => self.type_supports_mutation_with_depth(&elem_type, depth + 1),
+                None => {
+                    warn!(
+                        type_name = %type_name,
+                        type_kind = "List/Array",
+                        "Failed to extract element type from schema, treating as non-mutatable"
+                    );
+                    false
+                }
+            }
         }
         TypeKind::Map => {
-            // Extract and check value type (keys are always strings)
-            self.extract_map_value_type(schema)
-                .map_or(false, |val_type| self.type_supports_mutation_with_depth(&val_type, depth + 1))
+            // Extract and check value type (keys are always strings) with explicit error handling
+            match self.extract_map_value_type(schema) {
+                Some(val_type) => self.type_supports_mutation_with_depth(&val_type, depth + 1),
+                None => {
+                    warn!(
+                        type_name = %type_name,
+                        type_kind = "Map",
+                        "Failed to extract value type from schema, treating as non-mutatable"
+                    );
+                    false
+                }
+            }
         }
         TypeKind::Option => {
-            // Extract and check inner type
-            self.extract_option_inner_type(schema)
-                .map_or(false, |inner_type| self.type_supports_mutation_with_depth(&inner_type, depth + 1))
+            // Extract and check inner type with explicit error handling
+            match self.extract_option_inner_type(schema) {
+                Some(inner_type) => self.type_supports_mutation_with_depth(&inner_type, depth + 1),
+                None => {
+                    warn!(
+                        type_name = %type_name,
+                        type_kind = "Option",
+                        "Failed to extract inner type from schema, treating as non-mutatable"
+                    );
+                    false
+                }
+            }
         }
         TypeKind::Tuple | TypeKind::TupleStruct => {
-            // ALL tuple elements must be mutatable
-            self.extract_tuple_element_types(schema)
-                .map_or(false, |elements| {
+            // ALL tuple elements must be mutatable with explicit error handling
+            match self.extract_tuple_element_types(schema) {
+                Some(elements) => {
                     !elements.is_empty() && 
                     elements.iter().all(|elem| self.type_supports_mutation_with_depth(elem, depth + 1))
-                })
+                }
+                None => {
+                    warn!(
+                        type_name = %type_name,
+                        type_kind = "Tuple/TupleStruct",
+                        "Failed to extract element types from schema, treating as non-mutatable"
+                    );
+                    false
+                }
+            }
         }
         // Structs and Enums are considered mutatable at the type level
         // Their individual fields will be checked when building paths
@@ -307,28 +343,117 @@ fn build_tuple_element_path(
 - **Reason**: Investigation found this would be abstraction for abstraction's sake that adds complexity without meaningful value
 - **Investigation Findings**: Container types have fundamentally different schema structures and return types. A trait would force artificial uniformity where natural differences exist, adding cognitive overhead without solving any actual problem. The current approach with simple helper methods is cleaner and more maintainable
 
-## DESIGN REVIEW AGREEMENT: IMPLEMENTATION-001 - Add recursion depth protection
+## DESIGN REVIEW AGREEMENT: TYPE-SYSTEM-003 - Strong typed recursion depth management
 
 **Plan Status**: ✅ APPROVED - Ready for future implementation
 
 ### Problem Addressed
-The recursive type checking could cause infinite loops with self-referential types like `struct Node { next: Option<Box<Node>> }`
+The plan uses raw `usize` for depth tracking without domain constraints, allowing potential misuse and making intent unclear. The same issue exists in both mutation checking and spawn example building.
 
 ### Solution Overview  
-Add depth parameter to track recursion level and use the existing `MAX_TYPE_RECURSION_DEPTH` constant from `constants.rs` to prevent stack overflow
+Add a `RecursionDepth` newtype wrapper with `Deref` implementation to prevent depth manipulation errors and provide clear semantics for recursion tracking operations. This type will be shared between mutation checking and spawn example building.
 
 ### Required Code Changes
 
 #### Files to Modify:
+
+**File**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/constants.rs`
+- **Add RecursionDepth newtype after MAX_TYPE_RECURSION_DEPTH constant**:
+```rust
+use std::ops::Deref;
+
+/// Type-safe wrapper for recursion depth tracking
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RecursionDepth(usize);
+
+impl RecursionDepth {
+    pub const ZERO: Self = Self(0);
+    
+    pub const fn new(depth: usize) -> Self {
+        Self(depth)
+    }
+    
+    pub const fn increment(self) -> Self {
+        Self(self.0 + 1)
+    }
+    
+    pub const fn exceeds_limit(self) -> bool {
+        self.0 > MAX_TYPE_RECURSION_DEPTH
+    }
+    
+    pub const fn at_limit(self) -> bool {
+        self.0 == MAX_TYPE_RECURSION_DEPTH
+    }
+    
+    pub const fn value(self) -> usize {
+        self.0
+    }
+}
+
+// Allow direct comparison with integers
+impl Deref for RecursionDepth {
+    type Target = usize;
+    
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+```
+
 **File**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/mutation_path_builders.rs`
-- **Lines to change**: Update Step 1 implementation in plan to include depth protection
-- **Current code pattern**: Direct recursive calls without depth tracking
-- **New code implementation**: Two-method pattern with public API and depth-tracking implementation
+- **Update Step 1 implementation to use RecursionDepth**:
+```rust
+use super::constants::{MAX_TYPE_RECURSION_DEPTH, RecursionDepth};
+
+/// Public API for checking if a type supports mutation
+fn type_supports_mutation(&self, type_name: &BrpTypeName) -> bool {
+    self.type_supports_mutation_with_depth(type_name, RecursionDepth::ZERO)
+}
+
+/// Recursively check if a type supports mutation with depth protection
+fn type_supports_mutation_with_depth(&self, type_name: &BrpTypeName, depth: RecursionDepth) -> bool {
+    // Prevent stack overflow from deep recursion
+    if depth.exceeds_limit() {
+        warn!(
+            "Max recursion depth {} reached while checking mutation support for {}, assuming not mutatable",
+            MAX_TYPE_RECURSION_DEPTH, type_name
+        );
+        return false;
+    }
+    
+    // ... rest of implementation using depth.increment() instead of depth + 1
+}
+```
+
+**File**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/type_info.rs`
+- **Update build_example_value_for_type_with_depth to use RecursionDepth**:
+```rust
+use super::constants::{MAX_TYPE_RECURSION_DEPTH, RecursionDepth};
+
+pub fn build_example_value_for_type(
+    type_name: &BrpTypeName,
+    registry: &HashMap<BrpTypeName, Value>,
+) -> Value {
+    Self::build_example_value_for_type_with_depth(type_name, registry, RecursionDepth::ZERO)
+}
+
+fn build_example_value_for_type_with_depth(
+    type_name: &BrpTypeName,
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: RecursionDepth,
+) -> Value {
+    if depth.exceeds_limit() {
+        return Self::get_default_for_depth_exceeded(type_name);
+    }
+    // ... rest using depth.increment() instead of depth + 1
+}
+```
 
 ### Integration with Existing Plan
 - **Dependencies**: None - can be implemented alongside other Step 1 changes
-- **Impact on existing sections**: Updates the core `type_supports_mutation` method implementation
-- **Related components**: Consistent with existing recursion protection in `build_example_value_for_type_with_depth`
+- **Impact on existing sections**: Updates both mutation checking and spawn example building
+- **Related components**: Unifies recursion depth handling across the codebase
+- **Deref benefit**: Allows existing comparisons like `if depth > 5` to work without changes
 
 ### Implementation Priority: High
 
@@ -337,9 +462,10 @@ Add depth parameter to track recursion level and use the existing `MAX_TYPE_RECU
 2. Test with self-referential types to ensure no stack overflow
 3. Verify warning logs appear when depth limit is reached
 4. Confirm depth limit of 10 handles all legitimate Bevy type nesting
+5. Verify Deref implementation allows ergonomic integer comparisons
 
 ---
-**Design Review Decision**: Approved for inclusion in plan on 2025-09-02
+**Design Review Decision**: Approved for inclusion in plan on 2025-09-03
 **Next Steps**: Code changes ready for implementation when needed
 
 ### IMPLEMENTATION-002: Build method path prefix logic needs validation
@@ -349,12 +475,205 @@ Add depth parameter to track recursion level and use the existing `MAX_TYPE_RECU
 - **Reason**: Investigation found that path malformation is impossible with the current logic
 - **Investigation Findings**: Rust field names are compile-time validated to only contain safe characters, numeric indices are always valid, and simple string concatenation cannot produce malformed paths. BRP itself provides path validation as the authoritative source. Adding validation would be over-engineering that adds complexity without solving any real problem
 
+## DESIGN REVIEW AGREEMENT: TYPE-SYSTEM-004 - Mutation support result enumeration
+
+**Plan Status**: ✅ APPROVED - Ready for future implementation
+
+### Problem Addressed
+The plan returns boolean from type support checks, missing opportunity for detailed error context about WHY mutation is not supported.
+
+### Solution Overview  
+Replace boolean returns with structured enum that provides actionable error information while maintaining efficiency. The enum variants will be converted to specific error messages that appear in the final JSON output to users.
+
+### Required Code Changes
+
+#### Files to Modify:
+
+**File**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/type_info.rs`
+- **Add MutationSupport enum**:
+```rust
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MutationSupport {
+    /// Type fully supports mutation operations
+    Supported,
+    /// Type lacks required serialization traits
+    MissingSerializationTraits,
+    /// Container type has non-mutatable element types  
+    NonMutatableElements { element_types: Vec<BrpTypeName> },
+    /// Type not found in registry
+    UnknownType,
+    /// Recursion depth limit exceeded during analysis
+    RecursionLimitExceeded,
+}
+
+impl MutationSupport {
+    pub const fn is_supported(&self) -> bool {
+        matches!(self, Self::Supported)
+    }
+    
+    /// Generate user-facing error message for this support status
+    pub fn to_error_message(&self, type_name: &BrpTypeName) -> String {
+        match self {
+            Self::Supported => String::new(),
+            Self::MissingSerializationTraits => 
+                format!("Type {} lacks Serialize/Deserialize traits required for mutation", type_name),
+            Self::NonMutatableElements { element_types } => 
+                format!("Type {} contains non-mutatable element types: {}", 
+                    type_name, 
+                    element_types.iter().map(|t| t.as_str()).collect::<Vec<_>>().join(", ")),
+            Self::UnknownType => 
+                format!("Type {} not found in schema registry", type_name),
+            Self::RecursionLimitExceeded => 
+                format!("Type {} analysis exceeded maximum recursion depth", type_name),
+        }
+    }
+}
+```
+
+**File**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/mutation_path_builders.rs`
+- **Update type checking to return enum internally**:
+```rust
+/// Public API maintaining boolean interface for compatibility
+fn type_supports_mutation(&self, type_name: &BrpTypeName) -> bool {
+    self.type_supports_mutation_detailed(type_name).is_supported()
+}
+
+/// Get detailed mutation support information
+fn type_supports_mutation_detailed(&self, type_name: &BrpTypeName) -> MutationSupport {
+    self.type_supports_mutation_with_depth_detailed(type_name, RecursionDepth::ZERO)
+}
+
+/// Internal implementation with detailed results
+fn type_supports_mutation_with_depth_detailed(
+    &self, 
+    type_name: &BrpTypeName, 
+    depth: RecursionDepth
+) -> MutationSupport {
+    if depth.exceeds_limit() {
+        return MutationSupport::RecursionLimitExceeded;
+    }
+    
+    let Some(schema) = self.get_type_schema(type_name) else {
+        return MutationSupport::UnknownType;
+    };
+    
+    // ... rest of implementation returning appropriate enum variants
+}
+```
+
+- **Update error path building to use enum for messages**:
+```rust
+fn build_not_mutatable_path(ctx: &MutationPathContext<'_>) -> MutationPathInternal {
+    let support = ctx.type_supports_mutation_detailed(ctx.type_name());
+    let reason = support.to_error_message(ctx.type_name());
+    
+    MutationPathInternal {
+        path: "",
+        example: json!({
+            "NotMutatable": reason,
+            "agent_directive": "Type cannot be mutated through BRP"
+        }),
+        enum_variants: None,
+        type_name: ctx.type_name().clone(),
+        path_kind: MutationPathKind::NotMutatable,
+    }
+}
+
+// Alternative: Inline match for custom error formatting
+fn build_custom_error_path(ctx: &MutationPathContext<'_>) -> MutationPathInternal {
+    // Check mutation support (returns enum internally)
+    let support = ctx.type_supports_mutation_detailed(ctx.type_name());
+    
+    // Generate appropriate error message based on enum variant
+    let reason = match support {
+        MutationSupport::MissingSerializationTraits =>
+            format!("Type {} lacks Serialize/Deserialize traits", ctx.type_name()),
+        MutationSupport::NonMutatableElements { ref element_types } =>
+            format!("Type {} contains non-mutatable elements: {:?}", ctx.type_name(), element_types),
+        MutationSupport::UnknownType =>
+            format!("Type {} not found in schema registry", ctx.type_name()),
+        MutationSupport::RecursionLimitExceeded =>
+            format!("Type {} analysis exceeded recursion depth limit", ctx.type_name()),
+        MutationSupport::Supported => unreachable!("build_error_path called for supported type"),
+    };
+    
+    // Use the custom formatted reason in the error path
+    MutationPathInternal {
+        path: "",
+        example: json!({
+            "NotMutatable": reason,
+            "agent_directive": "Type cannot be mutated through BRP"
+        }),
+        enum_variants: None,
+        type_name: ctx.type_name().clone(),
+        path_kind: MutationPathKind::NotMutatable,
+    }
+}
+```
+
+### How Error Information is Exposed
+
+1. **Internal Analysis**: The `type_supports_mutation_detailed` method returns the enum with specific failure reason
+2. **Error Message Generation**: The enum's `to_error_message` method converts to user-friendly text
+3. **JSON Output**: The error appears in the mutation path response:
+   ```json
+   {
+     "path": "",
+     "example": {
+       "NotMutatable": "Type bevy_render::view::visibility::VisibilityClass contains non-mutatable element types: bevy_ecs::entity::Entity",
+       "agent_directive": "Type cannot be mutated through BRP"
+     },
+     "path_kind": "NotMutatable"
+   }
+   ```
+4. **User Visibility**: Users and AI agents receive specific, actionable error messages explaining exactly why mutation is not supported
+
+### Integration with Existing Plan
+- **Dependencies**: Builds on top of Step 1's type checking implementation
+- **Impact**: Enhances error reporting throughout the mutation system
+- **Backward Compatibility**: `is_supported()` method maintains boolean interface
+- **Performance**: Zero overhead - enum comparison is as fast as boolean
+
+### Implementation Priority: Medium
+
+### Verification Steps
+1. Compile successfully after changes
+2. Test each enum variant triggers with appropriate types
+3. Verify error messages appear correctly in JSON output
+4. Confirm boolean interface still works for existing callers
+5. Check that specific error reasons help with debugging
+
+---
+**Design Review Decision**: Approved for inclusion in plan on 2025-09-03  
+**Next Steps**: Code changes ready for implementation when needed
+
 ### SIMPLIFICATION-001: TypeKind enum pattern matching could be more readable
 - **Status**: INVESTIGATED AND REJECTED
 - **Category**: SIMPLIFICATION
 - **Description**: Proposed using a dispatch table approach with `get_builder()` method returning `Box<dyn MutationPathBuilder>`
 - **Reason**: Investigation found this would be a harmful "clean code" anti-pattern that hurts performance
 - **Investigation Findings**: The current direct match statement is already optimal with zero-cost static dispatch. The proposed boxing would add unnecessary heap allocations and virtual function call overhead for every type processed (100+ types). The builders are zero-sized types, so boxing them creates runtime overhead for what should be compile-time decisions. The current code is faster, clearer, safer, and simpler
+
+### TYPE-SYSTEM-006: Container type validation completeness gap
+- **Status**: INVESTIGATED AND REJECTED
+- **Category**: TYPE-SYSTEM
+- **Description**: Proposed adding explicit schema validation before type extraction to check if container schemas have required fields like `items` for Lists or `additionalProperties` for Maps
+- **Reason**: Investigation found this would be defensive programming overkill that violates domain values
+- **Investigation Findings**: The current `Option` chain approach already handles missing fields gracefully by returning `None`. No existing codebase patterns use pre-validation; all use `Option` chaining. BRP schemas come from Bevy's reflection system which is compile-time validated. The validation would be redundant since extraction methods already validate by returning `None` when fields are missing. The current approach is more elegant and provides necessary safety guarantees.
+
+### DESIGN-002: Asymmetric error handling between mutation and spawn systems
+- **Status**: INVESTIGATED AND REJECTED
+- **Category**: DESIGN
+- **Description**: Proposed aligning spawn example building with mutation validation by making spawn generation respect `type_supports_mutation` analysis
+- **Reason**: Investigation found this would create unnecessary coupling between separate domain concerns
+- **Investigation Findings**: Mutation system must validate for safety (can corrupt game state), spawn system provides documentation examples (no runtime impact). The "asymmetry" is not a bug but appropriate specialization where each system handles its domain correctly. Would create artificial coupling between safety-critical mutation validation and documentation tooling. Spawn consumers expect fallback values (`json!(null)`), mutation consumers expect clear error messages. The current approach is architecturally sound.
+
+### IMPLEMENTATION-003: Test case specification lacks negative validation scenarios
+- **Status**: INVESTIGATED AND REJECTED
+- **Category**: IMPLEMENTATION
+- **Description**: Proposed adding 5 additional edge case tests for scenarios like malformed schemas, deep recursion limits, circular references, missing registry entries, and invalid OneOf schemas
+- **Reason**: Investigation found the proposed edge case tests are defensive testing overkill for a well-constrained system
+- **Investigation Findings**: BRP schemas are reflection-generated by Bevy, ensuring structural validity. Many proposed tests (malformed schemas, circular references) cannot occur in Bevy's type system. Current architecture already handles edge cases through principled defensive patterns. Testing impossible scenarios creates false confidence without value. The existing 7 test cases already provide comprehensive validation by testing real-world Bevy component scenarios with established error handling patterns.
 
 ### ⚠️ PREJUDICE WARNING - TYPE-SYSTEM-002: String-typed path manipulation vulnerability
 - **Status**: PERMANENTLY REJECTED

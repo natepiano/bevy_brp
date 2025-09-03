@@ -5,10 +5,10 @@
 
 ## Execution Instructions
 
-1. **Check App Status**: Use `brp_status` to check if extras_plugin is running on port 20116
+1. **Check Status**: Use `brp_status` to check if extras_plugin is running on port 20116
    - If running with BRP responding: Skip to step 5
    - If not running or BRP not responding: Continue with step 2
-2. **Launch App**: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
+2. **Launch Example**: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
 3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on port 20116
 4. **Set Window Title**: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
 5. **Execute Test**: 
@@ -16,7 +16,7 @@
    - Use parallel subagents for type testing within batches
    - Continue testing ALL types sequentially
    - Only stop on failure or user interruption
-6. **Cleanup**: Shutdown app using `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)` after completion or failure
+6. **Cleanup**: Shutdown example using `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)` after completion or failure
 
 ## Configuration Constants
 ```
@@ -98,7 +98,9 @@ Process each batch sequentially, with parallel subagents within each batch:
 Task(
     description="Test [concatenate all short type names with ' + '] (batch [X], subagent [Y]/[MAX_SUBAGENTS])",
     subagent_type="general-purpose", 
-    prompt="""Test these types: 
+    prompt="""CRITICAL: You are a subagent. DO NOT launch any apps! Use the existing extras_plugin on port 20116.
+
+Test these types: 
 [List all assigned full::qualified::type::names here, one per line]
 
 [Include ENTIRE TestInstructions section]
@@ -110,6 +112,15 @@ Return structured JSON array with results for ALL assigned types."""
 ### 3. Individual Type Testing (Subagent Instructions)
 
 <TestInstructions>
+⚠️ **CRITICAL - WHAT YOU MUST NOT DO** ⚠️
+- **DO NOT launch any apps** - The main agent already launched extras_plugin on port 20116
+- **DO NOT use brp_launch_bevy_app or brp_launch_bevy_example** - NEVER!
+- **DO NOT restart or shutdown apps** - The main agent manages the app lifecycle
+- **DO NOT modify test-app/examples/extras_plugin.rs** - Only the main agent does this
+- **You are ONLY testing** - Use the EXISTING app on port 20116
+
+**THE APP IS ALREADY RUNNING**: There is ONE extras_plugin running on port 20116. Use it for ALL tests. If you get connection errors, report them - DO NOT try to fix by launching apps!
+
 ⚠️ **WARNING - MOST COMMON FAILURE CAUSE** ⚠️
 The #1 reason tests fail is passing numbers as strings in JSON!
 - ❌ WRONG: `"value": "42"` or `"value": "3.14"` or `"value": "18446744073709551615"`  
@@ -119,7 +130,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 **Your Task**: Test ALL assigned component types with simple pass/fail results. Return structured results array to main agent.
 
-**Port**: Use port 20116 for ALL BRP operations.
+**Port**: Use the EXISTING app on port 20116 for ALL BRP operations. This app was already launched by the main agent. DO NOT launch your own app!
 
 **BEFORE YOU START - CRITICAL CHECKLIST**:
 □ I understand that ALL numeric types (f32, u32, i32, usize, etc.) must be JSON numbers, not strings
@@ -140,6 +151,11 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 3. **Prepare Mutations** - Query for entity with component
 4. **Test Mutations** - Test each path from mutation_paths array
 5. **Return Results** - Structured JSON for all types
+
+**REMEMBER**: 
+- You are a subagent - you ONLY test and return results
+- The main agent handles ALL app management
+- If BRP fails, return error - DO NOT try to fix it yourself
 
 **Return Format**:
 ```json
@@ -239,7 +255,7 @@ After each batch completes:
 When subagent returns `COMPONENT_NOT_FOUND`:
 1. Stop testing
 2. Add missing component to `test-app/examples/extras_plugin.rs`
-3. Shutdown app: `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
+3. Shutdown example: `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
 4. Relaunch: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
 5. Reset title: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
 6. Retry SAME batch
