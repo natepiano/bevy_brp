@@ -1,0 +1,93 @@
+[
+  {
+    "id": "1",
+    "content": "Implement comprehensive MutationSupport enum in type_info.rs with detailed error variants",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Replace simple enum with comprehensive version including MissingSerializationTraits, NonMutatableElements, UnknownType, RecursionLimitExceeded variants"
+  },
+  {
+    "id": "2", 
+    "content": "Add Display trait implementation for comprehensive error messages",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Implement Display trait to provide actionable error messages for each variant"
+  },
+  {
+    "id": "3",
+    "content": "Update from_paths method to maintain compatibility with existing code",
+    "status": "pending", 
+    "priority": "high",
+    "notes": "Ensure from_paths method works with new enum structure without breaking existing functionality"
+  },
+  {
+    "id": "4",
+    "content": "Add detailed support checking methods to mutation_path_builders.rs",
+    "status": "pending",
+    "priority": "high", 
+    "notes": "Add type_supports_mutation_detailed method and validation context storage"
+  },
+  {
+    "id": "5",
+    "content": "Implement type_supports_mutation_with_depth_detailed method with comprehensive validation",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Core validation logic that returns structured MutationSupport enum instead of boolean"
+  },
+  {
+    "id": "6",
+    "content": "Add error propagation support methods (get_deepest_failing_type, should_propagate_error)",
+    "status": "pending",
+    "priority": "high", 
+    "notes": "Helper methods for nested type error propagation as specified in plan"
+  },
+  {
+    "id": "7",
+    "content": "Update build_not_mutatable_path method to use detailed error messages",
+    "status": "pending",
+    "priority": "medium",
+    "notes": "Replace generic error messages with stored validation context results"
+  },
+  {
+    "id": "8", 
+    "content": "Update TypeKind::build_not_mutatable_path to use stored validation context",
+    "status": "pending",
+    "priority": "medium",
+    "notes": "Replace hardcoded format string with stored validation results"
+  },
+  {
+    "id": "9",
+    "content": "Change StructMutationBuilder::build_not_mutatable_path signature to accept context",
+    "status": "pending", 
+    "priority": "medium",
+    "notes": "Remove generic string parameter, add context parameter for validation access"
+  },
+  {
+    "id": "10",
+    "content": "Update TupleMutationBuilder::build_tuple_element_path to use stored validation context", 
+    "status": "pending",
+    "priority": "medium",
+    "notes": "Replace hardcoded NotMutatable format with stored validation results"
+  },
+  {
+    "id": "11",
+    "content": "Update StructMutationBuilder::build_type_based_paths to use MutationSupport::UnknownType",
+    "status": "pending",
+    "priority": "medium", 
+    "notes": "Replace hardcoded 'not found' message with structured UnknownType error"
+  },
+  {
+    "id": "12",
+    "content": "Replace all remaining hardcoded format! error messages with stored validation results",
+    "status": "pending",
+    "priority": "medium",
+    "notes": "Ensure all error generation flows through centralized enum system"
+  },
+  {
+    "id": "13", 
+    "content": "Run comprehensive tests with cargo nextest run",
+    "status": "pending",
+    "priority": "high",
+    "notes": "Validate all functionality works correctly and no regressions introduced"
+  }
+]
