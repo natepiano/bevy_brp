@@ -550,6 +550,12 @@ impl TypeKind {
 - **Description**: Proposed adding rollback strategy for gradual migration approach
 - **Reason**: User decision - this is an atomic change, not gradual. Remove references to incremental approach.
 
+### DESIGN-002: Inconsistent container type handling strategy
+- **Status**: SKIPPED
+- **Category**: DESIGN
+- **Description**: Proposed adding architectural decision section to explain container type categorization
+- **Reason**: User decision - add note about Option type future plans. Option is currently handled inconsistently (as container but with enum-style extraction) because we plan to remove wrapper type special case handling for Option so it will always be treated as a regular enum. This change hasn't been implemented yet, so Option should be kept as-is except for changes necessary for this precheck removal plan.
+
 ## Risk Mitigation
 
 - **Preserve detailed methods**: Keep error message generation intact
