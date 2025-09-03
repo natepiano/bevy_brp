@@ -40,21 +40,16 @@ pub enum MutationSupport {
 }
 
 impl MutationSupport {
-    pub const fn is_supported(&self) -> bool {
-        matches!(self, Self::Supported)
-    }
-
     /// Extract the deepest failing type from nested error contexts
     pub fn get_deepest_failing_type(&self) -> Option<BrpTypeName> {
         match self {
             Self::Supported => None,
-            Self::MissingSerializationTraits(type_name) => Some(type_name.clone()),
-            Self::UnknownType(type_name) => Some(type_name.clone()),
-            Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
+            Self::MissingSerializationTraits(type_name)
+            | Self::UnknownType(type_name)
+            | Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
             Self::NonMutatableElements { element_type, .. } => Some(element_type.clone()),
         }
     }
-
 
     fn from_paths(paths: &HashMap<String, MutationPath>) -> Self {
         let has_mutatable = paths.values().any(|path| {

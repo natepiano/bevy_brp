@@ -46,6 +46,13 @@ pub enum KnowledgeKey {
         /// e.g., "Clear(f32)" - matches tuple variants with specific types
         variant_pattern: String,
     },
+    /// Struct field-specific match for providing appropriate field values
+    StructField {
+        /// e.g., `bevy_window::window::WindowResolution`
+        struct_type: String,
+        /// e.g., `physical_width`
+        field_name:  String,
+    },
 }
 
 impl KnowledgeKey {
@@ -57,6 +64,27 @@ impl KnowledgeKey {
     /// Create a generic match key
     pub fn generic(s: impl Into<String>) -> Self {
         Self::Generic(s.into())
+    }
+
+    /// Create an enum variant match key
+    pub fn enum_variant(
+        enum_type: impl Into<String>,
+        variant_name: impl Into<String>,
+        variant_pattern: impl Into<String>,
+    ) -> Self {
+        Self::EnumVariant {
+            enum_type:       enum_type.into(),
+            variant_name:    variant_name.into(),
+            variant_pattern: variant_pattern.into(),
+        }
+    }
+
+    /// Create a struct field match key
+    pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
+        Self::StructField {
+            struct_type: struct_type.into(),
+            field_name:  field_name.into(),
+        }
     }
 
     /// Resolve example value using enum dispatch instead of external conditionals
@@ -83,6 +111,10 @@ impl KnowledgeKey {
                 BRP_MUTATION_KNOWLEDGE
                     .get(self)
                     .map(|k| k.example_value.clone())
+            }
+            Self::StructField { .. } => {
+                // Struct field matching is handled separately in find_example_value_for_field
+                None
             }
         }
     }
@@ -578,13 +610,23 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Camera3d depth load operation =====
         // Camera3d depth clear value - must be in range [0.0, 1.0] for valid GPU operations
         map.insert(
-            KnowledgeKey::EnumVariant {
-                enum_type:       "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp"
-                    .to_string(),
-                variant_name:    "Clear".to_string(),
-                variant_pattern: "Clear(f32)".to_string(),
-            },
+            KnowledgeKey::enum_variant(
+                "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp",
+                "Clear",
+                "Clear(f32)",
+            ),
             MutationKnowledge::simple(json!(0.5)), // Safe middle value in [0.0, 1.0] range
+        );
+
+        // ===== WindowResolution field-specific values =====
+        // Provide reasonable window dimension values to prevent GPU texture size errors
+        map.insert(
+            KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_width"),
+            MutationKnowledge::simple(json!(800)), // Reasonable window width
+        );
+        map.insert(
+            KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_height"),
+            MutationKnowledge::simple(json!(600)), // Reasonable window height
         );
 
         map

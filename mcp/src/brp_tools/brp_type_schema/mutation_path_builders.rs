@@ -367,24 +367,28 @@ impl<'a> MutationPathContext<'a> {
                     MutationSupport::MissingSerializationTraits(type_name.clone())
                 }
             }
-            TypeKind::List | TypeKind::Array => match Self::extract_list_element_type(schema) {
-                Some(elem_type) => {
-                    let elem_support = self
-                        .type_supports_mutation_with_depth_detailed(&elem_type, depth.increment());
-                    match elem_support {
-                        MutationSupport::Supported => MutationSupport::Supported,
-                        failing_result => MutationSupport::NonMutatableElements {
-                            container_type: type_name.clone(),
-                            element_type:   failing_result
-                                .get_deepest_failing_type()
-                                .unwrap_or(elem_type),
-                        },
-                    }
-                }
-                None => MutationSupport::UnknownType(type_name.clone()),
-            },
-            TypeKind::Map => match Self::extract_map_value_type(schema) {
-                Some(val_type) => {
+            TypeKind::List | TypeKind::Array => Self::extract_list_element_type(schema)
+                .map_or_else(
+                    || MutationSupport::UnknownType(type_name.clone()),
+                    |elem_type| {
+                        let elem_support = self.type_supports_mutation_with_depth_detailed(
+                            &elem_type,
+                            depth.increment(),
+                        );
+                        match elem_support {
+                            MutationSupport::Supported => MutationSupport::Supported,
+                            failing_result => MutationSupport::NonMutatableElements {
+                                container_type: type_name.clone(),
+                                element_type:   failing_result
+                                    .get_deepest_failing_type()
+                                    .unwrap_or(elem_type),
+                            },
+                        }
+                    },
+                ),
+            TypeKind::Map => Self::extract_map_value_type(schema).map_or_else(
+                || MutationSupport::UnknownType(type_name.clone()),
+                |val_type| {
                     let val_support = self
                         .type_supports_mutation_with_depth_detailed(&val_type, depth.increment());
                     match val_support {
@@ -396,11 +400,11 @@ impl<'a> MutationPathContext<'a> {
                                 .unwrap_or(val_type),
                         },
                     }
-                }
-                None => MutationSupport::UnknownType(type_name.clone()),
-            },
-            TypeKind::Option => match Self::extract_option_inner_type(schema) {
-                Some(inner_type) => {
+                },
+            ),
+            TypeKind::Option => Self::extract_option_inner_type(schema).map_or_else(
+                || MutationSupport::UnknownType(type_name.clone()),
+                |inner_type| {
                     let inner_support = self
                         .type_supports_mutation_with_depth_detailed(&inner_type, depth.increment());
                     match inner_support {
@@ -412,20 +416,19 @@ impl<'a> MutationPathContext<'a> {
                                 .unwrap_or(inner_type),
                         },
                     }
-                }
-                None => MutationSupport::UnknownType(type_name.clone()),
-            },
+                },
+            ),
             TypeKind::Tuple | TypeKind::TupleStruct => {
                 match Self::extract_tuple_element_types(schema) {
                     Some(elements) => {
                         // For tuples, find the first non-mutatable element type
-                        for elem in elements.iter() {
+                        for elem in &elements {
                             let elem_support = self.type_supports_mutation_with_depth_detailed(
                                 elem,
                                 depth.increment(),
                             );
                             match elem_support {
-                                MutationSupport::Supported => continue,
+                                MutationSupport::Supported => {}
                                 failing_result => {
                                     return MutationSupport::NonMutatableElements {
                                         container_type: type_name.clone(),
@@ -1035,9 +1038,22 @@ impl StructMutationBuilder {
         field_type: &BrpTypeName,
         wrapper_info: Option<&(WrapperType, BrpTypeName)>,
     ) -> HardcodedPathsResult {
-        // Check for hardcoded knowledge - first try the full type, then inner type for wrappers
+        // Get the parent type for struct field lookups
+        let parent_type = ctx.type_name();
+
+        // Three-tier hardcoded knowledge lookup strategy for struct fields:
+        // 1. Most specific: struct field (e.g., "WindowResolution.physical_width")
+        // 2. Field type: exact type match (e.g., "u32" regardless of parent struct)
+        // 3. Wrapper inner: for wrapper types like Option<T>, try the inner type T
         let Some(hardcoded) = BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::exact(field_type))
+            .get(&KnowledgeKey::StructField {
+                struct_type: parent_type.to_string(),
+                field_name:  field_name.to_string(),
+            })
+            .or_else(|| {
+                // Fall back to type-based knowledge
+                BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type))
+            })
             .or_else(|| {
                 // For wrapper types, check the inner type for hardcoded knowledge
                 wrapper_info
@@ -1060,7 +1076,6 @@ impl StructMutationBuilder {
             None
         };
 
-        let parent_type = ctx.type_name();
         let paths = Self::build_hardcoded_paths(
             field_name,
             field_type,
