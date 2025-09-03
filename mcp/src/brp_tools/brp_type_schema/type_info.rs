@@ -1,6 +1,7 @@
 //! This is the main response structure use to convey type information
 //! to the caller
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::Serialize;
@@ -20,16 +21,41 @@ use super::response_types::{
 use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
-/// Represents mutation support status for a type
-#[derive(Debug, Clone, PartialEq)]
-enum MutationSupport {
-    /// At least one mutation path is mutatable
+/// Represents detailed mutation support status for a type
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MutationSupport {
+    /// Type fully supports mutation operations
     Supported,
-    /// No mutation paths are mutatable  
-    NotSupported,
+    /// Type lacks required serialization traits
+    MissingSerializationTraits(BrpTypeName),
+    /// Container type has non-mutatable element type
+    NonMutatableElements {
+        container_type: BrpTypeName,
+        element_type:   BrpTypeName,
+    },
+    /// Type not found in registry
+    UnknownType(BrpTypeName),
+    /// Recursion depth limit exceeded during analysis
+    RecursionLimitExceeded(BrpTypeName),
 }
 
 impl MutationSupport {
+    pub const fn is_supported(&self) -> bool {
+        matches!(self, Self::Supported)
+    }
+
+    /// Extract the deepest failing type from nested error contexts
+    pub fn get_deepest_failing_type(&self) -> Option<BrpTypeName> {
+        match self {
+            Self::Supported => None,
+            Self::MissingSerializationTraits(type_name) => Some(type_name.clone()),
+            Self::UnknownType(type_name) => Some(type_name.clone()),
+            Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
+            Self::NonMutatableElements { element_type, .. } => Some(element_type.clone()),
+        }
+    }
+
+
     fn from_paths(paths: &HashMap<String, MutationPath>) -> Self {
         let has_mutatable = paths.values().any(|path| {
             !matches!(
@@ -40,7 +66,36 @@ impl MutationSupport {
         if has_mutatable {
             Self::Supported
         } else {
-            Self::NotSupported
+            // For post-build analysis, we can't determine the specific reason or type name,
+            // so we use a generic non-mutatable status with a placeholder type name.
+            // This should be replaced with actual detailed analysis in most cases.
+            Self::MissingSerializationTraits(BrpTypeName::from("UnknownType"))
+        }
+    }
+}
+
+impl Display for MutationSupport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Supported => write!(f, "Type supports mutation"),
+            Self::MissingSerializationTraits(type_name) => write!(
+                f,
+                "Type {type_name} lacks Serialize/Deserialize traits required for mutation"
+            ),
+            Self::NonMutatableElements {
+                container_type,
+                element_type,
+            } => write!(
+                f,
+                "Type {container_type} contains non-mutatable element type: {element_type}"
+            ),
+            Self::UnknownType(type_name) => {
+                write!(f, "Type {type_name} not found in schema registry")
+            }
+            Self::RecursionLimitExceeded(type_name) => write!(
+                f,
+                "Type {type_name} analysis exceeded maximum recursion depth"
+            ),
         }
     }
 }
@@ -311,8 +366,11 @@ impl TypeInfo {
         // Check for wrapper types (Option, Handle) and build proper examples
         if let Some((wrapper_type, inner_type)) = WrapperType::detect(type_name.as_str()) {
             // Build example for the inner type first, fall back to default if building fails
-            let inner_example =
-                Self::build_example_value_for_type_with_depth(&inner_type, registry, depth.increment());
+            let inner_example = Self::build_example_value_for_type_with_depth(
+                &inner_type,
+                registry,
+                depth.increment(),
+            );
             // If inner example is null or failed, use wrapper default instead
             if inner_example.is_null() {
                 return wrapper_type.default_example();
