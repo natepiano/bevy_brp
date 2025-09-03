@@ -166,7 +166,6 @@ impl<'a> MutationPathContext<'a> {
 
     /// Helper to get a schema field as an array
     fn get_schema_field_as_array<'b>(
-        &self,
         schema: &'b Value,
         field: SchemaField,
     ) -> Option<&'b Vec<Value>> {
@@ -1009,7 +1008,8 @@ impl MutationPathBuilder for TupleMutationBuilder {
         };
 
         // Get prefix items (tuple elements) from schema
-        let prefix_items = ctx.get_schema_field_as_array(schema, SchemaField::PrefixItems);
+        let prefix_items =
+            MutationPathContext::get_schema_field_as_array(schema, SchemaField::PrefixItems);
 
         // Build example tuple value using the extracted method
         let example = Self::build_tuple_example(
