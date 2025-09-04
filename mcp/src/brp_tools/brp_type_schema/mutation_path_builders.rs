@@ -251,7 +251,7 @@ impl<'a> MutationPathContext<'a> {
         }
 
         let Some(schema) = self.get_type_schema(type_name) else {
-            return MutationSupport::UnknownType(type_name.clone());
+            return MutationSupport::NotInRegistry(type_name.clone());
         };
 
         let type_kind = TypeKind::from_schema(schema, type_name);
@@ -266,7 +266,7 @@ impl<'a> MutationPathContext<'a> {
             }
             TypeKind::List | TypeKind::Array => Self::extract_list_element_type(schema)
                 .map_or_else(
-                    || MutationSupport::UnknownType(type_name.clone()),
+                    || MutationSupport::NotInRegistry(type_name.clone()),
                     |elem_type| {
                         let elem_support = self.type_supports_mutation_with_depth_detailed(
                             &elem_type,
@@ -284,7 +284,7 @@ impl<'a> MutationPathContext<'a> {
                     },
                 ),
             TypeKind::Map => Self::extract_map_value_type(schema).map_or_else(
-                || MutationSupport::UnknownType(type_name.clone()),
+                || MutationSupport::NotInRegistry(type_name.clone()),
                 |val_type| {
                     let val_support = self
                         .type_supports_mutation_with_depth_detailed(&val_type, depth.increment());
@@ -300,7 +300,7 @@ impl<'a> MutationPathContext<'a> {
                 },
             ),
             TypeKind::Option => Self::extract_option_inner_type(schema).map_or_else(
-                || MutationSupport::UnknownType(type_name.clone()),
+                || MutationSupport::NotInRegistry(type_name.clone()),
                 |inner_type| {
                     let inner_support = self
                         .type_supports_mutation_with_depth_detailed(&inner_type, depth.increment());
@@ -338,7 +338,7 @@ impl<'a> MutationPathContext<'a> {
                         }
                         MutationSupport::Supported
                     }
-                    None => MutationSupport::UnknownType(type_name.clone()),
+                    None => MutationSupport::NotInRegistry(type_name.clone()),
                 }
             }
             TypeKind::Struct | TypeKind::Enum => MutationSupport::Supported,

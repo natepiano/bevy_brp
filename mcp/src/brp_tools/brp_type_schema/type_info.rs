@@ -34,7 +34,7 @@ pub enum MutationSupport {
         element_type:   BrpTypeName,
     },
     /// Type not found in registry
-    UnknownType(BrpTypeName),
+    NotInRegistry(BrpTypeName),
     /// Recursion depth limit exceeded during analysis
     RecursionLimitExceeded(BrpTypeName),
 }
@@ -45,7 +45,7 @@ impl MutationSupport {
         match self {
             Self::Supported => None,
             Self::MissingSerializationTraits(type_name)
-            | Self::UnknownType(type_name)
+            | Self::NotInRegistry(type_name)
             | Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
             Self::NonMutatableElements { element_type, .. } => Some(element_type.clone()),
         }
@@ -67,7 +67,7 @@ impl Display for MutationSupport {
                 f,
                 "Type {container_type} contains non-mutatable element type: {element_type}"
             ),
-            Self::UnknownType(type_name) => {
+            Self::NotInRegistry(type_name) => {
                 write!(f, "Type {type_name} not found in schema registry")
             }
             Self::RecursionLimitExceeded(type_name) => write!(
