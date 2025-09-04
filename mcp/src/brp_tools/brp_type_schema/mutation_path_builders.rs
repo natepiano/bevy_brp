@@ -7,26 +7,18 @@
 //! mutation paths, but this should be cleanly separated from the field-level logic.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::{Value, json};
 use tracing::warn;
 
-/// Result of attempting to build mutation paths using hardcoded knowledge
-#[derive(Debug)]
-enum HardcodedPathsResult {
-    /// Hardcoded knowledge handled this type with these paths
-    Handled(Vec<MutationPathInternal>),
-    /// No hardcoded knowledge found, should try fallback approach
-    Fallback,
-}
-
 use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, MutationKnowledge};
 use super::response_types::{
-    BrpTypeName, EnumVariantInfo, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
+    BrpTypeName, EnumVariantInfo, MathComponent, MutationPathInternal, MutationPathKind,
+    MutationStatus, SchemaField, TypeKind,
 };
 use super::type_info::{MutationSupport, TypeInfo};
-use super::wrapper_types::WrapperType;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::KnowledgeKey;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
@@ -93,26 +85,25 @@ impl RootOrField {
 /// This struct provides all the necessary context for building mutation paths,
 /// including access to the registry, wrapper type information, and enum variants.
 #[derive(Debug)]
-pub struct MutationPathContext<'a> {
+pub struct MutationPathContext {
     /// The building context (root or field)
-    pub location:     RootOrField,
+    pub location:         RootOrField,
     /// Reference to the type registry
-    registry:         &'a HashMap<BrpTypeName, Value>,
-    /// Wrapper type information if applicable (Option, Handle, etc.)
-    pub wrapper_info: Option<(WrapperType, BrpTypeName)>,
+    registry:             Arc<HashMap<BrpTypeName, Value>>,
+    /// Path prefix for nested structures (e.g., ".translation" when building Vec3 fields)
+    pub path_prefix:      String,
+    /// Parent's mutation knowledge for extracting component examples
+    pub parent_knowledge: Option<&'static MutationKnowledge>,
 }
 
-impl<'a> MutationPathContext<'a> {
+impl MutationPathContext {
     /// Create a new mutation path context
-    pub const fn new(
-        location: RootOrField,
-        registry: &'a HashMap<BrpTypeName, Value>,
-        wrapper_info: Option<(WrapperType, BrpTypeName)>,
-    ) -> Self {
+    pub const fn new(location: RootOrField, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
         Self {
             location,
             registry,
-            wrapper_info,
+            path_prefix: String::new(),
+            parent_knowledge: None,
         }
     }
 
@@ -139,39 +130,34 @@ impl<'a> MutationPathContext<'a> {
     }
 
     /// Create a new context for a field within the current type
-    pub fn create_field_context(
-        &self,
-        field_name: &str,
-        field_type: &BrpTypeName,
-        wrapper_info: Option<(WrapperType, BrpTypeName)>,
-    ) -> Self {
+    pub fn create_field_context(&self, field_name: &str, field_type: &BrpTypeName) -> Self {
         let parent_type = self.type_name();
-        Self::new(
-            RootOrField::field(field_name, field_type, parent_type),
-            self.registry,
-            wrapper_info,
-        )
-    }
+        // Build the new path prefix by appending the field name to the current prefix
+        let new_path_prefix = if self.path_prefix.is_empty() {
+            format!(".{field_name}")
+        } else {
+            format!("{}.{field_name}", self.path_prefix)
+        };
 
-    /// Wrap an example value based on the wrapper type context
-    /// For Option types: creates {some: value, none: null}
-    /// For other wrappers: creates appropriate mutation format
-    /// For non-wrappers: returns the value as-is
-    pub fn wrap_example(&self, inner_value: Value) -> Value {
-        match self.wrapper_info {
-            Some((wrapper, _)) => wrapper.mutation_examples(inner_value),
-            None => inner_value,
+        // Check if field type has hardcoded knowledge to pass to children
+        let field_knowledge = BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type));
+
+        Self {
+            location:         RootOrField::field(field_name, field_type, parent_type),
+            registry:         Arc::clone(&self.registry),
+            path_prefix:      new_path_prefix,
+            parent_knowledge: field_knowledge,
         }
     }
 
-    /// Helper to get a schema field as an array
-    fn get_schema_field_as_array(schema: &Value, field: SchemaField) -> Option<&Vec<Value>> {
-        get_schema_field_as_array(schema, field)
+    /// Return an example value unchanged (wrapper functionality removed)
+    pub const fn wrap_example(inner_value: Value) -> Value {
+        inner_value
     }
 
     /// Check if a value type has serialization support
     /// Used to determine if opaque Value types like String can be mutated
-    fn value_type_has_serialization(&self, type_name: &BrpTypeName) -> bool {
+    pub fn value_type_has_serialization(&self, type_name: &BrpTypeName) -> bool {
         use super::response_types::ReflectTrait;
 
         self.get_type_schema(type_name).is_some_and(|schema| {
@@ -204,24 +190,6 @@ impl<'a> MutationPathContext<'a> {
             .and_then(extract_type_ref_with_schema_field)
     }
 
-    /// Extract inner type from Option schema
-    fn extract_option_inner_type(schema: &Value) -> Option<BrpTypeName> {
-        get_schema_field_as_array(schema, SchemaField::OneOf)
-            .and_then(|variants| {
-                variants.iter().find(|v| {
-                    v.get("typePath")
-                        .and_then(|p| p.as_str())
-                        .is_some_and(|s| s.ends_with("::Some"))
-                })
-            })
-            .and_then(|some_variant| {
-                get_schema_field_as_array(some_variant, SchemaField::PrefixItems)
-                    .and_then(|items| items.first())
-            })
-            .and_then(|item| item.get_field(SchemaField::Type))
-            .and_then(extract_type_ref_with_schema_field)
-    }
-
     /// Extract all element types from Tuple/TupleStruct schema
     fn extract_tuple_element_types(schema: &Value) -> Option<Vec<BrpTypeName>> {
         get_schema_field_as_array(schema, SchemaField::PrefixItems).map(|items| {
@@ -234,116 +202,6 @@ impl<'a> MutationPathContext<'a> {
                 .collect()
         })
     }
-
-    /// Get detailed mutation support information
-    fn type_supports_mutation_detailed(&self, type_name: &BrpTypeName) -> MutationSupport {
-        self.type_supports_mutation_with_depth_detailed(type_name, RecursionDepth::ZERO)
-    }
-
-    /// Internal implementation with detailed results
-    fn type_supports_mutation_with_depth_detailed(
-        &self,
-        type_name: &BrpTypeName,
-        depth: RecursionDepth,
-    ) -> MutationSupport {
-        if depth.exceeds_limit() {
-            return MutationSupport::RecursionLimitExceeded(type_name.clone());
-        }
-
-        let Some(schema) = self.get_type_schema(type_name) else {
-            return MutationSupport::NotInRegistry(type_name.clone());
-        };
-
-        let type_kind = TypeKind::from_schema(schema, type_name);
-
-        match type_kind {
-            TypeKind::Value => {
-                if self.value_type_has_serialization(type_name) {
-                    MutationSupport::Supported
-                } else {
-                    MutationSupport::MissingSerializationTraits(type_name.clone())
-                }
-            }
-            TypeKind::List | TypeKind::Array => Self::extract_list_element_type(schema)
-                .map_or_else(
-                    || MutationSupport::NotInRegistry(type_name.clone()),
-                    |elem_type| {
-                        let elem_support = self.type_supports_mutation_with_depth_detailed(
-                            &elem_type,
-                            depth.increment(),
-                        );
-                        match elem_support {
-                            MutationSupport::Supported => MutationSupport::Supported,
-                            failing_result => MutationSupport::NonMutatableElements {
-                                container_type: type_name.clone(),
-                                element_type:   failing_result
-                                    .get_deepest_failing_type()
-                                    .unwrap_or(elem_type),
-                            },
-                        }
-                    },
-                ),
-            TypeKind::Map => Self::extract_map_value_type(schema).map_or_else(
-                || MutationSupport::NotInRegistry(type_name.clone()),
-                |val_type| {
-                    let val_support = self
-                        .type_supports_mutation_with_depth_detailed(&val_type, depth.increment());
-                    match val_support {
-                        MutationSupport::Supported => MutationSupport::Supported,
-                        failing_result => MutationSupport::NonMutatableElements {
-                            container_type: type_name.clone(),
-                            element_type:   failing_result
-                                .get_deepest_failing_type()
-                                .unwrap_or(val_type),
-                        },
-                    }
-                },
-            ),
-            TypeKind::Option => Self::extract_option_inner_type(schema).map_or_else(
-                || MutationSupport::NotInRegistry(type_name.clone()),
-                |inner_type| {
-                    let inner_support = self
-                        .type_supports_mutation_with_depth_detailed(&inner_type, depth.increment());
-                    match inner_support {
-                        MutationSupport::Supported => MutationSupport::Supported,
-                        failing_result => MutationSupport::NonMutatableElements {
-                            container_type: type_name.clone(),
-                            element_type:   failing_result
-                                .get_deepest_failing_type()
-                                .unwrap_or(inner_type),
-                        },
-                    }
-                },
-            ),
-            TypeKind::Tuple | TypeKind::TupleStruct => {
-                match Self::extract_tuple_element_types(schema) {
-                    Some(elements) => {
-                        // For tuples, find the first non-mutatable element type
-                        for elem in &elements {
-                            let elem_support = self.type_supports_mutation_with_depth_detailed(
-                                elem,
-                                depth.increment(),
-                            );
-                            match elem_support {
-                                MutationSupport::Supported => {}
-                                failing_result => {
-                                    return MutationSupport::NonMutatableElements {
-                                        container_type: type_name.clone(),
-                                        element_type:   failing_result
-                                            .get_deepest_failing_type()
-                                            .unwrap_or_else(|| elem.clone()),
-                                    };
-                                }
-                            }
-                        }
-                        MutationSupport::Supported
-                    }
-                    None => MutationSupport::NotInRegistry(type_name.clone()),
-                }
-            }
-            TypeKind::Struct | TypeKind::Enum => MutationSupport::Supported,
-        }
-    }
 }
 
 /// Trait for building mutation paths for different type kinds
@@ -352,68 +210,61 @@ impl<'a> MutationPathContext<'a> {
 /// replacing the large conditional match statement with clean separation of concerns.
 /// Each type kind gets its own implementation that handles the specific logic needed.
 pub trait MutationPathBuilder {
-    /// Build mutation paths for this type kind
+    /// Build mutation paths with depth tracking for recursion safety
     ///
     /// This method takes a `MutationPathContext` which provides all necessary information
-    /// including the registry, wrapper info, and enum variants.
+    /// including the registry, wrapper info, and enum variants, plus a `RecursionDepth`
+    /// parameter to track recursion depth and prevent infinite loops.
     ///
     /// Returns a `Result` containing a vector of `MutationPathInternal` representing
     /// all possible mutation paths, or an error if path building failed.
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>>;
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>>;
 }
 
 impl TypeKind {
-    /// Validate mutation capability using structured error handling
-    pub fn validate_mutation_capability(&self, ctx: &MutationPathContext<'_>) -> MutationSupport {
-        match self {
-            Self::Value => {
-                if ctx.value_type_has_serialization(ctx.type_name()) {
-                    MutationSupport::Supported
-                } else {
-                    ctx.type_supports_mutation_detailed(ctx.type_name())
-                }
-            }
-            Self::List | Self::Option | Self::Map => {
-                ctx.type_supports_mutation_detailed(ctx.type_name())
-            }
-            // Other types are handled by their specific builders
-            _ => MutationSupport::Supported,
-        }
-    }
-
     /// Build `NotMutatable` path from `MutationSupport` error details
     fn build_not_mutatable_path_from_support(
-        ctx: &MutationPathContext<'_>,
+        ctx: &MutationPathContext,
         support: &MutationSupport,
         directive_suffix: &str,
     ) -> MutationPathInternal {
         match &ctx.location {
             RootOrField::Root { type_name } => MutationPathInternal {
-                path:          String::new(),
-                example:       json!({
+                path:            String::new(),
+                example:         json!({
                     "NotMutatable": format!("{support}"),
                     "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
                 }),
-                enum_variants: None,
-                type_name:     type_name.clone(),
-                path_kind:     MutationPathKind::NotMutatable,
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(support),
             },
             RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
             } => MutationPathInternal {
-                path:          format!(".{field_name}"),
-                example:       json!({
+                path:            format!(".{field_name}"),
+                example:         json!({
                     "NotMutatable": format!("{support}"),
                     "agent_directive": format!("This field cannot be mutated{directive_suffix} - see error message for details")
                 }),
-                enum_variants: None,
-                type_name:     field_type.clone(),
-                path_kind:     MutationPathKind::StructField {
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(support),
             },
         }
     }
@@ -424,34 +275,54 @@ impl TypeKind {
 /// This provides type-directed dispatch - each `TypeKind` variant gets routed
 /// to the appropriate specialized builder for handling its specific logic.
 impl MutationPathBuilder for TypeKind {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        // Use structured error handling with MutationResult
-        match self.validate_mutation_capability(ctx) {
-            MutationSupport::Supported => {
-                // Proceed with type-directed dispatch to specific builders
-                match self {
-                    Self::Array => ArrayMutationBuilder.build_paths(ctx),
-                    Self::Enum => EnumMutationBuilder.build_paths(ctx),
-                    Self::Struct => StructMutationBuilder.build_paths(ctx),
-                    Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx),
-                    Self::Map => MapMutationBuilder.build_paths(ctx),
-                    Self::Value | Self::List | Self::Option => {
-                        DefaultMutationBuilder.build_paths(ctx)
-                    }
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
+        // Check recursion limit first
+        if depth.exceeds_limit() {
+            let recursion_limit_path = Self::build_not_mutatable_path_from_support(
+                ctx,
+                &MutationSupport::RecursionLimitExceeded(ctx.type_name().clone()),
+                "",
+            );
+            return Ok(vec![recursion_limit_path]);
+        }
+
+        // Only increment depth for container types that recurse into nested structures
+        let builder_depth = match self {
+            // Container types that recurse - increment depth
+            Self::Struct
+            | Self::Tuple
+            | Self::TupleStruct
+            | Self::Array
+            | Self::List
+            | Self::Map
+            | Self::Enum => depth.increment(),
+            // Leaf types and wrappers - preserve current depth
+            Self::Value => depth,
+        };
+
+        match self {
+            Self::Struct => StructMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Array => ArrayMutationBuilder.build_paths(ctx, builder_depth),
+            Self::List => ListMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Map => MapMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Value => {
+                // Check serialization inline, no recursion needed
+                if ctx.value_type_has_serialization(ctx.type_name()) {
+                    DefaultMutationBuilder.build_paths(ctx, builder_depth)
+                } else {
+                    let not_mutatable_path = Self::build_not_mutatable_path_from_support(
+                        ctx,
+                        &MutationSupport::MissingSerializationTraits(ctx.type_name().clone()),
+                        "",
+                    );
+                    Ok(vec![not_mutatable_path])
                 }
-            }
-            not_supported => {
-                // Build NotMutatable path with structured error details
-                let directive_suffix = match self {
-                    Self::List | Self::Option | Self::Map => " (container)",
-                    _ => "",
-                };
-                let not_mutatable_path = Self::build_not_mutatable_path_from_support(
-                    ctx,
-                    &not_supported,
-                    directive_suffix,
-                );
-                Ok(vec![not_mutatable_path])
             }
         }
     }
@@ -466,98 +337,174 @@ impl MutationPathBuilder for TypeKind {
 pub struct ArrayMutationBuilder;
 
 impl MutationPathBuilder for ArrayMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
-
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(paths);
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
         };
 
-        // Get array element type from schema
-        let element_type = schema
-            .get("items")
-            .and_then(|v| v.get_field(SchemaField::Type))
-            .and_then(extract_type_ref_with_schema_field)
-            .unwrap_or_else(BrpTypeName::unknown);
+        let Some(element_type) = MutationPathContext::extract_list_element_type(schema) else {
+            // If we have a schema but can't extract element type, treat as NotInRegistry
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
+        };
 
-        // Build example element from hardcoded knowledge
-        let example_element = BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::exact(&element_type))
-            .map_or(json!(null), |k| k.example_value.clone());
+        // RECURSE DEEPER - don't stop at array level
+        let Some(element_schema) = ctx.get_type_schema(&element_type) else {
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(element_type),
+            )]);
+        };
+        let element_kind = TypeKind::from_schema(element_schema, &element_type);
 
-        // Determine array size from type name (e.g., "[Vec3; 3]" -> 3)
-        let array_size = ctx
-            .type_name()
-            .as_str()
-            .rsplit(';')
-            .next()
-            .and_then(|s| s.trim_end_matches(']').trim().parse::<usize>().ok())
-            .unwrap_or(3);
+        // Create a new root context for the element type
+        let element_ctx =
+            MutationPathContext::new(RootOrField::root(&element_type), Arc::clone(&ctx.registry));
 
-        // Build example array
-        let array_example: Vec<Value> = (0..array_size).map(|_| example_element.clone()).collect();
+        // Continue recursion to actual mutation endpoints
+        element_kind.build_paths(&element_ctx, depth) // depth already incremented by TypeKind
+    }
+}
 
+impl ArrayMutationBuilder {
+    /// Build a not-mutatable path with structured error details
+    fn build_not_mutatable_path(
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
         match &ctx.location {
-            RootOrField::Root { type_name } => {
-                // Add root mutation path for the entire array
-                paths.push(MutationPathInternal {
-                    path:          String::new(),
-                    example:       json!(array_example),
-                    enum_variants: None,
-                    type_name:     type_name.clone(),
-                    path_kind:     MutationPathKind::RootValue {
-                        type_name: type_name.clone(),
-                    },
-                });
-
-                // Add paths for all array elements
-                for index in 0..array_size {
-                    paths.push(MutationPathInternal {
-                        path:          format!("[{index}]"),
-                        example:       example_element.clone(),
-                        enum_variants: None,
-                        type_name:     element_type.clone(),
-                        path_kind:     MutationPathKind::ArrayElement {
-                            index,
-                            parent_type: type_name.clone(),
-                        },
-                    });
-                }
-            }
+            RootOrField::Root { type_name } => MutationPathInternal {
+                path:            String::new(),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This array type cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
             RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
-            } => {
-                // Add path for the entire array field
-                paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       json!(array_example),
-                    enum_variants: None,
-                    type_name:     field_type.clone(),
-                    path_kind:     MutationPathKind::StructField {
-                        field_name:  field_name.clone(),
-                        parent_type: parent_type.clone(),
-                    },
-                });
-
-                // Add paths for all array elements
-                for index in 0..array_size {
-                    paths.push(MutationPathInternal {
-                        path:          format!(".{field_name}[{index}]"),
-                        example:       example_element.clone(),
-                        enum_variants: None,
-                        type_name:     element_type.clone(),
-                        path_kind:     MutationPathKind::ArrayElement {
-                            index,
-                            parent_type: field_type.clone(),
-                        },
-                    });
-                }
-            }
+            } => MutationPathInternal {
+                path:            format!(".{field_name}"),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This array field cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
         }
+    }
+}
 
-        Ok(paths)
+/// Builder for List types (Vec, etc.)
+///
+/// Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
+/// Uses single-pass recursion to extract element type and recurse deeper.
+pub struct ListMutationBuilder;
+
+impl MutationPathBuilder for ListMutationBuilder {
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
+        };
+
+        let Some(element_type) = MutationPathContext::extract_list_element_type(schema) else {
+            // If we have a schema but can't extract element type, treat as NotInRegistry
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
+        };
+
+        // RECURSE DEEPER - don't stop at list level
+        let Some(element_schema) = ctx.get_type_schema(&element_type) else {
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(element_type),
+            )]);
+        };
+        let element_kind = TypeKind::from_schema(element_schema, &element_type);
+
+        // Create a new root context for the element type
+        let element_ctx =
+            MutationPathContext::new(RootOrField::root(&element_type), Arc::clone(&ctx.registry));
+
+        // Continue recursion to actual mutation endpoints
+        element_kind.build_paths(&element_ctx, depth) // depth already incremented by TypeKind
+    }
+}
+
+impl ListMutationBuilder {
+    /// Build a not-mutatable path with structured error details
+    fn build_not_mutatable_path(
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
+        match &ctx.location {
+            RootOrField::Root { type_name } => MutationPathInternal {
+                path:            String::new(),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This list type cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
+            RootOrField::Field {
+                field_name,
+                field_type,
+                parent_type,
+            } => MutationPathInternal {
+                path:            format!(".{field_name}"),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This list field cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
+        }
     }
 }
 
@@ -568,56 +515,100 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 pub struct EnumMutationBuilder;
 
 impl MutationPathBuilder for EnumMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
-
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(paths);
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
         };
 
-        // Extract enum variants from schema
+        // Build enum mutation path inline (following the existing implementation)
         let enum_variants = Self::extract_enum_variants(schema);
-        let enum_example = Self::build_enum_example(schema, ctx.registry, Some(ctx.type_name()));
+        let enum_example = Self::build_enum_example(
+            schema,
+            &ctx.registry,
+            Some(ctx.type_name()),
+            depth.increment(),
+        );
 
         match &ctx.location {
-            RootOrField::Root { type_name } => {
-                // For root enum mutations, add a root path with all variants
-                if let Some(ref variants) = enum_variants
-                    && !variants.is_empty()
-                {
-                    paths.push(MutationPathInternal {
-                        path:          String::new(),
-                        example:       enum_example,
-                        enum_variants: Some(variants.clone()),
-                        type_name:     type_name.clone(),
-                        path_kind:     MutationPathKind::RootValue {
-                            type_name: type_name.clone(),
-                        },
-                    });
-                }
-            }
+            RootOrField::Root { type_name } => Ok(vec![MutationPathInternal {
+                path: String::new(),
+                example: enum_example,
+                enum_variants,
+                type_name: type_name.clone(),
+                path_kind: MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::Mutatable,
+                error_reason: None,
+            }]),
             RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
-            } => {
-                // For field enum mutations, handle wrapper types appropriately
-                let final_example = ctx.wrap_example(enum_example);
-
-                paths.push(MutationPathInternal {
-                    path: format!(".{field_name}"),
-                    example: final_example,
-                    enum_variants,
-                    type_name: field_type.clone(),
-                    path_kind: MutationPathKind::StructField {
-                        field_name:  field_name.clone(),
-                        parent_type: parent_type.clone(),
-                    },
-                });
-            }
+            } => Ok(vec![MutationPathInternal {
+                path: format!(".{field_name}"),
+                example: MutationPathContext::wrap_example(enum_example),
+                enum_variants,
+                type_name: field_type.clone(),
+                path_kind: MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::Mutatable,
+                error_reason: None,
+            }]),
         }
+    }
+}
 
-        Ok(paths)
+impl EnumMutationBuilder {
+    /// Build a not-mutatable path with structured error details
+    fn build_not_mutatable_path(
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
+        match &ctx.location {
+            RootOrField::Root { type_name } => MutationPathInternal {
+                path:            String::new(),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This enum type cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
+            RootOrField::Field {
+                field_name,
+                field_type,
+                parent_type,
+            } => MutationPathInternal {
+                path:            format!(".{field_name}"),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This enum field cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
+        }
     }
 }
 
@@ -643,7 +634,17 @@ impl EnumMutationBuilder {
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         enum_type: Option<&BrpTypeName>,
+        depth: RecursionDepth, // ADD: Accept recursion depth
     ) -> Value {
+        // NEW: Check for exact enum type knowledge first (restores old behavior)
+        if let Some(enum_type) = enum_type
+            && let Some(knowledge) =
+                BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(enum_type.type_string()))
+        {
+            return knowledge.example_value().clone();
+        }
+
+        // Fall back to existing variant building logic...
         if let Some(one_of) = get_schema_field_as_array(schema, SchemaField::OneOf)
             && let Some(first_variant) = one_of.first()
         {
@@ -665,6 +666,7 @@ impl EnumMutationBuilder {
                                     registry,
                                     enum_type,
                                     Some(&name),
+                                    depth.increment(),
                                 );
 
                                 // For newtype variants, BRP expects the struct directly, not in an
@@ -682,6 +684,7 @@ impl EnumMutationBuilder {
                                             registry,
                                             enum_type,
                                             Some(&name),
+                                            depth.increment(),
                                         )
                                     })
                                     .collect();
@@ -706,6 +709,7 @@ impl EnumMutationBuilder {
                                             registry,
                                             enum_type,
                                             Some(&name),
+                                            depth.increment(),
                                         ),
                                     )
                                 })
@@ -729,31 +733,47 @@ impl EnumMutationBuilder {
         registry: &HashMap<BrpTypeName, Value>,
         enum_type: Option<&BrpTypeName>,
         variant_name: Option<&str>,
+        depth: RecursionDepth, // ADD: Accept recursion depth
     ) -> Value {
         // Check for enum variant-specific knowledge first
         if let Some(enum_type) = enum_type
             && let Some(variant_name) = variant_name
         {
-            let variant_key = KnowledgeKey::EnumVariant {
-                enum_type:       enum_type.to_string(),
-                variant_name:    variant_name.to_string(),
-                variant_pattern: format!("{variant_name}({type_name})"),
-            };
+            // First try newtype variant (for cases like Clear(f32))
+            let newtype_key = KnowledgeKey::newtype_variant(
+                enum_type.to_string(),
+                variant_name.to_string(),
+                type_name.to_string(),
+            );
+
+            if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&newtype_key) {
+                return knowledge.example_value().clone();
+            }
+
+            // Fall back to regular enum variant
+            let variant_key =
+                KnowledgeKey::enum_variant(enum_type.to_string(), variant_name.to_string());
 
             if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&variant_key) {
-                return knowledge.example_value.clone();
+                return knowledge.example_value().clone();
             }
         }
 
-        // Fall back to the existing TypeInfo helper that already handles all the complexity
-        TypeInfo::build_example_value_for_type(type_name, registry)
+        // FIXED: Pass depth through to maintain recursion limits
+        TypeInfo::build_example_value_for_type_with_depth(type_name, registry, depth.increment())
     }
 
     /// Build example struct from properties
     pub fn build_struct_example_from_properties(
         properties: &Value,
         registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
     ) -> Value {
+        // Check depth limit to prevent infinite recursion
+        if depth.exceeds_limit() {
+            return json!("...");
+        }
+
         let Some(props_map) = properties.as_object() else {
             return json!({});
         };
@@ -761,9 +781,15 @@ impl EnumMutationBuilder {
         let mut example = serde_json::Map::new();
 
         for (field_name, field_schema) in props_map {
-            // Use TypeInfo to build example for each field type
+            // Use TypeInfo to build example for each field type with depth tracking
             let field_value = SchemaField::extract_field_type(field_schema)
-                .map(|field_type| TypeInfo::build_example_value_for_type(&field_type, registry))
+                .map(|field_type| {
+                    TypeInfo::build_example_value_for_type_with_depth(
+                        &field_type, 
+                        registry, 
+                        depth.increment()
+                    )
+                })
                 .unwrap_or(json!(null));
 
             example.insert(field_name.clone(), field_value);
@@ -780,33 +806,115 @@ impl EnumMutationBuilder {
 pub struct StructMutationBuilder;
 
 impl MutationPathBuilder for StructMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
+        // Check depth limit to prevent infinite recursion
+        if depth.exceeds_limit() {
+            return Ok(vec![Self::build_not_mutatable_path_from_support(
+                ctx,
+                MutationSupport::RecursionLimitExceeded(ctx.type_name().clone()),
+            )]);
+        }
 
         let Some(_schema) = ctx.require_schema() else {
-            return Ok(paths);
+            return Ok(vec![Self::build_not_mutatable_path_from_support(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
         };
 
-        match &ctx.location {
-            RootOrField::Root { .. } => {
-                // For root struct mutations, build paths for all properties
-                paths.extend(Self::build_property_paths(ctx)?);
-            }
-            RootOrField::Field {
-                field_name,
-                field_type,
-                parent_type,
-            } => {
-                // First, add the struct field itself
-                paths.push(Self::build_field_mutation_path(
-                    field_name,
-                    field_type,
-                    parent_type,
-                    ctx,
-                ));
+        let mut paths = Vec::new();
+        let properties = Self::extract_properties(ctx);
 
-                // Then expand nested fields (depth = 1 only)
-                paths.extend(Self::expand_nested_fields(field_name, field_type, ctx)?);
+        for (field_name, field_info) in properties {
+            let Some(field_type) = SchemaField::extract_field_type(field_info) else {
+                paths.push(Self::build_not_mutatable_field_from_support(
+                    &field_name,
+                    &BrpTypeName::from(field_name.as_str()), /* Use field name as type name when
+                                                              * extraction fails */
+                    ctx,
+                    MutationSupport::NotInRegistry(BrpTypeName::from(field_name.as_str())),
+                ));
+                continue;
+            };
+
+            // Create field context using existing method
+            let field_ctx = ctx.create_field_context(&field_name, &field_type);
+
+            // Check if field is a Value type needing serialization
+            let Some(field_schema) = ctx.get_type_schema(&field_type) else {
+                paths.push(Self::build_not_mutatable_field_from_support(
+                    &field_name,
+                    &field_type,
+                    ctx,
+                    MutationSupport::NotInRegistry(field_type.clone()),
+                ));
+                continue;
+            };
+            let field_kind = TypeKind::from_schema(field_schema, &field_type);
+
+            // Check if this type has hardcoded knowledge (like Vec3, Vec4, etc.)
+            let has_hardcoded_knowledge = BRP_MUTATION_KNOWLEDGE
+                .get(&KnowledgeKey::exact(&field_type))
+                .is_some();
+
+            if matches!(field_kind, TypeKind::Value) {
+                if ctx.value_type_has_serialization(&field_type) {
+                    paths.push(Self::build_field_mutation_path(
+                        &field_name,
+                        &field_type,
+                        ctx.type_name(),
+                        ctx,
+                        depth,
+                    ));
+                } else {
+                    paths.push(Self::build_not_mutatable_field_from_support(
+                        &field_name,
+                        &field_type,
+                        ctx,
+                        MutationSupport::MissingSerializationTraits(field_type.clone()),
+                    ));
+                }
+            } else {
+                // Recurse for nested containers or structs
+                let field_paths = field_kind.build_paths(&field_ctx, depth)?;
+                paths.extend(field_paths);
+            }
+
+            // Special case: Types with hardcoded knowledge that are also structs
+            // (like Vec3, Quat, etc.) should have their direct path AND nested paths
+            if has_hardcoded_knowledge && matches!(field_kind, TypeKind::Struct) {
+                // We already added paths above through normal recursion,
+                // but we also need the direct field path with hardcoded example
+                if ctx.value_type_has_serialization(&field_type) {
+                    // Build the field path using the context's prefix
+                    let field_path = if ctx.path_prefix.is_empty() {
+                        format!(".{field_name}")
+                    } else {
+                        format!("{}.{field_name}", ctx.path_prefix)
+                    };
+
+                    // Find and update the direct field path to use hardcoded example
+                    if let Some(path) = paths.iter_mut().find(|p| p.path == field_path) {
+                        if let Some(knowledge) =
+                            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&field_type))
+                        {
+                            path.example = knowledge.example_value().clone();
+                        }
+                    } else {
+                        // If no direct path was created, add it now with hardcoded example
+                        paths.push(Self::build_field_mutation_path(
+                            &field_name,
+                            &field_type,
+                            ctx.type_name(),
+                            ctx,
+                            depth,
+                        ));
+                    }
+                }
             }
         }
 
@@ -816,115 +924,164 @@ impl MutationPathBuilder for StructMutationBuilder {
 }
 
 impl StructMutationBuilder {
+    /// Build a not mutatable path from `MutationSupport` for struct-level errors
+    fn build_not_mutatable_path_from_support(
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
+        match &ctx.location {
+            RootOrField::Root { type_name } => MutationPathInternal {
+                path:            String::new(),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This struct type cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
+            RootOrField::Field {
+                field_name,
+                field_type,
+                parent_type,
+            } => MutationPathInternal {
+                path:            format!(".{field_name}"),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This struct field cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
+            },
+        }
+    }
+
+    /// Build a not mutatable field path from `MutationSupport` for field-level errors
+    fn build_not_mutatable_field_from_support(
+        field_name: &str,
+        field_type: &BrpTypeName,
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
+        // Build path using the context's prefix
+        let path = if ctx.path_prefix.is_empty() {
+            format!(".{field_name}")
+        } else {
+            format!("{}.{field_name}", ctx.path_prefix)
+        };
+
+        MutationPathInternal {
+            path,
+            example: json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": "This field cannot be mutated - see error message for details"
+            }),
+            enum_variants: None,
+            type_name: field_type.clone(),
+            path_kind: MutationPathKind::StructField {
+                field_name:  field_name.to_string(),
+                parent_type: ctx.type_name().clone(),
+            },
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason: Option::<String>::from(&support),
+        }
+    }
+
     /// Build a single field mutation path
     fn build_field_mutation_path(
         field_name: &str,
         field_type: &BrpTypeName,
         parent_type: &BrpTypeName,
-        ctx: &MutationPathContext<'_>,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
     ) -> MutationPathInternal {
-        let final_example = ctx.wrap_example(json!(null));
+        // First check if parent has math components and this field is a component
+        let example_value = ctx.parent_knowledge.map_or_else(
+            || {
+                // No parent knowledge, use normal logic
+                BRP_MUTATION_KNOWLEDGE
+                    .get(&KnowledgeKey::exact(field_type))
+                    .map_or_else(
+                        || {
+                            let next_depth = depth.increment();
+                            if next_depth.exceeds_limit() {
+                                Value::String("...".to_string())
+                            } else {
+                                TypeInfo::build_example_value_for_type_with_depth(
+                                    field_type,
+                                    &ctx.registry,
+                                    next_depth,
+                                )
+                            }
+                        },
+                        |k| k.example_value().clone(),
+                    )
+            },
+            |parent_knowledge| {
+                MathComponent::try_from(field_name)
+                    .ok()
+                    .and_then(|component| parent_knowledge.get_component_example(component))
+                    .map_or_else(
+                        || {
+                            // Either not a math component or no example available
+                            BRP_MUTATION_KNOWLEDGE
+                                .get(&KnowledgeKey::exact(field_type))
+                                .map_or_else(
+                                    || {
+                                        let next_depth = depth.increment();
+                                        if next_depth.exceeds_limit() {
+                                            Value::String("...".to_string())
+                                        } else {
+                                            TypeInfo::build_example_value_for_type_with_depth(
+                                                field_type,
+                                                &ctx.registry,
+                                                next_depth,
+                                            )
+                                        }
+                                    },
+                                    |k| k.example_value().clone(),
+                                )
+                        },
+                        std::clone::Clone::clone,
+                    )
+            },
+        );
+
+        let final_example = MutationPathContext::wrap_example(example_value);
+
+        // Build path using the context's prefix
+        let path = if ctx.path_prefix.is_empty() {
+            format!(".{field_name}")
+        } else {
+            format!("{}.{field_name}", ctx.path_prefix)
+        };
 
         MutationPathInternal {
-            path:          format!(".{field_name}"),
-            example:       final_example,
+            path,
+            example: final_example,
             enum_variants: None,
-            type_name:     field_type.clone(),
-            path_kind:     MutationPathKind::StructField {
+            type_name: field_type.clone(),
+            path_kind: MutationPathKind::StructField {
                 field_name:  field_name.to_string(),
                 parent_type: parent_type.clone(),
             },
+            mutation_status: MutationStatus::Mutatable,
+            error_reason: None,
         }
-    }
-
-    /// Expand nested fields for a struct field (depth = 1 only)
-    fn expand_nested_fields(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        ctx: &MutationPathContext<'_>,
-    ) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
-
-        // Create a context for nested field building
-        let nested_context = MutationPathContext::new(
-            RootOrField::root(field_type),
-            ctx.registry,
-            None, // No wrapper for nested fields
-        );
-
-        let nested_paths = Self::build_property_paths(&nested_context)?;
-        for nested_path in nested_paths {
-            // Convert to nested path by prepending the field name
-            let full_path = if nested_path.path.is_empty() {
-                format!(".{field_name}")
-            } else {
-                format!(".{field_name}{}", nested_path.path)
-            };
-
-            // Create new path with NestedPath context
-            let mut components = vec![field_name.to_string()];
-            if let MutationPathKind::StructField {
-                field_name: nested_field,
-                ..
-            } = &nested_path.path_kind
-            {
-                components.push(nested_field.clone());
-            }
-
-            paths.push(MutationPathInternal {
-                path:          full_path,
-                example:       nested_path.example,
-                enum_variants: nested_path.enum_variants,
-                type_name:     nested_path.type_name.clone(),
-                path_kind:     MutationPathKind::NestedPath {
-                    components,
-                    final_type: nested_path.type_name,
-                },
-            });
-        }
-
-        Ok(paths)
-    }
-
-    /// Build mutation paths for all properties in a struct
-    ///
-    /// This method handles the property-level iteration and delegates to the
-    /// field-level mutation path building logic via the main dispatch system.
-    fn build_property_paths(ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
-
-        let properties = Self::extract_properties(ctx);
-        if properties.is_empty() {
-            return Ok(paths);
-        }
-
-        for (field_name, field_info) in properties {
-            // Extract field type to check for skip directive
-            let field_type = SchemaField::extract_field_type(field_info);
-            let Some(ft) = field_type else {
-                paths.push(Self::build_null_mutation_path(ctx, &field_name));
-                continue;
-            };
-
-            let wrapper_info = WrapperType::detect(ft.as_str());
-
-            // Check hardcoded knowledge first
-            let field_paths =
-                match Self::try_build_hardcoded_paths(ctx, &field_name, &ft, wrapper_info.as_ref())
-                {
-                    HardcodedPathsResult::Handled(field_paths) => field_paths,
-                    HardcodedPathsResult::Fallback => {
-                        Self::build_type_based_paths(ctx, &field_name, &ft, wrapper_info)?
-                    }
-                };
-            paths.extend(field_paths);
-        }
-
-        Ok(paths)
     }
 
     /// Extract properties from the schema
-    fn extract_properties<'a>(ctx: &'a MutationPathContext<'_>) -> Vec<(String, &'a Value)> {
+    fn extract_properties(ctx: &MutationPathContext) -> Vec<(String, &Value)> {
         let Some(schema) = ctx.require_schema() else {
             return Vec::new();
         };
@@ -941,176 +1098,6 @@ impl StructMutationBuilder {
         };
 
         properties.iter().map(|(k, v)| (k.clone(), v)).collect()
-    }
-
-    /// Build a null mutation path for fields without type information
-    fn build_null_mutation_path(
-        ctx: &MutationPathContext<'_>,
-        field_name: &str,
-    ) -> MutationPathInternal {
-        MutationPathInternal {
-            path:          format!(".{field_name}"),
-            example:       json!(null),
-            enum_variants: None,
-            type_name:     BrpTypeName::unknown(),
-            path_kind:     match &ctx.location {
-                RootOrField::Root { type_name } => MutationPathKind::StructField {
-                    field_name:  field_name.to_string(),
-                    parent_type: type_name.clone(),
-                },
-                RootOrField::Field {
-                    field_type: parent_type,
-                    ..
-                } => MutationPathKind::StructField {
-                    field_name:  field_name.to_string(),
-                    parent_type: parent_type.clone(),
-                },
-            },
-        }
-    }
-
-    /// Try to build paths using hardcoded knowledge
-    fn try_build_hardcoded_paths(
-        ctx: &MutationPathContext<'_>,
-        field_name: &str,
-        field_type: &BrpTypeName,
-        wrapper_info: Option<&(WrapperType, BrpTypeName)>,
-    ) -> HardcodedPathsResult {
-        // Get the parent type for struct field lookups
-        let parent_type = ctx.type_name();
-
-        // Three-tier hardcoded knowledge lookup strategy for struct fields:
-        // 1. Most specific: struct field (e.g., "WindowResolution.physical_width")
-        // 2. Field type: exact type match (e.g., "u32" regardless of parent struct)
-        // 3. Wrapper inner: for wrapper types like Option<T>, try the inner type T
-        let Some(hardcoded) = BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::StructField {
-                struct_type: parent_type.to_string(),
-                field_name:  field_name.to_string(),
-            })
-            .or_else(|| {
-                // Fall back to type-based knowledge
-                BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type))
-            })
-            .or_else(|| {
-                // For wrapper types, check the inner type for hardcoded knowledge
-                wrapper_info
-                    .and_then(|(_, inner)| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(inner)))
-            })
-        else {
-            return HardcodedPathsResult::Fallback;
-        };
-
-        // Get enum variants if this is an enum
-        let enum_variants = if wrapper_info.is_none() {
-            ctx.get_type_schema(field_type).and_then(|schema| {
-                if TypeKind::from_schema(schema, field_type) == TypeKind::Enum {
-                    EnumMutationBuilder::extract_enum_variants(schema)
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        };
-
-        let paths = Self::build_hardcoded_paths(
-            field_name,
-            field_type,
-            hardcoded,
-            wrapper_info.cloned(),
-            enum_variants,
-            parent_type,
-        );
-        HardcodedPathsResult::Handled(paths)
-    }
-
-    /// Build paths based on the field's type kind
-    fn build_type_based_paths(
-        ctx: &MutationPathContext<'_>,
-        field_name: &str,
-        field_type: &BrpTypeName,
-        wrapper_info: Option<(WrapperType, BrpTypeName)>,
-    ) -> Result<Vec<MutationPathInternal>> {
-        // Get schema for field type
-        let Some(field_type_schema) = ctx.get_type_schema(field_type) else {
-            return Ok(vec![Self::build_not_mutatable_path(
-                field_name, field_type, ctx,
-            )]);
-        };
-        let type_kind = TypeKind::from_schema(field_type_schema, field_type);
-
-        // Create a field context for this property
-        let field_ctx = ctx.create_field_context(field_name, field_type, wrapper_info);
-
-        // Dispatch to the appropriate builder - it will naturally determine mutability
-        type_kind.build_paths(&field_ctx)
-    }
-
-    /// Build paths for types with hardcoded knowledge (Vec3, Quat, etc.)
-    pub fn build_hardcoded_paths(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        hardcoded: &MutationKnowledge,
-        wrapper_info: Option<(WrapperType, BrpTypeName)>,
-        enum_variants: Option<Vec<String>>,
-        parent_type: &BrpTypeName,
-    ) -> Vec<MutationPathInternal> {
-        let mut paths = Vec::new();
-
-        // Build main path with appropriate example format
-        // When format knowledge exists for wrapper types, use it directly without wrapper
-        // transformation This fixes Handle<Image> where format knowledge provides the
-        // correct Weak format but wrapper.mutation_examples() wraps it in incorrect complex
-        // format
-        let final_example = if wrapper_info.is_some()
-            && BRP_MUTATION_KNOWLEDGE.contains_key(&KnowledgeKey::exact(field_type))
-        {
-            // Use format knowledge directly when the full wrapper type (e.g., Handle<Image>)
-            // has format knowledge This avoids wrapping the correct format in
-            // incorrect wrapper mutation examples
-            hardcoded.example_value.clone()
-        } else {
-            // Use wrapper transformation when hardcoded knowledge comes from inner type
-            wrapper_info.as_ref().map_or_else(
-                || hardcoded.example_value.clone(),
-                |(wrapper, _)| wrapper.mutation_examples(hardcoded.example_value.clone()),
-            )
-        };
-
-        paths.push(MutationPathInternal {
-            path: format!(".{field_name}"),
-            example: final_example,
-            enum_variants,
-            type_name: field_type.clone(),
-            path_kind: MutationPathKind::StructField {
-                field_name:  field_name.to_string(),
-                parent_type: parent_type.clone(),
-            },
-        });
-
-        // Add component paths if available (e.g., .x, .y, .z for Vec3)
-        if let Some(subfield_paths) = &hardcoded.subfield_paths {
-            for (component_name, component_example) in subfield_paths {
-                let component_example = wrapper_info.as_ref().map_or_else(
-                    || component_example.clone(),
-                    |(wrapper, _)| wrapper.mutation_examples(component_example.clone()),
-                );
-
-                paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}.{component_name}"),
-                    example:       component_example,
-                    enum_variants: None,
-                    type_name:     BrpTypeName::from("f32"), // Components are always f32
-                    path_kind:     MutationPathKind::NestedPath {
-                        components: vec![field_name.to_string(), component_name.to_string()],
-                        final_type: BrpTypeName::from("f32"),
-                    },
-                });
-            }
-        }
-
-        paths
     }
 }
 
@@ -1131,7 +1118,7 @@ impl TupleMutationBuilder {
                     .map(|item| {
                         SchemaField::extract_field_type(item)
                             .and_then(|t| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&t)))
-                            .map_or(json!(null), |k| k.example_value.clone())
+                            .map_or(json!(null), |k| k.example_value().clone())
                     })
                     .collect();
 
@@ -1148,7 +1135,7 @@ impl TupleMutationBuilder {
 
     /// Build a mutation path for a single tuple element with registry checking
     fn build_tuple_element_path(
-        ctx: &MutationPathContext<'_>,
+        ctx: &MutationPathContext,
         index: usize,
         element_info: &Value,
         path_prefix: &str,
@@ -1161,38 +1148,75 @@ impl TupleMutationBuilder {
             format!("{path_prefix}.{index}")
         };
 
-        // Check if element type supports mutation
-        match ctx.type_supports_mutation_detailed(&element_type) {
-            super::type_info::MutationSupport::Supported => {
-                // Element is mutatable, build normal path
-                let elem_example = BRP_MUTATION_KNOWLEDGE
-                    .get(&KnowledgeKey::exact(&element_type))
-                    .map_or(json!(null), |k| k.example_value.clone());
+        // Inline validation for Value types only (similar to TypeKind::build_paths)
+        let Some(element_schema) = ctx.get_type_schema(&element_type) else {
+            // Element type not in registry - build error path
+            return Some(MutationPathInternal {
+                path,
+                example: json!({
+                    "NotMutatable": format!("{}", super::type_info::MutationSupport::NotInRegistry(element_type.clone())),
+                    "agent_directive": "Element type not found in registry"
+                }),
+                enum_variants: None,
+                type_name: element_type.clone(),
+                path_kind: MutationPathKind::TupleElement {
+                    index,
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason: Option::<String>::from(
+                    &super::type_info::MutationSupport::NotInRegistry(element_type),
+                ),
+            });
+        };
 
-                Some(MutationPathInternal {
-                    path,
-                    example: elem_example,
-                    enum_variants: None,
-                    type_name: element_type,
-                    path_kind: MutationPathKind::TupleElement {
-                        index,
-                        parent_type: parent_type.clone(),
-                    },
-                })
+        let element_kind =
+            super::response_types::TypeKind::from_schema(element_schema, &element_type);
+        let supports_mutation = match element_kind {
+            super::response_types::TypeKind::Value => {
+                ctx.value_type_has_serialization(&element_type)
             }
-            not_mutatable_variant => {
-                // Element not mutatable, build error path
-                Some(MutationPathInternal {
-                    path,
-                    example: json!({
-                        "NotMutatable": format!("{not_mutatable_variant}"),
-                        "agent_directive": "Element type cannot be mutated through BRP"
-                    }),
-                    enum_variants: None,
-                    type_name: element_type,
-                    path_kind: MutationPathKind::NotMutatable,
-                })
-            }
+            // Other types are assumed mutatable (their builders handle validation)
+            _ => true,
+        };
+
+        if supports_mutation {
+            // Element is mutatable, build normal path
+            let elem_example = BRP_MUTATION_KNOWLEDGE
+                .get(&KnowledgeKey::exact(&element_type))
+                .map_or(json!(null), |k| k.example_value().clone());
+
+            Some(MutationPathInternal {
+                path,
+                example: elem_example,
+                enum_variants: None,
+                type_name: element_type,
+                path_kind: MutationPathKind::TupleElement {
+                    index,
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::Mutatable,
+                error_reason: None,
+            })
+        } else {
+            // Element not mutatable, build error path
+            let missing_support =
+                super::type_info::MutationSupport::MissingSerializationTraits(element_type.clone());
+            Some(MutationPathInternal {
+                path,
+                example: json!({
+                    "NotMutatable": format!("{missing_support}"),
+                    "agent_directive": "Element type cannot be mutated through BRP"
+                }),
+                enum_variants: None,
+                type_name: element_type,
+                path_kind: MutationPathKind::TupleElement {
+                    index,
+                    parent_type: parent_type.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason: Option::<String>::from(&missing_support),
+            })
         }
     }
 
@@ -1204,8 +1228,8 @@ impl TupleMutationBuilder {
             let (mutable_count, immutable_count) =
                 paths.iter().filter(|p| !p.path.is_empty()).fold(
                     (0, 0),
-                    |(mut_count, immut_count), path| match path.path_kind {
-                        MutationPathKind::NotMutatable => (mut_count, immut_count + 1),
+                    |(mut_count, immut_count), path| match path.mutation_status {
+                        MutationStatus::NotMutatable => (mut_count, immut_count + 1),
                         _ => (mut_count + 1, immut_count),
                     },
                 );
@@ -1215,7 +1239,8 @@ impl TupleMutationBuilder {
                 match (mutable_count, immutable_count) {
                     (0, _) => {
                         // All elements immutable - root cannot be mutated
-                        root.path_kind = MutationPathKind::NotMutatable;
+                        root.mutation_status = MutationStatus::NotMutatable;
+                        root.error_reason = Some("non_mutatable_elements".to_string());
                         root.example = json!({
                             "NotMutatable": format!("Type {} contains non-mutatable element types", root.type_name),
                             "agent_directive": "This tuple cannot be mutated - all elements contain non-mutatable types"
@@ -1227,7 +1252,8 @@ impl TupleMutationBuilder {
                     (_, _) => {
                         // Mixed mutability - root cannot be replaced, but individual elements can
                         // be mutated
-                        root.path_kind = MutationPathKind::PartiallyMutable;
+                        root.mutation_status = MutationStatus::PartiallyMutatable;
+                        root.error_reason = Some("partially_mutable_elements".to_string());
                         root.example = json!({
                             "PartialMutation": format!("Some elements of {} are immutable", root.type_name),
                             "agent_directive": "Use individual element paths - root replacement not supported",
@@ -1239,99 +1265,203 @@ impl TupleMutationBuilder {
             }
         }
     }
-
-    /// Propagate `NotMutatable` status from all tuple elements to the root path (legacy method)
-    fn propagate_tuple_struct_immutability(paths: &mut [MutationPathInternal]) {
-        // Use the new mixed mutability handler instead
-        Self::propagate_tuple_mixed_mutability(paths);
-    }
 }
 
 impl MutationPathBuilder for TupleMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
-
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(paths);
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
         };
 
-        // Get prefix items (tuple elements) from schema
-        let prefix_items =
-            MutationPathContext::get_schema_field_as_array(schema, SchemaField::PrefixItems);
+        let mut paths = Vec::new();
+        let elements = MutationPathContext::extract_tuple_element_types(schema).unwrap_or_default();
 
-        // Build example tuple value using the extracted method
-        let example = Self::build_tuple_example(
-            schema
-                .get_field(SchemaField::PrefixItems)
-                .unwrap_or(&json!([])),
-        );
+        // Build root tuple path
+        Self::build_root_tuple_path(&mut paths, ctx, schema);
 
-        // Add the main tuple path first (example is consumed here)
-        let main_path = match &ctx.location {
+        // Build paths for each element
+        Self::build_element_paths(&mut paths, ctx, schema, &elements, depth)?;
+
+        // Propagate mixed mutability status to root path
+        Self::propagate_tuple_mixed_mutability(&mut paths);
+        Ok(paths)
+    }
+}
+
+impl TupleMutationBuilder {
+    fn build_root_tuple_path(
+        paths: &mut Vec<MutationPathInternal>,
+        ctx: &MutationPathContext,
+        schema: &Value,
+    ) {
+        match &ctx.location {
+            RootOrField::Root { type_name } => {
+                paths.push(MutationPathInternal {
+                    path:            String::new(),
+                    example:         Self::build_tuple_example(
+                        schema
+                            .get_field(SchemaField::PrefixItems)
+                            .unwrap_or(&json!([])),
+                    ),
+                    enum_variants:   None,
+                    type_name:       type_name.clone(),
+                    path_kind:       MutationPathKind::RootValue {
+                        type_name: type_name.clone(),
+                    },
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason:    None,
+                });
+            }
+            RootOrField::Field {
+                field_name,
+                field_type,
+                parent_type,
+            } => {
+                paths.push(MutationPathInternal {
+                    path:            format!(".{field_name}"),
+                    example:         Self::build_tuple_example(
+                        schema
+                            .get_field(SchemaField::PrefixItems)
+                            .unwrap_or(&json!([])),
+                    ),
+                    enum_variants:   None,
+                    type_name:       field_type.clone(),
+                    path_kind:       MutationPathKind::StructField {
+                        field_name:  field_name.clone(),
+                        parent_type: parent_type.clone(),
+                    },
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason:    None,
+                });
+            }
+        }
+    }
+
+    fn build_element_paths(
+        paths: &mut Vec<MutationPathInternal>,
+        ctx: &MutationPathContext,
+        schema: &Value,
+        elements: &[BrpTypeName],
+        depth: RecursionDepth,
+    ) -> Result<()> {
+        for (index, element_type) in elements.iter().enumerate() {
+            // Use existing create_field_context with index as field name
+            let element_ctx = ctx.create_field_context(&index.to_string(), element_type);
+            let Some(element_schema) = ctx.get_type_schema(element_type) else {
+                // Build not mutatable element path for missing registry entry
+                paths.push(MutationPathInternal {
+                    path: format!(".{index}"),
+                    example: json!({
+                        "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
+                        "agent_directive": "Element type not found in registry"
+                    }),
+                    enum_variants: None,
+                    type_name: element_type.clone(),
+                    path_kind: MutationPathKind::TupleElement {
+                        index,
+                        parent_type: ctx.type_name().clone(),
+                    },
+                    mutation_status: MutationStatus::NotMutatable,
+                    error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
+                });
+                continue;
+            };
+            let element_kind = TypeKind::from_schema(element_schema, element_type);
+
+            // Similar to struct fields - check Value types for serialization
+            if matches!(element_kind, TypeKind::Value) {
+                if ctx.value_type_has_serialization(element_type) {
+                    // Use existing build_tuple_element_path method for Value types
+                    if let Some(element_info) = schema
+                        .get_field(SchemaField::PrefixItems)
+                        .and_then(|items| items.as_array())
+                        .and_then(|arr| arr.get(index))
+                        && let Some(element_path) = Self::build_tuple_element_path(
+                            ctx,
+                            index,
+                            element_info,
+                            "",
+                            ctx.type_name(),
+                        )
+                    {
+                        paths.push(element_path);
+                    }
+                } else {
+                    // Build not mutatable element path inline
+                    paths.push(MutationPathInternal {
+                        path: format!(".{index}"),
+                        example: json!({
+                            "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
+                            "agent_directive": "Element type cannot be mutated through BRP"
+                        }),
+                        enum_variants: None,
+                        type_name: element_type.clone(),
+                        path_kind: MutationPathKind::TupleElement {
+                            index,
+                            parent_type: ctx.type_name().clone(),
+                        },
+                        mutation_status: MutationStatus::NotMutatable,
+                        error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
+                    });
+                }
+            } else {
+                // Recurse for nested types
+                let element_paths = element_kind.build_paths(&element_ctx, depth)?;
+                paths.extend(element_paths);
+            }
+        }
+        Ok(())
+    }
+}
+
+impl TupleMutationBuilder {
+    /// Build a not-mutatable path with structured error details
+    fn build_not_mutatable_path(
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
+        match &ctx.location {
             RootOrField::Root { type_name } => MutationPathInternal {
-                path: String::new(),
-                example,
-                enum_variants: None,
-                type_name: type_name.clone(),
-                path_kind: MutationPathKind::RootValue {
+                path:            String::new(),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This tuple type cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
                     type_name: type_name.clone(),
                 },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
             },
             RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
             } => MutationPathInternal {
-                path: format!(".{field_name}"),
-                example,
-                enum_variants: None,
-                type_name: field_type.clone(),
-                path_kind: MutationPathKind::StructField {
+                path:            format!(".{field_name}"),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This tuple field cannot be mutated - {support}")
+                }),
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
             },
-        };
-        paths.push(main_path);
-
-        // Add element paths
-        match &ctx.location {
-            RootOrField::Root { type_name } => {
-                // Add paths for each tuple element
-                if let Some(items) = prefix_items {
-                    for (index, element_info) in items.iter().enumerate() {
-                        if let Some(path) =
-                            Self::build_tuple_element_path(ctx, index, element_info, "", type_name)
-                        {
-                            paths.push(path);
-                        }
-                    }
-                }
-            }
-            RootOrField::Field {
-                field_name,
-                field_type,
-                parent_type: _,
-            } => {
-                // Add paths for each tuple element
-                if let Some(items) = prefix_items {
-                    for (index, element_info) in items.iter().enumerate() {
-                        if let Some(path) = Self::build_tuple_element_path(
-                            ctx,
-                            index,
-                            element_info,
-                            &format!(".{field_name}"),
-                            field_type,
-                        ) {
-                            paths.push(path);
-                        }
-                    }
-                }
-            }
         }
-
-        Self::propagate_tuple_struct_immutability(&mut paths);
-        Ok(paths)
     }
 }
 
@@ -1341,65 +1471,79 @@ impl MutationPathBuilder for TupleMutationBuilder {
 pub struct MapMutationBuilder;
 
 impl MutationPathBuilder for MapMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
         };
 
-        // Extract value type inline instead of precheck
         let Some(value_type) = MutationPathContext::extract_map_value_type(schema) else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+            // If we have a schema but can't extract value type, treat as NotInRegistry
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+            )]);
         };
 
-        // Check value type mutability inline
-        let Some(value_schema) = ctx.get_type_schema(&value_type) else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
-        };
-
-        let value_kind = TypeKind::from_schema(value_schema, &value_type);
-
-        // For Value types, check serialization inline
-        if matches!(value_kind, TypeKind::Value) && !ctx.value_type_has_serialization(&value_type) {
-            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+        // Maps are currently treated as opaque (cannot mutate individual keys)
+        // So we just validate value type has serialization and build a single path
+        if !ctx.value_type_has_serialization(&value_type) {
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::MissingSerializationTraits(value_type),
+            )]);
         }
 
-        // Value type is mutable, proceed with normal map path building
-        // Use DefaultMutationBuilder for the actual path construction
-        DefaultMutationBuilder.build_paths(ctx)
+        // Build single opaque mutation path for the entire map
+        DefaultMutationBuilder.build_paths(ctx, depth)
     }
 }
 
 impl MapMutationBuilder {
-    /// Build a not-mutatable path for Map types
-    fn build_not_mutatable_path(ctx: &MutationPathContext<'_>) -> MutationPathInternal {
-        let detailed_support = ctx.type_supports_mutation_detailed(ctx.type_name());
+    /// Build a not-mutatable path with structured error details
+    fn build_not_mutatable_path(
+        ctx: &MutationPathContext,
+        support: MutationSupport,
+    ) -> MutationPathInternal {
         match &ctx.location {
             RootOrField::Root { type_name } => MutationPathInternal {
-                path:          String::new(),
-                example:       json!({
-                    "NotMutatable": format!("{detailed_support}"),
-                    "agent_directive": "This Map type cannot be mutated - see error message for details"
+                path:            String::new(),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This map type cannot be mutated - {support}")
                 }),
-                enum_variants: None,
-                type_name:     type_name.clone(),
-                path_kind:     MutationPathKind::NotMutatable,
+                enum_variants:   None,
+                type_name:       type_name.clone(),
+                path_kind:       MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
             },
             RootOrField::Field {
                 field_name,
                 field_type,
                 parent_type,
             } => MutationPathInternal {
-                path:          format!(".{field_name}"),
-                example:       json!({
-                    "NotMutatable": format!("{detailed_support}"),
-                    "agent_directive": "This Map field cannot be mutated - see error message for details"
+                path:            format!(".{field_name}"),
+                example:         json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This map field cannot be mutated - {support}")
                 }),
-                enum_variants: None,
-                type_name:     field_type.clone(),
-                path_kind:     MutationPathKind::StructField {
+                enum_variants:   None,
+                type_name:       field_type.clone(),
+                path_kind:       MutationPathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason:    Option::<String>::from(&support),
             },
         }
     }
@@ -1411,19 +1555,25 @@ impl MapMutationBuilder {
 pub struct DefaultMutationBuilder;
 
 impl MutationPathBuilder for DefaultMutationBuilder {
-    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
+    fn build_paths(
+        &self,
+        ctx: &MutationPathContext,
+        _depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
 
         match &ctx.location {
             RootOrField::Root { type_name } => {
                 paths.push(MutationPathInternal {
-                    path:          String::new(),
-                    example:       json!(null),
-                    enum_variants: None,
-                    type_name:     type_name.clone(),
-                    path_kind:     MutationPathKind::RootValue {
+                    path:            String::new(),
+                    example:         json!(null),
+                    enum_variants:   None,
+                    type_name:       type_name.clone(),
+                    path_kind:       MutationPathKind::RootValue {
                         type_name: type_name.clone(),
                     },
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason:    None,
                 });
             }
             RootOrField::Field {
@@ -1432,14 +1582,16 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                 parent_type,
             } => {
                 paths.push(MutationPathInternal {
-                    path:          format!(".{field_name}"),
-                    example:       json!(null),
-                    enum_variants: None,
-                    type_name:     field_type.clone(),
-                    path_kind:     MutationPathKind::StructField {
+                    path:            format!(".{field_name}"),
+                    example:         json!(null),
+                    enum_variants:   None,
+                    type_name:       field_type.clone(),
+                    path_kind:       MutationPathKind::StructField {
                         field_name:  field_name.clone(),
                         parent_type: parent_type.clone(),
                     },
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason:    None,
                 });
             }
         }
@@ -1449,27 +1601,6 @@ impl MutationPathBuilder for DefaultMutationBuilder {
 }
 
 impl StructMutationBuilder {
-    /// Build a mutation path for non-mutatable types with explanatory reason
-    fn build_not_mutatable_path(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        ctx: &MutationPathContext<'_>,
-    ) -> MutationPathInternal {
-        let detailed_support = ctx.type_supports_mutation_detailed(field_type);
-        let reason = format!("{detailed_support}");
-
-        MutationPathInternal {
-            path:          field_name.to_string(),
-            example:       json!({
-                "NotMutatable": reason,
-                "agent_directive": "This field cannot be mutated - see error message for details"
-            }),
-            enum_variants: None,
-            type_name:     field_type.clone(),
-            path_kind:     MutationPathKind::NotMutatable,
-        }
-    }
-
     /// Propagate `NotMutatable` status from all struct fields to the root path
     fn propagate_struct_immutability(paths: &mut [MutationPathInternal]) {
         let field_paths: Vec<_> = paths
@@ -1480,13 +1611,14 @@ impl StructMutationBuilder {
         if !field_paths.is_empty() {
             let all_fields_not_mutatable = field_paths
                 .iter()
-                .all(|p| matches!(p.path_kind, MutationPathKind::NotMutatable));
+                .all(|p| matches!(p.mutation_status, MutationStatus::NotMutatable));
 
             if all_fields_not_mutatable {
                 // Mark any root-level paths as NotMutatable
                 for path in paths.iter_mut() {
                     if matches!(path.path_kind, MutationPathKind::RootValue { .. }) {
-                        path.path_kind = MutationPathKind::NotMutatable;
+                        path.mutation_status = MutationStatus::NotMutatable;
+                        path.error_reason = Some("non_mutatable_fields".to_string());
                         path.example = json!({
                             "NotMutatable": format!("Type {} contains non-mutatable field types", path.type_name),
                             "agent_directive": "This struct cannot be mutated - all fields contain non-mutatable types"

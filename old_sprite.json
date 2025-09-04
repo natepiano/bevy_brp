@@ -1,0 +1,92 @@
+{
+    ".anchor": {
+      "description": "Mutate the anchor field of bevy_sprite::sprite::Sprite",
+      "example": "Center",
+      "path_kind": "StructField",
+      "type": "bevy_sprite::sprite::Anchor"
+    },
+    ".color": {
+      "description": "Mutate the color field of bevy_sprite::sprite::Sprite",
+      "example": {
+        "Srgba": [1.0, 0.0, 0.0, 1.0]
+      },
+      "path_kind": "StructField",
+      "type": "bevy_color::color::Color"
+    },
+    ".custom_size": {
+      "description": "Mutate the custom_size field of bevy_sprite::sprite::Sprite",
+      "example_none": null,
+      "example_some": [1.0, 2.0],
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<glam::Vec2>"
+    },
+    ".custom_size.x": {
+      "description": "Mutate the x component of custom_size (type: f32)",
+      "example": {
+        "none": null,
+        "some": 1.0
+      },
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".custom_size.y": {
+      "description": "Mutate the y component of custom_size (type: f32)",
+      "example": {
+        "none": null,
+        "some": 2.0
+      },
+      "path_kind": "NestedPath",
+      "type": "f32"
+    },
+    ".flip_x": {
+      "description": "Mutate the flip_x field of bevy_sprite::sprite::Sprite",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    },
+    ".flip_y": {
+      "description": "Mutate the flip_y field of bevy_sprite::sprite::Sprite",
+      "example": true,
+      "path_kind": "StructField",
+      "type": "bool"
+    },
+    ".image": {
+      "description": "Mutate the image field of bevy_sprite::sprite::Sprite",
+      "example": {
+        "Weak": {
+          "Uuid": {
+            "uuid": "12345678-1234-1234-1234-123456789012"
+          }
+        }
+      },
+      "path_kind": "StructField",
+      "type": "bevy_asset::handle::Handle<bevy_image::image::Image>"
+    },
+    ".image_mode": {
+      "description": "Mutate the image_mode field of bevy_sprite::sprite::Sprite",
+      "example": "Auto",
+      "path_kind": "StructField",
+      "type": "bevy_sprite::sprite::SpriteImageMode"
+    },
+    ".rect": {
+      "description": "Mutate the rect field of bevy_sprite::sprite::Sprite",
+      "example_none": null,
+      "example_some": {
+        "max": [100.0, 100.0],
+        "min": [0.0, 0.0]
+      },
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<bevy_math::rects::rect::Rect>"
+    },
+    ".texture_atlas": {
+      "description": "Mutate the texture_atlas field of bevy_sprite::sprite::Sprite",
+      "enum_variants": ["None", "Some"],
+      "example_none": null,
+      "example_some": "None",
+      "note": "For Option fields: pass the value directly to set Some, null to set None",
+      "path_kind": "StructField",
+      "type": "core::option::Option<bevy_image::texture_atlas::TextureAtlas>"
+    }
+  }

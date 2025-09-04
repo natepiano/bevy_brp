@@ -10,7 +10,6 @@ mod mutation_path_builders;
 mod response_types;
 mod tool;
 mod type_info;
-mod wrapper_types;
 
 // Re-export public API
 // Internal use for format discovery

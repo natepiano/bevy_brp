@@ -5,6 +5,7 @@
 //! serialization knowledge to provide accurate type schema information for BRP operations.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
@@ -78,13 +79,13 @@ async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
 
 /// orchestrates type schema generation using a single call to get the complete registry
 pub struct TypeSchemaEngine {
-    registry: HashMap<BrpTypeName, Value>,
+    registry: Arc<HashMap<BrpTypeName, Value>>,
 }
 
 impl TypeSchemaEngine {
     /// Create a new engine instance by fetching the complete registry
     pub async fn new(port: Port) -> Result<Self> {
-        let registry = Self::get_full_registry(port).await?;
+        let registry = Arc::new(Self::get_full_registry(port).await?);
         Ok(Self { registry })
     }
 
@@ -133,7 +134,11 @@ impl TypeSchemaEngine {
             let type_info = if let Some(type_schema) = self.registry.get(&brp_type_name) {
                 response.discovered_count += 1;
                 response.summary.successful_discoveries += 1;
-                TypeInfo::from_schema(brp_type_name.clone(), type_schema, &self.registry)
+                TypeInfo::from_schema(
+                    brp_type_name.clone(),
+                    type_schema,
+                    Arc::clone(&self.registry),
+                )
             } else {
                 response.summary.failed_discoveries += 1;
                 TypeInfo::not_found(

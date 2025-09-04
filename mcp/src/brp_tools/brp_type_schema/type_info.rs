@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use serde::Serialize;
 use serde_json::{Map, Value, json};
@@ -18,7 +19,6 @@ use super::response_types::{
     BrpSupportedOperation, BrpTypeName, EnumVariantInfo, MutationPath, MutationPathInternal,
     ReflectTrait, SchemaField, SchemaInfo, TypeKind,
 };
-use super::wrapper_types::WrapperType;
 use crate::string_traits::JsonFieldAccess;
 
 /// Represents detailed mutation support status for a type
@@ -78,6 +78,25 @@ impl Display for MutationSupport {
     }
 }
 
+/// Convert `MutationSupport` to structured error reason string
+impl From<&MutationSupport> for Option<String> {
+    fn from(support: &MutationSupport) -> Self {
+        match support {
+            MutationSupport::Supported => None,
+            MutationSupport::MissingSerializationTraits(_) => {
+                Some("missing_serialization_traits".to_string())
+            }
+            MutationSupport::NonMutatableElements { .. } => {
+                Some("non_mutatable_elements".to_string())
+            }
+            MutationSupport::NotInRegistry(_) => Some("not_in_registry".to_string()),
+            MutationSupport::RecursionLimitExceeded(_) => {
+                Some("recursion_limit_exceeded".to_string())
+            }
+        }
+    }
+}
+
 /// this is all of the information we provide about a type
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeInfo {
@@ -117,7 +136,7 @@ impl TypeInfo {
     pub fn from_schema(
         brp_type_name: BrpTypeName,
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Self {
         // Extract type category for enum check
         let type_kind = TypeKind::from_schema(type_schema, &brp_type_name);
@@ -134,10 +153,11 @@ impl TypeInfo {
 
         // Get mutation support directly using structured validation (TYPE-SYSTEM-001)
         let mutation_support =
-            Self::get_mutation_support_direct(&brp_type_name, type_schema, registry);
+            Self::get_mutation_support_direct(&brp_type_name, type_schema, Arc::clone(&registry));
 
         // Build mutation paths only if needed for the final result
-        let mutation_paths = Self::get_mutation_paths(&brp_type_name, type_schema, registry);
+        let mutation_paths =
+            Self::get_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
 
         // Earn mutation support based on actual capability
         let mut supported_operations = supported_operations;
@@ -149,14 +169,19 @@ impl TypeInfo {
         let can_spawn = supported_operations.contains(&BrpSupportedOperation::Spawn)
             || supported_operations.contains(&BrpSupportedOperation::Insert);
         let spawn_format = if can_spawn {
-            Self::build_spawn_format(type_schema, registry, &type_kind, &brp_type_name)
+            Self::build_spawn_format(
+                type_schema,
+                Arc::clone(&registry),
+                &type_kind,
+                &brp_type_name,
+            )
         } else {
             None
         };
 
         // Build enum info if it's an enum
         let enum_info = if type_kind == TypeKind::Enum {
-            Self::extract_enum_info(type_schema, registry)
+            Self::extract_enum_info(type_schema, &registry)
         } else {
             None
         };
@@ -202,22 +227,24 @@ impl TypeInfo {
     fn build_mutation_paths(
         brp_type_name: &BrpTypeName,
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Vec<MutationPathInternal> {
         let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
 
         // Create root context for the new trait system
         let location = RootOrField::root(brp_type_name);
-        let ctx = MutationPathContext::new(location, registry, None);
+        let ctx = MutationPathContext::new(location, Arc::clone(&registry));
 
         // Use the new trait dispatch system
-        type_kind.build_paths(&ctx).unwrap_or_else(|_| Vec::new())
+        type_kind
+            .build_paths(&ctx, RecursionDepth::ZERO)
+            .unwrap_or_else(|_| Vec::new())
     }
 
     /// Build spawn format example for types that support spawn/insert
     fn build_spawn_format(
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
         type_kind: &TypeKind,
         type_name: &BrpTypeName,
     ) -> Option<Value> {
@@ -228,9 +255,9 @@ impl TypeInfo {
 
         match type_kind {
             TypeKind::TupleStruct | TypeKind::Tuple => {
-                Self::build_tuple_spawn_format(type_schema, registry)
+                Self::build_tuple_spawn_format(type_schema, Arc::clone(&registry))
             }
-            TypeKind::Struct => Self::build_struct_spawn_format(type_schema, registry),
+            TypeKind::Struct => Self::build_struct_spawn_format(type_schema, Arc::clone(&registry)),
             _ => None,
         }
     }
@@ -265,7 +292,7 @@ impl TypeInfo {
     /// Build spawn format for struct types with named properties
     fn build_struct_spawn_format(
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Option<Value> {
         let properties = type_schema
             .get_field(SchemaField::Properties)
@@ -276,7 +303,7 @@ impl TypeInfo {
         for (field_name, field_info) in properties {
             let field_type = SchemaField::extract_field_type(field_info);
             if let Some(ft) = field_type {
-                let example = Self::build_example_value_for_type(&ft, registry);
+                let example = Self::build_example_value_for_type(&ft, &registry);
                 spawn_example.insert(field_name.clone(), example);
             }
         }
@@ -291,7 +318,7 @@ impl TypeInfo {
     /// Build spawn format for tuple struct types with indexed fields
     fn build_tuple_spawn_format(
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Option<Value> {
         let prefix_items = type_schema
             .get_field(SchemaField::PrefixItems)
@@ -302,7 +329,7 @@ impl TypeInfo {
             .map(|item| {
                 Self::extract_type_ref_from_field(item).map_or_else(
                     || json!(null),
-                    |ft| Self::build_example_value_for_type(&ft, registry),
+                    |ft| Self::build_example_value_for_type(&ft, &registry),
                 )
             })
             .collect();
@@ -327,7 +354,7 @@ impl TypeInfo {
     }
 
     /// Build an example value for a specific type with recursion depth tracking
-    fn build_example_value_for_type_with_depth(
+    pub fn build_example_value_for_type_with_depth(
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
@@ -342,22 +369,6 @@ impl TypeInfo {
             return example_value;
         }
 
-        // Check for wrapper types (Option, Handle) and build proper examples
-        if let Some((wrapper_type, inner_type)) = WrapperType::detect(type_name.as_str()) {
-            // Build example for the inner type first, fall back to default if building fails
-            let inner_example = Self::build_example_value_for_type_with_depth(
-                &inner_type,
-                registry,
-                depth.increment(),
-            );
-            // If inner example is null or failed, use wrapper default instead
-            if inner_example.is_null() {
-                return wrapper_type.default_example();
-            }
-            // Return wrapped example (e.g., {"Some": inner} or {"Strong": [inner]})
-            return wrapper_type.wrap_example(inner_example);
-        }
-
         // Check if we have the type in the registry
         let Some(field_schema) = registry.get(type_name) else {
             return json!(null);
@@ -365,9 +376,12 @@ impl TypeInfo {
 
         let field_kind = TypeKind::from_schema(field_schema, type_name);
         match field_kind {
-            TypeKind::Enum => {
-                EnumMutationBuilder::build_enum_example(field_schema, registry, Some(type_name))
-            }
+            TypeKind::Enum => EnumMutationBuilder::build_enum_example(
+                field_schema,
+                registry,
+                Some(type_name),
+                depth.increment(),
+            ),
             TypeKind::Array => {
                 // Handle array types like [f32; 4] or [glam::Vec2; 3]
                 // Arrays have an "items" field with the element type
@@ -436,7 +450,7 @@ impl TypeInfo {
                     .get_field(SchemaField::Properties)
                     .map_or(json!(null), |properties| {
                         EnumMutationBuilder::build_struct_example_from_properties(
-                            properties, registry,
+                            properties, registry, depth.increment(),
                         )
                     })
             }
@@ -456,11 +470,8 @@ impl TypeInfo {
             // Generate description using the context
             let description = path.path_kind.description();
 
-            // Check if this is an Option type using the proper wrapper detection
-            let is_option = matches!(
-                WrapperType::detect(path.type_name.as_str()),
-                Some((WrapperType::Option, _))
-            );
+            // Wrapper detection removed - Option types now handled as regular enums
+            let is_option = false;
 
             // Create MutationPathInfo from MutationPath
             let path_info = MutationPath::from_mutation_path(
@@ -564,37 +575,47 @@ impl TypeInfo {
     fn get_mutation_support_direct(
         brp_type_name: &BrpTypeName,
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> MutationSupport {
         let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
 
         // Create root context for validation
         let location = RootOrField::root(brp_type_name);
-        let ctx = MutationPathContext::new(location, registry, None);
+        let ctx = MutationPathContext::new(location, registry);
 
-        // Use the same validation logic as TypeKind::validate_mutation_capability
-        type_kind.validate_mutation_capability(&ctx)
+        // Inline validation logic (similar to TypeKind::build_paths)
+        match type_kind {
+            TypeKind::Value => {
+                if ctx.value_type_has_serialization(brp_type_name) {
+                    MutationSupport::Supported
+                } else {
+                    MutationSupport::MissingSerializationTraits(brp_type_name.clone())
+                }
+            }
+            // Other types are handled by their specific builders during build_paths
+            _ => MutationSupport::Supported,
+        }
     }
 
     /// Get mutation paths for a type as a `HashMap`
     fn get_mutation_paths(
         brp_type_name: &BrpTypeName,
         type_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> HashMap<String, MutationPath> {
         // Check if this type has format knowledge with TreatAsValue
         let format_knowledge =
             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(brp_type_name.to_string()));
 
         if let Some(knowledge) = format_knowledge
-            && let KnowledgeGuidance::TreatAsValue { simplified_type } = &knowledge.guidance
+            && let KnowledgeGuidance::TreatAsValue { simplified_type } = &knowledge.guidance()
         {
             // For types that should be treated as values, only provide a root mutation
             let mut paths = HashMap::new();
 
             let root_mutation = MutationPath::new_root_value(
                 brp_type_name.clone(),
-                knowledge.example_value.clone(),
+                knowledge.example_value().clone(),
                 simplified_type.clone(),
             );
 
@@ -603,8 +624,9 @@ impl TypeInfo {
         }
 
         // Use the normal registry-derived mutation paths
-        let mutation_paths_vec = Self::build_mutation_paths(brp_type_name, type_schema, registry);
-        Self::convert_mutation_paths(&mutation_paths_vec, type_schema, registry)
+        let mutation_paths_vec =
+            Self::build_mutation_paths(brp_type_name, type_schema, Arc::clone(&registry));
+        Self::convert_mutation_paths(&mutation_paths_vec, type_schema, &registry)
     }
 
     /// Get supported BRP operations based on reflection traits

@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
-use super::constants::SCHEMA_REF_PREFIX;
+use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::type_info::TypeInfo;
 use crate::string_traits::JsonFieldAccess;
 
@@ -203,13 +204,35 @@ impl EnumVariantInfo {
     }
 
     /// Build example JSON for this enum variant
-    pub fn build_example(&self, registry: &HashMap<BrpTypeName, Value>, _depth: usize) -> Value {
+    pub fn build_example(
+        &self,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: usize,
+        enum_type: Option<&BrpTypeName>,
+    ) -> Value {
         match self {
-            Self::Unit(name) => serde_json::json!(name),
+            Self::Unit(name) => {
+                // NEW: Check for variant-specific knowledge first
+                if let Some(enum_type) = enum_type {
+                    let variant_key = KnowledgeKey::enum_variant(enum_type.type_string(), name);
+
+                    if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&variant_key) {
+                        return knowledge.example_value().clone();
+                    }
+                }
+                // Fall back to default Unit variant behavior
+                serde_json::json!(name)
+            }
             Self::Tuple(name, types) => {
                 let tuple_values: Vec<Value> = types
                     .iter()
-                    .map(|t| TypeInfo::build_example_value_for_type(t, registry))
+                    .map(|t| {
+                        TypeInfo::build_example_value_for_type_with_depth(
+                            t,
+                            registry,
+                            RecursionDepth::from_usize(depth).increment(),
+                        )
+                    }) // FIXED: Use depth-aware version with recursion tracking
                     .collect();
                 // For single-element tuples (newtype pattern), unwrap the single value
                 // For multi-element tuples, use array format
@@ -227,7 +250,11 @@ impl EnumVariantInfo {
                     .map(|f| {
                         (
                             f.field_name.clone(),
-                            TypeInfo::build_example_value_for_type(&f.type_name, registry),
+                            TypeInfo::build_example_value_for_type_with_depth(
+                                &f.type_name,
+                                registry,
+                                RecursionDepth::from_usize(depth).increment(),
+                            ), // FIXED: Use depth-aware version with recursion tracking
                         )
                     })
                     .collect();
@@ -323,6 +350,7 @@ pub fn build_all_enum_examples(
     schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
+    enum_type: Option<&BrpTypeName>, // ADD enum_type parameter
 ) -> HashMap<String, Value> {
     let variants = extract_enum_variants(schema, registry, depth);
 
@@ -336,13 +364,14 @@ pub fn build_all_enum_examples(
         match &variant {
             EnumVariantInfo::Unit(name) => {
                 if !seen_unit {
-                    examples.insert(name.clone(), serde_json::json!(name));
+                    let example = variant.build_example(registry, depth, enum_type); // Pass both
+                    examples.insert(name.clone(), example);
                     seen_unit = true;
                 }
             }
             EnumVariantInfo::Tuple(name, types) => {
                 if !seen_tuples.contains_key(types) {
-                    let example = variant.build_example(registry, depth);
+                    let example = variant.build_example(registry, depth, enum_type); // Pass both
                     examples.insert(name.clone(), example);
                     seen_tuples.insert(types.clone(), name.clone());
                 }
@@ -354,7 +383,7 @@ pub fn build_all_enum_examples(
                     .collect();
                 if let std::collections::hash_map::Entry::Vacant(e) = seen_structs.entry(field_sig)
                 {
-                    let example = variant.build_example(registry, depth);
+                    let example = variant.build_example(registry, depth, enum_type); // Pass both
                     examples.insert(name.clone(), example);
                     e.insert(name.clone());
                 }
@@ -391,7 +420,7 @@ pub fn extract_enum_variants(
 }
 
 /// Math type component names
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, AsRefStr)]
 #[strum(serialize_all = "lowercase")]
 pub enum MathComponent {
     X,
@@ -404,6 +433,32 @@ impl From<MathComponent> for String {
     fn from(component: MathComponent) -> Self {
         component.as_ref().to_string()
     }
+}
+
+impl TryFrom<&str> for MathComponent {
+    type Error = ();
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "x" => Ok(Self::X),
+            "y" => Ok(Self::Y),
+            "z" => Ok(Self::Z),
+            "w" => Ok(Self::W),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Status of whether a mutation path can be mutated
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MutationStatus {
+    /// Path can be fully mutated
+    Mutatable,
+    /// Path cannot be mutated (missing traits, unsupported type, etc.)
+    NotMutatable,
+    /// Path is partially mutatable (some elements mutable, others not)
+    PartiallyMutatable,
 }
 
 /// Context for a mutation path describing what kind of mutation this is
@@ -431,10 +486,6 @@ pub enum MutationPathKind {
         components: Vec<String>,
         final_type: BrpTypeName,
     },
-    /// Path cannot be mutated - explanatory reason provided in example
-    NotMutatable,
-    /// Path is partially mutable - some elements can be mutated, others cannot
-    PartiallyMutable,
 }
 
 impl MutationPathKind {
@@ -473,13 +524,6 @@ impl MutationPathKind {
                     )
                 }
             }
-            Self::NotMutatable => {
-                "Path cannot be mutated - see example for explanation".to_string()
-            }
-            Self::PartiallyMutable => {
-                "Path is partially mutable - some elements can be mutated, others cannot"
-                    .to_string()
-            }
         }
     }
 
@@ -491,8 +535,6 @@ impl MutationPathKind {
             Self::TupleElement { .. } => "TupleElement",
             Self::ArrayElement { .. } => "ArrayElement",
             Self::NestedPath { .. } => "NestedPath",
-            Self::NotMutatable => "NotMutatable",
-            Self::PartiallyMutable => "PartiallyMutable",
         }
     }
 }
@@ -516,15 +558,19 @@ impl Serialize for MutationPathKind {
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path
-    pub example:       Value,
+    pub example:         Value,
     /// Path for mutation, e.g., ".translation.x"
-    pub path:          String,
+    pub path:            String,
     /// For enum types, list of valid variant names
-    pub enum_variants: Option<Vec<String>>,
+    pub enum_variants:   Option<Vec<String>>,
     /// Type information for this path
-    pub type_name:     BrpTypeName,
+    pub type_name:       BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:     MutationPathKind,
+    pub path_kind:       MutationPathKind,
+    /// Status of whether this path can be mutated
+    pub mutation_status: MutationStatus,
+    /// Error reason if mutation is not possible
+    pub error_reason:    Option<String>,
 }
 
 /// Information about a mutation path that we serialize to our response
@@ -535,6 +581,13 @@ pub struct MutationPath {
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
     pub type_name:        BrpTypeName,
+    /// Status of whether this path can be mutated
+    pub mutation_status:  MutationStatus,
+    /// Context metadata describing the kind of mutation this path represents
+    pub path_kind:        MutationPathKind,
+    /// Error reason if mutation is not possible
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_reason:     Option<String>,
     /// Example value for mutations (for non-Option types)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub example:          Option<Value>,
@@ -553,8 +606,6 @@ pub struct MutationPath {
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note:             Option<String>,
-    /// Context metadata describing the kind of mutation this path represents
-    pub path_kind:        MutationPathKind,
 }
 
 impl MutationPath {
@@ -574,6 +625,8 @@ impl MutationPath {
             example_variants: None,
             note:             None,
             path_kind:        MutationPathKind::RootValue { type_name },
+            mutation_status:  MutationStatus::Mutatable,
+            error_reason:     None,
         }
     }
 
@@ -603,6 +656,8 @@ impl MutationPath {
                             .to_string(),
                     ),
                     path_kind: path.path_kind.clone(),
+                    mutation_status: path.mutation_status,
+                    error_reason: path.error_reason.clone(),
                 };
             }
         }
@@ -610,7 +665,8 @@ impl MutationPath {
         // Regular non-Option path
         let example_variants = if path.enum_variants.is_some() {
             // This is an enum type - generate example variants using the new system
-            let examples = build_all_enum_examples(type_schema, registry, 0);
+            let enum_type = Some(&path.type_name); // Extract enum type from path
+            let examples = build_all_enum_examples(type_schema, registry, 0, enum_type); // Pass both
             if examples.is_empty() {
                 None
             } else {
@@ -641,6 +697,8 @@ impl MutationPath {
             example_variants,
             note: None,
             path_kind: path.path_kind.clone(),
+            mutation_status: path.mutation_status,
+            error_reason: path.error_reason.clone(),
         }
     }
 }
@@ -718,8 +776,6 @@ pub enum TypeKind {
     List,
     /// Map type (`HashMap`, `BTreeMap`, etc.)
     Map,
-    /// Option type
-    Option,
     /// Regular struct type
     Struct,
     /// Tuple type

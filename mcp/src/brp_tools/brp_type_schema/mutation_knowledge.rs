@@ -40,11 +40,18 @@ pub enum KnowledgeKey {
     /// Enum variant-specific match for context-aware examples
     EnumVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type:       String,
+        enum_type:    String,
         /// e.g., "Clear"
-        variant_name:    String,
-        /// e.g., "Clear(f32)" - matches tuple variants with specific types
-        variant_pattern: String,
+        variant_name: String,
+    },
+    /// Newtype tuple variant that unwraps to inner type for mutations
+    NewtypeVariant {
+        /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
+        enum_type:    String,
+        /// e.g., "Clear"
+        variant_name: String,
+        /// e.g., "f32"
+        inner_type:   String,
     },
     /// Struct field-specific match for providing appropriate field values
     StructField {
@@ -67,15 +74,23 @@ impl KnowledgeKey {
     }
 
     /// Create an enum variant match key
-    pub fn enum_variant(
+    pub fn enum_variant(enum_type: impl Into<String>, variant_name: impl Into<String>) -> Self {
+        Self::EnumVariant {
+            enum_type:    enum_type.into(),
+            variant_name: variant_name.into(),
+        }
+    }
+
+    /// Create a newtype variant match key
+    pub fn newtype_variant(
         enum_type: impl Into<String>,
         variant_name: impl Into<String>,
-        variant_pattern: impl Into<String>,
+        inner_type: impl Into<String>,
     ) -> Self {
-        Self::EnumVariant {
-            enum_type:       enum_type.into(),
-            variant_name:    variant_name.into(),
-            variant_pattern: variant_pattern.into(),
+        Self::NewtypeVariant {
+            enum_type:    enum_type.into(),
+            variant_name: variant_name.into(),
+            inner_type:   inner_type.into(),
         }
     }
 
@@ -93,7 +108,7 @@ impl KnowledgeKey {
             Self::Exact(exact_type) if exact_type == type_name.type_string() => {
                 BRP_MUTATION_KNOWLEDGE
                     .get(self)
-                    .map(|k| k.example_value.clone())
+                    .map(|k| k.example_value().clone())
             }
             Self::Exact(_) => None, // Exact type doesn't match
             Self::Generic(generic_type) => {
@@ -101,7 +116,7 @@ impl KnowledgeKey {
                 if base_type == generic_type {
                     BRP_MUTATION_KNOWLEDGE
                         .get(self)
-                        .map(|k| k.example_value.clone())
+                        .map(|k| k.example_value().clone())
                 } else {
                     None
                 }
@@ -110,7 +125,13 @@ impl KnowledgeKey {
                 // Context-aware matching logic for enum variants
                 BRP_MUTATION_KNOWLEDGE
                     .get(self)
-                    .map(|k| k.example_value.clone())
+                    .map(|k| k.example_value().clone())
+            }
+            Self::NewtypeVariant { .. } => {
+                // Newtype variant matching logic
+                BRP_MUTATION_KNOWLEDGE
+                    .get(self)
+                    .map(|k| k.example_value().clone())
             }
             Self::StructField { .. } => {
                 // Struct field matching is handled separately in find_example_value_for_field
@@ -136,44 +157,73 @@ impl KnowledgeKey {
 
 /// Hardcoded BRP format knowledge for a type
 #[derive(Debug, Clone)]
-pub struct MutationKnowledge {
-    /// Example value in the correct BRP format
-    pub example_value:  Value,
-    /// Subfield paths for types that support subfield mutation (e.g., Vec3 has x,y,z)
-    /// Each tuple is (`component_name`, `example_value`)
-    pub subfield_paths: Option<Vec<(MathComponent, Value)>>,
-    /// Controls mutation path generation behavior
-    pub guidance:       KnowledgeGuidance,
+pub enum MutationKnowledge {
+    /// Simple value with just an example
+    Simple { example: Value },
+    /// Math type with array example and named components
+    MathType {
+        array_example: Value,
+        components:    HashMap<MathComponent, Value>,
+    },
+    /// Value that should be treated as opaque (no mutation paths)
+    OpaqueValue {
+        example:         Value,
+        simplified_type: String,
+    },
 }
 
 impl MutationKnowledge {
     /// Create a simple knowledge entry with no subfields
     pub const fn simple(example_value: Value) -> Self {
-        Self {
-            example_value,
-            subfield_paths: None,
-            guidance: KnowledgeGuidance::Teach,
+        Self::Simple {
+            example: example_value,
         }
     }
 
     /// Create a knowledge entry with math component subfields
-    pub const fn with_components(
+    pub fn with_components(
         example_value: Value,
-        components: Vec<(MathComponent, Value)>,
+        components: impl IntoIterator<Item = (MathComponent, Value)>,
     ) -> Self {
-        Self {
-            example_value,
-            subfield_paths: Some(components),
-            guidance: KnowledgeGuidance::Teach,
+        Self::MathType {
+            array_example: example_value,
+            components:    components.into_iter().collect(),
         }
     }
 
     /// Create a knowledge entry that should be treated as a simple value
     pub const fn as_value(example_value: Value, simplified_type: String) -> Self {
-        Self {
-            example_value,
-            subfield_paths: None,
-            guidance: KnowledgeGuidance::TreatAsValue { simplified_type },
+        Self::OpaqueValue {
+            example: example_value,
+            simplified_type,
+        }
+    }
+
+    /// Get the example value for this knowledge
+    pub const fn example_value(&self) -> &Value {
+        match self {
+            Self::MathType { array_example, .. } => array_example,
+            Self::Simple { example } | Self::OpaqueValue { example, .. } => example,
+        }
+    }
+
+    /// Get the example for a specific math component
+    pub fn get_component_example(&self, component: MathComponent) -> Option<&Value> {
+        match self {
+            Self::MathType { components, .. } => components.get(&component),
+            _ => None,
+        }
+    }
+
+    /// Get the guidance for this knowledge
+    pub fn guidance(&self) -> KnowledgeGuidance {
+        match self {
+            Self::Simple { .. } | Self::MathType { .. } => KnowledgeGuidance::Teach,
+            Self::OpaqueValue {
+                simplified_type, ..
+            } => KnowledgeGuidance::TreatAsValue {
+                simplified_type: simplified_type.clone(),
+            },
         }
     }
 }
@@ -464,11 +514,9 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // Matrices
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT2),
-            MutationKnowledge {
-                example_value:  json!([[1.0, 0.0], [0.0, 1.0]]),
-                subfield_paths: None, // Matrices don't have simple component access
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!([[1.0, 0.0], [0.0, 1.0]])), /* Matrices don't have
+                                                                         * simple component
+                                                                         * access */
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT2),
@@ -504,14 +552,10 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Bevy math Rect =====
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_RECT),
-            MutationKnowledge {
-                example_value:  json!({
-                    "min": [0.0, 0.0],
-                    "max": [100.0, 100.0]
-                }),
-                subfield_paths: None, // Has nested paths via Vec2 fields
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!({
+                "min": [0.0, 0.0],
+                "max": [100.0, 100.0]
+            })), // Has nested paths via Vec2 fields
         );
 
         // ===== Bevy color types =====
@@ -526,37 +570,23 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Collections =====
         map.insert(
             KnowledgeKey::generic("alloc::vec::Vec"),
-            MutationKnowledge {
-                example_value:  json!([]),
-                subfield_paths: None, // Collections have index access, not component access
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!([])), /* Collections have index access, not
+                                                   * component access */
         );
         map.insert(
             KnowledgeKey::generic("std::collections::HashMap"),
-            MutationKnowledge {
-                example_value:  json!({}),
-                subfield_paths: None,
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!({})),
         );
         map.insert(
             KnowledgeKey::generic("std::collections::BTreeMap"),
-            MutationKnowledge {
-                example_value:  json!({}),
-                subfield_paths: None,
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!({})),
         );
 
         // ===== Option types =====
+        // Option::None variant-specific knowledge - proper JSON null for BRP
         map.insert(
-            KnowledgeKey::generic("core::option::Option"),
-            MutationKnowledge {
-                example_value:  json!(null),
-                subfield_paths: None,
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            KnowledgeKey::enum_variant("core::option::Option", "None"),
+            MutationKnowledge::simple(json!(null)),
         );
 
         // ===== Bevy ECS types =====
@@ -576,12 +606,8 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             KnowledgeKey::exact(
                 "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage",
             ),
-            MutationKnowledge {
-                example_value:  json!(20), /* RENDER_ATTACHMENT | TEXTURE_BINDING - safe
-                                            * combination */
-                subfield_paths: None,
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!(20)), /* RENDER_ATTACHMENT | TEXTURE_BINDING - safe
+                                                   * combination */
         );
 
         // ===== Transform types =====
@@ -590,11 +616,9 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // Registry shows nested object but BRP actually expects flat array
         map.insert(
             KnowledgeKey::exact("bevy_transform::components::global_transform::GlobalTransform"),
-            MutationKnowledge {
-                example_value:  json!([1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]),
-                subfield_paths: None, // Affine matrices don't have simple component access
-                guidance:       KnowledgeGuidance::Teach,
-            },
+            MutationKnowledge::simple(json!([
+                1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
+            ])), // Affine matrices don't have simple component access
         );
 
         // ===== Asset Handle types =====
@@ -610,10 +634,10 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Camera3d depth load operation =====
         // Camera3d depth clear value - must be in range [0.0, 1.0] for valid GPU operations
         map.insert(
-            KnowledgeKey::enum_variant(
+            KnowledgeKey::newtype_variant(
                 "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp",
                 "Clear",
-                "Clear(f32)",
+                "f32",
             ),
             MutationKnowledge::simple(json!(0.5)), // Safe middle value in [0.0, 1.0] range
         );
