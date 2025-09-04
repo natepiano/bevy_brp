@@ -149,15 +149,19 @@ Containers extract their inner type and recurse deeper. They don't create mutati
 impl MutationPathBuilder for ArrayMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         let Some(element_type) = MutationPathContext::extract_list_element_type(schema) else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Cannot determine array element type")]);
+            // This case is actually impossible - if we have a schema, we can extract the type
+            // But if extraction somehow fails, treat as NotInRegistry
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(element_type))]);
         };
         
         // RECURSE DEEPER - don't stop at array level
-        let element_schema = ctx.get_type_schema(&element_type)?;
+        let Some(element_schema) = ctx.get_type_schema(&element_type) else {
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(element_type))]);
+        };
         let element_kind = TypeKind::from_schema(element_schema, &element_type);
         // Create a new root context for the element type
         let element_ctx = MutationPathContext::new(
@@ -167,7 +171,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         );
         
         // Continue recursion to actual mutation endpoints
-        element_kind.build_paths(&element_ctx, depth)  // depth already incremented by TypeKind
+        let element_paths = element_kind.build_paths(&element_ctx, depth);  // depth already incremented by TypeKind
+        paths.extend(element_paths);  // build_paths never returns Err
     }
 }
 
@@ -175,17 +180,19 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 impl MutationPathBuilder for MapMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         let Some(value_type) = MutationPathContext::extract_map_value_type(schema) else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Cannot determine map value type")]);
+            // This case is actually impossible - if we have a schema, we can extract the type
+            // But if extraction somehow fails, treat as NotInRegistry
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(value_type))]);
         };
         
         // Maps are currently treated as opaque (cannot mutate individual keys)
         // So we just validate value type has serialization and build a single path
         if !ctx.value_type_has_serialization(&value_type) {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Map values lack serialization")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::MissingSerializationTraits(value_type))]);
         }
         
         // Build single opaque mutation path for the entire map
@@ -203,7 +210,7 @@ Endpoints create the actual mutation paths:
 impl MutationPathBuilder for StructMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         let mut paths = Vec::new();
@@ -211,7 +218,9 @@ impl MutationPathBuilder for StructMutationBuilder {
         
         for (field_name, field_info) in properties {
             let Some(field_type) = SchemaField::extract_field_type(field_info) else {
-                paths.push(StructMutationBuilder::build_not_mutatable_field(field_name, "Cannot determine field type"));
+                // This case is actually impossible - if we have a schema, we can extract the type
+                // But if extraction somehow fails, treat as NotInRegistry
+                paths.push(StructMutationBuilder::build_not_mutatable_field(field_name, MutationSupport::NotInRegistry(field_name.clone())));
                 continue;
             };
             
@@ -220,19 +229,22 @@ impl MutationPathBuilder for StructMutationBuilder {
             let field_ctx = ctx.create_field_context(&field_name, &field_type, None);
             
             // Check if field is a Value type needing serialization
-            let field_schema = ctx.get_type_schema(&field_type)?;
+            let Some(field_schema) = ctx.get_type_schema(&field_type) else {
+                paths.push(StructMutationBuilder::build_not_mutatable_field(field_name, MutationSupport::NotInRegistry(field_type)));
+                continue;
+            };
             let field_kind = TypeKind::from_schema(field_schema, &field_type);
             
             if matches!(field_kind, TypeKind::Value) {
                 if !ctx.value_type_has_serialization(&field_type) {
-                    paths.push(StructMutationBuilder::build_not_mutatable_field(field_name, "Missing serialization"));
+                    paths.push(StructMutationBuilder::build_not_mutatable_field(field_name, MutationSupport::MissingSerializationTraits(field_type)));
                 } else {
                     paths.push(StructMutationBuilder::build_field_mutation_path(field_name, field_type, parent_type, ctx));
                 }
             } else {
                 // Recurse for nested containers or structs
                 // build_paths always returns Ok(Vec<...>) with errors as NotMutatable paths
-                let field_paths = field_kind.build_paths(&field_ctx, depth)?;
+                let field_paths = field_kind.build_paths(&field_ctx, depth);
                 paths.extend(field_paths);
             }
         }
@@ -245,7 +257,7 @@ impl MutationPathBuilder for StructMutationBuilder {
 impl MutationPathBuilder for TupleMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         let mut paths = Vec::new();
@@ -277,7 +289,20 @@ impl MutationPathBuilder for TupleMutationBuilder {
         for (index, element_type) in elements.iter().enumerate() {
             // Use existing create_field_context with index as field name
             let element_ctx = ctx.create_field_context(&index.to_string(), &element_type, None);
-            let element_schema = ctx.get_type_schema(&element_type)?;
+            let Some(element_schema) = ctx.get_type_schema(&element_type) else {
+                // Build not mutatable element path for missing registry entry
+                paths.push(MutationPathInternal {
+                    path: format!(".{index}"),
+                    example: json!({
+                        "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
+                        "agent_directive": "Element type not found in registry"
+                    }),
+                    enum_variants: None,
+                    type_name: element_type.clone(),
+                    path_kind: MutationPathKind::NotMutatable,
+                });
+                continue;
+            };
             let element_kind = TypeKind::from_schema(element_schema, &element_type);
             
             // Similar to struct fields - check Value types for serialization
@@ -287,7 +312,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     paths.push(MutationPathInternal {
                         path: format!(".{index}"),
                         example: json!({
-                            "NotMutatable": "Missing serialization",
+                            "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
                             "agent_directive": "Element type cannot be mutated through BRP"
                         }),
                         enum_variants: None,
@@ -303,7 +328,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
             } else {
                 // Recurse for nested types
                 // build_paths always returns Ok(Vec<...>) with errors as NotMutatable paths
-                let element_paths = element_kind.build_paths(&element_ctx, depth)?;
+                let element_paths = element_kind.build_paths(&element_ctx, depth);
                 paths.extend(element_paths);
             }
         }
@@ -318,7 +343,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
 impl MutationPathBuilder for EnumMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         // Enums can always be replaced entirely - no recursion into variants needed
@@ -370,7 +395,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
             // CONSISTENT: Return NotMutatable path, not empty vector
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         // Rest of implementation...
@@ -381,7 +406,7 @@ impl MutationPathBuilder for StructMutationBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>, depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
             // CONSISTENT: Return NotMutatable path, not empty vector  
-            return Ok(vec![Self::build_not_mutatable_path(ctx, "Schema not found")]);
+            return Ok(vec![Self::build_not_mutatable_path(ctx, MutationSupport::NotInRegistry(ctx.type_name()))]);
         };
         
         // Rest of implementation...
@@ -390,17 +415,17 @@ impl MutationPathBuilder for StructMutationBuilder {
 
 // Add standard helper method for consistent error path construction:
 impl MutationPathBuilder {
-    fn build_not_mutatable_path(ctx: &MutationPathContext<'_>, reason: &str) -> MutationPathInternal {
+    fn build_not_mutatable_path(ctx: &MutationPathContext<'_>, support: MutationSupport) -> MutationPathInternal {
         MutationPathInternal {
             path: ctx.current_path(),
             example: json!({
-                "NotMutatable": reason,
-                "agent_directive": format!("This {} cannot be mutated - {}", ctx.type_description(), reason)
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This {} cannot be mutated - {}", ctx.type_description(), support)
             }),
             enum_variants: None,
             type_name: ctx.type_name().clone(),
             path_kind: MutationPathKind::NotMutatable,  // Will become mutation_status with MutationStatus separation
-            error_reason: Some(reason.to_string()),      // NEW: Structured error reason
+            error_reason: Option::<String>::from(&support),  // NEW: Structured error reason
         }
     }
 }
@@ -744,6 +769,16 @@ The Option<T> handling is intentionally kept as-is to avoid scope creep. This wi
 - **Verdict**: CONFIRMED
 - **Reasoning**: While the separation adds API complexity, the user indicates there's a hidden complexity issue that the separation addresses, making it worth keeping
 - **Decision**: User elected to skip this recommendation - MutationStatus separation remains in plan
+
+### DESIGN-2: Inconsistent path building between container recursion and endpoint construction
+- **Status**: SKIPPED
+- **Category**: DESIGN
+- **Location**: /Users/natemccoy/rust/bevy_brp/plan-remove-precheck.md:143-196, 202-242
+- **Issue**: Container builders (Array, Map) recurse but don't build their own mutation paths
+- **Proposed Change**: Add container replacement paths in addition to element paths
+- **Verdict**: REJECTED
+- **Reasoning**: False positive - actual implementation already creates both container replacement and element paths
+- **Decision**: User elected to skip this recommendation
 
 ### SIMPLIFICATION-1 (2): Builder hierarchy follows identical patterns and could be simplified
 - **Status**: SKIPPED
