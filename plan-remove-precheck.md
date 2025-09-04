@@ -719,6 +719,16 @@ Store MutationSupport directly in error_reason field and convert to string only 
 - **Secondary**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/mutation_path_builders.rs`
 - **Tertiary**: `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/type_info.rs`
 
+## Deviation from Plan: SPECIFICATION-1 - Use of ? operator in build_paths
+- **Category**: SPECIFICATION
+- **Status**: ACCEPTED AS BUILT
+- **Location**: /Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_schema/mutation_path_builders.rs lines 861 and 1357
+- **Plan Specification**: Remove all Err(_) handling from build_paths calls as the method should always return Ok(Vec<MutationPathInternal>) with errors as NotMutatable paths
+- **Actual Implementation**: The code uses `?` operator when calling build_paths(), but investigation revealed that no implementation of build_paths ever returns Err, making the `?` operators harmless and the behavior identical to the plan's intent
+- **Verdict**: ALIGN RECOMMENDED (initially), then ACCEPT AS BUILT after investigation
+- **Reasoning**: While the code technically uses `?` operators which could propagate errors, all implementations of build_paths always return Ok(...) with errors represented as NotMutatable paths. The Result return type appears to be vestigial, and the code already behaves exactly as the plan specifies. The `?` operators have no actual effect on control flow.
+- **Decision**: Implementation deviation accepted and documented
+
 ## Design Review Skip Notes
 
 ### TYPE-SYSTEM-1: Option Type Special-Casing
