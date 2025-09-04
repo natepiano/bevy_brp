@@ -433,6 +433,8 @@ pub enum MutationPathKind {
     },
     /// Path cannot be mutated - explanatory reason provided in example
     NotMutatable,
+    /// Path is partially mutable - some elements can be mutated, others cannot
+    PartiallyMutable,
 }
 
 impl MutationPathKind {
@@ -474,6 +476,10 @@ impl MutationPathKind {
             Self::NotMutatable => {
                 "Path cannot be mutated - see example for explanation".to_string()
             }
+            Self::PartiallyMutable => {
+                "Path is partially mutable - some elements can be mutated, others cannot"
+                    .to_string()
+            }
         }
     }
 
@@ -486,6 +492,7 @@ impl MutationPathKind {
             Self::ArrayElement { .. } => "ArrayElement",
             Self::NestedPath { .. } => "NestedPath",
             Self::NotMutatable => "NotMutatable",
+            Self::PartiallyMutable => "PartiallyMutable",
         }
     }
 }

@@ -50,23 +50,6 @@ impl MutationSupport {
             Self::NonMutatableElements { element_type, .. } => Some(element_type.clone()),
         }
     }
-
-    fn from_paths(paths: &HashMap<String, MutationPath>) -> Self {
-        let has_mutatable = paths.values().any(|path| {
-            !matches!(
-                path.path_kind,
-                super::response_types::MutationPathKind::NotMutatable
-            )
-        });
-        if has_mutatable {
-            Self::Supported
-        } else {
-            // For post-build analysis, we can't determine the specific reason or type name,
-            // so we use a generic non-mutatable status with a placeholder type name.
-            // This should be replaced with actual detailed analysis in most cases.
-            Self::MissingSerializationTraits(BrpTypeName::from("UnknownType"))
-        }
-    }
 }
 
 impl Display for MutationSupport {
@@ -149,11 +132,12 @@ impl TypeInfo {
         // Get supported operations
         let supported_operations = Self::get_supported_operations(&reflect_types);
 
-        // Always build mutation paths to determine actual mutation support
-        let mutation_paths = Self::get_mutation_paths(&brp_type_name, type_schema, registry);
+        // Get mutation support directly using structured validation (TYPE-SYSTEM-001)
+        let mutation_support =
+            Self::get_mutation_support_direct(&brp_type_name, type_schema, registry);
 
-        // Check mutation support using the MutationSupport enum
-        let mutation_support = MutationSupport::from_paths(&mutation_paths);
+        // Build mutation paths only if needed for the final result
+        let mutation_paths = Self::get_mutation_paths(&brp_type_name, type_schema, registry);
 
         // Earn mutation support based on actual capability
         let mut supported_operations = supported_operations;
@@ -574,6 +558,22 @@ impl TypeInfo {
         } else {
             None
         }
+    }
+
+    /// Get mutation support directly using structured validation (TYPE-SYSTEM-001)
+    fn get_mutation_support_direct(
+        brp_type_name: &BrpTypeName,
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> MutationSupport {
+        let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
+
+        // Create root context for validation
+        let location = RootOrField::root(brp_type_name);
+        let ctx = MutationPathContext::new(location, registry, None);
+
+        // Use the same validation logic as TypeKind::validate_mutation_capability
+        type_kind.validate_mutation_capability(&ctx)
     }
 
     /// Get mutation paths for a type as a `HashMap`

@@ -20,7 +20,7 @@ enum HardcodedPathsResult {
     Fallback,
 }
 
-use super::constants::{MAX_TYPE_RECURSION_DEPTH, RecursionDepth, SCHEMA_REF_PREFIX};
+use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, MutationKnowledge};
 use super::response_types::{
     BrpTypeName, EnumVariantInfo, MutationPathInternal, MutationPathKind, SchemaField, TypeKind,
@@ -235,111 +235,8 @@ impl<'a> MutationPathContext<'a> {
         })
     }
 
-    /// API for checking if a type supports mutation
-    fn type_supports_mutation(&self, type_name: &BrpTypeName) -> bool {
-        self.type_supports_mutation_with_depth(type_name, RecursionDepth::ZERO)
-    }
-
-    /// Recursively check if a type supports mutation with depth protection
-    fn type_supports_mutation_with_depth(
-        &self,
-        type_name: &BrpTypeName,
-        depth: RecursionDepth,
-    ) -> bool {
-        // Prevent stack overflow from deep recursion
-        if depth.exceeds_limit() {
-            warn!(
-                "Max recursion depth {} reached while checking mutation support for {}, assuming not mutatable",
-                MAX_TYPE_RECURSION_DEPTH, type_name
-            );
-            return false;
-        }
-
-        let Some(schema) = self.get_type_schema(type_name) else {
-            return false; // Not in registry = not mutatable
-        };
-
-        let type_kind = TypeKind::from_schema(schema, type_name);
-
-        match type_kind {
-            TypeKind::Value => {
-                // Value types need serialization support
-                self.value_type_has_serialization(type_name)
-            }
-            TypeKind::List | TypeKind::Array => {
-                // Extract and check element type with explicit error handling
-                Self::extract_list_element_type(schema).map_or_else(
-                    || {
-                        warn!(
-                            type_name = %type_name,
-                            type_kind = "List/Array",
-                            "Failed to extract element type from schema, treating as non-mutatable"
-                        );
-                        false
-                    },
-                    |elem_type| {
-                        self.type_supports_mutation_with_depth(&elem_type, depth.increment())
-                    },
-                )
-            }
-            TypeKind::Map => {
-                // Extract and check value type (keys are always strings) with explicit error
-                // handling
-                Self::extract_map_value_type(schema).map_or_else(
-                    || {
-                        warn!(
-                            type_name = %type_name,
-                            type_kind = "Map",
-                            "Failed to extract value type from schema, treating as non-mutatable"
-                        );
-                        false
-                    },
-                    |val_type| self.type_supports_mutation_with_depth(&val_type, depth.increment()),
-                )
-            }
-            TypeKind::Option => {
-                // Extract and check inner type with explicit error handling
-                Self::extract_option_inner_type(schema).map_or_else(
-                    || {
-                        warn!(
-                            type_name = %type_name,
-                            type_kind = "Option",
-                            "Failed to extract inner type from schema, treating as non-mutatable"
-                        );
-                        false
-                    },
-                    |inner_type| {
-                        self.type_supports_mutation_with_depth(&inner_type, depth.increment())
-                    },
-                )
-            }
-            TypeKind::Tuple | TypeKind::TupleStruct => {
-                // ALL tuple elements must be mutatable with explicit error handling
-                Self::extract_tuple_element_types(schema).map_or_else(
-                    || {
-                        warn!(
-                            type_name = %type_name,
-                            type_kind = "Tuple/TupleStruct",
-                            "Failed to extract element types from schema, treating as non-mutatable"
-                        );
-                        false
-                    },
-                    |elements| {
-                        !elements.is_empty()
-                            && elements.iter().all(|elem| {
-                                self.type_supports_mutation_with_depth(elem, depth.increment())
-                            })
-                    },
-                )
-            }
-            // Structs and Enums are considered mutatable at the type level
-            // Their individual fields will be checked when building paths
-            TypeKind::Struct | TypeKind::Enum => true,
-        }
-    }
-
     /// Get detailed mutation support information
-    pub fn type_supports_mutation_detailed(&self, type_name: &BrpTypeName) -> MutationSupport {
+    fn type_supports_mutation_detailed(&self, type_name: &BrpTypeName) -> MutationSupport {
         self.type_supports_mutation_with_depth_detailed(type_name, RecursionDepth::ZERO)
     }
 
@@ -465,56 +362,97 @@ pub trait MutationPathBuilder {
     fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>>;
 }
 
+impl TypeKind {
+    /// Validate mutation capability using structured error handling
+    pub fn validate_mutation_capability(&self, ctx: &MutationPathContext<'_>) -> MutationSupport {
+        match self {
+            Self::Value => {
+                if ctx.value_type_has_serialization(ctx.type_name()) {
+                    MutationSupport::Supported
+                } else {
+                    ctx.type_supports_mutation_detailed(ctx.type_name())
+                }
+            }
+            Self::List | Self::Option | Self::Map => {
+                ctx.type_supports_mutation_detailed(ctx.type_name())
+            }
+            // Other types are handled by their specific builders
+            _ => MutationSupport::Supported,
+        }
+    }
+
+    /// Build `NotMutatable` path from `MutationSupport` error details
+    fn build_not_mutatable_path_from_support(
+        ctx: &MutationPathContext<'_>,
+        support: &MutationSupport,
+        directive_suffix: &str,
+    ) -> MutationPathInternal {
+        match &ctx.location {
+            RootOrField::Root { type_name } => MutationPathInternal {
+                path:          String::new(),
+                example:       json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
+                }),
+                enum_variants: None,
+                type_name:     type_name.clone(),
+                path_kind:     MutationPathKind::NotMutatable,
+            },
+            RootOrField::Field {
+                field_name,
+                field_type,
+                parent_type,
+            } => MutationPathInternal {
+                path:          format!(".{field_name}"),
+                example:       json!({
+                    "NotMutatable": format!("{support}"),
+                    "agent_directive": format!("This field cannot be mutated{directive_suffix} - see error message for details")
+                }),
+                enum_variants: None,
+                type_name:     field_type.clone(),
+                path_kind:     MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+            },
+        }
+    }
+}
+
 /// Implementation of `MutationPathBuilder` for `TypeKind`
 ///
 /// This provides type-directed dispatch - each `TypeKind` variant gets routed
 /// to the appropriate specialized builder for handling its specific logic.
 impl MutationPathBuilder for TypeKind {
     fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
-        // For container types, check if their inner types support mutation
-        match self {
-            Self::List | Self::Array | Self::Map | Self::Option => {
-                if !ctx.type_supports_mutation(ctx.type_name()) {
-                    return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+        // Use structured error handling with MutationResult
+        match self.validate_mutation_capability(ctx) {
+            MutationSupport::Supported => {
+                // Proceed with type-directed dispatch to specific builders
+                match self {
+                    Self::Array => ArrayMutationBuilder.build_paths(ctx),
+                    Self::Enum => EnumMutationBuilder.build_paths(ctx),
+                    Self::Struct => StructMutationBuilder.build_paths(ctx),
+                    Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx),
+                    Self::Map => MapMutationBuilder.build_paths(ctx),
+                    Self::Value | Self::List | Self::Option => {
+                        DefaultMutationBuilder.build_paths(ctx)
+                    }
                 }
             }
-            Self::Value => {
-                if !ctx.value_type_has_serialization(ctx.type_name()) {
-                    return Ok(vec![Self::build_not_mutatable_path(ctx)]);
-                }
+            not_supported => {
+                // Build NotMutatable path with structured error details
+                let directive_suffix = match self {
+                    Self::List | Self::Option | Self::Map => " (container)",
+                    _ => "",
+                };
+                let not_mutatable_path = Self::build_not_mutatable_path_from_support(
+                    ctx,
+                    &not_supported,
+                    directive_suffix,
+                );
+                Ok(vec![not_mutatable_path])
             }
-            _ => {} /* Struct, Enum, Tuple, and TupleStruct proceed normally
-                     * For tuples, we still build paths but mark elements as NotMutatable
-                     * This allows partial mutation if some elements are mutatable
-                     * The propagation logic will handle marking the root as NotMutatable if
-                     * needed */
-        }
-
-        // If we get here, proceed with normal path building
-        match self {
-            Self::Array => ArrayMutationBuilder.build_paths(ctx),
-            Self::Enum => EnumMutationBuilder.build_paths(ctx),
-            Self::Struct => StructMutationBuilder.build_paths(ctx),
-            Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx),
-            Self::List | Self::Map | Self::Option | Self::Value => {
-                DefaultMutationBuilder.build_paths(ctx)
-            }
-        }
-    }
-}
-
-impl TypeKind {
-    /// Build a not-mutatable path for any type
-    fn build_not_mutatable_path(ctx: &MutationPathContext<'_>) -> MutationPathInternal {
-        match &ctx.location {
-            RootOrField::Root { type_name } => {
-                StructMutationBuilder::build_not_mutatable_path("", type_name, ctx)
-            }
-            RootOrField::Field {
-                field_name,
-                field_type,
-                ..
-            } => StructMutationBuilder::build_not_mutatable_path(field_name, field_type, ctx),
         }
     }
 }
@@ -1224,59 +1162,88 @@ impl TupleMutationBuilder {
         };
 
         // Check if element type supports mutation
-        if !ctx.type_supports_mutation(&element_type) {
-            let detailed_support = ctx.type_supports_mutation_detailed(&element_type);
-            return Some(MutationPathInternal {
-                path,
-                example: json!({
-                    "NotMutatable": format!("{detailed_support}"),
-                    "agent_directive": "Element type cannot be mutated through BRP"
-                }),
-                enum_variants: None,
-                type_name: element_type,
-                path_kind: MutationPathKind::NotMutatable,
-            });
+        match ctx.type_supports_mutation_detailed(&element_type) {
+            super::type_info::MutationSupport::Supported => {
+                // Element is mutatable, build normal path
+                let elem_example = BRP_MUTATION_KNOWLEDGE
+                    .get(&KnowledgeKey::exact(&element_type))
+                    .map_or(json!(null), |k| k.example_value.clone());
+
+                Some(MutationPathInternal {
+                    path,
+                    example: elem_example,
+                    enum_variants: None,
+                    type_name: element_type,
+                    path_kind: MutationPathKind::TupleElement {
+                        index,
+                        parent_type: parent_type.clone(),
+                    },
+                })
+            }
+            not_mutatable_variant => {
+                // Element not mutatable, build error path
+                Some(MutationPathInternal {
+                    path,
+                    example: json!({
+                        "NotMutatable": format!("{not_mutatable_variant}"),
+                        "agent_directive": "Element type cannot be mutated through BRP"
+                    }),
+                    enum_variants: None,
+                    type_name: element_type,
+                    path_kind: MutationPathKind::NotMutatable,
+                })
+            }
         }
-
-        // Element is mutatable, build normal path
-        let elem_example = BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::exact(&element_type))
-            .map_or(json!(null), |k| k.example_value.clone());
-
-        Some(MutationPathInternal {
-            path,
-            example: elem_example,
-            enum_variants: None,
-            type_name: element_type,
-            path_kind: MutationPathKind::TupleElement {
-                index,
-                parent_type: parent_type.clone(),
-            },
-        })
     }
 
-    /// Propagate `NotMutatable` status from all tuple elements to the root path
-    fn propagate_tuple_struct_immutability(paths: &mut [MutationPathInternal]) {
-        // Check if we have a root path and if all non-root paths are not mutatable
+    /// Propagate mixed mutability from tuple elements to root path according to DESIGN-001
+    fn propagate_tuple_mixed_mutability(paths: &mut [MutationPathInternal]) {
         let has_root = paths.iter().any(|p| p.path.is_empty());
 
         if has_root {
-            let all_elements_not_mutatable = paths
-                .iter()
-                .filter(|p| !p.path.is_empty())
-                .all(|p| matches!(p.path_kind, MutationPathKind::NotMutatable));
+            let (mutable_count, immutable_count) =
+                paths.iter().filter(|p| !p.path.is_empty()).fold(
+                    (0, 0),
+                    |(mut_count, immut_count), path| match path.path_kind {
+                        MutationPathKind::NotMutatable => (mut_count, immut_count + 1),
+                        _ => (mut_count + 1, immut_count),
+                    },
+                );
 
-            if all_elements_not_mutatable && paths.len() > 1 {
-                // Mark root as not mutatable
-                if let Some(root) = paths.iter_mut().find(|p| p.path.is_empty()) {
-                    root.example = json!({
-                        "NotMutatable": format!("Type {} contains non-mutatable element types", root.type_name),
-                        "agent_directive": "This tuple struct cannot be mutated - all fields contain non-mutatable types"
-                    });
-                    root.path_kind = MutationPathKind::NotMutatable;
+            // Root mutation strategy based on element composition
+            if let Some(root) = paths.iter_mut().find(|p| p.path.is_empty()) {
+                match (mutable_count, immutable_count) {
+                    (0, _) => {
+                        // All elements immutable - root cannot be mutated
+                        root.path_kind = MutationPathKind::NotMutatable;
+                        root.example = json!({
+                            "NotMutatable": format!("Type {} contains non-mutatable element types", root.type_name),
+                            "agent_directive": "This tuple cannot be mutated - all elements contain non-mutatable types"
+                        });
+                    }
+                    (_, 0) => {
+                        // All elements mutable - keep existing mutable root path
+                    }
+                    (_, _) => {
+                        // Mixed mutability - root cannot be replaced, but individual elements can
+                        // be mutated
+                        root.path_kind = MutationPathKind::PartiallyMutable;
+                        root.example = json!({
+                            "PartialMutation": format!("Some elements of {} are immutable", root.type_name),
+                            "agent_directive": "Use individual element paths - root replacement not supported",
+                            "mutable_elements": mutable_count,
+                            "immutable_elements": immutable_count
+                        });
+                    }
                 }
             }
         }
+    }
+
+    /// Propagate `NotMutatable` status from all tuple elements to the root path (legacy method)
+    fn propagate_tuple_struct_immutability(paths: &mut [MutationPathInternal]) {
+        // Use the new mixed mutability handler instead
+        Self::propagate_tuple_mixed_mutability(paths);
     }
 }
 
@@ -1368,7 +1335,77 @@ impl MutationPathBuilder for TupleMutationBuilder {
     }
 }
 
-/// Default builder for simple types (Value, List, Map, Option)
+/// Builder for Map types
+///
+/// Handles Map mutation paths with inline value type checking to avoid redundant precheck
+pub struct MapMutationBuilder;
+
+impl MutationPathBuilder for MapMutationBuilder {
+    fn build_paths(&self, ctx: &MutationPathContext<'_>) -> Result<Vec<MutationPathInternal>> {
+        let Some(schema) = ctx.require_schema() else {
+            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+        };
+
+        // Extract value type inline instead of precheck
+        let Some(value_type) = MutationPathContext::extract_map_value_type(schema) else {
+            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+        };
+
+        // Check value type mutability inline
+        let Some(value_schema) = ctx.get_type_schema(&value_type) else {
+            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+        };
+
+        let value_kind = TypeKind::from_schema(value_schema, &value_type);
+
+        // For Value types, check serialization inline
+        if matches!(value_kind, TypeKind::Value) && !ctx.value_type_has_serialization(&value_type) {
+            return Ok(vec![Self::build_not_mutatable_path(ctx)]);
+        }
+
+        // Value type is mutable, proceed with normal map path building
+        // Use DefaultMutationBuilder for the actual path construction
+        DefaultMutationBuilder.build_paths(ctx)
+    }
+}
+
+impl MapMutationBuilder {
+    /// Build a not-mutatable path for Map types
+    fn build_not_mutatable_path(ctx: &MutationPathContext<'_>) -> MutationPathInternal {
+        let detailed_support = ctx.type_supports_mutation_detailed(ctx.type_name());
+        match &ctx.location {
+            RootOrField::Root { type_name } => MutationPathInternal {
+                path:          String::new(),
+                example:       json!({
+                    "NotMutatable": format!("{detailed_support}"),
+                    "agent_directive": "This Map type cannot be mutated - see error message for details"
+                }),
+                enum_variants: None,
+                type_name:     type_name.clone(),
+                path_kind:     MutationPathKind::NotMutatable,
+            },
+            RootOrField::Field {
+                field_name,
+                field_type,
+                parent_type,
+            } => MutationPathInternal {
+                path:          format!(".{field_name}"),
+                example:       json!({
+                    "NotMutatable": format!("{detailed_support}"),
+                    "agent_directive": "This Map field cannot be mutated - see error message for details"
+                }),
+                enum_variants: None,
+                type_name:     field_type.clone(),
+                path_kind:     MutationPathKind::StructField {
+                    field_name:  field_name.clone(),
+                    parent_type: parent_type.clone(),
+                },
+            },
+        }
+    }
+}
+
+/// Default builder for simple types (Value, List, Option)
 ///
 /// Handles simple types that don't need complex logic - just creates a standard mutation path
 pub struct DefaultMutationBuilder;
