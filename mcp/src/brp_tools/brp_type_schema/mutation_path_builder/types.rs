@@ -195,55 +195,22 @@ impl MutationPath {
     pub fn from_mutation_path(
         path: &MutationPathInternal,
         description: String,
-        is_option: bool,
         type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
-        if is_option {
-            // For Option types, check if we have the special format
-            if let Some(some_val) = path.example.get_field(OptionField::Some)
-                && let Some(none_val) = path.example.get_field(OptionField::None)
-            {
-                // Get TypeKind for the field type
-                let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
-                let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
-
-                return Self {
-                    description,
-                    path_info: PathInfo {
-                        path_kind: path.path_kind.clone(),
-                        type_name: path.type_name.clone(),
-                        type_kind,
-                    },
-                    example: None,
-                    example_some: Some(some_val.clone()),
-                    example_none: Some(none_val.clone()),
-                    enum_variants: path.enum_variants.clone(),
-                    example_variants: None, // Options don't use enum examples
-                    note: Some(
-                        "For Option fields: pass the value directly to set Some, null to set None"
-                            .to_string(),
-                    ),
-                    mutation_status: path.mutation_status,
-                    error_reason: path.error_reason.clone(),
-                };
-            }
-        }
-
         // Regular non-Option path
-        let example_variants =
-            if path.enum_variants.is_some() {
-                // This is an enum type - generate example variants using the new system
-                let enum_type = Some(&path.type_name); // Extract enum type from path
-                let examples = super::build_all_enum_examples(type_schema, registry, 0, enum_type); // Pass both
-                if examples.is_empty() {
-                    None
-                } else {
-                    Some(examples)
-                }
-            } else {
+        let example_variants = if path.enum_variants.is_some() {
+            // This is an enum type - generate example variants using the new system
+            let enum_type = Some(&path.type_name); // Extract enum type from path
+            let examples = super::build_all_enum_examples(type_schema, registry, 0, enum_type); // Pass both
+            if examples.is_empty() {
                 None
-            };
+            } else {
+                Some(examples)
+            }
+        } else {
+            None
+        };
 
         // Compute enum_variants from example_variants keys (alphabetically sorted)
         let enum_variants = example_variants.as_ref().map(|variants| {
@@ -276,20 +243,6 @@ impl MutationPath {
             mutation_status: path.mutation_status,
             error_reason: path.error_reason.clone(),
         }
-    }
-}
-
-/// Option field keys for JSON representation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString)]
-#[strum(serialize_all = "lowercase")]
-pub enum OptionField {
-    Some,
-    None,
-}
-
-impl From<OptionField> for String {
-    fn from(field: OptionField) -> Self {
-        field.as_ref().to_string()
     }
 }
 

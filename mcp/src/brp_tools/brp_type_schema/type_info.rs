@@ -13,7 +13,7 @@ use super::constants::{
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_path_builder::{
-    EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathContext, 
+    EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathContext,
     MutationPathInternal, RootOrField, TypeKind,
 };
 use super::response_types::{
@@ -472,17 +472,9 @@ impl TypeInfo {
             // Generate description using the context
             let description = path.path_kind.description();
 
-            // Wrapper detection removed - Option types now handled as regular enums
-            let is_option = false;
-
             // Create MutationPathInfo from MutationPath
-            let path_info = MutationPath::from_mutation_path(
-                path,
-                description,
-                is_option,
-                type_schema,
-                registry,
-            );
+            let path_info =
+                MutationPath::from_mutation_path(path, description, type_schema, registry);
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."

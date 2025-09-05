@@ -276,6 +276,34 @@ When processing enum types, variants are grouped by their structural signature:
 5. **Machine-readable** - Tools can parse and validate mutation values
 6. **Human-readable** - Clear what values are valid for each path
 
+## Code Structure Locations
+
+The mutation path building system is organized in a modular structure:
+
+### Core Types and Traits
+- **`MutationPathKind`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/types.rs` (line 37)
+- **`TypeKind`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/type_kind.rs`
+- **`MutationPathBuilder` trait** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/types.rs`
+- **`MutationPathContext`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/types.rs`
+
+### Builder Implementations
+- **`EnumMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/enum_builder.rs`
+- **`StructMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/struct_builder.rs`
+- **`ArrayMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/array_builder.rs`
+- **`TupleMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/tuple_builder.rs`
+- **`ListMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/list_builder.rs`
+- **`MapMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/map_builder.rs`
+- **`DefaultMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/default_builder.rs`
+
+### Module Organization
+- **Main module** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs`
+- **Builders module** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/mod.rs`
+
+### Key Functions for Enum Handling
+- **`build_all_enum_examples`** - Located in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/enum_builder.rs`
+- **`deduplicate_variant_signatures`** - Located in `mcp/src/brp_tools/brp_type_schema/response_types.rs`
+- **`extract_enum_variants`** - Located in `mcp/src/brp_tools/brp_type_schema/response_types.rs`
+
 ## Implementation Notes
 
 - The `examples` array is never empty for mutatable paths
@@ -283,3 +311,5 @@ When processing enum types, variants are grouped by their structural signature:
 - The `signature` field should be human-readable but also precise
 - The `example` in each group should use the first variant alphabetically for consistency
 - Non-mutatable paths have empty `examples` array and include `error_reason`
+- Enum variant grouping logic is implemented in `EnumMutationBuilder::build_paths()`
+- The modular builder structure allows each type kind to handle its own mutation logic independently
