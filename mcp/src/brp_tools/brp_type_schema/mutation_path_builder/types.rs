@@ -1,23 +1,297 @@
-//! Mutation path builders for different type kinds
+//! Core types for mutation path building
 //!
-//! This module implements the TYPE-SYSTEM-002 refactor: Replace conditional chains
-//! in mutation path building with type-directed dispatch using the `MutationPathBuilder` trait.
-//!
-//! The key insight is that different `TypeKind` variants need different logic for building
-//! mutation paths, but this should be cleanly separated from the field-level logic.
+//! This module contains the fundamental types used throughout the mutation path building system,
+//! including the trait definition, context structures, and all mutation path related types.
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use strum::{AsRefStr, Display, EnumString};
 use tracing::warn;
 
 use super::super::constants::RecursionDepth;
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, MutationKnowledge};
-use super::super::response_types::{self, BrpTypeName, MutationPathInternal, SchemaField};
+use super::super::response_types::{BrpTypeName, SchemaField};
+use super::TypeKind;
 use crate::brp_tools::brp_type_schema::constants::SCHEMA_REF_PREFIX;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::KnowledgeKey;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
+
+/// Status of whether a mutation path can be mutated
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MutationStatus {
+    /// Path can be fully mutated
+    Mutatable,
+    /// Path cannot be mutated (missing traits, unsupported type, etc.)
+    NotMutatable,
+    /// Path is partially mutatable (some elements mutable, others not)
+    PartiallyMutatable,
+}
+
+/// Context for a mutation path describing what kind of mutation this is
+#[derive(Debug, Clone, Deserialize)]
+pub enum MutationPathKind {
+    /// Replace the entire value (root mutation with empty path)
+    RootValue { type_name: BrpTypeName },
+    /// Mutate a field in a struct
+    StructField {
+        field_name:  String,
+        parent_type: BrpTypeName,
+    },
+    /// Mutate an element in a tuple by index
+    /// Applies to tuple elements, enums variants, including generics such as Option<T>
+    IndexedElement {
+        index:       usize,
+        parent_type: BrpTypeName,
+    },
+    /// Mutate an element in an array
+    ArrayElement {
+        index:       usize,
+        parent_type: BrpTypeName,
+    },
+}
+
+impl MutationPathKind {
+    /// Generate a human-readable description for this mutation
+    pub fn description(&self) -> String {
+        match self {
+            Self::RootValue { type_name } => {
+                format!("Replace the entire {type_name} value")
+            }
+            Self::StructField {
+                field_name,
+                parent_type,
+            } => {
+                format!("Mutate the {field_name} field of {parent_type}")
+            }
+            Self::IndexedElement { index, parent_type } => {
+                format!("Mutate element {index} of {parent_type}")
+            }
+            Self::ArrayElement { index, parent_type } => {
+                format!("Mutate element [{index}] of {parent_type}")
+            }
+        }
+    }
+
+    /// Get just the variant name for serialization
+    pub const fn variant_name(&self) -> &'static str {
+        match self {
+            Self::RootValue { .. } => "RootValue",
+            Self::StructField { .. } => "StructField",
+            Self::IndexedElement { .. } => "TupleElement",
+            Self::ArrayElement { .. } => "ArrayElement",
+        }
+    }
+}
+
+impl Display for MutationPathKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.variant_name())
+    }
+}
+
+impl Serialize for MutationPathKind {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+/// Mutation path information (internal representation)
+#[derive(Debug, Clone)]
+pub struct MutationPathInternal {
+    /// Example value for this path
+    pub example:         Value,
+    /// Path for mutation, e.g., ".translation.x"
+    pub path:            String,
+    /// For enum types, list of valid variant names
+    pub enum_variants:   Option<Vec<String>>,
+    /// Type information for this path
+    pub type_name:       BrpTypeName,
+    /// Context describing what kind of mutation this is
+    pub path_kind:       MutationPathKind,
+    /// Status of whether this path can be mutated
+    pub mutation_status: MutationStatus,
+    /// Error reason if mutation is not possible
+    pub error_reason:    Option<String>,
+}
+
+/// Path information combining navigation and type metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PathInfo {
+    /// Context describing what kind of mutation this is (how to navigate to this path)
+    pub path_kind: MutationPathKind,
+    /// Fully-qualified type name of the field
+    #[serde(rename = "type")]
+    pub type_name: BrpTypeName,
+    /// The kind of type this field contains (Struct, Enum, Array, etc.)
+    pub type_kind: TypeKind,
+}
+
+/// Information about a mutation path that we serialize to our response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MutationPath {
+    /// Human-readable description of what this path mutates
+    pub description:      String,
+    /// Combined path navigation and type metadata
+    pub path_info:        PathInfo,
+    /// Status of whether this path can be mutated
+    pub mutation_status:  MutationStatus,
+    /// Error reason if mutation is not possible
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_reason:     Option<String>,
+    /// Example value for mutations (for non-Option types)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example:          Option<Value>,
+    /// Example value for setting Some variant (Option types only)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example_some:     Option<Value>,
+    /// Example value for setting None variant (Option types only)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example_none:     Option<Value>,
+    /// List of valid enum variants for this field
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enum_variants:    Option<Vec<String>>,
+    /// Example values for enum variants (maps variant names to example JSON)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example_variants: Option<HashMap<String, Value>>,
+    /// Additional note about how to use this mutation path
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note:             Option<String>,
+}
+
+impl MutationPath {
+    /// Create a root value mutation with a simplified type name
+    pub fn new_root_value(
+        type_name: BrpTypeName,
+        example_value: Value,
+        simplified_type: String,
+    ) -> Self {
+        Self {
+            description:      format!("Replace the entire {type_name} value"),
+            path_info:        PathInfo {
+                path_kind: MutationPathKind::RootValue { type_name },
+                type_name: BrpTypeName::from(simplified_type),
+                type_kind: TypeKind::Value, // Root values are treated as Value types
+            },
+            example:          Some(example_value),
+            example_some:     None,
+            example_none:     None,
+            enum_variants:    None,
+            example_variants: None,
+            note:             None,
+            mutation_status:  MutationStatus::Mutatable,
+            error_reason:     None,
+        }
+    }
+
+    /// Create from internal `MutationPath` with proper formatting logic
+    pub fn from_mutation_path(
+        path: &MutationPathInternal,
+        description: String,
+        is_option: bool,
+        type_schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+    ) -> Self {
+        if is_option {
+            // For Option types, check if we have the special format
+            if let Some(some_val) = path.example.get_field(OptionField::Some)
+                && let Some(none_val) = path.example.get_field(OptionField::None)
+            {
+                // Get TypeKind for the field type
+                let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
+                let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
+
+                return Self {
+                    description,
+                    path_info: PathInfo {
+                        path_kind: path.path_kind.clone(),
+                        type_name: path.type_name.clone(),
+                        type_kind,
+                    },
+                    example: None,
+                    example_some: Some(some_val.clone()),
+                    example_none: Some(none_val.clone()),
+                    enum_variants: path.enum_variants.clone(),
+                    example_variants: None, // Options don't use enum examples
+                    note: Some(
+                        "For Option fields: pass the value directly to set Some, null to set None"
+                            .to_string(),
+                    ),
+                    mutation_status: path.mutation_status,
+                    error_reason: path.error_reason.clone(),
+                };
+            }
+        }
+
+        // Regular non-Option path
+        let example_variants =
+            if path.enum_variants.is_some() {
+                // This is an enum type - generate example variants using the new system
+                let enum_type = Some(&path.type_name); // Extract enum type from path
+                let examples = super::build_all_enum_examples(type_schema, registry, 0, enum_type); // Pass both
+                if examples.is_empty() {
+                    None
+                } else {
+                    Some(examples)
+                }
+            } else {
+                None
+            };
+
+        // Compute enum_variants from example_variants keys (alphabetically sorted)
+        let enum_variants = example_variants.as_ref().map(|variants| {
+            let mut keys: Vec<String> = variants.keys().cloned().collect();
+            keys.sort(); // Alphabetical sorting for consistency
+            keys
+        });
+
+        // Get TypeKind for the field type
+        let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
+        let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
+
+        Self {
+            description,
+            path_info: PathInfo {
+                path_kind: path.path_kind.clone(),
+                type_name: path.type_name.clone(),
+                type_kind,
+            },
+            example: if path.example.is_null() {
+                None
+            } else {
+                Some(path.example.clone())
+            },
+            example_some: None,
+            example_none: None,
+            enum_variants,
+            example_variants,
+            note: None,
+            mutation_status: path.mutation_status,
+            error_reason: path.error_reason.clone(),
+        }
+    }
+}
+
+/// Option field keys for JSON representation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr, EnumString)]
+#[strum(serialize_all = "lowercase")]
+pub enum OptionField {
+    Some,
+    None,
+}
+
+impl From<OptionField> for String {
+    fn from(field: OptionField) -> Self {
+        field.as_ref().to_string()
+    }
+}
 
 /// Trait for building mutation paths for different type kinds
 ///
@@ -164,7 +438,7 @@ impl MutationPathContext {
     /// Check if a value type has serialization support
     /// Used to determine if opaque Value types like String can be mutated
     pub fn value_type_has_serialization(&self, type_name: &BrpTypeName) -> bool {
-        use response_types::ReflectTrait;
+        use crate::brp_tools::brp_type_schema::response_types::ReflectTrait;
 
         self.get_type_schema(type_name).is_some_and(|schema| {
             let reflect_types: Vec<ReflectTrait> =

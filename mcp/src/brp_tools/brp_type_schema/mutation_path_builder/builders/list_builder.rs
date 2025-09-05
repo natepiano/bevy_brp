@@ -2,7 +2,7 @@
 //!
 //! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
 //! Uses single-pass recursion to extract element type and recurse deeper.
-//! use std::collections::HashMap;
+//! use `std::collections::HashMap`;
 
 use std::sync::Arc;
 
@@ -11,9 +11,7 @@ use serde_json::json;
 use super::super::TypeKind;
 use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::response_types::{
-    MutationPathInternal, MutationPathKind, MutationStatus,
-};
+use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
 use crate::brp_tools::brp_type_schema::type_info::MutationSupport;
 use crate::error::Result;
 

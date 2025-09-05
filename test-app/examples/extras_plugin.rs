@@ -162,7 +162,7 @@ enum OptionTestEnum {
 enum WrapperEnum {
     #[default]
     Empty,
-    /// Wrapper with nested enum - should recurse into SimpleNestedEnum's paths
+    /// Wrapper with nested enum - should recurse into `SimpleNestedEnum`'s paths
     WithSimpleEnum(SimpleNestedEnum),
     /// Option wrapper - should recurse through Option<SimpleNestedEnum>
     WithOptionalEnum(Option<SimpleNestedEnum>),
@@ -189,19 +189,11 @@ struct TestArrayField {
 }
 
 /// Test component with array of Transforms
-#[derive(Component, Reflect, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 struct TestArrayTransforms {
     /// Array of Transform components
     pub transforms: [Transform; 2],
-}
-
-impl Default for TestArrayTransforms {
-    fn default() -> Self {
-        Self {
-            transforms: [Transform::default(), Transform::default()],
-        }
-    }
 }
 
 /// Test component with tuple field
@@ -489,6 +481,7 @@ fn spawn_visual_entities(commands: &mut Commands) {
     ));
 }
 
+#[allow(clippy::too_many_lines)]
 fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestArrayField component
     commands.spawn((

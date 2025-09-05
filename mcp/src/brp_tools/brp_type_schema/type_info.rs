@@ -13,11 +13,11 @@ use super::constants::{
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_path_builder::{
-    EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField, TypeKind,
+    EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathContext, 
+    MutationPathInternal, RootOrField, TypeKind,
 };
 use super::response_types::{
-    BrpSupportedOperation, BrpTypeName, EnumVariantInfo, MutationPath, MutationPathInternal,
-    ReflectTrait, SchemaField, SchemaInfo,
+    BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
 };
 use crate::string_traits::JsonFieldAccess;
 

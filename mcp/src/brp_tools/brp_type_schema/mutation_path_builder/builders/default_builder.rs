@@ -1,14 +1,14 @@
 /// Default builder for simple types
 ///
 /// Handles simple types that don't need complex logic - just creates a standard mutation path
-/// use std::collections::HashMap;
+/// use `std::collections::HashMap`;
 use serde_json::json;
 
-use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::response_types::{
-    MutationPathInternal, MutationPathKind, MutationStatus,
+use super::super::types::{
+    MutationPathBuilder, MutationPathContext, MutationPathInternal, MutationPathKind, 
+    MutationStatus, RootOrField,
 };
+use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::error::Result;
 
 pub struct DefaultMutationBuilder;

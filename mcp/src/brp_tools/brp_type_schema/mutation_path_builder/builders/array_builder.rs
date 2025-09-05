@@ -4,15 +4,14 @@
 //! Creates mutation paths for both the entire array and individual elements.
 use std::collections::HashMap;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
 use super::super::TypeKind;
+use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::mutation_knowledge::{KnowledgeKey, BRP_MUTATION_KNOWLEDGE};
-use crate::brp_tools::brp_type_schema::response_types::{
-    BrpTypeName, MutationPathInternal, MutationPathKind, MutationStatus,
-};
+use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
+use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
+use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
 use crate::error::Result;
 
@@ -53,9 +52,9 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 
 impl ArrayMutationBuilder {
     /// Validate and extract array information from context
-    fn validate_and_extract_array_info<'a>(
-        ctx: &'a MutationPathContext,
-    ) -> core::result::Result<(BrpTypeName, &'a Value), Vec<MutationPathInternal>> {
+    fn validate_and_extract_array_info(
+        ctx: &MutationPathContext,
+    ) -> core::result::Result<(BrpTypeName, &Value), Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
             return Err(vec![Self::build_not_mutatable_path(
                 ctx,

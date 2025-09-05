@@ -13,9 +13,8 @@ use super::builders::{
 };
 use super::types::{MutationPathBuilder, MutationPathContext};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::response_types::{
-    BrpTypeName, MutationPathInternal, SchemaField,
-};
+use super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
+use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::MutationSupport;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
@@ -63,13 +62,11 @@ impl TypeKind {
         ctx: &super::types::MutationPathContext,
         support: &crate::brp_tools::brp_type_schema::type_info::MutationSupport,
         directive_suffix: &str,
-    ) -> crate::brp_tools::brp_type_schema::response_types::MutationPathInternal {
+    ) -> MutationPathInternal {
         use serde_json::json;
 
         use super::types::RootOrField;
-        use crate::brp_tools::brp_type_schema::response_types::{
-            MutationPathInternal, MutationPathKind, MutationStatus,
-        };
+        // MutationPathInternal, MutationPathKind, MutationStatus already imported above
 
         match &ctx.location {
             RootOrField::Root { type_name } => MutationPathInternal {

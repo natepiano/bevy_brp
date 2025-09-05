@@ -10,9 +10,8 @@ use super::super::TypeKind;
 use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use crate::brp_tools::brp_type_schema::response_types::{
-    BrpTypeName, MathComponent, MutationPathInternal, MutationPathKind, MutationStatus, SchemaField,
-};
+use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
+use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, MathComponent, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
