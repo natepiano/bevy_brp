@@ -11,7 +11,7 @@ pub enum MutationSupport {
     /// Type lacks required serialization traits
     MissingSerializationTraits(BrpTypeName),
     /// Container type has non-mutatable element type
-    NonMutatableElements {
+    NonMutatableHandle {
         container_type: BrpTypeName,
         element_type:   BrpTypeName,
     },
@@ -29,7 +29,7 @@ impl MutationSupport {
             Self::MissingSerializationTraits(type_name)
             | Self::NotInRegistry(type_name)
             | Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
-            Self::NonMutatableElements { element_type, .. } => Some(element_type.clone()),
+            Self::NonMutatableHandle { element_type, .. } => Some(element_type.clone()),
         }
     }
 }
@@ -42,12 +42,12 @@ impl Display for MutationSupport {
                 f,
                 "Type {type_name} lacks Serialize/Deserialize traits required for mutation"
             ),
-            Self::NonMutatableElements {
+            Self::NonMutatableHandle {
                 container_type,
                 element_type,
             } => write!(
                 f,
-                "Type {container_type} contains non-mutatable element type: {element_type}"
+                "Type `{container_type}` is a TupleStruct wrapper around `{element_type}` which lacks the `ReflectDeserialize` type data required for mutation"
             ),
             Self::NotInRegistry(type_name) => {
                 write!(f, "Type {type_name} not found in schema registry")
@@ -68,8 +68,8 @@ impl From<&MutationSupport> for Option<String> {
             MutationSupport::MissingSerializationTraits(_) => {
                 Some("missing_serialization_traits".to_string())
             }
-            MutationSupport::NonMutatableElements { .. } => {
-                Some("non_mutatable_elements".to_string())
+            MutationSupport::NonMutatableHandle { .. } => {
+                Some("handle_wrapper_component".to_string())
             }
             MutationSupport::NotInRegistry(_) => Some("not_in_registry".to_string()),
             MutationSupport::RecursionLimitExceeded(_) => {

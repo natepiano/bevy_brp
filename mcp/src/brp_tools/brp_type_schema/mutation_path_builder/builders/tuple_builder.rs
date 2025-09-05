@@ -36,6 +36,22 @@ impl MutationPathBuilder for TupleMutationBuilder {
         let mut paths = Vec::new();
         let elements = RecursionContext::extract_tuple_element_types(schema).unwrap_or_default();
 
+        // Check if this is a single-element TupleStruct containing only a Handle type
+        if elements.len() == 1
+            && elements[0]
+                .as_str()
+                .starts_with("bevy_asset::handle::Handle<")
+        {
+            // This is a Handle-only component wrapper that cannot be mutated
+            return Ok(vec![Self::build_not_mutatable_path(
+                ctx,
+                MutationSupport::NonMutatableHandle {
+                    container_type: ctx.type_name().clone(),
+                    element_type:   elements[0].clone(),
+                },
+            )]);
+        }
+
         // Build root tuple path
         Self::build_root_tuple_path(&mut paths, ctx, schema, depth);
 
