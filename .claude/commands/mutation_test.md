@@ -137,13 +137,23 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 1. **Get Type Schema** - Call `mcp__brp__brp_type_schema`
 2. **Test Spawn** (if supported) - Use spawn_format from schema
-3. **Prepare Mutations** - Query for entity with component using:
+3. **Prepare Mutations** - Query for entity with component by **substituting the actual component type name**:
    ```json
    {
-     "filter": {"with": ["component::type::name"]},
+     "filter": {"with": ["ACTUAL_COMPONENT_TYPE_NAME_HERE"]},
      "data": {"components": []}
    }
    ```
+   
+   **Example:** For component `bevy_ecs::name::Name`, use:
+   ```json
+   {
+     "filter": {"with": ["bevy_ecs::name::Name"]},
+     "data": {"components": []}
+   }
+   ```
+   
+   **CRITICAL:** Replace `ACTUAL_COMPONENT_TYPE_NAME_HERE` with the real component type from your assigned list. Do NOT use the placeholder text literally.
 4. **Test Mutations** - Test each path from mutation_paths array
 5. **Return Results** - Structured JSON for all types
 
