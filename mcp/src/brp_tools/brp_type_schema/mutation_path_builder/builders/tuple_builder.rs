@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{RecursionContext, RootOrField};
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -13,7 +14,7 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
-use crate::brp_tools::brp_type_schema::type_info::{self, MutationSupport, TypeInfo};
+use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
@@ -39,7 +40,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         Self::build_root_tuple_path(&mut paths, ctx, schema, depth);
 
         // Check if parent knowledge indicates this should be treated as opaque
-        let should_stop_recursion = ctx.parent_knowledge.map_or(false, |knowledge| {
+        let should_stop_recursion = ctx.parent_knowledge.is_some_and(|knowledge| {
             matches!(knowledge.guidance(), crate::brp_tools::brp_type_schema::mutation_knowledge::KnowledgeGuidance::TreatAsValue { .. })
         });
 
@@ -118,7 +119,7 @@ impl TupleMutationBuilder {
             return Some(MutationPathInternal {
                 path,
                 example: json!({
-                    "NotMutatable": format!("{}", type_info::MutationSupport::NotInRegistry(element_type.clone())),
+                    "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
                     "agent_directive": "Element type not found in registry"
                 }),
                 enum_variants: None,
@@ -128,9 +129,7 @@ impl TupleMutationBuilder {
                     parent_type: parent_type.clone(),
                 },
                 mutation_status: MutationStatus::NotMutatable,
-                error_reason: Option::<String>::from(&type_info::MutationSupport::NotInRegistry(
-                    element_type,
-                )),
+                error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type)),
             });
         };
 

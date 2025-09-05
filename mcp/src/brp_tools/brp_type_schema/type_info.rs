@@ -1,7 +1,6 @@
 //! This is the main response structure use to convey type information
 //! to the caller
 use std::collections::HashMap;
-use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -14,90 +13,15 @@ use super::constants::{
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_path_builder::{
     EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal,
-    RecursionContext, RootOrField, TypeKind,
+    MutationSupport, RecursionContext, RootOrField, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
 };
 use crate::string_traits::JsonFieldAccess;
 
-/// Represents detailed mutation support status for a type
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MutationSupport {
-    /// Type fully supports mutation operations
-    Supported,
-    /// Type lacks required serialization traits
-    MissingSerializationTraits(BrpTypeName),
-    /// Container type has non-mutatable element type
-    NonMutatableElements {
-        container_type: BrpTypeName,
-        element_type:   BrpTypeName,
-    },
-    /// Type not found in registry
-    NotInRegistry(BrpTypeName),
-    /// Recursion depth limit exceeded during analysis
-    RecursionLimitExceeded(BrpTypeName),
-}
-
-impl MutationSupport {
-    /// Extract the deepest failing type from nested error contexts
-    pub fn get_deepest_failing_type(&self) -> Option<BrpTypeName> {
-        match self {
-            Self::Supported => None,
-            Self::MissingSerializationTraits(type_name)
-            | Self::NotInRegistry(type_name)
-            | Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
-            Self::NonMutatableElements { element_type, .. } => Some(element_type.clone()),
-        }
-    }
-}
-
-impl Display for MutationSupport {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Supported => write!(f, "Type supports mutation"),
-            Self::MissingSerializationTraits(type_name) => write!(
-                f,
-                "Type {type_name} lacks Serialize/Deserialize traits required for mutation"
-            ),
-            Self::NonMutatableElements {
-                container_type,
-                element_type,
-            } => write!(
-                f,
-                "Type {container_type} contains non-mutatable element type: {element_type}"
-            ),
-            Self::NotInRegistry(type_name) => {
-                write!(f, "Type {type_name} not found in schema registry")
-            }
-            Self::RecursionLimitExceeded(type_name) => write!(
-                f,
-                "Type {type_name} analysis exceeded maximum recursion depth"
-            ),
-        }
-    }
-}
-
-/// Convert `MutationSupport` to structured error reason string
-impl From<&MutationSupport> for Option<String> {
-    fn from(support: &MutationSupport) -> Self {
-        match support {
-            MutationSupport::Supported => None,
-            MutationSupport::MissingSerializationTraits(_) => {
-                Some("missing_serialization_traits".to_string())
-            }
-            MutationSupport::NonMutatableElements { .. } => {
-                Some("non_mutatable_elements".to_string())
-            }
-            MutationSupport::NotInRegistry(_) => Some("not_in_registry".to_string()),
-            MutationSupport::RecursionLimitExceeded(_) => {
-                Some("recursion_limit_exceeded".to_string())
-            }
-        }
-    }
-}
-
 /// this is all of the information we provide about a type
+/// we serialize this to our output
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeInfo {
     /// Fully-qualified type name
@@ -463,7 +387,7 @@ impl TypeInfo {
                     .get_field(SchemaField::Items)
                     .and_then(|items| items.get_field(SchemaField::Type))
                     .and_then(Self::extract_type_ref_with_schema_field);
-                
+
                 item_type.map_or(json!(null), |item_type_name| {
                     // Generate example value for the item type
                     let item_example = Self::build_example_value_for_type_with_depth(
@@ -471,7 +395,7 @@ impl TypeInfo {
                         registry,
                         depth.increment(),
                     );
-                    
+
                     // Create array with 2-3 example elements
                     // For Sets, these represent unique values to add
                     // For Lists, these are ordered elements

@@ -1,4 +1,4 @@
-//! Builder for Set types (HashSet, BTreeSet, etc.)
+//! Builder for Set types (`HashSet`, `BTreeSet`, etc.)
 //!
 //! Unlike Lists, Sets can only be mutated at the top level (replacing/merging the entire set).
 //! Sets don't support indexed access or element-level mutations through BRP.
@@ -9,11 +9,11 @@
 use serde_json::json;
 
 use super::super::MutationPathBuilder;
+use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{RecursionContext, RootOrField};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::type_info::MutationSupport;
 use crate::error::Result;
 
 pub struct SetMutationBuilder;
@@ -38,9 +38,12 @@ impl MutationPathBuilder for SetMutationBuilder {
 
 impl SetMutationBuilder {
     /// Build a mutation path for the entire Set field
-    fn build_set_mutation_path(ctx: &RecursionContext, depth: RecursionDepth) -> MutationPathInternal {
+    fn build_set_mutation_path(
+        ctx: &RecursionContext,
+        depth: RecursionDepth,
+    ) -> MutationPathInternal {
         use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
-        
+
         // Generate example value for the Set type
         let example_value = TypeInfo::build_example_value_for_type_with_depth(
             ctx.type_name(),
@@ -48,11 +51,11 @@ impl SetMutationBuilder {
             depth,
         );
         let final_example = RecursionContext::wrap_example(example_value);
-        
+
         match &ctx.location {
             RootOrField::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
-                example:         final_example.clone(),
+                example:         final_example,
                 enum_variants:   None,
                 type_name:       type_name.clone(),
                 path_kind:       PathKind::RootValue {

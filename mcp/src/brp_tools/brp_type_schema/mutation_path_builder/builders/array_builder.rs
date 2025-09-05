@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{RecursionContext, RootOrField};
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -13,7 +14,7 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
-use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
+use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
 
 pub struct ArrayMutationBuilder;

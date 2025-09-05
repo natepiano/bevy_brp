@@ -92,14 +92,14 @@ struct RuntimeStatsResource {
 
 /// Test component struct WITH Serialize/Deserialize
 #[derive(Component, Default, Reflect, Serialize, Deserialize, Hash, Eq, PartialEq)]
-#[reflect(Component, Serialize, Deserialize, Hash, PartialEq)]
+#[reflect(Component, Serialize, Deserialize, Hash)]
 struct TestStructWithSerDe {
     pub value:   i32,
     pub name:    String,
     pub enabled: bool,
 }
 
-/// Simple HashSet test component with just strings
+/// Simple `HashSet` test component with just strings
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct SimpleSetComponent {
@@ -258,9 +258,9 @@ struct TestComplexComponent {
 #[derive(Component, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 struct TestCollectionComponent {
-    /// Vec<Transform> - should trigger ListMutationBuilder with complex recursion
+    /// Vec<Transform> - should trigger `ListMutationBuilder` with complex recursion
     pub transform_list: Vec<Transform>,
-    /// HashSet<TestStructWithSerDe> - should trigger SetMutationBuilder with complex recursion  
+    /// `HashSet`<TestStructWithSerDe> - should trigger `SetMutationBuilder` with complex recursion
     pub struct_set:     HashSet<TestStructWithSerDe>,
 }
 

@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{RecursionContext, RootOrField};
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -16,7 +17,7 @@ use crate::brp_tools::brp_type_schema::constants::{
 };
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
-use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
+use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
