@@ -14,6 +14,7 @@
 // with underscores. Remove this allow attribute when clippy/rustc is fixed.
 #![allow(clippy::used_underscore_binding)]
 
+use std::collections::HashSet;
 use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
@@ -90,12 +91,19 @@ struct RuntimeStatsResource {
 }
 
 /// Test component struct WITH Serialize/Deserialize
-#[derive(Component, Default, Reflect, Serialize, Deserialize)]
-#[reflect(Component, Serialize, Deserialize)]
+#[derive(Component, Default, Reflect, Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[reflect(Component, Serialize, Deserialize, Hash, PartialEq)]
 struct TestStructWithSerDe {
-    pub value:   f32,
+    pub value:   i32,
     pub name:    String,
     pub enabled: bool,
+}
+
+/// Simple HashSet test component with just strings
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct SimpleSetComponent {
+    pub string_set: HashSet<String>,
 }
 
 /// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
@@ -246,6 +254,46 @@ struct TestComplexComponent {
     pub optional_value: Option<f32>,
 }
 
+/// Test component with List and Set collection types containing complex elements
+#[derive(Component, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+struct TestCollectionComponent {
+    /// Vec<Transform> - should trigger ListMutationBuilder with complex recursion
+    pub transform_list: Vec<Transform>,
+    /// HashSet<TestStructWithSerDe> - should trigger SetMutationBuilder with complex recursion  
+    pub struct_set:     HashSet<TestStructWithSerDe>,
+}
+
+impl Default for TestCollectionComponent {
+    fn default() -> Self {
+        let mut struct_set = HashSet::new();
+        struct_set.insert(TestStructWithSerDe {
+            value:   42,
+            name:    "first_struct".to_string(),
+            enabled: true,
+        });
+        struct_set.insert(TestStructWithSerDe {
+            value:   99,
+            name:    "second_struct".to_string(),
+            enabled: false,
+        });
+        struct_set.insert(TestStructWithSerDe {
+            value:   123,
+            name:    "third_struct".to_string(),
+            enabled: true,
+        });
+
+        Self {
+            transform_list: vec![
+                Transform::from_xyz(10.0, 20.0, 30.0),
+                Transform::from_rotation(Quat::from_rotation_y(std::f32::consts::PI / 4.0)),
+                Transform::from_scale(Vec3::new(0.5, 1.5, 2.0)),
+            ],
+            struct_set,
+        }
+    }
+}
+
 fn main() {
     let brp_plugin = BrpExtrasPlugin::new();
     let (port, _) = brp_plugin.get_effective_port();
@@ -270,6 +318,7 @@ fn main() {
         // Register test components
         .register_type::<TestStructWithSerDe>()
         .register_type::<TestStructNoSerDe>()
+        .register_type::<SimpleSetComponent>()
         .register_type::<TestEnumWithSerDe>()
         .register_type::<SimpleNestedEnum>()
         .register_type::<OptionTestEnum>()
@@ -281,6 +330,7 @@ fn main() {
         .register_type::<TestTupleStruct>()
         .register_type::<TestComplexTuple>()
         .register_type::<TestComplexComponent>()
+        .register_type::<TestCollectionComponent>()
         // Register gamepad types for BRP access
         .register_type::<Gamepad>()
         .register_type::<GamepadSettings>()
@@ -523,6 +573,13 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestComplexTupleEntity"),
     ));
 
+    // Entity with SimpleSetComponent for testing HashSet mutations
+    let mut simple_set = SimpleSetComponent::default();
+    simple_set.string_set.insert("hello".to_string());
+    simple_set.string_set.insert("world".to_string());
+    simple_set.string_set.insert("test".to_string());
+    commands.spawn((simple_set, Name::new("SimpleSetEntity")));
+
     // Entity with TestComplexComponent using the struct variant
     commands.spawn((
         TestComplexComponent {
@@ -537,6 +594,12 @@ fn spawn_test_component_entities(commands: &mut Commands) {
             optional_value: Some(50.0),
         },
         Name::new("TestComplexEntity"),
+    ));
+
+    // Entity with TestCollectionComponent for testing List and Set recursion
+    commands.spawn((
+        TestCollectionComponent::default(),
+        Name::new("TestCollectionEntity"),
     ));
 
     // Entity with TestEnumWithSerDe standalone for easy testing

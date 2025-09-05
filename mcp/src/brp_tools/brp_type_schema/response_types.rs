@@ -173,7 +173,6 @@ impl TryFrom<&str> for MathComponent {
     }
 }
 
-
 /// Bevy reflection trait names
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString)]
 pub enum ReflectTrait {

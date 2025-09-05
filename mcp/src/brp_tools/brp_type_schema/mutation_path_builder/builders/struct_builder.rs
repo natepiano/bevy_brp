@@ -6,11 +6,12 @@
 use serde_json::{Value, json};
 use tracing::warn;
 
-use super::super::TypeKind;
-use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
+use super::super::path_kind::PathKind;
+use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::types::{MutationPathInternal, MutationStatus};
+use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, MathComponent, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
 use crate::error::Result;
@@ -21,7 +22,7 @@ pub struct StructMutationBuilder;
 impl MutationPathBuilder for StructMutationBuilder {
     fn build_paths(
         &self,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         // Check depth limit to prevent infinite recursion
@@ -139,7 +140,7 @@ impl MutationPathBuilder for StructMutationBuilder {
 impl StructMutationBuilder {
     /// Build a not mutatable path from `MutationSupport` for struct-level errors
     fn build_not_mutatable_path_from_support(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
@@ -151,7 +152,7 @@ impl StructMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       MutationPathKind::RootValue {
+                path_kind:       PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::NotMutatable,
@@ -169,7 +170,7 @@ impl StructMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       MutationPathKind::StructField {
+                path_kind:       PathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
@@ -183,7 +184,7 @@ impl StructMutationBuilder {
     fn build_not_mutatable_field_from_support(
         field_name: &str,
         field_type: &BrpTypeName,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
         // Build path using the context's prefix
@@ -201,7 +202,7 @@ impl StructMutationBuilder {
             }),
             enum_variants: None,
             type_name: field_type.clone(),
-            path_kind: MutationPathKind::StructField {
+            path_kind: PathKind::StructField {
                 field_name:  field_name.to_string(),
                 parent_type: ctx.type_name().clone(),
             },
@@ -215,15 +216,16 @@ impl StructMutationBuilder {
         field_name: &str,
         field_type: &BrpTypeName,
         parent_type: &BrpTypeName,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> MutationPathInternal {
         // First check if parent has math components and this field is a component
         let example_value = ctx.parent_knowledge.map_or_else(
             || {
-                // No parent knowledge, use normal logic
+                // No parent knowledge, check struct field first, then type
                 BRP_MUTATION_KNOWLEDGE
-                    .get(&KnowledgeKey::exact(field_type))
+                    .get(&KnowledgeKey::struct_field(parent_type, field_name))
+                    .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type)))
                     .map_or_else(
                         || {
                             // Don't increment - TypeInfo will handle it
@@ -244,7 +246,10 @@ impl StructMutationBuilder {
                         || {
                             // Either not a math component or no example available
                             BRP_MUTATION_KNOWLEDGE
-                                .get(&KnowledgeKey::exact(field_type))
+                                .get(&KnowledgeKey::struct_field(parent_type, field_name))
+                                .or_else(|| {
+                                    BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type))
+                                })
                                 .map_or_else(
                                     || {
                                         // Don't increment - TypeInfo will handle it
@@ -262,7 +267,7 @@ impl StructMutationBuilder {
             },
         );
 
-        let final_example = MutationPathContext::wrap_example(example_value);
+        let final_example = RecursionContext::wrap_example(example_value);
 
         // Build path using the context's prefix
         let path = if ctx.path_prefix.is_empty() {
@@ -276,7 +281,7 @@ impl StructMutationBuilder {
             example: final_example,
             enum_variants: None,
             type_name: field_type.clone(),
-            path_kind: MutationPathKind::StructField {
+            path_kind: PathKind::StructField {
                 field_name:  field_name.to_string(),
                 parent_type: parent_type.clone(),
             },
@@ -286,7 +291,7 @@ impl StructMutationBuilder {
     }
 
     /// Extract properties from the schema
-    fn extract_properties(ctx: &MutationPathContext) -> Vec<(String, &Value)> {
+    fn extract_properties(ctx: &RecursionContext) -> Vec<(String, &Value)> {
         let Some(schema) = ctx.require_schema() else {
             return Vec::new();
         };
@@ -309,7 +314,7 @@ impl StructMutationBuilder {
     fn propagate_struct_immutability(paths: &mut [MutationPathInternal]) {
         let field_paths: Vec<_> = paths
             .iter()
-            .filter(|p| matches!(p.path_kind, MutationPathKind::StructField { .. }))
+            .filter(|p| matches!(p.path_kind, PathKind::StructField { .. }))
             .collect();
 
         if !field_paths.is_empty() {
@@ -320,7 +325,7 @@ impl StructMutationBuilder {
             if all_fields_not_mutatable {
                 // Mark any root-level paths as NotMutatable
                 for path in paths.iter_mut() {
-                    if matches!(path.path_kind, MutationPathKind::RootValue { .. }) {
+                    if matches!(path.path_kind, PathKind::RootValue { .. }) {
                         path.mutation_status = MutationStatus::NotMutatable;
                         path.error_reason = Some("non_mutatable_fields".to_string());
                         path.example = json!({

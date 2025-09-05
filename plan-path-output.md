@@ -1,7 +1,7 @@
 # Mutation Path Output Structure Plan
 
 ## Overview
-This plan defines a unified output structure for mutation paths that works consistently across all `MutationPathKind` variants while properly representing enum variant groups by their type signatures.
+This plan defines a unified output structure for mutation paths that works consistently across all `PathKind` variants while properly representing enum variant groups by their type signatures.
 
 ## Core Structure
 
@@ -13,7 +13,7 @@ Every mutation path entry follows this structure:
     "description": "Human-readable description of what this path mutates",
     "mutation_status": "mutatable" | "not_mutatable" | "partially_mutatable",
     "path_info": {
-      "path_kind": "MutationPathKind variant",
+      "path_kind": "PathKind variant",
       "type": "Fully qualified type name",
       "type_kind": "TypeKind variant (Enum, Struct, Value, Array, etc.)"
     },
@@ -34,9 +34,9 @@ Every mutation path entry follows this structure:
 1. **`examples` is always an array** - Provides consistency across all types
 2. **Enum variants are grouped by signature** - All variants with identical type signatures share one example
 3. **Non-enums have a single example** - Array contains one element with just `example` field
-4. **Structure is identical for all `MutationPathKind` variants** - Works for RootValue, StructField, IndexedElement, and ArrayElement
+4. **Structure is identical for all `PathKind` variants** - Works for RootValue, StructField, IndexedElement, and ArrayElement
 
-## Examples by MutationPathKind
+## Examples by PathKind
 
 ### 1. RootValue (Enum)
 
@@ -233,7 +233,28 @@ Every mutation path entry follows this structure:
 }
 ```
 
-### 8. Non-Mutatable Path
+### 8. StructField (Set)
+
+```json
+{
+  ".string_set": {
+    "description": "Mutate the string_set field of SimpleSetComponent",
+    "mutation_status": "mutatable",
+    "path_info": {
+      "path_kind": "StructField",
+      "type": "std::collections::hash::set::HashSet<String>",
+      "type_kind": "Set"
+    },
+    "examples": [
+      {
+        "example": ["hello", "world", "test"]
+      }
+    ]
+  }
+}
+```
+
+### 9. Non-Mutatable Path
 
 ```json
 {
@@ -281,10 +302,11 @@ When processing enum types, variants are grouped by their structural signature:
 The mutation path building system is organized in a modular structure:
 
 ### Core Types and Traits
-- **`MutationPathKind`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/types.rs` (line 37)
-- **`TypeKind`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/type_kind.rs`
-- **`MutationPathBuilder` trait** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/types.rs`
-- **`MutationPathContext`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/types.rs`
+- **`PathKind`** (formerly `MutationPathKind`) - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/path_kind.rs` (line 9)
+- **`TypeKind`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/type_kind.rs` (includes Array, Enum, List, Map, Set, Struct, Tuple, TupleStruct, Value)
+- **`MutationPathBuilder` trait** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs` (line 20)
+- **`RecursionContext`** (formerly `MutationPathContext`) - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/recursion_context.rs`
+- **`RootOrField`** - Defined in `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/recursion_context.rs`
 
 ### Builder Implementations
 - **`EnumMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/enum_builder.rs`
@@ -293,6 +315,7 @@ The mutation path building system is organized in a modular structure:
 - **`TupleMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/tuple_builder.rs`
 - **`ListMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/list_builder.rs`
 - **`MapMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/map_builder.rs`
+- **`SetMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/set_builder.rs`
 - **`DefaultMutationBuilder`** - `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/default_builder.rs`
 
 ### Module Organization
@@ -313,3 +336,7 @@ The mutation path building system is organized in a modular structure:
 - Non-mutatable paths have empty `examples` array and include `error_reason`
 - Enum variant grouping logic is implemented in `EnumMutationBuilder::build_paths()`
 - The modular builder structure allows each type kind to handle its own mutation logic independently
+- `ListMutationBuilder` now adds both list-level and element-level mutation paths
+- `SetMutationBuilder` handles `HashSet` and `BTreeSet` types similar to `ListMutationBuilder`
+- The context uses `PathKind` instead of `MutationPathKind` for consistency
+- `RecursionContext` handles path prefix building for nested structures

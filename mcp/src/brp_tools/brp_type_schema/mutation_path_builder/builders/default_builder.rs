@@ -4,10 +4,10 @@
 /// use `std::collections::HashMap`;
 use serde_json::json;
 
-use super::super::types::{
-    MutationPathBuilder, MutationPathContext, MutationPathInternal, MutationPathKind, 
-    MutationStatus, RootOrField,
-};
+use super::super::MutationPathBuilder;
+use super::super::path_kind::PathKind;
+use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::error::Result;
 
@@ -16,7 +16,7 @@ pub struct DefaultMutationBuilder;
 impl MutationPathBuilder for DefaultMutationBuilder {
     fn build_paths(
         &self,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         let mut paths = Vec::new();
@@ -28,7 +28,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                     example:         json!(null),
                     enum_variants:   None,
                     type_name:       type_name.clone(),
-                    path_kind:       MutationPathKind::RootValue {
+                    path_kind:       PathKind::RootValue {
                         type_name: type_name.clone(),
                     },
                     mutation_status: MutationStatus::Mutatable,
@@ -45,7 +45,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                     example:         json!(null),
                     enum_variants:   None,
                     type_name:       field_type.clone(),
-                    path_kind:       MutationPathKind::StructField {
+                    path_kind:       PathKind::StructField {
                         field_name:  field_name.clone(),
                         parent_type: parent_type.clone(),
                     },

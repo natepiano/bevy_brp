@@ -13,8 +13,8 @@ use super::constants::{
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_path_builder::{
-    EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathContext,
-    MutationPathInternal, RootOrField, TypeKind,
+    EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal,
+    RecursionContext, RootOrField, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -233,7 +233,7 @@ impl TypeInfo {
 
         // Create root context for the new trait system
         let location = RootOrField::root(brp_type_name);
-        let ctx = MutationPathContext::new(location, Arc::clone(&registry));
+        let ctx = RecursionContext::new(location, Arc::clone(&registry));
 
         // Use the new trait dispatch system
         type_kind
@@ -456,6 +456,29 @@ impl TypeInfo {
                         )
                     })
             }
+            TypeKind::List | TypeKind::Set => {
+                // Handle List (Vec) and Set (HashSet) types
+                // Both have an "items" field with the element type
+                let item_type = field_schema
+                    .get_field(SchemaField::Items)
+                    .and_then(|items| items.get_field(SchemaField::Type))
+                    .and_then(Self::extract_type_ref_with_schema_field);
+                
+                item_type.map_or(json!(null), |item_type_name| {
+                    // Generate example value for the item type
+                    let item_example = Self::build_example_value_for_type_with_depth(
+                        &item_type_name,
+                        registry,
+                        depth.increment(),
+                    );
+                    
+                    // Create array with 2-3 example elements
+                    // For Sets, these represent unique values to add
+                    // For Lists, these are ordered elements
+                    let array = vec![item_example; 2];
+                    json!(array)
+                })
+            }
             _ => json!(null),
         }
     }
@@ -575,7 +598,7 @@ impl TypeInfo {
 
         // Create root context for validation
         let location = RootOrField::root(brp_type_name);
-        let ctx = MutationPathContext::new(location, registry);
+        let ctx = RecursionContext::new(location, registry);
 
         // Inline validation logic (similar to TypeKind::build_paths)
         match type_kind {

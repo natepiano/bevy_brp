@@ -603,11 +603,12 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // textures! Safe combinations: 16 (RENDER_ATTACHMENT only), 20 (RENDER_ATTACHMENT |
         // TEXTURE_BINDING)
         map.insert(
-            KnowledgeKey::exact(
-                "bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthTextureUsage",
+            KnowledgeKey::struct_field(
+                "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
+                "depth_texture_usages",
             ),
-            MutationKnowledge::simple(json!(20)), /* RENDER_ATTACHMENT | TEXTURE_BINDING - safe
-                                                   * combination */
+            // RENDER_ATTACHMENT | TEXTURE_BINDING - safe combination, treat as opaque u32
+            MutationKnowledge::as_value(json!(20), "u32".to_string()),
         );
 
         // ===== Transform types =====

@@ -4,10 +4,12 @@
 
 use serde_json::json;
 
-use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
+use super::super::MutationPathBuilder;
+use super::super::path_kind::PathKind;
+use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::types::{MutationPathInternal, MutationStatus};
 use super::default_builder::DefaultMutationBuilder;
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
 use crate::brp_tools::brp_type_schema::type_info::MutationSupport;
 use crate::error::Result;
 pub struct MapMutationBuilder;
@@ -15,7 +17,7 @@ pub struct MapMutationBuilder;
 impl MutationPathBuilder for MapMutationBuilder {
     fn build_paths(
         &self,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
@@ -25,7 +27,7 @@ impl MutationPathBuilder for MapMutationBuilder {
             )]);
         };
 
-        let Some(value_type) = MutationPathContext::extract_map_value_type(schema) else {
+        let Some(value_type) = RecursionContext::extract_map_value_type(schema) else {
             // If we have a schema but can't extract value type, treat as NotInRegistry
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
@@ -50,7 +52,7 @@ impl MutationPathBuilder for MapMutationBuilder {
 impl MapMutationBuilder {
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
@@ -62,7 +64,7 @@ impl MapMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       MutationPathKind::RootValue {
+                path_kind:       PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::NotMutatable,
@@ -80,7 +82,7 @@ impl MapMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       MutationPathKind::StructField {
+                path_kind:       PathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },

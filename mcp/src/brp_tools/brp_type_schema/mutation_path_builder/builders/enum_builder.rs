@@ -7,13 +7,14 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::super::TypeKind;
-use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
+use super::super::path_kind::PathKind;
+use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::types::{MutationPathInternal, MutationStatus};
+use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::{
     MAX_TYPE_RECURSION_DEPTH, RecursionDepth, SCHEMA_REF_PREFIX,
 };
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
 use crate::error::Result;
@@ -376,7 +377,7 @@ pub struct EnumMutationBuilder;
 impl MutationPathBuilder for EnumMutationBuilder {
     fn build_paths(
         &self,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
@@ -412,7 +413,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     example: enum_example,
                     enum_variants,
                     type_name: type_name.clone(),
-                    path_kind: MutationPathKind::RootValue {
+                    path_kind: PathKind::RootValue {
                         type_name: type_name.clone(),
                     },
                     mutation_status: MutationStatus::Mutatable,
@@ -432,10 +433,10 @@ impl MutationPathBuilder for EnumMutationBuilder {
                 };
                 paths.push(MutationPathInternal {
                     path,
-                    example: MutationPathContext::wrap_example(enum_example),
+                    example: RecursionContext::wrap_example(enum_example),
                     enum_variants,
                     type_name: field_type.clone(),
-                    path_kind: MutationPathKind::StructField {
+                    path_kind: PathKind::StructField {
                         field_name:  field_name.clone(),
                         parent_type: parent_type.clone(),
                     },
@@ -485,7 +486,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
 impl EnumMutationBuilder {
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
@@ -497,7 +498,7 @@ impl EnumMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       MutationPathKind::RootValue {
+                path_kind:       PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::NotMutatable,
@@ -515,7 +516,7 @@ impl EnumMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       MutationPathKind::StructField {
+                path_kind:       PathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },

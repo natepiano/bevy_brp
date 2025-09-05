@@ -6,11 +6,12 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::TypeKind;
-use super::super::types::{MutationPathBuilder, MutationPathContext, RootOrField};
+use super::super::path_kind::PathKind;
+use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::types::{MutationPathInternal, MutationStatus};
+use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
 use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::brp_tools::brp_type_schema::type_info::{MutationSupport, TypeInfo};
 use crate::error::Result;
@@ -20,7 +21,7 @@ pub struct ArrayMutationBuilder;
 impl MutationPathBuilder for ArrayMutationBuilder {
     fn build_paths(
         &self,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         // Validate and extract array information
@@ -53,7 +54,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 impl ArrayMutationBuilder {
     /// Validate and extract array information from context
     fn validate_and_extract_array_info(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
     ) -> core::result::Result<(BrpTypeName, &Value), Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_schema() else {
             return Err(vec![Self::build_not_mutatable_path(
@@ -62,7 +63,7 @@ impl ArrayMutationBuilder {
             )]);
         };
 
-        let Some(element_type) = MutationPathContext::extract_list_element_type(schema) else {
+        let Some(element_type) = RecursionContext::extract_list_element_type(schema) else {
             return Err(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(ctx.type_name().clone()),
@@ -81,7 +82,7 @@ impl ArrayMutationBuilder {
 
     /// Build the main array path
     fn build_main_array_path(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         element_type: &BrpTypeName,
         array_size: Option<usize>,
         depth: RecursionDepth,
@@ -95,7 +96,7 @@ impl ArrayMutationBuilder {
                 example:         json!(array_example),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       MutationPathKind::RootValue {
+                path_kind:       PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::Mutatable,
@@ -117,7 +118,7 @@ impl ArrayMutationBuilder {
                     example: json!(array_example),
                     enum_variants: None,
                     type_name: field_type.clone(),
-                    path_kind: MutationPathKind::StructField {
+                    path_kind: PathKind::StructField {
                         field_name:  field_name.to_string(),
                         parent_type: parent_type.clone(),
                     },
@@ -130,7 +131,7 @@ impl ArrayMutationBuilder {
 
     /// Build the indexed element path
     fn build_indexed_element_path(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         element_type: &BrpTypeName,
         depth: RecursionDepth,
     ) -> MutationPathInternal {
@@ -142,7 +143,7 @@ impl ArrayMutationBuilder {
                 example:         element_example,
                 enum_variants:   None,
                 type_name:       element_type.clone(),
-                path_kind:       MutationPathKind::ArrayElement {
+                path_kind:       PathKind::ArrayElement {
                     index:       0,
                     parent_type: type_name.clone(),
                 },
@@ -165,7 +166,7 @@ impl ArrayMutationBuilder {
                     example:         element_example,
                     enum_variants:   None,
                     type_name:       element_type.clone(),
-                    path_kind:       MutationPathKind::ArrayElement {
+                    path_kind:       PathKind::ArrayElement {
                         index:       0,
                         parent_type: field_type.clone(),
                     },
@@ -178,7 +179,7 @@ impl ArrayMutationBuilder {
 
     /// Add nested paths for complex element types
     fn add_nested_paths(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         element_type: &BrpTypeName,
         element_schema: &Value,
         depth: RecursionDepth,
@@ -241,7 +242,7 @@ impl ArrayMutationBuilder {
 
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
@@ -253,7 +254,7 @@ impl ArrayMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       MutationPathKind::RootValue {
+                path_kind:       PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::NotMutatable,
@@ -271,7 +272,7 @@ impl ArrayMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       MutationPathKind::StructField {
+                path_kind:       PathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },

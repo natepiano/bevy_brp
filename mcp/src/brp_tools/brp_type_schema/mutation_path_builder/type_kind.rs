@@ -7,13 +7,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
+use super::MutationPathBuilder;
 use super::builders::{
     ArrayMutationBuilder, DefaultMutationBuilder, EnumMutationBuilder, ListMutationBuilder,
-    MapMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
+    MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
 };
-use super::types::{MutationPathBuilder, MutationPathContext};
+use super::path_kind::PathKind;
+use super::recursion_context::{RecursionContext, RootOrField};
+use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use super::types::{MutationPathInternal, MutationPathKind, MutationStatus};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::MutationSupport;
 use crate::error::Result;
@@ -33,6 +35,8 @@ pub enum TypeKind {
     Map,
     /// Regular struct type
     Struct,
+    /// Set type (`HashSet`, `BTreeSet`, etc.)
+    Set,
     /// Tuple type
     Tuple,
     /// Tuple struct type
@@ -59,13 +63,11 @@ impl TypeKind {
 
     /// Build `NotMutatable` path from `MutationSupport` error details
     fn build_not_mutatable_path_from_support(
-        ctx: &super::types::MutationPathContext,
+        ctx: &RecursionContext,
         support: &crate::brp_tools::brp_type_schema::type_info::MutationSupport,
         directive_suffix: &str,
     ) -> MutationPathInternal {
         use serde_json::json;
-
-        use super::types::RootOrField;
         // MutationPathInternal, MutationPathKind, MutationStatus already imported above
 
         match &ctx.location {
@@ -77,7 +79,7 @@ impl TypeKind {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       MutationPathKind::RootValue {
+                path_kind:       PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::NotMutatable,
@@ -95,7 +97,7 @@ impl TypeKind {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       MutationPathKind::StructField {
+                path_kind:       PathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
@@ -111,7 +113,7 @@ impl TypeKind {
 impl MutationPathBuilder for TypeKind {
     fn build_paths(
         &self,
-        ctx: &MutationPathContext,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         // Check recursion limit first
@@ -133,6 +135,7 @@ impl MutationPathBuilder for TypeKind {
             | Self::Array
             | Self::List
             | Self::Map
+            | Self::Set
             | Self::Enum => depth.increment(),
             // Leaf types and wrappers - preserve current depth
             Self::Value => depth,
@@ -144,6 +147,7 @@ impl MutationPathBuilder for TypeKind {
             Self::Array => ArrayMutationBuilder.build_paths(ctx, builder_depth),
             Self::List => ListMutationBuilder.build_paths(ctx, builder_depth),
             Self::Map => MapMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Set => SetMutationBuilder.build_paths(ctx, builder_depth),
             Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
             Self::Value => {
                 // Check serialization inline, no recursion needed
