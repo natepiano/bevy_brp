@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::{
@@ -408,7 +408,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         );
 
         match &ctx.location {
-            RootOrField::Root { type_name } => {
+            PathLocation::Root { type_name } => {
                 paths.push(MutationPathInternal {
                     path: String::new(),
                     example: enum_example,
@@ -421,9 +421,9 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     error_reason: None,
                 });
             }
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
@@ -453,7 +453,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         // 1. Only one variant can be active at a time
         // 2. The variant is selected when setting the field value
         // 3. Variant fields are accessed through the enum field path (e.g., .field.0.variant_field)
-        if matches!(ctx.location, RootOrField::Root { .. }) {
+        if matches!(ctx.location, PathLocation::Root { .. }) {
             let variants = extract_enum_variants(schema, &ctx.registry, *depth);
             let unique_variants = deduplicate_variant_signatures(variants);
 
@@ -491,7 +491,7 @@ impl EnumMutationBuilder {
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
                 example:         json!({
                     "NotMutatable": format!("{support}"),
@@ -505,9 +505,9 @@ impl EnumMutationBuilder {
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

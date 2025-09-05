@@ -87,30 +87,6 @@ pub struct MutationPath {
 }
 
 impl MutationPath {
-    /// Create a root value mutation with a simplified type name
-    pub fn new_root_value(
-        type_name: BrpTypeName,
-        example_value: Value,
-        simplified_type: String,
-    ) -> Self {
-        Self {
-            description:      format!("Replace the entire {type_name} value"),
-            path_info:        PathInfo {
-                path_kind: PathKind::RootValue { type_name },
-                type_name: BrpTypeName::from(simplified_type),
-                type_kind: TypeKind::Value, // Root values are treated as Value types
-            },
-            example:          Some(example_value),
-            example_some:     None,
-            example_none:     None,
-            enum_variants:    None,
-            example_variants: None,
-            note:             None,
-            mutation_status:  MutationStatus::Mutatable,
-            error_reason:     None,
-        }
-    }
-
     /// Create from internal `MutationPath` with proper formatting logic
     pub fn from_mutation_path(
         path: &MutationPathInternal,

@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -92,7 +92,7 @@ impl ArrayMutationBuilder {
             Self::build_array_example(element_type, &ctx.registry, array_size, depth);
 
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
                 example:         json!(array_example),
                 enum_variants:   None,
@@ -103,9 +103,9 @@ impl ArrayMutationBuilder {
                 mutation_status: MutationStatus::Mutatable,
                 error_reason:    None,
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
@@ -139,7 +139,7 @@ impl ArrayMutationBuilder {
         let element_example = Self::build_element_example(element_type, &ctx.registry, depth);
 
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            "[0]".to_string(),
                 example:         element_example,
                 enum_variants:   None,
@@ -151,9 +151,9 @@ impl ArrayMutationBuilder {
                 mutation_status: MutationStatus::Mutatable,
                 error_reason:    None,
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 ..
             } => {
                 // Add indexed path for first element
@@ -247,7 +247,7 @@ impl ArrayMutationBuilder {
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
                 example:         json!({
                     "NotMutatable": format!("{support}"),
@@ -261,9 +261,9 @@ impl ArrayMutationBuilder {
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

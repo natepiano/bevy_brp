@@ -6,7 +6,7 @@ use serde_json::json;
 
 use super::super::MutationPathBuilder;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::error::Result;
@@ -22,7 +22,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         let mut paths = Vec::new();
 
         match &ctx.location {
-            RootOrField::Root { type_name } => {
+            PathLocation::Root { type_name } => {
                 paths.push(MutationPathInternal {
                     path:            String::new(),
                     example:         json!(null),
@@ -35,9 +35,9 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                     error_reason:    None,
                 });
             }
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => {
                 paths.push(MutationPathInternal {

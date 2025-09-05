@@ -8,7 +8,7 @@ use serde_json::json;
 
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -88,7 +88,7 @@ impl ListMutationBuilder {
         let final_example = RecursionContext::wrap_example(example_value);
 
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path,
                 example: final_example,
                 enum_variants: None,
@@ -99,9 +99,9 @@ impl ListMutationBuilder {
                 mutation_status: MutationStatus::Mutatable,
                 error_reason: None,
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path,
@@ -124,7 +124,7 @@ impl ListMutationBuilder {
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
                 example:         json!({
                     "NotMutatable": format!("{support}"),
@@ -138,9 +138,9 @@ impl ListMutationBuilder {
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

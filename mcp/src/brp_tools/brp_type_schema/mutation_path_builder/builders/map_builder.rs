@@ -7,7 +7,7 @@ use serde_json::json;
 use super::super::MutationPathBuilder;
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{RecursionContext, RootOrField};
+use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::default_builder::DefaultMutationBuilder;
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -56,7 +56,7 @@ impl MapMutationBuilder {
         support: MutationSupport,
     ) -> MutationPathInternal {
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
                 example:         json!({
                     "NotMutatable": format!("{support}"),
@@ -70,9 +70,9 @@ impl MapMutationBuilder {
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

@@ -18,24 +18,28 @@ use crate::string_traits::JsonFieldAccess;
 /// necessary because Struct, specifically, allows us to recurse down a level
 /// for complex types that have Struct fields
 #[derive(Debug, Clone)]
-pub enum RootOrField {
+pub enum PathLocation {
     /// Building paths for a root type (used in root mutations)
     Root { type_name: BrpTypeName },
-    /// Building paths for a field within a parent type
-    Field {
-        field_name:  String,
-        field_type:  BrpTypeName,
-        parent_type: BrpTypeName,
+    /// Building paths for a elements within a parent type
+    Element {
+        mutation_path: String,
+        element_type:  BrpTypeName,
+        parent_type:   BrpTypeName,
     },
 }
 
-impl RootOrField {
-    /// Create a field context
-    pub fn field(field_name: &str, field_type: &BrpTypeName, parent_type: &BrpTypeName) -> Self {
-        Self::Field {
-            field_name:  field_name.to_string(),
-            field_type:  field_type.clone(),
-            parent_type: parent_type.clone(),
+impl PathLocation {
+    /// Create a mutation path with its associated type and parent type
+    pub fn mutation_path(
+        mutation_path: &str,
+        element_type: &BrpTypeName,
+        parent_type: &BrpTypeName,
+    ) -> Self {
+        Self::Element {
+            mutation_path: mutation_path.to_string(),
+            element_type:  element_type.clone(),
+            parent_type:   parent_type.clone(),
         }
     }
 
@@ -50,7 +54,7 @@ impl RootOrField {
     pub const fn type_name(&self) -> &BrpTypeName {
         match self {
             Self::Root { type_name } => type_name,
-            Self::Field { field_type, .. } => field_type,
+            Self::Element { element_type, .. } => element_type,
         }
     }
 }
@@ -62,7 +66,7 @@ impl RootOrField {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub location:         RootOrField,
+    pub location:         PathLocation,
     /// Reference to the type registry
     pub registry:         Arc<HashMap<BrpTypeName, Value>>,
     /// Path prefix for nested structures (e.g., ".translation" when building Vec3 fields)
@@ -73,7 +77,7 @@ pub struct RecursionContext {
 
 impl RecursionContext {
     /// Create a new mutation path context
-    pub const fn new(location: RootOrField, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
+    pub const fn new(location: PathLocation, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
         Self {
             location,
             registry,
@@ -113,7 +117,7 @@ impl RecursionContext {
 
         // Extract just the field name from accessor for the location
         // Remove leading "." or "[" and trailing "]" to get the name/index
-        let field_name = accessor
+        let mutation_path = accessor
             .trim_start_matches('.')
             .trim_start_matches('[')
             .trim_end_matches(']')
@@ -122,11 +126,11 @@ impl RecursionContext {
         // Check if field has hardcoded knowledge to pass to children
         // First check struct_field, then exact type
         let field_knowledge = BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::struct_field(parent_type, &field_name))
+            .get(&KnowledgeKey::struct_field(parent_type, &mutation_path))
             .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type)));
 
         Self {
-            location:         RootOrField::field(&field_name, field_type, parent_type),
+            location:         PathLocation::mutation_path(&mutation_path, field_type, parent_type),
             registry:         Arc::clone(&self.registry),
             path_prefix:      new_path_prefix,
             parent_knowledge: field_knowledge,

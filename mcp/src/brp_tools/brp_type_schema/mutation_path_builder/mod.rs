@@ -6,10 +6,9 @@ mod type_kind;
 mod types;
 
 pub use builders::{EnumMutationBuilder, EnumVariantInfo, build_all_enum_examples};
-pub use mutation_support::MutationSupport;
-pub use recursion_context::{RecursionContext, RootOrField};
+pub use recursion_context::{RecursionContext, PathLocation};
 pub use type_kind::TypeKind;
-pub use types::{MutationPath, MutationPathInternal};
+pub use types::{MutationPath, MutationPathInternal, MutationStatus};
 
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::error::Result;

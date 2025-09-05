@@ -14,9 +14,12 @@ use super::builders::{
 };
 use super::mutation_support::MutationSupport;
 use super::path_kind::PathKind;
-use super::recursion_context::{RecursionContext, RootOrField};
+use super::recursion_context::{PathLocation, RecursionContext};
 use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_schema::mutation_knowledge::{
+    BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey,
+};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
@@ -61,6 +64,53 @@ impl TypeKind {
             })
     }
 
+    /// Build a mutation path for types with TreatAsValue knowledge
+    /// that come from our hard coded knowledge
+    fn build_treat_as_value_path(ctx: &RecursionContext) -> Result<Option<MutationPathInternal>> {
+        if let Some(knowledge) =
+            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name().to_string()))
+        {
+            if let KnowledgeGuidance::TreatAsValue { simplified_type } = knowledge.guidance() {
+                // Build a single root mutation path for types that should be treated as values
+                let example = RecursionContext::wrap_example(knowledge.example_value().clone());
+
+                let path = match &ctx.location {
+                    PathLocation::Root { type_name } => MutationPathInternal {
+                        path: String::new(),
+                        example,
+                        enum_variants: None,
+                        type_name: BrpTypeName::from(simplified_type.clone()),
+                        path_kind: PathKind::RootValue {
+                            type_name: type_name.clone(),
+                        },
+                        mutation_status: MutationStatus::Mutatable,
+                        error_reason: None,
+                    },
+                    PathLocation::Element {
+                        mutation_path: field_name,
+                        element_type: _,
+                        parent_type,
+                    } => MutationPathInternal {
+                        path: format!(".{field_name}"),
+                        example,
+                        enum_variants: None,
+                        type_name: BrpTypeName::from(simplified_type.clone()),
+                        path_kind: PathKind::StructField {
+                            field_name:  field_name.clone(),
+                            parent_type: parent_type.clone(),
+                        },
+                        mutation_status: MutationStatus::Mutatable,
+                        error_reason: None,
+                    },
+                };
+
+                return Ok(Some(path));
+            }
+        }
+
+        Ok(None)
+    }
+
     /// Build `NotMutatable` path from `MutationSupport` error details
     fn build_not_mutatable_path_from_support(
         ctx: &RecursionContext,
@@ -71,7 +121,7 @@ impl TypeKind {
         // MutationPathInternal, MutationPathKind, MutationStatus already imported above
 
         match &ctx.location {
-            RootOrField::Root { type_name } => MutationPathInternal {
+            PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),
                 example:         json!({
                     "NotMutatable": format!("{support}"),
@@ -85,9 +135,9 @@ impl TypeKind {
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(support),
             },
-            RootOrField::Field {
-                field_name,
-                field_type,
+            PathLocation::Element {
+                mutation_path: field_name,
+                element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),
@@ -124,6 +174,12 @@ impl MutationPathBuilder for TypeKind {
                 "",
             );
             return Ok(vec![recursion_limit_path]);
+        }
+
+        // Check if this type has TreatAsValue knowledge
+        // which bypasses any further recursion to provide a simplified Value example
+        if let Some(mutation_path_internal) = Self::build_treat_as_value_path(ctx)? {
+            return Ok(vec![mutation_path_internal]);
         }
 
         // Only increment depth for container types that recurse into nested structures

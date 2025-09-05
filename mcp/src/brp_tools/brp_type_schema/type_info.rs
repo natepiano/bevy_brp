@@ -10,10 +10,10 @@ use serde_json::{Map, Value, json};
 use super::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth, SCHEMA_REF_PREFIX,
 };
-use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
+use super::mutation_knowledge::KnowledgeKey;
 use super::mutation_path_builder::{
     EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal,
-    MutationSupport, RecursionContext, RootOrField, TypeKind,
+    PathLocation, RecursionContext, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -62,7 +62,7 @@ impl TypeInfo {
         type_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Self {
-        // Extract type category for enum check
+        // Extract type kind
         let type_kind = TypeKind::from_schema(type_schema, &brp_type_name);
 
         // Extract reflection traits
@@ -75,17 +75,15 @@ impl TypeInfo {
         // Get supported operations
         let supported_operations = Self::get_supported_operations(&reflect_types);
 
-        // Get mutation support directly using structured validation (TYPE-SYSTEM-001)
-        let mutation_support =
-            Self::get_mutation_support_direct(&brp_type_name, type_schema, Arc::clone(&registry));
-
-        // Build mutation paths only if needed for the final result
+        // Build mutation paths to determine actual mutation capability
+        let mutation_paths_vec =
+            Self::build_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
         let mutation_paths =
-            Self::get_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
+            Self::convert_mutation_paths(&mutation_paths_vec, type_schema, &registry);
 
-        // Earn mutation support based on actual capability
+        // Add Mutate operation if any paths are actually mutatable
         let mut supported_operations = supported_operations;
-        if matches!(mutation_support, MutationSupport::Supported) {
+        if Self::has_mutatable_paths(&mutation_paths) {
             supported_operations.push(BrpSupportedOperation::Mutate);
         }
 
@@ -147,6 +145,19 @@ impl TypeInfo {
 
     // Private helper methods (alphabetically ordered)
 
+    /// Check if any mutation paths are mutatable (fully or partially)
+    /// This determines if the type supports the Mutate operation
+    fn has_mutatable_paths(mutation_paths: &HashMap<String, MutationPath>) -> bool {
+        use super::mutation_path_builder::MutationStatus;
+
+        mutation_paths.values().any(|path| {
+            matches!(
+                path.mutation_status,
+                MutationStatus::Mutatable | MutationStatus::PartiallyMutatable
+            )
+        })
+    }
+
     /// Build mutation paths for a type using the trait system
     fn build_mutation_paths(
         brp_type_name: &BrpTypeName,
@@ -156,7 +167,7 @@ impl TypeInfo {
         let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
 
         // Create root context for the new trait system
-        let location = RootOrField::root(brp_type_name);
+        let location = PathLocation::root(brp_type_name);
         let ctx = RecursionContext::new(location, Arc::clone(&registry));
 
         // Use the new trait dispatch system
@@ -510,64 +521,6 @@ impl TypeInfo {
         } else {
             None
         }
-    }
-
-    /// Get mutation support directly using structured validation (TYPE-SYSTEM-001)
-    fn get_mutation_support_direct(
-        brp_type_name: &BrpTypeName,
-        type_schema: &Value,
-        registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> MutationSupport {
-        let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
-
-        // Create root context for validation
-        let location = RootOrField::root(brp_type_name);
-        let ctx = RecursionContext::new(location, registry);
-
-        // Inline validation logic (similar to TypeKind::build_paths)
-        match type_kind {
-            TypeKind::Value => {
-                if ctx.value_type_has_serialization(brp_type_name) {
-                    MutationSupport::Supported
-                } else {
-                    MutationSupport::MissingSerializationTraits(brp_type_name.clone())
-                }
-            }
-            // Other types are handled by their specific builders during build_paths
-            _ => MutationSupport::Supported,
-        }
-    }
-
-    /// Get mutation paths for a type as a `HashMap`
-    fn get_mutation_paths(
-        brp_type_name: &BrpTypeName,
-        type_schema: &Value,
-        registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> HashMap<String, MutationPath> {
-        // Check if this type has format knowledge with TreatAsValue
-        let format_knowledge =
-            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(brp_type_name.to_string()));
-
-        if let Some(knowledge) = format_knowledge
-            && let KnowledgeGuidance::TreatAsValue { simplified_type } = &knowledge.guidance()
-        {
-            // For types that should be treated as values, only provide a root mutation
-            let mut paths = HashMap::new();
-
-            let root_mutation = MutationPath::new_root_value(
-                brp_type_name.clone(),
-                knowledge.example_value().clone(),
-                simplified_type.clone(),
-            );
-
-            paths.insert(String::new(), root_mutation);
-            return paths;
-        }
-
-        // Use the normal registry-derived mutation paths
-        let mutation_paths_vec =
-            Self::build_mutation_paths(brp_type_name, type_schema, Arc::clone(&registry));
-        Self::convert_mutation_paths(&mutation_paths_vec, type_schema, &registry)
     }
 
     /// Get supported BRP operations based on reflection traits

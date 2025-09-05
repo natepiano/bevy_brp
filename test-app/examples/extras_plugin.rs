@@ -25,17 +25,14 @@ use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::post_process::ChromaticAberration;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
-use bevy::pbr::decal::ForwardDecalMaterialExt;
 use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::pbr::irradiance_volume::IrradianceVolume;
 use bevy::pbr::prelude::EnvironmentMapLight;
 use bevy::pbr::{
-    AmbientLight, ExtendedMaterial, LightProbe, MeshMaterial3d, ScreenSpaceAmbientOcclusion,
-    ScreenSpaceReflections, StandardMaterial, VolumetricFog,
+    AmbientLight, LightProbe, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections, VolumetricFog,
 };
 use bevy::prelude::*;
 use bevy::render::camera::{MipBias, TemporalJitter};
-use bevy::render::mesh::{Mesh2d, Mesh3d};
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
 use bevy::render::view::ColorGrading;
@@ -336,10 +333,7 @@ fn main() {
         .register_type::<GamepadSettings>()
         // Register Screenshot type for BRP access
         .register_type::<Screenshot>()
-        .add_systems(
-            Startup,
-            (setup_test_entities, setup_test_materials, setup_ui),
-        )
+        .add_systems(Startup, (setup_test_entities, setup_ui))
         .add_systems(PostStartup, setup_skybox_test)
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
         .run();
@@ -734,16 +728,6 @@ fn spawn_render_entities(commands: &mut Commands) {
     // Entity with SkinnedMesh for testing mutations
     commands.spawn((SkinnedMesh::default(), Name::new("SkinnedMeshTestEntity")));
 
-    // Entity with Mesh2d for testing mutations
-    commands.spawn((Mesh2d(Handle::default()), Name::new("Mesh2dTestEntity")));
-
-    // Entity with Mesh3d for testing mutations
-    commands.spawn((
-        Mesh3d(Handle::default()),
-        Name::new("Mesh3dTestEntity"),
-        MeshMaterial3d::<StandardMaterial>(Handle::default()),
-    ));
-
     // Entity with MeshMaterial2d<ColorMaterial> for testing mutations
     commands.spawn((
         bevy::prelude::MeshMaterial2d::<bevy::prelude::ColorMaterial>(Handle::default()),
@@ -805,50 +789,6 @@ fn spawn_render_entities(commands: &mut Commands) {
     commands.spawn((
         Screenshot::primary_window(),
         Name::new("ScreenshotTestEntity"),
-    ));
-}
-
-/// Setup test entities with materials for mutation testing
-fn setup_test_materials(
-    mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut extended_materials: ResMut<
-        Assets<ExtendedMaterial<StandardMaterial, ForwardDecalMaterialExt>>,
-    >,
-    mut meshes: ResMut<Assets<Mesh>>,
-) {
-    // Create a standard material
-    let standard_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(1.0, 0.0, 0.0),
-        ..default()
-    });
-
-    // Create an extended material for decals
-    let extended_material = extended_materials.add(ExtendedMaterial {
-        base:      StandardMaterial {
-            base_color: Color::srgb(0.0, 1.0, 0.0),
-            ..default()
-        },
-        extension: ForwardDecalMaterialExt::default(),
-    });
-
-    // Create a basic mesh
-    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-
-    // Entity with StandardMaterial
-    commands.spawn((
-        MeshMaterial3d(standard_material),
-        Mesh3d(mesh.clone()),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Name::new("StandardMaterialTestEntity"),
-    ));
-
-    // Entity with ExtendedMaterial
-    commands.spawn((
-        MeshMaterial3d(extended_material),
-        Mesh3d(mesh),
-        Transform::from_xyz(2.0, 0.0, 0.0),
-        Name::new("ExtendedMaterialTestEntity"),
     ));
 }
 
