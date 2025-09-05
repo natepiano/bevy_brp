@@ -14,4 +14,4 @@ Tests in `.claude/commands/tests/` are not bash scripts but structured test spec
 Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `BevySpawn`) map to snake_case MCP tool names (`bevy_spawn`) and BRP methods (`bevy/spawn`). The `#[brp_tool]` attribute connects MCP tools to BRP protocol methods, with parameter/result types automatically deriving field placement for proper JSON serialization between MCP and BRP layers.
 
 ## MCP Tool Execution Constraints
-**CRITICAL**: After modifying MCP tool code, you cannot test it until the user exits and reinstalls because MCP tools run as subprocesses. The tool in use is always the OLD version until reinstalled. Only unit tests (`cargo test`) and compilation checks work immediately.
+**CRITICAL**: After modifying MCP tool code, you cannot test it until the user reloads the MCP server because MCP tools run as subprocesses. The tool in use is always the OLD version until reloaded. To reload: the user must run `/mcp`, select the server, and choose "reconnect". Only unit tests (`cargo test`) and compilation checks work immediately without reloading.
