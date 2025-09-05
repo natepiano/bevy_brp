@@ -103,12 +103,12 @@ impl KnowledgeKey {
     }
 
     /// Resolve example value using enum dispatch instead of external conditionals
-    pub fn resolve_example_value(&self, type_name: &BrpTypeName) -> Option<Value> {
+    pub fn resolve_example(&self, type_name: &BrpTypeName) -> Option<Value> {
         match self {
             Self::Exact(exact_type) if exact_type == type_name.type_string() => {
                 BRP_MUTATION_KNOWLEDGE
                     .get(self)
-                    .map(|k| k.example_value().clone())
+                    .map(|k| k.example().clone())
             }
             Self::Exact(_) => None, // Exact type doesn't match
             Self::Generic(generic_type) => {
@@ -116,7 +116,7 @@ impl KnowledgeKey {
                 if base_type == generic_type {
                     BRP_MUTATION_KNOWLEDGE
                         .get(self)
-                        .map(|k| k.example_value().clone())
+                        .map(|k| k.example().clone())
                 } else {
                     None
                 }
@@ -125,13 +125,13 @@ impl KnowledgeKey {
                 // Context-aware matching logic for enum variants
                 BRP_MUTATION_KNOWLEDGE
                     .get(self)
-                    .map(|k| k.example_value().clone())
+                    .map(|k| k.example().clone())
             }
             Self::NewtypeVariant { .. } => {
                 // Newtype variant matching logic
                 BRP_MUTATION_KNOWLEDGE
                     .get(self)
-                    .map(|k| k.example_value().clone())
+                    .map(|k| k.example().clone())
             }
             Self::StructField { .. } => {
                 // Struct field matching is handled separately in find_example_value_for_field
@@ -141,13 +141,13 @@ impl KnowledgeKey {
     }
 
     /// Try to resolve example value by iterating through all knowledge keys
-    pub fn find_example_value_for_type(type_name: &BrpTypeName) -> Option<Value> {
+    pub fn find_example_for_type(type_name: &BrpTypeName) -> Option<Value> {
         let resolvers: Vec<Box<dyn Fn() -> Option<Value>>> = vec![
-            Box::new(|| Self::exact(type_name.type_string()).resolve_example_value(type_name)),
+            Box::new(|| Self::exact(type_name.type_string()).resolve_example(type_name)),
             Box::new(|| {
                 type_name
                     .base_type()
-                    .and_then(|generic| Self::generic(generic).resolve_example_value(type_name))
+                    .and_then(|generic| Self::generic(generic).resolve_example(type_name))
             }),
         ];
 
@@ -174,10 +174,8 @@ pub enum MutationKnowledge {
 
 impl MutationKnowledge {
     /// Create a simple knowledge entry with no subfields
-    pub const fn simple(example_value: Value) -> Self {
-        Self::Simple {
-            example: example_value,
-        }
+    pub const fn simple(example: Value) -> Self {
+        Self::Simple { example }
     }
 
     /// Create a knowledge entry with math component subfields
@@ -192,15 +190,15 @@ impl MutationKnowledge {
     }
 
     /// Create a knowledge entry that should be treated as a simple value
-    pub const fn as_value(example_value: Value, simplified_type: String) -> Self {
+    pub const fn as_value(example: Value, simplified_type: String) -> Self {
         Self::OpaqueValue {
-            example: example_value,
+            example,
             simplified_type,
         }
     }
 
     /// Get the example value for this knowledge
-    pub const fn example_value(&self) -> &Value {
+    pub const fn example(&self) -> &Value {
         match self {
             Self::MathType { array_example, .. } => array_example,
             Self::Simple { example } | Self::OpaqueValue { example, .. } => example,

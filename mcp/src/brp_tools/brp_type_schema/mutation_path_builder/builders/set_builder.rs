@@ -45,40 +45,35 @@ impl SetMutationBuilder {
         use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 
         // Generate example value for the Set type
-        let example_value = TypeInfo::build_example_value_for_type_with_depth(
-            ctx.type_name(),
-            &ctx.registry,
-            depth,
-        );
-        let final_example = RecursionContext::wrap_example(example_value);
+        let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
 
         match &ctx.location {
             PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         final_example,
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::RootValue {
+                path: String::new(),
+                example,
+                enum_variants: None,
+                type_name: type_name.clone(),
+                path_kind: PathKind::RootValue {
                     type_name: type_name.clone(),
                 },
                 mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
+                error_reason: None,
             },
             PathLocation::Element {
                 mutation_path: field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         final_example,
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::StructField {
+                path: format!(".{field_name}"),
+                example,
+                enum_variants: None,
+                type_name: field_type.clone(),
+                path_kind: PathKind::StructField {
                     field_name:  field_name.clone(),
                     parent_type: parent_type.clone(),
                 },
                 mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
+                error_reason: None,
             },
         }
     }

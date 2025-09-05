@@ -62,7 +62,7 @@ impl PathLocation {
 /// Context for mutation path building operations
 ///
 /// This struct provides all the necessary context for building mutation paths,
-/// including access to the registry, wrapper type information, and enum variants.
+/// including access to the registry, and enum variants.
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
@@ -135,11 +135,6 @@ impl RecursionContext {
             path_prefix:      new_path_prefix,
             parent_knowledge: field_knowledge,
         }
-    }
-
-    /// Return an example value unchanged (wrapper functionality removed)
-    pub const fn wrap_example(inner_value: Value) -> Value {
-        inner_value
     }
 
     /// Check if a value type has serialization support

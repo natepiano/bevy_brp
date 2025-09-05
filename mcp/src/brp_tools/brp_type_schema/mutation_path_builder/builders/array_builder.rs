@@ -231,9 +231,9 @@ impl ArrayMutationBuilder {
             .map_or_else(
                 || {
                     // Pass depth through - TypeInfo will handle incrementing
-                    TypeInfo::build_example_value_for_type_with_depth(element_type, registry, depth)
+                    TypeInfo::build_type_example(element_type, registry, depth)
                 },
-                |k| k.example_value().clone(),
+                |k| k.example().clone(),
             )
     }
 

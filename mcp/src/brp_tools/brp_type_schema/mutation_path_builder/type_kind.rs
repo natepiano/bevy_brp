@@ -72,7 +72,7 @@ impl TypeKind {
         {
             if let KnowledgeGuidance::TreatAsValue { simplified_type } = knowledge.guidance() {
                 // Build a single root mutation path for types that should be treated as values
-                let example = RecursionContext::wrap_example(knowledge.example_value().clone());
+                let example = knowledge.example().clone();
 
                 let path = match &ctx.location {
                     PathLocation::Root { type_name } => MutationPathInternal {

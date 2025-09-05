@@ -80,17 +80,12 @@ impl ListMutationBuilder {
         };
 
         // Generate example value for the list type
-        let example_value = TypeInfo::build_example_value_for_type_with_depth(
-            ctx.type_name(),
-            &ctx.registry,
-            depth,
-        );
-        let final_example = RecursionContext::wrap_example(example_value);
+        let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
 
         match &ctx.location {
             PathLocation::Root { type_name } => MutationPathInternal {
                 path,
-                example: final_example,
+                example,
                 enum_variants: None,
                 type_name: type_name.clone(),
                 path_kind: PathKind::RootValue {
@@ -105,7 +100,7 @@ impl ListMutationBuilder {
                 parent_type,
             } => MutationPathInternal {
                 path,
-                example: final_example,
+                example,
                 enum_variants: None,
                 type_name: field_type.clone(),
                 path_kind: PathKind::StructField {

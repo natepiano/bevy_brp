@@ -117,7 +117,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                         if let Some(knowledge) =
                             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&field_type))
                         {
-                            path.example = knowledge.example_value().clone();
+                            path.example = knowledge.example().clone();
                         }
                     } else {
                         // If no direct path was created, add it now with hardcoded example
@@ -221,7 +221,7 @@ impl StructMutationBuilder {
         depth: RecursionDepth,
     ) -> MutationPathInternal {
         // First check if parent has math components and this field is a component
-        let example_value = ctx.parent_knowledge.map_or_else(
+        let example = ctx.parent_knowledge.map_or_else(
             || {
                 // No parent knowledge, check struct field first, then type
                 BRP_MUTATION_KNOWLEDGE
@@ -230,13 +230,9 @@ impl StructMutationBuilder {
                     .map_or_else(
                         || {
                             // Don't increment - TypeInfo will handle it
-                            TypeInfo::build_example_value_for_type_with_depth(
-                                field_type,
-                                &ctx.registry,
-                                depth,
-                            )
+                            TypeInfo::build_type_example(field_type, &ctx.registry, depth)
                         },
-                        |k| k.example_value().clone(),
+                        |k| k.example().clone(),
                     )
             },
             |parent_knowledge| {
@@ -254,21 +250,19 @@ impl StructMutationBuilder {
                                 .map_or_else(
                                     || {
                                         // Don't increment - TypeInfo will handle it
-                                        TypeInfo::build_example_value_for_type_with_depth(
+                                        TypeInfo::build_type_example(
                                             field_type,
                                             &ctx.registry,
                                             depth,
                                         )
                                     },
-                                    |k| k.example_value().clone(),
+                                    |k| k.example().clone(),
                                 )
                         },
                         std::clone::Clone::clone,
                     )
             },
         );
-
-        let final_example = RecursionContext::wrap_example(example_value);
 
         // Build path using the context's prefix
         let path = if ctx.path_prefix.is_empty() {
@@ -279,7 +273,7 @@ impl StructMutationBuilder {
 
         MutationPathInternal {
             path,
-            example: final_example,
+            example,
             enum_variants: None,
             type_name: field_type.clone(),
             path_kind: PathKind::StructField {

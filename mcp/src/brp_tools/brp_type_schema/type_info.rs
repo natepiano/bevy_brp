@@ -184,8 +184,8 @@ impl TypeInfo {
         type_name: &BrpTypeName,
     ) -> Option<Value> {
         // Use enum dispatch for format knowledge lookup
-        if let Some(example_value) = KnowledgeKey::find_example_value_for_type(type_name) {
-            return Some(example_value);
+        if let Some(example) = KnowledgeKey::find_example_for_type(type_name) {
+            return Some(example);
         }
 
         match type_kind {
@@ -285,11 +285,11 @@ impl TypeInfo {
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Value {
-        Self::build_example_value_for_type_with_depth(type_name, registry, RecursionDepth::ZERO)
+        Self::build_type_example(type_name, registry, RecursionDepth::ZERO)
     }
 
     /// Build an example value for a specific type with recursion depth tracking
-    pub fn build_example_value_for_type_with_depth(
+    pub fn build_type_example(
         type_name: &BrpTypeName,
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
@@ -300,8 +300,8 @@ impl TypeInfo {
         }
 
         // Use enum dispatch for format knowledge lookup
-        if let Some(example_value) = KnowledgeKey::find_example_value_for_type(type_name) {
-            return example_value;
+        if let Some(example) = KnowledgeKey::find_example_for_type(type_name) {
+            return example;
         }
 
         // Check if we have the type in the registry
@@ -327,11 +327,8 @@ impl TypeInfo {
 
                 item_type.map_or(json!(null), |item_type_name| {
                     // Generate example value for the item type
-                    let item_example = Self::build_example_value_for_type_with_depth(
-                        &item_type_name,
-                        registry,
-                        depth.increment(),
-                    );
+                    let item_example =
+                        Self::build_type_example(&item_type_name, registry, depth.increment());
 
                     // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
                     let size = type_name
@@ -362,7 +359,7 @@ impl TypeInfo {
                                     .map_or_else(
                                         || json!(null),
                                         |ft| {
-                                            Self::build_example_value_for_type_with_depth(
+                                            Self::build_type_example(
                                                 &ft,
                                                 registry,
                                                 depth.increment(),
@@ -401,11 +398,8 @@ impl TypeInfo {
 
                 item_type.map_or(json!(null), |item_type_name| {
                     // Generate example value for the item type
-                    let item_example = Self::build_example_value_for_type_with_depth(
-                        &item_type_name,
-                        registry,
-                        depth.increment(),
-                    );
+                    let item_example =
+                        Self::build_type_example(&item_type_name, registry, depth.increment());
 
                     // Create array with 2-3 example elements
                     // For Sets, these represent unique values to add

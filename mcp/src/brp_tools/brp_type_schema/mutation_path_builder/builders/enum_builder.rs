@@ -154,7 +154,7 @@ impl EnumVariantInfo {
                     let variant_key = KnowledgeKey::enum_variant(enum_type.type_string(), name);
 
                     if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&variant_key) {
-                        return knowledge.example_value().clone();
+                        return knowledge.example().clone();
                     }
                 }
                 // Fall back to default Unit variant behavior
@@ -164,7 +164,7 @@ impl EnumVariantInfo {
                 let tuple_values: Vec<Value> = types
                     .iter()
                     .map(|t| {
-                        TypeInfo::build_example_value_for_type_with_depth(
+                        TypeInfo::build_type_example(
                             t,
                             registry,
                             RecursionDepth::from_usize(depth).increment(),
@@ -187,7 +187,7 @@ impl EnumVariantInfo {
                     .map(|f| {
                         (
                             f.field_name.clone(),
-                            TypeInfo::build_example_value_for_type_with_depth(
+                            TypeInfo::build_type_example(
                                 &f.type_name,
                                 registry,
                                 RecursionDepth::from_usize(depth).increment(),
@@ -400,7 +400,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
         // Step 1: Add the base enum path with ALL signature examples
         let enum_variants = Self::extract_enum_variants(schema);
-        let enum_example = Self::build_enum_example(
+        let example = Self::build_enum_example(
             schema,
             &ctx.registry,
             Some(ctx.type_name()),
@@ -411,7 +411,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
             PathLocation::Root { type_name } => {
                 paths.push(MutationPathInternal {
                     path: String::new(),
-                    example: enum_example,
+                    example,
                     enum_variants,
                     type_name: type_name.clone(),
                     path_kind: PathKind::RootValue {
@@ -434,7 +434,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                 };
                 paths.push(MutationPathInternal {
                     path,
-                    example: RecursionContext::wrap_example(enum_example),
+                    example,
                     enum_variants,
                     type_name: field_type.clone(),
                     path_kind: PathKind::StructField {
@@ -551,7 +551,7 @@ impl EnumMutationBuilder {
             && let Some(knowledge) =
                 BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(enum_type.type_string()))
         {
-            return knowledge.example_value().clone();
+            return knowledge.example().clone();
         }
 
         // CRITICAL: Reuse EXISTING build_all_enum_examples function
@@ -587,7 +587,7 @@ impl EnumMutationBuilder {
             // Use TypeInfo to build example for each field type with depth tracking
             let field_value = SchemaField::extract_field_type(field_schema)
                 .map(|field_type| {
-                    TypeInfo::build_example_value_for_type_with_depth(
+                    TypeInfo::build_type_example(
                         &field_type,
                         registry,
                         depth, // Don't increment - TypeInfo will handle it

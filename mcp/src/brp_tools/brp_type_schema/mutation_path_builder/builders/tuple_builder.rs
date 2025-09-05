@@ -90,13 +90,9 @@ impl TupleMutationBuilder {
                                 .map_or_else(
                                     || {
                                         // Use TypeInfo instead of null
-                                        TypeInfo::build_example_value_for_type_with_depth(
-                                            &element_type,
-                                            registry,
-                                            depth,
-                                        )
+                                        TypeInfo::build_type_example(&element_type, registry, depth)
                                     },
-                                    |k| k.example_value().clone(),
+                                    |k| k.example().clone(),
                                 )
                         })
                     })
@@ -163,13 +159,9 @@ impl TupleMutationBuilder {
                 .map_or_else(
                     || {
                         // Use TypeInfo instead of null
-                        TypeInfo::build_example_value_for_type_with_depth(
-                            &element_type,
-                            &ctx.registry,
-                            depth,
-                        )
+                        TypeInfo::build_type_example(&element_type, &ctx.registry, depth)
                     },
-                    |k| k.example_value().clone(),
+                    |k| k.example().clone(),
                 );
 
             Some(MutationPathInternal {
@@ -270,7 +262,7 @@ impl TupleMutationBuilder {
                             depth,
                         )
                     },
-                    |k| k.example_value().clone(),
+                    |k| k.example().clone(),
                 );
                 paths.push(MutationPathInternal {
                     path: String::new(),
@@ -306,7 +298,7 @@ impl TupleMutationBuilder {
                             depth,
                         )
                     },
-                    |k| k.example_value().clone(),
+                    |k| k.example().clone(),
                 );
                 paths.push(MutationPathInternal {
                     path,
