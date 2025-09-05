@@ -6,7 +6,7 @@
 
 mod constants;
 mod mutation_knowledge;
-mod mutation_path_builders;
+mod mutation_path_builder;
 mod response_types;
 mod tool;
 mod type_info;

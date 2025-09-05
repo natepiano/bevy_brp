@@ -62,10 +62,24 @@ Replace `FILEPATH` with the actual path from step 4 (e.g., `/var/folders/.../mcp
 The script creates `$TMPDIR/all_types.json` with all discovered types initialized with `batch_number: null`.
 
 ### 6. Verify final file structure
+The completed file is structured as a JSON array of type objects (not an object with type names as keys).
+
+Each array element contains a type object with the structure:
+```json
+{
+  "type": "fully::qualified::TypeName",
+  "spawn_support": "supported" | "not_supported", 
+  "mutation_paths": ["array", "of", "mutation", "paths"],
+  "test_status": "untested" | "passed",
+  "batch_number": null,
+  "fail_reason": ""
+}
+```
+
 The completed file should have:
 - All types with spawn support properly identified (`"supported"` or `"not_supported"`)
 - All types with mutation paths listed as arrays
-- All types starting with `test_status: "untested"`
+- All types starting with `test_status: "untested"` (except auto-passed spawn types)
 - All types starting with `batch_number: null` (batch assignment done separately)
 
 Types that support spawn typically have:

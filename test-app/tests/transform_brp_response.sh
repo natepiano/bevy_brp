@@ -25,11 +25,28 @@ if [ ! -f "$INPUT_FILE" ]; then
     exit 1
 fi
 
-# No exclusions - test all discovered types
+# Path to exclusions file (relative to script location)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+EXCLUSIONS_FILE="$SCRIPT_DIR/excluded_types.txt"
 
-# Transform the BRP response to mutation test format
-jq '
-.type_info | to_entries | [.[] | . as $item | .key as $idx | 
+# Load exclusions if file exists
+EXCLUSION_FILTER="true"  # Default: include all types
+if [ -f "$EXCLUSIONS_FILE" ]; then
+    echo "Loading exclusions from: $EXCLUSIONS_FILE"
+    # Create a jq filter that excludes types in the exclusions file
+    EXCLUDED_TYPES=$(grep -v '^#' "$EXCLUSIONS_FILE" 2>/dev/null | grep -v '^[[:space:]]*$' | jq -R -s 'split("\n") | map(select(length > 0))')
+    EXCLUSION_FILTER="(.value.type_name as \$type | \$excluded | map(. == \$type) | any | not)"
+else
+    echo "No exclusions file found at: $EXCLUSIONS_FILE"
+    EXCLUDED_TYPES="[]"
+fi
+
+# Transform the BRP response to mutation test format with exclusions
+jq --argjson excluded "$EXCLUDED_TYPES" '
+.type_info | to_entries | 
+  # Filter out excluded types
+  [.[] | select(.value.type_name as $type | $excluded | map(. == $type) | any | not)] |
+  [.[] | . as $item | .key as $idx | 
   # Check if type supports mutation operations
   ((.value.supported_operations // []) | contains(["mutate"])) as $supports_mutate |
   # Get mutation paths only if mutation is supported, and filter out NotMutatable
@@ -63,6 +80,10 @@ AUTO_PASSED=$(jq '[.[] | select(.test_status == "passed")] | length' "$OUTPUT_FI
 echo ""
 echo "Summary:"
 echo "  Total types: $TOTAL"
+if [ "$EXCLUDED_TYPES" != "[]" ]; then
+    EXCLUDED_COUNT=$(echo "$EXCLUDED_TYPES" | jq 'length')
+    echo "  Excluded types: $EXCLUDED_COUNT"
+fi
 echo "  Spawn-supported: $SPAWN_SUPPORTED"
 echo "  With mutations: $WITH_MUTATIONS"
 echo "  Requires testing: $REQUIRES_TESTING"

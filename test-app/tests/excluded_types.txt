@@ -1,0 +1,10 @@
+# Components that cannot be mutated (immutable)
+# These components will be excluded from mutation testing
+#
+# Format: One type name per line
+# Comments start with #
+
+# Immutable relationship components (causes panic when mutated)
+bevy_ecs::hierarchy::ChildOf
+
+# Add other problematic types below as they are discovered

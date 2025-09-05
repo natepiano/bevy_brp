@@ -77,7 +77,9 @@
       "mcp__brp__brp_stop_watch",
       "mcp__brp__brp_type_schema",
       "Bash(~/.claude/commands/bash/build-check.sh:*)",
-      "Bash(./test-app/tests/type_stats.sh:*)"
+      "Bash(./test-app/tests/type_stats.sh:*)",
+      "Read(//tmp/**)",
+      "Bash(head:*)"
     ],
     "deny": [
       "Bash(sed:*)"

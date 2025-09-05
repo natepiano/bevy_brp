@@ -13,7 +13,9 @@ use strum::{AsRefStr, Display, EnumString};
 
 use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
+use super::mutation_path_builder::TypeKind;
 use super::type_info::TypeInfo;
+use crate::brp_tools::brp_type_schema::constants::MAX_TYPE_RECURSION_DEPTH;
 use crate::string_traits::JsonFieldAccess;
 
 /// Enum for BRP supported operations
@@ -341,7 +343,7 @@ fn extract_variant_name(v: &Value) -> Option<String> {
 
 /// Helper function to check if recursion depth exceeds the maximum allowed
 fn check_depth_exceeded(depth: usize, operation: &str) -> bool {
-    if depth > crate::brp_tools::brp_type_schema::constants::MAX_TYPE_RECURSION_DEPTH {
+    if depth > MAX_TYPE_RECURSION_DEPTH {
         tracing::warn!("Max recursion depth reached while {operation}, using fallback");
         true
     } else {
@@ -843,49 +845,6 @@ impl SchemaField {
             .and_then(Value::as_str)
             .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
             .map(BrpTypeName::from)
-    }
-}
-
-/// Category of type for quick identification and processing
-///
-/// This enum represents the actual type kinds returned by Bevy's type registry.
-/// These correspond to the "kind" field in registry schema responses.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
-#[serde(rename_all = "PascalCase")]
-#[strum(serialize_all = "PascalCase")]
-pub enum TypeKind {
-    /// Array type
-    Array,
-    /// Enum type
-    Enum,
-    /// List type
-    List,
-    /// Map type (`HashMap`, `BTreeMap`, etc.)
-    Map,
-    /// Regular struct type
-    Struct,
-    /// Tuple type
-    Tuple,
-    /// Tuple struct type
-    TupleStruct,
-    /// Value type (primitive types like i32, f32, bool, String)
-    Value,
-}
-
-impl TypeKind {
-    /// Extract `TypeKind` from a registry schema with fallback to `Value`
-    pub fn from_schema(schema: &Value, type_name: &BrpTypeName) -> Self {
-        schema
-            .get_field(SchemaField::Kind)
-            .and_then(Value::as_str)
-            .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| {
-                tracing::warn!(
-                    "Type '{}' has missing or invalid 'kind' field in registry schema, defaulting to TypeKind::Value",
-                    type_name
-                );
-                Self::Value
-            })
     }
 }
 

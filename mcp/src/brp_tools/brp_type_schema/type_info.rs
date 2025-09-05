@@ -12,12 +12,12 @@ use super::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth, SCHEMA_REF_PREFIX,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
-use super::mutation_path_builders::{
-    EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField,
+use super::mutation_path_builder::{
+    EnumMutationBuilder, MutationPathBuilder, MutationPathContext, RootOrField, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, EnumVariantInfo, MutationPath, MutationPathInternal,
-    ReflectTrait, SchemaField, SchemaInfo, TypeKind,
+    ReflectTrait, SchemaField, SchemaInfo,
 };
 use crate::string_traits::JsonFieldAccess;
 
