@@ -4,7 +4,7 @@
 
 **Command**: `/type_validation`
 
-**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `test-app/tests/type_validation.json` with simple pass/fail status for each type.
+**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `test-app/tests/all_types.json` with simple pass/fail status for each type.
 
 **Process Summary**: Renumber batches → Launch/verify app → Test types in parallel batches → Process results → Cleanup
 
@@ -241,7 +241,7 @@ After each batch completes:
 2. **Write to temp file**: **MANDATORY** - Use the Write tool to save results array to `$TMPDIR/batch_results_${batch_number}.json`
    - **NEVER use bash commands like `cat >` or `echo >` for writing JSON files**
    - **ALWAYS use the Write tool** - this prevents permission interruptions
-3. **Execute merge script**: Run `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json test-app/tests/type_validation.json`
+3. **Execute merge script**: Run `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json test-app/tests/all_types.json`
 4. **Handle merge results**:
    - Script exit code 0: All passed, continue to next batch
    - Script exit code 2: Failures detected - **STOP IMMEDIATELY**
@@ -278,7 +278,7 @@ After completion or failure:
 ### Progress Tracking Schema
 
 **Type schemas**: Retrieved via `mcp__brp__brp_type_schema`  
-**Progress file**: `test-app/tests/type_validation.json`
+**Progress file**: `test-app/tests/all_types.json`
 
 Each type entry structure:
 ```json
