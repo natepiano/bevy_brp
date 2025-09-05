@@ -154,6 +154,28 @@ pub struct EnumFieldInfo {
     pub type_name:  BrpTypeName,
 }
 
+/// Enum variant access patterns for building mutation paths
+#[derive(Debug, Clone)]
+pub enum VariantAccess {
+    /// Tuple element access via index (e.g., `.0`, `.1`)
+    TupleIndex(usize),
+    /// Struct field access via field name (e.g., `.field_name`)
+    StructField(String),
+}
+
+impl VariantAccess {}
+
+/// Variant signatures for deduplication - same signature means same inner structure
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum VariantSignature {
+    /// Unit variants (no data)
+    Unit,
+    /// Tuple variants with specified types
+    Tuple(Vec<BrpTypeName>),
+    /// Struct variants with field names and types
+    Struct(Vec<(String, BrpTypeName)>),
+}
+
 /// Type-safe enum variant information - replaces `EnumVariantInfoOld`
 /// This enum makes invalid states impossible to construct
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -171,6 +193,46 @@ impl EnumVariantInfo {
     pub fn name(&self) -> &str {
         match self {
             Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
+        }
+    }
+
+    /// Extract inner types and their access methods from this variant
+    /// Returns empty vector for unit variants, tuple indices for tuple variants,
+    /// and field names for struct variants
+    pub fn inner_types(&self) -> Vec<(BrpTypeName, VariantAccess)> {
+        match self {
+            Self::Unit(_) => Vec::new(),
+            Self::Tuple(_, types) => types
+                .iter()
+                .enumerate()
+                .map(|(index, type_name)| (type_name.clone(), VariantAccess::TupleIndex(index)))
+                .collect(),
+            Self::Struct(_, fields) => fields
+                .iter()
+                .map(|field| {
+                    (
+                        field.type_name.clone(),
+                        VariantAccess::StructField(field.field_name.clone()),
+                    )
+                })
+                .collect(),
+        }
+    }
+
+    /// Get the signature of this variant for deduplication
+    /// Unit variants return None, tuple variants return type list,
+    /// struct variants return field name/type pairs
+    pub fn signature(&self) -> VariantSignature {
+        match self {
+            Self::Unit(_) => VariantSignature::Unit,
+            Self::Tuple(_, types) => VariantSignature::Tuple(types.clone()),
+            Self::Struct(_, fields) => {
+                let field_sig = fields
+                    .iter()
+                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
+                    .collect();
+                VariantSignature::Struct(field_sig)
+            }
         }
     }
 
@@ -394,6 +456,24 @@ pub fn build_all_enum_examples(
     examples
 }
 
+/// Deduplicate variants by signature, returning first variant of each unique signature
+/// This prevents redundant processing when multiple variants have the same type structure
+pub fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVariantInfo> {
+    use std::collections::HashSet;
+
+    let mut seen_signatures = HashSet::new();
+    let mut unique_variants = Vec::new();
+
+    for variant in variants {
+        let signature = variant.signature();
+        if seen_signatures.insert(signature) {
+            unique_variants.push(variant);
+        }
+    }
+
+    unique_variants
+}
+
 /// Extract enum variants using the new `EnumVariantInfo` enum
 pub fn extract_enum_variants(
     type_schema: &Value,
@@ -472,7 +552,8 @@ pub enum MutationPathKind {
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
-    TupleElement {
+    /// Applies to tuple elements, enums variants, including generics such as Option<T>
+    IndexedElement {
         index:       usize,
         parent_type: BrpTypeName,
     },
@@ -480,11 +561,6 @@ pub enum MutationPathKind {
     ArrayElement {
         index:       usize,
         parent_type: BrpTypeName,
-    },
-    /// Complex nested path (fallback for complicated paths)
-    NestedPath {
-        components: Vec<String>,
-        final_type: BrpTypeName,
     },
 }
 
@@ -501,28 +577,11 @@ impl MutationPathKind {
             } => {
                 format!("Mutate the {field_name} field of {parent_type}")
             }
-            Self::TupleElement { index, parent_type } => {
+            Self::IndexedElement { index, parent_type } => {
                 format!("Mutate element {index} of {parent_type}")
             }
             Self::ArrayElement { index, parent_type } => {
                 format!("Mutate element [{index}] of {parent_type}")
-            }
-            Self::NestedPath {
-                components,
-                final_type,
-            } => {
-                if components.len() == 2 {
-                    format!(
-                        "Mutate the {} component of {} (type: {})",
-                        components[1], components[0], final_type
-                    )
-                } else {
-                    format!(
-                        "Mutate nested path: {} (type: {})",
-                        components.join("."),
-                        final_type
-                    )
-                }
             }
         }
     }
@@ -532,9 +591,8 @@ impl MutationPathKind {
         match self {
             Self::RootValue { .. } => "RootValue",
             Self::StructField { .. } => "StructField",
-            Self::TupleElement { .. } => "TupleElement",
+            Self::IndexedElement { .. } => "TupleElement",
             Self::ArrayElement { .. } => "ArrayElement",
-            Self::NestedPath { .. } => "NestedPath",
         }
     }
 }
@@ -573,18 +631,27 @@ pub struct MutationPathInternal {
     pub error_reason:    Option<String>,
 }
 
+/// Path information combining navigation and type metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PathInfo {
+    /// Context describing what kind of mutation this is (how to navigate to this path)
+    pub path_kind: MutationPathKind,
+    /// Fully-qualified type name of the field
+    #[serde(rename = "type")]
+    pub type_name: BrpTypeName,
+    /// The kind of type this field contains (Struct, Enum, Array, etc.)
+    pub type_kind: TypeKind,
+}
+
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Human-readable description of what this path mutates
     pub description:      String,
-    /// Fully-qualified type name of the field
-    #[serde(rename = "type")]
-    pub type_name:        BrpTypeName,
+    /// Combined path navigation and type metadata
+    pub path_info:        PathInfo,
     /// Status of whether this path can be mutated
     pub mutation_status:  MutationStatus,
-    /// Context metadata describing the kind of mutation this path represents
-    pub path_kind:        MutationPathKind,
     /// Error reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_reason:     Option<String>,
@@ -617,14 +684,19 @@ impl MutationPath {
     ) -> Self {
         Self {
             description:      format!("Replace the entire {type_name} value"),
-            type_name:        BrpTypeName::from(simplified_type),
+            path_info:        PathInfo {
+                path_kind: MutationPathKind::RootValue {
+                    type_name: type_name.clone(),
+                },
+                type_name: BrpTypeName::from(simplified_type),
+                type_kind: TypeKind::Value, // Root values are treated as Value types
+            },
             example:          Some(example_value),
             example_some:     None,
             example_none:     None,
             enum_variants:    None,
             example_variants: None,
             note:             None,
-            path_kind:        MutationPathKind::RootValue { type_name },
             mutation_status:  MutationStatus::Mutatable,
             error_reason:     None,
         }
@@ -643,9 +715,17 @@ impl MutationPath {
             if let Some(some_val) = path.example.get_field(OptionField::Some)
                 && let Some(none_val) = path.example.get_field(OptionField::None)
             {
+                // Get TypeKind for the field type
+                let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
+                let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
+
                 return Self {
                     description,
-                    type_name: path.type_name.clone(),
+                    path_info: PathInfo {
+                        path_kind: path.path_kind.clone(),
+                        type_name: path.type_name.clone(),
+                        type_kind,
+                    },
                     example: None,
                     example_some: Some(some_val.clone()),
                     example_none: Some(none_val.clone()),
@@ -655,7 +735,6 @@ impl MutationPath {
                         "For Option fields: pass the value directly to set Some, null to set None"
                             .to_string(),
                     ),
-                    path_kind: path.path_kind.clone(),
                     mutation_status: path.mutation_status,
                     error_reason: path.error_reason.clone(),
                 };
@@ -683,9 +762,17 @@ impl MutationPath {
             keys
         });
 
+        // Get TypeKind for the field type
+        let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
+        let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
+
         Self {
             description,
-            type_name: path.type_name.clone(),
+            path_info: PathInfo {
+                path_kind: path.path_kind.clone(),
+                type_name: path.type_name.clone(),
+                type_kind,
+            },
             example: if path.example.is_null() {
                 None
             } else {
@@ -696,7 +783,6 @@ impl MutationPath {
             enum_variants,
             example_variants,
             note: None,
-            path_kind: path.path_kind.clone(),
             mutation_status: path.mutation_status,
             error_reason: path.error_reason.clone(),
         }

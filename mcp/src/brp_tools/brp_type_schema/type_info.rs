@@ -450,7 +450,9 @@ impl TypeInfo {
                     .get_field(SchemaField::Properties)
                     .map_or(json!(null), |properties| {
                         EnumMutationBuilder::build_struct_example_from_properties(
-                            properties, registry, depth.increment(),
+                            properties,
+                            registry,
+                            depth.increment(),
                         )
                     })
             }
