@@ -138,7 +138,7 @@ enum SimpleNestedEnum {
     None,
     /// This variant contains a Vec2 - should generate nested paths
     WithVec2(Vec2),
-    /// This variant contains a Transform - should generate deeply nested paths  
+    /// This variant contains a Transform - should generate deeply nested paths
     WithTransform(Transform),
     /// Struct variant - should generate field-based nested paths
     WithStruct { position: Vec3, scale: f32 },
@@ -525,7 +525,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
                 Transform::from_xyz(10.0, 20.0, 30.0),
                 Vec3::new(1.0, 2.0, 3.0),
             ),
-            nested_tuple:  (Vec2::new(5.0, 10.0), (3.14, "nested".to_string())),
+            nested_tuple:  (Vec2::new(5.0, 10.0), (3.0, "nested".to_string())),
         },
         Name::new("TestComplexTupleEntity"),
     ));
