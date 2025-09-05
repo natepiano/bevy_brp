@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Merge Batch Test Results into Type Validation JSON
-# Usage: ./merge_batch_results.sh <results_file> <validation_file>
+# Merge Batch Test Results into Mutation Test JSON
+# Usage: ./merge_batch_results.sh <results_file> <mutation_test_file>
 #
 # Expects results_file to contain JSON array:
 # [
@@ -13,14 +13,14 @@ set -e
 
 # Check arguments
 if [ $# -ne 2 ]; then
-    echo "Usage: $0 <results_file> <validation_file>"
-    echo "  results_file:     Path to batch results JSON (array of test results)"
-    echo "  validation_file:  Path to type_validation.json to update"
+    echo "Usage: $0 <results_file> <mutation_test_file>"
+    echo "  results_file:      Path to batch results JSON (array of test results)"
+    echo "  mutation_test_file: Path to mutation test JSON file to update"
     exit 1
 fi
 
 RESULTS_FILE="$1"
-VALIDATION_FILE="$2"
+MUTATION_TEST_FILE="$2"
 
 # Check if files exist
 if [ ! -f "$RESULTS_FILE" ]; then
@@ -28,20 +28,20 @@ if [ ! -f "$RESULTS_FILE" ]; then
     exit 1
 fi
 
-if [ ! -f "$VALIDATION_FILE" ]; then
-    echo "Error: Validation file '$VALIDATION_FILE' not found!"
+if [ ! -f "$MUTATION_TEST_FILE" ]; then
+    echo "Error: Mutation test file '$MUTATION_TEST_FILE' not found!"
     exit 1
 fi
 
 
-# Merge results into validation file
+# Merge results into mutation test file
 jq --slurpfile results "$RESULTS_FILE" '
-  . as $validation |
+  . as $mutation_test |
   $results[0] as $batch_results |
   # Create a lookup map from batch results for efficient access
   ($batch_results | map({key: .type, value: .}) | from_entries) as $result_map |
-  # Map over all validation entries, updating only those with results
-  $validation | map(
+  # Map over all mutation test entries, updating only those with results
+  $mutation_test | map(
     . as $entry |
     if $result_map[.type] then
       # Update entry with test result
@@ -53,17 +53,17 @@ jq --slurpfile results "$RESULTS_FILE" '
       $entry
     end
   )
-' "$VALIDATION_FILE" > "${VALIDATION_FILE}.tmp"
+' "$MUTATION_TEST_FILE" > "${MUTATION_TEST_FILE}.tmp"
 
 # Atomic move
-mv "${VALIDATION_FILE}.tmp" "$VALIDATION_FILE"
+mv "${MUTATION_TEST_FILE}.tmp" "$MUTATION_TEST_FILE"
 
 # Report statistics
 TOTAL_RESULTS=$(jq 'length' "$RESULTS_FILE")
 PASSED=$(jq '[.[] | select(.status == "PASS")] | length' "$RESULTS_FILE")
 FAILED=$(jq '[.[] | select(.status == "FAIL")] | length' "$RESULTS_FILE")
 
-echo "✓ Merged $TOTAL_RESULTS results into $VALIDATION_FILE"
+echo "✓ Merged $TOTAL_RESULTS results into $MUTATION_TEST_FILE"
 echo "  Passed: $PASSED"
 echo "  Failed: $FAILED"
 

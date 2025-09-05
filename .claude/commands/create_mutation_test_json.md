@@ -1,18 +1,13 @@
-# Initialize Type Validation Tracking File
+# Create Mutation Test JSON File
 
 ## Purpose
-This command initializes or reinitializes the type validation tracking file (`test-app/tests/all_types.json`) by:
+This command creates the mutation test tracking file (`$TMPDIR/all_types.json`) by:
 1. Launching the extras_plugin example app
 2. Getting the list of all registered component types via BRP
 3. Creating a fresh tracking file with all types marked as "untested"
 4. Discovering spawn support and mutation paths for ALL types systematically
 
-## Usage
-```
-/init_type_validation
-```
-
-This will overwrite any existing `all_types.json` file with a fresh one containing all currently registered types ready for testing.
+This will create a fresh `all_types.json` file in `$TMPDIR` containing all currently registered types ready for testing.
 
 ## Execution Steps
 
@@ -59,12 +54,12 @@ The tool will automatically save its result to a file and return the filepath (e
 Execute the transformation script with the exclusions file:
 
 ```bash
-./test-app/tests/transform_brp_response.sh FILEPATH test-app/tests/all_types.json test-app/tests/excluded_types.txt
+./test-app/tests/transform_brp_response.sh FILEPATH $TMPDIR/all_types.json
 ```
 
 Replace `FILEPATH` with the actual path from step 4 (e.g., `/var/folders/.../mcp_response_brp_type_schema_12345.json`).
 
-The script handles exclusion filtering using `excluded_types.txt` and creates `test-app/tests/all_types.json` with all types initialized with `batch_number: null`.
+The script creates `$TMPDIR/all_types.json` with all discovered types initialized with `batch_number: null`.
 
 ### 6. Verify final file structure
 The completed file should have:
@@ -81,7 +76,7 @@ Types that support spawn typically have:
 ### 7. Report results
 ```bash
 # Generate summary statistics using the stats script
-./test-app/tests/type_stats.sh test-app/tests/all_types.json
+./test-app/tests/type_stats.sh $TMPDIR/all_types.json
 ```
 
 This script provides comprehensive statistics including capability summary, test status, batch information, and progress tracking.
@@ -99,7 +94,7 @@ mcp__brp__brp_shutdown(
 
 1. **NO intermediate files** - Do NOT create Python scripts, temp files, or any other files
 2. **Direct tool usage only** - Use only MCP tools and the provided shell scripts
-3. **Single output file** - Only create/modify `test-app/tests/all_types.json`
+3. **Single output file** - Only create/modify `$TMPDIR/all_types.json`
 4. **Use actual BRP responses** - Base spawn support and mutation paths on actual BRP discovery
 5. **Execute shell scripts** - Use the provided `transform_brp_response.sh` and `type_stats.sh` scripts
 

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Type Validation Test - Batch Renumbering Script
+# Mutation Test - Batch Renumbering Script
 # Clears and reassigns batch numbers for untested/failed types
 
 set -e
 
-JSON_FILE="test-app/tests/type_validation.json"
+JSON_FILE="$TMPDIR/all_types.json"
 BATCH_SIZE=30
 
 # Check if the JSON file exists
@@ -23,13 +23,13 @@ jq 'map(
   else
     .
   end
-)' "$JSON_FILE" > /tmp/type_validation_temp.json && \
-    mv /tmp/type_validation_temp.json "$JSON_FILE"
+)' "$JSON_FILE" > "${JSON_FILE}.tmp" && \
+    mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Clearing existing batch numbers..."
 # Clear all batch numbers
-jq 'map(.batch_number = null)' "$JSON_FILE" > /tmp/type_validation_temp.json && \
-    mv /tmp/type_validation_temp.json "$JSON_FILE"
+jq 'map(.batch_number = null)' "$JSON_FILE" > "${JSON_FILE}.tmp" && \
+    mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Assigning batch numbers to untested types..."
 # Assign batch numbers to untested types only (divide by BATCH_SIZE)
@@ -43,8 +43,8 @@ jq --argjson batch_size "$BATCH_SIZE" '
       .batch_number = null
     end
   )
-' "$JSON_FILE" > /tmp/type_validation_temp.json && \
-    mv /tmp/type_validation_temp.json "$JSON_FILE"
+' "$JSON_FILE" > "${JSON_FILE}.tmp" && \
+    mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 # Count statistics
 TOTAL=$(jq 'length' "$JSON_FILE")

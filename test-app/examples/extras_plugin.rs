@@ -130,6 +130,44 @@ enum TestEnumWithSerDe {
     },
 }
 
+/// Simple nested enum for testing enum recursion - like Option<Vec2>
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+enum SimpleNestedEnum {
+    #[default]
+    None,
+    /// This variant contains a Vec2 - should generate nested paths
+    WithVec2(Vec2),
+    /// This variant contains a Transform - should generate deeply nested paths  
+    WithTransform(Transform),
+    /// Struct variant - should generate field-based nested paths
+    WithStruct { position: Vec3, scale: f32 },
+}
+
+/// Test enum with Option variant (generic enum)
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+enum OptionTestEnum {
+    #[default]
+    Nothing,
+    /// Option<Vec2> - should generate nested paths through Some variant
+    MaybeVec2(Option<Vec2>),
+    /// Option<Transform> - should generate deeply nested paths through Some variant
+    MaybeTransform(Option<Transform>),
+}
+
+/// Test concrete enum that wraps other enums (simulating generics)
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+enum WrapperEnum {
+    #[default]
+    Empty,
+    /// Wrapper with nested enum - should recurse into SimpleNestedEnum's paths
+    WithSimpleEnum(SimpleNestedEnum),
+    /// Option wrapper - should recurse through Option<SimpleNestedEnum>
+    WithOptionalEnum(Option<SimpleNestedEnum>),
+}
+
 /// Test component enum WITHOUT Serialize/Deserialize (only Reflect)
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
@@ -150,6 +188,22 @@ struct TestArrayField {
     pub values:   [f32; 4],
 }
 
+/// Test component with array of Transforms
+#[derive(Component, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+struct TestArrayTransforms {
+    /// Array of Transform components
+    pub transforms: [Transform; 2],
+}
+
+impl Default for TestArrayTransforms {
+    fn default() -> Self {
+        Self {
+            transforms: [Transform::default(), Transform::default()],
+        }
+    }
+}
+
 /// Test component with tuple field
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
@@ -164,6 +218,25 @@ struct TestTupleField {
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 struct TestTupleStruct(pub f32, pub String, pub bool);
+
+/// Test component with complex tuple types for testing tuple recursion
+#[derive(Component, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+struct TestComplexTuple {
+    /// Tuple with complex types that should recurse
+    pub complex_tuple: (Transform, Vec3),
+    /// Nested tuple with both simple and complex types
+    pub nested_tuple:  (Vec2, (f32, String)),
+}
+
+impl Default for TestComplexTuple {
+    fn default() -> Self {
+        Self {
+            complex_tuple: (Transform::default(), Vec3::ZERO),
+            nested_tuple:  (Vec2::ZERO, (0.0, String::new())),
+        }
+    }
+}
 
 /// Complex nested component with various field types
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
@@ -206,10 +279,15 @@ fn main() {
         .register_type::<TestStructWithSerDe>()
         .register_type::<TestStructNoSerDe>()
         .register_type::<TestEnumWithSerDe>()
+        .register_type::<SimpleNestedEnum>()
+        .register_type::<OptionTestEnum>()
+        .register_type::<WrapperEnum>()
         .register_type::<TestEnumNoSerDe>()
         .register_type::<TestArrayField>()
+        .register_type::<TestArrayTransforms>()
         .register_type::<TestTupleField>()
         .register_type::<TestTupleStruct>()
+        .register_type::<TestComplexTuple>()
         .register_type::<TestComplexComponent>()
         // Register gamepad types for BRP access
         .register_type::<Gamepad>()
@@ -440,6 +518,18 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Name::new("TestTupleStructEntity"),
     ));
 
+    // Entity with TestComplexTuple component for testing tuple recursion
+    commands.spawn((
+        TestComplexTuple {
+            complex_tuple: (
+                Transform::from_xyz(10.0, 20.0, 30.0),
+                Vec3::new(1.0, 2.0, 3.0),
+            ),
+            nested_tuple:  (Vec2::new(5.0, 10.0), (3.14, "nested".to_string())),
+        },
+        Name::new("TestComplexTupleEntity"),
+    ));
+
     // Entity with TestComplexComponent using the struct variant
     commands.spawn((
         TestComplexComponent {
@@ -458,6 +548,12 @@ fn spawn_test_component_entities(commands: &mut Commands) {
 
     // Entity with TestEnumWithSerDe standalone for easy testing
     commands.spawn((TestEnumWithSerDe::Active, Name::new("TestEnumEntity")));
+
+    // Entity with SimpleNestedEnum for testing enum recursion
+    commands.spawn((
+        SimpleNestedEnum::WithVec2(Vec2::new(10.0, 20.0)),
+        Name::new("SimpleNestedEnumEntity"),
+    ));
 
     // Entity with TestEnumNoSerDe
     commands.spawn((
@@ -520,6 +616,51 @@ fn spawn_test_component_entities(commands: &mut Commands) {
             value: "test scene extras".to_string(),
         },
         Name::new("GltfSceneExtrasTestEntity"),
+    ));
+
+    // Enum recursion test entities
+
+    // SimpleNestedEnum with different variants
+    commands.spawn((
+        SimpleNestedEnum::WithVec2(Vec2::new(10.0, 20.0)),
+        Name::new("SimpleNestedEnumVec2Entity"),
+    ));
+
+    commands.spawn((
+        SimpleNestedEnum::WithTransform(Transform::from_xyz(5.0, 10.0, 15.0)),
+        Name::new("SimpleNestedEnumTransformEntity"),
+    ));
+
+    commands.spawn((
+        SimpleNestedEnum::WithStruct {
+            position: Vec3::new(1.0, 2.0, 3.0),
+            scale:    2.5,
+        },
+        Name::new("SimpleNestedEnumStructEntity"),
+    ));
+
+    // OptionTestEnum with Option variants
+    commands.spawn((
+        OptionTestEnum::MaybeVec2(Some(Vec2::new(100.0, 200.0))),
+        Name::new("OptionTestEnumVec2Entity"),
+    ));
+
+    commands.spawn((
+        OptionTestEnum::MaybeTransform(Some(Transform::from_scale(Vec3::splat(3.0)))),
+        Name::new("OptionTestEnumTransformEntity"),
+    ));
+
+    // WrapperEnum variants
+    commands.spawn((
+        WrapperEnum::WithSimpleEnum(SimpleNestedEnum::WithVec2(Vec2::new(50.0, 75.0))),
+        Name::new("WrapperEnumSimpleEntity"),
+    ));
+
+    commands.spawn((
+        WrapperEnum::WithOptionalEnum(Some(SimpleNestedEnum::WithTransform(
+            Transform::from_rotation(Quat::from_rotation_y(1.0)),
+        ))),
+        Name::new("WrapperEnumOptionalEntity"),
     ));
 }
 

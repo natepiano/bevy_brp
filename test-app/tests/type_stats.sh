@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# Type Validation Statistics Reporter
-# Usage: ./type_validation_stats.sh [json_file]
+# Mutation Test Statistics Reporter
+# Usage: ./type_stats.sh [json_file]
 #
-# Reports statistics about the type validation tracking file.
-# If no file is specified, uses the default location.
+# Reports statistics about the mutation test tracking file.
+# If no file is specified, uses the default location in $TMPDIR.
 
 set -e
 
 # Use provided file or default
-JSON_FILE="${1:-test-app/tests/type_validation.json}"
+JSON_FILE="${1:-$TMPDIR/all_types.json}"
 
 # Check if the JSON file exists
 if [ ! -f "$JSON_FILE" ]; then
@@ -18,7 +18,7 @@ if [ ! -f "$JSON_FILE" ]; then
 fi
 
 # Generate comprehensive statistics
-echo "✅ Type Validation Statistics"
+echo "✅ Mutation Test Statistics"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
