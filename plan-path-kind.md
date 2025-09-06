@@ -94,7 +94,25 @@ impl PathKind {
 }
 ```
 
-### 5. Simplify `RecursionContext::create_field_context()`
+### 5. Move `to_path_segment()` to `RecursionContext` and simplify `create_field_context()`
+
+**Move path segment generation to RecursionContext as a private method:**
+```rust
+impl RecursionContext {
+    /// Generate the path segment string for a PathKind (private to this module)
+    fn path_kind_to_segment(path_kind: &PathKind) -> String {
+        match path_kind {
+            PathKind::RootValue { .. } => String::new(),
+            PathKind::StructField { field_name, .. } => format!(".{field_name}"),
+            PathKind::IndexedElement { index, .. } => format!(".{index}"),
+            PathKind::ArrayElement { index, .. } => format!("[{index}]"),
+        }
+    }
+}
+```
+
+**Remove `to_path_segment()` from PathKind impl** - this functionality is now private to RecursionContext.
+
 **Before:**
 ```rust
 pub fn create_field_context(&self, accessor: &str, field_type: &BrpTypeName) -> Self {
@@ -125,22 +143,21 @@ pub fn create_field_context(&self, accessor: &str, field_type: &BrpTypeName) -> 
 ```rust
 pub fn create_field_context(&self, path_kind: PathKind) -> Self {
     let parent_type = self.type_name();
-    let new_path_prefix = format!("{}{}", self.mutation_path, path_kind.to_path_segment());
+    let new_path_prefix = format!("{}{}", self.mutation_path, Self::path_kind_to_segment(&path_kind));
     
-    // Extract field name for knowledge lookup based on path kind
-    let field_name = match &path_kind {
-        PathKind::StructField { field_name, .. } => field_name.clone(),
-        PathKind::IndexedElement { index, .. } => index.to_string(),
-        PathKind::ArrayElement { index, .. } => index.to_string(),
-        PathKind::RootValue { .. } => String::new(),
-    };
-
-    let field_knowledge = if !field_name.is_empty() {
-        BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::struct_field(parent_type, &field_name))
-            .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name())))
-    } else {
-        None
+    // Look up mutation knowledge based on path kind
+    // Only struct fields can have field-specific knowledge
+    let field_knowledge = match &path_kind {
+        PathKind::StructField { field_name, .. } => {
+            // Check for struct field-specific knowledge, then fall back to exact type
+            BRP_MUTATION_KNOWLEDGE
+                .get(&KnowledgeKey::struct_field(parent_type, field_name))
+                .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name())))
+        },
+        PathKind::IndexedElement { .. } | PathKind::ArrayElement { .. } | PathKind::RootValue { .. } => {
+            // Non-struct types only have exact type knowledge
+            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name()))
+        },
     };
 
     Self {
@@ -190,26 +207,47 @@ let context = RecursionContext::new(PathKind::new_root_value(type_name.clone()),
 ### 2. Builder methods that call `create_field_context()`
 **Files:** `struct_builder.rs`, `tuple_builder.rs`, `array_builder.rs`, etc.
 
-**Pattern Before:**
+**Struct fields - Before:**
 ```rust
-let field_context = context.create_field_context(&format!(".{}", field_name), field_type);
+for (field_name, field_info) in properties {
+    let Some(field_type) = SchemaField::extract_field_type(field_info) else {
+        // error handling
+        continue;
+    };
+    let field_ctx = ctx.create_field_context(&format!(".{field_name}"), &field_type);
+    // ... rest of processing
+}
 ```
 
-**Pattern After:**
+**Struct fields - After:**
 ```rust
-let field_path_kind = PathKind::new_struct_field(field_name.to_string(), field_type.clone(), context.type_name().clone());
-let field_context = context.create_field_context(field_path_kind);
+for (field_name, field_info) in properties {
+    let Some(field_type) = SchemaField::extract_field_type(field_info) else {
+        // error handling
+        continue;
+    };
+    let field_path_kind = PathKind::new_struct_field(field_name.clone(), field_type.clone(), ctx.type_name().clone());
+    let field_ctx = ctx.create_field_context(field_path_kind);
+    // ... rest of processing
+}
 ```
 
-**Array elements before:**
+**Array elements - Before:**
 ```rust
-let element_context = context.create_field_context(&format!("[{}]", i), element_type);
+// In add_nested_paths or similar:
+let element_ctx = ctx.create_field_context("[0]", element_type);
+// Or with index variable:
+let element_ctx = ctx.create_field_context(&format!("[{}]", i), element_type);
 ```
 
-**Array elements after:**
+**Array elements - After:**
 ```rust
-let element_path_kind = PathKind::new_array_element(i, element_type.clone(), context.type_name().clone());
-let element_context = context.create_field_context(element_path_kind);
+// In add_nested_paths or similar:
+let element_path_kind = PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
+let element_ctx = ctx.create_field_context(element_path_kind);
+// Or with index variable:
+let element_path_kind = PathKind::new_array_element(i, element_type.clone(), ctx.type_name().clone());
+let element_ctx = ctx.create_field_context(element_path_kind);
 ```
 
 **Tuple elements before:**
