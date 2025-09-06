@@ -103,7 +103,7 @@ impl ArrayMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
@@ -148,7 +148,7 @@ impl ArrayMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 ..
             } => {
                 // Add indexed path for first element
@@ -253,7 +253,7 @@ impl ArrayMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

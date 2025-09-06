@@ -60,7 +60,7 @@ impl MapMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => {
                 let path_kind = PathKind::new_struct_field(field_name.clone(), parent_type.clone());
@@ -97,7 +97,7 @@ impl MapMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

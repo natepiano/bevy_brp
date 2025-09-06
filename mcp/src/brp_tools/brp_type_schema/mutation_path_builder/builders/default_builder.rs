@@ -35,7 +35,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
             }
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => {
                 paths.push(MutationPathInternal {

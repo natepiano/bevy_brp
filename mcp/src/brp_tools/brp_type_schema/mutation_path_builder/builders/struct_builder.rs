@@ -159,7 +159,7 @@ impl StructMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

@@ -22,23 +22,19 @@ pub enum PathLocation {
     Root { type_name: BrpTypeName },
     /// Building paths for a elements within a parent type
     Element {
-        field_name:   String,
-        element_type: BrpTypeName,
-        parent_type:  BrpTypeName,
+        field_name:  String,
+        type_name:   BrpTypeName,
+        parent_type: BrpTypeName,
     },
 }
 
 impl PathLocation {
     /// Create an elementwith its associated name, type and parent type
-    pub fn element(
-        field_name: &str,
-        element_type: &BrpTypeName,
-        parent_type: &BrpTypeName,
-    ) -> Self {
+    pub fn element(field_name: &str, type_name: &BrpTypeName, parent_type: &BrpTypeName) -> Self {
         Self::Element {
-            field_name:   field_name.to_string(),
-            element_type: element_type.clone(),
-            parent_type:  parent_type.clone(),
+            field_name:  field_name.to_string(),
+            type_name:   type_name.clone(),
+            parent_type: parent_type.clone(),
         }
     }
 
@@ -53,7 +49,7 @@ impl PathLocation {
     pub const fn type_name(&self) -> &BrpTypeName {
         match self {
             Self::Root { type_name } => type_name,
-            Self::Element { element_type, .. } => element_type,
+            Self::Element { type_name, .. } => type_name,
         }
     }
 }

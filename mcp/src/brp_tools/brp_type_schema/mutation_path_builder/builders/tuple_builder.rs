@@ -270,7 +270,7 @@ impl TupleMutationBuilder {
             }
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
@@ -406,7 +406,7 @@ impl TupleMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

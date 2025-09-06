@@ -81,7 +81,8 @@
       "Read(//tmp/**)",
       "Bash(head:*)",
       "WebFetch(domain:www.desmos.com)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(timeout 5 BRP_PORT=22222 cargo run --example extras_plugin)"
     ],
     "deny": [
       "Bash(sed:*)"

@@ -62,24 +62,6 @@ impl EnumVariantInfo {
         }
     }
 
-    /// Extract inner types and their accessors from this variant
-    /// Returns tuples of (type_name, accessor_string) where accessor_string
-    /// is the formatted accessor like ".0" or ".field_name"
-    pub fn inner_types(&self) -> Vec<(BrpTypeName, String)> {
-        match self {
-            Self::Unit(_) => Vec::new(),
-            Self::Tuple(_, types) => types
-                .iter()
-                .enumerate()
-                .map(|(index, type_name)| (type_name.clone(), format!(".{index}")))
-                .collect(),
-            Self::Struct(_, fields) => fields
-                .iter()
-                .map(|field| (field.type_name.clone(), format!(".{}", field.field_name)))
-                .collect(),
-        }
-    }
-
     /// Get the signature of this variant for deduplication
     /// Unit variants return None, tuple variants return type list,
     /// struct variants return field name/type pairs
@@ -407,7 +389,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
             }
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
@@ -439,20 +421,39 @@ impl MutationPathBuilder for EnumMutationBuilder {
             let unique_variants = deduplicate_variant_signatures(variants);
 
             for variant in unique_variants {
-                for (type_name, accessor) in variant.inner_types() {
-                    // Get the schema for the inner type
-                    let Some(inner_schema) = ctx.get_type_schema(&type_name) else {
-                        continue; // Skip if we can't find the schema
-                    };
+                match variant {
+                    EnumVariantInfo::Unit(_) => {} /* Unit variants have no inner fields to */
+                    // recurse into
+                    EnumVariantInfo::Tuple(_, types) => {
+                        for (index, type_name) in types.iter().enumerate() {
+                            let Some(inner_schema) = ctx.get_type_schema(type_name) else {
+                                continue;
+                            };
 
-                    let inner_kind = TypeKind::from_schema(inner_schema, &type_name);
+                            // Create field context and recurse - just like struct does
+                            let field_ctx =
+                                ctx.create_field_context(&format!(".{index}"), type_name);
+                            let inner_kind = TypeKind::from_schema(inner_schema, type_name);
+                            let field_paths = inner_kind.build_paths(&field_ctx, depth)?;
+                            paths.extend(field_paths);
+                        }
+                    }
+                    EnumVariantInfo::Struct(_, fields) => {
+                        for field in fields {
+                            let Some(inner_schema) = ctx.get_type_schema(&field.type_name) else {
+                                continue;
+                            };
 
-                    // Create field context for recursion using the accessor directly
-                    let variant_ctx = ctx.create_field_context(&accessor, &type_name);
-
-                    // Recurse with current depth (TypeKind::build_paths will increment if needed)
-                    let nested_paths = inner_kind.build_paths(&variant_ctx, depth)?;
-                    paths.extend(nested_paths);
+                            // Create field context and recurse - just like struct does
+                            let field_ctx = ctx.create_field_context(
+                                &format!(".{}", field.field_name),
+                                &field.type_name,
+                            );
+                            let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
+                            let field_paths = inner_kind.build_paths(&field_ctx, depth)?;
+                            paths.extend(field_paths);
+                        }
+                    }
                 }
             }
         }
@@ -482,7 +483,7 @@ impl EnumMutationBuilder {
             },
             PathLocation::Element {
                 field_name,
-                element_type: field_type,
+                type_name: field_type,
                 parent_type,
             } => MutationPathInternal {
                 path:            format!(".{field_name}"),

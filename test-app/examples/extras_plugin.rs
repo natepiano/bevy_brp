@@ -822,6 +822,11 @@ fn spawn_render_entities(commands: &mut Commands) {
     // Entity with AmbientLight (requires Camera) for testing mutations
     commands.spawn((
         Camera3d::default(),
+        Camera {
+            order: 2,  // Unique order for this test camera
+            is_active: false,  // Disable this test camera to avoid rendering
+            ..default()
+        },
         AmbientLight::default(),
         Transform::from_xyz(100.0, 100.0, 100.0),
         Name::new("AmbientLightTestEntity"),
@@ -836,16 +841,13 @@ fn spawn_render_entities(commands: &mut Commands) {
 
 /// Setup UI for keyboard input display
 fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
-    // Camera with minimal effects to avoid visual artifacts
-    commands.spawn((
-        Camera2d,
-        Bloom::default(),
-        // Removed tested components: ContrastAdaptiveSharpening, Fxaa, ChromaticAberration
-    ));
-
-    // 3D Camera with minimal components
+    // 3D Camera renders first with lower order
     commands.spawn((
         Camera3d::default(),
+        Camera {
+            order: 0,  // Render 3D scene first
+            ..default()
+        },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         ColorGrading::default(), // For testing mutations
         ContrastAdaptiveSharpening {
@@ -860,6 +862,18 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         ScreenSpaceAmbientOcclusion::default(), // For testing mutations
         ScreenSpaceReflections::default(),      // For testing mutations
         VolumetricFog::default(),               // For testing mutations
+    ));
+
+    // 2D Camera renders second (on top) for UI
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 1,  // Render UI on top of 3D scene
+            clear_color: ClearColorConfig::None,  // Don't clear, overlay on 3D
+            ..default()
+        },
+        Bloom::default(),
+        // Removed tested components: ContrastAdaptiveSharpening, Fxaa, ChromaticAberration
     ));
 
     // Background
