@@ -1,0 +1,152 @@
+[
+  {
+    "sequence_number": 1,
+    "content": "Update PathKind enum variants to add type_name field",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 2,
+    "content": "Update PathKind constructors to accept type_name parameter",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 3,
+    "content": "Add type_name() method to PathKind",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 4,
+    "content": "Move to_path_segment() from PathKind to RecursionContext as private method",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 5,
+    "content": "Run build-check.sh after PathKind changes",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 6,
+    "content": "Update RecursionContext struct to use PathKind instead of PathLocation",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 7,
+    "content": "Update RecursionContext::new() to accept PathKind parameter",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 8,
+    "content": "Update RecursionContext::type_name() to use path_kind",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 9,
+    "content": "Update RecursionContext::create_field_context() to accept PathKind and implement new logic",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 10,
+    "content": "Remove PathLocation enum and all its methods",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 11,
+    "content": "Run build-check.sh after RecursionContext changes",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 12,
+    "content": "Update array_builder.rs to use PathKind constructors instead of PathLocation",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 13,
+    "content": "Update array_builder.rs create_field_context() calls to pass PathKind",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 14,
+    "content": "Run build-check.sh after array_builder changes",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 15,
+    "content": "Update struct_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 16,
+    "content": "Update tuple_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 17,
+    "content": "Update list_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 18,
+    "content": "Update map_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 19,
+    "content": "Update set_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 20,
+    "content": "Update enum_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 21,
+    "content": "Update default_builder.rs to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 22,
+    "content": "Run build-check.sh after all builder updates",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 23,
+    "content": "Run cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 24,
+    "content": "Fix any clippy issues following warning rules",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 25,
+    "content": "Run cargo nextest run",
+    "status": "pending",
+    "notes": ""
+  }
+]
