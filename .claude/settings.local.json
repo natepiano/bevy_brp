@@ -80,7 +80,8 @@
       "Bash(./test-app/tests/type_stats.sh:*)",
       "Read(//tmp/**)",
       "Bash(head:*)",
-      "WebFetch(domain:www.desmos.com)"
+      "WebFetch(domain:www.desmos.com)",
+      "Bash(cd:*)"
     ],
     "deny": [
       "Bash(sed:*)"

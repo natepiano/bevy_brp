@@ -31,15 +31,6 @@ pub struct EnumFieldInfo {
     pub type_name:  BrpTypeName,
 }
 
-/// Enum variant access patterns for building mutation paths
-#[derive(Debug, Clone)]
-pub enum VariantAccess {
-    /// Tuple element access via index (e.g., `.0`, `.1`)
-    TupleIndex(usize),
-    /// Struct field access via field name (e.g., `.field_name`)
-    StructField(String),
-}
-
 /// Variant signatures for deduplication - same signature means same inner structure
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum VariantSignature {
@@ -71,25 +62,20 @@ impl EnumVariantInfo {
         }
     }
 
-    /// Extract inner types and their access methods from this variant
-    /// Returns empty vector for unit variants, tuple indices for tuple variants,
-    /// and field names for struct variants
-    pub fn inner_types(&self) -> Vec<(BrpTypeName, VariantAccess)> {
+    /// Extract inner types and their accessors from this variant
+    /// Returns tuples of (type_name, accessor_string) where accessor_string
+    /// is the formatted accessor like ".0" or ".field_name"
+    pub fn inner_types(&self) -> Vec<(BrpTypeName, String)> {
         match self {
             Self::Unit(_) => Vec::new(),
             Self::Tuple(_, types) => types
                 .iter()
                 .enumerate()
-                .map(|(index, type_name)| (type_name.clone(), VariantAccess::TupleIndex(index)))
+                .map(|(index, type_name)| (type_name.clone(), format!(".{index}")))
                 .collect(),
             Self::Struct(_, fields) => fields
                 .iter()
-                .map(|field| {
-                    (
-                        field.type_name.clone(),
-                        VariantAccess::StructField(field.field_name.clone()),
-                    )
-                })
+                .map(|field| (field.type_name.clone(), format!(".{}", field.field_name)))
                 .collect(),
         }
     }
@@ -453,7 +439,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
             let unique_variants = deduplicate_variant_signatures(variants);
 
             for variant in unique_variants {
-                for (type_name, variant_access) in variant.inner_types() {
+                for (type_name, accessor) in variant.inner_types() {
                     // Get the schema for the inner type
                     let Some(inner_schema) = ctx.get_type_schema(&type_name) else {
                         continue; // Skip if we can't find the schema
@@ -461,11 +447,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
                     let inner_kind = TypeKind::from_schema(inner_schema, &type_name);
 
-                    // Create field context for recursion using existing infrastructure
-                    let accessor = match &variant_access {
-                        VariantAccess::TupleIndex(idx) => format!(".{idx}"),
-                        VariantAccess::StructField(name) => format!(".{name}"),
-                    };
+                    // Create field context for recursion using the accessor directly
                     let variant_ctx = ctx.create_field_context(&accessor, &type_name);
 
                     // Recurse with current depth (TypeKind::build_paths will increment if needed)
