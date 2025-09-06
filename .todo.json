@@ -1,0 +1,74 @@
+[
+  {
+    "sequence_number": 1,
+    "content": "Add accessor field to PathKind enum variants",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 2,
+    "content": "Implement PathKind smart constructors with formatting",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 3,
+    "content": "Update struct_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 4,
+    "content": "Update tuple_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 5,
+    "content": "Update array_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 6,
+    "content": "Update list_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 7,
+    "content": "Update enum_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 8,
+    "content": "Update map_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 9,
+    "content": "Update set_builder to use PathKind constructors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 10,
+    "content": "Run build-check.sh and fix any compilation errors",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 11,
+    "content": "Run cargo clippy and fix warnings",
+    "status": "pending",
+    "notes": ""
+  },
+  {
+    "sequence_number": 12,
+    "content": "Run cargo nextest run to verify no test breakage",
+    "status": "pending",
+    "notes": ""
+  }
+]

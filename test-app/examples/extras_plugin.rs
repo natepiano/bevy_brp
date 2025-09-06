@@ -14,7 +14,7 @@
 // with underscores. Remove this allow attribute when clippy/rustc is fixed.
 #![allow(clippy::used_underscore_binding)]
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
@@ -101,6 +101,18 @@ struct TestStructWithSerDe {
 #[reflect(Component)]
 struct SimpleSetComponent {
     pub string_set: HashSet<String>,
+}
+
+/// Test component with HashMap for testing map mutations
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+struct TestMapComponent {
+    /// String to String map
+    pub string_map:    HashMap<String, String>,
+    /// String to f32 map
+    pub value_map:     HashMap<String, f32>,
+    /// String to Transform map (complex nested type)
+    pub transform_map: HashMap<String, Transform>,
 }
 
 /// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
@@ -316,6 +328,7 @@ fn main() {
         .register_type::<TestStructWithSerDe>()
         .register_type::<TestStructNoSerDe>()
         .register_type::<SimpleSetComponent>()
+        .register_type::<TestMapComponent>()
         .register_type::<TestEnumWithSerDe>()
         .register_type::<SimpleNestedEnum>()
         .register_type::<OptionTestEnum>()
@@ -573,6 +586,35 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     simple_set.string_set.insert("world".to_string());
     simple_set.string_set.insert("test".to_string());
     commands.spawn((simple_set, Name::new("SimpleSetEntity")));
+
+    // Entity with TestMapComponent for testing HashMap mutations
+    let mut test_map = TestMapComponent::default();
+    test_map
+        .string_map
+        .insert("key1".to_string(), "value1".to_string());
+    test_map
+        .string_map
+        .insert("key2".to_string(), "value2".to_string());
+    test_map
+        .string_map
+        .insert("key3".to_string(), "value3".to_string());
+
+    test_map.value_map.insert("temperature".to_string(), 23.5);
+    test_map.value_map.insert("humidity".to_string(), 65.0);
+    test_map.value_map.insert("pressure".to_string(), 1013.25);
+
+    test_map
+        .transform_map
+        .insert("player".to_string(), Transform::from_xyz(10.0, 0.0, 5.0));
+    test_map
+        .transform_map
+        .insert("enemy".to_string(), Transform::from_xyz(-5.0, 0.0, -10.0));
+    test_map.transform_map.insert(
+        "powerup".to_string(),
+        Transform::from_xyz(0.0, 5.0, 0.0).with_scale(Vec3::splat(2.0)),
+    );
+
+    commands.spawn((test_map, Name::new("TestMapEntity")));
 
     // Entity with TestComplexComponent using the struct variant
     commands.spawn((
