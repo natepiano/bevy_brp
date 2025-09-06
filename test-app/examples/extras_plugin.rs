@@ -841,11 +841,23 @@ fn spawn_render_entities(commands: &mut Commands) {
 
 /// Setup UI for keyboard input display
 fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
-    // 3D Camera renders first with lower order
+    // Single 2D Camera that handles both UI and 2D sprites
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 0,  // Main camera
+            ..default()
+        },
+        Bloom::default(),
+        IsDefaultUiCamera,  // This camera renders UI
+    ));
+
+    // 3D Camera for 3D test entities (inactive to avoid conflicts)
     commands.spawn((
         Camera3d::default(),
         Camera {
-            order: 0,  // Render 3D scene first
+            order: 1,  // Different order to avoid ambiguity
+            is_active: false,  // Disable this camera - we're primarily testing 2D/UI components
             ..default()
         },
         Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -864,18 +876,6 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         VolumetricFog::default(),               // For testing mutations
     ));
 
-    // 2D Camera renders second (on top) for UI
-    commands.spawn((
-        Camera2d,
-        Camera {
-            order: 1,  // Render UI on top of 3D scene
-            clear_color: ClearColorConfig::None,  // Don't clear, overlay on 3D
-            ..default()
-        },
-        Bloom::default(),
-        // Removed tested components: ContrastAdaptiveSharpening, Fxaa, ChromaticAberration
-    ));
-
     // Background
     commands
         .spawn((
@@ -886,35 +886,35 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
+            BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),  // Back to dark background
         ))
         .with_children(|parent| {
-            // Text container
+            // Text container with blue background
             parent
                 .spawn((
                     Node {
                         padding: UiRect::all(Val::Px(20.0)),
                         ..default()
                     },
-                    BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
+                    BackgroundColor(Color::srgb(0.2, 0.3, 0.5)),  // Blue background for the entire text area
                     BoxShadowSamples(4),
                     CalculatedClip {
                         clip: bevy::math::Rect::from_corners(Vec2::ZERO, Vec2::new(100.0, 100.0))
                     },
                 ))
                 .with_children(|parent| {
-                    // Keyboard display text
+                    // Keyboard display text directly
                     parent.spawn((
-                        Text::new(format!(
-                            "Waiting for keyboard input...\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
-                            port.0
-                        )),
-                        TextFont {
-                            font_size: 20.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                        KeyboardDisplayText,
+                            Text::new(format!(
+                                "Waiting for keyboard input...\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
+                                port.0
+                            )),
+                            TextFont {
+                                font_size: 20.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                            KeyboardDisplayText,
                         bevy::text::TextBounds {
                             width: Some(400.0),
                             height: Some(200.0),
@@ -928,7 +928,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                         bevy::prelude::UiTargetCamera(Entity::PLACEHOLDER),
                         bevy::prelude::ImageNode {
                             image: Handle::default(),
-                            color: Color::WHITE,
+                            color: Color::srgb(0.2, 0.3, 0.5),  // Blue background instead of white
                             flip_x: false,
                             flip_y: false,
                             image_mode: bevy::prelude::NodeImageMode::Auto,
