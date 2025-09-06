@@ -4,7 +4,7 @@
 //! These correspond to the "kind" field in registry schema responses.
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Value, json};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::MutationPathBuilder;
@@ -113,9 +113,6 @@ impl TypeKind {
         support: &MutationSupport,
         directive_suffix: &str,
     ) -> MutationPathInternal {
-        use serde_json::json;
-        // MutationPathInternal, MutationPathKind, MutationStatus already imported above
-
         match &ctx.location {
             PathLocation::Root { type_name } => MutationPathInternal {
                 path:            String::new(),

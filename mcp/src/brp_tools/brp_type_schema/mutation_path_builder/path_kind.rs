@@ -82,7 +82,7 @@ impl PathKind {
         match self {
             Self::RootValue { .. } => "RootValue",
             Self::StructField { .. } => "StructField",
-            Self::IndexedElement { .. } => "TupleElement",
+            Self::IndexedElement { .. } => "IndexedElement",
             Self::ArrayElement { .. } => "ArrayElement",
         }
     }
