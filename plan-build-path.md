@@ -88,3 +88,33 @@ impl RecursionContext {
 - Keep existing tests passing at each step
 - Verify all `PathKind` variants (`RootValue`, `StructField`, `IndexedElement`) work correctly
 - Ensure knowledge system integration remains functional
+
+## Design Review Skip Notes
+
+### TYPE-SYSTEM-1: Manual string-based path construction violates type safety principles
+- **Status**: SKIPPED - REDUNDANT WITH PLAN
+- **Category**: TYPE-SYSTEM
+- **Location**: Section: Current Problems
+- **Issue**: Design reviewer suggested centralizing path construction logic that is already specified in the plan
+- **Decision**: Plan already addresses this in "Proposed Solution" and "Changes Required" sections
+
+### TYPE-SYSTEM-2: PathKind construction uses conditional logic instead of type-driven selection
+- **Status**: SKIPPED - COMPLEMENTARY BUT OUT OF SCOPE
+- **Category**: TYPE-SYSTEM
+- **Location**: Section: Changes per builder
+- **Issue**: Manual PathKind variant creation duplicated across builders instead of using factory methods
+- **Decision**: Valid complementary improvement but addresses different duplication (PathKind construction vs path string construction) - not included in this plan's scope
+
+### DESIGN-2: Plan doesn't address PathKind::ArrayElement and IndexedElement variant handling consistently
+- **Status**: SKIPPED - COMPLEMENTARY BUT OUT OF SCOPE
+- **Category**: DESIGN
+- **Location**: Section: Changes per builder
+- **Issue**: PathKind construction duplication across all variants, not just StructField
+- **Decision**: Valid complementary improvement but addresses PathKind construction duplication, separate from this plan's path string construction focus
+
+### DESIGN-1: Plan creates naming confusion by changing mutation_path semantics mid-implementation
+- **Status**: SKIPPED - SERIOUS MISREADING OF PLAN
+- **Category**: DESIGN
+- **Location**: Section: Update PathLocation::Element structure
+- **Issue**: Design reviewer incorrectly interpreted the plan's single atomic change as a "phased rollout" creating temporary inconsistencies
+- **Decision**: Plan specifies one cohesive implementation, not multiple phases with semantic confusion

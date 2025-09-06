@@ -6,13 +6,13 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
@@ -57,7 +57,10 @@ impl MutationPathBuilder for TupleMutationBuilder {
 
         // Check if parent knowledge indicates this should be treated as opaque
         let should_stop_recursion = ctx.parent_knowledge.is_some_and(|knowledge| {
-            matches!(knowledge.guidance(), crate::brp_tools::brp_type_schema::mutation_knowledge::KnowledgeGuidance::TreatAsValue { .. })
+            matches!(
+                knowledge.guidance(),
+                super::super::mutation_knowledge::KnowledgeGuidance::TreatAsValue { .. }
+            )
         });
 
         // Build paths for each element (unless parent knowledge says to treat as opaque)
@@ -277,15 +280,15 @@ impl TupleMutationBuilder {
                 });
             }
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
-                let path = if ctx.path_prefix.is_empty() {
+                let path = if ctx.mutation_path.is_empty() {
                     format!(".{field_name}")
                 } else {
-                    ctx.path_prefix.clone()
+                    ctx.mutation_path.clone()
                 };
                 // Use parent knowledge if available (e.g., struct field knowledge)
                 let example = ctx.parent_knowledge.map_or_else(
@@ -328,10 +331,10 @@ impl TupleMutationBuilder {
             let element_ctx = ctx.create_field_context(&format!(".{index}"), element_type);
             let Some(element_schema) = ctx.get_type_schema(element_type) else {
                 // Build not mutatable element path for missing registry entry
-                let path = if ctx.path_prefix.is_empty() {
+                let path = if ctx.mutation_path.is_empty() {
                     format!(".{index}")
                 } else {
-                    format!("{}.{index}", ctx.path_prefix)
+                    format!("{}.{index}", ctx.mutation_path)
                 };
                 paths.push(MutationPathInternal {
                     path,
@@ -364,7 +367,7 @@ impl TupleMutationBuilder {
                             ctx,
                             index,
                             element_info,
-                            &ctx.path_prefix,
+                            &ctx.mutation_path,
                             ctx.type_name(),
                             depth,
                         )
@@ -373,10 +376,10 @@ impl TupleMutationBuilder {
                     }
                 } else {
                     // Build not mutatable element path inline
-                    let path = if ctx.path_prefix.is_empty() {
+                    let path = if ctx.mutation_path.is_empty() {
                         format!(".{index}")
                     } else {
-                        format!("{}.{index}", ctx.path_prefix)
+                        format!("{}.{index}", ctx.mutation_path)
                     };
                     paths.push(MutationPathInternal {
                         path,
@@ -424,7 +427,7 @@ impl TupleMutationBuilder {
                 error_reason:    Option::<String>::from(&support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {

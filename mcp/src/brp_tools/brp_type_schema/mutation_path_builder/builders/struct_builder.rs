@@ -6,13 +6,13 @@
 use serde_json::{Value, json};
 use tracing::warn;
 
+use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, MathComponent, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
@@ -106,10 +106,10 @@ impl MutationPathBuilder for StructMutationBuilder {
                 // but we also need the direct field path with hardcoded example
                 if ctx.value_type_has_serialization(&field_type) {
                     // Build the field path using the context's prefix
-                    let field_path = if ctx.path_prefix.is_empty() {
+                    let field_path = if ctx.mutation_path.is_empty() {
                         format!(".{field_name}")
                     } else {
-                        format!("{}.{field_name}", ctx.path_prefix)
+                        format!("{}.{field_name}", ctx.mutation_path)
                     };
 
                     // Find and update the direct field path to use hardcoded example
@@ -160,7 +160,7 @@ impl StructMutationBuilder {
                 error_reason:    Option::<String>::from(&support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
@@ -189,10 +189,10 @@ impl StructMutationBuilder {
         support: MutationSupport,
     ) -> MutationPathInternal {
         // Build path using the context's prefix
-        let path = if ctx.path_prefix.is_empty() {
+        let path = if ctx.mutation_path.is_empty() {
             format!(".{field_name}")
         } else {
-            format!("{}.{field_name}", ctx.path_prefix)
+            format!("{}.{field_name}", ctx.mutation_path)
         };
 
         MutationPathInternal {
@@ -265,10 +265,10 @@ impl StructMutationBuilder {
         );
 
         // Build path using the context's prefix
-        let path = if ctx.path_prefix.is_empty() {
+        let path = if ctx.mutation_path.is_empty() {
             format!(".{field_name}")
         } else {
-            format!("{}.{field_name}", ctx.path_prefix)
+            format!("{}.{field_name}", ctx.mutation_path)
         };
 
         MutationPathInternal {

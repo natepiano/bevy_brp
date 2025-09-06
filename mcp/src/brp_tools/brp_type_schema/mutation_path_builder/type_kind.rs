@@ -12,14 +12,12 @@ use super::builders::{
     ArrayMutationBuilder, DefaultMutationBuilder, EnumMutationBuilder, ListMutationBuilder,
     MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
 };
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_support::MutationSupport;
 use super::path_kind::PathKind;
 use super::recursion_context::{PathLocation, RecursionContext};
 use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::mutation_knowledge::{
-    BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey,
-};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
@@ -87,7 +85,7 @@ impl TypeKind {
                         error_reason: None,
                     },
                     PathLocation::Element {
-                        mutation_path: field_name,
+                        field_name,
                         element_type: _,
                         parent_type,
                     } => MutationPathInternal {
@@ -136,7 +134,7 @@ impl TypeKind {
                 error_reason:    Option::<String>::from(support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {

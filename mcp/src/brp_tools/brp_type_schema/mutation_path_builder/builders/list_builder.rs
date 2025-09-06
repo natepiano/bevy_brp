@@ -73,10 +73,10 @@ impl ListMutationBuilder {
         use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 
         // Build path using the context's prefix
-        let path = if ctx.path_prefix.is_empty() {
+        let path = if ctx.mutation_path.is_empty() {
             String::new() // Root level path is empty
         } else {
-            ctx.path_prefix.clone() // Field level path uses the prefix
+            ctx.mutation_path.clone() // Field level path uses the prefix
         };
 
         // Generate example value for the list type
@@ -95,7 +95,7 @@ impl ListMutationBuilder {
                 error_reason: None,
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
@@ -134,7 +134,7 @@ impl ListMutationBuilder {
                 error_reason:    Option::<String>::from(&support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {

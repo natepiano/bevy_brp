@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{PathLocation, RecursionContext};
@@ -15,7 +16,6 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::{
     MAX_TYPE_RECURSION_DEPTH, RecursionDepth, SCHEMA_REF_PREFIX,
 };
-use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
@@ -422,15 +422,15 @@ impl MutationPathBuilder for EnumMutationBuilder {
                 });
             }
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
-                let path = if ctx.path_prefix.is_empty() {
+                let path = if ctx.mutation_path.is_empty() {
                     format!(".{field_name}")
                 } else {
-                    ctx.path_prefix.clone()
+                    ctx.mutation_path.clone()
                 };
                 paths.push(MutationPathInternal {
                     path,
@@ -506,7 +506,7 @@ impl EnumMutationBuilder {
                 error_reason:    Option::<String>::from(&support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {

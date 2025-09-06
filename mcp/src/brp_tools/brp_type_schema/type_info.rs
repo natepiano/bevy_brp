@@ -10,10 +10,9 @@ use serde_json::{Map, Value, json};
 use super::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth, SCHEMA_REF_PREFIX,
 };
-use super::mutation_knowledge::KnowledgeKey;
 use super::mutation_path_builder::{
-    EnumMutationBuilder, EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal,
-    PathLocation, RecursionContext, TypeKind,
+    EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder,
+    MutationPathInternal, PathLocation, RecursionContext, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,

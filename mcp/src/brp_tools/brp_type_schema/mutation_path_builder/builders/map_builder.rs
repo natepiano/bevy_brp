@@ -71,7 +71,7 @@ impl MapMutationBuilder {
                 error_reason:    Option::<String>::from(&support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {

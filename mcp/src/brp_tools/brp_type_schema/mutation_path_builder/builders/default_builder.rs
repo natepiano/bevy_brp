@@ -36,7 +36,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
                 });
             }
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => {

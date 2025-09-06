@@ -1,4 +1,5 @@
 mod builders;
+mod mutation_knowledge;
 mod mutation_support;
 mod path_kind;
 mod recursion_context;
@@ -6,7 +7,8 @@ mod type_kind;
 mod types;
 
 pub use builders::{EnumMutationBuilder, EnumVariantInfo, build_all_enum_examples};
-pub use recursion_context::{RecursionContext, PathLocation};
+pub use mutation_knowledge::KnowledgeKey;
+pub use recursion_context::{PathLocation, RecursionContext};
 pub use type_kind::TypeKind;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus};
 

@@ -8,10 +8,9 @@ use std::sync::Arc;
 use serde_json::Value;
 use tracing::warn;
 
-use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, MutationKnowledge};
 use super::super::response_types::{BrpTypeName, ReflectTrait, SchemaField};
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 use crate::brp_tools::brp_type_schema::constants::SCHEMA_REF_PREFIX;
-use crate::brp_tools::brp_type_schema::mutation_knowledge::KnowledgeKey;
 use crate::string_traits::JsonFieldAccess;
 
 /// Context for building mutation paths - handles root vs field scenarios
@@ -23,23 +22,23 @@ pub enum PathLocation {
     Root { type_name: BrpTypeName },
     /// Building paths for a elements within a parent type
     Element {
-        mutation_path: String,
-        element_type:  BrpTypeName,
-        parent_type:   BrpTypeName,
+        field_name:   String,
+        element_type: BrpTypeName,
+        parent_type:  BrpTypeName,
     },
 }
 
 impl PathLocation {
-    /// Create a mutation path with its associated type and parent type
-    pub fn mutation_path(
-        mutation_path: &str,
+    /// Create an elementwith its associated name, type and parent type
+    pub fn element(
+        field_name: &str,
         element_type: &BrpTypeName,
         parent_type: &BrpTypeName,
     ) -> Self {
         Self::Element {
-            mutation_path: mutation_path.to_string(),
-            element_type:  element_type.clone(),
-            parent_type:   parent_type.clone(),
+            field_name:   field_name.to_string(),
+            element_type: element_type.clone(),
+            parent_type:  parent_type.clone(),
         }
     }
 
@@ -69,8 +68,8 @@ pub struct RecursionContext {
     pub location:         PathLocation,
     /// Reference to the type registry
     pub registry:         Arc<HashMap<BrpTypeName, Value>>,
-    /// Path prefix for nested structures (e.g., ".translation" when building Vec3 fields)
-    pub path_prefix:      String,
+    /// the accumulated mutation path as we recurse through the type
+    pub mutation_path:    String,
     /// Parent's mutation knowledge for extracting component examples
     pub parent_knowledge: Option<&'static MutationKnowledge>,
 }
@@ -81,7 +80,7 @@ impl RecursionContext {
         Self {
             location,
             registry,
-            path_prefix: String::new(),
+            mutation_path: String::new(),
             parent_knowledge: None,
         }
     }
@@ -113,7 +112,7 @@ impl RecursionContext {
     pub fn create_field_context(&self, accessor: &str, field_type: &BrpTypeName) -> Self {
         let parent_type = self.type_name();
         // Build the new path prefix by appending the accessor to the current prefix
-        let new_path_prefix = format!("{}{}", self.path_prefix, accessor);
+        let new_path_prefix = format!("{}{}", self.mutation_path, accessor);
 
         // Extract just the field name from accessor for the location
         // Remove leading "." or "[" and trailing "]" to get the name/index
@@ -130,9 +129,9 @@ impl RecursionContext {
             .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type)));
 
         Self {
-            location:         PathLocation::mutation_path(&mutation_path, field_type, parent_type),
+            location:         PathLocation::element(&mutation_path, field_type, parent_type),
             registry:         Arc::clone(&self.registry),
-            path_prefix:      new_path_prefix,
+            mutation_path:    new_path_prefix,
             parent_knowledge: field_knowledge,
         }
     }

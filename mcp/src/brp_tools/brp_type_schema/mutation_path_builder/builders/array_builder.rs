@@ -6,13 +6,13 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::{PathLocation, RecursionContext};
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
@@ -104,15 +104,15 @@ impl ArrayMutationBuilder {
                 error_reason:    None,
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => {
                 // When in field context, use the path_prefix which contains the full path
-                let path = if ctx.path_prefix.is_empty() {
+                let path = if ctx.mutation_path.is_empty() {
                     format!(".{field_name}")
                 } else {
-                    ctx.path_prefix.clone()
+                    ctx.mutation_path.clone()
                 };
                 MutationPathInternal {
                     path,
@@ -152,15 +152,15 @@ impl ArrayMutationBuilder {
                 error_reason:    None,
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 ..
             } => {
                 // Add indexed path for first element
-                let indexed_path = if ctx.path_prefix.is_empty() {
+                let indexed_path = if ctx.mutation_path.is_empty() {
                     format!(".{field_name}[0]")
                 } else {
-                    format!("{}[0]", ctx.path_prefix)
+                    format!("{}[0]", ctx.mutation_path)
                 };
                 MutationPathInternal {
                     path:            indexed_path,
@@ -262,7 +262,7 @@ impl ArrayMutationBuilder {
                 error_reason:    Option::<String>::from(&support),
             },
             PathLocation::Element {
-                mutation_path: field_name,
+                field_name,
                 element_type: field_type,
                 parent_type,
             } => MutationPathInternal {
