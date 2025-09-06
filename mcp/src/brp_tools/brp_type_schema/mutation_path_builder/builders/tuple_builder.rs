@@ -139,10 +139,7 @@ impl TupleMutationBuilder {
                 }),
                 enum_variants: None,
                 type_name: element_type.clone(),
-                path_kind: PathKind::IndexedElement {
-                    index,
-                    parent_type: parent_type.clone(),
-                },
+                path_kind: PathKind::new_indexed_element(index, parent_type.clone()),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type)),
             });
@@ -172,10 +169,7 @@ impl TupleMutationBuilder {
                 example: elem_example,
                 enum_variants: None,
                 type_name: element_type,
-                path_kind: PathKind::IndexedElement {
-                    index,
-                    parent_type: parent_type.clone(),
-                },
+                path_kind: PathKind::new_indexed_element(index, parent_type.clone()),
                 mutation_status: MutationStatus::Mutatable,
                 error_reason: None,
             })
@@ -190,10 +184,7 @@ impl TupleMutationBuilder {
                 }),
                 enum_variants: None,
                 type_name: element_type,
-                path_kind: PathKind::IndexedElement {
-                    index,
-                    parent_type: parent_type.clone(),
-                },
+                path_kind: PathKind::new_indexed_element(index, parent_type.clone()),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason: Option::<String>::from(&missing_support),
             })
@@ -272,9 +263,7 @@ impl TupleMutationBuilder {
                     example,
                     enum_variants: None,
                     type_name: type_name.clone(),
-                    path_kind: PathKind::RootValue {
-                        type_name: type_name.clone(),
-                    },
+                    path_kind: PathKind::new_root_value(type_name.clone()),
                     mutation_status: MutationStatus::Mutatable,
                     error_reason: None,
                 });
@@ -308,10 +297,7 @@ impl TupleMutationBuilder {
                     example,
                     enum_variants: None,
                     type_name: field_type.clone(),
-                    path_kind: PathKind::StructField {
-                        field_name:  field_name.clone(),
-                        parent_type: parent_type.clone(),
-                    },
+                    path_kind: PathKind::new_struct_field(field_name.clone(), parent_type.clone()),
                     mutation_status: MutationStatus::Mutatable,
                     error_reason: None,
                 });
@@ -344,10 +330,7 @@ impl TupleMutationBuilder {
                     }),
                     enum_variants: None,
                     type_name: element_type.clone(),
-                    path_kind: PathKind::IndexedElement {
-                        index,
-                        parent_type: ctx.type_name().clone(),
-                    },
+                    path_kind: PathKind::new_indexed_element(index, ctx.type_name().clone()),
                     mutation_status: MutationStatus::NotMutatable,
                     error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
                 });
@@ -389,10 +372,7 @@ impl TupleMutationBuilder {
                         }),
                         enum_variants: None,
                         type_name: element_type.clone(),
-                        path_kind: PathKind::IndexedElement {
-                            index,
-                            parent_type: ctx.type_name().clone(),
-                        },
+                        path_kind: PathKind::new_indexed_element(index, ctx.type_name().clone()),
                         mutation_status: MutationStatus::NotMutatable,
                         error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
                     });
@@ -420,9 +400,7 @@ impl TupleMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       PathKind::RootValue {
-                    type_name: type_name.clone(),
-                },
+                path_kind:       PathKind::new_root_value(type_name.clone()),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
@@ -438,10 +416,10 @@ impl TupleMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    parent_type: parent_type.clone(),
-                },
+                path_kind:       PathKind::new_struct_field(
+                    field_name.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },

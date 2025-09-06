@@ -97,9 +97,7 @@ impl ArrayMutationBuilder {
                 example:         json!(array_example),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       PathKind::RootValue {
-                    type_name: type_name.clone(),
-                },
+                path_kind:       PathKind::new_root_value(type_name.clone()),
                 mutation_status: MutationStatus::Mutatable,
                 error_reason:    None,
             },
@@ -119,10 +117,10 @@ impl ArrayMutationBuilder {
                     example: json!(array_example),
                     enum_variants: None,
                     type_name: field_type.clone(),
-                    path_kind: PathKind::StructField {
-                        field_name:  field_name.to_string(),
-                        parent_type: parent_type.clone(),
-                    },
+                    path_kind: PathKind::new_struct_field(
+                        field_name.to_string(),
+                        parent_type.clone(),
+                    ),
                     mutation_status: MutationStatus::Mutatable,
                     error_reason: None,
                 }
@@ -144,10 +142,7 @@ impl ArrayMutationBuilder {
                 example:         element_example,
                 enum_variants:   None,
                 type_name:       element_type.clone(),
-                path_kind:       PathKind::ArrayElement {
-                    index:       0,
-                    parent_type: type_name.clone(),
-                },
+                path_kind:       PathKind::new_array_element(0, type_name.clone()),
                 mutation_status: MutationStatus::Mutatable,
                 error_reason:    None,
             },
@@ -167,10 +162,7 @@ impl ArrayMutationBuilder {
                     example:         element_example,
                     enum_variants:   None,
                     type_name:       element_type.clone(),
-                    path_kind:       PathKind::ArrayElement {
-                        index:       0,
-                        parent_type: field_type.clone(),
-                    },
+                    path_kind:       PathKind::new_array_element(0, field_type.clone()),
                     mutation_status: MutationStatus::Mutatable,
                     error_reason:    None,
                 }
@@ -255,9 +247,7 @@ impl ArrayMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       PathKind::RootValue {
-                    type_name: type_name.clone(),
-                },
+                path_kind:       PathKind::new_root_value(type_name.clone()),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
@@ -273,10 +263,10 @@ impl ArrayMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    parent_type: parent_type.clone(),
-                },
+                path_kind:       PathKind::new_struct_field(
+                    field_name.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },

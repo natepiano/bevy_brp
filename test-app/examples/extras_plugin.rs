@@ -103,16 +103,16 @@ struct SimpleSetComponent {
     pub string_set: HashSet<String>,
 }
 
-/// Test component with HashMap for testing map mutations
+/// Test component with `HashMap` for testing map mutations
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 struct TestMapComponent {
     /// String to String map
-    pub string_map:    HashMap<String, String>,
+    pub strings:    HashMap<String, String>,
     /// String to f32 map
-    pub value_map:     HashMap<String, f32>,
+    pub values:     HashMap<String, f32>,
     /// String to Transform map (complex nested type)
-    pub transform_map: HashMap<String, Transform>,
+    pub transforms: HashMap<String, Transform>,
 }
 
 /// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
@@ -590,26 +590,26 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with TestMapComponent for testing HashMap mutations
     let mut test_map = TestMapComponent::default();
     test_map
-        .string_map
+        .strings
         .insert("key1".to_string(), "value1".to_string());
     test_map
-        .string_map
+        .strings
         .insert("key2".to_string(), "value2".to_string());
     test_map
-        .string_map
+        .strings
         .insert("key3".to_string(), "value3".to_string());
 
-    test_map.value_map.insert("temperature".to_string(), 23.5);
-    test_map.value_map.insert("humidity".to_string(), 65.0);
-    test_map.value_map.insert("pressure".to_string(), 1013.25);
+    test_map.values.insert("temperature".to_string(), 23.5);
+    test_map.values.insert("humidity".to_string(), 65.0);
+    test_map.values.insert("pressure".to_string(), 1013.25);
 
     test_map
-        .transform_map
+        .transforms
         .insert("player".to_string(), Transform::from_xyz(10.0, 0.0, 5.0));
     test_map
-        .transform_map
+        .transforms
         .insert("enemy".to_string(), Transform::from_xyz(-5.0, 0.0, -10.0));
-    test_map.transform_map.insert(
+    test_map.transforms.insert(
         "powerup".to_string(),
         Transform::from_xyz(0.0, 5.0, 0.0).with_scale(Vec3::splat(2.0)),
     );

@@ -161,14 +161,6 @@ impl RecursionContext {
             .and_then(Self::extract_type_ref_with_schema_field)
     }
 
-    /// Extract value type from Map schema
-    pub fn extract_map_value_type(schema: &Value) -> Option<BrpTypeName> {
-        schema
-            .get("additionalProperties")
-            .and_then(|props| props.get_field(SchemaField::Type))
-            .and_then(Self::extract_type_ref_with_schema_field)
-    }
-
     /// Extract all element types from Tuple/TupleStruct schema
     pub fn extract_tuple_element_types(schema: &Value) -> Option<Vec<BrpTypeName>> {
         Self::get_schema_field_as_array(schema, SchemaField::PrefixItems).map(|items| {

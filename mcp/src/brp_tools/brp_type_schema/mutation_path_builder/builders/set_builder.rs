@@ -53,9 +53,7 @@ impl SetMutationBuilder {
                 example,
                 enum_variants: None,
                 type_name: type_name.clone(),
-                path_kind: PathKind::RootValue {
-                    type_name: type_name.clone(),
-                },
+                path_kind: PathKind::new_root_value(type_name.clone()),
                 mutation_status: MutationStatus::Mutatable,
                 error_reason: None,
             },
@@ -63,18 +61,18 @@ impl SetMutationBuilder {
                 field_name,
                 element_type: field_type,
                 parent_type,
-            } => MutationPathInternal {
-                path: format!(".{field_name}"),
-                example,
-                enum_variants: None,
-                type_name: field_type.clone(),
-                path_kind: PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    parent_type: parent_type.clone(),
-                },
-                mutation_status: MutationStatus::Mutatable,
-                error_reason: None,
-            },
+            } => {
+                let path_kind = PathKind::new_struct_field(field_name.clone(), parent_type.clone());
+                MutationPathInternal {
+                    path: path_kind.to_path_segment(),
+                    example,
+                    enum_variants: None,
+                    type_name: field_type.clone(),
+                    path_kind,
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason: None,
+                }
+            }
         }
     }
 
@@ -92,9 +90,7 @@ impl SetMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       PathKind::RootValue {
-                    type_name: type_name.clone(),
-                },
+                path_kind:       PathKind::new_root_value(type_name.clone()),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },
@@ -110,10 +106,10 @@ impl SetMutationBuilder {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    parent_type: parent_type.clone(),
-                },
+                path_kind:       PathKind::new_struct_field(
+                    field_name.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(&support),
             },

@@ -62,51 +62,49 @@ impl TypeKind {
             })
     }
 
-    /// Build a mutation path for types with TreatAsValue knowledge
+    /// Build a mutation path for types with `TreatAsValue` knowledge
     /// that come from our hard coded knowledge
-    fn build_treat_as_value_path(ctx: &RecursionContext) -> Result<Option<MutationPathInternal>> {
+    fn build_treat_as_value_path(ctx: &RecursionContext) -> Option<MutationPathInternal> {
         if let Some(knowledge) =
             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name().to_string()))
+            && let KnowledgeGuidance::TreatAsValue { simplified_type } = knowledge.guidance()
         {
-            if let KnowledgeGuidance::TreatAsValue { simplified_type } = knowledge.guidance() {
-                // Build a single root mutation path for types that should be treated as values
-                let example = knowledge.example().clone();
+            // Build a single root mutation path for types that should be treated as values
+            let example = knowledge.example().clone();
 
-                let path = match &ctx.location {
-                    PathLocation::Root { type_name } => MutationPathInternal {
-                        path: String::new(),
+            let path = match &ctx.location {
+                PathLocation::Root { type_name } => MutationPathInternal {
+                    path: String::new(),
+                    example,
+                    enum_variants: None,
+                    type_name: BrpTypeName::from(simplified_type),
+                    path_kind: PathKind::new_root_value(type_name.clone()),
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason: None,
+                },
+                PathLocation::Element {
+                    field_name,
+                    element_type: _,
+                    parent_type,
+                } => {
+                    let path_kind =
+                        PathKind::new_struct_field(field_name.clone(), parent_type.clone());
+                    MutationPathInternal {
+                        path: path_kind.to_path_segment(),
                         example,
                         enum_variants: None,
-                        type_name: BrpTypeName::from(simplified_type.clone()),
-                        path_kind: PathKind::RootValue {
-                            type_name: type_name.clone(),
-                        },
+                        type_name: BrpTypeName::from(simplified_type),
+                        path_kind,
                         mutation_status: MutationStatus::Mutatable,
                         error_reason: None,
-                    },
-                    PathLocation::Element {
-                        field_name,
-                        element_type: _,
-                        parent_type,
-                    } => MutationPathInternal {
-                        path: format!(".{field_name}"),
-                        example,
-                        enum_variants: None,
-                        type_name: BrpTypeName::from(simplified_type.clone()),
-                        path_kind: PathKind::StructField {
-                            field_name:  field_name.clone(),
-                            parent_type: parent_type.clone(),
-                        },
-                        mutation_status: MutationStatus::Mutatable,
-                        error_reason: None,
-                    },
-                };
+                    }
+                }
+            };
 
-                return Ok(Some(path));
-            }
+            return Some(path);
         }
 
-        Ok(None)
+        None
     }
 
     /// Build `NotMutatable` path from `MutationSupport` error details
@@ -127,9 +125,7 @@ impl TypeKind {
                 }),
                 enum_variants:   None,
                 type_name:       type_name.clone(),
-                path_kind:       PathKind::RootValue {
-                    type_name: type_name.clone(),
-                },
+                path_kind:       PathKind::new_root_value(type_name.clone()),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(support),
             },
@@ -145,10 +141,10 @@ impl TypeKind {
                 }),
                 enum_variants:   None,
                 type_name:       field_type.clone(),
-                path_kind:       PathKind::StructField {
-                    field_name:  field_name.clone(),
-                    parent_type: parent_type.clone(),
-                },
+                path_kind:       PathKind::new_struct_field(
+                    field_name.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason:    Option::<String>::from(support),
             },
@@ -176,7 +172,7 @@ impl MutationPathBuilder for TypeKind {
 
         // Check if this type has TreatAsValue knowledge
         // which bypasses any further recursion to provide a simplified Value example
-        if let Some(mutation_path_internal) = Self::build_treat_as_value_path(ctx)? {
+        if let Some(mutation_path_internal) = Self::build_treat_as_value_path(ctx) {
             return Ok(vec![mutation_path_internal]);
         }
 

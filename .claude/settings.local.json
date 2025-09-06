@@ -79,7 +79,8 @@
       "Bash(~/.claude/commands/bash/build-check.sh:*)",
       "Bash(./test-app/tests/type_stats.sh:*)",
       "Read(//tmp/**)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "WebFetch(domain:www.desmos.com)"
     ],
     "deny": [
       "Bash(sed:*)"
