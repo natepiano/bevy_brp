@@ -82,7 +82,8 @@
       "Bash(head:*)",
       "WebFetch(domain:www.desmos.com)",
       "Bash(cd:*)",
-      "Bash(timeout 5 BRP_PORT=22222 cargo run --example extras_plugin)"
+      "Bash(timeout 5 BRP_PORT=22222 cargo run --example extras_plugin)",
+      "Bash(python3:*)"
     ],
     "deny": [
       "Bash(sed:*)"

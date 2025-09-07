@@ -8,7 +8,7 @@ use serde_json::json;
 
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{PathLocation, RecursionContext};
+use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -53,8 +53,11 @@ impl MutationPathBuilder for ListMutationBuilder {
         };
         let element_kind = TypeKind::from_schema(element_schema, &element_type);
 
-        // Create a child context for the element type
-        let element_ctx = ctx.create_field_context("[0]", &element_type);
+        // Create a child context for the element type using PathKind
+        // Lists/Vecs use array notation [0], not tuple notation .0
+        let element_path_kind =
+            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
+        let element_ctx = ctx.create_field_context(element_path_kind);
 
         // Continue recursion to actual mutation endpoints
         let element_paths = element_kind.build_paths(&element_ctx, depth)?; // depth already incremented by TypeKind
@@ -82,29 +85,14 @@ impl ListMutationBuilder {
         // Generate example value for the list type
         let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
 
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path,
-                example,
-                enum_variants: None,
-                type_name: type_name.clone(),
-                path_kind: PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::Mutatable,
-                error_reason: None,
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path,
-                example,
-                enum_variants: None,
-                type_name: field_type.clone(),
-                path_kind: PathKind::new_struct_field(field_name.clone(), parent_type.clone()),
-                mutation_status: MutationStatus::Mutatable,
-                error_reason: None,
-            },
+        MutationPathInternal {
+            path,
+            example,
+            enum_variants: None,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason: None,
         }
     }
 
@@ -113,38 +101,17 @@ impl ListMutationBuilder {
         ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This list type cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This list field cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::new_struct_field(
-                    field_name.clone(),
-                    parent_type.clone(),
-                ),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This list type cannot be mutated - {support}")
+            }),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason:    Option::<String>::from(&support),
         }
     }
 }

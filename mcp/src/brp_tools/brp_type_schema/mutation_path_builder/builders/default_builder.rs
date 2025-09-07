@@ -5,8 +5,7 @@
 use serde_json::json;
 
 use super::super::MutationPathBuilder;
-use super::super::path_kind::PathKind;
-use super::super::recursion_context::{PathLocation, RecursionContext};
+use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::error::Result;
@@ -19,40 +18,14 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         ctx: &RecursionContext,
         _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        let mut paths = Vec::new();
-
-        match &ctx.location {
-            PathLocation::Root { type_name } => {
-                paths.push(MutationPathInternal {
-                    path:            String::new(),
-                    example:         json!(null),
-                    enum_variants:   None,
-                    type_name:       type_name.clone(),
-                    path_kind:       PathKind::new_root_value(type_name.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason:    None,
-                });
-            }
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => {
-                paths.push(MutationPathInternal {
-                    path:            format!(".{field_name}"),
-                    example:         json!(null),
-                    enum_variants:   None,
-                    type_name:       field_type.clone(),
-                    path_kind:       PathKind::new_struct_field(
-                        field_name.clone(),
-                        parent_type.clone(),
-                    ),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason:    None,
-                });
-            }
-        }
-
-        Ok(paths)
+        Ok(vec![MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!(null),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
+        }])
     }
 }

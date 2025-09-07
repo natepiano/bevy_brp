@@ -8,7 +8,8 @@ mod types;
 
 pub use builders::{EnumMutationBuilder, EnumVariantInfo, build_all_enum_examples};
 pub use mutation_knowledge::KnowledgeKey;
-pub use recursion_context::{PathLocation, RecursionContext};
+pub use path_kind::PathKind;
+pub use recursion_context::RecursionContext;
 pub use type_kind::TypeKind;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus};
 

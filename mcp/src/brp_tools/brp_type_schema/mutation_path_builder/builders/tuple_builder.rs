@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{PathLocation, RecursionContext};
+use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -139,7 +139,11 @@ impl TupleMutationBuilder {
                 }),
                 enum_variants: None,
                 type_name: element_type.clone(),
-                path_kind: PathKind::new_indexed_element(index, parent_type.clone()),
+                path_kind: PathKind::new_indexed_element(
+                    index,
+                    element_type.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type)),
             });
@@ -168,8 +172,12 @@ impl TupleMutationBuilder {
                 path,
                 example: elem_example,
                 enum_variants: None,
-                type_name: element_type,
-                path_kind: PathKind::new_indexed_element(index, parent_type.clone()),
+                type_name: element_type.clone(),
+                path_kind: PathKind::new_indexed_element(
+                    index,
+                    element_type.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::Mutatable,
                 error_reason: None,
             })
@@ -183,8 +191,12 @@ impl TupleMutationBuilder {
                     "agent_directive": "Element type cannot be mutated through BRP"
                 }),
                 enum_variants: None,
-                type_name: element_type,
-                path_kind: PathKind::new_indexed_element(index, parent_type.clone()),
+                type_name: element_type.clone(),
+                path_kind: PathKind::new_indexed_element(
+                    index,
+                    element_type.clone(),
+                    parent_type.clone(),
+                ),
                 mutation_status: MutationStatus::NotMutatable,
                 error_reason: Option::<String>::from(&missing_support),
             })
@@ -243,66 +255,29 @@ impl TupleMutationBuilder {
         schema: &Value,
         depth: RecursionDepth,
     ) {
-        match &ctx.location {
-            PathLocation::Root { type_name } => {
-                // Use parent knowledge if available (though rare for root)
-                let example = ctx.parent_knowledge.map_or_else(
-                    || {
-                        Self::build_tuple_example(
-                            schema
-                                .get_field(SchemaField::PrefixItems)
-                                .unwrap_or(&json!([])),
-                            &ctx.registry,
-                            depth,
-                        )
-                    },
-                    |k| k.example().clone(),
-                );
-                paths.push(MutationPathInternal {
-                    path: String::new(),
-                    example,
-                    enum_variants: None,
-                    type_name: type_name.clone(),
-                    path_kind: PathKind::new_root_value(type_name.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason: None,
-                });
-            }
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => {
-                // When in field context, use the path_prefix which contains the full path
-                let path = if ctx.mutation_path.is_empty() {
-                    format!(".{field_name}")
-                } else {
-                    ctx.mutation_path.clone()
-                };
-                // Use parent knowledge if available (e.g., struct field knowledge)
-                let example = ctx.parent_knowledge.map_or_else(
-                    || {
-                        Self::build_tuple_example(
-                            schema
-                                .get_field(SchemaField::PrefixItems)
-                                .unwrap_or(&json!([])),
-                            &ctx.registry,
-                            depth,
-                        )
-                    },
-                    |k| k.example().clone(),
-                );
-                paths.push(MutationPathInternal {
-                    path,
-                    example,
-                    enum_variants: None,
-                    type_name: field_type.clone(),
-                    path_kind: PathKind::new_struct_field(field_name.clone(), parent_type.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason: None,
-                });
-            }
-        }
+        // Use parent knowledge if available
+        let example = ctx.parent_knowledge.map_or_else(
+            || {
+                Self::build_tuple_example(
+                    schema
+                        .get_field(SchemaField::PrefixItems)
+                        .unwrap_or(&json!([])),
+                    &ctx.registry,
+                    depth,
+                )
+            },
+            |k| k.example().clone(),
+        );
+
+        paths.push(MutationPathInternal {
+            path: ctx.mutation_path.clone(),
+            example,
+            enum_variants: None,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason: None,
+        });
     }
 
     fn build_tuple_element_paths(
@@ -313,8 +288,10 @@ impl TupleMutationBuilder {
         depth: RecursionDepth,
     ) -> Result<()> {
         for (index, element_type) in elements.iter().enumerate() {
-            // Create field context with dot prefix for tuple elements
-            let element_ctx = ctx.create_field_context(&format!(".{index}"), element_type);
+            // Create field context using PathKind
+            let element_path_kind =
+                PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone());
+            let element_ctx = ctx.create_field_context(element_path_kind);
             let Some(element_schema) = ctx.get_type_schema(element_type) else {
                 // Build not mutatable element path for missing registry entry
                 let path = if ctx.mutation_path.is_empty() {
@@ -330,7 +307,7 @@ impl TupleMutationBuilder {
                     }),
                     enum_variants: None,
                     type_name: element_type.clone(),
-                    path_kind: PathKind::new_indexed_element(index, ctx.type_name().clone()),
+                    path_kind: PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone()),
                     mutation_status: MutationStatus::NotMutatable,
                     error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
                 });
@@ -372,7 +349,7 @@ impl TupleMutationBuilder {
                         }),
                         enum_variants: None,
                         type_name: element_type.clone(),
-                        path_kind: PathKind::new_indexed_element(index, ctx.type_name().clone()),
+                        path_kind: PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone()),
                         mutation_status: MutationStatus::NotMutatable,
                         error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
                     });
@@ -391,38 +368,17 @@ impl TupleMutationBuilder {
         ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This tuple type cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This tuple field cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::new_struct_field(
-                    field_name.clone(),
-                    parent_type.clone(),
-                ),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This tuple type cannot be mutated - {support}")
+            }),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason:    Option::<String>::from(&support),
         }
     }
 }

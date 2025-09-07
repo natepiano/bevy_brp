@@ -10,49 +10,9 @@ use tracing::warn;
 
 use super::super::response_types::{BrpTypeName, ReflectTrait, SchemaField};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
+use super::path_kind::PathKind;
 use crate::brp_tools::brp_type_schema::constants::SCHEMA_REF_PREFIX;
 use crate::string_traits::JsonFieldAccess;
-
-/// Context for building mutation paths - handles root vs field scenarios
-/// necessary because Struct, specifically, allows us to recurse down a level
-/// for complex types that have Struct fields
-#[derive(Debug, Clone)]
-pub enum PathLocation {
-    /// Building paths for a root type (used in root mutations)
-    Root { type_name: BrpTypeName },
-    /// Building paths for a elements within a parent type
-    Element {
-        field_name:  String,
-        type_name:   BrpTypeName,
-        parent_type: BrpTypeName,
-    },
-}
-
-impl PathLocation {
-    /// Create an elementwith its associated name, type and parent type
-    pub fn element(field_name: &str, type_name: &BrpTypeName, parent_type: &BrpTypeName) -> Self {
-        Self::Element {
-            field_name:  field_name.to_string(),
-            type_name:   type_name.clone(),
-            parent_type: parent_type.clone(),
-        }
-    }
-
-    /// Create a root context
-    pub fn root(type_name: &BrpTypeName) -> Self {
-        Self::Root {
-            type_name: type_name.clone(),
-        }
-    }
-
-    /// Get the type being processed
-    pub const fn type_name(&self) -> &BrpTypeName {
-        match self {
-            Self::Root { type_name } => type_name,
-            Self::Element { type_name, .. } => type_name,
-        }
-    }
-}
 
 /// Context for mutation path building operations
 ///
@@ -61,7 +21,7 @@ impl PathLocation {
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub location:         PathLocation,
+    pub path_kind:        PathKind,
     /// Reference to the type registry
     pub registry:         Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
@@ -72,9 +32,9 @@ pub struct RecursionContext {
 
 impl RecursionContext {
     /// Create a new mutation path context
-    pub const fn new(location: PathLocation, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
+    pub const fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
         Self {
-            location,
+            path_kind,
             registry,
             mutation_path: String::new(),
             parent_knowledge: None,
@@ -83,7 +43,17 @@ impl RecursionContext {
 
     /// Get the type name being processed
     pub const fn type_name(&self) -> &BrpTypeName {
-        self.location.type_name()
+        self.path_kind.type_name()
+    }
+
+    /// Generate the path segment string for a `PathKind` (private to this module)
+    fn path_kind_to_segment(path_kind: &PathKind) -> String {
+        match path_kind {
+            PathKind::RootValue { .. } => String::new(),
+            PathKind::StructField { field_name, .. } => format!(".{field_name}"),
+            PathKind::IndexedElement { index, .. } => format!(".{index}"),
+            PathKind::ArrayElement { index, .. } => format!("[{index}]"),
+        }
     }
 
     /// Require the schema to be present, logging a warning if missing
@@ -104,30 +74,37 @@ impl RecursionContext {
     }
 
     /// Create a new context for a child element (field, array element, tuple element)
-    /// The accessor should include the appropriate punctuation (e.g., ".field", "[0]", ".0")
-    pub fn create_field_context(&self, accessor: &str, field_type: &BrpTypeName) -> Self {
+    pub fn create_field_context(&self, path_kind: PathKind) -> Self {
         let parent_type = self.type_name();
-        // Build the new path prefix by appending the accessor to the current prefix
-        let new_path_prefix = format!("{}{}", self.mutation_path, accessor);
+        let new_path_prefix = format!(
+            "{}{}",
+            self.mutation_path,
+            Self::path_kind_to_segment(&path_kind)
+        );
 
-        // Extract just the field name from accessor for the location
-        // Remove leading "." or "[" and trailing "]" to get the name/index
-        let mutation_path = accessor
-            .trim_start_matches('.')
-            .trim_start_matches('[')
-            .trim_end_matches(']')
-            .to_string();
-
-        // Check if field has hardcoded knowledge to pass to children
-        // First check struct_field, then exact type
-        let field_knowledge = BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::struct_field(parent_type, &mutation_path))
-            .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type)));
+        // Look up mutation knowledge based on path kind
+        // Only struct fields can have field-specific knowledge
+        let field_knowledge = match &path_kind {
+            PathKind::StructField { field_name, .. } => {
+                // Check for struct field-specific knowledge, then fall back to exact type
+                BRP_MUTATION_KNOWLEDGE
+                    .get(&KnowledgeKey::struct_field(parent_type, field_name))
+                    .or_else(|| {
+                        BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name()))
+                    })
+            }
+            PathKind::IndexedElement { .. }
+            | PathKind::ArrayElement { .. }
+            | PathKind::RootValue { .. } => {
+                // Non-struct types only have exact type knowledge
+                BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name()))
+            }
+        };
 
         Self {
-            location:         PathLocation::element(&mutation_path, field_type, parent_type),
-            registry:         Arc::clone(&self.registry),
-            mutation_path:    new_path_prefix,
+            path_kind,
+            registry: Arc::clone(&self.registry),
+            mutation_path: new_path_prefix,
             parent_knowledge: field_knowledge,
         }
     }

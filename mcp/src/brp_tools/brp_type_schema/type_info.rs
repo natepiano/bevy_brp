@@ -12,7 +12,7 @@ use super::constants::{
 };
 use super::mutation_path_builder::{
     EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder,
-    MutationPathInternal, PathLocation, RecursionContext, TypeKind,
+    MutationPathInternal, PathKind, RecursionContext, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -166,8 +166,8 @@ impl TypeInfo {
         let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
 
         // Create root context for the new trait system
-        let location = PathLocation::root(brp_type_name);
-        let ctx = RecursionContext::new(location, Arc::clone(&registry));
+        let path_kind = PathKind::new_root_value(brp_type_name.clone());
+        let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
         // Use the new trait dispatch system
         type_kind

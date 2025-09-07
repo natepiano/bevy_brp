@@ -12,17 +12,20 @@ pub enum PathKind {
     /// Mutate a field in a struct
     StructField {
         field_name:  String,
+        type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
         index:       usize,
+        type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
         index:       usize,
+        type_name:   BrpTypeName,
         parent_type: BrpTypeName,
     },
 }
@@ -34,21 +37,52 @@ impl PathKind {
     }
 
     /// Create a new `StructField`
-    pub const fn new_struct_field(field_name: String, parent_type: BrpTypeName) -> Self {
+    pub const fn new_struct_field(
+        field_name: String,
+        type_name: BrpTypeName,
+        parent_type: BrpTypeName,
+    ) -> Self {
         Self::StructField {
             field_name,
+            type_name,
             parent_type,
         }
     }
 
     /// Create a new `IndexedElement`
-    pub const fn new_indexed_element(index: usize, parent_type: BrpTypeName) -> Self {
-        Self::IndexedElement { index, parent_type }
+    pub const fn new_indexed_element(
+        index: usize,
+        type_name: BrpTypeName,
+        parent_type: BrpTypeName,
+    ) -> Self {
+        Self::IndexedElement {
+            index,
+            type_name,
+            parent_type,
+        }
     }
 
     /// Create a new `ArrayElement`
-    pub const fn new_array_element(index: usize, parent_type: BrpTypeName) -> Self {
-        Self::ArrayElement { index, parent_type }
+    pub const fn new_array_element(
+        index: usize,
+        type_name: BrpTypeName,
+        parent_type: BrpTypeName,
+    ) -> Self {
+        Self::ArrayElement {
+            index,
+            type_name,
+            parent_type,
+        }
+    }
+
+    /// Get the type name being processed (matches `PathLocation::type_name()` behavior)
+    pub const fn type_name(&self) -> &BrpTypeName {
+        match self {
+            Self::RootValue { type_name }
+            | Self::StructField { type_name, .. }
+            | Self::IndexedElement { type_name, .. }
+            | Self::ArrayElement { type_name, .. } => type_name,
+        }
     }
 
     /// Generate a human-readable description for this mutation
@@ -84,16 +118,6 @@ impl PathKind {
             Self::StructField { .. } => "StructField",
             Self::IndexedElement { .. } => "IndexedElement",
             Self::ArrayElement { .. } => "ArrayElement",
-        }
-    }
-
-    /// Generate the path segment string for this mutation
-    pub fn to_path_segment(&self) -> String {
-        match self {
-            Self::RootValue { .. } => String::new(),
-            Self::StructField { field_name, .. } => format!(".{field_name}"),
-            Self::IndexedElement { index, .. } => format!(".{index}"),
-            Self::ArrayElement { index, .. } => format!("[{index}]"),
         }
     }
 }

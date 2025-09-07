@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{PathLocation, RecursionContext};
+use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -91,40 +91,14 @@ impl ArrayMutationBuilder {
         let array_example =
             Self::build_array_example(element_type, &ctx.registry, array_size, depth);
 
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!(array_example),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => {
-                // When in field context, use the path_prefix which contains the full path
-                let path = if ctx.mutation_path.is_empty() {
-                    format!(".{field_name}")
-                } else {
-                    ctx.mutation_path.clone()
-                };
-                MutationPathInternal {
-                    path,
-                    example: json!(array_example),
-                    enum_variants: None,
-                    type_name: field_type.clone(),
-                    path_kind: PathKind::new_struct_field(
-                        field_name.to_string(),
-                        parent_type.clone(),
-                    ),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason: None,
-                }
-            }
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!(array_example),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
         }
     }
 
@@ -136,37 +110,19 @@ impl ArrayMutationBuilder {
     ) -> MutationPathInternal {
         let element_example = Self::build_element_example(element_type, &ctx.registry, depth);
 
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            "[0]".to_string(),
-                example:         element_example,
-                enum_variants:   None,
-                type_name:       element_type.clone(),
-                path_kind:       PathKind::new_array_element(0, type_name.clone()),
-                mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                ..
-            } => {
-                // Add indexed path for first element
-                let indexed_path = if ctx.mutation_path.is_empty() {
-                    format!(".{field_name}[0]")
-                } else {
-                    format!("{}[0]", ctx.mutation_path)
-                };
-                MutationPathInternal {
-                    path:            indexed_path,
-                    example:         element_example,
-                    enum_variants:   None,
-                    type_name:       element_type.clone(),
-                    path_kind:       PathKind::new_array_element(0, field_type.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason:    None,
-                }
-            }
+        // Build array element path using PathKind
+        let array_element_path_kind =
+            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
+        let indexed_path = format!("{}[0]", ctx.mutation_path);
+
+        MutationPathInternal {
+            path:            indexed_path,
+            example:         element_example,
+            enum_variants:   None,
+            type_name:       element_type.clone(),
+            path_kind:       array_element_path_kind,
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
         }
     }
 
@@ -178,7 +134,9 @@ impl ArrayMutationBuilder {
         depth: RecursionDepth,
         paths: &mut Vec<MutationPathInternal>,
     ) -> Result<()> {
-        let element_ctx = ctx.create_field_context("[0]", element_type);
+        let element_path_kind =
+            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
+        let element_ctx = ctx.create_field_context(element_path_kind);
         let element_kind = TypeKind::from_schema(element_schema, element_type);
         if !matches!(element_kind, TypeKind::Value) {
             let element_paths = element_kind.build_paths(&element_ctx, depth)?;
@@ -238,38 +196,17 @@ impl ArrayMutationBuilder {
         ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This array type cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This array field cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::new_struct_field(
-                    field_name.clone(),
-                    parent_type.clone(),
-                ),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This array type cannot be mutated - {support}")
+            }),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason:    Option::<String>::from(&support),
         }
     }
 }

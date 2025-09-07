@@ -14,8 +14,7 @@ use super::builders::{
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_support::MutationSupport;
-use super::path_kind::PathKind;
-use super::recursion_context::{PathLocation, RecursionContext};
+use super::recursion_context::RecursionContext;
 use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
@@ -72,33 +71,14 @@ impl TypeKind {
             // Build a single root mutation path for types that should be treated as values
             let example = knowledge.example().clone();
 
-            let path = match &ctx.location {
-                PathLocation::Root { type_name } => MutationPathInternal {
-                    path: String::new(),
-                    example,
-                    enum_variants: None,
-                    type_name: BrpTypeName::from(simplified_type),
-                    path_kind: PathKind::new_root_value(type_name.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason: None,
-                },
-                PathLocation::Element {
-                    field_name,
-                    type_name: _,
-                    parent_type,
-                } => {
-                    let path_kind =
-                        PathKind::new_struct_field(field_name.clone(), parent_type.clone());
-                    MutationPathInternal {
-                        path: path_kind.to_path_segment(),
-                        example,
-                        enum_variants: None,
-                        type_name: BrpTypeName::from(simplified_type),
-                        path_kind,
-                        mutation_status: MutationStatus::Mutatable,
-                        error_reason: None,
-                    }
-                }
+            let path = MutationPathInternal {
+                path: ctx.mutation_path.clone(),
+                example,
+                enum_variants: None,
+                type_name: BrpTypeName::from(simplified_type),
+                path_kind: ctx.path_kind.clone(),
+                mutation_status: MutationStatus::Mutatable,
+                error_reason: None,
             };
 
             return Some(path);
@@ -113,38 +93,17 @@ impl TypeKind {
         support: &MutationSupport,
         directive_suffix: &str,
     ) -> MutationPathInternal {
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
-                }),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(support),
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This field cannot be mutated{directive_suffix} - see error message for details")
-                }),
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::new_struct_field(
-                    field_name.clone(),
-                    parent_type.clone(),
-                ),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(support),
-            },
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
+            }),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason:    Option::<String>::from(support),
         }
     }
 }

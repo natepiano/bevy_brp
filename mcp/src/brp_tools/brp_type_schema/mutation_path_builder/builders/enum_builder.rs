@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{PathLocation, RecursionContext};
+use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::{
@@ -375,40 +375,15 @@ impl MutationPathBuilder for EnumMutationBuilder {
             depth, // No increment here - just pass current depth
         );
 
-        match &ctx.location {
-            PathLocation::Root { type_name } => {
-                paths.push(MutationPathInternal {
-                    path: String::new(),
-                    example,
-                    enum_variants,
-                    type_name: type_name.clone(),
-                    path_kind: PathKind::new_root_value(type_name.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason: None,
-                });
-            }
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => {
-                // When in field context, use the path_prefix which contains the full path
-                let path = if ctx.mutation_path.is_empty() {
-                    format!(".{field_name}")
-                } else {
-                    ctx.mutation_path.clone()
-                };
-                paths.push(MutationPathInternal {
-                    path,
-                    example,
-                    enum_variants,
-                    type_name: field_type.clone(),
-                    path_kind: PathKind::new_struct_field(field_name.clone(), parent_type.clone()),
-                    mutation_status: MutationStatus::Mutatable,
-                    error_reason: None,
-                });
-            }
-        }
+        paths.push(MutationPathInternal {
+            path: ctx.mutation_path.clone(),
+            example,
+            enum_variants,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason: None,
+        });
 
         // Step 2: Recurse into unique signature inner types
         // ONLY add variant field paths when the enum is at the ROOT level
@@ -416,7 +391,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         // 1. Only one variant can be active at a time
         // 2. The variant is selected when setting the field value
         // 3. Variant fields are accessed through the enum field path (e.g., .field.0.variant_field)
-        if matches!(ctx.location, PathLocation::Root { .. }) {
+        if ctx.mutation_path.is_empty() {
             let variants = extract_enum_variants(schema, &ctx.registry, *depth);
             let unique_variants = deduplicate_variant_signatures(variants);
 
@@ -430,9 +405,13 @@ impl MutationPathBuilder for EnumMutationBuilder {
                                 continue;
                             };
 
-                            // Create field context and recurse - just like struct does
-                            let field_ctx =
-                                ctx.create_field_context(&format!(".{index}"), type_name);
+                            // Create field context using PathKind
+                            let field_path_kind = PathKind::new_indexed_element(
+                                index,
+                                type_name.clone(),
+                                ctx.type_name().clone(),
+                            );
+                            let field_ctx = ctx.create_field_context(field_path_kind);
                             let inner_kind = TypeKind::from_schema(inner_schema, type_name);
                             let field_paths = inner_kind.build_paths(&field_ctx, depth)?;
                             paths.extend(field_paths);
@@ -444,11 +423,13 @@ impl MutationPathBuilder for EnumMutationBuilder {
                                 continue;
                             };
 
-                            // Create field context and recurse - just like struct does
-                            let field_ctx = ctx.create_field_context(
-                                &format!(".{}", field.field_name),
-                                &field.type_name,
+                            // Create field context using PathKind
+                            let field_path_kind = PathKind::new_struct_field(
+                                field.field_name.clone(),
+                                field.type_name.clone(),
+                                ctx.type_name().clone(),
                             );
+                            let field_ctx = ctx.create_field_context(field_path_kind);
                             let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
                             let field_paths = inner_kind.build_paths(&field_ctx, depth)?;
                             paths.extend(field_paths);
@@ -468,38 +449,17 @@ impl EnumMutationBuilder {
         ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This enum type cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This enum field cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::new_struct_field(
-                    field_name.clone(),
-                    parent_type.clone(),
-                ),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This enum type cannot be mutated - {support}")
+            }),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason:    Option::<String>::from(&support),
         }
     }
 

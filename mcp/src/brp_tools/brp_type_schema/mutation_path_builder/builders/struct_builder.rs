@@ -9,7 +9,7 @@ use tracing::warn;
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
 use super::super::path_kind::PathKind;
-use super::super::recursion_context::{PathLocation, RecursionContext};
+use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -56,8 +56,13 @@ impl MutationPathBuilder for StructMutationBuilder {
                 continue;
             };
 
-            // Create field context with dot prefix for struct fields
-            let field_ctx = ctx.create_field_context(&format!(".{field_name}"), &field_type);
+            // Create field context using PathKind
+            let field_path_kind = PathKind::new_struct_field(
+                field_name.clone(),
+                field_type.clone(),
+                ctx.type_name().clone(),
+            );
+            let field_ctx = ctx.create_field_context(field_path_kind);
 
             // Check if field is a Value type needing serialization
             let Some(field_schema) = ctx.get_type_schema(&field_type) else {
@@ -144,38 +149,17 @@ impl StructMutationBuilder {
         ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
-        match &ctx.location {
-            PathLocation::Root { type_name } => MutationPathInternal {
-                path:            String::new(),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This struct type cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       type_name.clone(),
-                path_kind:       PathKind::new_root_value(type_name.clone()),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
-            PathLocation::Element {
-                field_name,
-                type_name: field_type,
-                parent_type,
-            } => MutationPathInternal {
-                path:            format!(".{field_name}"),
-                example:         json!({
-                    "NotMutatable": format!("{support}"),
-                    "agent_directive": format!("This struct field cannot be mutated - {support}")
-                }),
-                enum_variants:   None,
-                type_name:       field_type.clone(),
-                path_kind:       PathKind::new_struct_field(
-                    field_name.clone(),
-                    parent_type.clone(),
-                ),
-                mutation_status: MutationStatus::NotMutatable,
-                error_reason:    Option::<String>::from(&support),
-            },
+        MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!({
+                "NotMutatable": format!("{support}"),
+                "agent_directive": format!("This struct type cannot be mutated - {support}")
+            }),
+            enum_variants:   None,
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason:    Option::<String>::from(&support),
         }
     }
 
@@ -201,7 +185,11 @@ impl StructMutationBuilder {
             }),
             enum_variants: None,
             type_name: field_type.clone(),
-            path_kind: PathKind::new_struct_field(field_name.to_string(), ctx.type_name().clone()),
+            path_kind: PathKind::new_struct_field(
+                field_name.to_string(),
+                field_type.clone(),
+                ctx.type_name().clone(),
+            ),
             mutation_status: MutationStatus::NotMutatable,
             error_reason: Option::<String>::from(&support),
         }
@@ -271,7 +259,11 @@ impl StructMutationBuilder {
             example,
             enum_variants: None,
             type_name: field_type.clone(),
-            path_kind: PathKind::new_struct_field(field_name.to_string(), parent_type.clone()),
+            path_kind: PathKind::new_struct_field(
+                field_name.to_string(),
+                field_type.clone(),
+                parent_type.clone(),
+            ),
             mutation_status: MutationStatus::Mutatable,
             error_reason: None,
         }
