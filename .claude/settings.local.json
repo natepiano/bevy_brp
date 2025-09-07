@@ -78,7 +78,8 @@
       "mcp__brp__brp_type_schema",
       "Bash(ls:*)",
       "Bash(.claude/commands/scripts/summarize_results.sh:*)",
-      "mcp__brp__brp_all_type_schemas"
+      "mcp__brp__brp_all_type_schemas",
+      "Bash(cp:*)"
     ],
     "deny": [
       "Bash(sed:*)"
