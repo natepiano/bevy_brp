@@ -1,110 +1,271 @@
 # Create Mutation Test JSON File
 
-## Purpose
-This command creates the mutation test tracking file (`$TMPDIR/all_types.json`) by:
-1. Launching the extras_plugin example app
-2. Getting the list of all registered component types via BRP
-3. Creating a fresh tracking file with all types marked as "untested"
-4. Discovering spawn support and mutation paths for ALL types systematically
+**CRITICAL** before doing anything else, read the tagged sections below and use them where referenced.
 
-This will create a fresh `all_types.json` file in `$TMPDIR` containing all currently registered types ready for testing.
+<ExecutionSteps/>
 
-## Execution Steps
+<CreateContext>
+[TARGET_FILE]: `$TMPDIR/all_types.json`
+[PURPOSE]: Creates the mutation test tracking file by discovering all registered component types via BRP and systematically determining spawn support and mutation paths for ALL types.
+[APP_PORT]: 22222
+[APP_NAME]: extras_plugin
+</CreateContext>
 
-### 1. Launch the extras_plugin app
-```bash
-mcp__brp__brp_launch_bevy_example(
-    example_name="extras_plugin",
-    port=22222
-)
-```
+<CreateKeywords>
+    **For validation decisions:**
+    - **promote**: Mark this version as the new good baseline
+    - **skip**: Keep existing baseline, don't promote this version
+    - **investigate**: Launch deeper investigation of the differences
+    - **check_type**: Check mutation paths for a specific type across all versions
+    - **summarize**: Summarize test results from a JSON file
+</CreateKeywords>
 
-### 2. Verify BRP connectivity
-```bash
-mcp__brp__brp_status(
-    app_name="extras_plugin",
-    port=22222
-)
-```
+<KeywordExecution>
+    **CRITICAL**: Follow tagged procedures for all execution steps.
+    
+    **promote**: Mark version as baseline:
+    ```bash
+    # Mark current version as the good baseline
+    cp $TMPDIR/all_types.json $TMPDIR/all_types_baseline.json
+    
+    # Create timestamped backup
+    cp $TMPDIR/all_types.json $TMPDIR/all_types_good_$(date +%Y%m%d_%H%M%S).json
+    
+    echo "✅ Version marked as good baseline"
+    ```
+    **skip**: Keep existing baseline, document decision, continue
+    **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
+    **check_type**: Ask user "Which type would you like me to check?", then execute:
+    ```bash
+    python3 .claude/commands/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
+    ```
+    **summarize**: Ask user "Which JSON file would you like me to summarize?", then execute:
+    ```bash
+    .claude/commands/scripts/compare_mutations_summarize.sh [JSON_FILE]
+    ```
+</KeywordExecution>
 
-Wait for confirmation that BRP is responding before proceeding.
+## MAIN WORKFLOW
 
-### 3. Get all type schemas
+<ExecutionSteps>
+    **EXECUTE THESE STEPS IN ORDER:**
 
-Call `brp_all_type_schemas` to get schemas for all registered types in one operation:
-```bash
-mcp__brp__brp_all_type_schemas(port=22222)
-```
+    **STEP 1:** Execute the <AppLaunch/>
+    **STEP 2:** Execute the <TypeDiscovery/>
+    **STEP 3:** Execute the <FileTransformation/>
+    **STEP 4:** Execute the <ResultsReporting/>
+    **STEP 5:** Execute the <AppCleanup/>
+    **STEP 6:** Execute the <ComparisonValidation/>
+    **STEP 7:** Execute the <UserValidation/>
+</ExecutionSteps>
 
-This automatically discovers all registered types and returns their schemas. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_schemas_12345.json`).
+## STEP 1: APP LAUNCH
 
+<AppLaunch>
+    Launch the extras_plugin app on the designated port:
+    
+    1. **Launch Example**: 
+    ```bash
+    mcp__brp__brp_launch_bevy_example(
+        example_name="[APP_NAME]",
+        port=[APP_PORT]
+    )
+    ```
 
-### 4. Transform the result with the shell script
+    2. **Verify BRP connectivity**:
+    ```bash
+    mcp__brp__brp_status(
+        app_name="[APP_NAME]",
+        port=[APP_PORT]
+    )
+    ```
+    
+    Wait for confirmation that BRP is responding before proceeding to Step 2.
+</AppLaunch>
 
-Execute the transformation script with the exclusions file:
+## STEP 2: TYPE DISCOVERY
 
-```bash
-./test-app/tests/transform_brp_response.sh FILEPATH $TMPDIR/all_types.json
-```
+<TypeDiscovery>
+    Get all type schemas using the comprehensive discovery tool:
+    
+    Call `brp_all_type_schemas` to get schemas for all registered types in one operation:
+    ```bash
+    mcp__brp__brp_all_type_schemas(port=[APP_PORT])
+    ```
+    
+    This automatically discovers all registered types and returns their schemas. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_schemas_12345.json`).
+    
+    **CRITICAL**: Note the returned filepath for use in Step 3.
+</TypeDiscovery>
 
-Replace `FILEPATH` with the actual path from step 3 (e.g., `/var/folders/.../mcp_response_brp_all_type_schemas_12345.json`).
+## STEP 3: FILE TRANSFORMATION
 
-The script creates `$TMPDIR/all_types.json` with all discovered types initialized with `batch_number: null`.
+<FileTransformation>
+    Transform the BRP response into the mutation test tracking format:
+    
+    Execute the transformation script:
+    ```bash
+    .claude/commands/scripts/create_mutation_test_json_transform_response.sh [FILEPATH] [TARGET_FILE]
+    ```
+    
+    Replace `[FILEPATH]` with the actual path from Step 2 and `[TARGET_FILE]` with the target location from <CreateContext/>.
+    
+    The script creates the target file with all discovered types initialized with `batch_number: null`.
+    
+    **File Structure Validation**:
+    The completed file is structured as a JSON array of type objects with this structure:
+    ```json
+    {
+      "type": "fully::qualified::TypeName",
+      "spawn_support": "supported" | "not_supported", 
+      "mutation_paths": ["array", "of", "mutation", "paths"],
+      "test_status": "untested" | "passed",
+      "batch_number": null,
+      "fail_reason": ""
+    }
+    ```
+    
+    Expected characteristics:
+    - All types with spawn support properly identified (`"supported"` or `"not_supported"`)
+    - All types with mutation paths listed as arrays
+    - All types starting with `test_status: "untested"` (except auto-passed spawn types)
+    - All types starting with `batch_number: null` (batch assignment done separately)
+</FileTransformation>
 
-### 5. Verify final file structure
-The completed file is structured as a JSON array of type objects (not an object with type names as keys).
+## STEP 4: RESULTS REPORTING
 
-Each array element contains a type object with the structure:
-```json
-{
-  "type": "fully::qualified::TypeName",
-  "spawn_support": "supported" | "not_supported", 
-  "mutation_paths": ["array", "of", "mutation", "paths"],
-  "test_status": "untested" | "passed",
-  "batch_number": null,
-  "fail_reason": ""
-}
-```
+<ResultsReporting>
+    Generate comprehensive statistics about the created file:
+    
+    ```bash
+    .claude/commands/scripts/create_mutation_test_json_stats.sh [TARGET_FILE]
+    ```
+    
+    This script provides comprehensive statistics including:
+    - Capability summary
+    - Test status breakdown
+    - Batch information
+    - Progress tracking metrics
+    
+    Review the statistics to ensure the file was created successfully.
+</ResultsReporting>
 
-The completed file should have:
-- All types with spawn support properly identified (`"supported"` or `"not_supported"`)
-- All types with mutation paths listed as arrays
-- All types starting with `test_status: "untested"` (except auto-passed spawn types)
-- All types starting with `batch_number: null` (batch assignment done separately)
+## STEP 5: APP CLEANUP
 
-Types that support spawn typically have:
-- `has_deserialize: true` and `has_serialize: true` in the BRP response
-- A `spawn_format` field in the BRP response
-- `["query", "get", "mutate", "spawn", "insert"]` in supported_operations
+<AppCleanup>
+    Shutdown the application:
+    
+    ```bash
+    mcp__brp__brp_shutdown(
+        app_name="[APP_NAME]",
+        port=[APP_PORT]
+    )
+    ```
+    
+    Confirm the app has been cleanly shutdown before proceeding.
+</AppCleanup>
 
-### 6. Report results
-```bash
-# Generate summary statistics using the stats script
-./test-app/tests/type_stats.sh $TMPDIR/all_types.json
-```
+## STEP 6: COMPARISON AND VALIDATION
 
-This script provides comprehensive statistics including capability summary, test status, batch information, and progress tracking.
+<ComparisonValidation>
+    **Automatic Comparison with Baseline**
+    
+    After successful file creation, automatically compare with baseline:
+    
+    1. **Save previous version** (if it exists):
+    ```bash
+    if [ -f "[TARGET_FILE]" ]; then
+        cp [TARGET_FILE] $TMPDIR/all_types_previous.json
+    fi
+    ```
+    
+    2. **Run quick comparison**:
+    ```bash
+    .claude/commands/scripts/compare_mutations_quick.sh
+    ```
+    
+    3. **Run detailed comparison using compare_mutations.py**:
+    
+    **IMPORTANT**: Use `compare_mutations.py` (NOT `compare_mutations_check_type.py` which is only for keyword actions)
+    
+    Run comprehensive comparison between baseline and current:
+    ```bash
+    python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
+    ```
+    
+    Run comparison between previous and current:
+    ```bash
+    python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_previous.json $TMPDIR/all_types.json
+    ```
+    
+    Present detailed analysis including:
+    - Exact differences found
+    - Types with changed mutation paths
+    - New/removed paths
+    - Format changes
+    - Assessment of significance
+    
+    4. **Analyze comparison results**:
+    - Note total number of differences found
+    - Identify types of changes (new paths, removed paths, format changes)
+    - Assess significance of changes
+    
+    5. **Prepare validation summary** for user presentation
+</ComparisonValidation>
 
-### 7. Cleanup
-Shutdown the app:
-```bash
-mcp__brp__brp_shutdown(
-    app_name="extras_plugin",
-    port=22222
-)
-```
+## STEP 7: USER VALIDATION
 
-## Critical Success Factors
+<UserValidation>
+    **Present Comparison Results to User for Baseline Decision**
+    
+Present the comparison analysis in this format:
 
-1. **NO intermediate files** - Do NOT create Python scripts, temp files, or any other files
-2. **Direct tool usage only** - Use only MCP tools and the provided shell scripts
-3. **Single output file** - Only create/modify `$TMPDIR/all_types.json`
-4. **Use actual BRP responses** - Base spawn support and mutation paths on actual BRP discovery
-5. **Execute shell scripts** - Use the provided `transform_brp_response.sh` and `type_stats.sh` scripts
+## Mutation Test File Generation Complete
+**File created**: [TARGET_FILE]  
+**Total types discovered**: [count from statistics]  
+**Spawn-supported types**: [count from statistics]  
+**Types with mutations**: [count from statistics]
 
-## Expected Results
+### Comparison with Baseline:
+[Summary of differences from comparison, e.g.:]
+- **No differences found** - All mutation paths identical to baseline
+- OR **[X] differences found**:
+  - [List key differences]
+  - [Assess significance]
 
-- Spawn-supported types: Types with Serialize/Deserialize traits (Name, Transform, Node, Window, BackgroundColor, test components, etc.)
-- Non-spawn types: Most rendering/internal components (Sprite, Camera components, visibility components, etc.)
-- All types should have their actual mutation paths populated as arrays
-- All types start with `test_status: "untested"` and empty `fail_reason`
+### Baseline Promotion Decision
+The comparison shows [summary]. Should I mark this version as the new good baseline?
+
+## Available Actions
+**promote** - Mark this version as the new good baseline  
+**skip** - Keep existing baseline, don't promote this version  
+**investigate** - Launch deeper investigation of the differences
+    
+    **CRITICAL**: STOP and wait for user's keyword response before proceeding.
+</UserValidation>
+
+## SHARED DEFINITIONS
+
+<NoIntermediateFiles>
+**NO intermediate files** - Do NOT create Python scripts, temp files, or any other files beyond the target file
+</NoIntermediateFiles>
+
+<DirectToolsOnly>
+**Direct tool usage only** - Use only MCP tools and the provided shell scripts
+</DirectToolsOnly>
+
+<SingleOutputFile>
+**Single output file** - Only create/modify the target file specified in <CreateContext/>
+</SingleOutputFile>
+
+<UseActualBrpResponses>
+**Use actual BRP responses** - Base spawn support and mutation paths on actual BRP discovery, not assumptions
+</UseActualBrpResponses>
+
+<ExecuteShellScripts>
+**Execute shell scripts** - Use the provided transformation and statistics scripts as specified
+</ExecuteShellScripts>
+
+<UserValidation>
+**User validation required** - Must present comparison results and get user approval before baseline promotion
+</UserValidation>

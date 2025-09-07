@@ -48,7 +48,7 @@ PORT = 20116                 # BRP port for testing
 **MANDATORY FIRST STEP**: Always clear and reassign batch numbers using the renumbering script:
 
 ```bash
-./test-app/tests/renumber_batches.sh
+./.claude/commands/scripts/mutation_test_renumber_batches.sh
 ```
 
 This script will:
@@ -249,7 +249,7 @@ After each batch completes:
 2. **Write to temp file**: **MANDATORY** - Use the Write tool to save results array to `$TMPDIR/batch_results_${batch_number}.json`
    - **NEVER use bash commands like `cat >` or `echo >` for writing JSON files**
    - **ALWAYS use the Write tool** - this prevents permission interruptions
-3. **Execute merge script**: Run `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json $TMPDIR/all_types.json`
+3. **Execute merge script**: Run `./.claude/commands/scripts/mutation_test_merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json $TMPDIR/all_types.json`
 4. **Cleanup temp file**: Remove the batch results file after merging: `rm -f $TMPDIR/batch_results_${batch_number}.json`
 5. **Handle merge results**:
    - Script exit code 0: All passed, continue to next batch

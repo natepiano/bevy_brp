@@ -79,7 +79,18 @@
       "Bash(ls:*)",
       "Bash(.claude/commands/scripts/summarize_results.sh:*)",
       "mcp__brp__brp_all_type_schemas",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Read(//tmp/**)",
+      "Bash(.claude/commands/scripts/compare_mutations_quick.sh:*)",
+      "Bash(.claude/commands/scripts/create_mutation_test_json_transform_response.sh:*)",
+      "Bash(head:*)",
+      "Bash(.claude/commands/scripts/create_mutation_test_json_stats.sh:*)",
+      "Bash(if [ -f \"$TMPDIR/all_types.json\" ])",
+      "Bash(then cp \"$TMPDIR/all_types.json\" \"$TMPDIR/all_types_previous.json\")",
+      "Bash(fi)",
+      "mcp__brp__brp_get_trace_log_path",
+      "Bash(then)",
+      "Bash(python3:*)"
     ],
     "deny": [
       "Bash(sed:*)"

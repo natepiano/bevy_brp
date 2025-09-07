@@ -6,7 +6,7 @@ This command compares mutation path discovery between different versions of the 
 
 Run the quick comparison:
 ```bash
-.claude/commands/scripts/quick_compare.sh
+.claude/commands/scripts/compare_mutations_quick.sh
 ```
 
 ## Detailed Comparison
@@ -18,12 +18,12 @@ python3 .claude/commands/scripts/compare_mutations.py <old_file> <new_file>
 
 Check a specific type across all versions:
 ```bash
-python3 .claude/commands/scripts/check_type.py "bevy_transform::components::transform::Transform"
+python3 .claude/commands/scripts/compare_mutations_check_type.py "bevy_transform::components::transform::Transform"
 ```
 
 Summarize test results from any JSON file:
 ```bash
-.claude/commands/scripts/summarize_results.sh <json_file>
+.claude/commands/scripts/compare_mutations_summarize.sh <json_file>
 ```
 
 ## File Management Process
@@ -96,15 +96,15 @@ After comparing a new version:
 
 ### Scripts (in .claude/commands/scripts/)
 - `compare_mutations.py` - Main comparison script
-- `check_type.py` - Check specific type across versions
-- `quick_compare.sh` - Quick comparison wrapper
-- `summarize_results.sh` - Summarize test results from JSON files
+- `compare_mutations_check_type.py` - Check specific type across versions
+- `compare_mutations_quick.sh` - Quick comparison wrapper
+- `compare_mutations_summarize.sh` - Summarize test results from JSON files
 
 ## Examples
 
 ### Full comparison suite
 ```bash
-.claude/commands/scripts/quick_compare.sh
+.claude/commands/scripts/compare_mutations_quick.sh
 ```
 
 ### Compare specific files
@@ -114,19 +114,19 @@ python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_baseline
 
 ### Check if Transform changed
 ```bash
-python3 .claude/commands/scripts/check_type.py "bevy_transform::components::transform::Transform"
+python3 .claude/commands/scripts/compare_mutations_check_type.py "bevy_transform::components::transform::Transform"
 ```
 
 ### Check test components
 ```bash
-python3 .claude/commands/scripts/check_type.py "extras_plugin::TestMapComponent"
-python3 .claude/commands/scripts/check_type.py "extras_plugin::TestArrayField"
+python3 .claude/commands/scripts/compare_mutations_check_type.py "extras_plugin::TestMapComponent"
+python3 .claude/commands/scripts/compare_mutations_check_type.py "extras_plugin::TestArrayField"
 ```
 
 ### Summarize batch results
 ```bash
-.claude/commands/scripts/summarize_results.sh $TMPDIR/batch_results_1.json
-.claude/commands/scripts/summarize_results.sh $TMPDIR/all_types.json
+.claude/commands/scripts/compare_mutations_summarize.sh $TMPDIR/batch_results_1.json
+.claude/commands/scripts/compare_mutations_summarize.sh $TMPDIR/all_types.json
 ```
 
 ## Setting a New Baseline

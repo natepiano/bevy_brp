@@ -1,0 +1,13 @@
+# Components that cannot be mutated (immutable)
+# These components will be excluded from mutation testing
+#
+# Format: One type name per line
+# Comments start with #
+
+# Immutable type (causes panic when mutated)
+# bevy's immutable types are not, apparently, properly reflected yet
+# as when we query it says that it supports mutation
+# hence this excluded type
+bevy_ecs::hierarchy::ChildOf
+
+# Add other problematic types below as they are discovered
