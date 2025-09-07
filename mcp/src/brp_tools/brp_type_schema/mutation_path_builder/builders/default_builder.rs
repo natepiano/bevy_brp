@@ -1,9 +1,6 @@
 /// Default builder for simple types
 ///
 /// Handles simple types that don't need complex logic - just creates a standard mutation path
-/// use `std::collections::HashMap`;
-use serde_json::json;
-
 use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -16,11 +13,16 @@ impl MutationPathBuilder for DefaultMutationBuilder {
     fn build_paths(
         &self,
         ctx: &RecursionContext,
-        _depth: RecursionDepth,
+        depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
+        use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
+        
+        // Generate a proper example value for this type instead of null
+        let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
+        
         Ok(vec![MutationPathInternal {
             path:            ctx.mutation_path.clone(),
-            example:         json!(null),
+            example,
             enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
