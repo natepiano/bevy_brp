@@ -76,7 +76,8 @@
       "mcp__brp__brp_status",
       "mcp__brp__brp_stop_watch",
       "mcp__brp__brp_type_schema",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(.claude/commands/scripts/summarize_results.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
