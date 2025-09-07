@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ use super::tracing::TracingLevel;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct SetTracingLevelParams {
     /// Tracing level to set (error, warn, info, debug, trace)
     pub level: String,
@@ -28,33 +28,21 @@ pub struct SetTracingLevelResult {
     message_template: String,
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "SetTracingLevelParams", output = "SetTracingLevelResult")]
 pub struct SetTracingLevel;
 
-impl ToolFn for SetTracingLevel {
-    type Output = SetTracingLevelResult;
-    type Params = SetTracingLevelParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: SetTracingLevelParams = ctx.extract_parameter_values()?;
-
-            let result = handle_impl(&params.level);
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
-
-fn handle_impl(level_str: &str) -> Result<SetTracingLevelResult> {
+async fn handle_impl(params: SetTracingLevelParams) -> Result<SetTracingLevelResult> {
     // Parse the tracing level
-    let tracing_level = match TracingLevel::from_str(level_str) {
+    let tracing_level = match TracingLevel::from_str(&params.level) {
         Ok(level) => level,
         Err(e) => {
             return Err(Error::invalid(
                 "tracing level",
-                format!("{level_str}: {e}. Valid levels are: error, warn, info, debug, trace"),
+                format!(
+                    "{}: {e}. Valid levels are: error, warn, info, debug, trace",
+                    params.level
+                ),
             )
             .into());
         }

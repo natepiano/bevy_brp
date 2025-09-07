@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::log_tools::support;
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ListLogsParams {
     /// Optional filter to list logs for a specific app only
     #[to_metadata(skip_if_none)]
@@ -34,29 +34,17 @@ pub struct ListLogResult {
     message_template: String,
 }
 
-/// Handler for the `brp_list_logs` tool using the `LocalFn` approach
+#[derive(ToolFn)]
+#[tool_fn(params = "ListLogsParams", output = "ListLogResult")]
 pub struct ListLogs;
 
-impl ToolFn for ListLogs {
-    type Output = ListLogResult;
-    type Params = ListLogsParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: ListLogsParams = ctx.extract_parameter_values()?;
-            let result = list_log_files(params.app_name.as_deref(), params.verbose).map(|logs| {
-                ListLogResult::new(
-                    logs.clone(),
-                    support::get_log_directory().display().to_string(),
-                    logs.len(),
-                )
-            });
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
+async fn handle_impl(params: ListLogsParams) -> Result<ListLogResult> {
+    let logs = list_log_files(params.app_name.as_deref(), params.verbose)?;
+    Ok(ListLogResult::new(
+        logs.clone(),
+        support::get_log_directory().display().to_string(),
+        logs.len(),
+    ))
 }
 
 fn list_log_files(

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ use super::support;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReadLogParams {
     /// The log filename (e.g., `bevy_brp_mcp_myapp_1234567890.log`)
     pub filename:   String,
@@ -55,47 +55,24 @@ pub struct ReadLogResult {
     message_template:    String,
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "ReadLogParams", output = "ReadLogResult")]
 pub struct ReadLog;
 
-impl ToolFn for ReadLog {
-    type Output = ReadLogResult;
-    type Params = ReadLogParams;
+async fn handle_impl(params: ReadLogParams) -> Result<ReadLogResult> {
+    // Convert tail_lines if provided
+    let tail_lines = match params.tail_lines {
+        Some(lines) => match usize::try_from(lines) {
+            Ok(n) => Some(n),
+            Err(_) => {
+                return Err(Error::invalid("tail_lines", "tail_lines value too large").into());
+            }
+        },
+        None => None,
+    };
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: ReadLogParams = ctx.extract_parameter_values()?;
-
-            // Convert tail_lines if provided
-            let tail_lines = match params.tail_lines {
-                Some(lines) => match usize::try_from(lines) {
-                    Ok(n) => Some(n),
-                    Err(_) => {
-                        return Ok(ToolResult {
-                            result: Err(
-                                Error::invalid("tail_lines", "tail_lines value too large").into()
-                            ),
-                            params: Some(params),
-                        });
-                    }
-                },
-                None => None,
-            };
-
-            let result = handle_impl(&params.filename, params.keyword.as_deref(), tail_lines);
-
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
-
-fn handle_impl(
-    filename: &str,
-    keyword: Option<&str>,
-    tail_lines: Option<usize>,
-) -> Result<ReadLogResult> {
+    let filename = &params.filename;
+    let keyword = params.keyword.as_deref();
     // Validate filename format for security
     if !support::is_valid_log_filename(filename) {
         return Err(Error::invalid("filename", "only bevy_brp_mcp log files can be read").into());
@@ -113,7 +90,7 @@ fn handle_impl(
     let (content, metadata) = read_log_file(&log_path, keyword, tail_lines)?;
 
     Ok(ReadLogResult::new(
-        filename.to_string(),
+        params.filename,
         log_path.display().to_string(),
         metadata.len(),
         support::format_bytes(metadata.len()),

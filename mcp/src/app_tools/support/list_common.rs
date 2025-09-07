@@ -1,28 +1,10 @@
 //! Generic listing handler using the strategy pattern
 
 use std::collections::HashSet;
-use std::future::Future;
-use std::path::PathBuf;
-
-use rmcp::ErrorData as McpError;
 
 use super::cargo_detector::CargoDetector;
 use super::collection_strategy::CollectionStrategy;
 use super::scanning;
-use crate::tool::HandlerContext;
-
-/// Typed handler wrapper for binary listing operations that fetches search paths
-pub async fn handle_list_binaries<F, Fut, T>(
-    handler_context: HandlerContext,
-    handler: F,
-) -> Result<T, McpError>
-where
-    F: FnOnce(Vec<PathBuf>) -> Fut + Send,
-    Fut: Future<Output = Result<T, McpError>> + Send,
-{
-    let search_paths = handler_context.roots;
-    handler(search_paths).await
-}
 
 /// Collect all items using the provided strategy
 pub fn collect_all_items<S: CollectionStrategy>(

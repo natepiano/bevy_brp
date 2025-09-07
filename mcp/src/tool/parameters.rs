@@ -3,7 +3,9 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use bevy_brp_mcp_macros::ParamStruct;
 use schemars::{JsonSchema, Schema};
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
@@ -20,8 +22,11 @@ use crate::string_traits::{IntoStrings, JsonFieldAccess};
 /// for parameter structs.
 pub trait ParamStruct: Send + Sync + serde::Serialize {}
 
-/// Implementation for unit type to support parameterless tools
-impl ParamStruct for () {}
+/// Shared parameter struct for tools that have no parameters
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
+pub struct NoParams {
+    // This struct represents tools with no parameters
+}
 
 /// Unified parameter names combining all BRP and local tool parameters
 /// Entries are alphabetically sorted for easy maintenance

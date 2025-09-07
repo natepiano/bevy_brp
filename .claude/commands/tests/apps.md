@@ -1,7 +1,7 @@
 # Apps Test
 
 ## Objective
-Validate that the `test_extras_plugin_app` binary works correctly with BRP operations, testing app vs example functionality distinction.
+Validate that the `test_app` binary works correctly with BRP operations, testing app vs example functionality distinction.
 
 **NOTE**: The app is already running on the specified port - focus on testing functionality, not launch/shutdown.
 
@@ -36,7 +36,7 @@ Validate that the `test_extras_plugin_app` binary works correctly with BRP opera
 - Store entity ID for subsequent tests
 
 ### 4. Query Operation - Non-Reflected Component
-- Execute `mcp__brp__bevy_query` for `test_extras_plugin_app::Rotator` component (which lacks Reflect derive)
+- Execute `mcp__brp__bevy_query` for `test_app::Rotator` component (which lacks Reflect derive)
 - **IMPORTANT**: The `data` parameter is required - use an empty object `{}` if you only want to filter
 - With default `strict: false` and `data: {}`: Verify it returns empty results (0 entities)
 - With `strict: true` and `data: {}`: Verify it returns error -23402 with message about component not being registered

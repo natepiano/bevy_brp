@@ -75,15 +75,7 @@
       "mcp__brp__brp_shutdown",
       "mcp__brp__brp_status",
       "mcp__brp__brp_stop_watch",
-      "mcp__brp__brp_type_schema",
-      "Bash(~/.claude/commands/bash/build-check.sh:*)",
-      "Bash(./test-app/tests/type_stats.sh:*)",
-      "Read(//tmp/**)",
-      "Bash(head:*)",
-      "WebFetch(domain:www.desmos.com)",
-      "Bash(cd:*)",
-      "Bash(timeout 5 BRP_PORT=22222 cargo run --example extras_plugin)",
-      "Bash(python3:*)"
+      "mcp__brp__brp_type_schema"
     ],
     "deny": [
       "Bash(sed:*)"

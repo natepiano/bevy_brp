@@ -41,6 +41,32 @@ pub struct ToolResult<T, P = ()> {
 }
 
 /// Unified trait for all tool handlers (local and BRP)
+///
+/// # Implementation Requirements
+///
+/// When deriving `ToolFn` with the `#[derive(ToolFn)]` macro, you must provide:
+///
+/// 1. A `handle_impl` function with one of these signatures:
+///    - Without context: `async fn handle_impl(params: Self::Params) -> Result<Self::Output>`
+///    - With context: `async fn handle_impl(ctx: HandlerContext, params: Self::Params) ->
+///      Result<Self::Output>`
+///
+/// 2. The `#[tool_fn]` attribute specifying:
+///    - `params = "YourParamsType"` - The parameter struct type
+///    - `output = "YourOutputType"` - The result struct type
+///    - `with_context` (optional) - Pass `HandlerContext` to `handle_impl`
+///
+/// # Example
+///
+/// ```rust
+/// #[derive(ToolFn)]
+/// #[tool_fn(params = "MyParams", output = "MyResult")]
+/// pub struct MyTool;
+///
+/// async fn handle_impl(params: MyParams) -> Result<MyResult> {
+///     // Your implementation here
+/// }
+/// ```
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: ResultStruct + Send + Sync;

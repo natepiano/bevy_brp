@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::{Signal, System};
@@ -8,7 +8,7 @@ use crate::brp_tools::{BrpClient, JSON_RPC_ERROR_METHOD_NOT_FOUND, Port, Respons
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ShutdownParams {
     /// Name of the Bevy app to shutdown
     pub app_name: String,
@@ -53,25 +53,9 @@ enum ShutdownOutcome {
     Error { message: String },
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "ShutdownParams", output = "ShutdownResult")]
 pub struct Shutdown;
-
-impl ToolFn for Shutdown {
-    type Output = ShutdownResult;
-    type Params = ShutdownParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: ShutdownParams = ctx.extract_parameter_values()?;
-            let port = params.port;
-
-            let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
 
 /// Attempt to shutdown a Bevy app, first trying graceful shutdown then falling back to kill
 async fn shutdown_app(app_name: &str, port: Port) -> ShutdownOutcome {
@@ -146,37 +130,39 @@ fn handle_kill_process_fallback(app_name: &str, brp_error: Option<String>) -> Sh
     }
 }
 
-async fn handle_impl(app_name: &str, port: Port) -> Result<ShutdownResult> {
+async fn handle_impl(params: ShutdownParams) -> Result<ShutdownResult> {
     // Shutdown the app
-    let result = shutdown_app(app_name, port).await;
+    let result = shutdown_app(&params.app_name, params.port).await;
 
     // Build and return typed response
     match result {
         ShutdownOutcome::CleanShutdown { pid } => Ok(ShutdownResult::new(
-            app_name.to_string(),
+            params.app_name.clone(),
             pid,
             "clean_shutdown".to_string(),
-            port.0,
+            params.port.0,
             None,
         )
         .with_message_template(format!(
-            "Successfully initiated graceful shutdown for '{app_name}' (PID: {pid}) via bevy_brp_extras"
+            "Successfully initiated graceful shutdown for '{}' (PID: {pid}) via bevy_brp_extras",
+            params.app_name
         ))),
         ShutdownOutcome::ProcessKilled { pid } => Ok(ShutdownResult::new(
-            app_name.to_string(),
+            params.app_name.clone(),
             pid,
             "process_kill".to_string(),
-            port.0,
+            params.port.0,
             Some("Consider adding bevy_brp_extras for clean shutdown".to_string()),
         )
         .with_message_template(format!(
-            "Terminated process '{app_name}' (PID: {pid}) using kill"
+            "Terminated process '{}' (PID: {pid}) using kill",
+            params.app_name
         ))),
         ShutdownOutcome::NotRunning => Err(Error::Structured {
-            result: Box::new(ProcessNotRunningError::new(app_name.to_string())),
+            result: Box::new(ProcessNotRunningError::new(params.app_name.clone())),
         })?,
         ShutdownOutcome::Error { message } => Err(Error::Structured {
-            result: Box::new(ShutdownFailedError::new(app_name.to_string(), message)),
+            result: Box::new(ShutdownFailedError::new(params.app_name, message)),
         })?,
     }
 }

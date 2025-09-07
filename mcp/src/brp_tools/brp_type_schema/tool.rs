@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -46,23 +46,9 @@ pub struct TypeSchemaResult {
 }
 
 /// The main tool struct for type schema discovery
+#[derive(ToolFn)]
+#[tool_fn(params = "TypeSchemaParams", output = "TypeSchemaResult")]
 pub struct TypeSchema;
-
-impl ToolFn for TypeSchema {
-    type Output = TypeSchemaResult;
-    type Params = TypeSchemaParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: TypeSchemaParams = ctx.extract_parameter_values()?;
-            let result = handle_impl(params.clone()).await;
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {

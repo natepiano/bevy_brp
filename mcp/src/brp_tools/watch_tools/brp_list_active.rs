@@ -1,12 +1,12 @@
 //! List all active watches
 
-use bevy_brp_mcp_macros::ResultStruct;
+use bevy_brp_mcp_macros::{ResultStruct, ToolFn};
 use serde::{Deserialize, Serialize};
 
 use super::manager::WATCH_MANAGER;
 use crate::brp_tools::Port;
 use crate::error::Result;
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, NoParams, ToolFn, ToolResult};
 
 /// Individual watch information
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,24 +35,11 @@ pub struct ListActiveWatchesResult {
     message_template: String,
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "NoParams", output = "ListActiveWatchesResult")]
 pub struct BrpListActiveWatches;
 
-impl ToolFn for BrpListActiveWatches {
-    type Output = ListActiveWatchesResult;
-    type Params = ();
-
-    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let result = handle_impl().await;
-            Ok(ToolResult {
-                result,
-                params: None,
-            })
-        })
-    }
-}
-
-async fn handle_impl() -> Result<ListActiveWatchesResult> {
+async fn handle_impl(_params: NoParams) -> Result<ListActiveWatchesResult> {
     // Get active watches from manager and release lock immediately
     let active_watches = {
         let manager = WATCH_MANAGER.lock().await;

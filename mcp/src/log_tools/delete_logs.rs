@@ -1,7 +1,7 @@
 use std::fs;
 use std::time::{Duration, SystemTime};
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use super::support::{self, LogFileEntry};
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct DeleteLogsParams {
     /// Optional filter to delete logs for a specific app only
     #[to_metadata(skip_if_none)]
@@ -39,37 +39,18 @@ pub struct DeleteLogsResult {
     message_template:   String,
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "DeleteLogsParams", output = "DeleteLogsResult")]
 pub struct DeleteLogs;
 
-impl ToolFn for DeleteLogs {
-    type Output = DeleteLogsResult;
-    type Params = DeleteLogsParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: DeleteLogsParams = ctx.extract_parameter_values()?;
-
-            let result = handle_impl(params.app_name.as_deref(), params.older_than_seconds);
-
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
-
-fn handle_impl(
-    app_name_filter: Option<&str>,
-    older_than_seconds: Option<u32>,
-) -> Result<DeleteLogsResult> {
-    let deleted_files = delete_log_files(app_name_filter, older_than_seconds)?;
+async fn handle_impl(params: DeleteLogsParams) -> Result<DeleteLogsResult> {
+    let deleted_files = delete_log_files(params.app_name.as_deref(), params.older_than_seconds)?;
 
     Ok(DeleteLogsResult::new(
         deleted_files.clone(),
         deleted_files.len(),
-        app_name_filter.map(String::from),
-        older_than_seconds,
+        params.app_name.clone(),
+        params.older_than_seconds,
     ))
 }
 

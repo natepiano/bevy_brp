@@ -1,6 +1,6 @@
 //! Start watching an entity for component changes
 
-use bevy_brp_mcp_macros::ParamStruct;
+use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use crate::brp_tools::Port;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetWatchParams {
     /// The entity ID to watch for component changes
     pub entity: u64,
@@ -21,35 +21,17 @@ pub struct GetWatchParams {
     pub port:   Port,
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "GetWatchParams", output = "WatchStartResult")]
 pub struct BevyGetWatch;
 
-impl ToolFn for BevyGetWatch {
-    type Output = WatchStartResult;
-    type Params = GetWatchParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: GetWatchParams = ctx.extract_parameter_values()?;
-            let port = params.port;
-
-            let result = handle_impl(params.entity, Some(params.types.clone()), port).await;
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
-
-async fn handle_impl(
-    entity_id: u64,
-    components: Option<Vec<String>>,
-    port: Port,
-) -> Result<WatchStartResult> {
+async fn handle_impl(params: GetWatchParams) -> Result<WatchStartResult> {
     // Start the watch task
-    let result = super::start_entity_watch_task(entity_id, components, port)
+    let result = super::start_entity_watch_task(params.entity, Some(params.types), params.port)
         .await
-        .map_err(|e| super::wrap_watch_error("Failed to start entity watch", Some(entity_id), e));
+        .map_err(|e| {
+            super::wrap_watch_error("Failed to start entity watch", Some(params.entity), e)
+        });
 
     match result {
         Ok((watch_id, log_path)) => Ok(WatchStartResult::new(

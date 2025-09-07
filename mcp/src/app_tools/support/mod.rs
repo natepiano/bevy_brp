@@ -12,4 +12,4 @@ pub use collection_strategy::{BevyAppsStrategy, BevyExamplesStrategy, BrpAppsStr
 pub use launch_common::{
     App, Example, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams,
 };
-pub use list_common::{collect_all_items, handle_list_binaries};
+pub use list_common::collect_all_items;

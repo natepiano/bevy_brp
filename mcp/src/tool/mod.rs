@@ -13,7 +13,7 @@ mod types;
 pub use field_placement::{FieldPlacement, FieldPlacementInfo, HasFieldPlacement};
 //
 pub use handler_context::HandlerContext;
-pub use parameters::{ParamStruct, ParameterName};
+pub use parameters::{NoParams, ParamStruct, ParameterName};
 //
 // exported for mcp_macros
 pub use response_builder::ResponseBuilder;

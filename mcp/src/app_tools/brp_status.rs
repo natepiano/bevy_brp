@@ -1,4 +1,4 @@
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
@@ -7,7 +7,7 @@ use crate::brp_tools::{self, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct StatusParams {
     /// Name of the process to check for
     pub app_name: String,
@@ -35,27 +35,12 @@ pub struct StatusResult {
     message_template: String,
 }
 
+#[derive(ToolFn)]
+#[tool_fn(params = "StatusParams", output = "StatusResult")]
 pub struct Status;
 
-impl ToolFn for Status {
-    type Output = StatusResult;
-    type Params = StatusParams;
-
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            let params: StatusParams = ctx.extract_parameter_values()?;
-            let port = params.port;
-            let result = handle_impl(&params.app_name, port).await;
-            Ok(ToolResult {
-                result,
-                params: Some(params),
-            })
-        })
-    }
-}
-
-async fn handle_impl(app_name: &str, port: Port) -> Result<StatusResult> {
-    check_brp_for_app(app_name, port).await
+async fn handle_impl(params: StatusParams) -> Result<StatusResult> {
+    check_brp_for_app(&params.app_name, params.port).await
 }
 
 /// Error when process is not found

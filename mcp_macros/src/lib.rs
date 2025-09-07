@@ -5,6 +5,7 @@ mod param_struct;
 mod result_struct;
 mod shared;
 mod tool_description;
+mod tool_fn;
 
 use proc_macro::TokenStream;
 
@@ -152,4 +153,49 @@ pub fn derive_param_struct(input: TokenStream) -> TokenStream {
 )]
 pub fn derive_result_struct(input: TokenStream) -> TokenStream {
     result_struct::derive_result_struct_impl(input)
+}
+
+/// Derives the ToolFn trait implementation for tool structs.
+///
+/// This macro generates the standard ToolFn implementation pattern that is
+/// repeated across all tools in the codebase. It handles parameter extraction,
+/// calling the handle_impl function, and wrapping the result.
+///
+/// # Example
+///
+/// ```ignore
+/// #[derive(ToolFn)]
+/// #[tool_fn(params = "MyParams", output = "MyOutput")]
+/// pub struct MyTool;
+///
+/// // Requires a handle_impl function in scope:
+/// async fn handle_impl(params: MyParams) -> Result<MyOutput> {
+///     // Implementation
+/// }
+/// ```
+///
+/// This will generate:
+///
+/// ```ignore
+/// impl ToolFn for MyTool {
+///     type Output = MyOutput;
+///     type Params = MyParams;
+///
+///     fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
+///         Box::pin(async move {
+///             let params: Self::Params = ctx.extract_parameter_values()?;
+///             let result = handle_impl(params.clone()).await;
+///             Ok(ToolResult {
+///                 result,
+///                 params: Some(params),
+///             })
+///         })
+///     }
+/// }
+/// ```
+#[proc_macro_derive(ToolFn, attributes(tool_fn))]
+pub fn derive_tool_fn(input: TokenStream) -> TokenStream {
+    tool_fn::derive_tool_fn(input.into())
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
 }

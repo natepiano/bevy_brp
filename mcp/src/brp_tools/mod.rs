@@ -14,8 +14,8 @@ pub use brp_client::{
     ResponseStatus, ResultStructBrpExt,
 };
 //
-// Export brp_type_schema tool
-pub use brp_type_schema::{TypeSchema, TypeSchemaParams};
+// Export brp_type_schema tools
+pub use brp_type_schema::{AllTypesSchema, AllTypesSchemaParams, TypeSchema, TypeSchemaParams};
 pub use constants::BRP_PORT_ENV_VAR;
 pub use port::Port;
 //

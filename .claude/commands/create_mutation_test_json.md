@@ -29,27 +29,17 @@ mcp__brp__brp_status(
 
 Wait for confirmation that BRP is responding before proceeding.
 
-### 3. Get list of all component types
+### 3. Get all type schemas
+
+Call `brp_all_type_schemas` to get schemas for all registered types in one operation:
 ```bash
-result = mcp__brp__bevy_list(port=22222)
+mcp__brp__brp_all_type_schemas(port=22222)
 ```
 
-This returns an array of all registered component type names.
-
-### 4. Call brp_type_schema with ALL types
-
-Call `mcp__brp__brp_type_schema` with ALL types from step 3:
-```bash
-mcp__brp__brp_type_schema(
-    types=<all_types_from_step_3>,
-    port=22222
-)
-```
-
-The tool will automatically save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_type_schema_12345.json`).
+This automatically discovers all registered types and returns their schemas. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_schemas_12345.json`).
 
 
-### 5. Transform the result with the shell script
+### 4. Transform the result with the shell script
 
 Execute the transformation script with the exclusions file:
 
@@ -57,11 +47,11 @@ Execute the transformation script with the exclusions file:
 ./test-app/tests/transform_brp_response.sh FILEPATH $TMPDIR/all_types.json
 ```
 
-Replace `FILEPATH` with the actual path from step 4 (e.g., `/var/folders/.../mcp_response_brp_type_schema_12345.json`).
+Replace `FILEPATH` with the actual path from step 3 (e.g., `/var/folders/.../mcp_response_brp_all_type_schemas_12345.json`).
 
 The script creates `$TMPDIR/all_types.json` with all discovered types initialized with `batch_number: null`.
 
-### 6. Verify final file structure
+### 5. Verify final file structure
 The completed file is structured as a JSON array of type objects (not an object with type names as keys).
 
 Each array element contains a type object with the structure:
@@ -87,7 +77,7 @@ Types that support spawn typically have:
 - A `spawn_format` field in the BRP response
 - `["query", "get", "mutate", "spawn", "insert"]` in supported_operations
 
-### 7. Report results
+### 6. Report results
 ```bash
 # Generate summary statistics using the stats script
 ./test-app/tests/type_stats.sh $TMPDIR/all_types.json
@@ -95,7 +85,7 @@ Types that support spawn typically have:
 
 This script provides comprehensive statistics including capability summary, test status, batch information, and progress tracking.
 
-### 9. Cleanup
+### 7. Cleanup
 Shutdown the app:
 ```bash
 mcp__brp__brp_shutdown(

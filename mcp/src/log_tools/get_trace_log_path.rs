@@ -1,8 +1,8 @@
-use bevy_brp_mcp_macros::ResultStruct;
+use bevy_brp_mcp_macros::{ResultStruct, ToolFn};
 use serde::{Deserialize, Serialize};
 
 use super::TracingLevel;
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::tool::{HandlerContext, HandlerResult, NoParams, ToolFn, ToolResult};
 
 /// Result from getting the trace log path
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
@@ -21,34 +21,23 @@ pub struct GetTraceLogPathResult {
     message_template: String,
 }
 
-/// Handler for the `brp_get_trace_log_path` tool using the `LocalFn` approach
+#[derive(ToolFn)]
+#[tool_fn(params = "NoParams", output = "GetTraceLogPathResult")]
 pub struct GetTraceLogPath;
 
-impl ToolFn for GetTraceLogPath {
-    type Output = GetTraceLogPathResult;
-    type Params = ();
+async fn handle_impl(_params: NoParams) -> crate::error::Result<GetTraceLogPathResult> {
+    // Get the trace log path
+    let log_path = TracingLevel::get_trace_log_path();
 
-    fn call(&self, _ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            // Get the trace log path
-            let log_path = TracingLevel::get_trace_log_path();
+    let log_path_str = log_path.to_string_lossy().to_string();
 
-            let log_path_str = log_path.to_string_lossy().to_string();
+    // Check if the file exists and get its size
+    let (exists, file_size_bytes) =
+        std::fs::metadata(&log_path).map_or((false, None), |metadata| (true, Some(metadata.len())));
 
-            // Check if the file exists and get its size
-            let (exists, file_size_bytes) = std::fs::metadata(&log_path)
-                .map_or((false, None), |metadata| (true, Some(metadata.len())));
-
-            let result = Ok(GetTraceLogPathResult::new(
-                log_path_str,
-                exists,
-                file_size_bytes,
-            ));
-
-            Ok(ToolResult {
-                result,
-                params: None,
-            })
-        })
-    }
+    Ok(GetTraceLogPathResult::new(
+        log_path_str,
+        exists,
+        file_size_bytes,
+    ))
 }

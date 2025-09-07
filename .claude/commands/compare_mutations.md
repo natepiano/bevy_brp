@@ -61,6 +61,27 @@ python3 $TMPDIR/compare_mutations.py $TMPDIR/all_types_previous.json $TMPDIR/all
 - Fundamental types (Transform, Sprite) losing basic paths
 - Inconsistent path formats within the same type
 
+## Validating and Marking a Version as Good
+
+After comparing a new version:
+
+1. **Review the comparison results** - Look for concerning changes listed above
+2. **Ask the user for validation**:
+   ```
+   "The comparison shows [X differences/no differences]. 
+   Should I mark this version as the new good baseline?"
+   ```
+3. **If user confirms it's good**, establish it as the baseline:
+   ```bash
+   # Mark current version as the good baseline
+   cp $TMPDIR/all_types.json $TMPDIR/all_types_baseline.json
+   
+   # Also create a timestamped backup for historical reference
+   cp $TMPDIR/all_types.json $TMPDIR/all_types_good_$(date +%Y%m%d_%H%M%S).json
+   
+   echo "✅ Version marked as good baseline"
+   ```
+
 ## Key Files
 
 ### Data Files (in $TMPDIR)
@@ -98,8 +119,5 @@ python3 $TMPDIR/check_type.py "extras_plugin::TestArrayField"
 
 ## Setting a New Baseline
 
-When you confirm the current version is good:
-```bash
-cp $TMPDIR/all_types.json $TMPDIR/all_types_baseline.json
-echo "✅ New baseline set from current all_types.json"
-```
+This is now covered in the "Validating and Marking a Version as Good" section above.
+Always ask the user before marking a version as the baseline.

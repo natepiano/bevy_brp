@@ -56,6 +56,14 @@ This script will:
 - Assign new batch numbers to untested/failed types (BATCH_SIZE=30 per batch)
 - Display statistics about types to be tested
 
+**CLEANUP PREVIOUS RUNS**: Remove any leftover batch result files from previous test runs:
+
+```bash
+rm -f $TMPDIR/batch_results_*.json
+```
+
+This prevents interference from previous test runs and ensures clean batch result processing.
+
 ### Step 2: Application Management
 
 1. **Check Status**: Use `mcp__brp__brp_status(app_name="extras_plugin", port=20116)` to check if extras_plugin is running
@@ -242,7 +250,8 @@ After each batch completes:
    - **NEVER use bash commands like `cat >` or `echo >` for writing JSON files**
    - **ALWAYS use the Write tool** - this prevents permission interruptions
 3. **Execute merge script**: Run `./test-app/tests/merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json $TMPDIR/all_types.json`
-4. **Handle merge results**:
+4. **Cleanup temp file**: Remove the batch results file after merging: `rm -f $TMPDIR/batch_results_${batch_number}.json`
+5. **Handle merge results**:
    - Script exit code 0: All passed, continue to next batch
    - Script exit code 2: Failures detected - **STOP IMMEDIATELY**
    - `COMPONENT_NOT_FOUND` in results: Handle missing component (see Step 6)
