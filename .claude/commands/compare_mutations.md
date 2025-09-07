@@ -6,19 +6,24 @@ This command compares mutation path discovery between different versions of the 
 
 Run the quick comparison:
 ```bash
-$TMPDIR/quick_compare.sh
+.claude/commands/scripts/quick_compare.sh
 ```
 
 ## Detailed Comparison
 
 Compare any two files:
 ```bash
-python3 $TMPDIR/compare_mutations.py <old_file> <new_file>
+python3 .claude/commands/scripts/compare_mutations.py <old_file> <new_file>
 ```
 
 Check a specific type across all versions:
 ```bash
-python3 $TMPDIR/check_type.py "bevy_transform::components::transform::Transform"
+python3 .claude/commands/scripts/check_type.py "bevy_transform::components::transform::Transform"
+```
+
+Summarize test results from any JSON file:
+```bash
+.claude/commands/scripts/summarize_results.sh <json_file>
 ```
 
 ## File Management Process
@@ -43,10 +48,10 @@ cp $TMPDIR/all_types.json $TMPDIR/all_types_previous.json
 ```bash
 # The new version is in $TMPDIR/all_types.json
 # Run comparison against baseline
-python3 $TMPDIR/compare_mutations.py $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
+python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
 
 # Also compare against previous run
-python3 $TMPDIR/compare_mutations.py $TMPDIR/all_types_previous.json $TMPDIR/all_types.json
+python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_previous.json $TMPDIR/all_types.json
 ```
 
 ## What to Look For
@@ -89,32 +94,39 @@ After comparing a new version:
 - `all_types_baseline.json` - Known good baseline version
 - `all_types_previous.json` - Previous run for incremental comparison
 
-### Scripts (in $TMPDIR)
+### Scripts (in .claude/commands/scripts/)
 - `compare_mutations.py` - Main comparison script
 - `check_type.py` - Check specific type across versions
 - `quick_compare.sh` - Quick comparison wrapper
+- `summarize_results.sh` - Summarize test results from JSON files
 
 ## Examples
 
 ### Full comparison suite
 ```bash
-$TMPDIR/quick_compare.sh
+.claude/commands/scripts/quick_compare.sh
 ```
 
 ### Compare specific files
 ```bash
-python3 $TMPDIR/compare_mutations.py $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
+python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
 ```
 
 ### Check if Transform changed
 ```bash
-python3 $TMPDIR/check_type.py "bevy_transform::components::transform::Transform"
+python3 .claude/commands/scripts/check_type.py "bevy_transform::components::transform::Transform"
 ```
 
 ### Check test components
 ```bash
-python3 $TMPDIR/check_type.py "extras_plugin::TestMapComponent"
-python3 $TMPDIR/check_type.py "extras_plugin::TestArrayField"
+python3 .claude/commands/scripts/check_type.py "extras_plugin::TestMapComponent"
+python3 .claude/commands/scripts/check_type.py "extras_plugin::TestArrayField"
+```
+
+### Summarize batch results
+```bash
+.claude/commands/scripts/summarize_results.sh $TMPDIR/batch_results_1.json
+.claude/commands/scripts/summarize_results.sh $TMPDIR/all_types.json
 ```
 
 ## Setting a New Baseline
