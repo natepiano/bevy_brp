@@ -16,18 +16,18 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
-        
+
         // Generate a proper example value for this type instead of null
         let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
-        
+
         Ok(vec![MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
+            path: ctx.mutation_path.clone(),
             example,
-            enum_variants:   None,
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            enum_variants: None,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
+            error_reason: None,
         }])
     }
 }
