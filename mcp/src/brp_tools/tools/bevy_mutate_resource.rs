@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/mutate_resource` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct MutateResourceParams {
     /// The fully-qualified type name of the resource to mutate
     pub resource: String,

@@ -182,24 +182,8 @@ pub enum ReflectTrait {
     Deserialize,
 }
 
-/// Registry schema field names
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
-#[strum(serialize_all = "camelCase")]
-pub enum SchemaField {
-    CrateName,
-    Items,
-    Kind,
-    ModulePath,
-    OneOf,
-    PrefixItems,
-    Properties,
-    #[strum(serialize = "$ref")]
-    Ref,
-    ReflectTypes,
-    Required,
-    ShortPath,
-    Type,
-}
+// Re-export SchemaField for backwards compatibility
+pub use crate::json_types::SchemaField;
 
 impl SchemaField {
     /// Extract field type from field info JSON

@@ -24,6 +24,7 @@ pub struct ListBrpAppsResult {
 #[tool_fn(params = "NoParams", output = "ListBrpAppsResult", with_context)]
 pub struct ListBrpApps;
 
+#[allow(clippy::unused_async)]
 async fn handle_impl(ctx: HandlerContext, _params: NoParams) -> Result<ListBrpAppsResult> {
     let search_paths = &ctx.roots;
     let items = support::collect_all_items(search_paths, &BrpAppsStrategy);

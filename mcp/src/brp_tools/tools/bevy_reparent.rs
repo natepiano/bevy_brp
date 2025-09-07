@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/reparent` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ReparentParams {
     /// Array of entity IDs to reparent
     pub entities: Vec<u64>,

@@ -1,6 +1,7 @@
 //! `brp_execute` allows for executing an arbitrary BRP method - generally this is used as a
 //! debugging tool for his MCP server but can also be used if (for example) a new brp method is
 //! added before it's been implemented in this server code.
+use async_trait::async_trait;
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -8,9 +9,9 @@ use serde_json::Value;
 
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::Error;
-use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::tool::{BrpMethod, ToolFn};
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct ExecuteParams {
     /// The BRP method to execute (e.g., 'rpc.discover', 'bevy/get', 'bevy/query')
     /// Note: `BrpMethod` deserializes from BRP method strings using `#[serde(rename)]`
@@ -40,42 +41,24 @@ pub struct ExecuteResult {
 
 pub struct BrpExecute;
 
+#[async_trait]
 impl ToolFn for BrpExecute {
     type Output = ExecuteResult;
     type Params = ExecuteParams;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
-        Box::pin(async move {
-            // Extract typed parameters
-            let params: ExecuteParams = ctx.extract_parameter_values()?;
-            let port = params.port;
+    async fn handle_impl(&self, params: ExecuteParams) -> crate::error::Result<ExecuteResult> {
+        let client = BrpClient::new(
+            params.method,         // Direct use of typed BRP method
+            params.port,           // Use typed port parameter
+            params.params.clone(), // User-provided params (already Option<Value>)
+        );
 
-            let client = BrpClient::new(
-                params.method,         // Direct use of typed BRP method
-                port,                  // Use typed port parameter
-                params.params.clone(), // User-provided params (already Option<Value>)
-            );
-            let brp_result = match client.execute_raw().await {
-                Ok(result) => result,
-                Err(e) => {
-                    return Ok(ToolResult {
-                        result: Err(e),
-                        params: Some(params),
-                    });
-                }
-            };
+        let brp_result = client.execute_raw().await?;
 
-            // Convert BRP result to ToolResult
-            match brp_result {
-                ResponseStatus::Success(data) => Ok(ToolResult {
-                    result: Ok(ExecuteResult::new(data)),
-                    params: Some(params),
-                }),
-                ResponseStatus::Error(err) => Ok(ToolResult {
-                    result: Err(Error::tool_call_failed(err.get_message()).into()),
-                    params: Some(params),
-                }),
-            }
-        })
+        // Convert BRP result to ExecuteResult
+        match brp_result {
+            ResponseStatus::Success(data) => Ok(ExecuteResult::new(data)),
+            ResponseStatus::Error(err) => Err(Error::tool_call_failed(err.get_message()).into()),
+        }
     }
 }

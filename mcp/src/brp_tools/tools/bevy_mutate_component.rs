@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/mutate_component` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct MutateComponentParams {
     /// The entity ID containing the component to mutate
     pub entity: u64,

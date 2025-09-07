@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `rpc.discover` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RpcDiscoverParams {
     /// The BRP port (default: 15702)
     #[serde(default)]

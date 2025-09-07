@@ -25,6 +25,7 @@ pub struct GetTraceLogPathResult {
 #[tool_fn(params = "NoParams", output = "GetTraceLogPathResult")]
 pub struct GetTraceLogPath;
 
+#[allow(clippy::unused_async)]
 async fn handle_impl(_params: NoParams) -> crate::error::Result<GetTraceLogPathResult> {
     // Get the trace log path
     let log_path = TracingLevel::get_trace_log_path();

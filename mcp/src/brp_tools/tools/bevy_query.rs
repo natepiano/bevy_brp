@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/query` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct QueryParams {
     /// Object specifying what component data to retrieve. Properties: components (array), option
     /// (array), has (array)

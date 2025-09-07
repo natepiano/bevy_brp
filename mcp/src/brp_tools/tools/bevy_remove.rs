@@ -8,13 +8,13 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/remove` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RemoveParams {
     /// The entity ID to remove components from
     pub entity: u64,
 
     /// Array of component type names to remove
-    pub components: Value,
+    pub components: Vec<String>,
 
     /// The BRP port (default: 15702)
     #[serde(default)]

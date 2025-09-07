@@ -24,6 +24,7 @@ pub struct ListBevyExamplesResult {
 #[tool_fn(params = "NoParams", output = "ListBevyExamplesResult", with_context)]
 pub struct ListBevyExamples;
 
+#[allow(clippy::unused_async)]
 async fn handle_impl(ctx: HandlerContext, _params: NoParams) -> Result<ListBevyExamplesResult> {
     let search_paths = &ctx.roots;
     let items = support::collect_all_items(search_paths, &BevyExamplesStrategy);

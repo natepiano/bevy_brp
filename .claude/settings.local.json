@@ -90,7 +90,12 @@
       "Bash(fi)",
       "mcp__brp__brp_get_trace_log_path",
       "Bash(then)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git stash:*)",
+      "Bash(./.claude/commands/scripts/mutation_test_renumber_batches.sh:*)",
+      "Bash(./.claude/commands/scripts/mutation_test_merge_batch_results.sh:*)",
+      "Bash(echo:*)",
+      "Bash(~/.claude/commands/bash/build-check.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"

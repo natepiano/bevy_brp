@@ -109,23 +109,10 @@ impl EnumVariantInfo {
     }
 
     /// Build example JSON for this enum variant
-    pub fn build_example(
-        &self,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: usize,
-        enum_type: Option<&BrpTypeName>,
-    ) -> Value {
+    pub fn build_example(&self, registry: &HashMap<BrpTypeName, Value>, depth: usize) -> Value {
         match self {
             Self::Unit(name) => {
-                // NEW: Check for variant-specific knowledge first
-                if let Some(enum_type) = enum_type {
-                    let variant_key = KnowledgeKey::enum_variant(enum_type.type_string(), name);
-
-                    if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&variant_key) {
-                        return knowledge.example().clone();
-                    }
-                }
-                // Fall back to default Unit variant behavior
+                // just output the name
                 json!(name)
             }
             Self::Tuple(name, types) => {
@@ -255,7 +242,6 @@ pub fn build_all_enum_examples(
     schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
-    enum_type: Option<&BrpTypeName>, // ADD enum_type parameter
 ) -> HashMap<String, Value> {
     let variants = extract_enum_variants(schema, registry, depth);
 
@@ -269,14 +255,14 @@ pub fn build_all_enum_examples(
         match &variant {
             EnumVariantInfo::Unit(name) => {
                 if !seen_unit {
-                    let example = variant.build_example(registry, depth, enum_type); // Pass both
+                    let example = variant.build_example(registry, depth); // Pass both
                     examples.insert(name.clone(), example);
                     seen_unit = true;
                 }
             }
             EnumVariantInfo::Tuple(name, types) => {
                 if !seen_tuples.contains_key(types) {
-                    let example = variant.build_example(registry, depth, enum_type); // Pass both
+                    let example = variant.build_example(registry, depth); // Pass both
                     examples.insert(name.clone(), example);
                     seen_tuples.insert(types.clone(), name.clone());
                 }
@@ -288,7 +274,7 @@ pub fn build_all_enum_examples(
                     .collect();
                 if let std::collections::hash_map::Entry::Vacant(e) = seen_structs.entry(field_sig)
                 {
-                    let example = variant.build_example(registry, depth, enum_type); // Pass both
+                    let example = variant.build_example(registry, depth); // Pass both
                     examples.insert(name.clone(), example);
                     e.insert(name.clone());
                 }
@@ -385,12 +371,10 @@ impl MutationPathBuilder for EnumMutationBuilder {
             error_reason: None,
         });
 
-        // Step 2: Recurse into unique signature inner types
-        // ONLY add variant field paths when the enum is at the ROOT level
-        // When an enum is a field, we don't recurse into its variants because:
-        // 1. Only one variant can be active at a time
-        // 2. The variant is selected when setting the field value
-        // 3. Variant fields are accessed through the enum field path (e.g., .field.0.variant_field)
+        // Step 2: Add mutation paths for fields WITHIN variants (root-level enums only)
+        // When an enum is at the root, we create paths to mutate fields inside the active variant.
+        // For example, an enum with a struct variant containing field "foo" gets a path ".foo"
+        // This only applies to root enums because field enums are set as a whole unit.
         if ctx.mutation_path.is_empty() {
             let variants = extract_enum_variants(schema, &ctx.registry, *depth);
             let unique_variants = deduplicate_variant_signatures(variants);
@@ -490,9 +474,7 @@ impl EnumMutationBuilder {
             return knowledge.example().clone();
         }
 
-        // CRITICAL: Reuse EXISTING build_all_enum_examples function
-        // DO NOT reimplement the deduplication logic - it already exists!
-        let all_examples = build_all_enum_examples(schema, registry, *depth, enum_type);
+        let all_examples = build_all_enum_examples(schema, registry, *depth);
 
         // Return all variant examples as JSON
         if all_examples.is_empty() {

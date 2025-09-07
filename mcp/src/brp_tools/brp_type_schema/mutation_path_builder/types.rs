@@ -97,8 +97,7 @@ impl MutationPath {
         // Regular non-Option path
         let example_variants = if path.enum_variants.is_some() {
             // This is an enum type - generate example variants using the new system
-            let enum_type = Some(&path.type_name); // Extract enum type from path
-            let examples = super::build_all_enum_examples(type_schema, registry, 0, enum_type); // Pass both
+            let examples = super::build_all_enum_examples(type_schema, registry, 0); // Pass both
             if examples.is_empty() {
                 None
             } else {

@@ -6,7 +6,7 @@ use super::constants::DEFAULT_PROFILE;
 use super::support::{App, GenericLaunchHandler, LaunchConfig, LaunchParams, ToLaunchParams};
 use crate::brp_tools::Port;
 
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct LaunchBevyAppParams {
     /// Name of the Bevy app to launch
     pub app_name: String,

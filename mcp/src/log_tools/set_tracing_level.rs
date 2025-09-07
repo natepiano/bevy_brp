@@ -1,12 +1,13 @@
 use std::str::FromStr;
 
-use bevy_brp_mcp_macros::{ParamStruct, ResultStruct, ToolFn};
+use async_trait::async_trait;
+use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::tracing::TracingLevel;
 use crate::error::{Error, Result};
-use crate::tool::{HandlerContext, HandlerResult, ToolFn, ToolResult};
+use crate::tool::ToolFn;
 
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct SetTracingLevelParams {
@@ -28,35 +29,39 @@ pub struct SetTracingLevelResult {
     message_template: String,
 }
 
-#[derive(ToolFn)]
-#[tool_fn(params = "SetTracingLevelParams", output = "SetTracingLevelResult")]
 pub struct SetTracingLevel;
 
-async fn handle_impl(params: SetTracingLevelParams) -> Result<SetTracingLevelResult> {
-    // Parse the tracing level
-    let tracing_level = match TracingLevel::from_str(&params.level) {
-        Ok(level) => level,
-        Err(e) => {
-            return Err(Error::invalid(
-                "tracing level",
-                format!(
-                    "{}: {e}. Valid levels are: error, warn, info, debug, trace",
-                    params.level
-                ),
-            )
-            .into());
-        }
-    };
+#[async_trait]
+impl ToolFn for SetTracingLevel {
+    type Output = SetTracingLevelResult;
+    type Params = SetTracingLevelParams;
 
-    // Update the tracing level
-    TracingLevel::set_tracing_level(tracing_level);
+    async fn handle_impl(&self, params: SetTracingLevelParams) -> Result<SetTracingLevelResult> {
+        // Parse the tracing level
+        let tracing_level = match TracingLevel::from_str(&params.level) {
+            Ok(level) => level,
+            Err(e) => {
+                return Err(Error::invalid(
+                    "tracing level",
+                    format!(
+                        "{}: {e}. Valid levels are: error, warn, info, debug, trace",
+                        params.level
+                    ),
+                )
+                .into());
+            }
+        };
 
-    // Get the actual trace log path
-    let log_path = TracingLevel::get_trace_log_path();
-    let log_path_str = log_path.to_string_lossy().to_string();
+        // Update the tracing level
+        TracingLevel::set_tracing_level(tracing_level);
 
-    Ok(SetTracingLevelResult::new(
-        tracing_level.as_str().to_string(),
-        log_path_str,
-    ))
+        // Get the actual trace log path
+        let log_path = TracingLevel::get_trace_log_path();
+        let log_path_str = log_path.to_string_lossy().to_string();
+
+        Ok(SetTracingLevelResult::new(
+            tracing_level.as_str().to_string(),
+            log_path_str,
+        ))
+    }
 }

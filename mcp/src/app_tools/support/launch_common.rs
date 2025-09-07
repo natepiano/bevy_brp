@@ -121,7 +121,10 @@ impl<T: FromLaunchParams, P: ToLaunchParams + ParamStruct + for<'de> serde::Dese
     type Output = LaunchResult;
     type Params = P;
 
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>> {
+    fn call(
+        &self,
+        ctx: HandlerContext,
+    ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
         let default_profile = self.default_profile;
         Box::pin(async move {
             // Extract typed parameters - this returns framework error on failure

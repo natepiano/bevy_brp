@@ -524,13 +524,21 @@ fn generate_from_brp_client_response(
                 }
             }
             "count_components" => {
-                // For bevy/get result structure
+                // For bevy/get - handles both strict=true (flat) and strict=false (nested) formats
                 quote! {
                     #source.as_ref()
                         .and_then(|v| v.as_object())
-                        .and_then(|obj| obj.get("components"))
-                        .and_then(|v| v.as_object())
-                        .map(|obj| obj.len())
+                        .map(|obj| {
+                            // Check for nested format (strict=false): {"components": {...}, "errors": {...}}
+                            if let Some(components) = obj.get("components").and_then(|v| v.as_object()) {
+                                components.len()
+                            } else {
+                                // Flat format (strict=true): components are top-level keys
+                                obj.iter()
+                                    .filter(|(key, _)| key.as_str() != "errors")
+                                    .count()
+                            }
+                        })
                         .unwrap_or(0)
                 }
             }

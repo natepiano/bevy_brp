@@ -4,7 +4,7 @@
 
 **Command**: `/type_validation`
 
-**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `$TMPDIR/all_types.json` with simple pass/fail status for each type.
+**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `{temp_dir}/all_types.json` with simple pass/fail status for each type.
 
 **Process Summary**: Renumber batches → Launch/verify app → Test types in parallel batches → Process results → Cleanup
 
@@ -17,6 +17,12 @@ PORT = 20116                 # BRP port for testing
 ```
 
 ## Critical Execution Requirements
+
+**CRITICAL PATH HANDLING**: 
+- **NEVER use `$TMPDIR` directly in Write tool file paths** - The Write tool does not expand environment variables
+- **ALWAYS get the actual temp directory path first** using `echo $TMPDIR` 
+- **USE the expanded path** (e.g., `/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/`) in all Write tool calls
+- **This prevents creating literal `$TMPDIR` directories**
 
 **Core Rules**:
 1. **ALWAYS reassign batch numbers** - Clear and reassign every run using renumber script
@@ -61,6 +67,8 @@ This script will:
 ```bash
 rm -f $TMPDIR/batch_results_*.json
 ```
+
+**NOTE**: When using the Write tool for creating files, you must use the actual expanded temp directory path (e.g., `/var/folders/.../T/`) rather than the `$TMPDIR` environment variable, as the Write tool does not expand environment variables.
 
 This prevents interference from previous test runs and ensures clean batch result processing.
 
@@ -246,11 +254,13 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
 After each batch completes:
 
 1. **Collect results**: Gather all subagent results into a single JSON array
-2. **Write to temp file**: **MANDATORY** - Use the Write tool to save results array to `$TMPDIR/batch_results_${batch_number}.json`
+2. **Get temp directory path**: First get the actual temp directory path: `echo $TMPDIR`
+3. **Write to temp file**: **MANDATORY** - Use the Write tool to save results array to `{temp_dir}/batch_results_${batch_number}.json`
    - **NEVER use bash commands like `cat >` or `echo >` for writing JSON files**
    - **ALWAYS use the Write tool** - this prevents permission interruptions
-3. **Execute merge script**: Run `./.claude/commands/scripts/mutation_test_merge_batch_results.sh $TMPDIR/batch_results_${batch_number}.json $TMPDIR/all_types.json`
-4. **Cleanup temp file**: Remove the batch results file after merging: `rm -f $TMPDIR/batch_results_${batch_number}.json`
+   - **CRITICAL**: Use the actual expanded temp directory path, NOT the literal string `$TMPDIR`
+4. **Execute merge script**: Run `./.claude/commands/scripts/mutation_test_merge_batch_results.sh {temp_dir}/batch_results_${batch_number}.json {temp_dir}/all_types.json`
+5. **Cleanup temp file**: Remove the batch results file after merging: `rm -f {temp_dir}/batch_results_${batch_number}.json`
 5. **Handle merge results**:
    - Script exit code 0: All passed, continue to next batch
    - Script exit code 2: Failures detected - **STOP IMMEDIATELY**
@@ -287,7 +297,7 @@ After completion or failure:
 ### Progress Tracking Schema
 
 **Type schemas**: Retrieved via `mcp__brp__brp_type_schema`  
-**Progress file**: `$TMPDIR/all_types.json`
+**Progress file**: `{temp_dir}/all_types.json` (where `{temp_dir}` is the actual expanded temp directory path)
 
 Each type entry structure:
 ```json

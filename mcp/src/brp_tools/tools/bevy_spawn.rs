@@ -1,5 +1,7 @@
 //! `bevy/spawn` tool - Spawn entities with components
 
+use std::collections::HashMap;
+
 use bevy_brp_mcp_macros::{ParamStruct, ResultStruct};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -8,12 +10,12 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/spawn` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct SpawnParams {
     /// Object containing component data to spawn with. Keys are component types, values are
     /// component data. Note: Math types use array format - Vec2: [x,y], Vec3: [x,y,z], Vec4/Quat:
     /// [x,y,z,w], not objects with named fields.
-    pub components: Value,
+    pub components: HashMap<String, Value>,
 
     /// The BRP port (default: 15702)
     #[serde(default)]

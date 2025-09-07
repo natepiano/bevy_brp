@@ -8,23 +8,23 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/registry/schema` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct RegistrySchemaParams {
     /// Include only types from these crates (e.g., [`bevy_transform`, `my_game`])
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub with_crates: Option<Value>,
+    pub with_crates: Option<Vec<String>>,
 
     /// Include only types with these reflect traits (e.g., [`Component`, `Resource`])
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub with_types: Option<Value>,
+    pub with_types: Option<Vec<String>>,
 
     /// Exclude types from these crates (e.g., [`bevy_render`, `bevy_pbr`])
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub without_crates: Option<Value>,
+    pub without_crates: Option<Vec<String>>,
 
     /// Exclude types with these reflect traits (e.g., [`RenderResource`])
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub without_types: Option<Value>,
+    pub without_types: Option<Vec<String>>,
 
     /// The BRP port (default: 15702)
     #[serde(default)]

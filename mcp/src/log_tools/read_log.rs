@@ -59,6 +59,7 @@ pub struct ReadLogResult {
 #[tool_fn(params = "ReadLogParams", output = "ReadLogResult")]
 pub struct ReadLog;
 
+#[allow(clippy::unused_async)]
 async fn handle_impl(params: ReadLogParams) -> Result<ReadLogResult> {
     // Convert tail_lines if provided
     let tail_lines = match params.tail_lines {

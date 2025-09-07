@@ -37,13 +37,6 @@ pub enum KnowledgeKey {
     Exact(String),
     /// Generic type match - matches base type ignoring type parameters
     Generic(String),
-    /// Enum variant-specific match for context-aware examples
-    EnumVariant {
-        /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type:    String,
-        /// e.g., "Clear"
-        variant_name: String,
-    },
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
@@ -71,14 +64,6 @@ impl KnowledgeKey {
     /// Create a generic match key
     pub fn generic(s: impl Into<String>) -> Self {
         Self::Generic(s.into())
-    }
-
-    /// Create an enum variant match key
-    pub fn enum_variant(enum_type: impl Into<String>, variant_name: impl Into<String>) -> Self {
-        Self::EnumVariant {
-            enum_type:    enum_type.into(),
-            variant_name: variant_name.into(),
-        }
     }
 
     /// Create a newtype variant match key
@@ -120,12 +105,6 @@ impl KnowledgeKey {
                 } else {
                     None
                 }
-            }
-            Self::EnumVariant { .. } => {
-                // Context-aware matching logic for enum variants
-                BRP_MUTATION_KNOWLEDGE
-                    .get(self)
-                    .map(|k| k.example().clone())
             }
             Self::NewtypeVariant { .. } => {
                 // Newtype variant matching logic
@@ -578,13 +557,6 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         map.insert(
             KnowledgeKey::generic("std::collections::BTreeMap"),
             MutationKnowledge::simple(json!({})),
-        );
-
-        // ===== Option types =====
-        // Option::None variant-specific knowledge - proper JSON null for BRP
-        map.insert(
-            KnowledgeKey::enum_variant("core::option::Option", "None"),
-            MutationKnowledge::simple(json!(null)),
         );
 
         // ===== Bevy ECS types =====

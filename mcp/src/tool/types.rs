@@ -18,6 +18,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use async_trait::async_trait;
 use rmcp::model::CallToolResult;
 
 use super::handler_context::HandlerContext;
@@ -28,7 +29,10 @@ use crate::tool::ParamStruct;
 /// Framework-level result for tool handler execution.
 /// Catches infrastructure errors like parameter extraction failures,
 /// system-level errors, or handler setup issues.
-pub type HandlerResult<T> = Pin<Box<dyn Future<Output = Result<T>> + Send>>;
+///
+/// The lifetime parameter `'a` is required because the `Future` captures `&self`
+/// when calling trait methods in the async block.
+pub type HandlerResult<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 
 /// Result wrapper that includes parameters so they can be returned in the response.
 /// Allows for heterogeneous results and parameters that are optional (unit struct for optional)
@@ -44,37 +48,76 @@ pub struct ToolResult<T, P = ()> {
 ///
 /// # Implementation Requirements
 ///
-/// When deriving `ToolFn` with the `#[derive(ToolFn)]` macro, you must provide:
+/// Tools must implement either `handle_impl` (most common) or `handle_impl_with_context` (when
+/// context is needed):
 ///
-/// 1. A `handle_impl` function with one of these signatures:
-///    - Without context: `async fn handle_impl(params: Self::Params) -> Result<Self::Output>`
-///    - With context: `async fn handle_impl(ctx: HandlerContext, params: Self::Params) ->
-///      Result<Self::Output>`
-///
-/// 2. The `#[tool_fn]` attribute specifying:
-///    - `params = "YourParamsType"` - The parameter struct type
-///    - `output = "YourOutputType"` - The result struct type
-///    - `with_context` (optional) - Pass `HandlerContext` to `handle_impl`
-///
-/// # Example
-///
+/// ## Most tools (no context needed):
 /// ```rust
-/// #[derive(ToolFn)]
-/// #[tool_fn(params = "MyParams", output = "MyResult")]
-/// pub struct MyTool;
+/// impl ToolFn for MyTool {
+///     type Output = MyResult;
+///     type Params = MyParams;
 ///
-/// async fn handle_impl(params: MyParams) -> Result<MyResult> {
-///     // Your implementation here
+///     async fn handle_impl(&self, params: MyParams) -> Result<MyResult> {
+///         // Your implementation here - no context parameter
+///     }
 /// }
 /// ```
+///
+/// ## Context-needing tools (e.g., list tools that need workspace roots):
+/// ```rust
+/// impl ToolFn for ListTool {
+///     type Output = ListResult;
+///     type Params = NoParams;
+///
+///     async fn handle_impl_with_context(
+///         &self,
+///         ctx: HandlerContext,
+///         _params: NoParams,
+///     ) -> Result<ListResult> {
+///         let search_paths = &ctx.roots;
+///         // Implementation using context
+///     }
+/// }
+/// ```
+#[async_trait]
 pub trait ToolFn: Send + Sync {
     /// The concrete type returned by this handler
     type Output: ResultStruct + Send + Sync;
     /// The parameter type for this handler
     type Params: ParamStruct;
 
+    /// Handle the request with just parameters (most common case)
+    /// Default implementation panics - tools must implement either this or
+    /// `handle_impl_with_context`
+    async fn handle_impl(&self, _params: Self::Params) -> Result<Self::Output> {
+        unimplemented!("Must implement either handle_impl or handle_impl_with_context")
+    }
+
+    /// Handle the request with context (for tools that need `HandlerContext`)
+    /// Default implementation ignores context and calls `handle_impl`
+    async fn handle_impl_with_context(
+        &self,
+        _ctx: HandlerContext,
+        params: Self::Params,
+    ) -> Result<Self::Output> {
+        self.handle_impl(params).await
+    }
+
     /// Handle the request and return `ToolResult`
-    fn call(&self, ctx: HandlerContext) -> HandlerResult<ToolResult<Self::Output, Self::Params>>;
+    /// Default implementation extracts parameters and calls `handle_impl_with_context`
+    fn call(
+        &self,
+        ctx: HandlerContext,
+    ) -> HandlerResult<'_, ToolResult<Self::Output, Self::Params>> {
+        Box::pin(async move {
+            let params: Self::Params = ctx.extract_parameter_values()?;
+            let result = self.handle_impl_with_context(ctx, params).await;
+            Ok(ToolResult {
+                result,
+                params: None, // Don't include params in response if we can't clone them
+            })
+        })
+    }
 }
 
 /// Type-erased version for heterogeneous storage

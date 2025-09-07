@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
-use crate::json_types::JsonSchemaType;
+use crate::json_types::{JsonSchemaType, SchemaField};
 use crate::string_traits::{IntoStrings, JsonFieldAccess};
 
 /// Trait for parameter types used in tools
@@ -20,7 +20,7 @@ use crate::string_traits::{IntoStrings, JsonFieldAccess};
 ///
 /// The trait is automatically implemented by the `ParamStruct` derive macro
 /// for parameter structs.
-pub trait ParamStruct: Send + Sync + serde::Serialize {}
+pub trait ParamStruct: Send + Sync + serde::Serialize + serde::de::DeserializeOwned {}
 
 /// Shared parameter struct for tools that have no parameters
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
@@ -272,62 +272,115 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
         return ParameterType::Any;
     };
 
-    // Get the "type" field
-    let Some(type_value) = obj.get("type") else {
-        return ParameterType::Any;
-    };
+    // Handle direct "type" field
+    if let Some(type_value) = obj.get_field(SchemaField::Type) {
+        return match type_value {
+            Value::String(type_str) => match type_str.as_str() {
+                s if s == JsonSchemaType::String.as_ref() => ParameterType::String,
+                s if s == JsonSchemaType::Integer.as_ref()
+                    || s == JsonSchemaType::Number.as_ref() =>
+                {
+                    ParameterType::Number
+                }
+                s if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
+                s if s == JsonSchemaType::Array.as_ref() => {
+                    // Check items schema for array element type
+                    obj.get_field(SchemaField::Items)
+                        .and_then(|items| items.as_object())
+                        .and_then(|items_obj| items_obj.get_field(SchemaField::Type))
+                        .and_then(|item_type| item_type.as_str())
+                        .map_or(ParameterType::Any, |item_type_str| match item_type_str {
+                            s if s == JsonSchemaType::String.as_ref() => ParameterType::StringArray,
+                            s if s == JsonSchemaType::Integer.as_ref()
+                                || s == JsonSchemaType::Number.as_ref() =>
+                            {
+                                ParameterType::NumberArray
+                            }
+                            _ => ParameterType::Any,
+                        })
+                }
+                _ => ParameterType::Any,
+            },
+            Value::Array(types) => {
+                // Handle Option<T> types which generate ["T", "null"] schemas
+                let non_null_types: Vec<&str> = types
+                    .iter()
+                    .filter_map(|v| v.as_str())
+                    .filter(|&t| t != JsonSchemaType::Null.as_ref())
+                    .collect();
 
-    match type_value {
-        Value::String(type_str) => match type_str.as_str() {
-            s if s == JsonSchemaType::String.as_ref() => ParameterType::String,
-            s if s == JsonSchemaType::Integer.as_ref() || s == JsonSchemaType::Number.as_ref() => {
-                ParameterType::Number
-            }
-            s if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
-            s if s == JsonSchemaType::Array.as_ref() => {
-                // Check items schema for array element type
-                obj.get("items")
-                    .and_then(|items| items.as_object())
-                    .and_then(|items_obj| items_obj.get("type"))
-                    .and_then(|item_type| item_type.as_str())
-                    .map_or(ParameterType::Any, |item_type_str| match item_type_str {
-                        s if s == JsonSchemaType::String.as_ref() => ParameterType::StringArray,
-                        s if s == JsonSchemaType::Integer.as_ref()
-                            || s == JsonSchemaType::Number.as_ref() =>
+                if non_null_types.len() == 1 {
+                    match non_null_types.first() {
+                        Some(&s) if s == JsonSchemaType::String.as_ref() => ParameterType::String,
+                        Some(&s)
+                            if s == JsonSchemaType::Integer.as_ref()
+                                || s == JsonSchemaType::Number.as_ref() =>
                         {
-                            ParameterType::NumberArray
+                            ParameterType::Number
                         }
+                        Some(&s) if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
                         _ => ParameterType::Any,
-                    })
+                    }
+                } else {
+                    ParameterType::Any
+                }
             }
             _ => ParameterType::Any,
-        },
-        Value::Array(types) => {
-            // Handle Option<T> types which generate ["T", "null"] schemas
-            let non_null_types: Vec<&str> = types
-                .iter()
-                .filter_map(|v| v.as_str())
-                .filter(|&t| t != JsonSchemaType::Null.as_ref())
-                .collect();
+        };
+    }
 
-            if non_null_types.len() == 1 {
-                match non_null_types.first() {
-                    Some(&s) if s == JsonSchemaType::String.as_ref() => ParameterType::String,
-                    Some(&s)
-                        if s == JsonSchemaType::Integer.as_ref()
-                            || s == JsonSchemaType::Number.as_ref() =>
-                    {
-                        ParameterType::Number
-                    }
-                    Some(&s) if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
-                    _ => ParameterType::Any,
+    // Handle "oneOf" schemas (enums like BrpMethod)
+    if let Some(one_of) = obj.get_field(SchemaField::OneOf).and_then(|v| v.as_array()) {
+        // Check if all oneOf variants are string types with const values
+        let all_string_consts = one_of.iter().all(|variant| {
+            variant
+                .as_object()
+                .and_then(|v| v.get_field(SchemaField::Type))
+                .and_then(|t| t.as_str())
+                .is_some_and(|t| t == JsonSchemaType::String.as_ref())
+                && variant
+                    .as_object()
+                    .and_then(|v| v.get_field(SchemaField::Const))
+                    .is_some()
+        });
+
+        if all_string_consts {
+            return ParameterType::String;
+        }
+    }
+
+    // Handle "anyOf" schemas (typically Option<T> types)
+    if let Some(any_of) = obj.get_field(SchemaField::AnyOf).and_then(|v| v.as_array()) {
+        // Look for non-null variants
+        for variant in any_of {
+            if let Some(variant_obj) = variant.as_object() {
+                // Skip null variants
+                if variant_obj
+                    .get_field(SchemaField::Type)
+                    .and_then(|t| t.as_str())
+                    .is_some_and(|t| t == JsonSchemaType::Null.as_ref())
+                {
+                    continue;
                 }
-            } else {
-                ParameterType::Any
+
+                // Handle $ref variants by recursing into the definitions
+                if variant_obj.get_field(SchemaField::Ref).is_some() {
+                    // For now, we can't easily resolve $ref without the full schema context
+                    // This would need the root schema with $defs to resolve properly
+                    continue;
+                }
+
+                // Try to map the variant directly
+                let variant_schema = Schema::from(variant_obj.clone());
+                let variant_type = map_schema_type_to_parameter_type(&variant_schema);
+                if variant_type != ParameterType::Any {
+                    return variant_type;
+                }
             }
         }
-        _ => ParameterType::Any,
     }
+
+    ParameterType::Any
 }
 
 /// Build parameters from a `JsonSchema` type directly into a `ParameterBuilder`
@@ -341,12 +394,18 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         return builder;
     };
 
-    let Some(properties) = root_obj.get("properties").and_then(|p| p.as_object()) else {
+    let Some(properties) = root_obj
+        .get_field(SchemaField::Properties)
+        .and_then(|p| p.as_object())
+    else {
         return builder;
     };
 
+    // Get the $defs section for resolving $ref references
+    let defs = root_obj.get_field(SchemaField::Defs);
+
     let required_fields: HashSet<String> = root_obj
-        .get("required")
+        .get_field(SchemaField::Required)
         .and_then(|r| r.as_array())
         .map(|arr| {
             arr.iter()
@@ -360,10 +419,23 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
     for (field_name, field_value) in properties {
         let required = required_fields.contains(field_name);
 
-        // Convert the JSON value to a Schema for processing
-        let field_schema = if let Value::Object(obj) = field_value {
+        // Resolve $ref if present
+        let resolved_value = field_value
+            .as_object()
+            .and_then(|o| o.get_field(SchemaField::Ref))
+            .and_then(|r| r.as_str())
+            .and_then(|ref_path| {
+                ref_path.strip_prefix("#/$defs/").and_then(|type_name| {
+                    defs.and_then(|d| d.as_object())
+                        .and_then(|d| d.get(type_name))
+                })
+            })
+            .unwrap_or(field_value);
+
+        // Convert the resolved JSON value to a Schema for processing
+        let field_schema = if let Value::Object(obj) = resolved_value {
             Schema::from(obj.clone())
-        } else if let Value::Bool(b) = field_value {
+        } else if let Value::Bool(b) = resolved_value {
             Schema::from(*b)
         } else {
             continue; // Skip non-schema values
@@ -371,9 +443,9 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         let param_type = map_schema_type_to_parameter_type(&field_schema);
 
         // Extract description from schema if available
-        let description = field_value
+        let description = resolved_value
             .as_object()
-            .and_then(|obj| obj.get("description"))
+            .and_then(|obj| obj.get_field(SchemaField::Description))
             .and_then(|d| d.as_str())
             .unwrap_or(field_name.as_str());
 

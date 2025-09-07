@@ -38,6 +38,7 @@ pub struct ListLogResult {
 #[tool_fn(params = "ListLogsParams", output = "ListLogResult")]
 pub struct ListLogs;
 
+#[allow(clippy::unused_async)]
 async fn handle_impl(params: ListLogsParams) -> Result<ListLogResult> {
     let logs = list_log_files(params.app_name.as_deref(), params.verbose)?;
     Ok(ListLogResult::new(

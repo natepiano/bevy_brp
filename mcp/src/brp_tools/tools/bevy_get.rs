@@ -8,13 +8,17 @@ use serde_json::Value;
 use crate::brp_tools::Port;
 
 /// Parameters for the `bevy/get` tool
-#[derive(Deserialize, Serialize, JsonSchema, ParamStruct)]
+#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct GetParams {
     /// The entity ID to get component data from
     pub entity: u64,
 
     /// Array of component types to retrieve. Each component must be a fully-qualified type name
-    pub components: Value,
+    pub components: Vec<String>,
+
+    /// If true, returns error on unknown component types (default: false)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
 
     /// The BRP port (default: 15702)
     #[serde(default)]
