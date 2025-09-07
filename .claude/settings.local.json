@@ -95,7 +95,8 @@
       "Bash(./.claude/commands/scripts/mutation_test_renumber_batches.sh:*)",
       "Bash(./.claude/commands/scripts/mutation_test_merge_batch_results.sh:*)",
       "Bash(echo:*)",
-      "Bash(~/.claude/commands/bash/build-check.sh:*)"
+      "Bash(~/.claude/commands/bash/build-check.sh:*)",
+      "Bash(rustc:*)"
     ],
     "deny": [
       "Bash(sed:*)"
