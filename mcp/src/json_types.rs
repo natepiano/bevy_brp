@@ -35,6 +35,8 @@ impl From<JsonSchemaType> for Value {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, AsRefStr)]
 #[strum(serialize_all = "camelCase")]
 pub enum SchemaField {
+    /// The additionalProperties field for `HashMap` types
+    AdditionalProperties,
     /// The anyOf field for union types
     #[strum(serialize = "anyOf")]
     AnyOf,

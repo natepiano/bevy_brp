@@ -6,7 +6,7 @@ mod recursion_context;
 mod type_kind;
 mod types;
 
-pub use builders::{EnumMutationBuilder, EnumVariantInfo, build_all_enum_examples};
+pub use builders::{EnumMutationBuilder, EnumVariantInfo};
 pub use mutation_knowledge::KnowledgeKey;
 pub use path_kind::PathKind;
 pub use recursion_context::RecursionContext;

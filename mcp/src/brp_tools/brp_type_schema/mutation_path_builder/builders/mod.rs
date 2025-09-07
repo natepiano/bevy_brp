@@ -9,7 +9,7 @@ mod tuple_builder;
 
 pub use array_builder::ArrayMutationBuilder;
 pub use default_builder::DefaultMutationBuilder;
-pub use enum_builder::{EnumMutationBuilder, EnumVariantInfo, build_all_enum_examples};
+pub use enum_builder::{EnumMutationBuilder, EnumVariantInfo};
 pub use list_builder::ListMutationBuilder;
 pub use map_builder::MapMutationBuilder;
 pub use set_builder::SetMutationBuilder;

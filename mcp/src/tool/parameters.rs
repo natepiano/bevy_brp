@@ -124,6 +124,8 @@ enum ParameterType {
     StringArray,
     /// An array of numbers
     NumberArray,
+    /// An object field
+    Object,
     /// Any JSON value (object, array, etc.)
     Any,
 }
@@ -230,6 +232,20 @@ impl ParameterBuilder {
         self
     }
 
+    /// Add an object property to the schema
+    pub fn add_object_property(mut self, name: &str, description: &str, required: bool) -> Self {
+        let mut prop = Map::new();
+        prop.insert_field(SchemaField::Type.as_ref(), JsonSchemaType::Object);
+        prop.insert_field(SchemaField::Description.as_ref(), description);
+        self.properties.insert_field(name, prop);
+
+        if required {
+            self.required.push(name.to_string());
+        }
+
+        self
+    }
+
     /// Add a property that can be any type (object, array, null, etc.)
     pub fn add_any_property(mut self, name: &str, description: &str, required: bool) -> Self {
         let mut prop = Map::new();
@@ -283,6 +299,7 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
                     ParameterType::Number
                 }
                 s if s == JsonSchemaType::Boolean.as_ref() => ParameterType::Boolean,
+                s if s == JsonSchemaType::Object.as_ref() => ParameterType::Object,
                 s if s == JsonSchemaType::Array.as_ref() => {
                     // Check items schema for array element type
                     obj.get_field(SchemaField::Items)
@@ -327,6 +344,11 @@ fn map_schema_type_to_parameter_type(schema: &Schema) -> ParameterType {
             }
             _ => ParameterType::Any,
         };
+    }
+
+    // Handle objects with additionalProperties (HashMap pattern)
+    if obj.get_field(SchemaField::AdditionalProperties).is_some() {
+        return ParameterType::Object;
     }
 
     // Handle "oneOf" schemas (enums like BrpMethod)
@@ -462,6 +484,7 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
             ParameterType::NumberArray => {
                 builder.add_number_array_property(field_name, description, required)
             }
+            ParameterType::Object => builder.add_object_property(field_name, description, required),
             ParameterType::Any => builder.add_any_property(field_name, description, required),
         };
     }

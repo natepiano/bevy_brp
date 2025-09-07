@@ -77,8 +77,7 @@ impl TypeInfo {
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
             Self::build_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
-        let mutation_paths =
-            Self::convert_mutation_paths(&mutation_paths_vec, type_schema, &registry);
+        let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
 
         // Add Mutate operation if any paths are actually mutatable
         let mut supported_operations = supported_operations;
@@ -414,7 +413,6 @@ impl TypeInfo {
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
     fn convert_mutation_paths(
         paths: &[MutationPathInternal],
-        type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> HashMap<String, MutationPath> {
         let mut result = HashMap::new();
@@ -424,8 +422,7 @@ impl TypeInfo {
             let description = path.path_kind.description();
 
             // Create MutationPathInfo from MutationPath
-            let path_info =
-                MutationPath::from_mutation_path(path, description, type_schema, registry);
+            let path_info = MutationPath::from_mutation_path(path, description, registry);
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."

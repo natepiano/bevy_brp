@@ -244,42 +244,12 @@ pub fn build_all_enum_examples(
     depth: usize,
 ) -> HashMap<String, Value> {
     let variants = extract_enum_variants(schema, registry, depth);
+    let unique_variants = deduplicate_variant_signatures(variants);
 
-    // Group variants by their type signature and generate one example per group
     let mut examples = HashMap::new();
-    let mut seen_unit = false;
-    let mut seen_tuples: HashMap<Vec<BrpTypeName>, String> = HashMap::new();
-    let mut seen_structs: HashMap<Vec<(String, BrpTypeName)>, String> = HashMap::new();
-
-    for variant in variants {
-        match &variant {
-            EnumVariantInfo::Unit(name) => {
-                if !seen_unit {
-                    let example = variant.build_example(registry, depth); // Pass both
-                    examples.insert(name.clone(), example);
-                    seen_unit = true;
-                }
-            }
-            EnumVariantInfo::Tuple(name, types) => {
-                if !seen_tuples.contains_key(types) {
-                    let example = variant.build_example(registry, depth); // Pass both
-                    examples.insert(name.clone(), example);
-                    seen_tuples.insert(types.clone(), name.clone());
-                }
-            }
-            EnumVariantInfo::Struct(name, fields) => {
-                let field_sig: Vec<(String, BrpTypeName)> = fields
-                    .iter()
-                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
-                    .collect();
-                if let std::collections::hash_map::Entry::Vacant(e) = seen_structs.entry(field_sig)
-                {
-                    let example = variant.build_example(registry, depth); // Pass both
-                    examples.insert(name.clone(), example);
-                    e.insert(name.clone());
-                }
-            }
-        }
+    for variant in unique_variants {
+        let example = variant.build_example(registry, depth);
+        examples.insert(variant.name().to_string(), example);
     }
 
     examples

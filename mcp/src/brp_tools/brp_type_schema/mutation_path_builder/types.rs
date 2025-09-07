@@ -87,32 +87,31 @@ pub struct MutationPath {
 }
 
 impl MutationPath {
-    /// Create from internal `MutationPath` with proper formatting logic
+    /// Create from `MutationPathInternal` with proper formatting logic
     pub fn from_mutation_path(
         path: &MutationPathInternal,
         description: String,
-        type_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
         // Regular non-Option path
         let example_variants = if path.enum_variants.is_some() {
-            // This is an enum type - generate example variants using the new system
-            let examples = super::build_all_enum_examples(type_schema, registry, 0); // Pass both
-            if examples.is_empty() {
-                None
-            } else {
-                Some(examples)
-            }
+            // Don't rebuild - just extract from the already-computed example
+            path.example
+                .as_object()
+                .cloned()
+                .map(|obj| obj.into_iter().collect())
         } else {
             None
         };
 
         // Compute enum_variants from example_variants keys (alphabetically sorted)
-        let enum_variants = example_variants.as_ref().map(|variants| {
-            let mut keys: Vec<String> = variants.keys().cloned().collect();
-            keys.sort(); // Alphabetical sorting for consistency
-            keys
-        });
+        let enum_variants = example_variants
+            .as_ref()
+            .map(|variants: &HashMap<String, Value>| {
+                let mut keys: Vec<String> = variants.keys().cloned().collect();
+                keys.sort(); // Alphabetical sorting for consistency
+                keys
+            });
 
         // Get TypeKind for the field type
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
