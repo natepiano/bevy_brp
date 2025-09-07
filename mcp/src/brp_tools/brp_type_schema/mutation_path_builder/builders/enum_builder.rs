@@ -415,7 +415,7 @@ impl EnumMutationBuilder {
     }
 
     /// Build example value for an enum type
-    /// CHANGED: Now returns ALL variant examples instead of just the first one
+    /// Now returns ALL variant examples instead of just the first one
     /// by calling the existing `build_all_enum_examples` function
     pub fn build_enum_example(
         schema: &Value,
