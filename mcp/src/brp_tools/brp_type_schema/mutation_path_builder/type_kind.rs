@@ -74,7 +74,6 @@ impl TypeKind {
             let path = MutationPathInternal {
                 path: ctx.mutation_path.clone(),
                 example,
-                enum_variants: None,
                 type_name: BrpTypeName::from(simplified_type),
                 path_kind: ctx.path_kind.clone(),
                 mutation_status: MutationStatus::Mutatable,
@@ -99,7 +98,6 @@ impl TypeKind {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,

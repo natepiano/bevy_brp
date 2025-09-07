@@ -50,7 +50,6 @@ impl MapMutationBuilder {
         MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
-            enum_variants: None,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
@@ -69,7 +68,6 @@ impl MapMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This map type cannot be mutated - {support}")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,

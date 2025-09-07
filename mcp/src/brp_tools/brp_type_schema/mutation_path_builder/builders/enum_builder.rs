@@ -21,27 +21,6 @@ use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
-/// Information about a field in an enum struct variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumFieldInfo {
-    /// Field name
-    pub field_name: String,
-    /// Field type
-    #[serde(rename = "type")]
-    pub type_name:  BrpTypeName,
-}
-
-/// Variant signatures for deduplication - same signature means same inner structure
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum VariantSignature {
-    /// Unit variants (no data)
-    Unit,
-    /// Tuple variants with specified types
-    Tuple(Vec<BrpTypeName>),
-    /// Struct variants with field names and types
-    Struct(Vec<(String, BrpTypeName)>),
-}
-
 /// Type-safe enum variant information - replaces `EnumVariantInfoOld`
 /// This enum makes invalid states impossible to construct
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,31 +33,28 @@ pub enum EnumVariantInfo {
     Struct(String, Vec<EnumFieldInfo>),
 }
 
+/// Information about a field in an enum struct variant
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnumFieldInfo {
+    /// Field name
+    pub field_name: String,
+    /// Field type
+    #[serde(rename = "type")]
+    pub type_name:  BrpTypeName,
+}
+
+/// Variant signatures for deduplication - same signature means same inner structure
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+enum VariantSignature {
+    /// Unit variants (no data)
+    Unit,
+    /// Tuple variants with specified types
+    Tuple(Vec<BrpTypeName>),
+    /// Struct variants with field names and types
+    Struct(Vec<(String, BrpTypeName)>),
+}
+
 impl EnumVariantInfo {
-    /// Get the variant name regardless of variant type
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
-        }
-    }
-
-    /// Get the signature of this variant for deduplication
-    /// Unit variants return None, tuple variants return type list,
-    /// struct variants return field name/type pairs
-    pub fn signature(&self) -> VariantSignature {
-        match self {
-            Self::Unit(_) => VariantSignature::Unit,
-            Self::Tuple(_, types) => VariantSignature::Tuple(types.clone()),
-            Self::Struct(_, fields) => {
-                let field_sig = fields
-                    .iter()
-                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
-                    .collect();
-                VariantSignature::Struct(field_sig)
-            }
-        }
-    }
-
     /// Constructor that infers variant type from JSON structure
     /// instead of relying on separate enum classification
     pub fn from_schema_variant(
@@ -108,8 +84,32 @@ impl EnumVariantInfo {
         }
     }
 
+    /// Get the variant name regardless of variant type
+    fn name(&self) -> &str {
+        match self {
+            Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
+        }
+    }
+
+    /// Get the signature of this variant for deduplication
+    /// Unit variants return None, tuple variants return type list,
+    /// struct variants return field name/type pairs
+    fn signature(&self) -> VariantSignature {
+        match self {
+            Self::Unit(_) => VariantSignature::Unit,
+            Self::Tuple(_, types) => VariantSignature::Tuple(types.clone()),
+            Self::Struct(_, fields) => {
+                let field_sig = fields
+                    .iter()
+                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
+                    .collect();
+                VariantSignature::Struct(field_sig)
+            }
+        }
+    }
+
     /// Build example JSON for this enum variant
-    pub fn build_example(&self, registry: &HashMap<BrpTypeName, Value>, depth: usize) -> Value {
+    fn build_example(&self, registry: &HashMap<BrpTypeName, Value>, depth: usize) -> Value {
         match self {
             Self::Unit(name) => {
                 // just output the name
@@ -238,7 +238,7 @@ fn extract_struct_fields(
 }
 
 /// Build all enum examples - generates one example per unique variant type signature
-pub fn build_all_enum_examples(
+fn build_all_enum_examples(
     schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
@@ -257,7 +257,7 @@ pub fn build_all_enum_examples(
 
 /// Deduplicate variants by signature, returning first variant of each unique signature
 /// This prevents redundant processing when multiple variants have the same type structure
-pub fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVariantInfo> {
+fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVariantInfo> {
     use std::collections::HashSet;
 
     let mut seen_signatures = HashSet::new();
@@ -274,7 +274,7 @@ pub fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<Enu
 }
 
 /// Extract enum variants using the new `EnumVariantInfo` enum
-pub fn extract_enum_variants(
+fn extract_enum_variants(
     type_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
@@ -323,7 +323,6 @@ impl MutationPathBuilder for EnumMutationBuilder {
         let mut paths = Vec::new();
 
         // Step 1: Add the base enum path with ALL signature examples
-        let enum_variants = Self::extract_enum_variants(schema);
         let example = Self::build_enum_example(
             schema,
             &ctx.registry,
@@ -334,7 +333,6 @@ impl MutationPathBuilder for EnumMutationBuilder {
         paths.push(MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
-            enum_variants,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
@@ -409,21 +407,10 @@ impl EnumMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This enum type cannot be mutated - {support}")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
             error_reason:    Option::<String>::from(&support),
-        }
-    }
-
-    /// Extract enum variants from type schema
-    pub fn extract_enum_variants(type_schema: &Value) -> Option<Vec<String>> {
-        let variants = extract_enum_variants(type_schema, &HashMap::new(), 0);
-        if variants.is_empty() {
-            None
-        } else {
-            Some(variants.iter().map(|v| v.name().to_string()).collect())
         }
     }
 
@@ -452,40 +439,5 @@ impl EnumMutationBuilder {
         } else {
             json!(all_examples)
         }
-    }
-
-    /// Build example struct from properties
-    pub fn build_struct_example_from_properties(
-        properties: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Check depth limit to prevent infinite recursion
-        if depth.exceeds_limit() {
-            return json!("...");
-        }
-
-        let Some(props_map) = properties.as_object() else {
-            return json!({});
-        };
-
-        let mut example = serde_json::Map::new();
-
-        for (field_name, field_schema) in props_map {
-            // Use TypeInfo to build example for each field type with depth tracking
-            let field_value = SchemaField::extract_field_type(field_schema)
-                .map(|field_type| {
-                    TypeInfo::build_type_example(
-                        &field_type,
-                        registry,
-                        depth, // Don't increment - TypeInfo will handle it
-                    )
-                })
-                .unwrap_or(json!(null));
-
-            example.insert(field_name.clone(), field_value);
-        }
-
-        json!(example)
     }
 }

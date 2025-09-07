@@ -12,7 +12,7 @@ use super::constants::{
 };
 use super::mutation_path_builder::{
     EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder,
-    MutationPathInternal, PathKind, RecursionContext, TypeKind,
+    MutationPathInternal, PathKind, RecursionContext, StructMutationBuilder, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -379,7 +379,7 @@ impl TypeInfo {
                 field_schema
                     .get_field(SchemaField::Properties)
                     .map_or(json!(null), |properties| {
-                        EnumMutationBuilder::build_struct_example_from_properties(
+                        StructMutationBuilder::build_struct_example_from_properties(
                             properties,
                             registry,
                             depth.increment(),
@@ -422,7 +422,7 @@ impl TypeInfo {
             let description = path.path_kind.description();
 
             // Create MutationPathInfo from MutationPath
-            let path_info = MutationPath::from_mutation_path(path, description, registry);
+            let path_info = MutationPath::from_mutation_path_internal(path, description, registry);
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."

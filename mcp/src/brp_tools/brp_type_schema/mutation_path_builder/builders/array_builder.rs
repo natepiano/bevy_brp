@@ -94,7 +94,6 @@ impl ArrayMutationBuilder {
         MutationPathInternal {
             path:            ctx.mutation_path.clone(),
             example:         json!(array_example),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
@@ -118,7 +117,6 @@ impl ArrayMutationBuilder {
         MutationPathInternal {
             path:            indexed_path,
             example:         element_example,
-            enum_variants:   None,
             type_name:       element_type.clone(),
             path_kind:       array_element_path_kind,
             mutation_status: MutationStatus::Mutatable,
@@ -202,7 +200,6 @@ impl ArrayMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This array type cannot be mutated - {support}")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,

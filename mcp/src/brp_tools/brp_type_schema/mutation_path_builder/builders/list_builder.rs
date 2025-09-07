@@ -88,7 +88,6 @@ impl ListMutationBuilder {
         MutationPathInternal {
             path,
             example,
-            enum_variants: None,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
@@ -107,7 +106,6 @@ impl ListMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This list type cannot be mutated - {support}")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,

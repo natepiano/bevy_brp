@@ -137,7 +137,6 @@ impl TupleMutationBuilder {
                     "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
                     "agent_directive": "Element type not found in registry"
                 }),
-                enum_variants: None,
                 type_name: element_type.clone(),
                 path_kind: PathKind::new_indexed_element(
                     index,
@@ -171,7 +170,6 @@ impl TupleMutationBuilder {
             Some(MutationPathInternal {
                 path,
                 example: elem_example,
-                enum_variants: None,
                 type_name: element_type.clone(),
                 path_kind: PathKind::new_indexed_element(
                     index,
@@ -190,7 +188,6 @@ impl TupleMutationBuilder {
                     "NotMutatable": format!("{missing_support}"),
                     "agent_directive": "Element type cannot be mutated through BRP"
                 }),
-                enum_variants: None,
                 type_name: element_type.clone(),
                 path_kind: PathKind::new_indexed_element(
                     index,
@@ -272,7 +269,6 @@ impl TupleMutationBuilder {
         paths.push(MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
-            enum_variants: None,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
@@ -305,8 +301,7 @@ impl TupleMutationBuilder {
                         "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
                         "agent_directive": "Element type not found in registry"
                     }),
-                    enum_variants: None,
-                    type_name: element_type.clone(),
+                                        type_name: element_type.clone(),
                     path_kind: PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone()),
                     mutation_status: MutationStatus::NotMutatable,
                     error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
@@ -347,8 +342,7 @@ impl TupleMutationBuilder {
                             "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
                             "agent_directive": "Element type cannot be mutated through BRP"
                         }),
-                        enum_variants: None,
-                        type_name: element_type.clone(),
+                                                type_name: element_type.clone(),
                         path_kind: PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone()),
                         mutation_status: MutationStatus::NotMutatable,
                         error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
@@ -374,7 +368,6 @@ impl TupleMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This tuple type cannot be mutated - {support}")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,

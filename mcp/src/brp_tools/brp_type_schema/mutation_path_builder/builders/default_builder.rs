@@ -23,7 +23,6 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         Ok(vec![MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
-            enum_variants: None,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,

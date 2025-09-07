@@ -30,8 +30,6 @@ pub struct MutationPathInternal {
     pub example:         Value,
     /// Path for mutation, e.g., ".translation.x"
     pub path:            String,
-    /// For enum types, list of valid variant names
-    pub enum_variants:   Option<Vec<String>>,
     /// Type information for this path
     pub type_name:       BrpTypeName,
     /// Context describing what kind of mutation this is
@@ -88,21 +86,20 @@ pub struct MutationPath {
 
 impl MutationPath {
     /// Create from `MutationPathInternal` with proper formatting logic
-    pub fn from_mutation_path(
+    pub fn from_mutation_path_internal(
         path: &MutationPathInternal,
         description: String,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
         // Regular non-Option path
-        let example_variants = if path.enum_variants.is_some() {
-            // Don't rebuild - just extract from the already-computed example
-            path.example
-                .as_object()
-                .cloned()
-                .map(|obj| obj.into_iter().collect())
-        } else {
-            None
-        };
+        let example_variants = path.example.as_object().and_then(|obj| {
+            if obj.is_empty() {
+                None
+            } else {
+                // Don't rebuild - just extract from the already-computed example
+                Some(obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+            }
+        });
 
         // Compute enum_variants from example_variants keys (alphabetically sorted)
         let enum_variants = example_variants

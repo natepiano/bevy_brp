@@ -2,6 +2,7 @@
 //!
 //! Handles the most complex case - struct mutations with one-level recursion.
 //! For field contexts, adds both the struct field itself and nested field paths.
+use std::collections::HashMap;
 
 use serde_json::{Value, json};
 use tracing::warn;
@@ -155,7 +156,6 @@ impl StructMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This struct type cannot be mutated - {support}")
             }),
-            enum_variants:   None,
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
@@ -183,7 +183,6 @@ impl StructMutationBuilder {
                 "NotMutatable": format!("{support}"),
                 "agent_directive": "This field cannot be mutated - see error message for details"
             }),
-            enum_variants: None,
             type_name: field_type.clone(),
             path_kind: PathKind::new_struct_field(
                 field_name.to_string(),
@@ -257,7 +256,6 @@ impl StructMutationBuilder {
         MutationPathInternal {
             path,
             example,
-            enum_variants: None,
             type_name: field_type.clone(),
             path_kind: PathKind::new_struct_field(
                 field_name.to_string(),
@@ -315,5 +313,40 @@ impl StructMutationBuilder {
                 }
             }
         }
+    }
+
+    /// Build example struct from properties
+    pub fn build_struct_example_from_properties(
+        properties: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Check depth limit to prevent infinite recursion
+        if depth.exceeds_limit() {
+            return json!("...");
+        }
+
+        let Some(props_map) = properties.as_object() else {
+            return json!({});
+        };
+
+        let mut example = serde_json::Map::new();
+
+        for (field_name, field_schema) in props_map {
+            // Use TypeInfo to build example for each field type with depth tracking
+            let field_value = SchemaField::extract_field_type(field_schema)
+                .map(|field_type| {
+                    TypeInfo::build_type_example(
+                        &field_type,
+                        registry,
+                        depth, // Don't increment - TypeInfo will handle it
+                    )
+                })
+                .unwrap_or(json!(null));
+
+            example.insert(field_name.clone(), field_value);
+        }
+
+        json!(example)
     }
 }
