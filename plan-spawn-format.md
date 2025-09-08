@@ -1102,6 +1102,28 @@ use super::mutation_path_builder::builders::EnumMutationBuilder;
 - **Reasoning**: This finding is based on a misunderstanding of the system architecture. The code is NOT using string-based dispatch - it's using enum-based dispatch after safe parsing. The type information comes from Bevy's runtime reflection system as JSON data, which cannot be known at compile-time. The system safely parses JSON strings into strongly-typed TypeKind enums with proper error handling. All dispatch after parsing uses compile-time safe enum pattern matching, not strings. This is the standard and appropriate pattern for working with runtime type systems.
 - **Decision**: User elected to skip this recommendation
 
+### TYPE-SYSTEM-7: State tracking uses primitives instead of type-safe state machine - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Proposed Solution
+- **Issue**: Plan continues using MutationStatus enum values stored in structs instead of proper state machine
+- **Reasoning**: This finding is a false positive based on theoretical concerns that don't apply to the actual codebase. The current approach consistently follows a clear pattern where mutation_status: Mutatable always pairs with error_reason: None, and mutation_status: NotMutatable always pairs with error_reason: Some(error_message). There are no invalid combinations in the codebase. The suggested state machine would break API serialization compatibility, requiring JSON format changes that would affect external consumers. This is primarily a data transport structure for JSON serialization, not a complex state machine requiring compile-time guarantees.
+- **Decision**: User elected to skip this recommendation
+
+### IMPLEMENTATION-3: Complex trait interface violates single responsibility principle - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: BRP_MUTATION_KNOWLEDGE Integration
+- **Issue**: Plan adds multiple trait methods with different responsibilities: build_paths(), build_example_with_knowledge(), and build_schema_example()
+- **Reasoning**: This finding misapplies the single responsibility principle. The trait design is actually well-architected for its specific domain. Examples are integral to mutation paths (as seen in MutationPathInternal struct with its example field), so example generation is not separate from path building but part of the same cohesive responsibility. The build_example_with_knowledge() method provides a default implementation that eliminates code duplication by centralizing knowledge lookup and type dispatch - this is a good design pattern. The alternative of separate traits would likely create more complexity through composition requirements and coordination overhead without meaningful benefits.
+- **Decision**: User elected to skip this recommendation
+
+### ⚠️ PREJUDICE WARNING - DESIGN-7: Traversal ordering unnecessarily coupled to example generation
+- **Status**: PERMANENTLY REJECTED
+- **Category**: DESIGN
+- **Location**: Section: Proposed Solution
+- **Issue**: Plan enforces rigid 'depth-first, post-order traversal' coupling between path building and example generation. This creates unnecessary dependencies - example generation could be independent of traversal ordering.
+- **Reasoning**: This finding is based on a fundamental misunderstanding of the plan's architecture and goals. The current system already HAS a two-phase approach (separate path building and example generation) which is incredibly complex, recursive, and duplicative. The entire purpose of this plan is to SIMPLIFY by coupling depth-first traversal to build up all paths and their examples in a single pass, creating parent paths as we recurse back up the stack. This is a simple design that eliminates the complexity of maintaining separate systems. The suggested "decoupling" would recreate the exact problem the plan is designed to solve.
+- **Critical Note**: DO NOT SUGGEST THIS AGAIN - Permanently rejected by user
+
 ### DESIGN-1: Inconsistent handling of recursion depth in unified approach - REDUNDANT
 - **Status**: REDUNDANT - Already addressed in plan
 - **Category**: DESIGN
