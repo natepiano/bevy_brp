@@ -347,7 +347,8 @@ TODO:
 2. Implement is_migrated(), collect_children(), assemble_from_children()
 3. Delete build_schema_example() override
 4. Remove ExampleBuilder import
-5. Stop and ask user to validate default_builder.rs changes
+5. Run build-check.sh
+6. **STOP and ask user to validate and discuss default_builder.rs changes**
 ### Builder 2: StructMutationBuilder (Container Type Example)
 
 #### After Migration:
@@ -401,33 +402,54 @@ impl MutationPathBuilder for StructMutationBuilder {
 Following the same order as the original ExampleBuilder removal:
 
 1. **DefaultMutationBuilder** - Leaf type, simplest
-2. **MapMutationBuilder** (error path) - Simple error case
+   - Fix ExampleBuilder reference, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
+2. **MapMutationBuilder** (error path only) - Simple error case
+   - Fix line 161 error path
+   - Run build-check.sh  
+   - **STOP and ask user to validate and discuss**
+
 3. **ArrayMutationBuilder** - Single child type
+   - Fix line 220 static method, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
 4. **ListMutationBuilder** - Single child type
+   - Fix line 165 static method, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
 5. **SetMutationBuilder** - Single child type
+   - Fix line 120 static method, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
 6. **TupleMutationBuilder** - Multiple children
+   - Fix lines 390, 285, 317, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
 7. **StructMutationBuilder** - Named fields
-8. **MapMutationBuilder** (full) - Key/value pairs
+   - Fix line 403 static method, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
+8. **MapMutationBuilder** (complete) - Key/value pairs
+   - Fix lines 79-80, 132-133, implement full protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
 9. **EnumMutationBuilder** - Most complex
+   - Fix lines 170, 193, implement protocol methods
+   - Run build-check.sh
+   - **STOP and ask user to validate and discuss**
+
 10. **mod.rs default trait** - Must be last
-7. Fix ExampleBuilder reference in list_builder.rs line 165 (static method)
-8. Stop and ask user to validate list_builder.rs changes
-9. Fix ExampleBuilder reference in set_builder.rs line 120 (static method)
-10. Stop and ask user to validate set_builder.rs changes
-11. Fix ExampleBuilder reference in tuple_builder.rs line 390 (build_schema_example)
-12. Fix ExampleBuilder reference in tuple_builder.rs line 285 (static method)
-13. Fix ExampleBuilder reference in tuple_builder.rs line 317 (static method)
-14. Stop and ask user to validate tuple_builder.rs changes
-15. Fix ExampleBuilder reference in struct_builder.rs line 403 (static method)
-16. Stop and ask user to validate struct_builder.rs changes
-17. Fix ExampleBuilder reference in map_builder.rs line 79-80 (build_schema_example)
-18. Fix ExampleBuilder reference in map_builder.rs line 132-133 (static method)
-19. Stop and ask user to validate remaining map_builder.rs changes
-20. Fix ExampleBuilder reference in enum_builder.rs line 170 (build_schema_example)
-21. Fix ExampleBuilder reference in enum_builder.rs line 193 (build_schema_example)
-22. Stop and ask user to validate enum_builder.rs changes
-23. Fix ExampleBuilder reference in mod.rs line 79 (default trait implementation)
-24. Stop and ask user to validate mod.rs default trait changes
+    - Fix line 79 default implementation
+    - Run build-check.sh
+    - **STOP and ask user to validate and discuss**
 25. Remove all ExampleBuilder import statements
 26. Remove all static example building methods from builders
 27. Delete example_builder.rs file entirely
@@ -668,7 +690,8 @@ For each migration:
 - Delete build_schema_example() override
 - Delete static helper methods
 - Remove ExampleBuilder import
-- Validate
+- Run build-check.sh
+- **STOP: Ask user to validate and discuss each builder migration**
 
 ### Phase 6: Atomic Change to PathBuilder
 1. Create PathBuilder trait
