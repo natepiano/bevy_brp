@@ -8,7 +8,6 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
-use super::example_builder::ExampleBuilder;
 use super::mutation_path_builder::{
     EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder, MutationPathInternal,
     PathKind, RecursionContext, TypeKind,
@@ -84,16 +83,12 @@ impl TypeInfo {
             supported_operations.push(BrpSupportedOperation::Mutate);
         }
 
-        // Build spawn format if spawn/insert is supported
-        let can_spawn = supported_operations.contains(&BrpSupportedOperation::Spawn)
-            || supported_operations.contains(&BrpSupportedOperation::Insert);
-        let spawn_format = if can_spawn {
-            Self::build_spawn_format(
-                type_schema,
-                Arc::clone(&registry),
-                &type_kind,
-                &brp_type_name,
-            )
+        // Build spawn format from root path mutation example - ONLY for types that support
+        // spawn/insert
+        let spawn_format = if supported_operations.contains(&BrpSupportedOperation::Spawn)
+            || supported_operations.contains(&BrpSupportedOperation::Insert)
+        {
+            Self::extract_spawn_format_from_paths(&mutation_paths)
         } else {
             None
         };
@@ -140,7 +135,19 @@ impl TypeInfo {
         }
     }
 
-    // Private helper methods (alphabetically ordered)
+    // Private helper methods
+
+    /// Extract spawn format from root mutation path  
+    /// Uses the root path `""` example as the spawn format for consistency
+    /// Should only be called for types that support spawn/insert operations
+    fn extract_spawn_format_from_paths(
+        mutation_paths: &HashMap<String, MutationPath>,
+    ) -> Option<Value> {
+        mutation_paths
+            .get("")
+            .and_then(|root_path| root_path.examples.first())
+            .map(|example_group| example_group.example.clone())
+    }
 
     /// Check if any mutation paths are mutatable (fully or partially)
     /// This determines if the type supports the Mutate operation
@@ -173,41 +180,6 @@ impl TypeInfo {
             .unwrap_or_else(|_| Vec::new())
     }
 
-    /// Build spawn format example for types that support spawn/insert
-    fn build_spawn_format(
-        type_schema: &Value,
-        registry: Arc<HashMap<BrpTypeName, Value>>,
-        type_kind: &TypeKind,
-        type_name: &BrpTypeName,
-    ) -> Option<Value> {
-        // Use enum dispatch for format knowledge lookup
-        if let Some(example) = KnowledgeKey::find_example_for_type(type_name) {
-            return Some(example);
-        }
-
-        match type_kind {
-            TypeKind::TupleStruct | TypeKind::Tuple => {
-                Self::build_tuple_spawn_format(type_schema, Arc::clone(&registry))
-            }
-            TypeKind::Struct => Self::build_struct_spawn_format(type_schema, Arc::clone(&registry)),
-            _ => None,
-        }
-    }
-
-    /// Extract type name from a $ref field in schema
-    ///
-    /// Handles the common pattern of extracting a type reference from:
-    /// ```json
-    /// { "type": { "$ref": "#/$defs/TypeName" } }
-    /// ```
-    fn extract_type_ref_from_field(field: &Value) -> Option<BrpTypeName> {
-        field
-            .get_field(SchemaField::Type)
-            .and_then(|t| t.get("$ref"))
-            .and_then(Value::as_str)
-            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-            .map(BrpTypeName::from)
-    }
 
     /// Extract type name from a type field using `SchemaField::Ref`
     ///
@@ -221,79 +193,6 @@ impl TypeInfo {
             .map(BrpTypeName::from)
     }
 
-    /// Build spawn format for struct types with named properties
-    fn build_struct_spawn_format(
-        type_schema: &Value,
-        registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> Option<Value> {
-        let properties = type_schema
-            .get_field(SchemaField::Properties)
-            .and_then(Value::as_object)?;
-
-        let mut spawn_example = Map::new();
-
-        for (field_name, field_info) in properties {
-            let field_type = SchemaField::extract_field_type(field_info);
-            if let Some(ft) = field_type {
-                let example = Self::build_example_value_for_type(&ft, &registry);
-                spawn_example.insert(field_name.clone(), example);
-            }
-        }
-
-        if spawn_example.is_empty() {
-            None
-        } else {
-            Some(Value::Object(spawn_example))
-        }
-    }
-
-    /// Build spawn format for tuple struct types with indexed fields
-    fn build_tuple_spawn_format(
-        type_schema: &Value,
-        registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> Option<Value> {
-        let prefix_items = type_schema
-            .get_field(SchemaField::PrefixItems)
-            .and_then(Value::as_array)?;
-
-        let tuple_examples: Vec<Value> = prefix_items
-            .iter()
-            .map(|item| {
-                Self::extract_type_ref_from_field(item).map_or_else(
-                    || json!(null),
-                    |ft| Self::build_example_value_for_type(&ft, &registry),
-                )
-            })
-            .collect();
-
-        if tuple_examples.is_empty() {
-            None
-        } else if tuple_examples.len() == 1 {
-            // Special case: single-field tuple structs are unwrapped by BRP
-            // Return the inner value directly, not as an array
-            tuple_examples.into_iter().next()
-        } else {
-            Some(Value::Array(tuple_examples))
-        }
-    }
-
-    /// Build an example value for a specific type
-    pub fn build_example_value_for_type(
-        type_name: &BrpTypeName,
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> Value {
-        Self::build_type_example(type_name, registry, RecursionDepth::ZERO)
-    }
-
-    /// Build an example value for a specific type with recursion depth tracking
-    pub fn build_type_example(
-        type_name: &BrpTypeName,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Delegate to ExampleBuilder to break circular dependency
-        ExampleBuilder::build_example(type_name, registry, depth)
-    }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
     fn convert_mutation_paths(
