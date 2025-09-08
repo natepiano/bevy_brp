@@ -16,6 +16,7 @@ use super::super::mutation_support::MutationSupport;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::error::Result;
 
@@ -41,7 +42,7 @@ impl MutationPathBuilder for MapMutationBuilder {
 
 impl MapMutationBuilder {
     /// Build map example using extracted logic - creates example key-value pairs
-    /// This is the static method version that calls TypeInfo for key/value types
+    /// This is the static method version that calls `TypeInfo` for key/value types
     pub fn build_map_example_static(
         _schema: &Value,
         _registry: &HashMap<BrpTypeName, Value>,
@@ -59,10 +60,8 @@ impl MapMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> MutationPathInternal {
-        use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
-
         // Generate example value for the Map type
-        let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
+        let example = ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth);
 
         MutationPathInternal {
             path: ctx.mutation_path.clone(),

@@ -16,8 +16,8 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::{
     MAX_TYPE_RECURSION_DEPTH, RecursionDepth, SCHEMA_REF_PREFIX,
 };
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
-use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
@@ -161,7 +161,7 @@ impl EnumVariantInfo {
                 let tuple_values: Vec<Value> = types
                     .iter()
                     .map(|t| {
-                        TypeInfo::build_type_example(
+                        ExampleBuilder::build_example(
                             t,
                             registry,
                             RecursionDepth::from_usize(depth).increment(),
@@ -184,7 +184,7 @@ impl EnumVariantInfo {
                     .map(|f| {
                         (
                             f.field_name.clone(),
-                            TypeInfo::build_type_example(
+                            ExampleBuilder::build_example(
                                 &f.type_name,
                                 registry,
                                 RecursionDepth::from_usize(depth).increment(),

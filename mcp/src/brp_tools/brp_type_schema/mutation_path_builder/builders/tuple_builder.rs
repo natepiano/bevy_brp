@@ -13,6 +13,7 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
@@ -75,8 +76,8 @@ impl MutationPathBuilder for TupleMutationBuilder {
 }
 
 impl TupleMutationBuilder {
-    /// Build tuple example using extracted logic from TypeInfo::build_type_example
-    /// This is the static method version that calls TypeInfo for element types
+    /// Build tuple example using extracted logic from `TypeInfo::build_type_example`
+    /// This is the static method version that calls `TypeInfo` for element types
     pub fn build_tuple_example_static(
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
@@ -94,7 +95,9 @@ impl TupleMutationBuilder {
                             .and_then(TypeInfo::extract_type_ref_with_schema_field)
                             .map_or_else(
                                 || json!(null),
-                                |ft| TypeInfo::build_type_example(&ft, registry, depth.increment()),
+                                |ft| {
+                                    ExampleBuilder::build_example(&ft, registry, depth.increment())
+                                },
                             )
                     })
                     .collect();
@@ -125,7 +128,11 @@ impl TupleMutationBuilder {
                                 .map_or_else(
                                     || {
                                         // Use TypeInfo instead of null
-                                        TypeInfo::build_type_example(&element_type, registry, depth)
+                                        ExampleBuilder::build_example(
+                                            &element_type,
+                                            registry,
+                                            depth,
+                                        )
                                     },
                                     |k| k.example().clone(),
                                 )
@@ -194,7 +201,7 @@ impl TupleMutationBuilder {
                 .map_or_else(
                     || {
                         // Use TypeInfo instead of null
-                        TypeInfo::build_type_example(&element_type, &ctx.registry, depth)
+                        ExampleBuilder::build_example(&element_type, &ctx.registry, depth)
                     },
                     |k| k.example().clone(),
                 );

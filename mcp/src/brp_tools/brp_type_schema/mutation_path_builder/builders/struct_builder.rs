@@ -14,8 +14,8 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, MathComponent, SchemaField};
-use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
 
@@ -185,7 +185,7 @@ impl StructMutationBuilder {
                     .map_or_else(
                         || {
                             // Don't increment - TypeInfo will handle it
-                            TypeInfo::build_type_example(field_type, &field_ctx.registry, depth)
+                            ExampleBuilder::build_example(field_type, &field_ctx.registry, depth)
                         },
                         |k| k.example().clone(),
                     )
@@ -205,7 +205,7 @@ impl StructMutationBuilder {
                                 .map_or_else(
                                     || {
                                         // Don't increment - TypeInfo will handle it
-                                        TypeInfo::build_type_example(
+                                        ExampleBuilder::build_example(
                                             field_type,
                                             &field_ctx.registry,
                                             depth,
@@ -277,8 +277,8 @@ impl StructMutationBuilder {
         }
     }
 
-    /// Build struct example using extracted logic from TypeInfo::build_type_example
-    /// This is the static method version that calls TypeInfo for field types
+    /// Build struct example using extracted logic from `TypeInfo::build_type_example`
+    /// This is the static method version that calls `TypeInfo` for field types
     pub fn build_struct_example_static(
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
@@ -313,7 +313,7 @@ impl StructMutationBuilder {
             // Use TypeInfo to build example for each field type with depth tracking
             let field_value = SchemaField::extract_field_type(field_schema)
                 .map(|field_type| {
-                    TypeInfo::build_type_example(
+                    ExampleBuilder::build_example(
                         &field_type,
                         registry,
                         depth, // Don't increment - TypeInfo will handle it

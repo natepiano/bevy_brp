@@ -15,6 +15,7 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth,
 };
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
@@ -181,8 +182,8 @@ impl ArrayMutationBuilder {
             .get(&KnowledgeKey::exact(element_type))
             .map_or_else(
                 || {
-                    // Pass depth through - TypeInfo will handle incrementing
-                    TypeInfo::build_type_example(element_type, registry, depth)
+                    // Pass depth through - ExampleBuilder will handle incrementing
+                    ExampleBuilder::build_example(element_type, registry, depth)
                 },
                 |k| k.example().clone(),
             )
@@ -192,8 +193,8 @@ impl ArrayMutationBuilder {
     // and build_field_array_path as we now build paths inline following StructMutationBuilder
     // pattern
 
-    /// Build array example using extracted logic from TypeInfo::build_type_example
-    /// This is the static method version that calls TypeInfo for element types
+    /// Build array example using extracted logic from `TypeInfo::build_type_example`
+    /// This is the static method version that calls `TypeInfo` for element types
     pub fn build_array_example_static(
         type_name: &BrpTypeName,
         schema: &Value,
@@ -209,7 +210,7 @@ impl ArrayMutationBuilder {
         item_type.map_or(json!(null), |item_type_name| {
             // Generate example value for the item type
             let item_example =
-                TypeInfo::build_type_example(&item_type_name, registry, depth.increment());
+                ExampleBuilder::build_example(&item_type_name, registry, depth.increment());
 
             // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
             let size = type_name

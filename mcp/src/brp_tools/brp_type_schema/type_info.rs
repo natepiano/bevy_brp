@@ -8,10 +8,10 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
+use super::example_builder::ExampleBuilder;
 use super::mutation_path_builder::{
-    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, ListMutationBuilder,
-    MapMutationBuilder, MutationPath, MutationPathBuilder, MutationPathInternal, PathKind,
-    RecursionContext, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, TypeKind,
+    EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder, MutationPathInternal,
+    PathKind, RecursionContext, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -291,52 +291,8 @@ impl TypeInfo {
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
     ) -> Value {
-        // Prevent stack overflow from deep recursion
-        if depth.exceeds_limit() {
-            return json!(null);
-        }
-
-        // Use enum dispatch for format knowledge lookup
-        if let Some(example) = KnowledgeKey::find_example_for_type(type_name) {
-            return example;
-        }
-
-        // Check if we have the type in the registry
-        let Some(field_schema) = registry.get(type_name) else {
-            return json!(null);
-        };
-
-        let field_kind = TypeKind::from_schema(field_schema, type_name);
-        match field_kind {
-            TypeKind::Enum => EnumMutationBuilder::build_enum_spawn_example(
-                field_schema,
-                registry,
-                Some(type_name),
-                depth.increment(),
-            ),
-            TypeKind::Array => ArrayMutationBuilder::build_array_example_static(
-                type_name,
-                field_schema,
-                registry,
-                depth,
-            ),
-            TypeKind::Tuple | TypeKind::TupleStruct => {
-                TupleMutationBuilder::build_tuple_example_static(field_schema, registry, depth)
-            }
-            TypeKind::Struct => {
-                StructMutationBuilder::build_struct_example_static(field_schema, registry, depth)
-            }
-            TypeKind::List => {
-                ListMutationBuilder::build_list_example_static(field_schema, registry, depth)
-            }
-            TypeKind::Set => {
-                SetMutationBuilder::build_set_example_static(field_schema, registry, depth)
-            }
-            TypeKind::Map => {
-                MapMutationBuilder::build_map_example_static(field_schema, registry, depth)
-            }
-            _ => json!(null),
-        }
+        // Delegate to ExampleBuilder to break circular dependency
+        ExampleBuilder::build_example(type_name, registry, depth)
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`

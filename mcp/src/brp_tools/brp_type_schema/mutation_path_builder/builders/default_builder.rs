@@ -5,6 +5,7 @@ use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::error::Result;
 
 pub struct DefaultMutationBuilder;
@@ -15,10 +16,8 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
-
         // Generate a proper example value for this type instead of null
-        let example = TypeInfo::build_type_example(ctx.type_name(), &ctx.registry, depth);
+        let example = ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth);
 
         Ok(vec![MutationPathInternal {
             path: ctx.mutation_path.clone(),
