@@ -329,6 +329,20 @@ pub trait MutationPathBuilder {
 
     /// Build example using depth-first traversal - ensures children complete before parent
     /// Default implementation handles knowledge lookup and enforces traversal ordering
+    /// 
+    /// **DEPTH-FIRST PATTERN Critical for Correctness**:
+    /// - STEP 1: RECURSE TO ALL CHILDREN FIRST - complete child traversal before parent assembly
+    /// - STEP 2: CONSTRUCT PARENT AFTER CHILD COMPLETION - bottom-up assembly
+    /// 
+    /// **Examples of bottom-up construction**:
+    /// - Array `[f32; 3]`: Build f32 example (10.5), then construct [10.5, 10.5, 10.5]
+    /// - Struct `Person`: Build name ("John") and address subfields first, then assemble {"name": "John", "address": {...}}
+    /// - Vec<Transform>: Build Transform example first, then wrap in Vec [transform1, transform2]
+    /// 
+    /// **CRITICAL**: This example represents the complete subtree from this level down
+    /// - If this is `.address.street`, the example is just "123 Main St"
+    /// - If this is `.address`, the example is the complete address object {"street": "123 Main St", "city": "Portland"}
+    /// - If this is root level, the example becomes the spawn format
     fn build_example_with_knowledge(
         &self,
         ctx: &RecursionContext,
@@ -357,7 +371,11 @@ pub trait MutationPathBuilder {
     }
 
     /// Build example from schema - implemented by each builder for their specific type
-    /// Uses RecursionContext to access schema and helper methods
+    /// Each builder focuses ONLY on type-specific assembly logic
+    /// The trait's build_example_with_knowledge() handles all common patterns:
+    /// - Knowledge lookup (BRP_MUTATION_KNOWLEDGE)
+    /// - Depth checking and recursion
+    /// - Type dispatch to child builders
     fn build_schema_example(
         &self,
         ctx: &RecursionContext,
@@ -377,175 +395,148 @@ pub trait MutationPathBuilder {
 
 #### Builder-Specific Schema Example Implementations
 
-Each builder implements `build_schema_example()` using the extracted TypeInfo logic:
+Each builder implements `build_schema_example()` for their type-specific recursion and assembly. The trait's `build_example_with_knowledge()` provides knowledge lookup and dispatch, eliminating duplication.
+
+**What the trait does (same for all types)**:
+- Checks BRP_MUTATION_KNOWLEDGE for hardcoded examples
+- Falls back to calling the appropriate builder's `build_schema_example()`
+- Handles the type dispatch via TypeKind
+
+**What each builder does (type-specific)**:
+- Extracts type-specific information from schema
+- Recursively calls trait method for child types (STEP 1)
+- Assembles the parent from child results (STEP 2)
 
 **ArrayMutationBuilder**:
 ```rust
 fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
+    let Some(schema) = ctx.require_schema() else { return json!(null); };
     
-    // DEPTH-FIRST PATTERN: Extract child type info first
-    let item_type = ctx.extract_list_element_type(field_schema);
-
-    item_type.map_or(json!(null), |item_type_name| {
-        // STEP 1: RECURSE TO CHILD FIRST - complete child traversal before parent assembly
-        let item_path_kind = PathKind::RootValue { type_name: item_type_name.clone() };
-        let item_ctx = RecursionContext::new(item_path_kind, Arc::clone(&ctx.registry));
-        
-        // CRITICAL: Child recursion MUST complete before parent construction
-        let item_example = self.build_example_with_knowledge(&item_ctx, depth.increment());
-        
-        // STEP 2: CONSTRUCT PARENT AFTER CHILD COMPLETION - bottom-up assembly
-        let size = ctx.type_name().as_str()
-            .rsplit_once("; ")
-            .and_then(|(_, rest)| rest.strip_suffix(']'))
-            .and_then(|s| s.parse::<usize>().ok())
-            .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| s.min(MAX_EXAMPLE_ARRAY_SIZE));
-        
-        // Parent assembly using completed child example - builds complete array for THIS level
-        let array = vec![item_example; size];
-        json!(array)
-        
-        // CRITICAL: This array example represents the complete array from this level down
-        // Example: [10.5, 10.5, 10.5] - this becomes the example for this array mutation path
-        // If a struct contains this array field, this complete array becomes that field's value
-    })
+    // Extract array-specific information
+    let Some(item_type) = ctx.extract_list_element_type(schema) else {
+        return json!(null);
+    };
+    let size = Self::extract_array_size(ctx.type_name())
+        .unwrap_or(DEFAULT_EXAMPLE_ARRAY_SIZE);
+    
+    // STEP 1: RECURSE TO CHILD FIRST (depth-first traversal)
+    // Create context for the item type
+    let item_ctx = ctx.with_type(item_type.clone());
+    
+    // Call trait method which will:
+    // 1. Check BRP_MUTATION_KNOWLEDGE for item_type
+    // 2. If no knowledge, dispatch to appropriate builder for item_type
+    let item_example = self.build_example_with_knowledge(&item_ctx, depth.increment());
+    
+    // STEP 2: CONSTRUCT ARRAY AFTER CHILD COMPLETION (bottom-up assembly)
+    // This array example represents the complete array from this level down
+    // Example: [10.5, 10.5, 10.5] for [f32; 3]
+    json!(vec![item_example; size])
 }
 ```
 
 **StructMutationBuilder**:
 ```rust
 fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
+    let Some(schema) = ctx.require_schema() else { return json!(null); };
+    let Some(properties) = schema.get_field(SchemaField::Properties) else { 
+        return json!(null); 
+    };
     
-    // DEPTH-FIRST PATTERN: Process all fields before struct assembly
-    field_schema
-        .get_field(SchemaField::Properties)
-        .map_or(json!(null), |properties| {
-            self.build_struct_example_from_properties_with_knowledge(properties, ctx, depth.increment())
-        })
-}
-
-// DEPTH-FIRST utility method - ensures all field recursions complete before struct construction:
-fn build_struct_example_from_properties_with_knowledge(&self, properties: &Value, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
     let mut struct_example = Map::new();
     
-    // STEP 1: RECURSE TO ALL FIELDS FIRST - collect all field examples
+    // STEP 1: RECURSE TO ALL FIELDS FIRST (depth-first traversal)
     for (field_name, field_schema) in properties.as_object().unwrap_or(&Map::new()) {
         if let Some(field_type) = SchemaField::extract_field_type(field_schema) {
-            // CRITICAL: Each field recursion MUST complete before moving to next field
-            let field_path_kind = PathKind::RootValue { type_name: field_type.clone() };
-            let field_ctx = RecursionContext::new(field_path_kind, Arc::clone(&ctx.registry));
+            // Create context for this field
+            let field_ctx = ctx.with_field(field_name.clone(), field_type.clone());
             
-            // Child recursion completes before parent assembly continues
-            let field_example = self.build_example_with_knowledge(&field_ctx, depth);
+            // Call trait method which will:
+            // 1. Check BRP_MUTATION_KNOWLEDGE for struct field pattern
+            // 2. Check BRP_MUTATION_KNOWLEDGE for field type
+            // 3. If no knowledge, dispatch to appropriate builder for field_type
+            let field_example = self.build_example_with_knowledge(&field_ctx, depth.increment());
+            
             struct_example.insert(field_name.clone(), field_example);
         }
     }
     
-    // STEP 2: CONSTRUCT STRUCT AFTER ALL FIELD COMPLETIONS - bottom-up assembly
-    // This creates the example for THIS level containing all child examples
+    // STEP 2: CONSTRUCT STRUCT AFTER ALL FIELD COMPLETIONS (bottom-up assembly)
+    // This struct example represents the complete struct from this level down
     // Example: {"name": "John", "address": {"street": "123 Main", "city": "Portland"}}
     Value::Object(struct_example)
-    
-    // CRITICAL: This struct example becomes the example for any parent path that contains this struct
-    // If this is `.address`, this complete struct becomes the value for the `.address` mutation path
-    // If this is root level, this complete struct becomes the spawn format
 }
 ```
 
 **TupleMutationBuilder**:
 ```rust
 fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
+    let Some(schema) = ctx.require_schema() else { return json!(null); };
+    let Some(prefix_items) = schema.get_field(SchemaField::PrefixItems)
+        .and_then(Value::as_array) else {
+        return json!(null);
+    };
     
-    // DEPTH-FIRST PATTERN: Process all tuple elements before tuple assembly
-    field_schema
-        .get_field(SchemaField::PrefixItems)
-        .and_then(Value::as_array)
-        .map_or(json!(null), |prefix_items| {
-            let mut tuple_examples = Vec::new();
+    let mut tuple_examples = Vec::new();
+    
+    // STEP 1: RECURSE TO ALL ELEMENTS FIRST (depth-first traversal)
+    for (index, item) in prefix_items.iter().enumerate() {
+        if let Some(element_type) = item.get_field(SchemaField::Type)
+            .and_then(Self::extract_type_ref_with_schema_field) {
+            // Create context for this tuple element
+            let element_ctx = ctx.with_tuple_element(index, element_type.clone());
             
-            // STEP 1: RECURSE TO ALL ELEMENTS FIRST - complete each element before next
-            for item in prefix_items {
-                if let Some(element_type) = item.get_field(SchemaField::Type)
-                    .and_then(Self::extract_type_ref_with_schema_field) 
-                {
-                    // CRITICAL: Each element recursion MUST complete before moving to next
-                    let element_path_kind = PathKind::RootValue { type_name: element_type.clone() };
-                    let element_ctx = RecursionContext::new(element_path_kind, Arc::clone(&ctx.registry));
-                    
-                    // Child recursion completes before parent assembly continues
-                    let element_example = self.build_example_with_knowledge(&element_ctx, depth.increment());
-                    tuple_examples.push(element_example);
-                } else {
-                    tuple_examples.push(json!(null));
-                }
-            }
-
-            // STEP 2: CONSTRUCT TUPLE AFTER ALL ELEMENT COMPLETIONS - bottom-up assembly
-            if tuple_examples.is_empty() { 
-                json!(null) 
-            } else { 
-                json!(tuple_examples)
-                // CRITICAL: This tuple example represents the complete tuple from this level down
-                // Example: [10.5, "hello", true] - this becomes the example for this tuple mutation path
-                // If a struct contains this tuple field, this complete tuple becomes that field's value
-            }
-        })
+            // Call trait method for recursion (no knowledge duplication)
+            let element_example = self.build_example_with_knowledge(&element_ctx, depth.increment());
+            tuple_examples.push(element_example);
+        } else {
+            tuple_examples.push(json!(null));
+        }
+    }
+    
+    // STEP 2: CONSTRUCT TUPLE AFTER ALL ELEMENT COMPLETIONS (bottom-up assembly)
+    // This tuple example represents the complete tuple from this level down
+    // Example: [10.5, "hello", true] for (f32, String, bool)
+    json!(tuple_examples)
 }
 ```
 
 **EnumMutationBuilder**:
 ```rust
 fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
+    let Some(schema) = ctx.require_schema() else { return json!(null); };
     
-    // DEPTH-FIRST PATTERN: Process enum variants (may contain structs/tuples with nested fields)
-    let enum_example = EnumMutationBuilder::build_enum_example(
-        field_schema,
+    // Delegate to existing enum example logic - already well-factored
+    EnumMutationBuilder::build_enum_example(
+        schema,
         &ctx.registry,
         Some(ctx.type_name()),
         depth.increment(),
-    );
-    
-    // CRITICAL: This enum example represents the complete enum value from this level down
-    // Examples: 
-    // - Unit variant: "Active" 
-    // - Struct variant: {"Config": {"timeout": 30, "retries": 3}}
-    // - Tuple variant: {"Point": [10.5, 20.0]}
-    // If a struct contains this enum field, this complete enum becomes that field's value
-    enum_example
+    )
 }
 ```
 
 **ListMutationBuilder & SetMutationBuilder**:
 ```rust
 fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
+    let Some(schema) = ctx.require_schema() else { return json!(null); };
     
-    // DEPTH-FIRST PATTERN: Extract item type and recurse to build item examples first
-    let item_type = field_schema
+    // Extract collection item type
+    let Some(item_type) = schema
         .get_field(SchemaField::Items)
         .and_then(|items| items.get_field(SchemaField::Type))
-        .and_then(Self::extract_type_ref_with_schema_field);
-
-    item_type.map_or(json!(null), |item_type_name| {
-        // STEP 1: RECURSE TO ITEM TYPE FIRST - complete item example before collection assembly
-        let item_path_kind = PathKind::RootValue { type_name: item_type_name.clone() };
-        let item_ctx = RecursionContext::new(item_path_kind, Arc::clone(&ctx.registry));
-        
-        // CRITICAL: Item recursion MUST complete before collection construction
-        let item_example = self.build_example_with_knowledge(&item_ctx, depth.increment());
-        
-        // STEP 2: CONSTRUCT COLLECTION AFTER ITEM COMPLETION - bottom-up assembly
-        let collection = vec![item_example; 2];
-        json!(collection)
-        
-        // CRITICAL: This collection example represents the complete Vec/HashSet from this level down
-        // Examples: [{"name": "John"}, {"name": "Jane"}] or [10, 20] 
-        // If a struct contains this collection field, this complete collection becomes that field's value
-    })
+        .and_then(Self::extract_type_ref_with_schema_field) else {
+        return json!(null);
+    };
+    
+    // Trait handles recursion for item
+    let item_example = TypeKind::from_type(&item_type).build_example_with_knowledge(
+        &ctx.with_type(item_type),
+        depth.increment()
+    );
+    
+    // Collection-specific assembly
+    json!(vec![item_example; 2])
 }
 ```
 
@@ -1103,6 +1094,13 @@ use super::mutation_path_builder::builders::EnumMutationBuilder;
 4. Add tests for consistency between spawn format and mutation examples
 
 ## Design Review Skip Notes
+
+### TYPE-SYSTEM-6: String-based type dispatch violates type safety principles - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: BRP_MUTATION_KNOWLEDGE Integration
+- **Issue**: Plan perpetuates string-based type dispatch using TypeKind::from_schema(schema, type_name) which analyzes JSON strings to determine types
+- **Reasoning**: This finding is based on a misunderstanding of the system architecture. The code is NOT using string-based dispatch - it's using enum-based dispatch after safe parsing. The type information comes from Bevy's runtime reflection system as JSON data, which cannot be known at compile-time. The system safely parses JSON strings into strongly-typed TypeKind enums with proper error handling. All dispatch after parsing uses compile-time safe enum pattern matching, not strings. This is the standard and appropriate pattern for working with runtime type systems.
+- **Decision**: User elected to skip this recommendation
 
 ### DESIGN-1: Inconsistent handling of recursion depth in unified approach - REDUNDANT
 - **Status**: REDUNDANT - Already addressed in plan
