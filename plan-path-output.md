@@ -452,11 +452,11 @@ The conversion from `MutationPathInternal` to the new `MutationPath` structure s
 
 Signatures ONLY appear in the examples array for enum types to describe variant structures:
 
-- **Unit variants**: `"()"`
+- **Unit variants**: `"unit"`
 - **Tuple variants**: 
-  - Single element: `"(TypeName)"`
-  - Multiple elements: `"(Type1, Type2, Type3)"`
-- **Struct variants**: `"struct { field1: Type1, field2: Type2 }"`
+  - Single element: `"tuple(TypeName)"`
+  - Multiple elements: `"tuple(Type1, Type2, Type3)"`
+- **Struct variants**: `"struct{field1: Type1, field2: Type2}"`
 
 The path-level `variants` field lists all enum variants. There is no path-level signature field.
 For non-enum types, the examples array contains a single example with just the `example` field.
@@ -471,6 +471,120 @@ The `MutationPathBuilder` trait interface remains unchanged - it continues to re
 4. **Backward compatibility**: Existing builders don't need changes; only the conversion layer updates
 
 This approach separates internal representation (MutationPathInternal) from external API (MutationPath), allowing evolution of the output format without breaking the builder infrastructure.
+
+## TYPE-SYSTEM-4: VariantSignature enum lacks Display trait required by conversion strategy ✅
+- **Category**: TYPE-SYSTEM
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: Conversion Strategy from MutationPathInternal
+- **Issue Identified**: Plan specifies leveraging 'existing VariantSignature enum with Display impl for human-readable strings' but the current VariantSignature enum is private and lacks Display implementation
+- **Verdict**: CONFIRMED
+- **Reasoning**: This is a real issue that prevents implementation of the planned conversion strategy. The plan document explicitly states on line 495 to 'Leverage existing VariantSignature enum with Display impl for human-readable strings', but the current code lacks both public visibility and Display implementation. The conversion method needs to generate human-readable signature strings for the new output format, but cannot do so without Display trait on VariantSignature. This is a straightforward fix that requires adding public visibility and Display implementation.
+
+### Approved Change:
+Make VariantSignature public and implement Display trait:
+```rust
+/// Variant signatures for deduplication - same signature means same inner structure
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum VariantSignature {
+    /// Unit variants (no data)
+    Unit,
+    /// Tuple variants with specified types
+    Tuple(Vec<BrpTypeName>),
+    /// Struct variants with field names and types
+    Struct(Vec<(String, BrpTypeName)>),
+}
+
+impl std::fmt::Display for VariantSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unit => write!(f, "unit"),
+            Self::Tuple(types) => {
+                if types.len() == 1 {
+                    write!(f, "tuple({})", types[0])
+                } else {
+                    write!(f, "tuple({})", types.iter().map(|t| t.to_string()).collect::<Vec<_>>().join(", "))
+                }
+            }
+            Self::Struct(fields) => {
+                let field_strs: Vec<String> = fields
+                    .iter()
+                    .map(|(name, typ)| format!("{name}: {typ}"))
+                    .collect();
+                write!(f, "struct{{{}}}", field_strs.join(", "))
+            }
+        }
+    }
+}
+```
+
+### Implementation Notes:
+The VariantSignature enum needs to be made public and have Display implementation added to support the conversion strategy's requirement for human-readable signature strings.
+
+## DESIGN-4: Inconsistent signature format specification across plan sections ✅
+- **Category**: DESIGN
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: Signature Generation for Enum Variants vs Examples by PathKind
+- **Issue Identified**: Plan shows conflicting signature formats - Conversion Strategy section specifies unit as '()' while Examples section shows 'unit', tuple format differs between '(TypeName)' vs 'tuple(TypeName)'
+- **Verdict**: CONFIRMED
+- **Reasoning**: This is a real inconsistency in the plan document. The specification section shows one format while all examples use a different, more descriptive format. The examples format is used consistently across 9+ examples throughout the document, making it the clear standard. The examples format ('unit', 'tuple(Type)', 'struct{field: Type}') is more readable and descriptive than the specification format ('()', '(Type)', 'struct { field: Type }'). Since implementation will follow the examples, the specification section needs to be corrected to match.
+
+### Approved Change:
+Updated signature format specification to match the consistent format used throughout all examples:
+- Unit variants: `"unit"` (was `"()"`)
+- Tuple variants: `"tuple(TypeName)"` (was `"(TypeName)"`)  
+- Struct variants: `"struct{field1: Type1, field2: Type2}"` (was `"struct { field1: Type1, field2: Type2 }"`)
+
+### Implementation Notes:
+The specification now matches the format consistently used in all examples throughout the document, eliminating confusion for implementers.
+
+## DESIGN-5: Missing handling of Option-specific fields in conversion strategy ✅
+- **Category**: DESIGN
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: MutationPathBuilder Trait Integration
+- **Issue Identified**: Plan doesn't specify how existing Option-specific fields (example_some, example_none) integrate with new unified examples array structure
+- **Verdict**: CONFIRMED
+- **Reasoning**: This is a real design inconsistency. The current code has separate `example_some` and `example_none` fields that are hardcoded to None, but the plan's unified examples array structure treats Option types as regular enums with variants ['Some', 'None']. The plan document shows Option<T> types using the same examples array format as other enums (see the custom_size field example), but doesn't explicitly state that the old Option-specific fields should be removed. The conversion method needs to be updated to generate the proper examples array for Option types instead of using the deprecated Option-specific fields.
+
+### Approved Change:
+Remove Option-specific fields from MutationPath struct and use unified examples array:
+```rust
+// Remove these fields from MutationPath struct:
+// - pub example_some: Option<Value>
+// - pub example_none: Option<Value>
+
+// Remove hardcoded assignments in from_mutation_path_internal method:
+// - example_some: None,
+// - example_none: None,
+
+// Option types will use the unified examples array like other enums:
+// examples: [
+//   {
+//     "variants": ["None"],
+//     "signature": "unit",
+//     "example": "None"
+//   },
+//   {
+//     "variants": ["Some"], 
+//     "signature": "tuple(T)",
+//     "example": {"Some": value}
+//   }
+// ]
+```
+
+### Implementation Notes:
+Option types should be treated as regular enums with variants ["Some", "None"] using the unified examples array structure, eliminating the need for special-case fields.
+
+## DESIGN-6: Conversion strategy lacks specificity for signature generation implementation - **Verdict**: CONFIRMED - REDUNDANT
+- **Status**: REDUNDANT - Already addressed in plan
+- **Location**: Section: Conversion Strategy from MutationPathInternal
+- **Issue**: Plan says to reuse deduplicate_variant_signatures logic but doesn't explain how VariantSignature enum maps to human-readable signature strings shown in examples
+- **Reasoning**: The finding correctly identified that signature generation implementation was missing, but the solution already exists in the plan - TYPE-SYSTEM-4 already approved adding Display implementation to VariantSignature enum
+- **Existing Implementation**: The approved change from TYPE-SYSTEM-4 includes Display implementation that converts VariantSignature enum values to human-readable strings, though it needs to use the corrected format from DESIGN-4
+- **Plan Section**: TYPE-SYSTEM-4: VariantSignature enum lacks Display trait required by conversion strategy ✅
+- **Critical Note**: This functionality/design already exists in the plan - future reviewers should check for existing coverage before suggesting
+
+### Implementation Notes:
+The Display implementation from TYPE-SYSTEM-4 should be updated to use the corrected signature format from DESIGN-4 ("unit", "tuple(Type)", "struct{field: Type}" instead of "()", "(Type)", "struct { field: Type }").
 
 ## Design Review Skip Notes
 
