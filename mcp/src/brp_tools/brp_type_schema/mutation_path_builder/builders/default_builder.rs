@@ -31,8 +31,16 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         }])
     }
 
-    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        // For default/simple types, delegate to ExampleBuilder
-        ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth)
+    fn build_schema_example(&self, ctx: &RecursionContext, _depth: RecursionDepth) -> Value {
+        // For default/simple Value types, return a simple example without recursion
+        // Check for hardcoded knowledge first
+        use serde_json::json;
+
+        use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
+
+        BRP_MUTATION_KNOWLEDGE
+            .get(&KnowledgeKey::exact(ctx.type_name()))
+            .map(|k| k.example().clone())
+            .unwrap_or_else(|| json!(null))
     }
 }

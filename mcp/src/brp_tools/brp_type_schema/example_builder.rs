@@ -7,14 +7,12 @@
 //! **This file will be deleted** after the migration is complete.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::{Value, json};
 
 use super::constants::RecursionDepth;
-use super::mutation_path_builder::{
-    ArrayMutationBuilder, EnumMutationBuilder, KnowledgeKey, ListMutationBuilder,
-    MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, TypeKind,
-};
+use super::mutation_path_builder::{KnowledgeKey, PathKind, RecursionContext, TypeKind};
 use super::response_types::BrpTypeName;
 
 /// Temporary builder to break circular dependencies during migration
@@ -62,51 +60,11 @@ impl ExampleBuilder {
 
         let field_kind = TypeKind::from_schema(field_schema, type_name);
 
-        // Use static method dispatch to avoid dynamic trait dispatch issues
-        match field_kind {
-            TypeKind::Array => ArrayMutationBuilder::build_array_example_static(
-                type_name,
-                field_schema,
-                registry,
-                depth.increment(),
-            ),
-            TypeKind::List => ListMutationBuilder::build_list_example_static(
-                field_schema,
-                registry,
-                depth.increment(),
-            ),
-            TypeKind::Set => SetMutationBuilder::build_set_example_static(
-                field_schema,
-                registry,
-                depth.increment(),
-            ),
-            TypeKind::Map => MapMutationBuilder::build_map_example_static(
-                field_schema,
-                registry,
-                depth.increment(),
-            ),
-            TypeKind::Struct => StructMutationBuilder::build_struct_example_static(
-                field_schema,
-                registry,
-                depth.increment(),
-            ),
-            TypeKind::Tuple | TypeKind::TupleStruct => {
-                TupleMutationBuilder::build_tuple_example_static(
-                    field_schema,
-                    registry,
-                    depth.increment(),
-                )
-            }
-            TypeKind::Enum => EnumMutationBuilder::build_enum_example(
-                field_schema,
-                registry,
-                Some(type_name),
-                depth.increment(),
-            ),
-            TypeKind::Value => {
-                // For simple Value types, just return example from knowledge or simple default
-                KnowledgeKey::find_example_for_type(type_name).unwrap_or(json!(null))
-            }
-        }
+        // Create a root context for the trait method call
+        let path_kind = PathKind::new_root_value(type_name.clone());
+        let ctx = RecursionContext::new(path_kind, Arc::new(registry.clone()));
+
+        // Use trait dispatch instead of static method calls
+        field_kind.builder().build_schema_example(&ctx, depth)
     }
 }

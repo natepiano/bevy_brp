@@ -39,6 +39,11 @@ impl RecursionDepth {
     pub const fn from_usize(depth: usize) -> Self {
         Self(depth)
     }
+
+    /// Get the current depth value for debugging
+    pub const fn current(self) -> usize {
+        self.0
+    }
 }
 
 // Allow direct comparison with integers
