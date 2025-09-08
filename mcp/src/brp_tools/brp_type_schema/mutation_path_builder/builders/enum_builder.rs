@@ -89,14 +89,12 @@ fn shorten_type_name(type_name: &str) -> String {
         name if name.starts_with("alloc::string::String") => "String".to_string(),
         name if name.starts_with("core::option::Option<") => {
             // Extract the inner type and shorten it recursively
-            if let Some(inner) = name
-                .strip_prefix("core::option::Option<")
+            name.strip_prefix("core::option::Option<")
                 .and_then(|s| s.strip_suffix('>'))
-            {
-                format!("Option<{}>", shorten_type_name(inner))
-            } else {
-                "Option".to_string()
-            }
+                .map_or_else(
+                    || "Option".to_string(),
+                    |inner| format!("Option<{}>", shorten_type_name(inner)),
+                )
         }
         name => {
             // For other types, just take the last segment after ::
@@ -307,9 +305,9 @@ fn build_all_enum_examples(
             let variant_names: Vec<String> = variants_in_group
                 .iter()
                 .map(|v| match v {
-                    EnumVariantInfo::Unit(name) => name.clone(),
-                    EnumVariantInfo::Tuple(name, _) => name.clone(),
-                    EnumVariantInfo::Struct(name, _) => name.clone(),
+                    EnumVariantInfo::Unit(name)
+                    | EnumVariantInfo::Tuple(name, _)
+                    | EnumVariantInfo::Struct(name, _) => name.clone(),
                 })
                 .collect();
 
@@ -573,10 +571,10 @@ impl EnumMutationBuilder {
             "None" => json!(null),
             "Some" => {
                 // Extract the inner value from {"Some": value}
-                if let Some(obj) = example.as_object() {
-                    if let Some(value) = obj.get("Some") {
-                        return value.clone();
-                    }
+                if let Some(obj) = example.as_object()
+                    && let Some(value) = obj.get("Some")
+                {
+                    return value.clone();
                 }
                 example
             }
@@ -590,15 +588,15 @@ impl EnumMutationBuilder {
         variant: &EnumVariantInfo,
         enum_type: Option<&BrpTypeName>,
     ) -> Value {
-        if let Some(enum_type) = enum_type {
-            if Self::is_option_type(enum_type) {
-                let variant_name = match variant {
-                    EnumVariantInfo::Unit(name) => name,
-                    EnumVariantInfo::Tuple(name, _) => name,
-                    EnumVariantInfo::Struct(name, _) => name,
-                };
-                return Self::transform_option_example(example, variant_name);
-            }
+        if let Some(enum_type) = enum_type
+            && Self::is_option_type(enum_type)
+        {
+            let variant_name = match variant {
+                EnumVariantInfo::Unit(name)
+                | EnumVariantInfo::Tuple(name, _)
+                | EnumVariantInfo::Struct(name, _) => name,
+            };
+            return Self::transform_option_example(example, variant_name);
         }
         example
     }
@@ -621,11 +619,9 @@ impl EnumMutationBuilder {
         let variants = extract_enum_variants(schema, registry, *depth);
 
         // Pick the first variant as our concrete spawn example
-        if let Some(first_variant) = variants.first() {
+        variants.first().map_or(json!(null), |first_variant| {
             let example = first_variant.build_example(registry, *depth);
             Self::apply_option_transformation(example, first_variant, enum_type)
-        } else {
-            json!(null)
-        }
+        })
     }
 }
