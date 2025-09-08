@@ -1,6 +1,10 @@
-/// Default builder for simple types
-///
-/// Handles simple types that don't need complex logic - just creates a standard mutation path
+//! Default builder for simple types
+//!
+//! Handles simple types that don't need complex logic - just creates a standard mutation path
+//!
+//! **Recursion**: NO - Default builder handles Value types (primitives like i32, f32, String)
+//! which are leaf nodes in the type tree. These cannot be decomposed further and are
+//! mutated as atomic values.
 use serde_json::Value;
 
 use super::super::MutationPathBuilder;

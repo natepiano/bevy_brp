@@ -104,8 +104,8 @@ test_types = [
 for type_name in test_types:
     if type_name in current['type_info']:
         has_spawn = bool(current['type_info'][type_name].get('spawn_format'))
-        has_root_mutation = any(p.get('path_kind', {}).get('type') == 'RootValue' 
-                               for p in current['type_info'][type_name].get('mutation_info', {}).values())
+        has_root_mutation = any(p.get('path_info', {}).get('path_kind') == 'RootValue' 
+                               for p in current['type_info'][type_name].get('mutation_paths', {}).values())
         print(f'{type_name}: {"✓" if has_spawn else "✗"} spawn_format, {"✓" if has_root_mutation else "✗"} root_mutation')
 ```
 
@@ -113,16 +113,16 @@ for type_name in test_types:
 ```python
 # Count types with mutation paths that now have root mutations
 types_with_mutations = [t for t in data['type_info'].values() 
-                       if t.get('mutation_info', {})]
+                       if t.get('mutation_paths', {})]
 
 types_with_root_mutation = []
 for type_info in types_with_mutations:
-    has_root = any(p.get('path_kind', {}).get('type') == 'RootValue' 
-                   for p in type_info.get('mutation_info', {}).values())
+    has_root = any(p.get('path_info', {}).get('path_kind') == 'RootValue' 
+                   for p in type_info.get('mutation_paths', {}).values())
     if has_root:
         types_with_root_mutation.append(type_info)
 
-print(f'Types with mutation_info: {len(types_with_mutations)}')
+print(f'Types with mutation_paths: {len(types_with_mutations)}')
 print(f'Types with root mutation: {len(types_with_root_mutation)}')
 print(f'Coverage: {len(types_with_root_mutation)/len(types_with_mutations)*100:.1f}%')
 

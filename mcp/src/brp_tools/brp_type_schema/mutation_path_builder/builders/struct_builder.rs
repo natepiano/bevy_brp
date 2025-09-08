@@ -2,6 +2,10 @@
 //!
 //! Handles the most complex case - struct mutations with one-level recursion.
 //! For field contexts, adds both the struct field itself and nested field paths.
+//!
+//! **Recursion**: YES - Structs recurse into each field to generate mutation paths
+//! for nested structures (e.g., `Transform.translation.x`). Each field has a stable
+//! name that can be used in paths, allowing deep mutation of nested structures.
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
@@ -43,6 +47,7 @@ impl MutationPathBuilder for StructMutationBuilder {
         };
 
         let mut paths = Vec::new();
+        let mut struct_example = serde_json::Map::new();
         let properties = Self::extract_properties(ctx);
 
         for (field_name, field_info) in properties {
@@ -63,6 +68,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                     &field_ctx,
                     MutationSupport::NotInRegistry(field_type.clone()),
                 ));
+                struct_example.insert(field_name.clone(), json!(null));
                 continue;
             }
 
@@ -72,6 +78,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                     &field_ctx,
                     MutationSupport::NotInRegistry(field_type.clone()),
                 ));
+                struct_example.insert(field_name.clone(), json!(null));
                 continue;
             };
             let field_kind = TypeKind::from_schema(field_schema, &field_type);
@@ -81,20 +88,38 @@ impl MutationPathBuilder for StructMutationBuilder {
                 .get(&KnowledgeKey::exact(&field_type))
                 .is_some();
 
-            if matches!(field_kind, TypeKind::Value) {
+            let field_example = if matches!(field_kind, TypeKind::Value) {
                 if ctx.value_type_has_serialization(&field_type) {
-                    paths.push(Self::build_field_mutation_path(&field_ctx, depth));
+                    let path = Self::build_field_mutation_path(&field_ctx, depth);
+                    let example = path.example.clone();
+                    paths.push(path);
+                    example
                 } else {
                     paths.push(Self::build_not_mutatable_field_from_support(
                         &field_ctx,
                         MutationSupport::MissingSerializationTraits(field_type.clone()),
                     ));
+                    json!(null)
                 }
             } else {
                 // Recurse for nested containers or structs
                 let field_paths = field_kind.build_paths(&field_ctx, depth)?;
+
+                // Extract the field example from the root path
+                let field_example = field_paths
+                    .iter()
+                    .find(|p| p.path == field_ctx.mutation_path)
+                    .map(|p| p.example.clone())
+                    .unwrap_or_else(|| {
+                        // If no direct path, generate example using trait dispatch
+                        field_kind
+                            .builder()
+                            .build_schema_example(&field_ctx, depth.increment())
+                    });
+
                 paths.extend(field_paths);
-            }
+                field_example
+            };
 
             // Special case: Types with hardcoded knowledge that are also structs
             // (like Vec3, Quat, etc.) should have their direct path AND nested paths
@@ -109,13 +134,43 @@ impl MutationPathBuilder for StructMutationBuilder {
                             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&field_type))
                         {
                             path.example = knowledge.example().clone();
+                            struct_example.insert(field_name.clone(), knowledge.example().clone());
+                        } else {
+                            struct_example.insert(field_name.clone(), field_example);
                         }
                     } else {
                         // If no direct path was created, add it now with hardcoded example
-                        paths.push(Self::build_field_mutation_path(&field_ctx, depth));
+                        let path = Self::build_field_mutation_path(&field_ctx, depth);
+                        struct_example.insert(field_name.clone(), path.example.clone());
+                        paths.push(path);
                     }
+                } else {
+                    struct_example.insert(field_name.clone(), field_example);
                 }
+            } else {
+                struct_example.insert(field_name.clone(), field_example);
             }
+        }
+
+        // Add the root struct path with the accumulated example
+        // But only if we're at the root level
+        if matches!(ctx.path_kind, PathKind::RootValue { .. }) {
+            // DEBUG: Log the struct example to see what we're building
+            if ctx.type_name().as_str() == "bevy_transform::components::transform::Transform" {
+                tracing::warn!("DEBUG: Transform struct_example = {:?}", struct_example);
+            }
+
+            paths.insert(
+                0,
+                MutationPathInternal {
+                    path:            ctx.mutation_path.clone(),
+                    example:         json!(struct_example),
+                    type_name:       ctx.type_name().clone(),
+                    path_kind:       ctx.path_kind.clone(),
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason:    None,
+                },
+            );
         }
 
         Self::propagate_struct_immutability(&mut paths);
@@ -206,8 +261,14 @@ impl StructMutationBuilder {
                     .or_else(|| BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type)))
                     .map_or_else(
                         || {
-                            // Don't increment - TypeInfo will handle it
-                            ExampleBuilder::build_example(field_type, &field_ctx.registry, depth)
+                            // Generate example using trait dispatch
+                            field_ctx
+                                .get_type_schema(field_type)
+                                .map(|schema| {
+                                    let kind = TypeKind::from_schema(schema, field_type);
+                                    kind.builder().build_schema_example(&field_ctx, depth)
+                                })
+                                .unwrap_or(json!(null))
                         },
                         |k| k.example().clone(),
                     )
@@ -226,12 +287,16 @@ impl StructMutationBuilder {
                                 })
                                 .map_or_else(
                                     || {
-                                        // Don't increment - TypeInfo will handle it
-                                        ExampleBuilder::build_example(
-                                            field_type,
-                                            &field_ctx.registry,
-                                            depth,
-                                        )
+                                        // Generate example using trait dispatch
+                                        field_ctx
+                                            .get_type_schema(field_type)
+                                            .map(|schema| {
+                                                let kind =
+                                                    TypeKind::from_schema(schema, field_type);
+                                                kind.builder()
+                                                    .build_schema_example(&field_ctx, depth)
+                                            })
+                                            .unwrap_or(json!(null))
                                     },
                                     |k| k.example().clone(),
                                 )
@@ -388,11 +453,15 @@ impl StructMutationBuilder {
                                             ctx.type_name().clone(),
                                         );
                                         let field_ctx = ctx.create_field_context(field_path_kind);
-                                        ExampleBuilder::build_example(
-                                            &field_type,
-                                            &ctx.registry,
-                                            depth,
-                                        )
+                                        // Use trait dispatch directly
+                                        ctx.get_type_schema(&field_type)
+                                            .map(|schema| {
+                                                let kind =
+                                                    TypeKind::from_schema(schema, &field_type);
+                                                kind.builder()
+                                                    .build_schema_example(&field_ctx, depth)
+                                            })
+                                            .unwrap_or(json!(null))
                                     },
                                 )
                             },

@@ -2,6 +2,10 @@
 //!
 //! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
 //! Uses single-pass recursion to extract element type and recurse deeper.
+//!
+//! **Recursion**: YES - Lists recurse into elements to generate mutation paths
+//! for nested structures (e.g., `Vec<Transform>` generates `[0].translation`).
+//! Elements are addressable by index, though indices may change as list mutates.
 //! use `std::collections::HashMap`;
 
 use std::collections::HashMap;
@@ -46,11 +50,6 @@ impl MutationPathBuilder for ListMutationBuilder {
 
         let mut paths = Vec::new();
 
-        // First, add the top-level list mutation path (for replacing entire list)
-        if ctx.value_type_has_serialization(ctx.type_name()) {
-            paths.push(Self::build_list_mutation_path(ctx, depth));
-        }
-
         // RECURSE DEEPER - add element-level paths
         let Some(element_schema) = ctx.get_type_schema(&element_type) else {
             return Ok(vec![Self::build_not_mutatable_path(
@@ -67,7 +66,33 @@ impl MutationPathBuilder for ListMutationBuilder {
         let element_ctx = ctx.create_field_context(element_path_kind);
 
         // Continue recursion to actual mutation endpoints
-        let element_paths = element_kind.build_paths(&element_ctx, depth)?; // depth already incremented by TypeKind
+        let element_paths = element_kind.build_paths(&element_ctx, depth)?;
+
+        // Extract element example from child paths
+        let element_example = element_paths
+            .iter()
+            .find(|p| p.path == element_ctx.mutation_path)
+            .map(|p| p.example.clone())
+            .unwrap_or_else(|| {
+                // If no direct path, generate example using trait dispatch
+                element_kind
+                    .builder()
+                    .build_schema_example(&element_ctx, depth.increment())
+            });
+
+        // Build the top-level list mutation path with accumulated example
+        if ctx.value_type_has_serialization(ctx.type_name()) {
+            let list_example = vec![element_example; 2]; // Lists typically have 2 example elements
+            paths.push(MutationPathInternal {
+                path:            ctx.mutation_path.clone(),
+                example:         json!(list_example),
+                type_name:       ctx.type_name().clone(),
+                path_kind:       ctx.path_kind.clone(),
+                mutation_status: MutationStatus::Mutatable,
+                error_reason:    None,
+            });
+        }
+
         paths.extend(element_paths);
 
         Ok(paths)
@@ -103,11 +128,10 @@ impl MutationPathBuilder for ListMutationBuilder {
                                     ctx.type_name().clone(),
                                 );
                                 let element_ctx = ctx.create_field_context(element_path_kind);
-                                ExampleBuilder::build_example(
-                                    &item_type_name,
-                                    &ctx.registry,
-                                    depth.increment(),
-                                )
+                                // Use trait dispatch directly
+                                element_kind
+                                    .builder()
+                                    .build_schema_example(&element_ctx, depth.increment())
                             })
                     },
                     |k| k.example().clone(),
@@ -145,31 +169,6 @@ impl ListMutationBuilder {
             let array = vec![item_example; 2];
             json!(array)
         })
-    }
-
-    /// Build a top-level list mutation path (for replacing entire list)
-    fn build_list_mutation_path(
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> MutationPathInternal {
-        // Build path using the context's prefix
-        let path = if ctx.mutation_path.is_empty() {
-            String::new() // Root level path is empty
-        } else {
-            ctx.mutation_path.clone() // Field level path uses the prefix
-        };
-
-        // Generate example value for the list type
-        let example = ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth);
-
-        MutationPathInternal {
-            path,
-            example,
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
-            error_reason: None,
-        }
     }
 
     /// Build a not-mutatable path with structured error details

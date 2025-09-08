@@ -117,12 +117,31 @@ impl MutationPath {
                         || {
                             obj.get("__enum_signature_groups").map_or_else(
                                 || {
-                                    if obj.is_empty() {
-                                        vec![]
-                                    } else {
+                                    // DEBUG: Log the type detection for Transform
+                                    if path.type_name.as_str()
+                                        == "bevy_transform::components::transform::Transform"
+                                    {
+                                        tracing::warn!(
+                                            "DEBUG: Transform type_kind = {:?}, obj keys = {:?}",
+                                            type_kind,
+                                            obj.keys().collect::<Vec<_>>()
+                                        );
+                                    }
+
+                                    // Only treat as enum examples if this is actually an enum type
+                                    // Use TypeKind to properly distinguish enums from structs
+                                    if matches!(type_kind, TypeKind::Enum) && !obj.is_empty() {
                                         // This is an enum root path with variant examples
                                         // (fallback)
                                         Self::create_enum_example_groups(obj)
+                                    } else {
+                                        // This is a regular struct/object example - don't add enum
+                                        // fields
+                                        vec![ExampleGroup {
+                                            applicable_variants: None,
+                                            signature:           None,
+                                            example:             path.example.clone(),
+                                        }]
                                     }
                                 },
                                 |signature_groups| {
@@ -158,16 +177,23 @@ impl MutationPath {
                         .and_then(Value::as_array)
                         .map_or_else(
                             || {
-                                // This might be a root enum path with variant examples (fallback)
-                                path.example.as_object().and_then(|obj| {
-                                    if obj.is_empty() {
-                                        None
-                                    } else {
-                                        let mut keys: Vec<String> = obj.keys().cloned().collect();
-                                        keys.sort(); // Alphabetical sorting for consistency
-                                        Some(keys)
-                                    }
-                                })
+                                // Only extract variants if this is actually an enum type
+                                if matches!(type_kind, TypeKind::Enum) {
+                                    // This is a root enum path with variant examples (fallback)
+                                    path.example.as_object().and_then(|obj| {
+                                        if obj.is_empty() {
+                                            None
+                                        } else {
+                                            let mut keys: Vec<String> =
+                                                obj.keys().cloned().collect();
+                                            keys.sort(); // Alphabetical sorting for consistency
+                                            Some(keys)
+                                        }
+                                    })
+                                } else {
+                                    // Not an enum - no variants
+                                    None
+                                }
                             },
                             |signature_groups| {
                                 // This is an enum root path - collect all variants from all groups

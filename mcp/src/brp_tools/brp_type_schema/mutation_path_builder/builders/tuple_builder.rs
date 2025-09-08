@@ -2,6 +2,10 @@
 //!
 //! Handles tuple mutations by extracting prefix items (tuple elements) and building
 //! paths for both the entire tuple and individual elements by index.
+//!
+//! **Recursion**: YES - Tuples recurse into each element to generate mutation paths
+//! for nested structures (e.g., `EntityHashMap(HashMap)` generates `.0[key]`).
+//! Elements are addressable by position indices `.0`, `.1`, etc.
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
@@ -53,9 +57,6 @@ impl MutationPathBuilder for TupleMutationBuilder {
             )]);
         }
 
-        // Build root tuple path
-        Self::build_root_tuple_path(&mut paths, ctx, schema, depth);
-
         // Check if parent knowledge indicates this should be treated as opaque
         let should_stop_recursion = ctx.parent_knowledge.is_some_and(|knowledge| {
             matches!(
@@ -64,10 +65,123 @@ impl MutationPathBuilder for TupleMutationBuilder {
             )
         });
 
-        // Build paths for each element (unless parent knowledge says to treat as opaque)
+        let mut tuple_examples = Vec::new();
+
+        // Build paths for each element and collect examples (unless parent knowledge says to treat
+        // as opaque)
         if !should_stop_recursion {
-            Self::build_tuple_element_paths(&mut paths, ctx, schema, &elements, depth)?;
+            for (index, element_type) in elements.iter().enumerate() {
+                let element_path_kind = PathKind::new_indexed_element(
+                    index,
+                    element_type.clone(),
+                    ctx.type_name().clone(),
+                );
+                let element_ctx = ctx.create_field_context(element_path_kind);
+
+                let Some(element_schema) = ctx.get_type_schema(element_type) else {
+                    // Element not in registry - create error path
+                    let path = if ctx.mutation_path.is_empty() {
+                        format!(".{index}")
+                    } else {
+                        format!("{}.{index}", ctx.mutation_path)
+                    };
+                    paths.push(MutationPathInternal {
+                        path,
+                        example: json!({
+                            "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
+                            "agent_directive": "Element type not found in registry"
+                        }),
+                        type_name: element_type.clone(),
+                        path_kind: element_ctx.path_kind.clone(),
+                        mutation_status: MutationStatus::NotMutatable,
+                        error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
+                    });
+                    tuple_examples.push(json!(null));
+                    continue;
+                };
+
+                let element_kind = TypeKind::from_schema(element_schema, element_type);
+
+                if matches!(element_kind, TypeKind::Value) {
+                    // For Value types, check serialization and build directly
+                    if ctx.value_type_has_serialization(element_type) {
+                        let element_example = element_kind
+                            .builder()
+                            .build_schema_example(&element_ctx, depth.increment());
+                        tuple_examples.push(element_example.clone());
+                        paths.push(MutationPathInternal {
+                            path:            element_ctx.mutation_path.clone(),
+                            example:         element_example,
+                            type_name:       element_type.clone(),
+                            path_kind:       element_ctx.path_kind.clone(),
+                            mutation_status: MutationStatus::Mutatable,
+                            error_reason:    None,
+                        });
+                    } else {
+                        tuple_examples.push(json!(null));
+                        paths.push(MutationPathInternal {
+                            path: element_ctx.mutation_path.clone(),
+                            example: json!({
+                                "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
+                                "agent_directive": "Element type cannot be mutated through BRP"
+                            }),
+                            type_name: element_type.clone(),
+                            path_kind: element_ctx.path_kind.clone(),
+                            mutation_status: MutationStatus::NotMutatable,
+                            error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
+                        });
+                    }
+                } else {
+                    // Recurse for complex types
+                    let element_paths = element_kind.build_paths(&element_ctx, depth)?;
+
+                    // Extract the element example from the root path
+                    let element_example = element_paths
+                        .iter()
+                        .find(|p| p.path == element_ctx.mutation_path)
+                        .map(|p| p.example.clone())
+                        .unwrap_or_else(|| {
+                            // If no direct path, generate example using trait dispatch
+                            element_kind
+                                .builder()
+                                .build_schema_example(&element_ctx, depth.increment())
+                        });
+
+                    tuple_examples.push(element_example);
+                    paths.extend(element_paths);
+                }
+            }
+        } else {
+            // Use parent knowledge for example if not recursing
+            if let Some(knowledge) = ctx.parent_knowledge {
+                let example = knowledge.example();
+                if let Some(arr) = example.as_array() {
+                    tuple_examples = arr.clone();
+                }
+            }
         }
+
+        // Build root tuple path with accumulated examples
+        let root_example = if tuple_examples.len() == 1 {
+            // Single-field tuple structs are unwrapped by BRP
+            tuple_examples.into_iter().next().unwrap_or(json!(null))
+        } else if tuple_examples.is_empty() {
+            json!(null)
+        } else {
+            json!(tuple_examples)
+        };
+
+        paths.insert(
+            0,
+            MutationPathInternal {
+                path:            ctx.mutation_path.clone(),
+                example:         root_example,
+                type_name:       ctx.type_name().clone(),
+                path_kind:       ctx.path_kind.clone(),
+                mutation_status: MutationStatus::Mutatable,
+                error_reason:    None,
+            },
+        );
 
         // Propagate mixed mutability status to root path
         Self::propagate_tuple_mixed_mutability(&mut paths);
@@ -117,9 +231,9 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                                         let element_ctx = ctx.create_field_context(
                                                             element_path_kind,
                                                         );
-                                                        ExampleBuilder::build_example(
-                                                            &element_type,
-                                                            &ctx.registry,
+                                                        // Use trait dispatch directly
+                                                        element_kind.builder().build_schema_example(
+                                                            &element_ctx,
                                                             depth.increment(),
                                                         )
                                                     },

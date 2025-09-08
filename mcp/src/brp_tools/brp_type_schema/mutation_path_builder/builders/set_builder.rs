@@ -3,8 +3,9 @@
 //! Unlike Lists, Sets can only be mutated at the top level (replacing/merging the entire set).
 //! Sets don't support indexed access or element-level mutations through BRP.
 //!
-//! Because of this fundamental limitation, we do not attempt to recurse into the element type.
-//! The mutation path generation stops at the Set field itself.
+//! **Recursion**: NO - Sets are terminal mutation points. Elements have no stable
+//! addresses (no indices or keys) and cannot be individually mutated. Only the entire
+//! set can be replaced. Mutating an element could change its hash, breaking set invariants.
 
 use std::collections::HashMap;
 
@@ -39,7 +40,17 @@ impl MutationPathBuilder for SetMutationBuilder {
         }
 
         // Sets can only be mutated at the top level - no element access
-        Ok(vec![Self::build_set_mutation_path(ctx, depth)])
+        // Generate the example using build_schema_example
+        let example = self.build_schema_example(ctx, depth);
+
+        Ok(vec![MutationPathInternal {
+            path: ctx.mutation_path.clone(),
+            example,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason: None,
+        }])
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
@@ -72,11 +83,10 @@ impl MutationPathBuilder for SetMutationBuilder {
                                     ctx.type_name().clone(),
                                 );
                                 let element_ctx = ctx.create_field_context(element_path_kind);
-                                ExampleBuilder::build_example(
-                                    &item_type_name,
-                                    &ctx.registry,
-                                    depth.increment(),
-                                )
+                                // Use trait dispatch directly
+                                element_kind
+                                    .builder()
+                                    .build_schema_example(&element_ctx, depth.increment())
                             })
                     },
                     |k| k.example().clone(),
@@ -117,22 +127,6 @@ impl SetMutationBuilder {
     }
 
     /// Build a mutation path for the entire Set field
-    fn build_set_mutation_path(
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> MutationPathInternal {
-        // Generate example value for the Set type
-        let example = ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth);
-
-        MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example,
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
-            error_reason: None,
-        }
-    }
 
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(

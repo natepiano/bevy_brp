@@ -2,6 +2,10 @@
 //!
 //! Handles both fixed-size arrays like `[Vec3; 3]` and dynamic arrays.
 //! Creates mutation paths for both the entire array and individual elements.
+//!
+//! **Recursion**: YES - Arrays recurse into each element to generate mutation paths
+//! for nested structures (e.g., `[Transform; 3]` generates paths for each Transform).
+//! This is because array elements are addressable by stable indices `[0]`, `[1]`, etc.
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
@@ -38,19 +42,62 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         let array_size = Self::extract_array_size(ctx.type_name());
         let mut paths = Vec::new();
 
-        // Build the main array path
-        paths.push(Self::build_main_array_path(
-            ctx,
-            &element_type,
-            array_size,
-            depth,
-        ));
+        // First get nested paths for complex element types - we'll use these to build our examples
+        let element_path_kind =
+            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
+        let element_ctx = ctx.create_field_context(element_path_kind);
+        let element_kind = TypeKind::from_schema(element_schema, &element_type);
+
+        let element_paths = if !matches!(element_kind, TypeKind::Value) {
+            element_kind.build_paths(&element_ctx, depth)?
+        } else {
+            vec![]
+        };
+
+        // Extract the element example from the first element path
+        // This is the indexed element path like "[0]"
+        let element_example = if let Some(first_element_path) = element_paths
+            .iter()
+            .find(|p| p.path == element_ctx.mutation_path)
+        {
+            // If we have a path for the element itself, use its example
+            first_element_path.example.clone()
+        } else {
+            // For Value types or when no direct path exists, generate the example using trait
+            // dispatch
+            element_kind
+                .builder()
+                .build_schema_example(&element_ctx, depth.increment())
+        };
+
+        // Build the main array path using the element example
+        let array_example = {
+            let size = array_size.unwrap_or(2);
+            vec![element_example.clone(); size]
+        };
+
+        paths.push(MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!(array_example),
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
+        });
 
         // Build the indexed element path
-        paths.push(Self::build_indexed_element_path(ctx, &element_type, depth));
+        let indexed_path = format!("{}[0]", ctx.mutation_path);
+        paths.push(MutationPathInternal {
+            path:            indexed_path,
+            example:         element_example,
+            type_name:       element_type.clone(),
+            path_kind:       element_ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
+        });
 
-        // Add nested paths for complex element types
-        Self::add_nested_paths(ctx, &element_type, element_schema, depth, &mut paths)?;
+        // Add the nested paths
+        paths.extend(element_paths);
 
         Ok(paths)
     }
@@ -73,7 +120,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                 .get(&KnowledgeKey::exact(&item_type_name))
                 .map_or_else(
                     || {
-                        // Get the element type schema and create context for it
+                        // Get the element type schema and use trait dispatch directly
                         ctx.get_type_schema(&item_type_name)
                             .map_or(json!(null), |element_schema| {
                                 let element_kind =
@@ -85,11 +132,10 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                                     ctx.type_name().clone(),
                                 );
                                 let element_ctx = ctx.create_field_context(element_path_kind);
-                                ExampleBuilder::build_example(
-                                    &item_type_name,
-                                    &ctx.registry,
-                                    depth.increment(),
-                                )
+                                // Use trait dispatch directly instead of ExampleBuilder
+                                element_kind
+                                    .builder()
+                                    .build_schema_example(&element_ctx, depth.increment())
                             })
                     },
                     |k| k.example().clone(),
@@ -142,68 +188,6 @@ impl ArrayMutationBuilder {
         Ok((element_type, element_schema))
     }
 
-    /// Build the main array path
-    fn build_main_array_path(
-        ctx: &RecursionContext,
-        element_type: &BrpTypeName,
-        array_size: Option<usize>,
-        depth: RecursionDepth,
-    ) -> MutationPathInternal {
-        let array_example =
-            Self::build_array_example(element_type, &ctx.registry, array_size, depth);
-
-        MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!(array_example),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
-        }
-    }
-
-    /// Build the indexed element path
-    fn build_indexed_element_path(
-        ctx: &RecursionContext,
-        element_type: &BrpTypeName,
-        depth: RecursionDepth,
-    ) -> MutationPathInternal {
-        let element_example = Self::build_element_example(element_type, &ctx.registry, depth);
-
-        // Build array element path using PathKind
-        let array_element_path_kind =
-            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
-        let indexed_path = format!("{}[0]", ctx.mutation_path);
-
-        MutationPathInternal {
-            path:            indexed_path,
-            example:         element_example,
-            type_name:       element_type.clone(),
-            path_kind:       array_element_path_kind,
-            mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
-        }
-    }
-
-    /// Add nested paths for complex element types
-    fn add_nested_paths(
-        ctx: &RecursionContext,
-        element_type: &BrpTypeName,
-        element_schema: &Value,
-        depth: RecursionDepth,
-        paths: &mut Vec<MutationPathInternal>,
-    ) -> Result<()> {
-        let element_path_kind =
-            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
-        let element_ctx = ctx.create_field_context(element_path_kind);
-        let element_kind = TypeKind::from_schema(element_schema, element_type);
-        if !matches!(element_kind, TypeKind::Value) {
-            let element_paths = element_kind.build_paths(&element_ctx, depth)?;
-            paths.extend(element_paths);
-        }
-        Ok(())
-    }
-
     /// Extract array size from type name (e.g., "[f32; 4]" -> 4)
     fn extract_array_size(type_name: &BrpTypeName) -> Option<usize> {
         let type_str = type_name.as_str();
@@ -215,40 +199,6 @@ impl ArrayMutationBuilder {
             })
         })
     }
-
-    /// Build array example with repeated element examples
-    fn build_array_example(
-        element_type: &BrpTypeName,
-        registry: &HashMap<BrpTypeName, Value>,
-        array_size: Option<usize>,
-        depth: RecursionDepth,
-    ) -> Vec<Value> {
-        let element_example = Self::build_element_example(element_type, registry, depth);
-        let size = array_size.unwrap_or(2);
-        vec![element_example; size]
-    }
-
-    /// Build example value for an element
-    fn build_element_example(
-        element_type: &BrpTypeName,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Check for hardcoded knowledge first
-        BRP_MUTATION_KNOWLEDGE
-            .get(&KnowledgeKey::exact(element_type))
-            .map_or_else(
-                || {
-                    // Pass depth through - ExampleBuilder will handle incrementing
-                    ExampleBuilder::build_example(element_type, registry, depth)
-                },
-                |k| k.example().clone(),
-            )
-    }
-
-    // Note: Removed static helper methods build_root_array_path, build_indexed_element_path,
-    // and build_field_array_path as we now build paths inline following StructMutationBuilder
-    // pattern
 
     /// Build array example using extracted logic from `TypeInfo::build_type_example`
     /// This is the static method version that calls `TypeInfo` for element types

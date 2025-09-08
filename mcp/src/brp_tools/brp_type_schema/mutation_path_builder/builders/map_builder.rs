@@ -3,9 +3,9 @@
 //! Like Sets, Maps can only be mutated at the top level (replacing the entire map).
 //! Maps don't support individual key mutations through BRP's reflection path system.
 //!
-//! The BRP reflection parser expects integer indices in brackets (e.g., `[0]`) for arrays,
-//! not string keys (e.g., `["key"]`) for maps. Because of this limitation, we generate
-//! a single terminal mutation path for the entire map field.
+//! **Recursion**: NO - Maps are terminal mutation points. Only the entire map can be
+//! replaced, not individual entries. BRP reflection expects integer indices `[0]` for
+//! arrays, not string keys `["key"]` for maps, making individual entry paths impossible.
 
 use std::collections::HashMap;
 
@@ -37,7 +37,17 @@ impl MutationPathBuilder for MapMutationBuilder {
         }
 
         // Maps can only be mutated at the top level - no individual key access
-        Ok(vec![Self::build_map_mutation_path(ctx, depth)])
+        // Generate the example using build_schema_example
+        let example = self.build_schema_example(ctx, depth);
+
+        Ok(vec![MutationPathInternal {
+            path: ctx.mutation_path.clone(),
+            example,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason: None,
+        }])
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
