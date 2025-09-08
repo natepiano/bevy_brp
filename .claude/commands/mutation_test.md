@@ -54,7 +54,7 @@ PORT = 20116                                                # BRP port for testi
 **MANDATORY FIRST STEP**: Always clear and reassign batch numbers using the renumbering script:
 
 ```bash
-./.claude/commands/scripts/mutation_test_renumber_batches.sh
+./.claude/commands/scripts/mutation_test_renumber_batches.sh BATCH_SIZE
 ```
 
 This script will:

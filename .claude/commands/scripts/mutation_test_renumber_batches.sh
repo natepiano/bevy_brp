@@ -5,8 +5,15 @@
 
 set -e
 
+# Check for batch size parameter
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <batch_size>"
+    echo "Example: $0 50"
+    exit 1
+fi
+
+BATCH_SIZE="$1"
 JSON_FILE="$TMPDIR/all_types.json"
-BATCH_SIZE=30
 
 # Check if the JSON file exists
 if [ ! -f "$JSON_FILE" ]; then
