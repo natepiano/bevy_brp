@@ -96,7 +96,8 @@
       "Bash(./.claude/commands/scripts/mutation_test_merge_batch_results.sh:*)",
       "Bash(echo:*)",
       "Bash(~/.claude/commands/bash/build-check.sh:*)",
-      "Bash(rustc:*)"
+      "Bash(rustc:*)",
+      "Read(//Users/natemccoy/.claude/commands/bash/**)"
     ],
     "deny": [
       "Bash(sed:*)"
