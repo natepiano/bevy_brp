@@ -10,10 +10,10 @@
 
 **Configuration**:
 ```
-BATCH_SIZE = 30              # Types per batch
-MAX_SUBAGENTS = 10           # Parallel subagents per batch  
-TYPES_PER_SUBAGENT = 3       # Types each subagent tests
-PORT = 20116                 # BRP port for testing
+TYPES_PER_SUBAGENT = 5                                      # Types each subagent tests
+MAX_SUBAGENTS = 10                                          # Parallel subagents per batch  
+BATCH_SIZE = MAX_SUBAGENTS * TYPES_PER_SUBAGENT            # Types per batch
+PORT = 20116                                                # BRP port for testing
 ```
 
 ## Critical Execution Requirements
@@ -59,7 +59,7 @@ PORT = 20116                 # BRP port for testing
 
 This script will:
 - Clear all existing batch numbers
-- Assign new batch numbers to untested/failed types (BATCH_SIZE=30 per batch)
+- Assign new batch numbers to untested/failed types (BATCH_SIZE per batch)
 - Display statistics about types to be tested
 
 **CLEANUP PREVIOUS RUNS**: Remove any leftover batch result files from previous test runs:
