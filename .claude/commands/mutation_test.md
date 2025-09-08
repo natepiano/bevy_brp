@@ -87,6 +87,10 @@ This prevents interference from previous test runs and ensures clean batch resul
 Process each batch sequentially, with parallel subagents within each batch:
 
 1. **Identify batch types**: Get all types in current batch (up to BATCH_SIZE types)
+   ```bash
+   # Get types for batch N
+   python3 ./.claude/commands/scripts/mutation_test_get_batch_types.py N
+   ```
 2. **Divide into groups**: Split types into groups of TYPES_PER_SUBAGENT each
 3. **Launch parallel subagents**:
    - Create one Task tool call for EACH group
