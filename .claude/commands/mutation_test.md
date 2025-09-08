@@ -176,7 +176,9 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
    ```
    
    **CRITICAL:** Replace `ACTUAL_COMPONENT_TYPE_NAME_HERE` with the real component type from your assigned list. Do NOT use the placeholder text literally.
-4. **Test Mutations** - Test each path from mutation_paths array (includes root path `""` for full component replacement)
+4. **Test Mutations** - Test each path from mutation_paths array:
+   - **Root path `""`** (empty string): Full component replacement using the SAME spawn_format from schema
+   - **Field paths** (e.g., `.translation.x`): Individual field mutations
 5. **Return Results** - Structured JSON for all types
 
 **REMEMBER**: 
@@ -229,13 +231,30 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
 4. Only mark FAIL if the retry with proper number types also fails
 5. **REMEMBER**: Getting this error means YOU made a mistake, not the component
 
+**MUTATION PATH USAGE**:
+- **Root path `""`** (empty string): Replaces the ENTIRE component with a new value
+  - **CRITICAL**: Use the EXACT SAME format as spawn_format from the schema
+  - This is essentially the same as spawn/insert but on an existing component
+  - Example: For `bevy_ecs::name::Name`, use `{"value": "New Name"}` (the spawn_format structure)
+- **Field paths** (e.g., `.translation.x`): Mutates individual fields within the component
+  - Use specific values for the field type (numbers for numeric fields, strings for string fields)
+
 **CRITICAL Parameter Formatting**:
-- **Empty paths**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
+- **Empty paths**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)  
 - **Parameter ordering**: If you encounter repeated "Unable to extract parameters" errors when calling `mcp__brp__bevy_mutate_component`, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 **Example of CORRECT mutation calls**:
 ```json
-// For a u32 field - use raw number
+// ROOT PATH ("") - Full component replacement using spawn_format
+{
+  "entity": 123,
+  "component": "bevy_ecs::name::Name",
+  "path": "",
+  "value": "Entity Name",  // ← Use spawn_format structure from schema
+  "port": 20116
+}
+
+// FIELD PATH - Individual field mutation
 {
   "entity": 123,
   "component": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
@@ -244,12 +263,16 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
   "port": 20116
 }
 
-// For a string field - use quoted string
+// ROOT PATH for complex component - Use full spawn_format structure  
 {
   "entity": 123,
-  "component": "bevy_ecs::name::Name",
+  "component": "bevy_transform::components::transform::Transform",
   "path": "",
-  "value": "Entity Name",  // ← STRING is correct here
+  "value": {
+    "translation": {"x": 1.0, "y": 2.0, "z": 3.0},
+    "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
+    "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
+  },  // ← ENTIRE spawn_format structure
   "port": 20116
 }
 ```

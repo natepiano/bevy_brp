@@ -127,9 +127,11 @@
 
     Expected characteristics:
     - All types with spawn support properly identified (`"supported"` or `"not_supported"`)
-    - All types with mutation paths listed as arrays
+    - All types with mutation paths listed as arrays (includes root path `""` for full component replacement using spawn_format)
     - All types starting with `test_status: "untested"` (except auto-passed spawn types)
     - All types starting with `batch_number: null` (batch assignment done separately)
+    
+    **IMPORTANT**: The root mutation path `""` (empty string) represents full component replacement and uses the same format as spawn/insert operations. This allows mutation testing to validate both spawn/insert capabilities and full component replacement.
 </FileTransformation>
 
 ## STEP 4: RESULTS REPORTING
