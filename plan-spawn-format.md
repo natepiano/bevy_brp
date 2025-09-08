@@ -665,53 +665,435 @@ pub fn build_enum_example(...) -> Value { ... }
 4. **No double depth tracking**: One recursion system, one depth counter
 5. **Simpler mental model**: "Path builders generate all examples"
 
-## Migration Strategy: Incremental Commit Sequence
+## Migration Strategy: Restructured for Breaking Circular Dependencies
 
-**Safe incremental migration**: Each commit can be tested independently without breaking existing functionality:
+**Critical Issue**: The current code has circular dependencies between `TypeInfo::build_type_example` and builder methods. We must break these first.
 
-### Commit 1: Add trait infrastructure
-- Add new trait methods `build_example_with_knowledge()` and `build_schema_example()` to `MutationPathBuilder`
-- Provide default implementations that temporarily delegate to `TypeInfo::build_type_example`
-- **Verification**: Code compiles, all tests pass with no behavior changes
+### Migration Stop Points Summary
+The migration has **8 MCP validation stops** where you must:
+1. Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+2. Ask user to run: `/mcp reconnect brp`
+3. Validate using `brp_launch_bevy_example` and `brp_type_schema`
 
-### Commit 2-9: Migrate builders individually  
-Each builder gets its own commit to implement `build_schema_example()`:
+**Stop Points**:
+- **After Commit 1**: Validate array extraction works
+- **After Commit 3**: Validate all type extractions work
+- **After Commit 6**: Validate circular dependency is broken
+- **After Commit 15**: Validate all builders implemented
+- **After Commit 16**: Validate trait dispatch works
+- **After Commit 17**: Validate examples populated in paths
+- **After Commit 18**: Validate spawn format construction
+- **After Commit 20**: Final validation after cleanup
 
-**Commit 2**: `DefaultMutationBuilder` - simplest case (returns `json!(null)`)
-**Commit 3**: `ArrayMutationBuilder` - implement depth-first array example building  
-**Commit 4**: `ListMutationBuilder` & `SetMutationBuilder` - similar collection pattern
-**Commit 5**: `MapMutationBuilder` - key/value example building
-**Commit 6**: `TupleMutationBuilder` - tuple element assembly
-**Commit 7**: `StructMutationBuilder` - field example assembly  
-**Commit 8**: `EnumMutationBuilder` - variant example building
-**Commit 9**: Update trait's `build_example_with_knowledge()` to use proper type dispatch instead of `TypeInfo::build_type_example`
+### Phase 1: Break Circular Dependencies (Extract and Isolate)
 
-**Verification after each**: Run tests for that specific builder type
+#### Commit 1: Extract inline Array logic to static method
+**Current State**: Array logic is inline in `TypeInfo::build_type_example`
+```rust
+// In TypeInfo::build_type_example:
+TypeKind::Array => {
+    // 30+ lines of inline logic
+    let item_type = field_schema.get_field(SchemaField::Items)...
+    // Creates array example
+}
+```
 
-### Commit 10: Update path building to populate examples
-- Modify each builder's `build_paths()` to populate the `example` field using the new methods
-- Examples now built during path traversal, but `TypeInfo` still uses old methods
-- **Verification**: Path examples are correct, spawn format still works via old path
+**Action**: Extract to `ArrayMutationBuilder::build_array_example_static()`
+```rust
+// In array_builder.rs:
+pub fn build_array_example_static(
+    type_name: &BrpTypeName,
+    schema: &Value, 
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: RecursionDepth,
+) -> Value {
+    // Extracted logic - BUT calls TypeInfo::build_type_example for elements
+    let item_example = TypeInfo::build_type_example(&item_type, registry, depth.increment());
+    // ...
+}
+```
 
-### Commit 11: Add spawn format construction method
-- Add `construct_spawn_format_from_paths()` to `TypeInfo`  
-- Update `TypeInfo::from_schema()` to use new construction method
-- Keep old functions for now as safety net
-- **Verification**: Both old and new spawn format generation produce identical results
+**Validation Point 1 - STOP FOR MCP VALIDATION**: 
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Test array types: `brp_type_schema --types "[f32; 3]" "[glam::Vec3; 2]"`
+  - Verify arrays still generate correct examples in spawn_format
 
-### Commit 12: Remove old functions
-- Remove `TypeInfo::build_type_example()`
-- Remove `TypeInfo::build_example_value_for_type()`  
-- Remove `TypeInfo::build_spawn_format()` and helpers
-- Remove any test scaffolding
-- **Verification**: Full test suite passes with only new system
+#### Commit 2: Extract inline Tuple logic
+**Action**: Move tuple logic to `TupleMutationBuilder::build_tuple_example_static()`
+```rust
+pub fn build_tuple_example_static(
+    schema: &Value,
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: RecursionDepth,
+) -> Value {
+    // Extracted logic - still calls TypeInfo for element types
+}
+```
 
-### Key Benefits of This Sequence:
-1. **Each commit is independently testable** - can verify correctness at each step
-2. **Bisectable** - if issues arise, can identify exact commit that introduced them
-3. **Rollback-friendly** - can revert individual commits if needed
-4. **No parallel systems** - avoids complexity of maintaining two systems
-5. **Clear progress tracking** - can see migration progress builder by builder
+**Validation Point 2**: 
+- Run: `cargo build`
+- Quick check - no MCP reload needed yet
+- Continue to next extraction
+
+#### Commit 3: Extract remaining inline logic (Struct, List, Set, Map)
+**Action**: Extract each to their respective builders as static methods
+
+**Validation Point 3 - STOP FOR MCP VALIDATION**:
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate all extracted types:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Test various types: `brp_type_schema --types "(f32, f32, f32)" "bevy_transform::components::transform::Transform" "alloc::vec::Vec<f32>" "std::collections::HashSet<alloc::string::String>" "std::collections::HashMap<alloc::string::String, f32>"`
+  - Verify all spawn_formats still correct
+
+#### Commit 4: Create `ExampleBuilder` to break the cycle
+**Problem**: Builders call `TypeInfo::build_type_example`, which calls builders = circular
+**Solution**: New struct that builders can call instead
+
+```rust
+// New file: mcp/src/brp_tools/brp_type_schema/example_builder.rs
+pub struct ExampleBuilder;
+
+impl ExampleBuilder {
+    /// Builders call this instead of TypeInfo::build_type_example
+    pub fn build_example(
+        type_name: &BrpTypeName,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
+    ) -> Value {
+        // TEMPORARY: Just delegates to TypeInfo for now
+        TypeInfo::build_type_example(type_name, registry, depth)
+    }
+}
+```
+
+**Validation Point 4**:
+- Run: `cargo build`
+- Code compiles
+- No behavior change yet - continue
+
+#### Commit 5: Update all builders to use ExampleBuilder
+**Action**: Replace all `TypeInfo::build_type_example` calls with `ExampleBuilder::build_example`
+
+```rust
+// Before (in array_builder.rs):
+let item_example = TypeInfo::build_type_example(&item_type, registry, depth.increment());
+
+// After:
+let item_example = ExampleBuilder::build_example(&item_type, registry, depth.increment());
+```
+
+**Validation Point 5**:
+- Run: `cargo build`
+- Run: `rg "TypeInfo::build_type_example" mcp/src/brp_tools/brp_type_schema/mutation_path_builder/`
+- Should return NO results in builders directory
+- Continue to next step
+
+#### Commit 6: Move dispatch logic to ExampleBuilder
+**Action**: Copy the match statement from TypeInfo to ExampleBuilder
+
+```rust
+impl ExampleBuilder {
+    pub fn build_example(...) -> Value {
+        // Check depth
+        if depth.exceeds_limit() { return json!(null); }
+        
+        // Check knowledge
+        if let Some(example) = KnowledgeKey::find_example_for_type(type_name) {
+            return example;
+        }
+        
+        // Get schema and dispatch
+        let Some(schema) = registry.get(type_name) else { return json!(null); };
+        let kind = TypeKind::from_schema(schema, type_name);
+        
+        match kind {
+            TypeKind::Array => ArrayMutationBuilder::build_array_example_static(...),
+            TypeKind::Enum => EnumMutationBuilder::build_enum_spawn_example(...),
+            // etc - all calling the new static methods
+        }
+    }
+}
+```
+
+**Validation Point 6 - STOP FOR MCP VALIDATION**:
+- Update `TypeInfo::build_type_example` to just call `ExampleBuilder::build_example`
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate circular dependency is broken:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Test complex nested types: `brp_type_schema --types "bevy_transform::components::transform::Transform" "bevy_pbr::light::PointLight"`
+  - **CRITICAL**: Verify no stack overflow, no circular dependency errors!
+
+### Phase 2: Add Trait Infrastructure
+
+#### Commit 7: Add trait methods for example building
+```rust
+// In mutation_path_builder/mod.rs:
+pub trait MutationPathBuilder {
+    fn build_paths(...) -> Result<Vec<MutationPathInternal>>;
+    
+    /// Build example with knowledge lookup
+    fn build_example_with_knowledge(
+        &self,
+        ctx: &RecursionContext,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Default implementation - check knowledge first
+        if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
+            return example;
+        }
+        self.build_schema_example(ctx, depth)
+    }
+    
+    /// Build example from schema (builder-specific)
+    fn build_schema_example(
+        &self,
+        ctx: &RecursionContext,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Default: delegate to ExampleBuilder for now
+        ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth)
+    }
+}
+```
+
+**Validation Point 7**:
+- Run: `cargo build`
+- Code compiles with new trait methods
+- Continue - no MCP reload needed yet
+
+#### Commit 8-15: Implement build_schema_example for each builder
+One commit per builder, implementing the trait method by calling their static method:
+
+```rust
+// Example for ArrayMutationBuilder:
+impl MutationPathBuilder for ArrayMutationBuilder {
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        let Some(schema) = ctx.require_schema() else { return json!(null); };
+        Self::build_array_example_static(ctx.type_name(), schema, &ctx.registry, depth)
+    }
+    // build_paths stays the same for now
+}
+```
+
+**Validation Point 8-15** (after implementing all builders):
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate each builder type:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Test all type kinds:
+    ```
+    brp_type_schema --types "[f32; 3]" "(f32, f32)" "alloc::vec::Vec<f32>" "std::collections::HashSet<i32>" "std::collections::HashMap<alloc::string::String, f32>" "bevy_transform::components::transform::Transform" "core::option::Option<f32>"
+    ```
+  - Verify examples still generate correctly for each type kind
+
+### Phase 3: Migrate to Single Traversal
+
+#### Commit 16: Update ExampleBuilder to use trait dispatch
+```rust
+impl ExampleBuilder {
+    pub fn build_example_via_trait(
+        type_name: &BrpTypeName,
+        registry: Arc<HashMap<BrpTypeName, Value>>,
+        depth: RecursionDepth,
+    ) -> Value {
+        let ctx = RecursionContext::new(
+            PathKind::RootValue { type_name: type_name.clone() },
+            registry,
+        );
+        
+        let Some(schema) = ctx.require_schema() else { return json!(null); };
+        let kind = TypeKind::from_schema(schema, type_name);
+        
+        // Use trait dispatch
+        kind.build_example_with_knowledge(&ctx, depth)
+    }
+}
+```
+
+**Validation Point 16 - STOP FOR MCP VALIDATION**:
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate trait dispatch works:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Compare outputs between old and new methods
+  - Test: `brp_type_schema --types "bevy_transform::components::transform::Transform"`
+  - Save output, verify identical to before changes
+
+#### Commit 17: Update path builders to populate examples
+```rust
+// In struct_builder.rs build_paths:
+let example = self.build_example_with_knowledge(&field_ctx, depth);
+paths.push(MutationPathInternal {
+    path: field_ctx.mutation_path.clone(),
+    example,  // Now populated!
+    // ...
+});
+```
+
+**Validation Point 17 - STOP FOR MCP VALIDATION**:
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate populated examples:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Test: `brp_type_schema --types "bevy_transform::components::transform::Transform"`
+  - Check mutation_info paths now have proper examples
+  - Verify spawn_format unchanged
+
+#### Commit 18: Add spawn format construction
+```rust
+impl TypeInfo {
+    pub fn construct_spawn_format_from_paths(paths: &[MutationPath]) -> Option<Value> {
+        paths.iter()
+            .find(|p| matches!(p.path_kind, PathKind::RootValue { .. }))
+            .map(|p| p.example.clone())
+    }
+}
+```
+
+**Validation Point 18 - STOP FOR MCP VALIDATION**:
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, validate spawn format construction:
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Test multiple types: `brp_type_schema --types "bevy_transform::components::transform::Transform" "bevy_pbr::light::PointLight" "bevy_sprite::sprite::Sprite"`
+  - Compare spawn_format between old and new generation
+  - **MUST BE IDENTICAL**
+
+#### Commit 19: Switch to new system
+- Update `TypeInfo::from_schema` to use path-based spawn format
+- Mark old functions as deprecated
+
+**Validation Point 19**:
+- Run: `cargo build`
+- Both systems running in parallel
+- Continue to cleanup
+
+### Phase 4: Complete Cleanup
+
+#### Commit 20: Remove all temporary scaffolding and old code
+
+**Files to DELETE entirely**:
+```rust
+// DELETE this entire file - it was only temporary
+mcp/src/brp_tools/brp_type_schema/example_builder.rs
+```
+
+**Functions to REMOVE from TypeInfo (`type_info.rs`)**:
+```rust
+// REMOVE - replaced by path builder examples
+pub fn build_type_example(
+    type_name: &BrpTypeName,
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: RecursionDepth,
+) -> Value { ... }
+
+// REMOVE - replaced by path builder examples
+pub fn build_example_value_for_type(
+    type_name: &BrpTypeName,
+    registry: &HashMap<BrpTypeName, Value>,
+) -> Value { ... }
+
+// REMOVE - replaced by construct_spawn_format_from_paths
+fn build_spawn_format(
+    type_name: &BrpTypeName,
+    type_schema: &Value,
+    registry: Arc<HashMap<BrpTypeName, Value>>,
+) -> Option<Value> { ... }
+
+// REMOVE - no longer needed
+fn build_struct_spawn_format(...) -> Option<Value> { ... }
+
+// REMOVE - no longer needed
+fn build_tuple_spawn_format(...) -> Option<Value> { ... }
+
+// REMOVE - no longer needed
+fn build_enum_spawn_format(...) -> Option<Value> { ... }
+
+// REMOVE - no longer needed
+fn build_list_spawn_format(...) -> Option<Value> { ... }
+
+// REMOVE - no longer needed
+fn build_set_spawn_format(...) -> Option<Value> { ... }
+
+// REMOVE - no longer needed
+fn build_map_spawn_format(...) -> Option<Value> { ... }
+```
+
+**Static methods to REMOVE from builders**:
+```rust
+// From array_builder.rs - REMOVE:
+pub fn build_array_example_static(...) -> Value { ... }
+
+// From tuple_builder.rs - REMOVE:
+pub fn build_tuple_example_static(...) -> Value { ... }
+
+// From struct_builder.rs - REMOVE:
+pub fn build_struct_example_static(...) -> Value { ... }
+pub fn build_struct_example_from_properties(...) -> Value { ... } // if made public
+
+// From enum_builder.rs - REMOVE:
+pub fn build_enum_spawn_example(...) -> Value { ... }
+
+// From list_builder.rs - REMOVE:
+pub fn build_list_example_static(...) -> Value { ... }
+
+// From set_builder.rs - REMOVE:
+pub fn build_set_example_static(...) -> Value { ... }
+
+// From map_builder.rs - REMOVE:
+pub fn build_map_example_static(...) -> Value { ... }
+```
+
+**Imports to REMOVE**:
+```rust
+// From all builders - REMOVE these imports:
+use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
+use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
+```
+
+**Update imports in type_info.rs**:
+```rust
+// REMOVE imports no longer needed:
+use super::mutation_path_builder::builders::EnumMutationBuilder;
+// Any other builder imports used only for static methods
+```
+
+**What REMAINS after cleanup**:
+1. **Trait methods on MutationPathBuilder**:
+   - `build_paths()` - builds mutation paths with examples
+   - `build_example_with_knowledge()` - checks hardcoded knowledge
+   - `build_schema_example()` - builder-specific example generation
+
+2. **TypeInfo keeps only**:
+   - `from_schema()` - entry point
+   - `construct_spawn_format_from_paths()` - extracts root example from paths
+   - Helper methods for type analysis (not example building)
+
+3. **Each builder has only**:
+   - `impl MutationPathBuilder` with the trait methods
+   - Private helper methods as needed
+   - No public static methods for example building
+
+**Final Validation - STOP FOR MCP VALIDATION**:
+- Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+- **STOP**: Ask user to run `/mcp reconnect brp`
+- After reconnect, complete validation:
+  - Run: `rg "build_type_example|ExampleBuilder|build_.*_example_static" mcp/src/`
+    - Should return NO results
+  - Run: `rg "TypeInfo::" mcp/src/brp_tools/brp_type_schema/mutation_path_builder/`
+    - Should return NO results (builders don't call TypeInfo anymore)
+  - Launch example: `brp_launch_bevy_example extras_plugin`
+  - Full type schema test:
+    ```
+    brp_type_schema --types "bevy_transform::components::transform::Transform" "bevy_pbr::light::PointLight" "bevy_sprite::sprite::Sprite" "bevy_render::camera::camera::Camera" "[f32; 4]" "(f32, f32, f32, f32)" "alloc::vec::Vec<bevy_transform::components::transform::Transform>" "core::option::Option<bevy_sprite::sprite::Sprite>"
+    ```
+  - Verify all spawn_formats identical to before migration started
+  - Run agentic tests if available
 
 ## Testing Strategy
 
