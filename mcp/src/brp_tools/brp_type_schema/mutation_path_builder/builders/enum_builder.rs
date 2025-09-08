@@ -287,6 +287,7 @@ fn build_all_enum_examples(
     schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
+    enum_type: Option<&BrpTypeName>,
 ) -> HashMap<String, Value> {
     let variants = extract_enum_variants(schema, registry, depth);
     let variant_groups = group_variants_by_signature(variants);
@@ -297,6 +298,12 @@ fn build_all_enum_examples(
         // Use the first variant in the group as the representative example
         if let Some(representative_variant) = variants_in_group.first() {
             let example = representative_variant.build_example(registry, depth);
+            let example = EnumMutationBuilder::apply_option_transformation(
+                example,
+                representative_variant,
+                enum_type,
+            );
+
             let variant_names: Vec<String> = variants_in_group
                 .iter()
                 .map(|v| match v {
@@ -544,7 +551,7 @@ impl EnumMutationBuilder {
             return knowledge.example().clone();
         }
 
-        let all_examples = build_all_enum_examples(schema, registry, *depth);
+        let all_examples = build_all_enum_examples(schema, registry, *depth, enum_type);
 
         // Return all variant examples as JSON
         if all_examples.is_empty() {
@@ -552,6 +559,48 @@ impl EnumMutationBuilder {
         } else {
             json!(all_examples)
         }
+    }
+
+    /// Check if a type is Option<T>
+    fn is_option_type(type_name: &BrpTypeName) -> bool {
+        type_name.as_str().starts_with("core::option::Option<")
+    }
+
+    /// Transform Option<T> examples to proper format
+    /// None -> null, Some(value) -> value
+    fn transform_option_example(example: Value, variant_name: &str) -> Value {
+        match variant_name {
+            "None" => json!(null),
+            "Some" => {
+                // Extract the inner value from {"Some": value}
+                if let Some(obj) = example.as_object() {
+                    if let Some(value) = obj.get("Some") {
+                        return value.clone();
+                    }
+                }
+                example
+            }
+            _ => example,
+        }
+    }
+
+    /// Apply Option<T> transformation if needed
+    fn apply_option_transformation(
+        example: Value,
+        variant: &EnumVariantInfo,
+        enum_type: Option<&BrpTypeName>,
+    ) -> Value {
+        if let Some(enum_type) = enum_type {
+            if Self::is_option_type(enum_type) {
+                let variant_name = match variant {
+                    EnumVariantInfo::Unit(name) => name,
+                    EnumVariantInfo::Tuple(name, _) => name,
+                    EnumVariantInfo::Struct(name, _) => name,
+                };
+                return Self::transform_option_example(example, variant_name);
+            }
+        }
+        example
     }
 
     /// Build single concrete enum example for spawn format (returns usable value)
@@ -573,7 +622,8 @@ impl EnumMutationBuilder {
 
         // Pick the first variant as our concrete spawn example
         if let Some(first_variant) = variants.first() {
-            first_variant.build_example(registry, *depth)
+            let example = first_variant.build_example(registry, *depth);
+            Self::apply_option_transformation(example, first_variant, enum_type)
         } else {
             json!(null)
         }

@@ -591,8 +591,9 @@ fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) ->
 
 **DefaultMutationBuilder**:
 ```rust
-fn build_schema_example(&self, type_name: &BrpTypeName, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
     // EXTRACTED from TypeInfo::build_type_example default branch:
+    // Primitive/default types don't need recursion - return null
     json!(null)
 }
 ```
@@ -664,23 +665,53 @@ pub fn build_enum_example(...) -> Value { ... }
 4. **No double depth tracking**: One recursion system, one depth counter
 5. **Simpler mental model**: "Path builders generate all examples"
 
-## Migration Strategy
+## Migration Strategy: Incremental Commit Sequence
 
-**Atomic change required**: All components must be updated simultaneously in a single commit:
+**Safe incremental migration**: Each commit can be tested independently without breaking existing functionality:
 
-1. Migrate example-building logic from `TypeInfo::build_type_example` into each builder
-2. Update all 8 builder implementations simultaneously to use migrated logic:
-   - `array_builder.rs`
-   - `default_builder.rs`
-   - `enum_builder.rs`
-   - `list_builder.rs`
-   - `map_builder.rs`
-   - `set_builder.rs`
-   - `struct_builder.rs`
-   - `tuple_builder.rs`
-3. Update the caller in `TypeInfo::from_schema()` to extract spawn format from root path
-4. Remove `TypeInfo::build_type_example` and related functions that are no longer needed
-5. Clean up any remaining references
+### Commit 1: Add trait infrastructure
+- Add new trait methods `build_example_with_knowledge()` and `build_schema_example()` to `MutationPathBuilder`
+- Provide default implementations that temporarily delegate to `TypeInfo::build_type_example`
+- **Verification**: Code compiles, all tests pass with no behavior changes
+
+### Commit 2-9: Migrate builders individually  
+Each builder gets its own commit to implement `build_schema_example()`:
+
+**Commit 2**: `DefaultMutationBuilder` - simplest case (returns `json!(null)`)
+**Commit 3**: `ArrayMutationBuilder` - implement depth-first array example building  
+**Commit 4**: `ListMutationBuilder` & `SetMutationBuilder` - similar collection pattern
+**Commit 5**: `MapMutationBuilder` - key/value example building
+**Commit 6**: `TupleMutationBuilder` - tuple element assembly
+**Commit 7**: `StructMutationBuilder` - field example assembly  
+**Commit 8**: `EnumMutationBuilder` - variant example building
+**Commit 9**: Update trait's `build_example_with_knowledge()` to use proper type dispatch instead of `TypeInfo::build_type_example`
+
+**Verification after each**: Run tests for that specific builder type
+
+### Commit 10: Update path building to populate examples
+- Modify each builder's `build_paths()` to populate the `example` field using the new methods
+- Examples now built during path traversal, but `TypeInfo` still uses old methods
+- **Verification**: Path examples are correct, spawn format still works via old path
+
+### Commit 11: Add spawn format construction method
+- Add `construct_spawn_format_from_paths()` to `TypeInfo`  
+- Update `TypeInfo::from_schema()` to use new construction method
+- Keep old functions for now as safety net
+- **Verification**: Both old and new spawn format generation produce identical results
+
+### Commit 12: Remove old functions
+- Remove `TypeInfo::build_type_example()`
+- Remove `TypeInfo::build_example_value_for_type()`  
+- Remove `TypeInfo::build_spawn_format()` and helpers
+- Remove any test scaffolding
+- **Verification**: Full test suite passes with only new system
+
+### Key Benefits of This Sequence:
+1. **Each commit is independently testable** - can verify correctness at each step
+2. **Bisectable** - if issues arise, can identify exact commit that introduced them
+3. **Rollback-friendly** - can revert individual commits if needed
+4. **No parallel systems** - avoids complexity of maintaining two systems
+5. **Clear progress tracking** - can see migration progress builder by builder
 
 ## Testing Strategy
 
@@ -753,3 +784,12 @@ pub fn build_enum_example(...) -> Value { ... }
 - **Issue**: Plan moves logic from TypeInfo::build_type_example into individual builders, but this just relocates the same example-generation code into 8 different files. The real duplication issue is that THREE separate systems generate examples: builders, TypeInfo, and spawn format builders. Moving code between them doesn't eliminate the fundamental duplication.
 - **Reasoning**: This finding is based on a fundamental misunderstanding of the plan's architecture. The plan DOES eliminate the three separate systems by consolidating ALL example generation into path builders during their single traversal, then completely removing TypeInfo::build_type_example and spawn format builders entirely. The logic migration consolidates example generation into ONE system (path builders) instead of three separate systems.
 - **Critical Note**: DO NOT SUGGEST THIS AGAIN - Permanently rejected by user
+
+### IMPLEMENTATION-2: Heavy RecursionContext creation for every recursive call is performance-expensive - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Category**: IMPLEMENTATION
+- **Location**: Section: Builder-Specific Schema Example Implementations
+- **Issue**: The plan suggests creating new RecursionContext instances for every recursive call. RecursionContext contains Arc<HashMap<BrpTypeName, Value>> which is expensive to clone, even with Arc.
+- **Reasoning**: This finding is based on a fundamental misunderstanding of Arc performance characteristics. Arc::clone() is extremely cheap - it only increments an atomic reference counter (1-2 CPU cycles) and does NOT clone the underlying HashMap data. Arc is specifically designed for exactly this use case. The current RecursionContext design is well-architected and efficient.
+- **Decision**: User elected to skip this recommendation
+
