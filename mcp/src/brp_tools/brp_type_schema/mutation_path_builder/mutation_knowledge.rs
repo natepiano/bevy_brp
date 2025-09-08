@@ -560,6 +560,14 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         );
 
         // ===== Bevy ECS types =====
+        // Entity - serializes as u64 (entity.to_bits()), not as struct
+        // WARNING: This is just an example! For actual BRP operations, use VALID entity IDs
+        // obtained from spawn operations or queries. Using invalid entity IDs will cause errors.
+        map.insert(
+            KnowledgeKey::exact("bevy_ecs::entity::Entity"),
+            MutationKnowledge::as_value(json!(8589934670_u64), "Entity".to_string()),
+        );
+
         // Name serializes as a plain string, not as a struct with hash/name fields
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_NAME),
