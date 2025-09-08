@@ -277,6 +277,21 @@ impl StructMutationBuilder {
         }
     }
 
+    /// Build struct example using extracted logic from TypeInfo::build_type_example
+    /// This is the static method version that calls TypeInfo for field types
+    pub fn build_struct_example_static(
+        schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Extract properties using the same logic as TypeInfo
+        schema
+            .get_field(SchemaField::Properties)
+            .map_or(json!(null), |properties| {
+                Self::build_struct_example_from_properties(properties, registry, depth.increment())
+            })
+    }
+
     /// Build example struct from properties
     pub fn build_struct_example_from_properties(
         properties: &Value,

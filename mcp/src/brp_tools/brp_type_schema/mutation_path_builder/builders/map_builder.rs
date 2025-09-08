@@ -7,13 +7,16 @@
 //! not string keys (e.g., `["key"]`) for maps. Because of this limitation, we generate
 //! a single terminal mutation path for the entire map field.
 
-use serde_json::json;
+use std::collections::HashMap;
+
+use serde_json::{Map, Value, json};
 
 use super::super::MutationPathBuilder;
 use super::super::mutation_support::MutationSupport;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::error::Result;
 
 pub struct MapMutationBuilder;
@@ -37,6 +40,20 @@ impl MutationPathBuilder for MapMutationBuilder {
 }
 
 impl MapMutationBuilder {
+    /// Build map example using extracted logic - creates example key-value pairs
+    /// This is the static method version that calls TypeInfo for key/value types
+    pub fn build_map_example_static(
+        _schema: &Value,
+        _registry: &HashMap<BrpTypeName, Value>,
+        _depth: RecursionDepth,
+    ) -> Value {
+        // Maps are complex - for now just return a simple example
+        // TODO: Extract key/value types from schema if needed
+        let mut map = Map::new();
+        map.insert("example_key".to_string(), json!("example_value"));
+        json!(map)
+    }
+
     /// Build a mutation path for the entire Map field
     fn build_map_mutation_path(
         ctx: &RecursionContext,

@@ -75,6 +75,38 @@ impl MutationPathBuilder for TupleMutationBuilder {
 }
 
 impl TupleMutationBuilder {
+    /// Build tuple example using extracted logic from TypeInfo::build_type_example
+    /// This is the static method version that calls TypeInfo for element types
+    pub fn build_tuple_example_static(
+        schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Extract prefixItems using the same logic as TypeInfo
+        schema
+            .get_field(SchemaField::PrefixItems)
+            .and_then(Value::as_array)
+            .map_or(json!(null), |prefix_items| {
+                let tuple_examples: Vec<Value> = prefix_items
+                    .iter()
+                    .map(|item| {
+                        item.get_field(SchemaField::Type)
+                            .and_then(TypeInfo::extract_type_ref_with_schema_field)
+                            .map_or_else(
+                                || json!(null),
+                                |ft| TypeInfo::build_type_example(&ft, registry, depth.increment()),
+                            )
+                    })
+                    .collect();
+
+                if tuple_examples.is_empty() {
+                    json!(null)
+                } else {
+                    json!(tuple_examples)
+                }
+            })
+    }
+
     /// Build example value for a tuple type
     pub fn build_tuple_example(
         prefix_items: &Value,

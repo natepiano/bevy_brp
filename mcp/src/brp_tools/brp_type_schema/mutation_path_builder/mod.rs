@@ -7,7 +7,8 @@ mod type_kind;
 mod types;
 
 pub use builders::{
-    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, StructMutationBuilder,
+    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, ListMutationBuilder,
+    MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
 };
 pub use mutation_knowledge::KnowledgeKey;
 pub use path_kind::PathKind;

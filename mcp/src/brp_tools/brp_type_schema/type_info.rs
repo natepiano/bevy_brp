@@ -9,9 +9,9 @@ use serde_json::{Map, Value, json};
 
 use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
 use super::mutation_path_builder::{
-    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, MutationPath,
-    MutationPathBuilder, MutationPathInternal, PathKind, RecursionContext, StructMutationBuilder,
-    TypeKind,
+    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, ListMutationBuilder,
+    MapMutationBuilder, MutationPath, MutationPathBuilder, MutationPathInternal, PathKind,
+    RecursionContext, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -321,67 +321,19 @@ impl TypeInfo {
                 depth,
             ),
             TypeKind::Tuple | TypeKind::TupleStruct => {
-                // Handle tuple types with prefixItems
-                field_schema
-                    .get_field(SchemaField::PrefixItems)
-                    .and_then(Value::as_array)
-                    .map_or(json!(null), |prefix_items| {
-                        let tuple_examples: Vec<Value> = prefix_items
-                            .iter()
-                            .map(|item| {
-                                item.get_field(SchemaField::Type)
-                                    .and_then(Self::extract_type_ref_with_schema_field)
-                                    .map_or_else(
-                                        || json!(null),
-                                        |ft| {
-                                            Self::build_type_example(
-                                                &ft,
-                                                registry,
-                                                depth.increment(),
-                                            )
-                                        },
-                                    )
-                            })
-                            .collect();
-
-                        if tuple_examples.is_empty() {
-                            json!(null)
-                        } else {
-                            json!(tuple_examples)
-                        }
-                    })
+                TupleMutationBuilder::build_tuple_example_static(field_schema, registry, depth)
             }
             TypeKind::Struct => {
-                // Build struct example from properties
-                field_schema
-                    .get_field(SchemaField::Properties)
-                    .map_or(json!(null), |properties| {
-                        StructMutationBuilder::build_struct_example_from_properties(
-                            properties,
-                            registry,
-                            depth.increment(),
-                        )
-                    })
+                StructMutationBuilder::build_struct_example_static(field_schema, registry, depth)
             }
-            TypeKind::List | TypeKind::Set => {
-                // Handle List (Vec) and Set (HashSet) types
-                // Both have an "items" field with the element type
-                let item_type = field_schema
-                    .get_field(SchemaField::Items)
-                    .and_then(|items| items.get_field(SchemaField::Type))
-                    .and_then(Self::extract_type_ref_with_schema_field);
-
-                item_type.map_or(json!(null), |item_type_name| {
-                    // Generate example value for the item type
-                    let item_example =
-                        Self::build_type_example(&item_type_name, registry, depth.increment());
-
-                    // Create array with 2-3 example elements
-                    // For Sets, these represent unique values to add
-                    // For Lists, these are ordered elements
-                    let array = vec![item_example; 2];
-                    json!(array)
-                })
+            TypeKind::List => {
+                ListMutationBuilder::build_list_example_static(field_schema, registry, depth)
+            }
+            TypeKind::Set => {
+                SetMutationBuilder::build_set_example_static(field_schema, registry, depth)
+            }
+            TypeKind::Map => {
+                MapMutationBuilder::build_map_example_static(field_schema, registry, depth)
             }
             _ => json!(null),
         }
