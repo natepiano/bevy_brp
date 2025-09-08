@@ -149,14 +149,16 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 **CRITICAL**: 
 - Do NOT update any JSON files
-- Test spawn only if `spawn_support` is "supported"
+- Test spawn/insert only if `spawn_support` is "supported"
 - Test ALL mutation paths in the `mutation_paths` array
 - Stop testing a type on first failure
 
 **For EACH assigned type**:
 
 1. **Get Type Schema** - Call `mcp__brp__brp_type_schema`
-2. **Test Spawn** (if supported) - Use spawn_format from schema
+2. **Test Spawn/Insert** (if supported) - When `spawn_support` is "supported":
+   - Test `bevy/spawn` using spawn_format from schema (creates new entity)
+   - Test `bevy/insert` using spawn_format on an existing entity (for validation)
 3. **Prepare Mutations** - Query for entity with component by **substituting the actual component type name**:
    ```json
    {
@@ -174,7 +176,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
    ```
    
    **CRITICAL:** Replace `ACTUAL_COMPONENT_TYPE_NAME_HERE` with the real component type from your assigned list. Do NOT use the placeholder text literally.
-4. **Test Mutations** - Test each path from mutation_paths array
+4. **Test Mutations** - Test each path from mutation_paths array (includes root path `""` for full component replacement)
 5. **Return Results** - Structured JSON for all types
 
 **REMEMBER**: 
