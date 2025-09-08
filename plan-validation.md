@@ -104,7 +104,33 @@ test_types = [
 for type_name in test_types:
     if type_name in current['type_info']:
         has_spawn = bool(current['type_info'][type_name].get('spawn_format'))
-        print(f'{type_name}: {"✓" if has_spawn else "✗"} spawn_format')
+        has_root_mutation = any(p.get('path_kind', {}).get('type') == 'RootValue' 
+                               for p in current['type_info'][type_name].get('mutation_info', {}).values())
+        print(f'{type_name}: {"✓" if has_spawn else "✗"} spawn_format, {"✓" if has_root_mutation else "✗"} root_mutation')
+```
+
+### 5. Check Root Mutation Path Coverage (Phase 3 Validation)
+```python
+# Count types with mutation paths that now have root mutations
+types_with_mutations = [t for t in data['type_info'].values() 
+                       if t.get('mutation_info', {})]
+
+types_with_root_mutation = []
+for type_info in types_with_mutations:
+    has_root = any(p.get('path_kind', {}).get('type') == 'RootValue' 
+                   for p in type_info.get('mutation_info', {}).values())
+    if has_root:
+        types_with_root_mutation.append(type_info)
+
+print(f'Types with mutation_info: {len(types_with_mutations)}')
+print(f'Types with root mutation: {len(types_with_root_mutation)}')
+print(f'Coverage: {len(types_with_root_mutation)/len(types_with_mutations)*100:.1f}%')
+
+# Should be 100% after Phase 3 - all types with mutations should have root mutation
+if len(types_with_root_mutation) == len(types_with_mutations):
+    print('✅ PHASE 3 SUCCESS: All types with mutations have root mutation path')
+else:
+    print(f'⚠️ PHASE 3 ISSUE: {len(types_with_mutations) - len(types_with_root_mutation)} types missing root mutation')
 ```
 
 ## Implementation Progress
@@ -123,6 +149,7 @@ for type_name in test_types:
 - Switch from static to dynamic dispatch
 - Fixed infinite recursion in DefaultMutationBuilder
 - **Status**: Complete (using dynamic dispatch)
+- **Key Change**: All types with mutation paths now have root mutation path (PathKind::RootValue), not just enums
 
 ### Phase 4: Extend spawn_format Generation ❌
 - Update TypeInfo::build_spawn_format to handle all types
