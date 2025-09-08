@@ -27,11 +27,22 @@ pub struct ToolCallJsonResponse {
 
 impl ToolCallJsonResponse {
     /// Convert to JSON string with error-stack context
+    /// Uses PrettyCompactFormatter for readable structure with compact arrays
     pub fn to_json(&self) -> Result<String> {
         use error_stack::ResultExt;
+        use json_pretty_compact::PrettyCompactFormatter;
+        use serde::Serialize;
+        use serde_json::Serializer;
 
-        serde_json::to_string_pretty(self).change_context(Error::General(
-            "Failed to serialize JSON response".to_string(),
+        let mut buf = Vec::new();
+        let formatter = PrettyCompactFormatter::new();
+        let mut ser = Serializer::with_formatter(&mut buf, formatter);
+        
+        self.serialize(&mut ser)
+            .map_err(|e| Error::General(format!("Failed to serialize JSON response: {e}")))?;
+            
+        String::from_utf8(buf).change_context(Error::General(
+            "Failed to convert JSON bytes to string".to_string(),
         ))
     }
 
