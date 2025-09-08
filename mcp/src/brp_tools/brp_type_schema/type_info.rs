@@ -309,7 +309,7 @@ impl TypeInfo {
 
         let field_kind = TypeKind::from_schema(field_schema, type_name);
         match field_kind {
-            TypeKind::Enum => EnumMutationBuilder::build_enum_example(
+            TypeKind::Enum => EnumMutationBuilder::build_enum_spawn_example(
                 field_schema,
                 registry,
                 Some(type_name),

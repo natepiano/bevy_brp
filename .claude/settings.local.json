@@ -97,7 +97,9 @@
       "Bash(echo:*)",
       "Bash(~/.claude/commands/bash/build-check.sh:*)",
       "Bash(rustc:*)",
-      "Read(//Users/natemccoy/.claude/commands/bash/**)"
+      "Read(//Users/natemccoy/.claude/commands/bash/**)",
+      "Bash(./.claude/commands/scripts/create_mutation_test_json_stats.sh:*)",
+      "Bash(./.claude/commands/scripts/compare_mutations_quick.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"

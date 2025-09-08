@@ -52,36 +52,39 @@ pub struct PathInfo {
     pub type_kind: TypeKind,
 }
 
+/// Example group for the unified examples array
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExampleGroup {
+    /// List of variants that share this signature (only for enum types)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub applicable_variants: Option<Vec<String>>,
+    /// Human-readable signature description (only for enum types)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature:           Option<String>,
+    /// Example value for this group
+    pub example:             Value,
+}
+
 /// Information about a mutation path that we serialize to our response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Human-readable description of what this path mutates
-    pub description:      String,
+    pub description:     String,
     /// Combined path navigation and type metadata
-    pub path_info:        PathInfo,
+    pub path_info:       PathInfo,
     /// Status of whether this path can be mutated
-    pub mutation_status:  MutationStatus,
+    pub mutation_status: MutationStatus,
     /// Error reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_reason:     Option<String>,
-    /// Example value for mutations (for non-Option types)
+    pub error_reason:    Option<String>,
+    /// List of applicable variants (for enum types only)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:          Option<Value>,
-    /// Example value for setting Some variant (Option types only)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_some:     Option<Value>,
-    /// Example value for setting None variant (Option types only)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_none:     Option<Value>,
-    /// List of valid enum variants for this field
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_variants:    Option<Vec<String>>,
-    /// Example values for enum variants (maps variant names to example JSON)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub example_variants: Option<HashMap<String, Value>>,
+    pub variants:        Option<Vec<String>>,
+    /// Array of example groups with variants, signatures, and examples
+    pub examples:        Vec<ExampleGroup>,
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub note:             Option<String>,
+    pub note:            Option<String>,
 }
 
 impl MutationPath {
@@ -91,28 +94,84 @@ impl MutationPath {
         description: String,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
-        // Regular non-Option path
-        let example_variants = path.example.as_object().and_then(|obj| {
-            if obj.is_empty() {
-                None
-            } else {
-                // Don't rebuild - just extract from the already-computed example
-                Some(obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
-            }
-        });
-
-        // Compute enum_variants from example_variants keys (alphabetically sorted)
-        let enum_variants = example_variants
-            .as_ref()
-            .map(|variants: &HashMap<String, Value>| {
-                let mut keys: Vec<String> = variants.keys().cloned().collect();
-                keys.sort(); // Alphabetical sorting for consistency
-                keys
-            });
-
         // Get TypeKind for the field type
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
         let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
+
+        // Handle examples array creation based on type
+        let examples = if path.example.is_null() {
+            vec![]
+        } else if let Some(obj) = path.example.as_object() {
+            // Check if this has variant context (enum field path)
+            if let Some(_variant_context) = obj.get("__variant_context") {
+                // Extract the actual example value
+                let actual_example = obj.get("example").unwrap_or(&Value::Null);
+                vec![ExampleGroup {
+                    applicable_variants: None,
+                    signature:           None,
+                    example:             actual_example.clone(),
+                }]
+            } else if let Some(signature_groups) = obj.get("__enum_signature_groups") {
+                // This is an enum root path with signature-grouped examples
+                Self::create_enum_signature_groups(signature_groups)
+            } else if obj.is_empty() {
+                vec![]
+            } else {
+                // This is an enum root path with variant examples (fallback)
+                Self::create_enum_example_groups(obj)
+            }
+        } else {
+            // Non-enum type: create single example group without variants/signature
+            vec![ExampleGroup {
+                applicable_variants: None,
+                signature:           None,
+                example:             path.example.clone(),
+            }]
+        };
+
+        // Extract variants from example if it's an enum or from variant context
+        let variants = if let Some(variant_context) = path
+            .example
+            .get("__variant_context")
+            .and_then(Value::as_str)
+        {
+            // This is a field path with variant context (e.g., enum field)
+            Some(vec![variant_context.to_string()])
+        } else if let Some(signature_groups) = path
+            .example
+            .as_object()
+            .and_then(|obj| obj.get("__enum_signature_groups"))
+            .and_then(Value::as_array)
+        {
+            // This is an enum root path - collect all variants from all groups
+            let mut all_variants = Vec::new();
+            for group in signature_groups {
+                if let Some(group_variants) = group.get("variants").and_then(Value::as_array) {
+                    for variant in group_variants {
+                        if let Some(variant_name) = variant.as_str() {
+                            all_variants.push(variant_name.to_string());
+                        }
+                    }
+                }
+            }
+            all_variants.sort();
+            if all_variants.is_empty() {
+                None
+            } else {
+                Some(all_variants)
+            }
+        } else {
+            // This might be a root enum path with variant examples (fallback)
+            path.example.as_object().and_then(|obj| {
+                if obj.is_empty() {
+                    None
+                } else {
+                    let mut keys: Vec<String> = obj.keys().cloned().collect();
+                    keys.sort(); // Alphabetical sorting for consistency
+                    Some(keys)
+                }
+            })
+        };
 
         Self {
             description,
@@ -121,18 +180,163 @@ impl MutationPath {
                 type_name: path.type_name.clone(),
                 type_kind,
             },
-            example: if path.example.is_null() {
-                None
-            } else {
-                Some(path.example.clone())
-            },
-            example_some: None,
-            example_none: None,
-            enum_variants,
-            example_variants,
+            variants,
+            examples,
             note: None,
             mutation_status: path.mutation_status,
             error_reason: path.error_reason.clone(),
+        }
+    }
+
+    /// Create example groups from signature groups (new enum structure)
+    /// This handles the __enum_signature_groups format from the enum builder
+    fn create_enum_signature_groups(signature_groups: &Value) -> Vec<ExampleGroup> {
+        if let Some(groups_array) = signature_groups.as_array() {
+            groups_array
+                .iter()
+                .filter_map(|group| {
+                    let signature = group.get("signature")?.as_str()?.to_string();
+                    let variants = group
+                        .get("variants")?
+                        .as_array()?
+                        .iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect::<Vec<String>>();
+                    let example = group.get("example")?.clone();
+
+                    Some(ExampleGroup {
+                        applicable_variants: Some(variants),
+                        signature: Some(signature),
+                        example,
+                    })
+                })
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    /// Create example groups for enum variants by analyzing their structure
+    /// Groups variants with the same signature together and creates proper format
+    fn create_enum_example_groups(
+        variant_examples: &serde_json::Map<String, Value>,
+    ) -> Vec<ExampleGroup> {
+        use std::collections::HashMap;
+
+        // Group variants by their structural signature
+        let mut signature_groups: HashMap<String, Vec<(String, Value)>> = HashMap::new();
+
+        for (variant_name, example_value) in variant_examples {
+            let signature = Self::analyze_variant_signature(variant_name, example_value);
+            signature_groups
+                .entry(signature)
+                .or_default()
+                .push((variant_name.clone(), example_value.clone()));
+        }
+
+        // Convert groups to ExampleGroup entries
+        let mut example_groups = Vec::new();
+        for (signature, variants_with_examples) in signature_groups {
+            if let Some((first_variant_name, first_example)) = variants_with_examples.first() {
+                let variant_names: Vec<String> = variants_with_examples
+                    .iter()
+                    .map(|(name, _)| name.clone())
+                    .collect();
+
+                // For unit variants, use the variant name directly as the example
+                // For other types, use the constructed example
+                let example = if signature == "unit" {
+                    Value::String(first_variant_name.clone())
+                } else {
+                    first_example.clone()
+                };
+
+                example_groups.push(ExampleGroup {
+                    applicable_variants: Some(variant_names),
+                    signature: Some(signature),
+                    example,
+                });
+            }
+        }
+
+        // Sort by signature for consistent output (unit first, then alphabetically)
+        example_groups.sort_by(
+            |a, b| match (a.signature.as_deref(), b.signature.as_deref()) {
+                (Some("unit"), Some("unit")) => std::cmp::Ordering::Equal,
+                (Some("unit"), _) => std::cmp::Ordering::Less,
+                (_, Some("unit")) => std::cmp::Ordering::Greater,
+                (Some(a_sig), Some(b_sig)) => a_sig.cmp(b_sig),
+                _ => std::cmp::Ordering::Equal,
+            },
+        );
+        example_groups
+    }
+
+    /// Analyze the signature of a variant example to determine its structure
+    /// This creates detailed type signatures as specified in the plan
+    fn analyze_variant_signature(variant_name: &str, example_value: &Value) -> String {
+        match example_value {
+            // Simple string variant is a unit variant
+            Value::String(_) if example_value.as_str() == Some(variant_name) => "unit".to_string(),
+
+            // Object with variant name as key
+            Value::Object(obj) if obj.len() == 1 => {
+                if let Some((key, value)) = obj.iter().next() {
+                    if key == variant_name {
+                        match value {
+                            Value::Array(arr) => {
+                                // Tuple variant - analyze the actual types from the values
+                                let type_names: Vec<String> =
+                                    arr.iter().map(Self::infer_type_from_value).collect();
+                                format!("tuple({})", type_names.join(", "))
+                            }
+                            Value::Object(struct_obj) => {
+                                // Struct variant - analyze the actual fields and types
+                                let mut field_sigs: Vec<String> = struct_obj
+                                    .iter()
+                                    .map(|(field_name, field_value)| {
+                                        let type_name = Self::infer_type_from_value(field_value);
+                                        format!("{field_name}: {type_name}")
+                                    })
+                                    .collect();
+                                field_sigs.sort(); // Consistent ordering
+                                format!("struct{{{}}}", field_sigs.join(", "))
+                            }
+                            _ => {
+                                // Single value tuple (newtype pattern)
+                                let type_name = Self::infer_type_from_value(value);
+                                format!("tuple({type_name})")
+                            }
+                        }
+                    } else {
+                        "unknown".to_string()
+                    }
+                } else {
+                    "unknown".to_string()
+                }
+            }
+
+            _ => "unknown".to_string(),
+        }
+    }
+
+    /// Infer a human-readable type name from a JSON value
+    fn infer_type_from_value(value: &Value) -> String {
+        match value {
+            Value::Null => "null".to_string(),
+            Value::Bool(_) => "bool".to_string(),
+            Value::Number(n) => {
+                if n.is_f64() {
+                    "f32".to_string()
+                } else if n.is_i64() {
+                    "i32".to_string()
+                } else {
+                    "u32".to_string()
+                }
+            }
+            Value::String(_) => "String".to_string(),
+            Value::Array(_) => "Array".to_string(),
+            Value::Object(_) => "Object".to_string(),
         }
     }
 }

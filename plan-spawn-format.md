@@ -1,25 +1,55 @@
 # Plan: Unify Example Generation Through Path Builders
 
 ## Goal
-**Eliminate redundant example generation systems by making path builders the single source of truth for all JSON example generation, including spawn formats.**
+**Eliminate code complexity and duplication by making path builders generate examples during their single type traversal, instead of having separate example generation systems that duplicate the same logic.**
 
-## Current Problem
-We have three separate systems generating the same JSON examples:
-1. Path builders generate examples for each mutation path
-2. `TypeInfo::build_type_example()` independently generates examples
-3. `TypeInfo::build_spawn_format()` has yet another example generation system
+## Current Problem: Code Duplication and Complexity
+We have **three separate systems** that all contain logic for traversing and understanding the same type structures:
+
+1. **Path building logic**: Path builders traverse types to build mutation paths
+2. **Example building logic**: `TypeInfo::build_type_example()` contains separate logic to traverse the same types for examples  
+3. **Spawn format logic**: `TypeInfo::build_spawn_format()` has yet another set of logic for the same traversals
+
+**The core issue**: We're maintaining three separate codebases that all need to understand how to navigate structs, enums, arrays, tuples, etc. When we need to add support for a new type or change how a type works, we have to update logic in multiple places.
 
 This causes:
-- Code duplication and maintenance burden
-- Potential inconsistencies between examples
-- Confusion about which system to use when
-- Double recursion depth tracking issues
+- **Code duplication** - same type-handling logic scattered across multiple systems
+- **Maintenance burden** - changes require updates in 2-3 different places
+- **Inconsistency risk** - the separate systems can drift apart and generate different results
+- **Complexity** - developers need to understand multiple systems instead of one
+- **Double recursion depth tracking** - each system manages its own recursion limits
 
 ## Proposed Solution
-Make path builders generate everything in a single traversal:
-- The root path builds the complete spawn format
-- Nested paths build their specific mutation examples
+Make path builders generate everything in a **single depth-first traversal**:
+- **Depth-first, post-order traversal**: Recurse to children first, then construct parent examples from child results
+- Each builder constructs examples **only after** all child recursions complete
+- Spawn format assembled **bottom-up** from collected mutation path examples  
 - Eliminate all other example generation code
+
+**Critical traversal pattern**: Children must be processed completely before parent assembly can begin. This ensures that when building a struct example, all field examples are available; when building an array example, all element examples are ready.
+
+## Concrete Example: Building Examples Bottom-Up
+
+Consider this nested struct:
+```rust
+Person {
+    name: String,           
+    address: Address {      
+        street: String,     
+        city: String,       
+    }
+}
+```
+
+**Depth-first traversal builds examples at each level representing that level and everything below:**
+
+1. **Build `.address.street`** → example: `"123 Main St"` (just the string)
+2. **Build `.address.city`** → example: `"Portland"` (just the string)  
+3. **Build `.address`** → example: `{"street": "123 Main St", "city": "Portland"}` (assembled from street/city)
+4. **Build `.name`** → example: `"John"` (just the string)
+5. **Build root/spawn format** → example: `{"name": "John", "address": {"street": "123 Main St", "city": "Portland"}}` (assembled from name/address)
+
+**Key insight**: Each mutation path example represents the **complete subtree from that point down**. The spawn format is simply the **root level's complete example** - built using the exact same bottom-up assembly process as all other mutation path examples.
 
 ## Architecture Changes
 
@@ -93,15 +123,53 @@ impl TypeInfo {
         let mutation_paths_vec = Self::build_mutation_paths(...);
         let spawn_format = Self::build_spawn_format(...);
         
-        // NEW: Single call gets both - extract spawn format from paths
+        // NEW: Single call gets both - construct spawn format from collected paths
         let mutation_paths_vec = Self::build_mutation_paths(...);  // Returns Vec<MutationPathInternal>
         
-        // Extract spawn format from root path (PathKind::RootValue)
-        let spawn_format = mutation_paths_vec.iter()
-            .find(|path| matches!(path.path_kind, PathKind::RootValue(_)))
-            .map(|path| path.example.clone());
+        // CONSTRUCT spawn format from mutation paths using depth-first results
+        let spawn_format = Self::construct_spawn_format_from_paths(&mutation_paths_vec, type_kind);
             
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
+
+// NEW METHOD: Construct spawn format from mutation paths bottom-up
+fn construct_spawn_format_from_paths(
+    paths: &[MutationPathInternal], 
+    type_kind: &TypeKind
+) -> Option<Value> {
+    match type_kind {
+        TypeKind::Struct => {
+            // Construct struct by collecting field examples from field paths
+            let mut struct_obj = Map::new();
+            for path in paths {
+                if let PathKind::StructField { field_name, .. } = &path.path_kind {
+                    struct_obj.insert(field_name.clone(), path.example.clone());
+                }
+            }
+            if struct_obj.is_empty() { None } else { Some(Value::Object(struct_obj)) }
+        }
+        TypeKind::Array => {
+            // Construct array by collecting element examples from element paths
+            let mut elements = Vec::new();
+            for path in paths {
+                if let PathKind::ArrayElement { .. } = &path.path_kind {
+                    elements.push(path.example.clone());
+                }
+            }
+            if elements.is_empty() { None } else { Some(json!(elements)) }
+        }
+        TypeKind::Tuple => {
+            // Construct tuple by collecting element examples in index order
+            let mut tuple_elements = Vec::new();
+            for path in paths {
+                if let PathKind::IndexedElement { .. } = &path.path_kind {
+                    tuple_elements.push(path.example.clone());
+                }
+            }
+            if tuple_elements.is_empty() { None } else { Some(json!(tuple_elements)) }
+        }
+        _ => None, // Other types don't support spawn
+    }
+}
         
         // ...
     }
@@ -123,11 +191,13 @@ The logic currently in `build_type_example`'s match statement should be moved:
 - **Value logic** → `DefaultMutationBuilder`
 - etc.
 
-Each builder's `build_paths` method will:
-1. **Build its own level's example** using migrated logic (no recursion)
-2. **Recurse for child paths** (which build their own examples)  
-3. **Assemble complete example** from child results bottom-up
-4. **Return paths with examples** in single traversal
+Each builder's `build_paths` method will follow **depth-first, post-order traversal**:
+1. **Recurse to all children first** - collect child paths with their examples
+2. **Wait for all child recursions to complete** - ensure child examples are ready
+3. **Assemble parent example** using child results (bottom-up construction)
+4. **Return complete paths with examples** from single depth-first traversal
+
+**Traversal ordering is critical**: Parent examples can only be constructed after ALL child examples are available.
 
 ### Code Extraction Details: What Gets Moved Where
 
@@ -257,37 +327,53 @@ pub trait MutationPathBuilder {
     fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) 
         -> Result<Vec<MutationPathInternal>>;
 
-    /// Check for hardcoded knowledge example, falling back to schema-based generation
-    /// Default implementation handles the knowledge lookup pattern used by all builders
+    /// Build example using depth-first traversal - ensures children complete before parent
+    /// Default implementation handles knowledge lookup and enforces traversal ordering
     fn build_example_with_knowledge(
         &self,
-        type_name: &BrpTypeName,
-        registry: &HashMap<BrpTypeName, Value>,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Value {
         // First check BRP_MUTATION_KNOWLEDGE for hardcoded examples
-        if let Some(example) = KnowledgeKey::find_example_for_type(type_name) {
+        if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
             return example;
         }
         
-        // Fall back to builder-specific schema-based example generation
-        self.build_schema_example(type_name, registry, depth)
+        // DEPTH-FIRST DISPATCH - ensures proper traversal ordering
+        let Some(schema) = ctx.require_schema() else { return json!(null); };
+        let type_kind = TypeKind::from_schema(schema, ctx.type_name());
+        
+        // Dispatch to appropriate builder - each builder MUST complete child recursion first
+        match type_kind {
+            TypeKind::Array => ArrayMutationBuilder.build_schema_example(ctx, depth),
+            TypeKind::Struct => StructMutationBuilder.build_schema_example(ctx, depth),
+            TypeKind::Enum => EnumMutationBuilder.build_schema_example(ctx, depth),
+            TypeKind::Tuple | TypeKind::TupleStruct => TupleMutationBuilder.build_schema_example(ctx, depth),
+            TypeKind::List => ListMutationBuilder.build_schema_example(ctx, depth),
+            TypeKind::Set => SetMutationBuilder.build_schema_example(ctx, depth),
+            TypeKind::Map => MapMutationBuilder.build_schema_example(ctx, depth),
+            _ => DefaultMutationBuilder.build_schema_example(ctx, depth),
+        }
     }
 
     /// Build example from schema - implemented by each builder for their specific type
+    /// Uses RecursionContext to access schema and helper methods
     fn build_schema_example(
         &self,
-        type_name: &BrpTypeName,
-        registry: &HashMap<BrpTypeName, Value>,
+        ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Value;
 }
 ```
 
-**Usage in builders**: Replace `TypeInfo::build_type_example(type_name, registry, depth)` calls with `self.build_example_with_knowledge(type_name, registry, depth)`. This ensures:
+**Usage in builders**: Replace `TypeInfo::build_type_example(type_name, registry, depth)` calls with `self.build_example_with_knowledge(ctx, depth)` where `ctx` is a RecursionContext for the target type. This ensures:
 - Consistent BRP_MUTATION_KNOWLEDGE integration across all builders
-- No duplication of knowledge lookup logic
+- **Central type dispatch** - the trait method automatically routes to the correct builder
+- **Recursive example building** - child types get routed to their appropriate builders
+- No duplication of knowledge lookup or dispatch logic
 - Proper fallback to schema-based generation when no hardcoded knowledge exists
+
+**Key Architecture**: The `build_example_with_knowledge` default implementation becomes the new central dispatcher, replacing `TypeInfo::build_type_example`'s routing logic while preserving knowledge lookup.
 
 #### Builder-Specific Schema Example Implementations
 
@@ -295,103 +381,211 @@ Each builder implements `build_schema_example()` using the extracted TypeInfo lo
 
 **ArrayMutationBuilder**:
 ```rust
-fn build_schema_example(&self, type_name: &BrpTypeName, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = registry.get(type_name) else { return json!(null); };
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
     
-    // EXTRACTED from TypeInfo::build_type_example TypeKind::Array branch:
-    let item_type = field_schema
-        .get_field(SchemaField::Items)
-        .and_then(|items| items.get_field(SchemaField::Type))
-        .and_then(Self::extract_type_ref_with_schema_field);
+    // DEPTH-FIRST PATTERN: Extract child type info first
+    let item_type = ctx.extract_list_element_type(field_schema);
 
     item_type.map_or(json!(null), |item_type_name| {
-        let item_example = self.build_example_with_knowledge(&item_type_name, registry, depth.increment());
-        let size = type_name.as_str()
+        // STEP 1: RECURSE TO CHILD FIRST - complete child traversal before parent assembly
+        let item_path_kind = PathKind::RootValue { type_name: item_type_name.clone() };
+        let item_ctx = RecursionContext::new(item_path_kind, Arc::clone(&ctx.registry));
+        
+        // CRITICAL: Child recursion MUST complete before parent construction
+        let item_example = self.build_example_with_knowledge(&item_ctx, depth.increment());
+        
+        // STEP 2: CONSTRUCT PARENT AFTER CHILD COMPLETION - bottom-up assembly
+        let size = ctx.type_name().as_str()
             .rsplit_once("; ")
             .and_then(|(_, rest)| rest.strip_suffix(']'))
             .and_then(|s| s.parse::<usize>().ok())
             .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| s.min(MAX_EXAMPLE_ARRAY_SIZE));
+        
+        // Parent assembly using completed child example - builds complete array for THIS level
         let array = vec![item_example; size];
         json!(array)
+        
+        // CRITICAL: This array example represents the complete array from this level down
+        // Example: [10.5, 10.5, 10.5] - this becomes the example for this array mutation path
+        // If a struct contains this array field, this complete array becomes that field's value
     })
 }
 ```
 
 **StructMutationBuilder**:
 ```rust
-fn build_schema_example(&self, type_name: &BrpTypeName, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = registry.get(type_name) else { return json!(null); };
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
     
-    // EXTRACTED from TypeInfo::build_type_example TypeKind::Struct branch:
+    // DEPTH-FIRST PATTERN: Process all fields before struct assembly
     field_schema
         .get_field(SchemaField::Properties)
         .map_or(json!(null), |properties| {
-            self.build_struct_example_from_properties_with_knowledge(properties, registry, depth.increment())
+            self.build_struct_example_from_properties_with_knowledge(properties, ctx, depth.increment())
         })
 }
 
-// Updated utility method to use trait method:
-fn build_struct_example_from_properties_with_knowledge(&self, properties: &Value, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
-    // ... existing logic but replace TypeInfo::build_type_example calls with:
-    self.build_example_with_knowledge(&field_type, registry, depth)
+// DEPTH-FIRST utility method - ensures all field recursions complete before struct construction:
+fn build_struct_example_from_properties_with_knowledge(&self, properties: &Value, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let mut struct_example = Map::new();
+    
+    // STEP 1: RECURSE TO ALL FIELDS FIRST - collect all field examples
+    for (field_name, field_schema) in properties.as_object().unwrap_or(&Map::new()) {
+        if let Some(field_type) = SchemaField::extract_field_type(field_schema) {
+            // CRITICAL: Each field recursion MUST complete before moving to next field
+            let field_path_kind = PathKind::RootValue { type_name: field_type.clone() };
+            let field_ctx = RecursionContext::new(field_path_kind, Arc::clone(&ctx.registry));
+            
+            // Child recursion completes before parent assembly continues
+            let field_example = self.build_example_with_knowledge(&field_ctx, depth);
+            struct_example.insert(field_name.clone(), field_example);
+        }
+    }
+    
+    // STEP 2: CONSTRUCT STRUCT AFTER ALL FIELD COMPLETIONS - bottom-up assembly
+    // This creates the example for THIS level containing all child examples
+    // Example: {"name": "John", "address": {"street": "123 Main", "city": "Portland"}}
+    Value::Object(struct_example)
+    
+    // CRITICAL: This struct example becomes the example for any parent path that contains this struct
+    // If this is `.address`, this complete struct becomes the value for the `.address` mutation path
+    // If this is root level, this complete struct becomes the spawn format
 }
 ```
 
 **TupleMutationBuilder**:
 ```rust
-fn build_schema_example(&self, type_name: &BrpTypeName, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = registry.get(type_name) else { return json!(null); };
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
     
-    // EXTRACTED from TypeInfo::build_type_example TypeKind::Tuple branch:
+    // DEPTH-FIRST PATTERN: Process all tuple elements before tuple assembly
     field_schema
         .get_field(SchemaField::PrefixItems)
         .and_then(Value::as_array)
         .map_or(json!(null), |prefix_items| {
-            let tuple_examples: Vec<Value> = prefix_items
-                .iter()
-                .map(|item| {
-                    item.get_field(SchemaField::Type)
-                        .and_then(Self::extract_type_ref_with_schema_field)
-                        .map_or_else(
-                            || json!(null),
-                            |ft| self.build_example_with_knowledge(&ft, registry, depth.increment()),
-                        )
-                })
-                .collect();
+            let mut tuple_examples = Vec::new();
+            
+            // STEP 1: RECURSE TO ALL ELEMENTS FIRST - complete each element before next
+            for item in prefix_items {
+                if let Some(element_type) = item.get_field(SchemaField::Type)
+                    .and_then(Self::extract_type_ref_with_schema_field) 
+                {
+                    // CRITICAL: Each element recursion MUST complete before moving to next
+                    let element_path_kind = PathKind::RootValue { type_name: element_type.clone() };
+                    let element_ctx = RecursionContext::new(element_path_kind, Arc::clone(&ctx.registry));
+                    
+                    // Child recursion completes before parent assembly continues
+                    let element_example = self.build_example_with_knowledge(&element_ctx, depth.increment());
+                    tuple_examples.push(element_example);
+                } else {
+                    tuple_examples.push(json!(null));
+                }
+            }
 
-            if tuple_examples.is_empty() { json!(null) } else { json!(tuple_examples) }
+            // STEP 2: CONSTRUCT TUPLE AFTER ALL ELEMENT COMPLETIONS - bottom-up assembly
+            if tuple_examples.is_empty() { 
+                json!(null) 
+            } else { 
+                json!(tuple_examples)
+                // CRITICAL: This tuple example represents the complete tuple from this level down
+                // Example: [10.5, "hello", true] - this becomes the example for this tuple mutation path
+                // If a struct contains this tuple field, this complete tuple becomes that field's value
+            }
         })
 }
 ```
 
 **EnumMutationBuilder**:
 ```rust
-fn build_schema_example(&self, type_name: &BrpTypeName, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = registry.get(type_name) else { return json!(null); };
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
     
-    // EXTRACTED from TypeInfo::build_type_example TypeKind::Enum branch:
-    EnumMutationBuilder::build_enum_example_with_knowledge(field_schema, registry, Some(type_name), depth.increment(), self)
+    // DEPTH-FIRST PATTERN: Process enum variants (may contain structs/tuples with nested fields)
+    let enum_example = EnumMutationBuilder::build_enum_example(
+        field_schema,
+        &ctx.registry,
+        Some(ctx.type_name()),
+        depth.increment(),
+    );
+    
+    // CRITICAL: This enum example represents the complete enum value from this level down
+    // Examples: 
+    // - Unit variant: "Active" 
+    // - Struct variant: {"Config": {"timeout": 30, "retries": 3}}
+    // - Tuple variant: {"Point": [10.5, 20.0]}
+    // If a struct contains this enum field, this complete enum becomes that field's value
+    enum_example
 }
-
-// Updated enum example builder to use trait method for recursive calls
 ```
 
 **ListMutationBuilder & SetMutationBuilder**:
 ```rust
-fn build_schema_example(&self, type_name: &BrpTypeName, registry: &HashMap<BrpTypeName, Value>, depth: RecursionDepth) -> Value {
-    let Some(field_schema) = registry.get(type_name) else { return json!(null); };
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
     
-    // EXTRACTED from TypeInfo::build_type_example TypeKind::List/Set branch:
+    // DEPTH-FIRST PATTERN: Extract item type and recurse to build item examples first
     let item_type = field_schema
         .get_field(SchemaField::Items)
         .and_then(|items| items.get_field(SchemaField::Type))
         .and_then(Self::extract_type_ref_with_schema_field);
 
     item_type.map_or(json!(null), |item_type_name| {
-        let item_example = self.build_example_with_knowledge(&item_type_name, registry, depth.increment());
-        let array = vec![item_example; 2];
-        json!(array)
+        // STEP 1: RECURSE TO ITEM TYPE FIRST - complete item example before collection assembly
+        let item_path_kind = PathKind::RootValue { type_name: item_type_name.clone() };
+        let item_ctx = RecursionContext::new(item_path_kind, Arc::clone(&ctx.registry));
+        
+        // CRITICAL: Item recursion MUST complete before collection construction
+        let item_example = self.build_example_with_knowledge(&item_ctx, depth.increment());
+        
+        // STEP 2: CONSTRUCT COLLECTION AFTER ITEM COMPLETION - bottom-up assembly
+        let collection = vec![item_example; 2];
+        json!(collection)
+        
+        // CRITICAL: This collection example represents the complete Vec/HashSet from this level down
+        // Examples: [{"name": "John"}, {"name": "Jane"}] or [10, 20] 
+        // If a struct contains this collection field, this complete collection becomes that field's value
     })
+}
+```
+
+**MapMutationBuilder**:
+```rust
+fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    let Some(field_schema) = ctx.require_schema() else { return json!(null); };
+    
+    // DEPTH-FIRST PATTERN: Extract key/value types and recurse to build examples first
+    let key_type = field_schema.get_field(SchemaField::PatternProperties)
+        .and_then(|props| props.as_object()?.values().next())
+        .and_then(|v| v.get_field(SchemaField::Type))
+        .and_then(Self::extract_type_ref_with_schema_field);
+        
+    let value_type = field_schema.get_field(SchemaField::AdditionalProperties)
+        .and_then(|props| props.get_field(SchemaField::Type))
+        .and_then(Self::extract_type_ref_with_schema_field);
+
+    match (key_type, value_type) {
+        (Some(key_type_name), Some(value_type_name)) => {
+            // STEP 1: RECURSE TO KEY AND VALUE TYPES FIRST
+            let key_path_kind = PathKind::RootValue { type_name: key_type_name.clone() };
+            let key_ctx = RecursionContext::new(key_path_kind, Arc::clone(&ctx.registry));
+            let key_example = self.build_example_with_knowledge(&key_ctx, depth.increment());
+            
+            let value_path_kind = PathKind::RootValue { type_name: value_type_name.clone() };
+            let value_ctx = RecursionContext::new(value_path_kind, Arc::clone(&ctx.registry));
+            let value_example = self.build_example_with_knowledge(&value_ctx, depth.increment());
+            
+            // STEP 2: CONSTRUCT MAP AFTER KEY/VALUE COMPLETION - bottom-up assembly
+            let mut map = Map::new();
+            map.insert("example_key".to_string(), value_example);
+            json!(map)
+            
+            // CRITICAL: This map example represents the complete HashMap from this level down
+            // Example: {"player_1": {"score": 100, "level": 5}}
+            // If a struct contains this map field, this complete map becomes that field's value
+        }
+        _ => json!(null)
+    }
 }
 ```
 
@@ -551,3 +745,11 @@ pub fn build_enum_example(...) -> Value { ... }
 - **Existing Implementation**: The "BRP_MUTATION_KNOWLEDGE Integration" section shows adding `build_example_with_knowledge()` trait method with default implementation that checks hardcoded knowledge first, then falls back to builder-specific schema generation. This eliminates duplication while preserving the essential knowledge lookup step.
 - **Plan Section**: Section: BRP_MUTATION_KNOWLEDGE Integration
 - **Critical Note**: This functionality/design already exists in the plan - the trait method approach ensures consistent knowledge integration across all builders
+
+### ⚠️ PREJUDICE WARNING - DUPLICATION-6: Plan relocates duplication rather than eliminating it
+- **Status**: PERMANENTLY REJECTED
+- **Category**: DUPLICATION
+- **Location**: Section: Code Extraction Details: What Gets Moved Where
+- **Issue**: Plan moves logic from TypeInfo::build_type_example into individual builders, but this just relocates the same example-generation code into 8 different files. The real duplication issue is that THREE separate systems generate examples: builders, TypeInfo, and spawn format builders. Moving code between them doesn't eliminate the fundamental duplication.
+- **Reasoning**: This finding is based on a fundamental misunderstanding of the plan's architecture. The plan DOES eliminate the three separate systems by consolidating ALL example generation into path builders during their single traversal, then completely removing TypeInfo::build_type_example and spawn format builders entirely. The logic migration consolidates example generation into ONE system (path builders) instead of three separate systems.
+- **Critical Note**: DO NOT SUGGEST THIS AGAIN - Permanently rejected by user
