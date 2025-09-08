@@ -46,16 +46,8 @@ impl MutationPathBuilder for StructMutationBuilder {
         let properties = Self::extract_properties(ctx);
 
         for (field_name, field_info) in properties {
-            let Some(field_type) = SchemaField::extract_field_type(field_info) else {
-                paths.push(Self::build_not_mutatable_field_from_support(
-                    &field_name,
-                    &BrpTypeName::from(field_name.as_str()), /* Use field name as type name when
-                                                              * extraction fails */
-                    ctx,
-                    MutationSupport::NotInRegistry(BrpTypeName::from(field_name.as_str())),
-                ));
-                continue;
-            };
+            let field_type = SchemaField::extract_field_type(field_info)
+                .unwrap_or_else(|| BrpTypeName::from(field_name.as_str()));
 
             // Create field context using PathKind
             let field_path_kind = PathKind::new_struct_field(
@@ -65,12 +57,19 @@ impl MutationPathBuilder for StructMutationBuilder {
             );
             let field_ctx = ctx.create_field_context(field_path_kind);
 
+            // If type extraction failed, handle it
+            if SchemaField::extract_field_type(field_info).is_none() {
+                paths.push(Self::build_not_mutatable_field_from_support(
+                    &field_ctx,
+                    MutationSupport::NotInRegistry(field_type.clone()),
+                ));
+                continue;
+            }
+
             // Check if field is a Value type needing serialization
             let Some(field_schema) = ctx.get_type_schema(&field_type) else {
                 paths.push(Self::build_not_mutatable_field_from_support(
-                    &field_name,
-                    &field_type,
-                    ctx,
+                    &field_ctx,
                     MutationSupport::NotInRegistry(field_type.clone()),
                 ));
                 continue;
@@ -84,18 +83,10 @@ impl MutationPathBuilder for StructMutationBuilder {
 
             if matches!(field_kind, TypeKind::Value) {
                 if ctx.value_type_has_serialization(&field_type) {
-                    paths.push(Self::build_field_mutation_path(
-                        &field_name,
-                        &field_type,
-                        ctx.type_name(),
-                        ctx,
-                        depth,
-                    ));
+                    paths.push(Self::build_field_mutation_path(&field_ctx, depth));
                 } else {
                     paths.push(Self::build_not_mutatable_field_from_support(
-                        &field_name,
-                        &field_type,
-                        ctx,
+                        &field_ctx,
                         MutationSupport::MissingSerializationTraits(field_type.clone()),
                     ));
                 }
@@ -111,15 +102,9 @@ impl MutationPathBuilder for StructMutationBuilder {
                 // We already added paths above through normal recursion,
                 // but we also need the direct field path with hardcoded example
                 if ctx.value_type_has_serialization(&field_type) {
-                    // Build the field path using the context's prefix
-                    let field_path = if ctx.mutation_path.is_empty() {
-                        format!(".{field_name}")
-                    } else {
-                        format!("{}.{field_name}", ctx.mutation_path)
-                    };
-
                     // Find and update the direct field path to use hardcoded example
-                    if let Some(path) = paths.iter_mut().find(|p| p.path == field_path) {
+                    if let Some(path) = paths.iter_mut().find(|p| p.path == field_ctx.mutation_path)
+                    {
                         if let Some(knowledge) =
                             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&field_type))
                         {
@@ -127,13 +112,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                         }
                     } else {
                         // If no direct path was created, add it now with hardcoded example
-                        paths.push(Self::build_field_mutation_path(
-                            &field_name,
-                            &field_type,
-                            ctx.type_name(),
-                            ctx,
-                            depth,
-                        ));
+                        paths.push(Self::build_field_mutation_path(&field_ctx, depth));
                     }
                 }
             }
@@ -165,45 +144,39 @@ impl StructMutationBuilder {
 
     /// Build a not mutatable field path from `MutationSupport` for field-level errors
     fn build_not_mutatable_field_from_support(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        ctx: &RecursionContext,
+        field_ctx: &RecursionContext,
         support: MutationSupport,
     ) -> MutationPathInternal {
-        // Build path using the context's prefix
-        let path = if ctx.mutation_path.is_empty() {
-            format!(".{field_name}")
-        } else {
-            format!("{}.{field_name}", ctx.mutation_path)
-        };
-
         MutationPathInternal {
-            path,
-            example: json!({
+            path:            field_ctx.mutation_path.clone(),
+            example:         json!({
                 "NotMutatable": format!("{support}"),
                 "agent_directive": "This field cannot be mutated - see error message for details"
             }),
-            type_name: field_type.clone(),
-            path_kind: PathKind::new_struct_field(
-                field_name.to_string(),
-                field_type.clone(),
-                ctx.type_name().clone(),
-            ),
+            type_name:       field_ctx.type_name().clone(),
+            path_kind:       field_ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason: Option::<String>::from(&support),
+            error_reason:    Option::<String>::from(&support),
         }
     }
 
     /// Build a single field mutation path
     fn build_field_mutation_path(
-        field_name: &str,
-        field_type: &BrpTypeName,
-        parent_type: &BrpTypeName,
-        ctx: &RecursionContext,
+        field_ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> MutationPathInternal {
+        let field_type = field_ctx.type_name();
+        let (field_name, parent_type) = match &field_ctx.path_kind {
+            PathKind::StructField {
+                field_name,
+                parent_type,
+                ..
+            } => (field_name.as_str(), parent_type),
+            _ => unreachable!("build_field_mutation_path should only be called for struct fields"),
+        };
+
         // First check if parent has math components and this field is a component
-        let example = ctx.parent_knowledge.map_or_else(
+        let example = field_ctx.parent_knowledge.map_or_else(
             || {
                 // No parent knowledge, check struct field first, then type
                 BRP_MUTATION_KNOWLEDGE
@@ -212,7 +185,7 @@ impl StructMutationBuilder {
                     .map_or_else(
                         || {
                             // Don't increment - TypeInfo will handle it
-                            TypeInfo::build_type_example(field_type, &ctx.registry, depth)
+                            TypeInfo::build_type_example(field_type, &field_ctx.registry, depth)
                         },
                         |k| k.example().clone(),
                     )
@@ -234,7 +207,7 @@ impl StructMutationBuilder {
                                         // Don't increment - TypeInfo will handle it
                                         TypeInfo::build_type_example(
                                             field_type,
-                                            &ctx.registry,
+                                            &field_ctx.registry,
                                             depth,
                                         )
                                     },
@@ -246,22 +219,11 @@ impl StructMutationBuilder {
             },
         );
 
-        // Build path using the context's prefix
-        let path = if ctx.mutation_path.is_empty() {
-            format!(".{field_name}")
-        } else {
-            format!("{}.{field_name}", ctx.mutation_path)
-        };
-
         MutationPathInternal {
-            path,
+            path: field_ctx.mutation_path.clone(),
             example,
             type_name: field_type.clone(),
-            path_kind: PathKind::new_struct_field(
-                field_name.to_string(),
-                field_type.clone(),
-                parent_type.clone(),
-            ),
+            path_kind: field_ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
             error_reason: None,
         }

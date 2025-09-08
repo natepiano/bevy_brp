@@ -10,12 +10,12 @@ use crate::brp_tools::Port;
 /// Parameters for the `bevy/query` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct QueryParams {
-    /// Object specifying what component data to retrieve. Properties: components (array), option
-    /// (array), has (array)
+    /// Object specifying what component data to retrieve. BRP format: {components: string[],
+    /// option: string[], has: string[]}
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 
-    /// Object specifying which entities to query. Properties: with (array), without (array)
+    /// Object specifying which entities to query. BRP format: {with: string[], without: string[]}
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filter: Option<Value>,
 

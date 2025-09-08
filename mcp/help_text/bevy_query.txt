@@ -1,13 +1,73 @@
 Queries entities via bevy/query BRP method. Searches entities by components, applies filters, returns data.
 
-Examples:
-- All entities with Transform
-- Entities with Camera, returning Transform
-- Entities with Sprite but without Player
+The bevy/query method allows flexible entity querying with component selection and filtering.
 
-WARNING: Large queries may hit token limits. Use specific filters to reduce results.
-Example: {"with": ["bevy_transform::components::transform::Transform", "bevy_render::camera::camera::Camera"]}
+## Notes on data and filter parameters
 
-Notes:
-- Requires BRP registration
-- strict=true returns error -23402 for unknown components
+### data parameter
+Specifies what component data to retrieve from matching entities. BRP format:
+```json
+{
+  "components": ["bevy_transform::components::transform::Transform"],
+  "option": ["bevy_sprite::sprite::Sprite"],
+  "has": ["bevy_render::camera::camera::Camera"]
+}
+```
+
+Fields:
+- `components`: Array of component type names to always retrieve (query fails if not present)
+- `option`: Array of component type names to retrieve if present (optional components)
+- `has`: Array of component type names to check existence (returns true/false, not the data)
+
+### filter parameter
+Specifies which entities to include or exclude from results. BRP format:
+```json
+{
+  "with": ["bevy_transform::components::transform::Transform", "bevy_render::camera::camera::Camera"],
+  "without": ["bevy_ui::node::Node"]
+}
+```
+
+Fields:
+- `with`: Array of component type names that entities must have
+- `without`: Array of component type names that entities must NOT have
+
+## Examples
+
+Query all entities with Transform:
+```json
+{
+  "filter": {
+    "with": ["bevy_transform::components::transform::Transform"]
+  }
+}
+```
+
+Get Transform and Sprite from all cameras:
+```json
+{
+  "data": {
+    "components": ["bevy_transform::components::transform::Transform"],
+    "option": ["bevy_sprite::sprite::Sprite"]
+  },
+  "filter": {
+    "with": ["bevy_render::camera::camera::Camera"]
+  }
+}
+```
+
+Find entities with Sprite but without UI nodes:
+```json
+{
+  "filter": {
+    "with": ["bevy_sprite::sprite::Sprite"],
+    "without": ["bevy_ui::node::Node"]
+  }
+}
+```
+
+## Notes
+- Component type names must be fully-qualified (e.g., `bevy_transform::components::transform::Transform`)
+- Large queries may hit token limits - use specific filters to reduce results
+- Requires components to be registered with BRP reflection
+- Returns array of entities with their requested component data
