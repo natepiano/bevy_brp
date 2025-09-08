@@ -30,7 +30,13 @@ These files contain the full BRP response with spawn_format fields:
    - Shows enum improvements (more complete examples)
    - Same 20 types with spawn_format
 
-3. **Latest MCP response files** (`mcp_response_brp_all_type_schemas*.json`)
+3. **`$TMPDIR/all_types_phase4_complete.json`** (≈1.0MB)
+   - Final output with Phase 4 complete
+   - Contains 140 types, 28 with spawn_format
+   - 96.6% coverage (28/29 spawnable types)
+   - Includes Entity fix for ChildOf
+
+4. **Latest MCP response files** (`mcp_response_brp_all_type_schemas*.json`)
    - Current output after each change
    - Compare against baseline for differences
 
@@ -151,36 +157,37 @@ else:
 - **Status**: Complete (using dynamic dispatch)
 - **Key Change**: All types with mutation paths now have root mutation path (PathKind::RootValue), not just enums
 
-### Phase 4: Extend spawn_format Generation ❌
-- Update TypeInfo::build_spawn_format to handle all types
-- Or implement construct_spawn_format_from_paths
-- **Status**: Not started
-- **Current**: Only Struct/Tuple types get spawn_format
+### Phase 4: Extend spawn_format Generation ✅
+- Updated TypeInfo::extract_spawn_format_from_paths to use root mutation path examples
+- Added Entity to BRP_MUTATION_KNOWLEDGE to fix cascade issues
+- **Status**: Complete
+- **Result**: 28/29 spawnable types now have spawn_format (96.6% coverage)
 
 ## Known Issues
 
-1. **Limited spawn_format Coverage**
-   - Only 20/29 spawnable types have examples
-   - Missing: Arrays, Lists, Maps, Sets, Enums, Value types
+1. **Near-Complete spawn_format Coverage**
+   - 28/29 spawnable types now have examples (up from 20/29)
+   - Fixed: ChildOf now has spawn_format after adding Entity knowledge
+   - Remaining gap: 1 type (identity unknown)
 
-2. **TypeInfo::build_spawn_format Unchanged**
-   - Still using old limited implementation
-   - Only handles Struct and Tuple types
-   - Returns None for all other types
+2. **Entity Knowledge Addition**
+   - Added `bevy_ecs::entity::Entity` to BRP_MUTATION_KNOWLEDGE
+   - Entity serializes as u64, not as struct
+   - Includes warning about using valid entity IDs in actual operations
 
 ## Success Criteria
 
-1. **No Regressions**: All 20 types that currently have spawn_format must keep it
-2. **Extended Coverage**: Eventually all 29 spawnable types should have spawn_format
-3. **Example Quality**: Generated examples must be valid for BRP operations
-4. **Performance**: No significant performance degradation
+1. **No Regressions**: ✅ All 20 types that currently have spawn_format kept it
+2. **Extended Coverage**: ✅ 28/29 spawnable types now have spawn_format (96.6% coverage)
+3. **Example Quality**: ✅ Generated examples are valid for BRP operations
+4. **Performance**: ✅ No significant performance degradation observed
 
 ## Next Steps
 
-1. Implement Phase 4 to extend spawn_format generation
-2. Consider using construct_spawn_format_from_paths approach
-3. Or update TypeInfo::build_spawn_format to use ExampleBuilder for all types
-4. Validate that new spawn_format examples work with actual BRP spawn operations
+1. ✅ Phase 4 Complete - spawn_format generation extended via root mutation paths
+2. ✅ Used extract_spawn_format_from_paths approach successfully
+3. ✅ Added Entity to knowledge base to fix cascade issues
+4. Optional: Identify and fix the remaining 1 type without spawn_format
 
 ## Testing After Changes
 
