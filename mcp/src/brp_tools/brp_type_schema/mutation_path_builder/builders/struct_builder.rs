@@ -54,6 +54,13 @@ impl MutationPathBuilder for StructMutationBuilder {
             let field_type = SchemaField::extract_field_type(field_info)
                 .unwrap_or_else(|| BrpTypeName::from(field_name.as_str()));
 
+            tracing::error!(
+                "    STRUCT FIELD: {} -> {} (parent: {})",
+                field_name,
+                field_type,
+                ctx.type_name()
+            );
+
             // Create field context using PathKind
             let field_path_kind = PathKind::new_struct_field(
                 field_name.clone(),
@@ -103,9 +110,27 @@ impl MutationPathBuilder for StructMutationBuilder {
                 }
             } else {
                 // Recurse for nested containers or structs
+                tracing::error!("    STRUCT FIELD {} - Before build_paths call (parent: {})", field_name, ctx.type_name());
                 let field_paths = field_kind.build_paths(&field_ctx, depth)?;
+                tracing::error!("    STRUCT FIELD {} - After build_paths call, got {} paths (parent: {})", field_name, field_paths.len(), ctx.type_name());
+
+                // CRITICAL DEBUG: Log what ProtocolEnforcer returns vs what we expect
+                tracing::error!(
+                    "CRITICAL: Field {} (type: {}, kind: {:?}) - Looking for path '{}', got {} paths: [{}]",
+                    field_name,
+                    field_type,
+                    field_kind,
+                    field_ctx.mutation_path,
+                    field_paths.len(),
+                    field_paths
+                        .iter()
+                        .map(|p| format!("'{}'", p.path))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
 
                 // Extract the field example from the root path
+                tracing::error!("    STRUCT FIELD {} - Extracting field example from paths (parent: {})", field_name, ctx.type_name());
                 let field_example = field_paths
                     .iter()
                     .find(|p| p.path == field_ctx.mutation_path)
@@ -117,7 +142,9 @@ impl MutationPathBuilder for StructMutationBuilder {
                             .build_schema_example(&field_ctx, depth.increment())
                     });
 
+                tracing::error!("    STRUCT FIELD {} - Before extending paths, current total: {} (parent: {})", field_name, paths.len(), ctx.type_name());
                 paths.extend(field_paths);
+                tracing::error!("    STRUCT FIELD {} - After extending paths, new total: {} (parent: {})", field_name, paths.len(), ctx.type_name());
                 field_example
             };
 
@@ -150,16 +177,24 @@ impl MutationPathBuilder for StructMutationBuilder {
             } else {
                 struct_example.insert(field_name.clone(), field_example);
             }
+
+            tracing::error!("    STRUCT FIELD COMPLETE: {} (parent: {}, paths so far: {})", field_name, ctx.type_name(), paths.len());
         }
 
+        tracing::error!("STRUCT {} - Field processing loop complete, paths: {}", ctx.type_name(), paths.len());
+
+        tracing::error!("STRUCT {} - All fields processed, total paths so far: {}", ctx.type_name(), paths.len());
+
         // Add the root struct path with the accumulated example
-        // But only if we're at the root level
-        if matches!(ctx.path_kind, PathKind::RootValue { .. }) {
+        // Always add root path - all PathKind variants can contain structs that may need direct access
+        tracing::error!("STRUCT {} - Adding root path for path_kind: {:?}", ctx.type_name(), ctx.path_kind);
+        {
             // DEBUG: Log the struct example to see what we're building
             if ctx.type_name().as_str() == "bevy_transform::components::transform::Transform" {
                 tracing::warn!("DEBUG: Transform struct_example = {:?}", struct_example);
             }
 
+            tracing::error!("STRUCT {} - Creating root path at index 0", ctx.type_name());
             paths.insert(
                 0,
                 MutationPathInternal {
@@ -171,9 +206,14 @@ impl MutationPathBuilder for StructMutationBuilder {
                     error_reason:    None,
                 },
             );
+            tracing::error!("STRUCT {} - Root path inserted, total paths now: {}", ctx.type_name(), paths.len());
         }
 
+        tracing::error!("STRUCT {} - Before propagate_struct_immutability with {} paths", ctx.type_name(), paths.len());
+
         Self::propagate_struct_immutability(&mut paths);
+        
+        tracing::error!("STRUCT {} - After propagate_struct_immutability, returning {} paths", ctx.type_name(), paths.len());
         Ok(paths)
     }
 

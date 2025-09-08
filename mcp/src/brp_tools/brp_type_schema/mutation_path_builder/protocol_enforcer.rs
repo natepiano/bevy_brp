@@ -24,6 +24,8 @@ impl MutationPathBuilder for ProtocolEnforcer {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
+        tracing::warn!("ProtocolEnforcer processing type: {}", ctx.type_name());
+
         // 1. Check depth limit for THIS level
         if depth.exceeds_limit() {
             return Ok(vec![MutationPathInternal {

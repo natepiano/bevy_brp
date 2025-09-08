@@ -294,7 +294,10 @@ Each builder migration follows this pattern:
 1. Remove ExampleBuilder usage
 2. Implement protocol methods
 3. Set is_migrated() to true
-4. Delete old methods
+4. **IMPORTANT**: Keep `build_paths()` but make it panic with tracing::error! and panic!
+   - This ensures it's never called when wrapped by ProtocolEnforcer
+   - The panic message should include the type name for debugging
+5. Delete old methods (build_schema_example, static helper methods)
 
 ### Builder 1: DefaultMutationBuilder (Simplest - Leaf Type)
 
@@ -320,6 +323,13 @@ impl MutationPathBuilder for DefaultMutationBuilder {
 #### After Migration:
 ```rust
 impl MutationPathBuilder for DefaultMutationBuilder {
+    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
+        -> Result<Vec<MutationPathInternal>> {
+        // IMPORTANT: Add panic to ensure this is never called when migrated
+        tracing::error!("DefaultMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
+        panic!("DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
+    }
+    
     fn is_migrated(&self) -> bool {
         true  // MIGRATED!
     }
@@ -328,18 +338,12 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         vec![]  // Leaf type - no children
     }
     
-    fn assemble_from_children(&self, ctx: &RecursionContext, _children: HashMap<String, Value>) -> Value {
-        // For leaf types, just return a default example
+    fn assemble_from_children(&self, _ctx: &RecursionContext, _children: HashMap<String, Value>) -> Value {
+        // For leaf types, just return null
         // Knowledge check already handled by ProtocolEnforcer
-        match ctx.type_name().as_str() {
-            "bool" => json!(true),
-            "i32" | "u32" | "f32" => json!(0),
-            "alloc::string::String" => json!("example"),
-            _ => json!(null),
-        }
+        json!(null)
     }
     
-    // DELETE build_paths() - handled by ProtocolEnforcer
     // DELETE build_schema_example() - no longer needed
 }
 ```
@@ -356,6 +360,13 @@ TODO:
 #### After Migration:
 ```rust
 impl MutationPathBuilder for StructMutationBuilder {
+    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
+        -> Result<Vec<MutationPathInternal>> {
+        // IMPORTANT: Add panic to ensure this is never called when migrated
+        tracing::error!("StructMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
+        panic!("StructMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
+    }
+    
     fn is_migrated(&self) -> bool {
         true  // MIGRATED!
     }
@@ -393,7 +404,6 @@ impl MutationPathBuilder for StructMutationBuilder {
         json!(obj)
     }
     
-    // DELETE build_paths() - handled by ProtocolEnforcer
     // DELETE build_schema_example() - no longer needed
     // DELETE build_struct_example_from_properties() static method
 }
@@ -689,6 +699,7 @@ For each migration:
 - Implement is_migrated() -> true
 - Implement collect_children()
 - Implement assemble_from_children()
+- Keep build_paths() but make it panic (with tracing::error! and panic!)
 - Delete build_schema_example() override
 - Delete static helper methods
 - Remove ExampleBuilder import

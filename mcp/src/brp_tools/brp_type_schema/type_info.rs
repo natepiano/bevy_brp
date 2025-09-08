@@ -75,16 +75,23 @@ impl TypeInfo {
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
             Self::build_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
+        tracing::error!("AFTER build_mutation_paths: {} returned {} paths", brp_type_name, mutation_paths_vec.len());
+        
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
+        tracing::error!("AFTER convert_mutation_paths: {} converted {} paths", brp_type_name, mutation_paths.len());
 
         // Add Mutate operation if any paths are actually mutatable
         let mut supported_operations = supported_operations;
+        tracing::error!("BEFORE has_mutatable_paths check: {}", brp_type_name);
+        
         if Self::has_mutatable_paths(&mutation_paths) {
             supported_operations.push(BrpSupportedOperation::Mutate);
         }
+        tracing::error!("AFTER has_mutatable_paths check: {}", brp_type_name);
 
         // Build spawn format from root path mutation example - ONLY for types that support
         // spawn/insert
+        tracing::error!("BEFORE extract_spawn_format_from_paths: {}", brp_type_name);
         let spawn_format = if supported_operations.contains(&BrpSupportedOperation::Spawn)
             || supported_operations.contains(&BrpSupportedOperation::Insert)
         {
@@ -92,16 +99,21 @@ impl TypeInfo {
         } else {
             None
         };
+        tracing::error!("AFTER extract_spawn_format_from_paths: {}", brp_type_name);
 
         // Build enum info if it's an enum
+        tracing::error!("BEFORE extract_enum_info: {}", brp_type_name);
         let enum_info = if type_kind == TypeKind::Enum {
             Self::extract_enum_info(type_schema, &registry)
         } else {
             None
         };
+        tracing::error!("AFTER extract_enum_info: {}", brp_type_name);
 
         // Extract schema info from registry
+        tracing::error!("BEFORE extract_schema_info: {}", brp_type_name);
         let schema_info = Self::extract_schema_info(type_schema);
+        tracing::error!("AFTER extract_schema_info: {}", brp_type_name);
 
         Self {
             type_name: brp_type_name,
@@ -168,6 +180,8 @@ impl TypeInfo {
         type_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Vec<MutationPathInternal> {
+        tracing::error!(">>> TOP LEVEL TYPE START: {}", brp_type_name);
+
         let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
 
         // Create root context for the new trait system
@@ -175,9 +189,16 @@ impl TypeInfo {
         let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
         // Use the new trait dispatch system
-        type_kind
+        let result = type_kind
             .build_paths(&ctx, RecursionDepth::ZERO)
-            .unwrap_or_else(|_| Vec::new())
+            .unwrap_or_else(|_| Vec::new());
+
+        tracing::error!(
+            "<<< TOP LEVEL TYPE COMPLETE: {} (returned {} paths)",
+            brp_type_name,
+            result.len()
+        );
+        result
     }
 
     /// Extract type name from a type field using `SchemaField::Ref`

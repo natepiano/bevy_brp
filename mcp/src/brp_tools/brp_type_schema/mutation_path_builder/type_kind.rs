@@ -76,7 +76,9 @@ impl TypeKind {
         };
 
         // Wrap with protocol enforcer if migrated
-        if base_builder.is_migrated() {
+        let is_migrated = base_builder.is_migrated();
+
+        if is_migrated {
             Box::new(ProtocolEnforcer::new(base_builder))
         } else {
             base_builder
@@ -178,7 +180,9 @@ impl MutationPathBuilder for TypeKind {
             Self::Value => {
                 // Check serialization inline, no recursion needed
                 if ctx.value_type_has_serialization(ctx.type_name()) {
-                    DefaultMutationBuilder.build_paths(ctx, builder_depth)
+                    // Use self.builder() for migrated DefaultMutationBuilder to get
+                    // ProtocolEnforcer wrapper
+                    self.builder().build_paths(ctx, builder_depth)
                 } else {
                     let not_mutatable_path = Self::build_not_mutatable_path_from_support(
                         ctx,
