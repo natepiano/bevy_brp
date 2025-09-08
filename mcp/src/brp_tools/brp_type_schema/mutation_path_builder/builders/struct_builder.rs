@@ -121,6 +121,28 @@ impl MutationPathBuilder for StructMutationBuilder {
         Self::propagate_struct_immutability(&mut paths);
         Ok(paths)
     }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        // Check depth limit to prevent infinite recursion
+        if depth.exceeds_limit() {
+            return json!("...");
+        }
+
+        let Some(schema) = ctx.require_schema() else {
+            return json!(null);
+        };
+
+        // Extract properties using the same logic as the static method
+        schema
+            .get_field(SchemaField::Properties)
+            .map_or(json!(null), |properties| {
+                Self::build_struct_example_from_properties_with_context(
+                    properties,
+                    ctx,
+                    depth.increment(),
+                )
+            })
+    }
 }
 
 impl StructMutationBuilder {
@@ -318,6 +340,64 @@ impl StructMutationBuilder {
                         registry,
                         depth, // Don't increment - TypeInfo will handle it
                     )
+                })
+                .unwrap_or(json!(null));
+
+            example.insert(field_name.clone(), field_value);
+        }
+
+        json!(example)
+    }
+
+    /// Build example struct from properties with context (trait method version)
+    fn build_struct_example_from_properties_with_context(
+        properties: &Value,
+        ctx: &RecursionContext,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Check depth limit to prevent infinite recursion
+        if depth.exceeds_limit() {
+            return json!("...");
+        }
+
+        let Some(props_map) = properties.as_object() else {
+            return json!({});
+        };
+
+        let mut example = serde_json::Map::new();
+
+        for (field_name, field_schema) in props_map {
+            // Use trait dispatch for each field type with depth tracking
+            let field_value = SchemaField::extract_field_type(field_schema)
+                .map(|field_type| {
+                    // First check for hardcoded knowledge
+                    BRP_MUTATION_KNOWLEDGE
+                        .get(&KnowledgeKey::exact(&field_type))
+                        .map_or_else(
+                            || {
+                                // Get field schema and use trait dispatch
+                                ctx.get_type_schema(&field_type).map_or(
+                                    json!(null),
+                                    |field_schema| {
+                                        let field_kind =
+                                            TypeKind::from_schema(field_schema, &field_type);
+                                        // Create field context for recursive building
+                                        let field_path_kind = PathKind::new_struct_field(
+                                            field_name.clone(),
+                                            field_type.clone(),
+                                            ctx.type_name().clone(),
+                                        );
+                                        let field_ctx = ctx.create_field_context(field_path_kind);
+                                        ExampleBuilder::build_example(
+                                            &field_type,
+                                            &ctx.registry,
+                                            depth,
+                                        )
+                                    },
+                                )
+                            },
+                            |k| k.example().clone(),
+                        )
                 })
                 .unwrap_or(json!(null));
 

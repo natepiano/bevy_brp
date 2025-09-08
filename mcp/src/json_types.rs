@@ -72,4 +72,8 @@ pub enum SchemaField {
     ShortPath,
     /// The type field
     Type,
+    /// The keyType field for map types
+    KeyType,
+    /// The valueType field for map types
+    ValueType,
 }

@@ -10,10 +10,12 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
-use super::super::MutationPathBuilder;
+use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::super::mutation_support::MutationSupport;
+use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
+use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
@@ -38,6 +40,53 @@ impl MutationPathBuilder for SetMutationBuilder {
 
         // Sets can only be mutated at the top level - no element access
         Ok(vec![Self::build_set_mutation_path(ctx, depth)])
+    }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        let Some(schema) = ctx.require_schema() else {
+            return json!(null);
+        };
+
+        // Extract element type using the same logic as the static method
+        let item_type = schema
+            .get_field(SchemaField::Items)
+            .and_then(|items| items.get_field(SchemaField::Type))
+            .and_then(TypeInfo::extract_type_ref_with_schema_field);
+
+        item_type.map_or(json!(null), |item_type_name| {
+            // Generate example value for the item type using trait dispatch
+            // First check for hardcoded knowledge
+            let item_example = BRP_MUTATION_KNOWLEDGE
+                .get(&KnowledgeKey::exact(&item_type_name))
+                .map_or_else(
+                    || {
+                        // Get the element type schema and use trait dispatch
+                        ctx.get_type_schema(&item_type_name)
+                            .map_or(json!(null), |element_schema| {
+                                let element_kind =
+                                    TypeKind::from_schema(element_schema, &item_type_name);
+                                // Create element context for recursive building
+                                let element_path_kind = PathKind::new_array_element(
+                                    0,
+                                    item_type_name.clone(),
+                                    ctx.type_name().clone(),
+                                );
+                                let element_ctx = ctx.create_field_context(element_path_kind);
+                                ExampleBuilder::build_example(
+                                    &item_type_name,
+                                    &ctx.registry,
+                                    depth.increment(),
+                                )
+                            })
+                    },
+                    |k| k.example().clone(),
+                );
+
+            // Create array with 2 example elements
+            // For Sets, these represent unique values to add
+            let array = vec![item_example; 2];
+            json!(array)
+        })
     }
 }
 

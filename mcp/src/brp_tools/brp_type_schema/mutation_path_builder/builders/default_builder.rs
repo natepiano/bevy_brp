@@ -1,6 +1,8 @@
 /// Default builder for simple types
 ///
 /// Handles simple types that don't need complex logic - just creates a standard mutation path
+use serde_json::Value;
+
 use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -27,5 +29,10 @@ impl MutationPathBuilder for DefaultMutationBuilder {
             mutation_status: MutationStatus::Mutatable,
             error_reason: None,
         }])
+    }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        // For default/simple types, delegate to ExampleBuilder
+        ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth)
     }
 }

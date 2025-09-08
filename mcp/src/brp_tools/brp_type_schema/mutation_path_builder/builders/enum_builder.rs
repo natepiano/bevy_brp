@@ -501,6 +501,20 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
         Ok(paths)
     }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        let Some(schema) = ctx.require_schema() else {
+            return json!(null);
+        };
+
+        // Check depth limit to prevent infinite recursion
+        if depth.exceeds_limit() {
+            return json!("...");
+        }
+
+        // Use the existing build_enum_spawn_example for concrete spawn format
+        Self::build_enum_spawn_example(schema, &ctx.registry, Some(ctx.type_name()), depth)
+    }
 }
 
 impl EnumMutationBuilder {

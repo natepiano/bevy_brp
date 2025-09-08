@@ -54,6 +54,63 @@ impl MutationPathBuilder for ArrayMutationBuilder {
 
         Ok(paths)
     }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        let Some(schema) = ctx.require_schema() else {
+            return json!(null);
+        };
+
+        // Extract array element type using the same logic as the static method
+        let item_type = schema
+            .get_field(SchemaField::Items)
+            .and_then(|items| items.get_field(SchemaField::Type))
+            .and_then(TypeInfo::extract_type_ref_with_schema_field);
+
+        item_type.map_or(json!(null), |item_type_name| {
+            // Generate example value for the item type using trait dispatch
+            // First check for hardcoded knowledge
+            let item_example = BRP_MUTATION_KNOWLEDGE
+                .get(&KnowledgeKey::exact(&item_type_name))
+                .map_or_else(
+                    || {
+                        // Get the element type schema and create context for it
+                        ctx.get_type_schema(&item_type_name)
+                            .map_or(json!(null), |element_schema| {
+                                let element_kind =
+                                    TypeKind::from_schema(element_schema, &item_type_name);
+                                // Create element context for recursive building
+                                let element_path_kind = PathKind::new_array_element(
+                                    0,
+                                    item_type_name.clone(),
+                                    ctx.type_name().clone(),
+                                );
+                                let element_ctx = ctx.create_field_context(element_path_kind);
+                                ExampleBuilder::build_example(
+                                    &item_type_name,
+                                    &ctx.registry,
+                                    depth.increment(),
+                                )
+                            })
+                    },
+                    |k| k.example().clone(),
+                );
+
+            // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
+            let size = ctx
+                .type_name()
+                .as_str()
+                .rsplit_once("; ")
+                .and_then(|(_, rest)| rest.strip_suffix(']'))
+                .and_then(|s| s.parse::<usize>().ok())
+                .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| {
+                    s.min(MAX_EXAMPLE_ARRAY_SIZE)
+                });
+
+            // Create array with the appropriate number of elements
+            let array = vec![item_example; size];
+            json!(array)
+        })
+    }
 }
 
 impl ArrayMutationBuilder {

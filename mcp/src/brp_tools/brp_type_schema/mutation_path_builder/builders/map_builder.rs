@@ -17,8 +17,9 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
+use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::error::Result;
+use crate::string_traits::JsonFieldAccess;
 
 pub struct MapMutationBuilder;
 
@@ -38,20 +39,106 @@ impl MutationPathBuilder for MapMutationBuilder {
         // Maps can only be mutated at the top level - no individual key access
         Ok(vec![Self::build_map_mutation_path(ctx, depth)])
     }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        let Some(schema) = ctx.require_schema() else {
+            return json!(null);
+        };
+
+        // Extract key and value types from schema
+        let key_type = schema
+            .get_field(SchemaField::KeyType)
+            .and_then(|key_field| key_field.get_field(SchemaField::Type))
+            .and_then(|type_ref| type_ref.as_str())
+            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from);
+
+        let value_type = schema
+            .get_field(SchemaField::ValueType)
+            .and_then(|value_field| value_field.get_field(SchemaField::Type))
+            .and_then(|type_ref| type_ref.as_str())
+            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from);
+
+        // Generate proper examples for key and value types
+        let mut map = Map::new();
+
+        match (key_type, value_type) {
+            (Some(key_t), Some(val_t)) => {
+                // Build example key and value using ExampleBuilder
+                let key_example = ExampleBuilder::build_example(&key_t, &ctx.registry, depth);
+                let value_example = ExampleBuilder::build_example(&val_t, &ctx.registry, depth);
+
+                // Convert key to string (maps in JSON must have string keys)
+                let key_str = match key_example {
+                    Value::String(s) => s,
+                    Value::Number(n) => n.to_string(),
+                    other => {
+                        serde_json::to_string(&other).unwrap_or_else(|_| "example_key".to_string())
+                    }
+                };
+
+                map.insert(key_str, value_example);
+            }
+            _ => {
+                // Fallback to simple example if type extraction fails
+                map.insert("example_key".to_string(), json!("example_value"));
+            }
+        }
+
+        json!(map)
+    }
 }
 
 impl MapMutationBuilder {
     /// Build map example using extracted logic - creates example key-value pairs
-    /// This is the static method version that calls `TypeInfo` for key/value types
+    /// This is the static method version that calls `ExampleBuilder` for key/value types
     pub fn build_map_example_static(
-        _schema: &Value,
-        _registry: &HashMap<BrpTypeName, Value>,
-        _depth: RecursionDepth,
+        schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
     ) -> Value {
-        // Maps are complex - for now just return a simple example
-        // TODO: Extract key/value types from schema if needed
+        // Extract key and value types from schema
+        let key_type = schema
+            .get_field(SchemaField::KeyType)
+            .and_then(|key_field| key_field.get_field(SchemaField::Type))
+            .and_then(|type_ref| type_ref.as_str())
+            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from);
+
+        let value_type = schema
+            .get_field(SchemaField::ValueType)
+            .and_then(|value_field| value_field.get_field(SchemaField::Type))
+            .and_then(|type_ref| type_ref.as_str())
+            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
+            .map(BrpTypeName::from);
+
+        // Generate proper examples for key and value types
         let mut map = Map::new();
-        map.insert("example_key".to_string(), json!("example_value"));
+
+        match (key_type, value_type) {
+            (Some(key_t), Some(val_t)) => {
+                // Build example key and value using ExampleBuilder
+                let key_example = ExampleBuilder::build_example(&key_t, registry, depth);
+                let value_example = ExampleBuilder::build_example(&val_t, registry, depth);
+
+                // Convert key to string (maps in JSON must have string keys)
+                let key_str = match key_example {
+                    Value::String(s) => s,
+                    Value::Number(n) => n.to_string(),
+                    other => {
+                        serde_json::to_string(&other).unwrap_or_else(|_| "example_key".to_string())
+                    }
+                };
+
+                map.insert(key_str, value_example);
+            }
+            _ => {
+                // Fallback to simple example if type extraction fails
+                map.insert("example_key".to_string(), json!("example_value"));
+            }
+        }
+
         json!(map)
     }
 

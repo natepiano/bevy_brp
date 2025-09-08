@@ -73,6 +73,78 @@ impl MutationPathBuilder for TupleMutationBuilder {
         Self::propagate_tuple_mixed_mutability(&mut paths);
         Ok(paths)
     }
+
+    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+        let Some(schema) = ctx.require_schema() else {
+            return json!(null);
+        };
+
+        // Extract prefixItems using the same logic as the static method
+        schema
+            .get_field(SchemaField::PrefixItems)
+            .and_then(Value::as_array)
+            .map_or(json!(null), |prefix_items| {
+                let tuple_examples: Vec<Value> = prefix_items
+                    .iter()
+                    .map(|item| {
+                        item.get_field(SchemaField::Type)
+                            .and_then(TypeInfo::extract_type_ref_with_schema_field)
+                            .map_or_else(
+                                || json!(null),
+                                |element_type| {
+                                    // First check for hardcoded knowledge
+                                    BRP_MUTATION_KNOWLEDGE
+                                        .get(&KnowledgeKey::exact(&element_type))
+                                        .map_or_else(
+                                            || {
+                                                // Get the element type schema and use trait
+                                                // dispatch
+                                                ctx.get_type_schema(&element_type).map_or(
+                                                    json!(null),
+                                                    |element_schema| {
+                                                        let element_kind = TypeKind::from_schema(
+                                                            element_schema,
+                                                            &element_type,
+                                                        );
+                                                        // Create element context for recursive
+                                                        // building
+                                                        let element_path_kind =
+                                                            PathKind::new_indexed_element(
+                                                                0,
+                                                                element_type.clone(),
+                                                                ctx.type_name().clone(),
+                                                            );
+                                                        let element_ctx = ctx.create_field_context(
+                                                            element_path_kind,
+                                                        );
+                                                        ExampleBuilder::build_example(
+                                                            &element_type,
+                                                            &ctx.registry,
+                                                            depth.increment(),
+                                                        )
+                                                    },
+                                                )
+                                            },
+                                            |k| k.example().clone(),
+                                        )
+                                },
+                            )
+                    })
+                    .collect();
+
+                if tuple_examples.is_empty() {
+                    json!(null)
+                } else {
+                    // Special case: single-field tuple structs are unwrapped by BRP
+                    // Return the inner value directly, not as an array
+                    if tuple_examples.len() == 1 {
+                        tuple_examples.into_iter().next().unwrap_or(json!(null))
+                    } else {
+                        json!(tuple_examples)
+                    }
+                }
+            })
+    }
 }
 
 impl TupleMutationBuilder {
