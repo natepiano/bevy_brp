@@ -61,6 +61,20 @@ impl TypeKind {
             })
     }
 
+    /// Get the appropriate builder instance for this type kind
+    pub fn builder(&self) -> Box<dyn MutationPathBuilder> {
+        match self {
+            Self::Struct => Box::new(StructMutationBuilder),
+            Self::Tuple | Self::TupleStruct => Box::new(TupleMutationBuilder),
+            Self::Array => Box::new(ArrayMutationBuilder),
+            Self::List => Box::new(ListMutationBuilder),
+            Self::Map => Box::new(MapMutationBuilder),
+            Self::Set => Box::new(SetMutationBuilder),
+            Self::Enum => Box::new(EnumMutationBuilder),
+            Self::Value => Box::new(DefaultMutationBuilder),
+        }
+    }
+
     /// Build a mutation path for types with `TreatAsValue` knowledge
     /// that come from our hard coded knowledge
     fn build_treat_as_value_path(ctx: &RecursionContext) -> Option<MutationPathInternal> {

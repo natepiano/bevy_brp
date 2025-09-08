@@ -30,8 +30,8 @@ pub struct ExampleBuilder;
 impl ExampleBuilder {
     /// Builders call this instead of `TypeInfo::build_type_example`
     ///
-    /// This method contains the dispatch logic moved from `TypeInfo` to break
-    /// the circular dependency between `TypeInfo` and builders.
+    /// This method uses static method dispatch to avoid dynamic trait dispatch
+    /// issues that can cause MCP connection problems.
     ///
     /// # Arguments
     /// * `type_name` - The fully-qualified type name to build an example for
@@ -61,35 +61,52 @@ impl ExampleBuilder {
         };
 
         let field_kind = TypeKind::from_schema(field_schema, type_name);
+
+        // Use static method dispatch to avoid dynamic trait dispatch issues
         match field_kind {
-            TypeKind::Enum => EnumMutationBuilder::build_enum_spawn_example(
+            TypeKind::Array => ArrayMutationBuilder::build_array_example_static(
+                type_name,
+                field_schema,
+                registry,
+                depth.increment(),
+            ),
+            TypeKind::List => ListMutationBuilder::build_list_example_static(
+                field_schema,
+                registry,
+                depth.increment(),
+            ),
+            TypeKind::Set => SetMutationBuilder::build_set_example_static(
+                field_schema,
+                registry,
+                depth.increment(),
+            ),
+            TypeKind::Map => MapMutationBuilder::build_map_example_static(
+                field_schema,
+                registry,
+                depth.increment(),
+            ),
+            TypeKind::Struct => StructMutationBuilder::build_struct_example_static(
+                field_schema,
+                registry,
+                depth.increment(),
+            ),
+            TypeKind::Tuple | TypeKind::TupleStruct => {
+                TupleMutationBuilder::build_tuple_example_static(
+                    field_schema,
+                    registry,
+                    depth.increment(),
+                )
+            }
+            TypeKind::Enum => EnumMutationBuilder::build_enum_example(
                 field_schema,
                 registry,
                 Some(type_name),
                 depth.increment(),
             ),
-            TypeKind::Array => ArrayMutationBuilder::build_array_example_static(
-                type_name,
-                field_schema,
-                registry,
-                depth,
-            ),
-            TypeKind::Tuple | TypeKind::TupleStruct => {
-                TupleMutationBuilder::build_tuple_example_static(field_schema, registry, depth)
+            TypeKind::Value => {
+                // For simple Value types, just return example from knowledge or simple default
+                KnowledgeKey::find_example_for_type(type_name).unwrap_or(json!(null))
             }
-            TypeKind::Struct => {
-                StructMutationBuilder::build_struct_example_static(field_schema, registry, depth)
-            }
-            TypeKind::List => {
-                ListMutationBuilder::build_list_example_static(field_schema, registry, depth)
-            }
-            TypeKind::Set => {
-                SetMutationBuilder::build_set_example_static(field_schema, registry, depth)
-            }
-            TypeKind::Map => {
-                MapMutationBuilder::build_map_example_static(field_schema, registry, depth)
-            }
-            TypeKind::Value => json!(null),
         }
     }
 }
