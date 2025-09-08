@@ -209,13 +209,15 @@ mod protocol_enforcer;
 use protocol_enforcer::ProtocolEnforcer;
 ```
 
-### Phase 5a TODO List
+### Phase 5a TODO List ✅ COMPLETED
 
-1. Add is_migrated(), collect_children(), assemble_from_children() to MutationPathBuilder trait
-2. Create protocol_enforcer.rs file with ProtocolEnforcer implementation
-3. Update TypeKind::builder() to wrap migrated builders
-4. Add protocol_enforcer module to mod.rs
-5. Stop and ask user to validate infrastructure setup
+1. ✅ Add is_migrated(), collect_children(), assemble_from_children() to MutationPathBuilder trait
+   - **Adjustment**: Default `assemble_from_children()` returns `json!(null)` directly instead of calling `self.build_schema_example()` due to Rust trait object safety constraints
+2. ✅ Create protocol_enforcer.rs file with ProtocolEnforcer implementation
+3. ✅ Update TypeKind::builder() to wrap migrated builders
+   - **Adjustment**: Added explicit type annotation `let base_builder: Box<dyn MutationPathBuilder>` to resolve type compatibility between match arms
+4. ✅ Add protocol_enforcer module to mod.rs
+5. ✅ Stop and ask user to validate infrastructure setup
 
 ## Phase 5b: Remove ExampleBuilder
 
@@ -662,12 +664,12 @@ impl TypeKind {
 
 ## Complete Execution Order
 
-### Phase 5a: Setup Infrastructure
-1. Add is_migrated(), collect_children(), assemble_from_children() to MutationPathBuilder trait
-2. Create protocol_enforcer.rs with ProtocolEnforcer implementation
-3. Update TypeKind::builder() to check is_migrated() and wrap if true
-4. Add protocol_enforcer module to mod.rs
-5. Validate infrastructure compiles
+### Phase 5a: Setup Infrastructure ✅ COMPLETED
+1. ✅ Add is_migrated(), collect_children(), assemble_from_children() to MutationPathBuilder trait
+2. ✅ Create protocol_enforcer.rs with ProtocolEnforcer implementation
+3. ✅ Update TypeKind::builder() to check is_migrated() and wrap if true
+4. ✅ Add protocol_enforcer module to mod.rs
+5. ✅ Validate infrastructure compiles
 
 ### Phase 5b: Incremental Builder Migration
 For each builder in order:

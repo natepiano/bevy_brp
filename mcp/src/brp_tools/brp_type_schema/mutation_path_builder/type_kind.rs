@@ -14,6 +14,7 @@ use super::builders::{
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::mutation_support::MutationSupport;
+use super::protocol_enforcer::ProtocolEnforcer;
 use super::recursion_context::RecursionContext;
 use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
@@ -63,7 +64,7 @@ impl TypeKind {
 
     /// Get the appropriate builder instance for this type kind
     pub fn builder(&self) -> Box<dyn MutationPathBuilder> {
-        match self {
+        let base_builder: Box<dyn MutationPathBuilder> = match self {
             Self::Struct => Box::new(StructMutationBuilder),
             Self::Tuple | Self::TupleStruct => Box::new(TupleMutationBuilder),
             Self::Array => Box::new(ArrayMutationBuilder),
@@ -72,6 +73,13 @@ impl TypeKind {
             Self::Set => Box::new(SetMutationBuilder),
             Self::Enum => Box::new(EnumMutationBuilder),
             Self::Value => Box::new(DefaultMutationBuilder),
+        };
+
+        // Wrap with protocol enforcer if migrated
+        if base_builder.is_migrated() {
+            Box::new(ProtocolEnforcer::new(base_builder))
+        } else {
+            base_builder
         }
     }
 

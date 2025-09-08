@@ -37,10 +37,10 @@ impl ToolCallJsonResponse {
         let mut buf = Vec::new();
         let formatter = PrettyCompactFormatter::new();
         let mut ser = Serializer::with_formatter(&mut buf, formatter);
-        
+
         self.serialize(&mut ser)
             .map_err(|e| Error::General(format!("Failed to serialize JSON response: {e}")))?;
-            
+
         String::from_utf8(buf).change_context(Error::General(
             "Failed to convert JSON bytes to string".to_string(),
         ))

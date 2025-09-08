@@ -2,9 +2,12 @@ mod builders;
 mod mutation_knowledge;
 mod mutation_support;
 mod path_kind;
+mod protocol_enforcer;
 mod recursion_context;
 mod type_kind;
 mod types;
+
+use std::collections::HashMap;
 
 pub use builders::{
     ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, ListMutationBuilder,
@@ -13,7 +16,7 @@ pub use builders::{
 pub use mutation_knowledge::KnowledgeKey;
 pub use path_kind::PathKind;
 pub use recursion_context::RecursionContext;
-use serde_json::Value;
+use serde_json::{Value, json};
 pub use type_kind::TypeKind;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus};
 
@@ -77,5 +80,28 @@ pub trait MutationPathBuilder {
         // Default: delegate to ExampleBuilder for now
         use super::example_builder::ExampleBuilder;
         ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth)
+    }
+
+    // NEW METHODS FOR PROTOCOL MIGRATION
+
+    /// Indicates if this builder has been migrated to the new protocol
+    fn is_migrated(&self) -> bool {
+        false // Default: not migrated
+    }
+
+    /// Collect child contexts that need recursion (for depth-first traversal)
+    fn collect_children(&self, _ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
+        vec![] // Default: no children (leaf types)
+    }
+
+    /// Assemble parent example from child examples (post-order assembly)
+    fn assemble_from_children(
+        &self,
+        _ctx: &RecursionContext,
+        _children: HashMap<String, Value>,
+    ) -> Value {
+        // Default: fallback to old build_schema_example for unmigrated builders
+        // Note: Can't call build_schema_example here due to object safety
+        json!(null)
     }
 }

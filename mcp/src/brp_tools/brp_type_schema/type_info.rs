@@ -180,7 +180,6 @@ impl TypeInfo {
             .unwrap_or_else(|_| Vec::new())
     }
 
-
     /// Extract type name from a type field using `SchemaField::Ref`
     ///
     /// Similar to `extract_type_ref_from_field` but uses `SchemaField::Ref`
@@ -192,7 +191,6 @@ impl TypeInfo {
             .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
             .map(BrpTypeName::from)
     }
-
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
     fn convert_mutation_paths(
