@@ -12,10 +12,13 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
+use crate::brp_tools::brp_type_schema::constants::{
+    DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth,
+};
+use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
 use crate::error::Result;
+use crate::string_traits::JsonFieldAccess;
 
 pub struct ArrayMutationBuilder;
 
@@ -188,6 +191,41 @@ impl ArrayMutationBuilder {
     // Note: Removed static helper methods build_root_array_path, build_indexed_element_path,
     // and build_field_array_path as we now build paths inline following StructMutationBuilder
     // pattern
+
+    /// Build array example using extracted logic from TypeInfo::build_type_example
+    /// This is the static method version that calls TypeInfo for element types
+    pub fn build_array_example_static(
+        type_name: &BrpTypeName,
+        schema: &Value,
+        registry: &HashMap<BrpTypeName, Value>,
+        depth: RecursionDepth,
+    ) -> Value {
+        // Extract array element type using the same logic as TypeInfo
+        let item_type = schema
+            .get_field(SchemaField::Items)
+            .and_then(|items| items.get_field(SchemaField::Type))
+            .and_then(TypeInfo::extract_type_ref_with_schema_field);
+
+        item_type.map_or(json!(null), |item_type_name| {
+            // Generate example value for the item type
+            let item_example =
+                TypeInfo::build_type_example(&item_type_name, registry, depth.increment());
+
+            // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
+            let size = type_name
+                .as_str()
+                .rsplit_once("; ")
+                .and_then(|(_, rest)| rest.strip_suffix(']'))
+                .and_then(|s| s.parse::<usize>().ok())
+                .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| {
+                    s.min(MAX_EXAMPLE_ARRAY_SIZE)
+                });
+
+            // Create array with the appropriate number of elements
+            let array = vec![item_example; size];
+            json!(array)
+        })
+    }
 
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(

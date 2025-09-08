@@ -7,12 +7,11 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
-use super::constants::{
-    DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth, SCHEMA_REF_PREFIX,
-};
+use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
 use super::mutation_path_builder::{
-    EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder,
-    MutationPathInternal, PathKind, RecursionContext, StructMutationBuilder, TypeKind,
+    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, KnowledgeKey, MutationPath,
+    MutationPathBuilder, MutationPathInternal, PathKind, RecursionContext, StructMutationBuilder,
+    TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
@@ -214,7 +213,7 @@ impl TypeInfo {
     ///
     /// Similar to `extract_type_ref_from_field` but uses `SchemaField::Ref`
     /// for accessing the $ref field
-    fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
+    pub fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
         type_value
             .get_field(SchemaField::Ref)
             .and_then(Value::as_str)
@@ -315,34 +314,12 @@ impl TypeInfo {
                 Some(type_name),
                 depth.increment(),
             ),
-            TypeKind::Array => {
-                // Handle array types like [f32; 4] or [glam::Vec2; 3]
-                // Arrays have an "items" field with the element type
-                let item_type = field_schema
-                    .get_field(SchemaField::Items)
-                    .and_then(|items| items.get_field(SchemaField::Type))
-                    .and_then(Self::extract_type_ref_with_schema_field);
-
-                item_type.map_or(json!(null), |item_type_name| {
-                    // Generate example value for the item type
-                    let item_example =
-                        Self::build_type_example(&item_type_name, registry, depth.increment());
-
-                    // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
-                    let size = type_name
-                        .as_str()
-                        .rsplit_once("; ")
-                        .and_then(|(_, rest)| rest.strip_suffix(']'))
-                        .and_then(|s| s.parse::<usize>().ok())
-                        .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| {
-                            s.min(MAX_EXAMPLE_ARRAY_SIZE)
-                        });
-
-                    // Create array with the appropriate number of elements
-                    let array = vec![item_example; size];
-                    json!(array)
-                })
-            }
+            TypeKind::Array => ArrayMutationBuilder::build_array_example_static(
+                type_name,
+                field_schema,
+                registry,
+                depth,
+            ),
             TypeKind::Tuple | TypeKind::TupleStruct => {
                 // Handle tuple types with prefixItems
                 field_schema
