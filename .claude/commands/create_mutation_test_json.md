@@ -80,14 +80,14 @@
 ## STEP 2: TYPE DISCOVERY
 
 <TypeDiscovery>
-    Get all type schemas using the comprehensive discovery tool:
+    Get all type guides using the comprehensive discovery tool:
 
     Call `brp_all_type_guides` to get type guides for all registered types in one operation:
     ```bash
-    mcp__brp__brp_all_type_schemas(port=[APP_PORT])
+    mcp__brp__brp_all_type_guides(port=[APP_PORT])
     ```
 
-    This automatically discovers all registered types and returns their schemas. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_schemas_12345.json`).
+    This automatically discovers all registered types and returns their type guides. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_guides_12345.json`).
 
     **CRITICAL**: Note the returned filepath for use in Step 3.
 </TypeDiscovery>
@@ -95,7 +95,7 @@
 ## STEP 3: FILE TRANSFORMATION
 
 <FileTransformation>
-    Augment the BRP response with test metadata while preserving FULL SCHEMAS:
+    Augment the BRP response with test metadata while preserving FULL TYPE GUIDES:
 
     Execute the augmentation script:
     ```bash
@@ -105,7 +105,7 @@
     Replace `[FILEPATH]` with the actual path from Step 2 and `[TARGET_FILE]` with the target location from <CreateContext/>.
 
     The script augments the full BRP response with test metadata for each type:
-    - Preserves ALL original schema data (mutation_paths with examples, spawn_format, etc.)
+    - Preserves ALL original type guide data (mutation_paths with examples, spawn_format, etc.)
     - Adds: batch_number: null
     - Adds: test_status: "untested" (or "passed" for auto-pass types)
     - Adds: fail_reason: ""
@@ -113,7 +113,7 @@
     **File Structure**: The file is the COMPLETE BRP response with added test fields
 
     Expected characteristics:
-    - Complete type schemas with spawn_format including examples
+    - Complete type guides with spawn_format including examples
     - Complete mutation_paths as objects with path keys and example values
     - All test metadata fields added (test_status, batch_number, fail_reason)
     - Full preservation of schema_info, supported_operations, reflection traits

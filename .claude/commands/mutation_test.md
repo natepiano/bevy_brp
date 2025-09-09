@@ -1,4 +1,4 @@
-# Type Schema Comprehensive Validation Test
+# Type Guide Comprehensive Validation Test
 
 ## Overview
 
@@ -86,9 +86,9 @@ This prevents interference from previous test runs and ensures clean batch resul
 
 Process each batch sequentially, with parallel subagents within each batch:
 
-1. **Identify batch types**: Get all types WITH FULL SCHEMAS in current batch (up to BATCH_SIZE types)
+1. **Identify batch types**: Get all types WITH FULL TYPE GUIDES in current batch (up to BATCH_SIZE types)
    ```bash
-   # Get types for batch N - returns COMPLETE type schemas with examples
+   # Get types for batch N - returns COMPLETE type guides with examples
    python3 ./.claude/commands/scripts/mutation_test_get_batch_types.py N
    ```
 2. **Divide into groups**: Split types into groups of TYPES_PER_SUBAGENT each
@@ -109,8 +109,8 @@ Task(
     subagent_type="general-purpose", 
     prompt="""CRITICAL: You are a subagent. DO NOT launch any apps! Use the existing extras_plugin on port 20116.
 
-Test these types WITH COMPLETE SCHEMAS (DO NOT call brp_type_schema - use these provided schemas): 
-[Include the FULL type schemas from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths with examples, etc.]
+Test these types WITH COMPLETE TYPE GUIDES (DO NOT call brp_type_guide - use these provided type guides): 
+[Include the FULL type guides from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths with examples, etc.]
 
 [Include ENTIRE TestInstructions section below]
 
@@ -155,9 +155,9 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 **For EACH assigned type**:
 
-1. **Use Provided Schema** - DO NOT call `mcp__brp__brp_type_schema` - use the complete schema provided in your instructions
-2. **Test Spawn/Insert** (if supported) - When spawn_format exists in the provided schema:
-   - Test `bevy/spawn` using spawn_format from schema (creates new entity)
+1. **Use Provided Type Guide** - DO NOT call `mcp__brp__brp_type_guide` - use the complete type guide provided in your instructions
+2. **Test Spawn/Insert** (if supported) - When spawn_format exists in the provided type guide:
+   - Test `bevy/spawn` using spawn_format from type guide (creates new entity)
    - Test `bevy/insert` using spawn_format on an existing entity (for validation)
 3. **Prepare Mutations** - Query for entity with component by **substituting the actual component type name**:
    ```json
@@ -177,7 +177,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
    
    **CRITICAL:** Replace `ACTUAL_COMPONENT_TYPE_NAME_HERE` with the real component type from your assigned list. Do NOT use the placeholder text literally.
 4. **Test Mutations** - Test each path from mutation_paths array:
-   - **Root path `""`** (empty string): Full component replacement using the SAME spawn_format from schema
+   - **Root path `""`** (empty string): Full component replacement using the SAME spawn_format from type guide
    - **Field paths** (e.g., `.translation.x`): Individual field mutations
 5. **Return Results** - Structured JSON for all types
 
@@ -206,7 +206,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 - Skip paths with `path_kind: "NotMutatable"`
 
 **CRITICAL TYPE HANDLING - NUMBERS MUST BE NUMBERS**:
-When you get examples from the provided schema, pay EXTREME attention to the type:
+When you get examples from the provided type guide, pay EXTREME attention to the type:
 - If the example is a primitive number type (f32, u32, i32, usize, f64, u64, i64, etc.), you MUST pass it as a JSON number
 - If the example is a string (like `"example"`), pass it as a JSON string
 - **NEVER** convert numbers to strings - this will cause "invalid type: string \"20\", expected u32" errors
@@ -217,7 +217,7 @@ When you get examples from the provided schema, pay EXTREME attention to the typ
   - WRONG: `"value": "20"` (string representation - THIS WILL FAIL)
   - WRONG: `"value": "3.14"` (string representation - THIS WILL FAIL)
   - WRONG: `"value": "18446744073709551615"` (string representation - THIS WILL FAIL)
-- When the schema shows `"example": 20`, this means use the number 20, NOT the string "20"
+- When the type guide shows `"example": 20`, this means use the number 20, NOT the string "20"
 - **SPECIAL ATTENTION**: Large numbers like `usize::MAX` (18446744073709551615) are STILL numbers, not strings!
 
 **TYPE ERROR RECOVERY**:
@@ -233,7 +233,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
 
 **MUTATION PATH USAGE**:
 - **Root path `""`** (empty string): Replaces the ENTIRE component with a new value
-  - **CRITICAL**: Use the EXACT SAME format as spawn_format from the schema
+  - **CRITICAL**: Use the EXACT SAME format as spawn_format from the type guide
   - This is essentially the same as spawn/insert but on an existing component
   - Example: For `bevy_ecs::name::Name`, use `{"value": "New Name"}` (the spawn_format structure)
 - **Field paths** (e.g., `.translation.x`): Mutates individual fields within the component
@@ -250,7 +250,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
   "entity": 123,
   "component": "bevy_ecs::name::Name",
   "path": "",
-  "value": "Entity Name",  // ← Use spawn_format structure from schema
+  "value": "Entity Name",  // ← Use spawn_format structure from type guide
   "port": 20116
 }
 
@@ -325,7 +325,7 @@ After completion or failure:
 
 ### Progress Tracking Schema
 
-**Type schemas**: Stored in `{temp_dir}/all_types.json` with COMPLETE schemas including examples  
+**Type guides**: Stored in `{temp_dir}/all_types.json` with COMPLETE type guides including examples  
 **Progress file**: `{temp_dir}/all_types.json` (where `{temp_dir}` is the actual expanded temp directory path)
 
 Each type entry structure:
