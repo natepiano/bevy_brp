@@ -96,7 +96,7 @@ impl BrpClient {
             ResponseStatus::Error(err) => {
                 // Check if this result type supports enhanced errors
                 if R::ENHANCED_ERRORS && err.is_format_error() {
-                    // Enhanced error handling - embed type_schema information
+                    // Enhanced error handling - embed type_guide information
                     match self.create_enhanced_format_error(&err).await {
                         Ok(_) => unreachable!("Enhanced format error should always return Err"),
                         Err(error_report) => Err(error_report),
@@ -252,8 +252,8 @@ impl BrpClient {
             "Format error occurred but could not extract type information",
             serde_json::json!({
                 "original_error": error.get_message(),
-                "type_schema": {
-                    "help": "Unable to determine specific types that failed. Use the brp_type_schema tool to get format information for the types you're working with.",
+                "type_guide": {
+                    "help": "Unable to determine specific types that failed. Use the brp_type_guide tool to get spawn/insert/mutation information for the types you're working with.",
                     "suggested_action": "Check your BRP method parameters and ensure they match expected structure"
                 }
             }),
@@ -267,15 +267,15 @@ impl BrpClient {
         error: &BrpClientError,
         extracted_types: Vec<String>,
     ) -> Result<ResponseStatus> {
-        // Create TypeSchemaEngine and generate response for extracted types
+        // Create TypeGuideEngine and generate response for extracted types
         let engine = TypeGuideEngine::new(self.port).await?;
-        let type_schema_response = engine.generate_response(&extracted_types);
+        let type_guide_response = engine.generate_response(&extracted_types);
 
         Err(Error::tool_call_failed_with_details(
-            "Format error - see 'type_schema' field for correct format",
+            "Format error - see 'type_guide' field for correct format",
             serde_json::json!({
                 "original_error": error.get_message(),
-                "type_schema": type_schema_response
+                "type_guide": type_guide_response
             }),
         )
         .into())

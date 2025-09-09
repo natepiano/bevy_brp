@@ -31,7 +31,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        let Some(schema) = ctx.require_schema() else {
+        let Some(schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(ctx.type_name().clone()),
@@ -78,7 +78,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 );
                 let element_ctx = ctx.create_field_context(element_path_kind);
 
-                let Some(element_schema) = ctx.get_registry_type_schema(element_type) else {
+                let Some(element_schema) = ctx.get_registry_schema(element_type) else {
                     // Element not in registry - create error path
                     let path = if ctx.mutation_path.is_empty() {
                         format!(".{index}")
@@ -189,7 +189,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        let Some(schema) = ctx.require_schema() else {
+        let Some(schema) = ctx.require_registry_schema() else {
             return json!(null);
         };
 
@@ -211,7 +211,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                         || {
                                             // Get the element type schema and use trait
                                             // dispatch
-                                            ctx.get_registry_type_schema(&element_type).map_or(
+                                            ctx.get_registry_schema(&element_type).map_or(
                                                 json!(null),
                                                 |element_schema| {
                                                     let element_kind = TypeKind::from_schema(
@@ -347,7 +347,7 @@ impl TupleMutationBuilder {
         };
 
         // Inline validation for Value types only (similar to TypeKind::build_paths)
-        let Some(element_schema) = ctx.get_registry_type_schema(&element_type) else {
+        let Some(element_schema) = ctx.get_registry_schema(&element_type) else {
             // Element type not in registry - build error path
             return Some(MutationPathInternal {
                 path,
@@ -506,7 +506,7 @@ impl TupleMutationBuilder {
             let element_path_kind =
                 PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone());
             let element_ctx = ctx.create_field_context(element_path_kind);
-            let Some(element_schema) = ctx.get_registry_type_schema(element_type) else {
+            let Some(element_schema) = ctx.get_registry_schema(element_type) else {
                 // Build not mutatable element path for missing registry entry
                 let path = if ctx.mutation_path.is_empty() {
                     format!(".{index}")

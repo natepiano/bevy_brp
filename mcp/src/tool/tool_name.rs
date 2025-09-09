@@ -263,7 +263,7 @@ pub enum ToolName {
     BrpSetTracingLevel,
 
     // Type Schema - In a class of its own
-    /// `brp_type_schema` - type schema discovery
+    /// `brp_type_guide` - type schema discovery
     BrpTypeGuide,
     /// `brp_all_type_guides` - Get type guides for all registered types
     BrpAllTypeGuides,

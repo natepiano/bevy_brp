@@ -58,7 +58,7 @@ impl RecursionContext {
 
     /// Require the schema to be present, logging a warning if missing
     /// Looks up the schema from the registry based on the current type
-    pub fn require_schema(&self) -> Option<&Value> {
+    pub fn require_registry_schema(&self) -> Option<&Value> {
         self.registry.get(self.type_name()).or_else(|| {
             warn!(
                 type_name = %self.type_name(),
@@ -69,7 +69,7 @@ impl RecursionContext {
     }
 
     /// Look up a type in the registry
-    pub fn get_registry_type_schema(&self, type_name: &BrpTypeName) -> Option<&Value> {
+    pub fn get_registry_schema(&self, type_name: &BrpTypeName) -> Option<&Value> {
         self.registry.get(type_name)
     }
 
@@ -112,19 +112,18 @@ impl RecursionContext {
     /// Check if a value type has serialization support
     /// Used to determine if opaque Value types like String can be mutated
     pub fn value_type_has_serialization(&self, type_name: &BrpTypeName) -> bool {
-        self.get_registry_type_schema(type_name)
-            .is_some_and(|schema| {
-                let reflect_types: Vec<ReflectTrait> =
-                    Self::get_schema_field_as_array(schema, SchemaField::ReflectTypes)
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|v| v.as_str())
-                        .filter_map(|s| s.parse().ok())
-                        .collect();
+        self.get_registry_schema(type_name).is_some_and(|schema| {
+            let reflect_types: Vec<ReflectTrait> =
+                Self::get_schema_field_as_array(schema, SchemaField::ReflectTypes)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|v| v.as_str())
+                    .filter_map(|s| s.parse().ok())
+                    .collect();
 
-                reflect_types.contains(&ReflectTrait::Serialize)
-                    && reflect_types.contains(&ReflectTrait::Deserialize)
-            })
+            reflect_types.contains(&ReflectTrait::Serialize)
+                && reflect_types.contains(&ReflectTrait::Deserialize)
+        })
     }
 
     /// Extract element type from List or Array schema

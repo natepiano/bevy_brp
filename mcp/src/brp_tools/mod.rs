@@ -14,7 +14,7 @@ pub use brp_client::{
     ResponseStatus, ResultStructBrpExt,
 };
 //
-// Export brp_type_schema tools
+// Export brp_type_guide tools
 pub use brp_type_guide::{
     AllTypeGuides, AllTypeGuidesParams, BrpTypeName, TypeGuide, TypeGuideParams,
 };

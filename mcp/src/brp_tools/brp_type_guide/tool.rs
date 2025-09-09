@@ -1,4 +1,4 @@
-//! `brp_type_schema` tool - Local registry-based type schema discovery
+//! `brp_type_guide` tool - Local registry-based type schema discovery
 //!
 //! This tool provides type schema information for types in your Bevy app without requiring
 //! the `bevy_brp_extras` plugin. It uses registry schema calls combined with hardcoded BRP
@@ -18,7 +18,7 @@ use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-/// Parameters for the `brp_type_schema` tool
+/// Parameters for the `brp_type_guide` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct TypeGuideParams {
     /// Array of fully-qualified component type names to discover formats for
@@ -29,7 +29,7 @@ pub struct TypeGuideParams {
     pub port: Port,
 }
 
-/// Result for the `brp_type_schema` tool
+/// Result for the `brp_type_guide` tool
 #[derive(Debug, Clone, Serialize, ResultStruct)]
 pub struct TypeGuideResult {
     /// The type schema information containing format discovery results
@@ -117,12 +117,12 @@ impl TypeGuideEngine {
         };
 
         for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
-            let type_info = if let Some(type_schema) = self.registry.get(&brp_type_name) {
+            let type_info = if let Some(registry_schema) = self.registry.get(&brp_type_name) {
                 response.discovered_count += 1;
                 response.summary.successful_discovery += 1;
-                TypeInfo::from_schema(
+                TypeInfo::from_registry_schema(
                     brp_type_name.clone(),
-                    type_schema,
+                    registry_schema,
                     Arc::clone(&self.registry),
                 )
             } else {

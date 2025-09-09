@@ -53,16 +53,16 @@ pub struct TypeInfo {
 
 impl TypeInfo {
     /// Builder method to create `TypeInfo` from schema data
-    pub fn from_schema(
+    pub fn from_registry_schema(
         brp_type_name: BrpTypeName,
-        type_schema: &Value,
+        registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Self {
         // Extract type kind
-        let type_kind = TypeKind::from_schema(type_schema, &brp_type_name);
+        let type_kind = TypeKind::from_schema(registry_schema, &brp_type_name);
 
         // Extract reflection traits
-        let reflect_types = Self::extract_reflect_types(type_schema);
+        let reflect_types = Self::extract_reflect_types(registry_schema);
 
         // Check for serialization traits
         let has_serialize = reflect_types.contains(&ReflectTrait::Serialize);
@@ -73,7 +73,7 @@ impl TypeInfo {
 
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
-            Self::build_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
+            Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry));
         tracing::error!(
             "AFTER build_mutation_paths: {} returned {} paths",
             brp_type_name,
@@ -111,7 +111,7 @@ impl TypeInfo {
         // Build enum info if it's an enum
         tracing::error!("BEFORE extract_enum_info: {}", brp_type_name);
         let enum_info = if type_kind == TypeKind::Enum {
-            Self::extract_enum_info(type_schema, &registry)
+            Self::extract_enum_info(registry_schema, &registry)
         } else {
             None
         };
@@ -119,7 +119,7 @@ impl TypeInfo {
 
         // Extract schema info from registry
         tracing::error!("BEFORE extract_schema_info: {}", brp_type_name);
-        let schema_info = Self::extract_schema_info(type_schema);
+        let schema_info = Self::extract_schema_info(registry_schema);
         tracing::error!("AFTER extract_schema_info: {}", brp_type_name);
 
         Self {
@@ -191,12 +191,12 @@ impl TypeInfo {
     /// Build mutation paths for a type using the trait system
     fn build_mutation_paths(
         brp_type_name: &BrpTypeName,
-        type_schema: &Value,
+        registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Vec<MutationPathInternal> {
         tracing::error!(">>> TOP LEVEL TYPE START: {}", brp_type_name);
 
-        let type_kind = TypeKind::from_schema(type_schema, brp_type_name);
+        let type_kind = TypeKind::from_schema(registry_schema, brp_type_name);
 
         // Create root context for the new trait system
         let path_kind = PathKind::new_root_value(brp_type_name.clone());
@@ -238,10 +238,10 @@ impl TypeInfo {
 
     /// Extract enum information from schema
     fn extract_enum_info(
-        type_schema: &Value,
+        registry_schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Option<Vec<EnumVariantInfo>> {
-        let one_of = type_schema
+        let one_of = registry_schema
             .get_field(SchemaField::OneOf)
             .and_then(Value::as_array)?;
 
@@ -254,8 +254,8 @@ impl TypeInfo {
     }
 
     /// Extract reflect types from a registry schema
-    fn extract_reflect_types(type_schema: &Value) -> Vec<ReflectTrait> {
-        type_schema
+    fn extract_reflect_types(registry_schema: &Value) -> Vec<ReflectTrait> {
+        registry_schema
             .get_field(SchemaField::ReflectTypes)
             .and_then(Value::as_array)
             .map(|arr| {
@@ -268,15 +268,15 @@ impl TypeInfo {
     }
 
     /// Extract schema information from registry schema
-    fn extract_schema_info(type_schema: &Value) -> Option<SchemaInfo> {
-        let type_kind = type_schema
+    fn extract_schema_info(registry_schema: &Value) -> Option<SchemaInfo> {
+        let type_kind = registry_schema
             .get_field(SchemaField::Kind)
             .and_then(Value::as_str)
             .and_then(|s| TypeKind::from_str(s).ok());
 
-        let properties = type_schema.get_field(SchemaField::Properties).cloned();
+        let properties = registry_schema.get_field(SchemaField::Properties).cloned();
 
-        let required = type_schema
+        let required = registry_schema
             .get_field(SchemaField::Required)
             .and_then(Value::as_array)
             .map(|arr| {
@@ -286,12 +286,12 @@ impl TypeInfo {
                     .collect()
             });
 
-        let module_path = type_schema
+        let module_path = registry_schema
             .get_field(SchemaField::ModulePath)
             .and_then(Value::as_str)
             .map(String::from);
 
-        let crate_name = type_schema
+        let crate_name = registry_schema
             .get_field(SchemaField::CrateName)
             .and_then(Value::as_str)
             .map(String::from);

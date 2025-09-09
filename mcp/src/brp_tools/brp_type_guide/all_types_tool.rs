@@ -1,8 +1,8 @@
-//! `brp_all_type_schemas` tool - Get type schemas for all registered types
+//! `brp_all_type_guides` tool - Get type guides for all registered types
 //!
 //! This tool fetches all registered component types from the Bevy app and returns
 //! their type schema information in a single call. It combines `bevy/list` and
-//! `brp_type_schema` functionality for convenience.
+//! `brp_type_guide` functionality for convenience.
 
 use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
 use schemars::JsonSchema;
@@ -13,7 +13,7 @@ use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
-/// Parameters for the `brp_all_type_schemas` tool
+/// Parameters for the `brp_all_type_guides` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
 pub struct AllTypeGuidesParams {
     /// The BRP port (default: 15702)

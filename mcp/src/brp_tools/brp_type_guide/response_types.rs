@@ -1,4 +1,4 @@
-//! Public API response types for the `brp_type_schema` tool
+//! Public API response types for the `brp_type_guide tool
 //!
 //! This module contains the strongly-typed structures that form the public API
 //! for type schema discovery results. These types are separate from the internal

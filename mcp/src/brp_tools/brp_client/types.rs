@@ -13,7 +13,7 @@ use crate::tool::{BrpMethod, ParameterName};
 
 /// Configuration trait for BRP tools to control enhanced error handling
 pub trait BrpToolConfig {
-    /// Whether this tool should use enhanced error handling with `type_schema` embedding
+    /// Whether this tool should use enhanced error handling with `type_guide` embedding
     const ENHANCED_ERRORS: bool = false;
 }
 

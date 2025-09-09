@@ -58,7 +58,7 @@ impl MutationPathBuilder for MapMutationBuilder {
     }
 
     fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
-        let Some(schema) = ctx.require_schema() else {
+        let Some(schema) = ctx.require_registry_schema() else {
             tracing::debug!("No schema found for map type: {}", ctx.type_name());
             return vec![];
         };

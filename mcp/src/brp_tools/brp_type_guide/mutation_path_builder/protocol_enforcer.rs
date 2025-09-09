@@ -64,7 +64,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
             );
 
             // Get child's schema and create its builder
-            let child_schema = child_ctx.require_schema().unwrap_or(&json!(null));
+            let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
             tracing::warn!(
                 "Child '{}' schema found: {}",
                 name,

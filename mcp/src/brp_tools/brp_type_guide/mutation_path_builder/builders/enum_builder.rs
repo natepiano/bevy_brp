@@ -317,11 +317,11 @@ fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVar
 
 /// Extract enum variants using the new `EnumVariantInfo` enum
 fn extract_enum_variants(
-    type_schema: &Value,
+    registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
 ) -> Vec<EnumVariantInfo> {
-    type_schema
+    registry_schema
         .get_field(SchemaField::OneOf)
         .and_then(Value::as_array)
         .map(|variants| {
@@ -348,7 +348,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         tracing::error!("ENUM {} - Starting build_paths", ctx.type_name());
-        let Some(schema) = ctx.require_schema() else {
+        let Some(registry_schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(ctx.type_name().clone()),
@@ -366,7 +366,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         let mut paths = Vec::new();
 
         // Step 1: Process all variants to accumulate field examples
-        let variants = extract_enum_variants(schema, &ctx.registry, *depth);
+        let variants = extract_enum_variants(registry_schema, &ctx.registry, *depth);
         let unique_variants = deduplicate_variant_signatures(variants.clone());
 
         // Collect variant examples from accumulated child paths
@@ -382,7 +382,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     let mut tuple_values = Vec::new();
 
                     for (index, type_name) in types.iter().enumerate() {
-                        let Some(inner_schema) = ctx.get_registry_type_schema(type_name) else {
+                        let Some(inner_schema) = ctx.get_registry_schema(type_name) else {
                             tuple_values.push(json!(null));
                             continue;
                         };
@@ -481,8 +481,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     let mut struct_obj = serde_json::Map::new();
 
                     for field in fields {
-                        let Some(inner_schema) = ctx.get_registry_type_schema(&field.type_name)
-                        else {
+                        let Some(inner_schema) = ctx.get_registry_schema(&field.type_name) else {
                             struct_obj.insert(field.field_name.clone(), json!(null));
                             continue;
                         };
@@ -589,7 +588,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        let Some(schema) = ctx.require_schema() else {
+        let Some(schema) = ctx.require_registry_schema() else {
             return json!(null);
         };
 

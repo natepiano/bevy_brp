@@ -32,7 +32,7 @@ impl MutationPathBuilder for SetMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        if ctx.require_schema().is_none() {
+        if ctx.require_registry_schema().is_none() {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(ctx.type_name().clone()),
@@ -54,7 +54,7 @@ impl MutationPathBuilder for SetMutationBuilder {
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        let Some(schema) = ctx.require_schema() else {
+        let Some(schema) = ctx.require_registry_schema() else {
             return json!(null);
         };
 
@@ -71,7 +71,7 @@ impl MutationPathBuilder for SetMutationBuilder {
                 .map_or_else(
                     || {
                         // Get the element type schema and use trait dispatch
-                        ctx.get_registry_type_schema(&item_type_name).map_or(
+                        ctx.get_registry_schema(&item_type_name).map_or(
                             json!(null),
                             |element_schema| {
                                 let element_kind =
