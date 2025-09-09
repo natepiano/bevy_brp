@@ -47,10 +47,9 @@
     **STEP 1:** Execute the <AppLaunch/>
     **STEP 2:** Execute the <TypeDiscovery/>
     **STEP 3:** Execute the <FileTransformation/>
-    **STEP 4:** Execute the <ResultsReporting/>
-    **STEP 5:** Execute the <AppCleanup/>
-    **STEP 6:** Execute the <ComparisonValidation/>
-    **STEP 7:** Execute the <UserValidation/>
+    **STEP 4:** Execute the <AppCleanup/>
+    **STEP 5:** Execute the <ComparisonValidation/>
+    **STEP 6:** Execute the <UserValidation/>
 </ExecutionSteps>
 
 ## STEP 1: APP LAUNCH
@@ -121,25 +120,7 @@
     **CRITICAL**: This maintains complete fidelity with BRP responses, storing actual examples for reproducible testing
 </FileTransformation>
 
-## STEP 4: RESULTS REPORTING
-
-<ResultsReporting>
-    Generate comprehensive statistics about the created file:
-
-    ```bash
-    .claude/commands/scripts/create_mutation_test_json_stats.sh [TARGET_FILE]
-    ```
-
-    This script provides comprehensive statistics including:
-    - Capability summary
-    - Test status breakdown
-    - Batch information
-    - Progress tracking metrics
-
-    Review the statistics to ensure the file was created successfully.
-</ResultsReporting>
-
-## STEP 5: APP CLEANUP
+## STEP 4: APP CLEANUP
 
 <AppCleanup>
     Shutdown the application:
@@ -154,7 +135,7 @@
     Confirm the app has been cleanly shutdown before proceeding.
 </AppCleanup>
 
-## STEP 6: COMPARISON AND VALIDATION
+## STEP 5: COMPARISON AND VALIDATION
 
 <ComparisonValidation>
     **Automatic Comparison with Baseline**
@@ -181,7 +162,7 @@
     - Pre-formatted output ready for user presentation
 </ComparisonValidation>
 
-## STEP 7: USER VALIDATION
+## STEP 6: USER VALIDATION
 
 <UserValidation>
     **Present Comparison Results to User for Baseline Decision**
@@ -192,18 +173,20 @@
     EXCLUDED_TYPES=$(.claude/commands/scripts/create_mutation_test_json_get_excluded_types.sh)
     ```
 
-Present the comparison analysis in this format:
+    **Parse the comparison output and format the final presentation:**
+    
+    The comparison script provides all statistics. Extract and present them in this format:
 
 ## Mutation Test File Generation Complete
 - **File created**: [TARGET_FILE]
-- **Types registered in Bevy**: [types discovered by BRP]
-- **Types in mutation test file**: [total count] ([types discovered] - [excluded count] excluded)
-  - Excluded: [actual excluded types from EXCLUDED_TYPES variable]
-- **Spawn-supported types**: [count from statistics]
-- **Types with mutations**: [count from statistics]
+- **Types registered in Bevy**: [extract from comparison output]
+- **Spawn-supported types**: [extract from comparison output]
+- **Types with mutations**: [extract from comparison output]
+- **Total mutation paths**: [extract from comparison output]
+- **Excluded types**: [from EXCLUDED_TYPES variable]
 
 ### Comparison with Baseline:
-[Present the structured comparison output directly - it's already formatted for user consumption]
+[Present the comparison results - either "Files are identical" or the detailed changes]
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?

@@ -25,26 +25,6 @@ if [ ! -f "$CURRENT_FILE" ]; then
     exit 1
 fi
 
-echo "🔍 STRUCTURED MUTATION TEST COMPARISON (Full Schema)"
-echo "===================================================="
-echo ""
-
-# 1. Binary Identity Check
-echo "📊 IDENTITY CHECK"
-if cmp -s "$BASELINE_FILE" "$CURRENT_FILE"; then
-    echo "✅ FILES ARE IDENTICAL"
-    echo "   └─ Baseline and current files are byte-for-byte identical"
-    echo ""
-    echo "📋 SUMMARY"
-    echo "   └─ No changes detected - safe for promotion"
-    exit 0
-fi
-
-# 2. Files differ - analyze changes
-echo "⚠️  FILES DIFFER - ANALYZING CHANGES"
-echo "   └─ Found differences requiring review"
-echo ""
-
 # Helper function to extract type_guide array from either format
 extract_type_guide() {
     local file="$1"
@@ -60,6 +40,48 @@ extract_type_guide() {
     ' "$file"
 }
 
+echo "🔍 STRUCTURED MUTATION TEST COMPARISON (Full Schema)"
+echo "===================================================="
+echo ""
+
+# 1. Binary Identity Check
+echo "📊 IDENTITY CHECK"
+if cmp -s "$BASELINE_FILE" "$CURRENT_FILE"; then
+    echo "✅ FILES ARE IDENTICAL"
+    echo "   └─ Baseline and current files are byte-for-byte identical"
+    echo ""
+    
+    # Even for identical files, show the current stats
+    CURRENT_COUNT=$(extract_type_guide "$CURRENT_FILE" | jq 'length')
+    CURRENT_SPAWN=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
+    CURRENT_MUTATIONS=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
+    CURRENT_TOTAL_PATHS=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | 
+        if .mutation_paths != null and .mutation_paths != {} and .mutation_paths != [] then
+            if .mutation_paths | type == "object" then
+                .mutation_paths | keys | length
+            else
+                0
+            end
+        else
+            0
+        end] | add')
+    
+    echo "📈 CURRENT FILE STATISTICS"
+    echo "   Total Types: $CURRENT_COUNT"
+    echo "   Spawn-Supported: $CURRENT_SPAWN"
+    echo "   Types with Mutations: $CURRENT_MUTATIONS"
+    echo "   Total Mutation Paths: $CURRENT_TOTAL_PATHS"
+    echo ""
+    echo "📋 SUMMARY"
+    echo "   └─ No changes detected - safe for promotion"
+    exit 0
+fi
+
+# 2. Files differ - analyze changes
+echo "⚠️  FILES DIFFER - ANALYZING CHANGES"
+echo "   └─ Found differences requiring review"
+echo ""
+
 # 3. Metadata Comparison using jq
 echo "📈 METADATA COMPARISON"
 
@@ -74,6 +96,29 @@ CURRENT_SPAWN=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | select(has("spaw
 # Get mutation counts (check mutation_paths not null/empty)
 BASELINE_MUTATIONS=$(extract_type_guide "$BASELINE_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
 CURRENT_MUTATIONS=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
+
+# Count total mutation paths across all types
+BASELINE_TOTAL_PATHS=$(extract_type_guide "$BASELINE_FILE" | jq '[.[] | 
+    if .mutation_paths != null and .mutation_paths != {} and .mutation_paths != [] then
+        if .mutation_paths | type == "object" then
+            .mutation_paths | keys | length
+        else
+            0
+        end
+    else
+        0
+    end] | add')
+    
+CURRENT_TOTAL_PATHS=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | 
+    if .mutation_paths != null and .mutation_paths != {} and .mutation_paths != [] then
+        if .mutation_paths | type == "object" then
+            .mutation_paths | keys | length
+        else
+            0
+        end
+    else
+        0
+    end] | add')
 
 # Display metadata comparison
 if [ "$BASELINE_COUNT" -eq "$CURRENT_COUNT" ]; then
@@ -92,6 +137,12 @@ if [ "$BASELINE_MUTATIONS" -eq "$CURRENT_MUTATIONS" ]; then
     echo "   With Mutations: $BASELINE_MUTATIONS → $CURRENT_MUTATIONS (no change)"
 else
     echo "   With Mutations: $BASELINE_MUTATIONS → $CURRENT_MUTATIONS (${CURRENT_MUTATIONS} - ${BASELINE_MUTATIONS} = $((CURRENT_MUTATIONS - BASELINE_MUTATIONS)))"
+fi
+
+if [ "$BASELINE_TOTAL_PATHS" -eq "$CURRENT_TOTAL_PATHS" ]; then
+    echo "   Total Mutation Paths: $BASELINE_TOTAL_PATHS → $CURRENT_TOTAL_PATHS (no change)"
+else
+    echo "   Total Mutation Paths: $BASELINE_TOTAL_PATHS → $CURRENT_TOTAL_PATHS (${CURRENT_TOTAL_PATHS} - ${BASELINE_TOTAL_PATHS} = $((CURRENT_TOTAL_PATHS - BASELINE_TOTAL_PATHS)))"
 fi
 
 echo ""
