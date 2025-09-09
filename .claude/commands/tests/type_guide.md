@@ -1,11 +1,11 @@
 # Type Schema Validation Test
 
 ## Objective
-Validate that `brp_type_schema` tool correctly discovers type information and produces the expected output structure for Bevy components.
+Validate that `brp_type_guide` tool correctly discovers type information and produces the expected output structure for Bevy components.
 
 ## Prerequisites
 - Launch extras_plugin example on port 20114
-- Tool `brp_type_schema` must be available in the MCP environment
+- Tool `brp_type_guide` must be available in the MCP environment
 
 ## Test Steps
 
@@ -15,7 +15,7 @@ Validate that `brp_type_schema` tool correctly discovers type information and pr
 
 ### 2. Batch Type Schema Discovery
 
-Execute `mcp__brp__brp_type_schema` with ALL test types in a single call:
+Execute `mcp__brp__brp_type_guide` with ALL test types in a single call:
 ```json
 {
   "types": [
@@ -39,7 +39,7 @@ Store the response as `schema_response`.
 Verify the response contains:
 - `status` === "success"
 - `result` object exists
-- `result.type_info` object exists
+- `result."type_guide"` object exists
 - `result.discovered_count` === 8
 - `result.summary` object with:
   - `successful_discoveries` === 8
@@ -49,7 +49,7 @@ Verify the response contains:
 ### 4. Validate Sprite Component (No Serialize Trait)
 
 #### 4a. Validate Type Info
-Verify `result.type_info["bevy_sprite::sprite::Sprite"]` contains:
+Verify `result."type_guide"["bevy_sprite::sprite::Sprite"]` contains:
 - `type_name` === "bevy_sprite::sprite::Sprite"
 - `in_registry` === true
 - `has_serialize` === false
@@ -73,7 +73,7 @@ Verify `schema_info` exists and contains:
 
 ### 5. Validate Transform Component (Standard Nested)
 
-Verify `result.type_info["bevy_transform::components::transform::Transform"]`:
+Verify `result."type_guide"["bevy_transform::components::transform::Transform"]`:
 - Has `mutation_paths` for translation/rotation/scale with all subfields
 - Has `spawn_format` with example values
 - Has `schema_info` with properties and required fields
@@ -89,7 +89,7 @@ Validate `mutation_paths` contains:
 - `.values` - entire array field
 - `.values[0]`, `.values[1]`, `.values[2]`, `.values[3]` - array elements
 
-#### 6b. TestTupleField - extras_plugin::TestTupleField  
+#### 6b. TestTupleField - extras_plugin::TestTupleField
 Validate `mutation_paths` contains:
 - `.coords` - entire tuple field with StructField context
 - `.coords.0`, `.coords.1` - tuple elements with TupleElement context
@@ -100,7 +100,7 @@ Validate `mutation_paths` contains:
 Validate `mutation_paths` contains:
 - Root path `""` with context RootValue
 - `.0` - first element (f32) with TupleElement context
-- `.1` - second element (String) with TupleElement context  
+- `.1` - second element (String) with TupleElement context
 - `.2` - third element (bool) with TupleElement context
 
 #### 6d. TestComplexComponent - extras_plugin::TestComplexComponent
@@ -116,7 +116,7 @@ Validate:
 - `.0` with TupleElement context
 
 ### 7. Validate Name Component
-Verify `result.type_info["bevy_ecs::name::Name"]`:
+Verify `result."type_guide"["bevy_ecs::name::Name"]`:
 - Has appropriate fields for a wrapper type
 - Has both `mutation_paths` and `spawn_format` (has Serialize/Deserialize)
 
@@ -147,7 +147,7 @@ For each mutation context type, perform ONE representative mutation and verify:
 
 ### 9. Type Schema in Error Responses
 
-Test that format errors include embedded type_schema information for self-correction.
+Test that format errors include embedded type_guide information for self-correction.
 
 #### 9a. Test Format Error with Type Schema Embedding
 
@@ -173,15 +173,15 @@ mcp__brp__bevy_insert with parameters:
 
 **Expected Error Response**:
 - Status: "error"
-- Message contains: "Format error - see 'type_schema' field for correct format"
+- Message contains: "Format error - see 'type_guide' field for correct format"
 - error_info contains:
   - original_error: The BRP error message
-  - type_schema: Embedded type_schema for Transform with correct array format
+  - type_guide: Embedded type_guide for Transform with correct array format
 
-**STEP 3**: Verify type_schema in error contains:
+**STEP 3**: Verify type_guide in error contains:
 - Transform spawn_format showing correct array format for Vec3 fields
 - Transform mutation_paths for reference
-- Same structure as direct brp_type_schema response
+- Same structure as direct brp_type_guide response
 
 #### 9b. Test Multiple Type Errors
 
@@ -200,8 +200,8 @@ mcp__brp__bevy_spawn with parameters:
 ```
 
 **Expected Result**:
-- Error with type_schema for both Transform and Name
-- Each type shows correct format in type_schema field
+- Error with type_guide for both Transform and Name
+- Each type shows correct format in type_guide field
 
 #### 9c. Test Mutation Format Error with Type Schema Embedding
 
@@ -223,13 +223,13 @@ mcp__brp__bevy_mutate_component with parameters:
 
 **Expected Error Response**:
 - Status: "error"
-- Message contains: "Format error - see 'type_schema' field for correct format"
+- Message contains: "Format error - see 'type_guide' field for correct format"
 - error_info contains:
   - original_error: The BRP mutation error message
-  - type_schema: Embedded type_schema for Transform showing correct array format
+  - type_guide: Embedded type_guide for Transform showing correct array format
   - Should show `.translation` expects `[f32, f32, f32]` not `{x, y, z}` object
 
-**STEP 3**: Verify mutation-specific type_schema contains:
+**STEP 3**: Verify mutation-specific type_guide contains:
 - Transform mutation_paths including `.translation` with correct array format
 - Transform spawn_format showing proper Vec3 array structure
 - Clear guidance that Vec3 fields require `[x, y, z]` array format
@@ -249,9 +249,9 @@ mcp__brp__bevy_insert with parameters:
 ```
 
 **Expected Result**:
-- Error response with type_schema guidance
+- Error response with type_guide guidance
 - Clear indication that format cannot be corrected automatically
-- type_schema shows expected Transform structure
+- type_guide shows expected Transform structure
 
 #### 9e. Test Component Without Serialize/Deserialize - Spawn Failure
 
@@ -269,7 +269,7 @@ mcp__brp__bevy_spawn with parameters:
 **Expected Result**:
 - Error indicating component lacks required traits
 - Error message mentions Serialize/Deserialize requirements
-- May include type_schema showing component is in registry but not spawnable
+- May include type_guide showing component is in registry but not spawnable
 
 #### 9f. Test Enum Mutation Error Guidance
 
@@ -305,9 +305,9 @@ mcp__brp__bevy_mutate_component with parameters:
 - Functional mutations work for all context types
 - Components without Serialize can be mutated but not spawned
 - Tool provides comprehensive type information for BRP operations
-- **Format errors include embedded type_schema for failed types**
+- **Format errors include embedded type_guide for failed types**
 - **Type extraction works from both parameters and error messages**
-- **Mutation format errors include embedded type_schema information**
+- **Mutation format errors include embedded type_guide information**
 - **Error guidance is clear and actionable for self-correction**
 
 ## Failure Investigation
@@ -317,5 +317,5 @@ If test fails:
 2. Verify types exist in registry
 3. Compare actual vs expected mutation paths
 4. Check if mutations are succeeding
-5. **Verify error responses include type_schema field**
+5. **Verify error responses include type_guide field**
 6. **Check type extraction logic in error handling**

@@ -1,14 +1,21 @@
 {
   "status": "success",
   "message": "Discovered 1 type(s)",
-  "call_info": { "mcp_tool": "brp_type_schema" },
+  "call_info": { "mcp_tool": "brp_type_guide" },
   "metadata": { "type_count": 1 },
-  "parameters": { "port": 15702, "types": [ "bevy_text::pipeline::TextLayoutInfo" ] },
+  "parameters": {
+    "port": 15702,
+    "types": ["bevy_text::pipeline::TextLayoutInfo"]
+  },
   "result": {
     "discovered_count": 1,
-    "requested_types": [ "bevy_text::pipeline::TextLayoutInfo" ],
-    "summary": { "failed_discoveries": 0, "successful_discoveries": 1, "total_requested": 1 },
-    "type_info": {
+    "requested_types": ["bevy_text::pipeline::TextLayoutInfo"],
+    "summary": {
+      "failed_discoveries": 0,
+      "successful_discoveries": 1,
+      "total_requested": 1
+    },
+    ""type_guide"": {
       "bevy_text::pipeline::TextLayoutInfo": {
         "has_deserialize": false,
         "has_serialize": false,
@@ -20,21 +27,32 @@
               "glyphs": [
                 {
                   "atlas_info": {
-                    "location": { "glyph_index": 2000000, "offset": [ 0, 0 ] },
-                    "texture": { "Weak": { "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" } } },
+                    "location": { "glyph_index": 2000000, "offset": [0, 0] },
+                    "texture": {
+                      "Weak": {
+                        "Uuid": {
+                          "uuid": "12345678-1234-1234-1234-123456789012"
+                        }
+                      }
+                    },
                     "texture_atlas": {
                       "Weak": [
                         {
                           "example": {
-                            "Index": { "index": { "generation": 1000000, "index": 1000000 } }
+                            "Index": {
+                              "index": {
+                                "generation": 1000000,
+                                "index": 1000000
+                              }
+                            }
                           },
                           "signature": "struct{index: AssetIndex}",
-                          "variants": [ "Index" ]
+                          "variants": ["Index"]
                         },
                         {
                           "example": { "Uuid": { "uuid": null } },
                           "signature": "struct{uuid: Uuid}",
-                          "variants": [ "Uuid" ]
+                          "variants": ["Uuid"]
                         }
                       ]
                     }
@@ -42,22 +60,33 @@
                   "byte_index": 2000000,
                   "byte_length": 2000000,
                   "line_index": 2000000,
-                  "position": [ 1.0, 2.0 ],
-                  "size": [ 1.0, 2.0 ],
+                  "position": [1.0, 2.0],
+                  "size": [1.0, 2.0],
                   "span_index": 2000000
                 },
                 {
                   "atlas_info": {
-                    "location": { "glyph_index": 2000000, "offset": [ 0, 0 ] },
-                    "texture": { "Weak": { "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" } } },
+                    "location": { "glyph_index": 2000000, "offset": [0, 0] },
+                    "texture": {
+                      "Weak": {
+                        "Uuid": {
+                          "uuid": "12345678-1234-1234-1234-123456789012"
+                        }
+                      }
+                    },
                     "texture_atlas": {
                       "Weak": [
                         {
                           "example": {
-                            "Index": { "index": { "generation": 1000000, "index": 1000000 } }
+                            "Index": {
+                              "index": {
+                                "generation": 1000000,
+                                "index": 1000000
+                              }
+                            }
                           },
                           "signature": "struct{index: AssetIndex}",
-                          "variants": [ "Index" ]
+                          "variants": ["Index"]
                         },
                         {
                           "example": { "Uuid": { "uuid": null } },
@@ -69,12 +98,12 @@
                   "byte_index": 2000000,
                   "byte_length": 2000000,
                   "line_index": 2000000,
-                  "position": [ 1.0, 2.0 ],
-                  "size": [ 1.0, 2.0 ],
+                  "position": [1.0, 2.0],
+                  "size": [1.0, 2.0],
                   "span_index": 2000000
                 }
               ],
-              "size": [ 1.0, 2.0 ]
+              "size": [1.0, 2.0]
             },
             "mutation_status": "mutatable",
             "path_info": {
@@ -96,21 +125,27 @@
             "description": "Mutate element [0] of alloc::vec::Vec<bevy_text::glyph::PositionedGlyph>",
             "example": {
               "atlas_info": {
-                "location": { "glyph_index": 2000000, "offset": [ 0, 0 ] },
-                "texture": { "Weak": { "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" } } },
+                "location": { "glyph_index": 2000000, "offset": [0, 0] },
+                "texture": {
+                  "Weak": {
+                    "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" }
+                  }
+                },
                 "texture_atlas": {
                   "Weak": [
                     {
                       "example": {
-                        "Index": { "index": { "generation": 1000000, "index": 1000000 } }
+                        "Index": {
+                          "index": { "generation": 1000000, "index": 1000000 }
+                        }
                       },
                       "signature": "struct{index: AssetIndex}",
-                      "variants": [ "Index" ]
+                      "variants": ["Index"]
                     },
                     {
                       "example": { "Uuid": { "uuid": null } },
                       "signature": "struct{uuid: Uuid}",
-                      "variants": [ "Uuid" ]
+                      "variants": ["Uuid"]
                     }
                   ]
                 }
@@ -118,8 +153,8 @@
               "byte_index": 2000000,
               "byte_length": 2000000,
               "line_index": 2000000,
-              "position": [ 1.0, 2.0 ],
-              "size": [ 1.0, 2.0 ],
+              "position": [1.0, 2.0],
+              "size": [1.0, 2.0],
               "span_index": 2000000
             },
             "mutation_status": "mutatable",
@@ -132,19 +167,27 @@
           ".glyphs[0].atlas_info": {
             "description": "Mutate the atlas_info field of bevy_text::glyph::PositionedGlyph",
             "example": {
-              "location": { "glyph_index": 2000000, "offset": [ 0, 0 ] },
-              "texture": { "Weak": { "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" } } },
+              "location": { "glyph_index": 2000000, "offset": [0, 0] },
+              "texture": {
+                "Weak": {
+                  "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" }
+                }
+              },
               "texture_atlas": {
                 "Weak": [
                   {
-                    "example": { "Index": { "index": { "generation": 1000000, "index": 1000000 } } },
+                    "example": {
+                      "Index": {
+                        "index": { "generation": 1000000, "index": 1000000 }
+                      }
+                    },
                     "signature": "struct{index: AssetIndex}",
-                    "variants": [ "Index" ]
+                    "variants": ["Index"]
                   },
                   {
                     "example": { "Uuid": { "uuid": null } },
                     "signature": "struct{uuid: Uuid}",
-                    "variants": [ "Uuid" ]
+                    "variants": ["Uuid"]
                   }
                 ]
               }
@@ -158,7 +201,7 @@
           },
           ".glyphs[0].atlas_info.location": {
             "description": "Mutate the location field of bevy_text::glyph::GlyphAtlasInfo",
-            "example": { "glyph_index": 2000000, "offset": [ 0, 0 ] },
+            "example": { "glyph_index": 2000000, "offset": [0, 0] },
             "mutation_status": "mutatable",
             "path_info": {
               "path_kind": "StructField",
@@ -170,28 +213,52 @@
             "description": "Mutate the glyph_index field of bevy_text::glyph::GlyphAtlasLocation",
             "example": 2000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "usize", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "usize",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].atlas_info.location.offset": {
             "description": "Mutate the offset field of bevy_text::glyph::GlyphAtlasLocation",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::IVec2", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::IVec2",
+              "type_kind": "Struct"
+            }
           },
           ".glyphs[0].atlas_info.location.offset.x": {
             "description": "Mutate the x field of glam::IVec2",
             "example": 100000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "i32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "i32",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].atlas_info.location.offset.y": {
             "description": "Mutate the y field of glam::IVec2",
             "example": 100000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "i32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "i32",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].atlas_info.texture": {
             "description": "Mutate the texture field of bevy_text::glyph::GlyphAtlasInfo",
-            "examples": [ { "example": { "Weak": { "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" } } } } ],
+            "examples": [
+              {
+                "example": {
+                  "Weak": {
+                    "Uuid": { "uuid": "12345678-1234-1234-1234-123456789012" }
+                  }
+                }
+              }
+            ],
             "mutation_status": "mutatable",
             "path_info": {
               "path_kind": "StructField",
@@ -203,12 +270,16 @@
             "description": "Mutate element 0 of bevy_asset::handle::Handle<bevy_image::image::Image>",
             "examples": [
               {
-                "applicable_variants": [ "Index" ],
-                "example": { "Index": { "index": { "generation": 1000000, "index": 1000000 } } },
+                "applicable_variants": ["Index"],
+                "example": {
+                  "Index": {
+                    "index": { "generation": 1000000, "index": 1000000 }
+                  }
+                },
                 "signature": "struct{index: AssetIndex}"
               },
               {
-                "applicable_variants": [ "Uuid" ],
+                "applicable_variants": ["Uuid"],
                 "example": { "Uuid": { "uuid": null } },
                 "signature": "struct{uuid: Uuid}"
               }
@@ -219,7 +290,7 @@
               "type": "bevy_asset::id::AssetId<bevy_image::image::Image>",
               "type_kind": "Enum"
             },
-            "variants": [ "Weak" ]
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture.0.index": {
             "description": "Mutate the index field of bevy_asset::id::AssetId<bevy_image::image::Image>",
@@ -230,53 +301,67 @@
               "type": "bevy_asset::assets::AssetIndex",
               "type_kind": "Struct"
             },
-            "variants": [ "Weak" ]
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture.0.index.generation": {
             "description": "Mutate the generation field of bevy_asset::assets::AssetIndex",
             "example": 1000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "u32", "type_kind": "Value" },
-            "variants": [ "Weak" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "u32",
+              "type_kind": "Value"
+            },
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture.0.index.index": {
             "description": "Mutate the index field of bevy_asset::assets::AssetIndex",
             "example": 1000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "u32", "type_kind": "Value" },
-            "variants": [ "Weak" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "u32",
+              "type_kind": "Value"
+            },
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture.0.uuid": {
             "description": "Mutate the uuid field of bevy_asset::id::AssetId<bevy_image::image::Image>",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "uuid::Uuid", "type_kind": "Value" },
-            "variants": [ "Weak" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "uuid::Uuid",
+              "type_kind": "Value"
+            },
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture_atlas": {
             "description": "Mutate the texture_atlas field of bevy_text::glyph::GlyphAtlasInfo",
             "examples": [
               {
-                "applicable_variants": [ "Weak" ],
+                "applicable_variants": ["Weak"],
                 "example": {
                   "Weak": [
                     {
                       "example": {
-                        "Index": { "index": { "generation": 1000000, "index": 1000000 } }
+                        "Index": {
+                          "index": { "generation": 1000000, "index": 1000000 }
+                        }
                       },
                       "signature": "struct{index: AssetIndex}",
-                      "variants": [ "Index" ]
+                      "variants": ["Index"]
                     },
                     {
                       "example": { "Uuid": { "uuid": null } },
                       "signature": "struct{uuid: Uuid}",
-                      "variants": [ "Uuid" ]
+                      "variants": ["Uuid"]
                     }
                   ]
                 },
                 "signature": "tuple(TextureAtlasLayout>)"
               },
               {
-                "applicable_variants": [ "Strong" ],
+                "applicable_variants": ["Strong"],
                 "example": {
                   "Strong": {
                     "NotMutatable": "Type bevy_platform::sync::Arc<bevy_asset::handle::StrongHandle> lacks Serialize/Deserialize traits required for mutation",
@@ -292,18 +377,22 @@
               "type": "bevy_asset::handle::Handle<bevy_image::texture_atlas::TextureAtlasLayout>",
               "type_kind": "Enum"
             },
-            "variants": [ "Strong", "Weak" ]
+            "variants": ["Strong", "Weak"]
           },
           ".glyphs[0].atlas_info.texture_atlas.0": {
             "description": "Mutate element 0 of bevy_asset::handle::Handle<bevy_image::texture_atlas::TextureAtlasLayout>",
             "examples": [
               {
-                "applicable_variants": [ "Index" ],
-                "example": { "Index": { "index": { "generation": 1000000, "index": 1000000 } } },
+                "applicable_variants": ["Index"],
+                "example": {
+                  "Index": {
+                    "index": { "generation": 1000000, "index": 1000000 }
+                  }
+                },
                 "signature": "struct{index: AssetIndex}"
               },
               {
-                "applicable_variants": [ "Uuid" ],
+                "applicable_variants": ["Uuid"],
                 "example": { "Uuid": { "uuid": null } },
                 "signature": "struct{uuid: Uuid}"
               }
@@ -314,7 +403,7 @@
               "type": "bevy_asset::id::AssetId<bevy_image::texture_atlas::TextureAtlasLayout>",
               "type_kind": "Enum"
             },
-            "variants": [ "Weak" ]
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture_atlas.0.index": {
             "description": "Mutate the index field of bevy_asset::id::AssetId<bevy_image::texture_atlas::TextureAtlasLayout>",
@@ -325,115 +414,183 @@
               "type": "bevy_asset::assets::AssetIndex",
               "type_kind": "Struct"
             },
-            "variants": [ "Weak" ]
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture_atlas.0.index.generation": {
             "description": "Mutate the generation field of bevy_asset::assets::AssetIndex",
             "example": 1000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "u32", "type_kind": "Value" },
-            "variants": [ "Weak" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "u32",
+              "type_kind": "Value"
+            },
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture_atlas.0.index.index": {
             "description": "Mutate the index field of bevy_asset::assets::AssetIndex",
             "example": 1000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "u32", "type_kind": "Value" },
-            "variants": [ "Weak" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "u32",
+              "type_kind": "Value"
+            },
+            "variants": ["Weak"]
           },
           ".glyphs[0].atlas_info.texture_atlas.0.uuid": {
             "description": "Mutate the uuid field of bevy_asset::id::AssetId<bevy_image::texture_atlas::TextureAtlasLayout>",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "uuid::Uuid", "type_kind": "Value" },
-            "variants": [ "Weak" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "uuid::Uuid",
+              "type_kind": "Value"
+            },
+            "variants": ["Weak"]
           },
           ".glyphs[0].byte_index": {
             "description": "Mutate the byte_index field of bevy_text::glyph::PositionedGlyph",
             "example": 2000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "usize", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "usize",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].byte_length": {
             "description": "Mutate the byte_length field of bevy_text::glyph::PositionedGlyph",
             "example": 2000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "usize", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "usize",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].line_index": {
             "description": "Mutate the line_index field of bevy_text::glyph::PositionedGlyph",
             "example": 2000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "usize", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "usize",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].position": {
             "description": "Mutate the position field of bevy_text::glyph::PositionedGlyph",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::Vec2", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::Vec2",
+              "type_kind": "Struct"
+            }
           },
           ".glyphs[0].position.x": {
             "description": "Mutate the x field of glam::Vec2",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].position.y": {
             "description": "Mutate the y field of glam::Vec2",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].size": {
             "description": "Mutate the size field of bevy_text::glyph::PositionedGlyph",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::Vec2", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::Vec2",
+              "type_kind": "Struct"
+            }
           },
           ".glyphs[0].size.x": {
             "description": "Mutate the x field of glam::Vec2",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].size.y": {
             "description": "Mutate the y field of glam::Vec2",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".glyphs[0].span_index": {
             "description": "Mutate the span_index field of bevy_text::glyph::PositionedGlyph",
             "example": 2000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "usize", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "usize",
+              "type_kind": "Value"
+            }
           },
           ".size": {
             "description": "Mutate the size field of bevy_text::pipeline::TextLayoutInfo",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::Vec2", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::Vec2",
+              "type_kind": "Struct"
+            }
           },
           ".size.x": {
             "description": "Mutate the x field of glam::Vec2",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".size.y": {
             "description": "Mutate the y field of glam::Vec2",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           }
         },
         "schema_info": {
           "crate_name": "bevy_text",
           "module_path": "bevy_text::pipeline",
           "properties": {
-            "glyphs": { "type": { "$ref": "#/$defs/alloc::vec::Vec<bevy_text::glyph::PositionedGlyph>" } },
+            "glyphs": {
+              "type": {
+                "$ref": "#/$defs/alloc::vec::Vec<bevy_text::glyph::PositionedGlyph>"
+              }
+            },
             "size": { "type": { "$ref": "#/$defs/glam::Vec2" } }
           },
-          "required": [ "glyphs", "size" ],
+          "required": ["glyphs", "size"],
           "type_kind": "Struct"
         },
-        "supported_operations": [ "query", "get", "mutate" ],
+        "supported_operations": ["query", "get", "mutate"],
         "type_name": "bevy_text::pipeline::TextLayoutInfo"
       }
     }

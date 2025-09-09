@@ -28,9 +28,9 @@ fi
 # This preserves ALL fields from the original BRP response and adds test metadata
 jq --arg excluded "$EXCLUDED_TYPES" '
 # Process the response, preserving everything and adding test metadata
-if .type_info then
-    # Handle the brp_all_type_schemas format
-    .type_info |= map(
+if .type_guide then
+    # Handle the brp_all_type_guides format
+    .type_guide |= map(
         # Skip excluded types entirely
         if ($excluded != "" and .type != null and (.type | test($excluded))) then
             empty
@@ -41,7 +41,7 @@ if .type_info then
                 "batch_number": null,
                 "test_status": (
                     # Auto-pass types that only have spawn support
-                    if (.mutation_paths == null or .mutation_paths == [] or 
+                    if (.mutation_paths == null or .mutation_paths == [] or
                         (.mutation_paths | type == "array" and length == 1 and .[0].path == "")) then
                         "passed"
                     else
@@ -52,9 +52,9 @@ if .type_info then
             }
         end
     )
-elif .result.type_info then
+elif .result.type_guide then
     # Handle wrapped format (if it exists)
-    .result.type_info |= map(
+    .result.type_guide |= map(
         # Skip excluded types entirely
         if ($excluded != "" and .type != null and (.type | test($excluded))) then
             empty
@@ -65,7 +65,7 @@ elif .result.type_info then
                 "batch_number": null,
                 "test_status": (
                     # Auto-pass types that only have spawn support
-                    if (.mutation_paths == null or .mutation_paths == [] or 
+                    if (.mutation_paths == null or .mutation_paths == [] or
                         (.mutation_paths | type == "array" and length == 1 and .[0].path == "")) then
                         "passed"
                     else
@@ -85,7 +85,7 @@ else
             . + {
                 "batch_number": null,
                 "test_status": (
-                    if (.mutation_paths == null or .mutation_paths == [] or 
+                    if (.mutation_paths == null or .mutation_paths == [] or
                         (.mutation_paths | type == "array" and length == 1 and .[0].path == "")) then
                         "passed"
                     else
@@ -101,38 +101,38 @@ end
 
 if [ $? -eq 0 ]; then
     echo "Successfully augmented BRP response to $TARGET_FILE"
-    
+
     # Display statistics about the augmented file
     TYPE_COUNT=$(jq -r '
-        if .type_info then
-            .type_info | length
-        elif .result.type_info then
-            .result.type_info | length
+        if .type_guide then
+            .type_guide | length
+        elif .result.type_guide then
+            .result.type_guide | length
         else
             length
         end
     ' "$TARGET_FILE")
-    
+
     UNTESTED_COUNT=$(jq -r '
-        if .type_info then
-            [.type_info[] | select(.test_status == "untested")] | length
-        elif .result.type_info then
-            [.result.type_info[] | select(.test_status == "untested")] | length
+        if .type_guide then
+            [.type_guide[] | select(.test_status == "untested")] | length
+        elif .result.type_guide then
+            [.result.type_guide[] | select(.test_status == "untested")] | length
         else
             [.[] | select(.test_status == "untested")] | length
         end
     ' "$TARGET_FILE")
-    
+
     PASSED_COUNT=$(jq -r '
-        if .type_info then
-            [.type_info[] | select(.test_status == "passed")] | length
-        elif .result.type_info then
-            [.result.type_info[] | select(.test_status == "passed")] | length
+        if .type_guide then
+            [.type_guide[] | select(.test_status == "passed")] | length
+        elif .result.type_guide then
+            [.result.type_guide[] | select(.test_status == "passed")] | length
         else
             [.[] | select(.test_status == "passed")] | length
         end
     ' "$TARGET_FILE")
-    
+
     echo "Statistics:"
     echo "  Total types: $TYPE_COUNT"
     echo "  Untested: $UNTESTED_COUNT"

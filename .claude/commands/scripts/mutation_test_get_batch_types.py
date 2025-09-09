@@ -34,24 +34,24 @@ except json.JSONDecodeError as e:
     sys.exit(1)
 
 # Handle different file structures (wrapped vs direct array)
-type_info = None
+type_guide = None
 if isinstance(data, dict):
-    if 'type_info' in data:
-        # Format with type_info at root
-        type_info = data['type_info']
-    elif 'result' in data and 'type_info' in data['result']:
-        # Format with result.type_info
-        type_info = data['result']['type_info']
+    if 'type_guide' in data:
+        # Format with type_guide at root
+        type_guide = data['type_guide']
+    elif 'result' in data and 'type_guide' in data['result']:
+        # Format with result.type_guide
+        type_guide = data['result']['type_guide']
     else:
         # Unknown dict format, treat as empty
-        type_info = []
+        type_guide = []
 else:
     # Direct array format (legacy)
-    type_info = data
+    type_guide = data
 
 # Get complete type schemas for the specified batch
 batch_types = []
-for t in type_info:
+for t in type_guide:
     if t.get('batch_number') == batch_num:
         # Extract the complete type information
         type_data = {

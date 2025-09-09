@@ -1,14 +1,21 @@
 {
   "status": "success",
   "message": "Discovered 1 type(s)",
-  "call_info": { "mcp_tool": "brp_type_schema" },
+  "call_info": { "mcp_tool": "brp_type_guide" },
   "metadata": { "type_count": 1 },
-  "parameters": { "port": 15702, "types": [ "extras_plugin::TestComplexComponent" ] },
+  "parameters": {
+    "port": 15702,
+    "types": ["extras_plugin::TestComplexComponent"]
+  },
   "result": {
     "discovered_count": 1,
-    "requested_types": [ "extras_plugin::TestComplexComponent" ],
-    "summary": { "failed_discoveries": 0, "successful_discoveries": 1, "total_requested": 1 },
-    "type_info": {
+    "requested_types": ["extras_plugin::TestComplexComponent"],
+    "summary": {
+      "failed_discoveries": 0,
+      "successful_discoveries": 1,
+      "total_requested": 1
+    },
+    ""type_guide"": {
       "extras_plugin::TestComplexComponent": {
         "has_deserialize": true,
         "has_serialize": true,
@@ -19,12 +26,15 @@
             "example": {
               "mode": "Active",
               "optional_value": null,
-              "points": [ [ 1.0, 2.0, 3.0 ], [ 1.0, 2.0, 3.0 ] ],
-              "range": [ 3.1415927410125732, 3.1415927410125732 ],
+              "points": [
+                [1.0, 2.0, 3.0],
+                [1.0, 2.0, 3.0]
+              ],
+              "range": [3.1415927410125732, 3.1415927410125732],
               "transform": {
-                "rotation": [ 0.0, 0.0, 0.0, 1.0 ],
-                "scale": [ 1.0, 2.0, 3.0 ],
-                "translation": [ 1.0, 2.0, 3.0 ]
+                "rotation": [0.0, 0.0, 0.0, 1.0],
+                "scale": [1.0, 2.0, 3.0],
+                "translation": [1.0, 2.0, 3.0]
               }
             },
             "mutation_status": "mutatable",
@@ -38,16 +48,26 @@
             "description": "Mutate the mode field of extras_plugin::TestComplexComponent",
             "examples": [
               {
-                "applicable_variants": [ "Special" ],
-                "example": { "Special": [ "Hello, World!", 1000000 ] },
+                "applicable_variants": ["Special"],
+                "example": { "Special": ["Hello, World!", 1000000] },
                 "signature": "tuple(String, u32)"
               },
               {
-                "applicable_variants": [ "Custom" ],
-                "example": { "Custom": { "enabled": true, "name": "Hello, World!", "value": 3.1415927410125732 } },
+                "applicable_variants": ["Custom"],
+                "example": {
+                  "Custom": {
+                    "enabled": true,
+                    "name": "Hello, World!",
+                    "value": 3.1415927410125732
+                  }
+                },
                 "signature": "struct{enabled: bool, name: String, value: f32}"
               },
-              { "applicable_variants": [ "Active", "Inactive" ], "example": "Active", "signature": "unit" }
+              {
+                "applicable_variants": ["Active", "Inactive"],
+                "example": "Active",
+                "signature": "unit"
+              }
             ],
             "mutation_status": "mutatable",
             "path_info": {
@@ -55,117 +75,197 @@
               "type": "extras_plugin::TestEnumWithSerDe",
               "type_kind": "Enum"
             },
-            "variants": [ "Active", "Custom", "Inactive", "Special" ]
+            "variants": ["Active", "Custom", "Inactive", "Special"]
           },
           ".mode.0": {
             "description": "Mutate element 0 of extras_plugin::TestEnumWithSerDe",
             "example": "Hello, World!",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "alloc::string::String", "type_kind": "Value" },
-            "variants": [ "Special" ]
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "alloc::string::String",
+              "type_kind": "Value"
+            },
+            "variants": ["Special"]
           },
           ".mode.1": {
             "description": "Mutate element 1 of extras_plugin::TestEnumWithSerDe",
             "example": 1000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "u32", "type_kind": "Value" },
-            "variants": [ "Special" ]
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "u32",
+              "type_kind": "Value"
+            },
+            "variants": ["Special"]
           },
           ".mode.enabled": {
             "description": "Mutate the enabled field of extras_plugin::TestEnumWithSerDe",
             "example": true,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "bool", "type_kind": "Value" },
-            "variants": [ "Custom" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "bool",
+              "type_kind": "Value"
+            },
+            "variants": ["Custom"]
           },
           ".mode.name": {
             "description": "Mutate the name field of extras_plugin::TestEnumWithSerDe",
             "example": "Hello, World!",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "alloc::string::String", "type_kind": "Value" },
-            "variants": [ "Custom" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "alloc::string::String",
+              "type_kind": "Value"
+            },
+            "variants": ["Custom"]
           },
           ".mode.value": {
             "description": "Mutate the value field of extras_plugin::TestEnumWithSerDe",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" },
-            "variants": [ "Custom" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            },
+            "variants": ["Custom"]
           },
           ".optional_value": {
             "description": "Mutate the optional_value field of extras_plugin::TestComplexComponent",
             "examples": [
-              { "applicable_variants": [ "None" ], "example": null, "signature": "unit" },
-              { "applicable_variants": [ "Some" ], "example": 3.1415927410125732, "signature": "tuple(f32)" }
+              {
+                "applicable_variants": ["None"],
+                "example": null,
+                "signature": "unit"
+              },
+              {
+                "applicable_variants": ["Some"],
+                "example": 3.1415927410125732,
+                "signature": "tuple(f32)"
+              }
             ],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "core::option::Option<f32>", "type_kind": "Enum" },
-            "variants": [ "None", "Some" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "core::option::Option<f32>",
+              "type_kind": "Enum"
+            },
+            "variants": ["None", "Some"]
           },
           ".optional_value.0": {
             "description": "Mutate element 0 of core::option::Option<f32>",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "f32", "type_kind": "Value" },
-            "variants": [ "Some" ]
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "f32",
+              "type_kind": "Value"
+            },
+            "variants": ["Some"]
           },
           ".points": {
             "description": "Mutate the points field of extras_plugin::TestComplexComponent",
             "example": [
-              { "x": 3.1415927410125732, "y": 3.1415927410125732, "z": 3.1415927410125732 },
-              { "x": 3.1415927410125732, "y": 3.1415927410125732, "z": 3.1415927410125732 }
+              {
+                "x": 3.1415927410125732,
+                "y": 3.1415927410125732,
+                "z": 3.1415927410125732
+              },
+              {
+                "x": 3.1415927410125732,
+                "y": 3.1415927410125732,
+                "z": 3.1415927410125732
+              }
             ],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "[glam::Vec3; 2]", "type_kind": "Array" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "[glam::Vec3; 2]",
+              "type_kind": "Array"
+            }
           },
           ".points[0]": {
             "description": "Mutate element [0] of [glam::Vec3; 2]",
-            "example": { "x": 3.1415927410125732, "y": 3.1415927410125732, "z": 3.1415927410125732 },
+            "example": {
+              "x": 3.1415927410125732,
+              "y": 3.1415927410125732,
+              "z": 3.1415927410125732
+            },
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "ArrayElement", "type": "glam::Vec3", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "ArrayElement",
+              "type": "glam::Vec3",
+              "type_kind": "Struct"
+            }
           },
           ".points[0].x": {
             "description": "Mutate the x field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".points[0].y": {
             "description": "Mutate the y field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".points[0].z": {
             "description": "Mutate the z field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".range": {
             "description": "Mutate the range field of extras_plugin::TestComplexComponent",
-            "example": [ 3.1415927410125732, 3.1415927410125732 ],
+            "example": [3.1415927410125732, 3.1415927410125732],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "(f32, f32)", "type_kind": "Tuple" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "(f32, f32)",
+              "type_kind": "Tuple"
+            }
           },
           ".range.0": {
             "description": "Mutate element 0 of (f32, f32)",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".range.1": {
             "description": "Mutate element 1 of (f32, f32)",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform": {
             "description": "Mutate the transform field of extras_plugin::TestComplexComponent",
             "example": {
-              "rotation": [ 0.0, 0.0, 0.0, 1.0 ],
-              "scale": [ 1.0, 2.0, 3.0 ],
-              "translation": [ 1.0, 2.0, 3.0 ]
+              "rotation": [0.0, 0.0, 0.0, 1.0],
+              "scale": [1.0, 2.0, 3.0],
+              "translation": [1.0, 2.0, 3.0]
             },
             "mutation_status": "mutatable",
             "path_info": {
@@ -176,108 +276,171 @@
           },
           ".transform.rotation": {
             "description": "Mutate the rotation field of bevy_transform::components::transform::Transform",
-            "example": [ 0.0, 0.0, 0.0, 1.0 ],
+            "example": [0.0, 0.0, 0.0, 1.0],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::Quat", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::Quat",
+              "type_kind": "Struct"
+            }
           },
           ".transform.rotation.w": {
             "description": "Mutate the w field of glam::Quat",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.rotation.x": {
             "description": "Mutate the x field of glam::Quat",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.rotation.y": {
             "description": "Mutate the y field of glam::Quat",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.rotation.z": {
             "description": "Mutate the z field of glam::Quat",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.scale": {
             "description": "Mutate the scale field of bevy_transform::components::transform::Transform",
-            "example": [ 1.0, 2.0, 3.0 ],
+            "example": [1.0, 2.0, 3.0],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::Vec3", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::Vec3",
+              "type_kind": "Struct"
+            }
           },
           ".transform.scale.x": {
             "description": "Mutate the x field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.scale.y": {
             "description": "Mutate the y field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.scale.z": {
             "description": "Mutate the z field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.translation": {
             "description": "Mutate the translation field of bevy_transform::components::transform::Transform",
-            "example": [ 1.0, 2.0, 3.0 ],
+            "example": [1.0, 2.0, 3.0],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "glam::Vec3", "type_kind": "Struct" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "glam::Vec3",
+              "type_kind": "Struct"
+            }
           },
           ".transform.translation.x": {
             "description": "Mutate the x field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.translation.y": {
             "description": "Mutate the y field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           },
           ".transform.translation.z": {
             "description": "Mutate the z field of glam::Vec3",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" }
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            }
           }
         },
         "schema_info": {
           "crate_name": "extras_plugin",
           "module_path": "extras_plugin",
           "properties": {
-            "mode": { "type": { "$ref": "#/$defs/extras_plugin::TestEnumWithSerDe" } },
-            "optional_value": { "type": { "$ref": "#/$defs/core::option::Option<f32>" } },
+            "mode": {
+              "type": { "$ref": "#/$defs/extras_plugin::TestEnumWithSerDe" }
+            },
+            "optional_value": {
+              "type": { "$ref": "#/$defs/core::option::Option<f32>" }
+            },
             "points": { "type": { "$ref": "#/$defs/[glam::Vec3; 2]" } },
             "range": { "type": { "$ref": "#/$defs/(f32, f32)" } },
-            "transform": { "type": { "$ref": "#/$defs/bevy_transform::components::transform::Transform" } }
+            "transform": {
+              "type": {
+                "$ref": "#/$defs/bevy_transform::components::transform::Transform"
+              }
+            }
           },
-          "required": [ "transform", "mode", "points", "range" ],
+          "required": ["transform", "mode", "points", "range"],
           "type_kind": "Struct"
         },
         "spawn_format": {
           "mode": "Active",
           "optional_value": null,
-          "points": [ [ 1.0, 2.0, 3.0 ], [ 1.0, 2.0, 3.0 ] ],
-          "range": [ 3.1415927410125732, 3.1415927410125732 ],
+          "points": [
+            [1.0, 2.0, 3.0],
+            [1.0, 2.0, 3.0]
+          ],
+          "range": [3.1415927410125732, 3.1415927410125732],
           "transform": {
-            "rotation": [ 0.0, 0.0, 0.0, 1.0 ],
-            "scale": [ 1.0, 2.0, 3.0 ],
-            "translation": [ 1.0, 2.0, 3.0 ]
+            "rotation": [0.0, 0.0, 0.0, 1.0],
+            "scale": [1.0, 2.0, 3.0],
+            "translation": [1.0, 2.0, 3.0]
           }
         },
-        "supported_operations": [ "query", "get", "spawn", "insert", "mutate" ],
+        "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
         "type_name": "extras_plugin::TestComplexComponent"
       }
     }

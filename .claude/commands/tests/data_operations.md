@@ -32,8 +32,8 @@ Validate entity, component, and resource CRUD operations through BRP.
 - Verify component is removed from entity
 - Confirm Transform component remains
 
-### 6. Resource Operations with Type Schema Discovery
-- Execute `mcp__brp__brp_type_schema` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
+### 6. Resource Operations with Type Guide Discovery
+- Execute `mcp__brp__brp_type_guide` with `["bevy_render::camera::clear_color::ClearColor"]` to discover resource structure
 - Verify schema returns mutation paths and spawn format information
 - Execute `mcp__brp__bevy_get_resource` to retrieve current ClearColor resource value
 - Execute `mcp__brp__bevy_mutate_resource` using discovered structure:

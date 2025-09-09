@@ -17,14 +17,14 @@ if [ ! -f "$JSON_FILE" ]; then
     exit 1
 fi
 
-# Helper function to extract type_info array from either format
-extract_type_info() {
-    # Handle both wrapped (with type_info at root) and direct array formats
+# Helper function to extract type_guide array from either format
+extract_type_guide() {
+    # Handle both wrapped (with type_guide at root) and direct array formats
     jq '
-        if .type_info then
-            .type_info
-        elif .result.type_info then
-            .result.type_info
+        if .type_guide then
+            .type_guide
+        elif .result.type_guide then
+            .result.type_guide
         else
             .
         end
@@ -37,12 +37,12 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Basic counts
-TOTAL=$(extract_type_info | jq 'length')
-SPAWN_SUPPORTED=$(extract_type_info | jq '[.[] | select(has("spawn_format"))] | length')
-SPAWN_NOT_SUPPORTED=$(extract_type_info | jq '[.[] | select(has("spawn_format") | not)] | length')
-WITH_MUTATIONS=$(extract_type_info | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
-NO_MUTATIONS=$(extract_type_info | jq '[.[] | select(.mutation_paths == null or .mutation_paths == {} or .mutation_paths == [])] | length')
-NO_CAPABILITIES=$(extract_type_info | jq '[.[] | select((has("spawn_format") | not) and (.mutation_paths == null or .mutation_paths == {} or .mutation_paths == []))] | length')
+TOTAL=$(extract_type_guide | jq 'length')
+SPAWN_SUPPORTED=$(extract_type_guide | jq '[.[] | select(has("spawn_format"))] | length')
+SPAWN_NOT_SUPPORTED=$(extract_type_guide | jq '[.[] | select(has("spawn_format") | not)] | length')
+WITH_MUTATIONS=$(extract_type_guide | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
+NO_MUTATIONS=$(extract_type_guide | jq '[.[] | select(.mutation_paths == null or .mutation_paths == {} or .mutation_paths == [])] | length')
+NO_CAPABILITIES=$(extract_type_guide | jq '[.[] | select((has("spawn_format") | not) and (.mutation_paths == null or .mutation_paths == {} or .mutation_paths == []))] | length')
 
 echo "Capability Summary:"
 echo "  Total types: $TOTAL"
@@ -54,9 +54,9 @@ echo "  Types with no capabilities: $NO_CAPABILITIES"
 echo ""
 
 # Test status counts
-UNTESTED=$(extract_type_info | jq '[.[] | select(.test_status == "untested")] | length')
-PASSED=$(extract_type_info | jq '[.[] | select(.test_status == "passed")] | length')
-FAILED=$(extract_type_info | jq '[.[] | select(.test_status == "failed")] | length')
+UNTESTED=$(extract_type_guide | jq '[.[] | select(.test_status == "untested")] | length')
+PASSED=$(extract_type_guide | jq '[.[] | select(.test_status == "passed")] | length')
+FAILED=$(extract_type_guide | jq '[.[] | select(.test_status == "failed")] | length')
 
 echo "Test Status:"
 echo "  Untested: $UNTESTED"
@@ -67,8 +67,8 @@ echo "  Progress: $PROGRESS% tested"
 echo ""
 
 # Batch information
-MAX_BATCH=$(extract_type_info | jq '[.[] | select(.batch_number != null) | .batch_number] | max // 0')
-TYPES_IN_BATCHES=$(extract_type_info | jq '[.[] | select(.batch_number != null)] | length')
+MAX_BATCH=$(extract_type_guide | jq '[.[] | select(.batch_number != null) | .batch_number] | max // 0')
+TYPES_IN_BATCHES=$(extract_type_guide | jq '[.[] | select(.batch_number != null)] | length')
 
 echo "Batch Information:"
 echo "  Types assigned to batches: $TYPES_IN_BATCHES"
@@ -95,7 +95,7 @@ echo ""
 
 # Schema completeness check (NEW for full schema format)
 echo "Schema Completeness:"
-HAS_EXAMPLES=$(extract_type_info | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != []) | 
+HAS_EXAMPLES=$(extract_type_guide | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != []) | 
     if .mutation_paths | type == "object" then
         .mutation_paths | to_entries | .[0].value | has("example")
     else
@@ -109,10 +109,10 @@ else
 fi
 
 # File format detection
-if jq -e '.type_info' "$JSON_FILE" > /dev/null 2>&1; then
-    echo "  Format: Full BRP schema (type_info at root)"
-elif jq -e '.result.type_info' "$JSON_FILE" > /dev/null 2>&1; then
-    echo "  Format: Full BRP schema (result.type_info)"
+if jq -e '.type_guide' "$JSON_FILE" > /dev/null 2>&1; then
+    echo "  Format: Full BRP schema (type_guide at root)"
+elif jq -e '.result.type_guide' "$JSON_FILE" > /dev/null 2>&1; then
+    echo "  Format: Full BRP schema (result.type_guide)"
 elif jq -e '.[0].type' "$JSON_FILE" > /dev/null 2>&1; then
     echo "  Format: Legacy array format"
 else

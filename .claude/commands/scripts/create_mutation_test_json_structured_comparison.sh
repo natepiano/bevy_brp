@@ -45,15 +45,15 @@ echo "⚠️  FILES DIFFER - ANALYZING CHANGES"
 echo "   └─ Found differences requiring review"
 echo ""
 
-# Helper function to extract type_info array from either format
-extract_type_info() {
+# Helper function to extract type_guide array from either format
+extract_type_guide() {
     local file="$1"
-    # Handle both wrapped (with type_info at root) and direct array formats
+    # Handle both wrapped (with type_guide at root) and direct array formats
     jq '
-        if .type_info then
-            .type_info
-        elif .result.type_info then
-            .result.type_info
+        if .type_guide then
+            .type_guide
+        elif .result.type_guide then
+            .result.type_guide
         else
             .
         end
@@ -64,16 +64,16 @@ extract_type_info() {
 echo "📈 METADATA COMPARISON"
 
 # Get type counts
-BASELINE_COUNT=$(extract_type_info "$BASELINE_FILE" | jq 'length')
-CURRENT_COUNT=$(extract_type_info "$CURRENT_FILE" | jq 'length')
+BASELINE_COUNT=$(extract_type_guide "$BASELINE_FILE" | jq 'length')
+CURRENT_COUNT=$(extract_type_guide "$CURRENT_FILE" | jq 'length')
 
 # Get spawn-supported counts (check spawn_format existence)
-BASELINE_SPAWN=$(extract_type_info "$BASELINE_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
-CURRENT_SPAWN=$(extract_type_info "$CURRENT_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
+BASELINE_SPAWN=$(extract_type_guide "$BASELINE_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
+CURRENT_SPAWN=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
 
 # Get mutation counts (check mutation_paths not null/empty)
-BASELINE_MUTATIONS=$(extract_type_info "$BASELINE_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
-CURRENT_MUTATIONS=$(extract_type_info "$CURRENT_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
+BASELINE_MUTATIONS=$(extract_type_guide "$BASELINE_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
+CURRENT_MUTATIONS=$(extract_type_guide "$CURRENT_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
 
 # Display metadata comparison
 if [ "$BASELINE_COUNT" -eq "$CURRENT_COUNT" ]; then
@@ -104,8 +104,8 @@ TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
 # Extract type names and key properties
-extract_type_info "$BASELINE_FILE" | jq -r '.[] | .type_name // .type // "unknown"' | sort > "$TEMP_DIR/baseline_types"
-extract_type_info "$CURRENT_FILE" | jq -r '.[] | .type_name // .type // "unknown"' | sort > "$TEMP_DIR/current_types"
+extract_type_guide "$BASELINE_FILE" | jq -r '.[] | .type_name // .type // "unknown"' | sort > "$TEMP_DIR/baseline_types"
+extract_type_guide "$CURRENT_FILE" | jq -r '.[] | .type_name // .type // "unknown"' | sort > "$TEMP_DIR/current_types"
 
 # Find new types
 NEW_TYPES=$(comm -13 "$TEMP_DIR/baseline_types" "$TEMP_DIR/current_types")
@@ -126,7 +126,7 @@ FORMAT_CHANGES=""
 while read -r type_name; do
     if [ -n "$type_name" ]; then
         # Extract mutation paths for this type from both files
-        BASELINE_PATHS=$(extract_type_info "$BASELINE_FILE" | jq -r --arg t "$type_name" '
+        BASELINE_PATHS=$(extract_type_guide "$BASELINE_FILE" | jq -r --arg t "$type_name" '
             .[] | select((.type_name // .type // "unknown") == $t) | 
             if .mutation_paths | type == "object" then
                 .mutation_paths | keys | .[]
@@ -137,7 +137,7 @@ while read -r type_name; do
             end
         ' | sort)
         
-        CURRENT_PATHS=$(extract_type_info "$CURRENT_FILE" | jq -r --arg t "$type_name" '
+        CURRENT_PATHS=$(extract_type_guide "$CURRENT_FILE" | jq -r --arg t "$type_name" '
             .[] | select((.type_name // .type // "unknown") == $t) | 
             if .mutation_paths | type == "object" then
                 .mutation_paths | keys | .[]
@@ -162,7 +162,7 @@ while read -r type_name; do
         # This is where we detect if examples changed from object to array format
         if echo "$type_name" | grep -q "TestComplexComponent\|Vec3\|Quat"; then
             # Extract and compare example formats for key paths
-            BASELINE_EXAMPLE=$(extract_type_info "$BASELINE_FILE" | jq --arg t "$type_name" '
+            BASELINE_EXAMPLE=$(extract_type_guide "$BASELINE_FILE" | jq --arg t "$type_name" '
                 .[] | select((.type_name // .type // "unknown") == $t) | 
                 if .mutation_paths | type == "object" then
                     .mutation_paths | to_entries | .[0].value.example
@@ -171,7 +171,7 @@ while read -r type_name; do
                 end
             ')
             
-            CURRENT_EXAMPLE=$(extract_type_info "$CURRENT_FILE" | jq --arg t "$type_name" '
+            CURRENT_EXAMPLE=$(extract_type_guide "$CURRENT_FILE" | jq --arg t "$type_name" '
                 .[] | select((.type_name // .type // "unknown") == $t) | 
                 if .mutation_paths | type == "object" then
                     .mutation_paths | to_entries | .[0].value.example
@@ -239,7 +239,7 @@ check_vec3_format() {
     local file="$1"
     local label="$2"
     
-    local example=$(extract_type_info "$file" | jq -r '
+    local example=$(extract_type_guide "$file" | jq -r '
         .[] | select((.type_name // .type // "unknown") == "extras_plugin::TestComplexComponent") |
         if .mutation_paths | type == "object" then
             .mutation_paths.".points[0]".example // "not found"

@@ -41,9 +41,9 @@ jq --slurpfile results "$RESULTS_FILE" '
   ($batch_results | map({key: .type, value: .}) | from_entries) as $result_map |
   
   # Handle different file structures
-  if .type_info then
-    # Update type_info array
-    .type_info |= map(
+  if .type_guide then
+    # Update type_guide array
+    .type_guide |= map(
       . as $entry |
       # Use type_name or type field
       ($entry.type_name // $entry.type // "unknown") as $type_key |
@@ -57,9 +57,9 @@ jq --slurpfile results "$RESULTS_FILE" '
         $entry
       end
     )
-  elif .result.type_info then
-    # Update result.type_info array
-    .result.type_info |= map(
+  elif .result.type_guide then
+    # Update result.type_guide array
+    .result.type_guide |= map(
       . as $entry |
       # Use type_name or type field
       ($entry.type_name // $entry.type // "unknown") as $type_key |

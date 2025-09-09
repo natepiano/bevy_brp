@@ -1,19 +1,26 @@
 {
   "status": "success",
   "message": "Discovered 1 type(s)",
-  "call_info": { "mcp_tool": "brp_type_schema" },
+  "call_info": { "mcp_tool": "brp_type_guide" },
   "metadata": { "type_count": 1 },
-  "parameters": { "port": 15702, "types": [ "extras_plugin::TestEnumWithSerDe" ] },
+  "parameters": {
+    "port": 15702,
+    "types": ["extras_plugin::TestEnumWithSerDe"]
+  },
   "result": {
     "discovered_count": 1,
-    "requested_types": [ "extras_plugin::TestEnumWithSerDe" ],
-    "summary": { "failed_discoveries": 0, "successful_discoveries": 1, "total_requested": 1 },
-    "type_info": {
+    "requested_types": ["extras_plugin::TestEnumWithSerDe"],
+    "summary": {
+      "failed_discoveries": 0,
+      "successful_discoveries": 1,
+      "total_requested": 1
+    },
+    ""type_guide"": {
       "extras_plugin::TestEnumWithSerDe": {
         "enum_info": [
           { "Unit": "Active" },
           { "Unit": "Inactive" },
-          { "Tuple": [ "Special", [ "alloc::string::String", "u32" ] ] },
+          { "Tuple": ["Special", ["alloc::string::String", "u32"]] },
           {
             "Struct": [
               "Custom",
@@ -32,61 +39,99 @@
           "": {
             "description": "Replace the entire extras_plugin::TestEnumWithSerDe value",
             "examples": [
-              { "applicable_variants": [ "Active", "Inactive" ], "example": "Active", "signature": "unit" },
               {
-                "applicable_variants": [ "Special" ],
-                "example": { "Special": [ "Hello, World!", 1000000 ] },
+                "applicable_variants": ["Active", "Inactive"],
+                "example": "Active",
+                "signature": "unit"
+              },
+              {
+                "applicable_variants": ["Special"],
+                "example": { "Special": ["Hello, World!", 1000000] },
                 "signature": "tuple(String, u32)"
               },
               {
-                "applicable_variants": [ "Custom" ],
-                "example": { "Custom": { "enabled": true, "name": "Hello, World!", "value": 3.1415927410125732 } },
+                "applicable_variants": ["Custom"],
+                "example": {
+                  "Custom": {
+                    "enabled": true,
+                    "name": "Hello, World!",
+                    "value": 3.1415927410125732
+                  }
+                },
                 "signature": "struct{enabled: bool, name: String, value: f32}"
               }
             ],
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "RootValue", "type": "extras_plugin::TestEnumWithSerDe", "type_kind": "Enum" },
-            "variants": [ "Active", "Custom", "Inactive", "Special" ]
+            "path_info": {
+              "path_kind": "RootValue",
+              "type": "extras_plugin::TestEnumWithSerDe",
+              "type_kind": "Enum"
+            },
+            "variants": ["Active", "Custom", "Inactive", "Special"]
           },
           ".0": {
             "description": "Mutate element 0 of extras_plugin::TestEnumWithSerDe",
             "example": "Hello, World!",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "alloc::string::String", "type_kind": "Value" },
-            "variants": [ "Special" ]
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "alloc::string::String",
+              "type_kind": "Value"
+            },
+            "variants": ["Special"]
           },
           ".1": {
             "description": "Mutate element 1 of extras_plugin::TestEnumWithSerDe",
             "example": 1000000,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "IndexedElement", "type": "u32", "type_kind": "Value" },
-            "variants": [ "Special" ]
+            "path_info": {
+              "path_kind": "IndexedElement",
+              "type": "u32",
+              "type_kind": "Value"
+            },
+            "variants": ["Special"]
           },
           ".enabled": {
             "description": "Mutate the enabled field of extras_plugin::TestEnumWithSerDe",
             "example": true,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "bool", "type_kind": "Value" },
-            "variants": [ "Custom" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "bool",
+              "type_kind": "Value"
+            },
+            "variants": ["Custom"]
           },
           ".name": {
             "description": "Mutate the name field of extras_plugin::TestEnumWithSerDe",
             "example": "Hello, World!",
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "alloc::string::String", "type_kind": "Value" },
-            "variants": [ "Custom" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "alloc::string::String",
+              "type_kind": "Value"
+            },
+            "variants": ["Custom"]
           },
           ".value": {
             "description": "Mutate the value field of extras_plugin::TestEnumWithSerDe",
             "example": 3.1415927410125732,
             "mutation_status": "mutatable",
-            "path_info": { "path_kind": "StructField", "type": "f32", "type_kind": "Value" },
-            "variants": [ "Custom" ]
+            "path_info": {
+              "path_kind": "StructField",
+              "type": "f32",
+              "type_kind": "Value"
+            },
+            "variants": ["Custom"]
           }
         },
-        "schema_info": { "crate_name": "extras_plugin", "module_path": "extras_plugin", "type_kind": "Enum" },
+        "schema_info": {
+          "crate_name": "extras_plugin",
+          "module_path": "extras_plugin",
+          "type_kind": "Enum"
+        },
         "spawn_format": "Active",
-        "supported_operations": [ "query", "get", "spawn", "insert", "mutate" ],
+        "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
         "type_name": "extras_plugin::TestEnumWithSerDe"
       }
     }
