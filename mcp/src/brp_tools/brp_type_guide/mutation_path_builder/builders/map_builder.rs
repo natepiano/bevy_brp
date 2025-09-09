@@ -15,7 +15,7 @@ use super::super::MutationPathBuilder;
 use super::super::mutation_support::MutationSupport;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;

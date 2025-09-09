@@ -107,7 +107,8 @@
       "Bash(.claude/commands/scripts/get_excluded_types.sh:*)",
       "Bash(.claude/commands/scripts/create_mutation_test_json_get_excluded_types.sh:*)",
       "Bash(.claude/commands/scripts/create_mutation_test_json_structured_comparison.sh:*)",
-      "Bash(.claude/commands/scripts/create_mutation_test_json_promote_baseline.sh:*)"
+      "Bash(.claude/commands/scripts/create_mutation_test_json_promote_baseline.sh:*)",
+      "Bash(.claude/commands/scripts/create_mutation_test_json_augment_response.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"

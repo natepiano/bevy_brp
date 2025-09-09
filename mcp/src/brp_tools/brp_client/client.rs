@@ -17,7 +17,7 @@ use super::types::{
     ResultStructBrpExt,
 };
 use crate::brp_tools::FormatCorrectionStatus;
-use crate::brp_tools::brp_type_schema::TypeSchemaEngine;
+use crate::brp_tools::brp_type_guide::TypeSchemaEngine;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 

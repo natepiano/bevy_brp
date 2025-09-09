@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 pub struct DefaultMutationBuilder;

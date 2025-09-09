@@ -1,12 +1,11 @@
-//! Builder for List types (Vec, etc.)
+//! Builder for Set types (`HashSet`, `BTreeSet`, etc.)
 //!
-//! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
-//! Uses single-pass recursion to extract element type and recurse deeper.
+//! Unlike Lists, Sets can only be mutated at the top level (replacing/merging the entire set).
+//! Sets don't support indexed access or element-level mutations through BRP.
 //!
-//! **Recursion**: YES - Lists recurse into elements to generate mutation paths
-//! for nested structures (e.g., `Vec<Transform>` generates `[0].translation`).
-//! Elements are addressable by index, though indices may change as list mutates.
-//! use `std::collections::HashMap`;
+//! **Recursion**: NO - Sets are terminal mutation points. Elements have no stable
+//! addresses (no indices or keys) and cannot be individually mutated. Only the entire
+//! set can be replaced. Mutating an element could change its hash, breaking set invariants.
 
 use std::collections::HashMap;
 
@@ -18,94 +17,40 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
+use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;
+use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
-pub struct ListMutationBuilder;
+pub struct SetMutationBuilder;
 
-impl MutationPathBuilder for ListMutationBuilder {
+impl MutationPathBuilder for SetMutationBuilder {
     fn build_paths(
         &self,
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        let Some(schema) = ctx.require_schema() else {
+        if ctx.require_schema().is_none() {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(ctx.type_name().clone()),
             )]);
-        };
+        }
 
-        let Some(element_type) = RecursionContext::extract_list_element_type(schema) else {
-            // If we have a schema but can't extract element type, treat as NotInRegistry
-            return Ok(vec![Self::build_not_mutatable_path(
-                ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
-            )]);
-        };
+        // Sets can only be mutated at the top level - no element access
+        // Generate the example using build_schema_example
+        let example = self.build_schema_example(ctx, depth);
 
-        let mut paths = Vec::new();
-
-        // RECURSE DEEPER - add element-level paths
-        let Some(element_schema) = ctx.get_type_schema(&element_type) else {
-            return Ok(vec![Self::build_not_mutatable_path(
-                ctx,
-                MutationSupport::NotInRegistry(element_type),
-            )]);
-        };
-        let element_kind = TypeKind::from_schema(element_schema, &element_type);
-
-        // Create a child context for the element type using PathKind
-        // Lists/Vecs use array notation [0], not tuple notation .0
-        let element_path_kind =
-            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
-        let element_ctx = ctx.create_field_context(element_path_kind);
-
-        // Continue recursion to actual mutation endpoints
-        let element_paths = element_kind.build_paths(&element_ctx, depth)?;
-
-        // Extract element example from child paths
-        let element_example = element_paths
-            .iter()
-            .find(|p| p.path == element_ctx.mutation_path)
-            .map(|p| p.example.clone())
-            .unwrap_or_else(|| {
-                // If no direct path, generate example using trait dispatch
-                element_kind
-                    .builder()
-                    .build_schema_example(&element_ctx, depth.increment())
-            });
-
-        // Build the main list path using the element example (like Array builder does)
-        let list_example = vec![element_example.clone(); 2];
-        paths.push(MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!(list_example),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+        Ok(vec![MutationPathInternal {
+            path: ctx.mutation_path.clone(),
+            example,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
-        });
-
-        // Build the indexed element path (like Array builder does)
-        let indexed_path = format!("{}[0]", ctx.mutation_path);
-        paths.push(MutationPathInternal {
-            path:            indexed_path,
-            example:         element_example,
-            type_name:       element_type.clone(),
-            path_kind:       element_ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
-        });
-
-        // Add the nested paths
-        paths.extend(element_paths);
-
-        Ok(paths)
+            error_reason: None,
+        }])
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
@@ -147,17 +92,17 @@ impl MutationPathBuilder for ListMutationBuilder {
                 );
 
             // Create array with 2 example elements
-            // For Lists, these are ordered elements
+            // For Sets, these represent unique values to add
             let array = vec![item_example; 2];
             json!(array)
         })
     }
 }
 
-impl ListMutationBuilder {
-    /// Build list example using extracted logic from `TypeInfo::build_type_example`
+impl SetMutationBuilder {
+    /// Build set example using extracted logic from `TypeInfo::build_type_example`
     /// This is the static method version that calls `TypeInfo` for element types
-    pub fn build_list_example_static(
+    pub fn build_set_example_static(
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
@@ -173,11 +118,13 @@ impl ListMutationBuilder {
                 ExampleBuilder::build_example(&item_type_name, registry, depth.increment());
 
             // Create array with 2 example elements
-            // For Lists, these are ordered elements
+            // For Sets, these represent unique values to add
             let array = vec![item_example; 2];
             json!(array)
         })
     }
+
+    /// Build a mutation path for the entire Set field
 
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
@@ -188,7 +135,7 @@ impl ListMutationBuilder {
             path:            ctx.mutation_path.clone(),
             example:         json!({
                 "NotMutatable": format!("{support}"),
-                "agent_directive": format!("This list type cannot be mutated - {support}")
+                "agent_directive": format!("This set type cannot be mutated - {support}")
             }),
             type_name:       ctx.type_name().clone(),
             path_kind:       ctx.path_kind.clone(),

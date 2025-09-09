@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 pub use type_kind::TypeKind;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus};
 
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 /// Trait for building mutation paths for different type kinds

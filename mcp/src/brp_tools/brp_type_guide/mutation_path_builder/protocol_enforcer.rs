@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use super::mutation_knowledge::KnowledgeKey;
 use super::type_kind::TypeKind;
 use super::{MutationPathBuilder, MutationPathInternal, MutationStatus, RecursionContext};
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 pub struct ProtocolEnforcer {

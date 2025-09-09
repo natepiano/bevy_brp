@@ -16,11 +16,11 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
-use crate::brp_tools::brp_type_schema::constants::{
+use crate::brp_tools::brp_type_guide::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth,
 };
-use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
+use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;
+use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;

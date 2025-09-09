@@ -1,5 +1,5 @@
 mod brp_client;
-mod brp_type_schema;
+mod brp_type_guide;
 mod constants;
 mod port;
 mod tools;
@@ -15,7 +15,7 @@ pub use brp_client::{
 };
 //
 // Export brp_type_schema tools
-pub use brp_type_schema::{
+pub use brp_type_guide::{
     AllTypesSchema, AllTypesSchemaParams, BrpTypeName, TypeSchema, TypeSchemaParams,
 };
 pub use constants::BRP_EXTRAS_PORT_ENV_VAR;
