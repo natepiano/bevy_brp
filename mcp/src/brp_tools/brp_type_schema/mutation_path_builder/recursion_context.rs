@@ -8,10 +8,10 @@ use std::sync::Arc;
 use serde_json::Value;
 use tracing::warn;
 
-use super::super::response_types::{BrpTypeName, ReflectTrait, SchemaField};
+use super::super::response_types::{BrpTypeName, ReflectTrait};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 use super::path_kind::PathKind;
-use crate::brp_tools::brp_type_schema::constants::SCHEMA_REF_PREFIX;
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 /// Context for mutation path building operations
@@ -130,8 +130,7 @@ impl RecursionContext {
     pub fn extract_list_element_type(schema: &Value) -> Option<BrpTypeName> {
         schema
             .get("items")
-            .and_then(|items| items.get_field(SchemaField::Type))
-            .and_then(Self::extract_type_ref_with_schema_field)
+            .and_then(SchemaField::extract_field_type)
     }
 
     /// Extract all element types from Tuple/TupleStruct schema
@@ -139,20 +138,9 @@ impl RecursionContext {
         Self::get_schema_field_as_array(schema, SchemaField::PrefixItems).map(|items| {
             items
                 .iter()
-                .filter_map(|item| {
-                    item.get_field(SchemaField::Type)
-                        .and_then(Self::extract_type_ref_with_schema_field)
-                })
+                .filter_map(SchemaField::extract_field_type)
                 .collect()
         })
-    }
-
-    fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
-        type_value
-            .get_field(SchemaField::Ref)
-            .and_then(Value::as_str)
-            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-            .map(BrpTypeName::from)
     }
 
     /// Helper to get a schema field as an array

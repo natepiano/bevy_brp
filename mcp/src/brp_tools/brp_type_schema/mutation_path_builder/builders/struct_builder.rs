@@ -19,8 +19,9 @@ use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, MathComponent, SchemaField};
+use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, MathComponent};
 use crate::error::Result;
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 pub struct StructMutationBuilder;

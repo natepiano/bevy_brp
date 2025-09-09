@@ -18,8 +18,9 @@ use super::protocol_enforcer::ProtocolEnforcer;
 use super::recursion_context::RecursionContext;
 use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
+use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::error::Result;
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]

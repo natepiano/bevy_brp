@@ -18,9 +18,9 @@ use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
-use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
+use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::error::Result;
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 pub struct TupleMutationBuilder;
@@ -201,48 +201,45 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 let tuple_examples: Vec<Value> = prefix_items
                     .iter()
                     .map(|item| {
-                        item.get_field(SchemaField::Type)
-                            .and_then(TypeInfo::extract_type_ref_with_schema_field)
-                            .map_or_else(
-                                || json!(null),
-                                |element_type| {
-                                    // First check for hardcoded knowledge
-                                    BRP_MUTATION_KNOWLEDGE
-                                        .get(&KnowledgeKey::exact(&element_type))
-                                        .map_or_else(
-                                            || {
-                                                // Get the element type schema and use trait
-                                                // dispatch
-                                                ctx.get_type_schema(&element_type).map_or(
-                                                    json!(null),
-                                                    |element_schema| {
-                                                        let element_kind = TypeKind::from_schema(
-                                                            element_schema,
-                                                            &element_type,
+                        SchemaField::extract_field_type(item).map_or_else(
+                            || json!(null),
+                            |element_type| {
+                                // First check for hardcoded knowledge
+                                BRP_MUTATION_KNOWLEDGE
+                                    .get(&KnowledgeKey::exact(&element_type))
+                                    .map_or_else(
+                                        || {
+                                            // Get the element type schema and use trait
+                                            // dispatch
+                                            ctx.get_type_schema(&element_type).map_or(
+                                                json!(null),
+                                                |element_schema| {
+                                                    let element_kind = TypeKind::from_schema(
+                                                        element_schema,
+                                                        &element_type,
+                                                    );
+                                                    // Create element context for recursive
+                                                    // building
+                                                    let element_path_kind =
+                                                        PathKind::new_indexed_element(
+                                                            0,
+                                                            element_type.clone(),
+                                                            ctx.type_name().clone(),
                                                         );
-                                                        // Create element context for recursive
-                                                        // building
-                                                        let element_path_kind =
-                                                            PathKind::new_indexed_element(
-                                                                0,
-                                                                element_type.clone(),
-                                                                ctx.type_name().clone(),
-                                                            );
-                                                        let element_ctx = ctx.create_field_context(
-                                                            element_path_kind,
-                                                        );
-                                                        // Use trait dispatch directly
-                                                        element_kind.builder().build_schema_example(
-                                                            &element_ctx,
-                                                            depth.increment(),
-                                                        )
-                                                    },
-                                                )
-                                            },
-                                            |k| k.example().clone(),
-                                        )
-                                },
-                            )
+                                                    let element_ctx =
+                                                        ctx.create_field_context(element_path_kind);
+                                                    // Use trait dispatch directly
+                                                    element_kind.builder().build_schema_example(
+                                                        &element_ctx,
+                                                        depth.increment(),
+                                                    )
+                                                },
+                                            )
+                                        },
+                                        |k| k.example().clone(),
+                                    )
+                            },
+                        )
                     })
                     .collect();
 
@@ -277,14 +274,10 @@ impl TupleMutationBuilder {
                 let tuple_examples: Vec<Value> = prefix_items
                     .iter()
                     .map(|item| {
-                        item.get_field(SchemaField::Type)
-                            .and_then(TypeInfo::extract_type_ref_with_schema_field)
-                            .map_or_else(
-                                || json!(null),
-                                |ft| {
-                                    ExampleBuilder::build_example(&ft, registry, depth.increment())
-                                },
-                            )
+                        SchemaField::extract_field_type(item).map_or_else(
+                            || json!(null),
+                            |ft| ExampleBuilder::build_example(&ft, registry, depth.increment()),
+                        )
                     })
                     .collect();
 

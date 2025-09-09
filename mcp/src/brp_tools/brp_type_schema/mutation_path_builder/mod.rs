@@ -85,17 +85,17 @@ pub trait MutationPathBuilder {
     fn is_migrated(&self) -> bool {
         false // Default: not migrated
     }
-    
+
     /// Check if child paths should be included in the final mutation paths result
-    /// 
+    ///
     /// Most types return true (default) because their child paths are valid mutation targets.
     /// Container types like Maps return false because they only expose the container itself.
-    /// 
+    ///
     /// Example: HashMap<String, Transform>
     /// - Returns false: only exposes path "" with complete map {"key": {transform}}
     /// - Does NOT expose ".rotation", ".scale" etc. from the Transform values
     fn include_child_paths(&self) -> bool {
-        true  // Default: most types want child paths for field mutation
+        true // Default: most types want child paths for field mutation
     }
 
     /// Collect child contexts that need recursion (for depth-first traversal)

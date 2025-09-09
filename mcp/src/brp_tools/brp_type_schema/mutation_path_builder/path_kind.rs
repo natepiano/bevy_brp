@@ -93,7 +93,7 @@ impl PathKind {
         } else {
             format!(" {}", type_kind.as_ref().to_lowercase())
         };
-        
+
         match self {
             Self::RootValue { type_name, .. } => {
                 let short_name = type_name.short_name();

@@ -16,4 +16,8 @@ do a type schema on "bevy_render::camera::camera::Camera"
 
 make sure that it is identical to .claude/commands/reference_json/Camera.json
 
+do a type schema on "extras_plugin::TestMapComponent"
+
+make sure that it is identical to .claude/commands/reference_json/TestMapComponent.json
+
 update the user then stop

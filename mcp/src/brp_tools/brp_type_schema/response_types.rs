@@ -10,10 +10,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
-use super::constants::SCHEMA_REF_PREFIX;
 use super::mutation_path_builder::TypeKind;
 use super::type_info::TypeInfo;
-use crate::string_traits::JsonFieldAccess;
 
 /// Enum for BRP supported operations
 /// Each operation has specific requirements based on type registration and traits
@@ -73,7 +71,7 @@ impl BrpTypeName {
     pub fn base_type(&self) -> Option<&str> {
         self.0.split('<').next()
     }
-    
+
     /// Get the short name (last segment after ::)
     /// For example: `bevy_transform::components::transform::Transform` returns `Transform`
     /// For generic types: `HashMap<String, i32>` returns `HashMap<String, i32>`
@@ -91,7 +89,7 @@ impl BrpTypeName {
                 }
             }
         }
-        
+
         // Find the last :: and take everything after it
         // If no :: found, return the whole name (handles primitives and generics)
         self.0.rsplit("::").next().unwrap_or(&self.0).to_string()
@@ -203,24 +201,6 @@ pub enum ReflectTrait {
     Resource,
     Serialize,
     Deserialize,
-}
-
-// Re-export SchemaField for backwards compatibility
-pub use crate::json_types::SchemaField;
-
-impl SchemaField {
-    /// Extract field type from field info JSON
-    ///
-    /// This extracts the type reference from a field definition in the schema,
-    /// handling the standard pattern of type.$ref with #/$defs/ prefix.
-    pub fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
-        field_info
-            .get_field(Self::Type)
-            .and_then(|t| t.get_field(Self::Ref))
-            .and_then(Value::as_str)
-            .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
-            .map(BrpTypeName::from)
-    }
 }
 
 /// response structure

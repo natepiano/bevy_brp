@@ -19,12 +19,11 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
-use crate::brp_tools::brp_type_schema::constants::{
-    MAX_TYPE_RECURSION_DEPTH, RecursionDepth, SCHEMA_REF_PREFIX,
-};
+use crate::brp_tools::brp_type_schema::constants::{MAX_TYPE_RECURSION_DEPTH, RecursionDepth};
 use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
+use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::error::Result;
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 /// Type-safe enum variant information - replaces `EnumVariantInfoOld`
@@ -253,13 +252,7 @@ fn extract_tuple_types(
 
     prefix_items
         .iter()
-        .filter_map(|item| {
-            item.get_field(SchemaField::Type)
-                .and_then(|t| t.get_field(SchemaField::Ref))
-                .and_then(Value::as_str)
-                .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-                .map(BrpTypeName::from)
-        })
+        .filter_map(SchemaField::extract_field_type)
         .collect()
 }
 

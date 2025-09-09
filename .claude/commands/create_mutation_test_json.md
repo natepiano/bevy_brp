@@ -25,13 +25,7 @@
 
     **promote**: Mark version as baseline:
     ```bash
-    # Mark current version as the good baseline
-    cp $TMPDIR/all_types.json $TMPDIR/all_types_baseline.json
-
-    # Create timestamped backup
-    cp $TMPDIR/all_types.json $TMPDIR/all_types_good_$(date +%Y%m%d_%H%M%S).json
-
-    echo "✅ Version marked as good baseline"
+    .claude/commands/scripts/create_mutation_test_json_promote_baseline.sh
     ```
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus

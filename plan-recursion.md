@@ -386,8 +386,7 @@ impl MutationPathBuilder for StructMutationBuilder {
             .map_or(vec![], |properties| {
                 properties.iter()
                     .filter_map(|(field_name, field_value)| {
-                        field_value.get_field(SchemaField::Type)
-                            .and_then(TypeInfo::extract_type_ref_with_schema_field)
+                        SchemaField::extract_field_type(field_value)
                             .map(|field_type| {
                                 let field_path_kind = PathKind::new_struct_field(
                                     field_name.clone(),
@@ -424,18 +423,20 @@ Following the same order as the original ExampleBuilder removal:
    - ✅ TypeKind: `Self::Value => self.builder().build_paths(ctx, builder_depth)`
    - ✅ **Note**: No need to override `include_child_paths()` - Default/Value types are leaf nodes with no children
 
-2. **MapMutationBuilder** (error path only) - Simple error case
-   - Fix line 161 error path
-   - **TypeKind**: Update `Self::Map => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh  
-   - **STOP and ask user to validate and discuss**
+2. ✅ **MapMutationBuilder** - COMPLETED in commit e465607
+   - ✅ Fixed line 161 error path
+   - ✅ Implemented full protocol methods (is_migrated, collect_children, assemble_from_children)
+   - ✅ **Special**: Added `include_child_paths() -> false` override to prevent exposing invalid child mutation paths
+   - ✅ **TypeKind**: Already using trait dispatch
+   - ✅ Comment added explaining why Maps don't expose child paths (BRP doesn't support string keys for map mutations)
 
-3. **ArrayMutationBuilder** - Single child type
-   - Fix line 220 static method, implement protocol methods
-   - **Note**: No need to override `include_child_paths()` - Arrays expose indexed element paths
-   - **TypeKind**: Update `Self::Array => self.builder().build_paths(ctx, builder_depth)`
+3. **SetMutationBuilder** - Single child type
+   - Fix line 120 static method, implement protocol methods
+   - **Special**: Add `include_child_paths() -> false` override (like MapMutationBuilder) with comment explaining Sets are terminal mutation points
+   - **TypeKind**: Update `Self::Set => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
+   - **CODE REVIEW**: After validation, stop and ask user to review the SetMutationBuilder implementation before proceeding to next builder
 
 4. **ListMutationBuilder** - Single child type
    - Fix line 165 static method, implement protocol methods
@@ -443,13 +444,15 @@ Following the same order as the original ExampleBuilder removal:
    - **TypeKind**: Update `Self::List => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
+   - **CODE REVIEW**: After validation, stop and ask user to review the ListMutationBuilder implementation before proceeding to next builder
 
-5. **SetMutationBuilder** - Single child type
-   - Fix line 120 static method, implement protocol methods
-   - **Special**: Add `include_child_paths() -> false` override (like MapMutationBuilder) with comment explaining Sets are terminal mutation points
-   - **TypeKind**: Update `Self::Set => self.builder().build_paths(ctx, builder_depth)`
+5. **ArrayMutationBuilder** - Single child type
+   - Fix line 220 static method, implement protocol methods
+   - **Note**: No need to override `include_child_paths()` - Arrays expose indexed element paths
+   - **TypeKind**: Update `Self::Array => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
+   - **CODE REVIEW**: After validation, stop and ask user to review the ArrayMutationBuilder implementation before proceeding to next builder
 
 6. **TupleMutationBuilder** - Multiple children
    - Fix lines 390, 285, 317, implement protocol methods
@@ -457,6 +460,7 @@ Following the same order as the original ExampleBuilder removal:
    - **TypeKind**: Update `Self::Tuple | Self::TupleStruct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
+   - **CODE REVIEW**: After validation, stop and ask user to review the TupleMutationBuilder implementation before proceeding to next builder
 
 7. **StructMutationBuilder** - Named fields
    - Fix line 403 static method, implement protocol methods
@@ -464,25 +468,22 @@ Following the same order as the original ExampleBuilder removal:
    - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
+   - **CODE REVIEW**: After validation, stop and ask user to review the StructMutationBuilder implementation before proceeding to next builder
 
-8. ✅ **MapMutationBuilder** (complete) - Key/value pairs - COMPLETED
-   - ✅ Implemented full protocol methods (is_migrated, collect_children, assemble_from_children)
-   - ✅ **Special**: Added `include_child_paths() -> false` override to prevent exposing invalid child mutation paths
-   - ✅ **TypeKind**: Already using trait dispatch
-   - ✅ Comment added explaining why Maps don't expose child paths (BRP doesn't support string keys for map mutations)
-
-9. **EnumMutationBuilder** - Most complex
+8. **EnumMutationBuilder** - Most complex
    - Fix lines 170, 193, implement protocol methods
    - **Note**: No need to override `include_child_paths()` - Enums expose variant field paths
    - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
+   - **CODE REVIEW**: After validation, stop and ask user to review the EnumMutationBuilder implementation before proceeding to next builder
 
-10. **mod.rs default trait** - Must be last
+9. **mod.rs default trait** - Must be last
     - Fix line 79 default implementation
     - No TypeKind change needed (trait default)
     - Run build-check.sh
     - **STOP and ask user to validate and discuss**
+    - **CODE REVIEW**: After validation, stop and ask user to review the final trait default implementation
 25. Remove all ExampleBuilder import statements
 26. Remove all static example building methods from builders
 27. Delete example_builder.rs file entirely
@@ -704,16 +705,15 @@ impl TypeKind {
 
 ### Phase 5b: Incremental Builder Migration
 For each builder in order:
-1. DefaultMutationBuilder
-2. MapMutationBuilder (error path only)
-3. ArrayMutationBuilder
+1. DefaultMutationBuilder (✅ completed)
+2. MapMutationBuilder (✅ completed)
+3. SetMutationBuilder
 4. ListMutationBuilder
-5. SetMutationBuilder
+5. ArrayMutationBuilder
 6. TupleMutationBuilder
 7. StructMutationBuilder
-8. MapMutationBuilder (complete)
-9. EnumMutationBuilder
-10. mod.rs default trait implementation
+8. EnumMutationBuilder
+9. mod.rs default trait implementation
 
 For each migration:
 - Remove ExampleBuilder references

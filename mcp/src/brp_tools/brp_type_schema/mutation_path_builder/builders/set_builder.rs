@@ -19,9 +19,9 @@ use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
 use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
-use crate::brp_tools::brp_type_schema::type_info::TypeInfo;
+use crate::brp_tools::brp_type_schema::response_types::BrpTypeName;
 use crate::error::Result;
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 pub struct SetMutationBuilder;
@@ -61,8 +61,7 @@ impl MutationPathBuilder for SetMutationBuilder {
         // Extract element type using the same logic as the static method
         let item_type = schema
             .get_field(SchemaField::Items)
-            .and_then(|items| items.get_field(SchemaField::Type))
-            .and_then(TypeInfo::extract_type_ref_with_schema_field);
+            .and_then(SchemaField::extract_field_type);
 
         item_type.map_or(json!(null), |item_type_name| {
             // Generate example value for the item type using trait dispatch
@@ -111,8 +110,7 @@ impl SetMutationBuilder {
         // Extract element type using the same logic as TypeInfo
         let item_type = schema
             .get_field(SchemaField::Items)
-            .and_then(|items| items.get_field(SchemaField::Type))
-            .and_then(TypeInfo::extract_type_ref_with_schema_field);
+            .and_then(SchemaField::extract_field_type);
 
         item_type.map_or(json!(null), |item_type_name| {
             // Generate example value for the item type

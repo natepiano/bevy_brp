@@ -7,14 +7,13 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
+use super::constants::RecursionDepth;
 use super::mutation_path_builder::{
     EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal, PathKind,
     RecursionContext, TypeKind,
 };
-use super::response_types::{
-    BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
-};
+use super::response_types::{BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaInfo};
+use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 /// this is all of the information we provide about a type
@@ -214,18 +213,6 @@ impl TypeInfo {
             result.len()
         );
         result
-    }
-
-    /// Extract type name from a type field using `SchemaField::Ref`
-    ///
-    /// Similar to `extract_type_ref_from_field` but uses `SchemaField::Ref`
-    /// for accessing the $ref field
-    pub fn extract_type_ref_with_schema_field(type_value: &Value) -> Option<BrpTypeName> {
-        type_value
-            .get_field(SchemaField::Ref)
-            .and_then(Value::as_str)
-            .and_then(|s| s.strip_prefix(SCHEMA_REF_PREFIX))
-            .map(BrpTypeName::from)
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
