@@ -50,6 +50,12 @@ These files track spawn_support but NOT actual spawn_format examples:
 
 ## Validation Commands
 
+### 0. Launch the Test Application
+```bash
+mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=15702)
+```
+This launches the extras_plugin example which includes all necessary BRP and extras functionality.
+
 ### 1. Generate Current Output
 ```bash
 mcp__brp__brp_all_type_schemas(port=15702)
