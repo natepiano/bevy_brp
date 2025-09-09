@@ -223,7 +223,7 @@
     **First, dynamically determine excluded types**:
     ```bash
     # Get list of excluded types from the exclusion file
-    EXCLUDED_TYPES=$(grep -v '^#' /Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.txt | grep -v '^$' | tr '\n' ', ' | sed 's/, $//')
+    EXCLUDED_TYPES=$(.claude/commands/scripts/create_mutation_test_json_get_excluded_types.sh)
     ```
 
 Present the comparison analysis in this format:

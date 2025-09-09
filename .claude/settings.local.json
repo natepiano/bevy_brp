@@ -103,7 +103,8 @@
       "Bash(diff:*)",
       "Read(//Users/natemccoy/.claude/**)",
       "Read(//Users/natemccoy/**)",
-      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_merge_batch_results.sh:*)"
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_merge_batch_results.sh:*)",
+      "Bash(.claude/commands/scripts/get_excluded_types.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
