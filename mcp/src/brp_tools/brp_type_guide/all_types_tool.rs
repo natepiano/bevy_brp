@@ -8,7 +8,7 @@ use bevy_brp_mcp_macros::{ParamStruct, ToolFn};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::tool::{TypeSchemaEngine, TypeSchemaResult};
+use super::tool::{TypeGuideEngine, TypeGuideResult};
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
@@ -23,11 +23,11 @@ pub struct AllTypesSchemaParams {
 
 /// The main tool struct for getting all type schemas
 #[derive(ToolFn)]
-#[tool_fn(params = "AllTypesSchemaParams", output = "TypeSchemaResult")]
+#[tool_fn(params = "AllTypesSchemaParams", output = "TypeGuideResult")]
 pub struct AllTypesSchema;
 
 /// Implementation that fetches all types then gets their schemas
-async fn handle_impl(params: AllTypesSchemaParams) -> Result<TypeSchemaResult> {
+async fn handle_impl(params: AllTypesSchemaParams) -> Result<TypeGuideResult> {
     // First, get all registered types using bevy/list without entity parameter
     let list_client = BrpClient::new(
         BrpMethod::BevyList,
@@ -64,12 +64,12 @@ async fn handle_impl(params: AllTypesSchemaParams) -> Result<TypeSchemaResult> {
     };
 
     // Construct TypeSchemaEngine and generate response for all types
-    let engine = TypeSchemaEngine::new(params.port).await?;
+    let engine = TypeGuideEngine::new(params.port).await?;
     let response = engine.generate_response(&all_types);
     let type_count = response.discovered_count;
 
     Ok(
-        TypeSchemaResult::new(response, type_count).with_message_template(format!(
+        TypeGuideResult::new(response, type_count).with_message_template(format!(
             "Discovered schemas for all {type_count} registered type(s)"
         )),
     )

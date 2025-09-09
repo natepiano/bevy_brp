@@ -211,18 +211,18 @@ pub struct TypeSchemaResponse {
     /// List of type names that were requested
     pub requested_types:  Vec<String>,
     /// Summary statistics for the discovery operation
-    pub summary:          TypeSchemaSummary,
+    pub summary:          TypeGuideSummary,
     /// Detailed information for each type, keyed by type name
     pub type_info:        HashMap<BrpTypeName, TypeInfo>,
 }
 
 /// Summary statistics for the discovery operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TypeSchemaSummary {
+pub struct TypeGuideSummary {
     /// Number of types that failed discovery
-    pub failed_discoveries:     usize,
+    pub failed_discovery:     usize,
     /// Number of types successfully discovered
-    pub successful_discoveries: usize,
+    pub successful_discovery: usize,
     /// Total number of types requested
-    pub total_requested:        usize,
+    pub total_requested:      usize,
 }

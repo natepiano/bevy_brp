@@ -16,4 +16,4 @@ mod type_info;
 // Internal use for format discovery
 pub use all_types_tool::{AllTypesSchema, AllTypesSchemaParams};
 pub use response_types::BrpTypeName;
-pub use tool::{TypeSchema, TypeSchemaEngine, TypeSchemaParams};
+pub use tool::{TypeGuide, TypeGuideEngine, TypeGuideParams};

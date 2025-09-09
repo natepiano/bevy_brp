@@ -29,7 +29,7 @@ use crate::brp_tools::{
     RegistrySchemaResult, RemoveParams, RemoveResourceParams, RemoveResourceResult, RemoveResult,
     ReparentParams, ReparentResult, RpcDiscoverParams, RpcDiscoverResult, ScreenshotParams,
     ScreenshotResult, SendKeysParams, SendKeysResult, SetWindowTitleParams, SetWindowTitleResult,
-    SpawnParams, SpawnResult, StopWatchParams, TypeSchema, TypeSchemaParams,
+    SpawnParams, SpawnResult, StopWatchParams, TypeGuide, TypeGuideParams,
 };
 use crate::log_tools::{
     DeleteLogs, DeleteLogsParams, GetTraceLogPath, ListLogs, ListLogsParams, ReadLog,
@@ -560,7 +560,7 @@ impl ToolName {
             }
             Self::BrpStatus => Some(parameters::build_parameters_from::<StatusParams>),
             Self::BrpShutdown => Some(parameters::build_parameters_from::<ShutdownParams>),
-            Self::BrpTypeSchema => Some(parameters::build_parameters_from::<TypeSchemaParams>),
+            Self::BrpTypeSchema => Some(parameters::build_parameters_from::<TypeGuideParams>),
             Self::BrpAllTypeSchemas => {
                 Some(parameters::build_parameters_from::<AllTypesSchemaParams>)
             }
@@ -612,7 +612,7 @@ impl ToolName {
             Self::BrpSetTracingLevel => Arc::new(SetTracingLevel),
             Self::BrpStatus => Arc::new(Status),
             Self::BrpShutdown => Arc::new(Shutdown),
-            Self::BrpTypeSchema => Arc::new(TypeSchema),
+            Self::BrpTypeSchema => Arc::new(TypeGuide),
             Self::BrpAllTypeSchemas => Arc::new(AllTypesSchema),
         }
     }

@@ -12,7 +12,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::response_types::{BrpTypeName, TypeSchemaResponse, TypeSchemaSummary};
+use super::response_types::{BrpTypeName, TypeGuideSummary, TypeSchemaResponse};
 use super::type_info::TypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
@@ -20,7 +20,7 @@ use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Parameters for the `brp_type_schema` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct TypeSchemaParams {
+pub struct TypeGuideParams {
     /// Array of fully-qualified component type names to discover formats for
     pub types: Vec<String>,
 
@@ -31,7 +31,7 @@ pub struct TypeSchemaParams {
 
 /// Result for the `brp_type_schema` tool
 #[derive(Debug, Clone, Serialize, ResultStruct)]
-pub struct TypeSchemaResult {
+pub struct TypeGuideResult {
     /// The type schema information containing format discovery results
     #[to_result]
     result: TypeSchemaResponse,
@@ -47,28 +47,28 @@ pub struct TypeSchemaResult {
 
 /// The main tool struct for type schema discovery
 #[derive(ToolFn)]
-#[tool_fn(params = "TypeSchemaParams", output = "TypeSchemaResult")]
-pub struct TypeSchema;
+#[tool_fn(params = "TypeGuideParams", output = "TypeGuideResult")]
+pub struct TypeGuide;
 
 /// Thin orchestration function: build engine and delegate the work to it.
-async fn handle_impl(params: TypeSchemaParams) -> Result<TypeSchemaResult> {
+async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
     // Construct V2 engine
-    let engine = TypeSchemaEngine::new(params.port).await?;
+    let engine = TypeGuideEngine::new(params.port).await?;
 
     // Run the engine to produce the typed response
     let response = engine.generate_response(&params.types);
     let type_count = response.discovered_count;
 
-    Ok(TypeSchemaResult::new(response, type_count)
+    Ok(TypeGuideResult::new(response, type_count)
         .with_message_template(format!("Discovered {type_count} type(s)")))
 }
 
 /// orchestrates type schema generation using a single call to get the complete registry
-pub struct TypeSchemaEngine {
+pub struct TypeGuideEngine {
     registry: Arc<HashMap<BrpTypeName, Value>>,
 }
 
-impl TypeSchemaEngine {
+impl TypeGuideEngine {
     /// Create a new engine instance by fetching the complete registry
     pub async fn new(port: Port) -> Result<Self> {
         let registry = Arc::new(Self::get_full_registry(port).await?);
@@ -108,10 +108,10 @@ impl TypeSchemaEngine {
         let mut response = TypeSchemaResponse {
             discovered_count: 0,
             requested_types:  requested_types.to_vec(),
-            summary:          TypeSchemaSummary {
-                failed_discoveries:     0,
-                successful_discoveries: 0,
-                total_requested:        requested_types.len(),
+            summary:          TypeGuideSummary {
+                failed_discovery:     0,
+                successful_discovery: 0,
+                total_requested:      requested_types.len(),
             },
             type_info:        HashMap::new(),
         };
@@ -119,14 +119,14 @@ impl TypeSchemaEngine {
         for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
             let type_info = if let Some(type_schema) = self.registry.get(&brp_type_name) {
                 response.discovered_count += 1;
-                response.summary.successful_discoveries += 1;
+                response.summary.successful_discovery += 1;
                 TypeInfo::from_schema(
                     brp_type_name.clone(),
                     type_schema,
                     Arc::clone(&self.registry),
                 )
             } else {
-                response.summary.failed_discoveries += 1;
+                response.summary.failed_discovery += 1;
                 TypeInfo::not_found(
                     brp_type_name.clone(),
                     "Type not found in registry".to_string(),

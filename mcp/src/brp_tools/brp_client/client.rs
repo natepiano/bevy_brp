@@ -17,7 +17,7 @@ use super::types::{
     ResultStructBrpExt,
 };
 use crate::brp_tools::FormatCorrectionStatus;
-use crate::brp_tools::brp_type_guide::TypeSchemaEngine;
+use crate::brp_tools::brp_type_guide::TypeGuideEngine;
 use crate::error::{Error, Result};
 use crate::tool::{BrpMethod, ParameterName};
 
@@ -269,7 +269,7 @@ impl BrpClient {
         extracted_types: Vec<String>,
     ) -> Result<ResponseStatus> {
         // Create TypeSchemaEngine and generate response for extracted types
-        let engine = TypeSchemaEngine::new(self.port).await?;
+        let engine = TypeGuideEngine::new(self.port).await?;
         let type_schema_response = engine.generate_response(&extracted_types);
 
         Err(Error::tool_call_failed_with_details(

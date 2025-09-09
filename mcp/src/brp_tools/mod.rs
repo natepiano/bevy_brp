@@ -16,7 +16,7 @@ pub use brp_client::{
 //
 // Export brp_type_schema tools
 pub use brp_type_guide::{
-    AllTypesSchema, AllTypesSchemaParams, BrpTypeName, TypeSchema, TypeSchemaParams,
+    AllTypesSchema, AllTypesSchemaParams, BrpTypeName, TypeGuide, TypeGuideParams,
 };
 pub use constants::BRP_EXTRAS_PORT_ENV_VAR;
 pub use port::Port;
