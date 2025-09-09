@@ -75,10 +75,10 @@
       "mcp__brp__brp_shutdown",
       "mcp__brp__brp_status",
       "mcp__brp__brp_stop_watch",
-      "mcp__brp__brp_type_schema",
+      "mcp__brp__brp_type_guide",
       "Bash(ls:*)",
       "Bash(.claude/commands/scripts/summarize_results.sh:*)",
-      "mcp__brp__brp_all_type_schemas",
+      "mcp__brp__brp_all_type_guides",
       "Bash(cp:*)",
       "Read(//tmp/**)",
       "Bash(.claude/commands/scripts/compare_mutations_quick.sh:*)",
@@ -114,9 +114,7 @@
       "Bash(if [ -f \"$TMPDIR/all_types_baseline.json\" ])",
       "Bash(else)"
     ],
-    "deny": [
-      "Bash(sed:*)"
-    ],
+    "deny": ["Bash(sed:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
