@@ -15,19 +15,19 @@ use crate::tool::{BrpMethod, HandlerContext, HandlerResult, ToolFn, ToolResult};
 
 /// Parameters for the `brp_all_type_schemas` tool
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct AllTypesSchemaParams {
+pub struct AllTypeGuidesParams {
     /// The BRP port (default: 15702)
     #[serde(default)]
     pub port: Port,
 }
 
-/// The main tool struct for getting all type schemas
+/// The main tool struct for getting all type guides
 #[derive(ToolFn)]
-#[tool_fn(params = "AllTypesSchemaParams", output = "TypeGuideResult")]
-pub struct AllTypesSchema;
+#[tool_fn(params = "AllTypeGuidesParams", output = "TypeGuideResult")]
+pub struct AllTypeGuides;
 
-/// Implementation that fetches all types then gets their schemas
-async fn handle_impl(params: AllTypesSchemaParams) -> Result<TypeGuideResult> {
+/// Implementation that fetches all types then gets their guides
+async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
     // First, get all registered types using bevy/list without entity parameter
     let list_client = BrpClient::new(
         BrpMethod::BevyList,

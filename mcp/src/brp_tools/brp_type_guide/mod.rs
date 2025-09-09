@@ -14,6 +14,6 @@ mod type_info;
 
 // Re-export public API
 // Internal use for format discovery
-pub use all_types_tool::{AllTypesSchema, AllTypesSchemaParams};
+pub use all_types_tool::{AllTypeGuides, AllTypeGuidesParams};
 pub use response_types::BrpTypeName;
 pub use tool::{TypeGuide, TypeGuideEngine, TypeGuideParams};
