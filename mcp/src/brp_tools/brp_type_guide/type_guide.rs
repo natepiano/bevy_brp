@@ -139,7 +139,7 @@ impl TypeGuide {
     }
 
     /// Builder method to create ``TypeGuide`` for type not found in registry
-    pub fn not_found(type_name: BrpTypeName, error_msg: String) -> Self {
+    pub fn not_found_in_registry(type_name: BrpTypeName, error_msg: String) -> Self {
         Self {
             type_name,
             in_registry: false,

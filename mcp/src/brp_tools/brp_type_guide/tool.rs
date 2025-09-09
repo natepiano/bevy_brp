@@ -127,7 +127,7 @@ impl TypeGuideEngine {
                 )
             } else {
                 response.summary.failed_discovery += 1;
-                TypeGuide::not_found(
+                TypeGuide::not_found_in_registry(
                     brp_type_name.clone(),
                     "Type not found in registry".to_string(),
                 )

@@ -44,11 +44,24 @@ WITH_MUTATIONS=$(extract_type_guide | jq '[.[] | select(.mutation_paths != null 
 NO_MUTATIONS=$(extract_type_guide | jq '[.[] | select(.mutation_paths == null or .mutation_paths == {} or .mutation_paths == [])] | length')
 NO_CAPABILITIES=$(extract_type_guide | jq '[.[] | select((has("spawn_format") | not) and (.mutation_paths == null or .mutation_paths == {} or .mutation_paths == []))] | length')
 
+# Count total mutation paths
+TOTAL_MUTATION_PATHS=$(extract_type_guide | jq '[.[] | 
+    if .mutation_paths != null and .mutation_paths != {} and .mutation_paths != [] then
+        if .mutation_paths | type == "object" then
+            .mutation_paths | keys | length
+        else
+            0
+        end
+    else
+        0
+    end] | add')
+
 echo "Capability Summary:"
 echo "  Total types: $TOTAL"
 echo "  Spawn-supported types: $SPAWN_SUPPORTED"
 echo "  Non-spawn types: $SPAWN_NOT_SUPPORTED"
 echo "  Types with mutations: $WITH_MUTATIONS"
+echo "  Total mutation paths: $TOTAL_MUTATION_PATHS"
 echo "  Types without mutations: $NO_MUTATIONS"
 echo "  Types with no capabilities: $NO_CAPABILITIES"
 echo ""
