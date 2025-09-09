@@ -10,14 +10,14 @@
     "test_objective": "Test registry_schema file output for large responses"
   },
   {
-    "test_name": "type_schema",
-    "test_file": ".claude/commands/tests/type_schema.md",
+    "test_name": "type_guide",
+    "test_file": ".claude/commands/tests/type_guide.md",
     "port": 20114,
     "app_name": "extras_plugin",
     "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20114",
     "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 parameter to launch extras_plugin example",
     "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
-    "test_objective": "Test brp_type_schema discovery, metadata validation, and type_schema embedding in format errors"
+    "test_objective": "Test brp_type_guide discovery, metadata validation, and type_guide embedding in format errors"
   },
   {
     "test_name": "list",
