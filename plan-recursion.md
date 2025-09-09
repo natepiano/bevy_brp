@@ -299,62 +299,39 @@ Each builder migration follows this pattern:
    - The panic message should include the type name for debugging
 5. Delete old methods (build_schema_example, static helper methods)
 
-### Builder 1: DefaultMutationBuilder (Simplest - Leaf Type)
+### Builder 1: DefaultMutationBuilder ✅ COMPLETED
 
-#### Current State:
-```rust
-impl MutationPathBuilder for DefaultMutationBuilder {
-    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) 
-        -> Result<Vec<MutationPathInternal>> {
-        // Uses ExampleBuilder
-        let example = ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth);
-        Ok(vec![MutationPathInternal { ... }])
-    }
-    
-    fn build_schema_example(&self, ctx: &RecursionContext, _depth: RecursionDepth) -> Value {
-        // Duplicates knowledge check (wrong!)
-        BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name()))
-            .map(|k| k.example().clone())
-            .unwrap_or_else(|| json!(null))
-    }
-}
-```
+**Status**: Migration complete with fixes applied
+**Commit**: 87d9e77 (WIP: Camera crash fixed but enum regression in spawn_format)
 
-#### After Migration:
+#### Final Implementation:
 ```rust
 impl MutationPathBuilder for DefaultMutationBuilder {
     fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
         -> Result<Vec<MutationPathInternal>> {
-        // IMPORTANT: Add panic to ensure this is never called when migrated
         tracing::error!("DefaultMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
         panic!("DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
     }
     
     fn is_migrated(&self) -> bool {
-        true  // MIGRATED!
+        true // MIGRATED!
     }
     
     fn collect_children(&self, _ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
-        vec![]  // Leaf type - no children
+        vec![] // Leaf type - no children
     }
     
     fn assemble_from_children(&self, _ctx: &RecursionContext, _children: HashMap<String, Value>) -> Value {
-        // For leaf types, just return null
-        // Knowledge check already handled by ProtocolEnforcer
-        json!(null)
+        json!(null) // Leaf types return null, knowledge handled by ProtocolEnforcer
     }
-    
-    // DELETE build_schema_example() - no longer needed
 }
 ```
 
-TODO:
-1. Fix ExampleBuilder reference in default_builder.rs line 26
-2. Implement is_migrated(), collect_children(), assemble_from_children()
-3. Delete build_schema_example() override
-4. Remove ExampleBuilder import
-5. Run build-check.sh
-6. **STOP and ask user to validate and discuss default_builder.rs changes**
+**Lessons Learned**:
+- ✅ Protocol enforcer pattern works correctly 
+- ✅ Panic guards prevent direct build_paths() calls
+- ✅ Simple leaf type implementation confirmed
+- ⚠️ Revealed output format regressions requiring fixes in enum/struct builders
 ### Builder 2: StructMutationBuilder (Container Type Example)
 
 #### After Migration:
@@ -413,10 +390,7 @@ impl MutationPathBuilder for StructMutationBuilder {
 
 Following the same order as the original ExampleBuilder removal:
 
-1. **DefaultMutationBuilder** - Leaf type, simplest
-   - Fix ExampleBuilder reference, implement protocol methods
-   - Run build-check.sh
-   - **STOP and ask user to validate and discuss**
+1. ✅ **DefaultMutationBuilder** - COMPLETED in commit 87d9e77
 
 2. **MapMutationBuilder** (error path only) - Simple error case
    - Fix line 161 error path
