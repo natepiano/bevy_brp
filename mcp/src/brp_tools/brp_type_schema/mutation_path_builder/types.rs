@@ -83,7 +83,7 @@ pub struct MutationPath {
     /// Array of example groups with variants, signatures, and examples (for enums)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub examples:        Vec<ExampleGroup>,
-    /// Single example value (for non-enum types) 
+    /// Single example value (for non-enum types)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub example:         Option<Value>,
     /// Additional note about how to use this mutation path
@@ -102,136 +102,94 @@ impl MutationPath {
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
         let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
 
-        // Handle examples array creation based on type
-        let examples = if path.example.is_null() {
-            vec![]
+        // Handle examples array creation - clean up variant context wrapping
+        let clean_example = if let Some(variant_context) = path.example.get("__variant_context") {
+            // Extract the actual value from variant context wrapper
+            if let Some(value) = path.example.get("value") {
+                value.clone()
+            } else {
+                // Remove the variant context and keep the rest
+                let mut clean = path.example.clone();
+                if let Some(obj) = clean.as_object_mut() {
+                    obj.remove("__variant_context");
+                }
+                clean
+            }
         } else {
-            path.example.as_object().map_or_else(
-                || {
-                    // Non-enum type: create single example group without variants/signature
-                    vec![ExampleGroup {
-                        applicable_variants: None,
-                        signature:           None,
-                        example:             path.example.clone(),
-                    }]
-                },
-                |obj| {
-                    // Check if this has variant context (enum field path)
-                    obj.get("__variant_context").map_or_else(
-                        || {
-                            obj.get("__enum_signature_groups").map_or_else(
-                                || {
-                                    // DEBUG: Log the type detection for Transform
-                                    if path.type_name.as_str()
-                                        == "bevy_transform::components::transform::Transform"
-                                    {
-                                        tracing::warn!(
-                                            "DEBUG: Transform type_kind = {:?}, obj keys = {:?}",
-                                            type_kind,
-                                            obj.keys().collect::<Vec<_>>()
-                                        );
-                                    }
-
-                                    // Only treat as enum examples if this is actually an enum type
-                                    // Use TypeKind to properly distinguish enums from structs
-                                    if matches!(type_kind, TypeKind::Enum) && !obj.is_empty() {
-                                        // This is an enum root path with variant examples
-                                        // (fallback)
-                                        Self::create_enum_example_groups(obj)
-                                    } else {
-                                        // This is a regular struct/object example - don't add enum
-                                        // fields
-                                        vec![ExampleGroup {
-                                            applicable_variants: None,
-                                            signature:           None,
-                                            example:             path.example.clone(),
-                                        }]
-                                    }
-                                },
-                                |signature_groups| {
-                                    // This is an enum root path with signature-grouped examples
-                                    Self::create_enum_signature_groups(signature_groups)
-                                },
-                            )
-                        },
-                        |_variant_context| {
-                            // Extract the actual example value
-                            let actual_example = obj.get("example").unwrap_or(&Value::Null);
-                            vec![ExampleGroup {
-                                applicable_variants: None,
-                                signature:           None,
-                                example:             actual_example.clone(),
-                            }]
-                        },
-                    )
-                },
-            )
+            path.example.clone()
         };
 
-        // Extract variants from example if it's an enum or from variant context
-        let variants = path
+        // Handle examples array creation - new clean logic
+        let examples = if clean_example.is_null() {
+            vec![]
+        } else if let Some(signature_groups) = clean_example.as_array() {
+            // New format: direct array of signature groups from consolidated enum builder
+            Self::convert_signature_groups_array(signature_groups)
+        } else {
+            // Single value: create simple example group
+            vec![ExampleGroup {
+                applicable_variants: None,
+                signature:           None,
+                example:             clean_example.clone(),
+            }]
+        };
+
+        // Extract variants - check both signature groups and variant context
+        let variants = if let Some(signature_groups) = path.example.as_array() {
+            // Extract all variants from signature groups array (for enum root paths)
+            let mut all_variants = Vec::new();
+            for group in signature_groups {
+                if let Some(group_variants) = group.get("variants").and_then(Value::as_array) {
+                    for variant in group_variants {
+                        if let Some(variant_name) = variant.as_str() {
+                            all_variants.push(variant_name.to_string());
+                        }
+                    }
+                }
+            }
+            all_variants.sort();
+            if all_variants.is_empty() {
+                None
+            } else {
+                Some(all_variants)
+            }
+        } else if let Some(variant_context) = path
             .example
             .get("__variant_context")
-            .and_then(Value::as_str)
-            .map_or_else(
-                || {
-                    path.example
-                        .as_object()
-                        .and_then(|obj| obj.get("__enum_signature_groups"))
-                        .and_then(Value::as_array)
-                        .map_or_else(
-                            || {
-                                // Only extract variants if this is actually an enum type
-                                if matches!(type_kind, TypeKind::Enum) {
-                                    // This is a root enum path with variant examples (fallback)
-                                    path.example.as_object().and_then(|obj| {
-                                        if obj.is_empty() {
-                                            None
-                                        } else {
-                                            let mut keys: Vec<String> =
-                                                obj.keys().cloned().collect();
-                                            keys.sort(); // Alphabetical sorting for consistency
-                                            Some(keys)
-                                        }
-                                    })
-                                } else {
-                                    // Not an enum - no variants
-                                    None
-                                }
-                            },
-                            |signature_groups| {
-                                // This is an enum root path - collect all variants from all groups
-                                let mut all_variants = Vec::new();
-                                for group in signature_groups {
-                                    if let Some(group_variants) =
-                                        group.get("variants").and_then(Value::as_array)
-                                    {
-                                        for variant in group_variants {
-                                            if let Some(variant_name) = variant.as_str() {
-                                                all_variants.push(variant_name.to_string());
-                                            }
-                                        }
-                                    }
-                                }
-                                all_variants.sort();
-                                if all_variants.is_empty() {
-                                    None
-                                } else {
-                                    Some(all_variants)
-                                }
-                            },
-                        )
-                },
-                |variant_context| Some(vec![variant_context.to_string()]),
-            );
+            .and_then(Value::as_array)
+        {
+            // Extract variants from variant context (for enum sub-paths)
+            let mut variants = Vec::new();
+            for variant in variant_context {
+                if let Some(variant_name) = variant.as_str() {
+                    variants.push(variant_name.to_string());
+                }
+            }
+            if variants.is_empty() {
+                None
+            } else {
+                Some(variants)
+            }
+        } else {
+            // Not an enum or variant context format - no variants
+            None
+        };
 
         // Determine if this should use examples array or single example
-        let (final_examples, final_example) = if matches!(type_kind, TypeKind::Enum) && !examples.is_empty() {
+        let (final_examples, final_example) = if matches!(type_kind, TypeKind::Enum)
+            && !examples.is_empty()
+        {
             // Enum type with variants - use examples array
             (examples, None)
-        } else if examples.len() == 1 && examples[0].applicable_variants.is_none() && examples[0].signature.is_none() {
+        } else if examples.len() == 1
+            && examples[0].applicable_variants.is_none()
+            && examples[0].signature.is_none()
+        {
             // Single example without enum context - use simple example field
             (vec![], Some(examples[0].example.clone()))
+        } else if examples.is_empty() && !clean_example.is_null() {
+            // Direct example without going through examples array (for TupleStruct, Array, etc.)
+            (vec![], Some(clean_example.clone()))
         } else {
             // Multiple examples or enum context - keep examples array
             (examples, None)
@@ -251,6 +209,31 @@ impl MutationPath {
             mutation_status: path.mutation_status,
             error_reason: path.error_reason.clone(),
         }
+    }
+
+    /// Convert clean signature groups array from consolidated enum builder
+    /// This handles the new direct array format: [{"example": ..., "signature": ..., "variants":
+    /// [...]}]
+    fn convert_signature_groups_array(signature_groups: &[Value]) -> Vec<ExampleGroup> {
+        signature_groups
+            .iter()
+            .filter_map(|group| {
+                let signature = group.get("signature")?.as_str()?.to_string();
+                let variants = group
+                    .get("variants")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect::<Vec<String>>();
+                let example = group.get("example")?.clone();
+
+                Some(ExampleGroup {
+                    applicable_variants: Some(variants),
+                    signature: Some(signature),
+                    example,
+                })
+            })
+            .collect()
     }
 
     /// Create example groups from signature groups (new enum structure)

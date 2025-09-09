@@ -285,55 +285,6 @@ fn extract_struct_fields(
         .collect()
 }
 
-/// Build all enum examples - groups variants by signature and creates proper structure
-/// This creates a special structured object that the conversion layer can understand
-fn build_all_enum_examples(
-    schema: &Value,
-    registry: &HashMap<BrpTypeName, Value>,
-    depth: usize,
-    enum_type: Option<&BrpTypeName>,
-) -> HashMap<String, Value> {
-    let variants = extract_enum_variants(schema, registry, depth);
-    let variant_groups = group_variants_by_signature(variants);
-
-    let mut signature_examples = Vec::new();
-
-    for (signature, variants_in_group) in variant_groups {
-        // Use the first variant in the group as the representative example
-        if let Some(representative_variant) = variants_in_group.first() {
-            let example = representative_variant.build_example(registry, depth);
-            let example = EnumMutationBuilder::apply_option_transformation(
-                example,
-                representative_variant,
-                enum_type,
-            );
-
-            let variant_names: Vec<String> = variants_in_group
-                .iter()
-                .map(|v| match v {
-                    EnumVariantInfo::Unit(name)
-                    | EnumVariantInfo::Tuple(name, _)
-                    | EnumVariantInfo::Struct(name, _) => name.clone(),
-                })
-                .collect();
-
-            signature_examples.push(json!({
-                "signature": signature.to_string(),
-                "variants": variant_names,
-                "example": example
-            }));
-        }
-    }
-
-    // Return a special structure that indicates this is grouped enum examples
-    let mut result = HashMap::new();
-    result.insert(
-        "__enum_signature_groups".to_string(),
-        json!(signature_examples),
-    );
-    result
-}
-
 /// Group variants by their signature, keeping ALL variants in each group
 /// Returns a mapping from signature to all variants that share that signature
 fn group_variants_by_signature(
@@ -347,7 +298,8 @@ fn group_variants_by_signature(
     }
 
     // Convert to sorted Vec for deterministic ordering
-    let mut groups: Vec<(VariantSignature, Vec<EnumVariantInfo>)> = signature_groups.into_iter().collect();
+    let mut groups: Vec<(VariantSignature, Vec<EnumVariantInfo>)> =
+        signature_groups.into_iter().collect();
     groups.sort_by_key(|(signature, _)| signature.clone());
     groups
 }
@@ -490,36 +442,30 @@ impl MutationPathBuilder for EnumMutationBuilder {
                         );
                         tuple_values.push(field_example);
 
-                        // Add variant context to child paths before extending
-                        let path_count = field_paths.len();
-                        tracing::error!(
-                            "ENUM VARIANT {} - Adding variant context to {} paths (parent: {})",
-                            variant_name,
-                            path_count,
-                            ctx.type_name()
-                        );
-                        for (i, path) in field_paths.iter_mut().enumerate() {
-                            tracing::error!(
-                                "ENUM VARIANT {} - Processing path {} of {} (parent: {})",
-                                variant_name,
-                                i + 1,
-                                path_count,
-                                ctx.type_name()
-                            );
-                            path.example =
-                                Self::add_variant_context_to_example(&path.example, variant_name);
-                        }
-                        tracing::error!(
-                            "ENUM VARIANT {} - Finished adding variant context (parent: {})",
-                            variant_name,
-                            ctx.type_name()
-                        );
+                        // Add variant context to field paths for proper inheritance
                         tracing::error!(
                             "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
                             variant_name,
                             paths.len(),
                             ctx.type_name()
                         );
+
+                        // Add variant context to each field path before extending
+                        for field_path in &mut field_paths {
+                            // Create variant context for this field path
+                            let variant_context = json!([variant_name.clone()]);
+                            // Store variant context in the example - the conversion will extract it
+                            if let Some(obj) = field_path.example.as_object_mut() {
+                                obj.insert("__variant_context".to_string(), variant_context);
+                            } else {
+                                // For non-object examples, wrap in object with variant context
+                                field_path.example = json!({
+                                    "value": field_path.example,
+                                    "__variant_context": variant_context
+                                });
+                            }
+                        }
+
                         paths.extend(field_paths);
                         tracing::error!(
                             "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
@@ -584,17 +530,30 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
                         struct_obj.insert(field.field_name.clone(), field_example);
 
-                        // Add variant context to child paths before extending
-                        for path in &mut field_paths {
-                            path.example =
-                                Self::add_variant_context_to_example(&path.example, variant_name);
-                        }
+                        // Add variant context to field paths for proper inheritance
                         tracing::error!(
                             "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
                             variant_name,
                             paths.len(),
                             ctx.type_name()
                         );
+
+                        // Add variant context to each field path before extending
+                        for field_path in &mut field_paths {
+                            // Create variant context for this field path
+                            let variant_context = json!([variant_name.clone()]);
+                            // Store variant context in the example - the conversion will extract it
+                            if let Some(obj) = field_path.example.as_object_mut() {
+                                obj.insert("__variant_context".to_string(), variant_context);
+                            } else {
+                                // For non-object examples, wrap in object with variant context
+                                field_path.example = json!({
+                                    "value": field_path.example,
+                                    "__variant_context": variant_context
+                                });
+                            }
+                        }
+
                         paths.extend(field_paths);
                         tracing::error!(
                             "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
@@ -710,16 +669,11 @@ impl EnumMutationBuilder {
             }
         }
 
-        // Return all variant examples as special structured format
+        // Return signature examples array directly in the NEW format
         if signature_examples.is_empty() {
             json!(null)
         } else {
-            let mut result = HashMap::new();
-            result.insert(
-                "__enum_signature_groups".to_string(),
-                json!(signature_examples),
-            );
-            json!(result)
+            json!(signature_examples)
         }
     }
 
@@ -738,43 +692,6 @@ impl EnumMutationBuilder {
             path_kind:       ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
             error_reason:    Option::<String>::from(&support),
-        }
-    }
-
-    /// Add variant context to an example to indicate which enum variant contains this field
-    /// This creates a wrapper object that includes variant information
-    fn add_variant_context_to_example(example: &Value, variant_name: &str) -> Value {
-        json!({
-            "__variant_context": variant_name,
-            "example": example
-        })
-    }
-
-    /// Build example value for an enum type
-    /// Now returns ALL variant examples instead of just the first one
-    /// by calling the existing `build_all_enum_examples` function
-    /// Build enum example for mutation paths (returns grouped structure)
-    pub fn build_enum_example(
-        schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        enum_type: Option<&BrpTypeName>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Check for exact enum type knowledge first
-        if let Some(enum_type) = enum_type
-            && let Some(knowledge) =
-                BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(enum_type.type_string()))
-        {
-            return knowledge.example().clone();
-        }
-
-        let all_examples = build_all_enum_examples(schema, registry, *depth, enum_type);
-
-        // Return all variant examples as JSON
-        if all_examples.is_empty() {
-            json!(null)
-        } else {
-            json!(all_examples)
         }
     }
 

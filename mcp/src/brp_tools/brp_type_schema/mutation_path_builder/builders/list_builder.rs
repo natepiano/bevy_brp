@@ -80,19 +80,29 @@ impl MutationPathBuilder for ListMutationBuilder {
                     .build_schema_example(&element_ctx, depth.increment())
             });
 
-        // Build the top-level list mutation path with accumulated example
-        if ctx.value_type_has_serialization(ctx.type_name()) {
-            let list_example = vec![element_example; 2]; // Lists typically have 2 example elements
-            paths.push(MutationPathInternal {
-                path:            ctx.mutation_path.clone(),
-                example:         json!(list_example),
-                type_name:       ctx.type_name().clone(),
-                path_kind:       ctx.path_kind.clone(),
-                mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
-            });
-        }
+        // Build the main list path using the element example (like Array builder does)
+        let list_example = vec![element_example.clone(); 2];
+        paths.push(MutationPathInternal {
+            path:            ctx.mutation_path.clone(),
+            example:         json!(list_example),
+            type_name:       ctx.type_name().clone(),
+            path_kind:       ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
+        });
 
+        // Build the indexed element path (like Array builder does)
+        let indexed_path = format!("{}[0]", ctx.mutation_path);
+        paths.push(MutationPathInternal {
+            path:            indexed_path,
+            example:         element_example,
+            type_name:       element_type.clone(),
+            path_kind:       element_ctx.path_kind.clone(),
+            mutation_status: MutationStatus::Mutatable,
+            error_reason:    None,
+        });
+
+        // Add the nested paths
         paths.extend(element_paths);
 
         Ok(paths)

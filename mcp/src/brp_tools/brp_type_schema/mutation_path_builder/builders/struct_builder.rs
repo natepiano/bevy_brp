@@ -144,26 +144,30 @@ impl MutationPathBuilder for StructMutationBuilder {
                     field_name,
                     ctx.type_name()
                 );
-                let field_example = if matches!(ctx.path_kind, PathKind::RootValue { .. }) {
-                    // For struct root paths, always use concrete examples from build_schema_example
-                    // This ensures enum fields show concrete examples (like "Active") instead of 
-                    // __enum_signature_groups documentation format
-                    field_kind
-                        .builder()
-                        .build_schema_example(&field_ctx, depth.increment())
-                } else {
-                    // For non-root paths, use the path example as before
-                    field_paths
-                        .iter()
-                        .find(|p| p.path == field_ctx.mutation_path)
-                        .map(|p| p.example.clone())
-                        .unwrap_or_else(|| {
-                            // If no direct path, generate example using trait dispatch
-                            field_kind
-                                .builder()
-                                .build_schema_example(&field_ctx, depth.increment())
-                        })
-                };
+                let field_example = field_paths
+                    .iter()
+                    .find(|p| p.path == field_ctx.mutation_path)
+                    .map(|p| {
+                        // Check if this is signature groups array from enum builder
+                        if let Some(signature_groups) = p.example.as_array() {
+                            // Extract first concrete example from signature groups
+                            signature_groups
+                                .first()
+                                .and_then(|group| group.get("example"))
+                                .cloned()
+                                .unwrap_or(p.example.clone())
+                        } else {
+                            p.example.clone()
+                        }
+                    })
+                    .unwrap_or_else(|| {
+                        // If no direct path, generate example using trait dispatch
+                        // For struct root paths with enum fields, this ensures concrete examples
+                        // (like "Active") instead of __enum_signature_groups documentation format
+                        field_kind
+                            .builder()
+                            .build_schema_example(&field_ctx, depth.increment())
+                    });
 
                 tracing::error!(
                     "    STRUCT FIELD {} - Before extending paths, current total: {} (parent: {})",
@@ -181,12 +185,26 @@ impl MutationPathBuilder for StructMutationBuilder {
                 field_example
             };
 
-            // Special case: Types with hardcoded knowledge that are also structs
-            // (like Vec3, Quat, etc.) should have their direct path AND nested paths
-            if has_hardcoded_knowledge && matches!(field_kind, TypeKind::Struct) {
-                // We already added paths above through normal recursion,
-                // but we also need the direct field path with hardcoded example
-                if ctx.value_type_has_serialization(&field_type) {
+            // Always create a direct field path if it doesn't exist yet
+            if ctx.value_type_has_serialization(&field_type) {
+                // Check if a direct field path already exists
+                if !paths.iter().any(|p| p.path == field_ctx.mutation_path) {
+                    // Create direct field path with computed example
+                    let field_path = MutationPathInternal {
+                        path:            field_ctx.mutation_path.clone(),
+                        example:         field_example.clone(),
+                        type_name:       field_type.clone(),
+                        path_kind:       field_ctx.path_kind.clone(),
+                        mutation_status: MutationStatus::Mutatable,
+                        error_reason:    None,
+                    };
+                    paths.push(field_path);
+                }
+
+                // Special case: Types with hardcoded knowledge that are also structs
+                // (like Vec3, Quat, etc.) should have their direct path updated with hardcoded
+                // example
+                if has_hardcoded_knowledge && matches!(field_kind, TypeKind::Struct) {
                     // Find and update the direct field path to use hardcoded example
                     if let Some(path) = paths.iter_mut().find(|p| p.path == field_ctx.mutation_path)
                     {
@@ -194,15 +212,12 @@ impl MutationPathBuilder for StructMutationBuilder {
                             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&field_type))
                         {
                             path.example = knowledge.example().clone();
-                            struct_example.insert(field_name.clone(), knowledge.example().clone());
+                            struct_example.insert(field_name.clone(), path.example.clone());
                         } else {
                             struct_example.insert(field_name.clone(), field_example);
                         }
                     } else {
-                        // If no direct path was created, add it now with hardcoded example
-                        let path = Self::build_field_mutation_path(&field_ctx, depth);
-                        struct_example.insert(field_name.clone(), path.example.clone());
-                        paths.push(path);
+                        struct_example.insert(field_name.clone(), field_example);
                     }
                 } else {
                     struct_example.insert(field_name.clone(), field_example);
