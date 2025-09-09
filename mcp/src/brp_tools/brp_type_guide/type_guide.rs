@@ -19,7 +19,7 @@ use crate::string_traits::JsonFieldAccess;
 /// this is all of the information we provide about a type
 /// we serialize this to our output
 #[derive(Debug, Clone, Serialize)]
-pub struct TypeInfo {
+pub struct TypeGuide {
     /// Fully-qualified type name
     pub type_name:            BrpTypeName,
     /// Whether the type is registered in the Bevy registry
@@ -51,8 +51,8 @@ pub struct TypeInfo {
     pub error:                Option<String>,
 }
 
-impl TypeInfo {
-    /// Builder method to create `TypeInfo` from schema data
+impl TypeGuide {
+    /// Builder method to create ``TypeGuide`` from schema data
     pub fn from_registry_schema(
         brp_type_name: BrpTypeName,
         registry_schema: &Value,
@@ -137,7 +137,7 @@ impl TypeInfo {
         }
     }
 
-    /// Builder method to create `TypeInfo` for type not found in registry
+    /// Builder method to create ``TypeGuide`` for type not found in registry
     pub fn not_found(type_name: BrpTypeName, error_msg: String) -> Self {
         Self {
             type_name,

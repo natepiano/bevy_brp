@@ -2,7 +2,7 @@
 //!
 //! This is a temporary structure used during the migration to unify example generation
 //! through path builders. It serves as an intermediate step to break the circular
-//! dependency between `TypeInfo::build_type_example` and builder methods.
+//! dependency between `TypeGuide::build_type_example` and builder methods.
 //!
 //! **This file will be deleted** after the migration is complete.
 
@@ -18,7 +18,7 @@ use super::response_types::BrpTypeName;
 /// Temporary builder to break circular dependencies during migration
 ///
 /// This struct provides a single method that builders can call instead of
-/// `TypeInfo::build_type_example`, which allows us to break the circular
+/// `TypeGuide::build_type_example`, which allows us to break the circular
 /// dependency during the migration process.
 ///
 /// **Migration Status**: This is temporary scaffolding that will be removed
@@ -26,7 +26,7 @@ use super::response_types::BrpTypeName;
 pub struct ExampleBuilder;
 
 impl ExampleBuilder {
-    /// Builders call this instead of `TypeInfo::build_type_example`
+    /// Builders call this instead of `TypeGuide::build_type_example`
     ///
     /// This method uses static method dispatch to avoid dynamic trait dispatch
     /// issues that can cause MCP connection problems.

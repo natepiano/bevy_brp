@@ -11,7 +11,7 @@ use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
 use super::mutation_path_builder::TypeKind;
-use super::type_info::TypeInfo;
+use super::type_guide::TypeGuide;
 
 /// Enum for BRP supported operations
 /// Each operation has specific requirements based on type registration and traits
@@ -213,7 +213,7 @@ pub struct TypeGuideResponse {
     /// Summary statistics for the discovery operation
     pub summary:          TypeGuideSummary,
     /// Detailed information for each type, keyed by type name
-    pub type_info:        HashMap<BrpTypeName, TypeInfo>,
+    pub type_info:        HashMap<BrpTypeName, TypeGuide>,
 }
 
 /// Summary statistics for the discovery operation

@@ -10,7 +10,7 @@ mod example_builder;
 mod mutation_path_builder;
 mod response_types;
 mod tool;
-mod type_info;
+mod type_guide;
 
 // Re-export public API
 // Internal use for format discovery

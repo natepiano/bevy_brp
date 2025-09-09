@@ -102,14 +102,14 @@ impl MutationPathBuilder for SetMutationBuilder {
 }
 
 impl SetMutationBuilder {
-    /// Build set example using extracted logic from `TypeInfo::build_type_example`
-    /// This is the static method version that calls `TypeInfo` for element types
+    /// Build set example using extracted logic from `TypeGuide::build_type_example`
+    /// This is the static method version that calls ``TypeGuide`` for element types
     pub fn build_set_example_static(
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
     ) -> Value {
-        // Extract element type using the same logic as TypeInfo
+        // Extract element type using the same logic as `TypeGuide`
         let item_type = schema
             .get_field(SchemaField::Items)
             .and_then(SchemaField::extract_field_type);

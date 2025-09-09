@@ -483,14 +483,14 @@ impl StructMutationBuilder {
         }
     }
 
-    /// Build struct example using extracted logic from `TypeInfo::build_type_example`
-    /// This is the static method version that calls `TypeInfo` for field types
+    /// Build struct example using extracted logic from `TypeGuide::build_type_example`
+    /// This is the static method version that calls ``TypeGuide`` for field types
     pub fn build_struct_example_static(
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
     ) -> Value {
-        // Extract properties using the same logic as TypeInfo
+        // Extract properties using the same logic as `TypeGuide`
         schema
             .get_field(SchemaField::Properties)
             .map_or(json!(null), |properties| {
@@ -516,13 +516,13 @@ impl StructMutationBuilder {
         let mut example = serde_json::Map::new();
 
         for (field_name, field_schema) in props_map {
-            // Use TypeInfo to build example for each field type with depth tracking
+            // Use `TypeGuide` to build example for each field type with depth tracking
             let field_value = SchemaField::extract_field_type(field_schema)
                 .map(|field_type| {
                     ExampleBuilder::build_example(
                         &field_type,
                         registry,
-                        depth, // Don't increment - TypeInfo will handle it
+                        depth, // Don't increment - `TypeGuide` will handle it
                     )
                 })
                 .unwrap_or(json!(null));

@@ -259,14 +259,14 @@ impl MutationPathBuilder for TupleMutationBuilder {
 }
 
 impl TupleMutationBuilder {
-    /// Build tuple example using extracted logic from `TypeInfo::build_type_example`
-    /// This is the static method version that calls `TypeInfo` for element types
+    /// Build tuple example using extracted logic from `TypeGuide::build_type_example`
+    /// This is the static method version that calls ``TypeGuide`` for element types
     pub fn build_tuple_example_static(
         schema: &Value,
         registry: &HashMap<BrpTypeName, Value>,
         depth: RecursionDepth,
     ) -> Value {
-        // Extract prefixItems using the same logic as TypeInfo
+        // Extract prefixItems using the same logic as `TypeGuide`
         schema
             .get_field(SchemaField::PrefixItems)
             .and_then(Value::as_array)
@@ -306,7 +306,7 @@ impl TupleMutationBuilder {
                                 .get(&KnowledgeKey::exact(&element_type))
                                 .map_or_else(
                                     || {
-                                        // Use TypeInfo instead of null
+                                        // Use `TypeGuide` instead of null
                                         ExampleBuilder::build_example(
                                             &element_type,
                                             registry,
@@ -379,7 +379,7 @@ impl TupleMutationBuilder {
                 .get(&KnowledgeKey::exact(&element_type))
                 .map_or_else(
                     || {
-                        // Use TypeInfo instead of null
+                        // Use `TypeGuide` instead of null
                         ExampleBuilder::build_example(&element_type, &ctx.registry, depth)
                     },
                     |k| k.example().clone(),
