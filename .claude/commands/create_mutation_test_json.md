@@ -181,38 +181,17 @@
     fi
     ```
 
-    2. **Run quick comparison**:
+    2. **Run structured comparison**:
     ```bash
-    .claude/commands/scripts/compare_mutations_quick.sh
+    .claude/commands/scripts/create_mutation_test_json_structured_comparison.sh $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
     ```
 
-    3. **Run detailed comparison using compare_mutations.py**:
-
-    **IMPORTANT**: Use `compare_mutations.py` (NOT `compare_mutations_check_type.py` which is only for keyword actions)
-
-    Run comprehensive comparison between baseline and current:
-    ```bash
-    python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
-    ```
-
-    Run comparison between previous and current:
-    ```bash
-    python3 .claude/commands/scripts/compare_mutations.py $TMPDIR/all_types_previous.json $TMPDIR/all_types.json
-    ```
-
-    Present detailed analysis including:
-    - Exact differences found
-    - Types with changed mutation paths
-    - New/removed paths
-    - Format changes
-    - Assessment of significance
-
-    4. **Analyze comparison results**:
-    - Note total number of differences found
-    - Identify types of changes (new paths, removed paths, format changes)
-    - Assess significance of changes
-
-    5. **Prepare validation summary** for user presentation
+    This single comprehensive comparison provides:
+    - Binary identity check with early exit if identical
+    - Structured metadata analysis (type counts, spawn support, mutations)
+    - Type-level change detection (modified, new, removed types)
+    - Change assessment and recommendation
+    - Pre-formatted output ready for user presentation
 </ComparisonValidation>
 
 ## STEP 7: USER VALIDATION
@@ -237,14 +216,10 @@ Present the comparison analysis in this format:
 - **Types with mutations**: [count from statistics]
 
 ### Comparison with Baseline:
-[Summary of differences from comparison, e.g.:]
-- **No differences found** - All mutation paths identical to baseline
-- OR **[X] differences found**:
-  - [List key differences]
-  - [Assess significance]
+[Present the structured comparison output directly - it's already formatted for user consumption]
 
 ### Baseline Promotion Decision
-The comparison shows [summary]. Should I mark this version as the new good baseline?
+Based on the comparison results above, should I mark this version as the new good baseline?
 
 ## Available Actions
 - **promote** - Mark this version as the new good baseline
