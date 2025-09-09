@@ -16,48 +16,48 @@ Now we need to complete Phase 5 (ExampleBuilder removal) and potentially impleme
 Add the infrastructure for incremental migration to enforced protocol, allowing builders to migrate one at a time while removing ExampleBuilder references.
 
 ### Step 1: Add New Trait Methods to MutationPathBuilder
-In `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs`:
+In `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`:
 
 ```rust
 pub trait MutationPathBuilder {
     // Existing methods stay unchanged
-    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) 
+    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>>;
-    
+
     fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
         // Existing implementation stays
     }
-    
+
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
         // Current default with ExampleBuilder - will be removed as we migrate
         use super::example_builder::ExampleBuilder;
         ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth)
     }
-    
+
     // NEW METHODS FOR PROTOCOL MIGRATION
-    
+
     /// Indicates if this builder has been migrated to the new protocol
     fn is_migrated(&self) -> bool {
         false  // Default: not migrated
     }
-    
+
     /// Collect child contexts that need recursion (for depth-first traversal)
     fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
         vec![]  // Default: no children (leaf types)
     }
-    
+
     /// Assemble parent example from child examples (post-order assembly)
     fn assemble_from_children(&self, ctx: &RecursionContext, children: HashMap<String, Value>) -> Value {
         // Default: fallback to old build_schema_example for unmigrated builders
         self.build_schema_example(ctx, RecursionDepth::ZERO)
     }
-    
+
     /// Controls whether child paths are included in the final mutation paths result
-    /// 
+    ///
     /// Container types (Map, Set) that only support whole-value replacement should return false.
     /// This prevents exposing invalid mutation paths for child elements that cannot be
     /// individually addressed through BRP's reflection system.
-    /// 
+    ///
     /// Default: true (include child paths for structured types)
     fn include_child_paths(&self) -> bool {
         true  // Default: include child paths (for structured types like Struct, Array, Tuple)
@@ -68,7 +68,7 @@ pub trait MutationPathBuilder {
 ```
 
 ### Step 2: Create ProtocolEnforcer Wrapper
-Create new file `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/protocol_enforcer.rs`:
+Create new file `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`:
 
 ```rust
 use std::collections::HashMap;
@@ -76,7 +76,7 @@ use serde_json::{Value, json};
 use super::{MutationPathBuilder, RecursionContext, MutationPathInternal, MutationStatus};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::type_kind::TypeKind;
-use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
 pub struct ProtocolEnforcer {
@@ -90,7 +90,7 @@ impl ProtocolEnforcer {
 }
 
 impl MutationPathBuilder for ProtocolEnforcer {
-    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) 
+    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>> {
         // 1. Check depth limit for THIS level
         if depth.exceeds_limit() {
@@ -103,7 +103,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 error_reason: Some("Recursion limit exceeded".to_string()),
             }]);
         }
-        
+
         // 2. Check knowledge for THIS level
         if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
             return Ok(vec![MutationPathInternal {
@@ -115,12 +115,12 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 error_reason: None,
             }]);
         }
-        
+
         // 3. Collect children for depth-first traversal
         let children = self.inner.collect_children(ctx);
         let mut all_paths = vec![];
         let mut child_examples = HashMap::new();
-        
+
         // 4. Recurse to each child (they handle their own protocol)
         for (name, child_ctx) in children {
             // Get child's schema and create its builder
@@ -129,29 +129,29 @@ impl MutationPathBuilder for ProtocolEnforcer {
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
             let child_builder = child_kind.builder();
-            
+
             // Child handles its OWN depth increment and protocol
             // If child is migrated -> wrapped with ProtocolEnforcer
             // If not migrated -> uses old implementation
             let child_paths = child_builder.build_paths(&child_ctx, depth.increment())?;
-            
+
             // Extract child's example from its root path
             let child_example = child_paths.first()
                 .map(|p| p.example.clone())
                 .unwrap_or(json!(null));
-            
+
             child_examples.insert(name, child_example);
-            
+
             // Only include child paths if the builder wants them
             // Container types (like Maps) don't want child paths exposed
             if self.inner.include_child_paths() {
                 all_paths.extend(child_paths);
             }
         }
-        
+
         // 5. Assemble THIS level from children (post-order)
         let parent_example = self.inner.assemble_from_children(ctx, child_examples);
-        
+
         // 6. Add THIS level's path at the beginning
         all_paths.insert(0, MutationPathInternal {
             path: ctx.mutation_path.clone(),
@@ -161,27 +161,27 @@ impl MutationPathBuilder for ProtocolEnforcer {
             mutation_status: MutationStatus::Mutatable,
             error_reason: None,
         });
-        
+
         Ok(all_paths)
     }
-    
+
     // Delegate all other methods to inner builder
     fn is_migrated(&self) -> bool {
         self.inner.is_migrated()
     }
-    
+
     fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
         self.inner.collect_children(ctx)
     }
-    
+
     fn assemble_from_children(&self, ctx: &RecursionContext, children: HashMap<String, Value>) -> Value {
         self.inner.assemble_from_children(ctx, children)
     }
-    
+
     fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
         self.inner.build_example_with_knowledge(ctx, depth)
     }
-    
+
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
         self.inner.build_schema_example(ctx, depth)
     }
@@ -189,7 +189,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
 ```
 
 ### Step 3: Update TypeKind::builder() to Check Migration Status
-In `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/type_kind.rs`:
+In `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_kind.rs`:
 
 ```rust
 use super::protocol_enforcer::ProtocolEnforcer;
@@ -206,7 +206,7 @@ impl TypeKind {
             Self::Enum => Box::new(EnumMutationBuilder),
             Self::Value => Box::new(DefaultMutationBuilder),
         };
-        
+
         // Wrap with protocol enforcer if migrated
         if base_builder.is_migrated() {
             Box::new(ProtocolEnforcer::new(base_builder))
@@ -218,7 +218,7 @@ impl TypeKind {
 ```
 
 ### Step 4: Add Protocol Enforcer Module
-In `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs`:
+In `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`:
 
 ```rust
 mod protocol_enforcer;
@@ -246,7 +246,7 @@ Remove all ExampleBuilder references and replace with trait dispatch through Typ
 Found 16 references across 9 files that need conversion:
 
 1. **default_builder.rs:26** - In `build_paths()` method
-2. **map_builder.rs:161** - Error path fallback  
+2. **map_builder.rs:161** - Error path fallback
 3. **array_builder.rs:220** - Static method for array elements
 4. **list_builder.rs:165** - Static method for list elements
 5. **set_builder.rs:120** - Static method for set elements
@@ -330,20 +330,20 @@ Each builder migration follows this pattern:
 #### Final Implementation:
 ```rust
 impl MutationPathBuilder for DefaultMutationBuilder {
-    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
+    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>> {
         tracing::error!("DefaultMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
         panic!("DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
     }
-    
+
     fn is_migrated(&self) -> bool {
         true // MIGRATED!
     }
-    
+
     fn collect_children(&self, _ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
         vec![] // Leaf type - no children
     }
-    
+
     fn assemble_from_children(&self, _ctx: &RecursionContext, _children: HashMap<String, Value>) -> Value {
         json!(null) // Leaf types return null, knowledge handled by ProtocolEnforcer
     }
@@ -351,7 +351,7 @@ impl MutationPathBuilder for DefaultMutationBuilder {
 ```
 
 **Lessons Learned**:
-- ✅ Protocol enforcer pattern works correctly 
+- ✅ Protocol enforcer pattern works correctly
 - ✅ Panic guards prevent direct build_paths() calls
 - ✅ Simple leaf type implementation confirmed
 - ⚠️ Revealed output format regressions requiring fixes in enum/struct builders
@@ -367,17 +367,17 @@ Self::Struct => self.builder().build_paths(ctx, builder_depth),
 
 ```rust
 impl MutationPathBuilder for StructMutationBuilder {
-    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
+    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>> {
         // IMPORTANT: Add panic to ensure this is never called when migrated
         tracing::error!("StructMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
         panic!("StructMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
     }
-    
+
     fn is_migrated(&self) -> bool {
         true  // MIGRATED!
     }
-    
+
     fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
         // Identify all struct fields that need recursion
         ctx.require_schema()
@@ -400,7 +400,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                     .collect()
             })
     }
-    
+
     fn assemble_from_children(&self, _ctx: &RecursionContext, children: HashMap<String, Value>) -> Value {
         // Assemble struct from field examples
         let mut obj = serde_json::Map::new();
@@ -409,7 +409,7 @@ impl MutationPathBuilder for StructMutationBuilder {
         }
         json!(obj)
     }
-    
+
     // DELETE build_schema_example() - no longer needed
     // DELETE build_struct_example_from_properties() static method
 }
@@ -496,7 +496,7 @@ Following the same order as the original ExampleBuilder removal:
 
 #### Step 25: Remove all ExampleBuilder import statements
 Remove these imports from all files:
-- `use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;`
+- `use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;`
 
 Files to clean:
 - default_builder.rs
@@ -521,14 +521,14 @@ Delete these static methods as they're no longer needed:
 - `EnumMutationBuilder::build_enum_example()`
 
 #### Step 27: Delete example_builder.rs
-- Delete file: `mcp/src/brp_tools/brp_type_schema/example_builder.rs`
-- Remove module declaration from `mcp/src/brp_tools/brp_type_schema/mod.rs`:
+- Delete file: `mcp/src/brp_tools/brp_type_guide/example_builder.rs`
+- Remove module declaration from `mcp/src/brp_tools/brp_type_guide/mod.rs`:
   ```rust
   // DELETE: mod example_builder;
   ```
 
 #### Step 28: Delete TypeInfo methods
-In `mcp/src/brp_tools/brp_type_schema/type_info.rs`, delete:
+In `mcp/src/brp_tools/brp_type_guide/type_info.rs`, delete:
 - `build_type_example()` method (lines ~310-410)
 - `build_spawn_format()` method (if it still exists)
 - Any helper methods only used by these
@@ -546,7 +546,7 @@ Consider whether to:
 Once all builders are migrated and using ProtocolEnforcer, make one atomic change to move protocol into trait.
 
 ### Step 1: Create New PathBuilder Trait
-In `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs`:
+In `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`:
 
 ```rust
 /// Trait that builders actually implement
@@ -557,7 +557,7 @@ pub trait PathBuilder {
 
 /// Blanket implementation that provides build_paths with enforced protocol
 impl<T: PathBuilder> MutationPathBuilder for T {
-    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) 
+    fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>> {
         // EXACT copy of ProtocolEnforcer::build_paths logic
         // 1. Check depth limit
@@ -571,7 +571,7 @@ impl<T: PathBuilder> MutationPathBuilder for T {
                 error_reason: Some("Recursion limit exceeded".to_string()),
             }]);
         }
-        
+
         // 2. Check knowledge
         if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
             return Ok(vec![MutationPathInternal {
@@ -583,31 +583,31 @@ impl<T: PathBuilder> MutationPathBuilder for T {
                 error_reason: None,
             }]);
         }
-        
+
         // 3. Collect children
         let children = self.collect_children(ctx);
         let mut all_paths = vec![];
         let mut child_examples = HashMap::new();
-        
+
         // 4. Recurse to children
         for (name, child_ctx) in children {
             let child_schema = child_ctx.require_schema().unwrap_or(&json!(null));
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
             let child_builder = child_kind.builder();
-            
+
             let child_paths = child_builder.build_paths(&child_ctx, depth.increment())?;
             let child_example = child_paths.first()
                 .map(|p| p.example.clone())
                 .unwrap_or(json!(null));
-            
+
             child_examples.insert(name, child_example);
             all_paths.extend(child_paths);
         }
-        
+
         // 5. Assemble parent
         let parent_example = self.assemble_from_children(ctx, child_examples);
-        
+
         // 6. Add parent path
         all_paths.insert(0, MutationPathInternal {
             path: ctx.mutation_path.clone(),
@@ -617,10 +617,10 @@ impl<T: PathBuilder> MutationPathBuilder for T {
             mutation_status: MutationStatus::Mutatable,
             error_reason: None,
         });
-        
+
         Ok(all_paths)
     }
-    
+
     // These methods are no longer needed
     fn is_migrated(&self) -> bool { true }
     fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
@@ -670,7 +670,7 @@ impl TypeKind {
 1. Delete `protocol_enforcer.rs`
 2. Remove `mod protocol_enforcer;` from mod.rs
 3. Remove `is_migrated()`, `build_example_with_knowledge()`, `build_schema_example()` from trait
-4. Delete `example_builder.rs` 
+4. Delete `example_builder.rs`
 5. Remove all ExampleBuilder imports
 
 ### Phase 6 TODO List

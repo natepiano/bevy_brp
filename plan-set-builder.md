@@ -23,10 +23,10 @@ Migrate SetMutationBuilder to the new protocol enforcer pattern, following the s
 
 ### 1. build_paths() Method
 ```rust
-fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
+fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
     -> Result<Vec<MutationPathInternal>> {
     tracing::error!(
-        "SetMutationBuilder::build_paths() called directly! Type: {}", 
+        "SetMutationBuilder::build_paths() called directly! Type: {}",
         ctx.type_name()
     );
     panic!(
@@ -57,7 +57,7 @@ fn include_child_paths(&self) -> bool {
     //
     // Sets are terminal mutation points. Elements have no stable
     // addresses (no indices or keys) and cannot be individually mutated.
-    // Only the entire set can be replaced. Mutating an element could 
+    // Only the entire set can be replaced. Mutating an element could
     // change its hash, breaking set invariants.
     //
     // The recursion still happens (we need element examples to build the set),
@@ -73,15 +73,15 @@ fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionCont
         tracing::warn!("No schema found for set type: {}", ctx.type_name());
         return vec![];
     };
-    
+
     // Extract element type from items field using SchemaField::extract_field_type
     // This follows the same pattern as MapMutationBuilder
     let element_type = schema
         .get_field(SchemaField::Items)
         .and_then(SchemaField::extract_field_type);
-    
+
     let mut children = vec![];
-    
+
     if let Some(elem_t) = element_type {
         // Create context for element recursion
         let elem_path_kind = super::super::path_kind::PathKind::new_root_value(elem_t);
@@ -93,7 +93,7 @@ fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionCont
             ctx.type_name()
         );
     }
-    
+
     children
 }
 ```
@@ -107,7 +107,7 @@ fn assemble_from_children(
 ) -> Value {
     // At this point, children contains COMPLETE examples:
     // - "element": Full example for the element type
-    
+
     let Some(element_example) = children.get("element") else {
         tracing::warn!(
             "Missing element example for set type {}, using fallback",
@@ -115,7 +115,7 @@ fn assemble_from_children(
         );
         return json!([]);  // Empty set as fallback
     };
-    
+
     // Create array with 2 example elements
     // For Sets, these represent unique values to add
     // In real usage, these would be different unique elements
@@ -126,10 +126,10 @@ fn assemble_from_children(
 ### 6. Code to Remove
 - Delete the entire `build_schema_example()` method if it exists
 - Delete `build_set_example_static()` static method (currently at line 120)
-- Remove ExampleBuilder import: `use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;`
+- Remove ExampleBuilder import: `use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;`
 
 ### 7. TypeKind Update
-In `mcp/src/brp_tools/brp_type_schema/mutation_path_builder/type_kind.rs`, update the build_paths match arm:
+In `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_kind.rs`, update the build_paths match arm:
 
 ```rust
 // BEFORE:
@@ -184,7 +184,7 @@ Test with various Set types:
 - [ ] Add panic to `build_paths()`
 - [ ] Set `is_migrated()` to true
 - [ ] Add `include_child_paths()` returning false
-- [ ] Implement `collect_children()` 
+- [ ] Implement `collect_children()`
 - [ ] Implement `assemble_from_children()`
 - [ ] Delete `build_schema_example()`
 - [ ] Delete `build_set_example_static()`

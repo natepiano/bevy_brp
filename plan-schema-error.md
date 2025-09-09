@@ -7,7 +7,7 @@ Replace panics and incorrect fallback values in mutation path builders with prop
 
 ## COMPREHENSIVE CHANGES REQUIRED
 - **2 panics to replace** (map_builder.rs:35, default_builder.rs:30)
-- **2 incorrect fallback returns** (map_builder.rs:118,126) 
+- **2 incorrect fallback returns** (map_builder.rs:118,126)
 - **14 json! fallback returns** that may need error handling
 - **30+ unwrap_or/unwrap_or_else calls** to review
 - **50+ tracing calls** to clean up
@@ -53,13 +53,13 @@ For each step in the implementation sequence:
 
 **Changes to make:**
 1. Update `Error::SchemaProcessing` from simple String to structured fields
-2. Update Debug implementation  
+2. Update Debug implementation
 3. Add builder methods for convenience
 
 **Files to modify:**
 - `/mcp/src/error.rs`
 
-**Expected outcome:** 
+**Expected outcome:**
 - Code compiles successfully
 - No functional changes yet (SchemaProcessing isn't used anywhere)
 
@@ -73,7 +73,7 @@ For each step in the implementation sequence:
 2. Update default implementation to wrap return in `Ok(...)`
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
 
 **Expected outcome:**
 - Code compiles (default impl prevents breakage)
@@ -90,8 +90,8 @@ For each step in the implementation sequence:
 3. Both use `Err(Error::InvalidState(...).into())`
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/map_builder.rs`
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/default_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs`
 
 **Expected outcome:**
 - No more panics in migrated builders
@@ -109,7 +109,7 @@ For each step in the implementation sequence:
 4. Wrap successful return in `Ok(...)`
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/map_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
 
 **Expected outcome:**
 - Map builder correctly reports missing children
@@ -125,7 +125,7 @@ For each step in the implementation sequence:
 2. Wrap `json!(null)` return in `Ok(...)`
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/default_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs`
 
 **Expected outcome:**
 - DefaultBuilder continues to work
@@ -143,7 +143,7 @@ For each step in the implementation sequence:
 4. Line 90: Handle missing child example properly
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/protocol_enforcer.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
 
 **Expected outcome:**
 - Full error propagation working
@@ -159,7 +159,7 @@ For each step in the implementation sequence:
 2. Simplify key serialization error handling
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/map_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
 
 **Expected outcome:**
 - Cleaner logs
@@ -197,9 +197,9 @@ For each step in the implementation sequence:
 3. **Batch 3**: Remove 20+ `tracing::error!` from enum_builder.rs
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/protocol_enforcer.rs`
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/struct_builder.rs`
-- `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/enum_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/struct_builder.rs`
+- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
 
 **Expected outcome:**
 - Clean production logs
@@ -254,7 +254,7 @@ impl Error {
             details: None,
         }
     }
-    
+
     pub fn schema_processing_for_type(
         type_name: impl Into<String>,
         operation: impl Into<String>,
@@ -275,7 +275,7 @@ impl Error {
 ### Update trait signature to propagate errors properly
 The `assemble_from_children` method should return `Result<Value>` instead of `Value`.
 
-**File:** `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs`
+**File:** `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
 ```rust
 fn assemble_from_children(
     &self,
@@ -445,7 +445,7 @@ Currently only 2 builders are migrated (`is_migrated() = true`):
 
 Need to eventually migrate:
 - StructBuilder (currently not migrated)
-- EnumBuilder (currently not migrated)  
+- EnumBuilder (currently not migrated)
 - ArrayBuilder (currently not migrated)
 - ListBuilder (currently not migrated)
 - SetBuilder (currently not migrated)
@@ -508,10 +508,10 @@ After implementation:
 
 ### Files That MUST Be Modified:
 1. `/mcp/src/error.rs` - Enhance SchemaProcessing error
-2. `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/mod.rs` - Update trait
-3. `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/map_builder.rs` - Fix panic and fallbacks
-4. `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/builders/default_builder.rs` - Fix panic
-5. `/mcp/src/brp_tools/brp_type_schema/mutation_path_builder/protocol_enforcer.rs` - Handle Results
+2. `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs` - Update trait
+3. `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs` - Fix panic and fallbacks
+4. `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs` - Fix panic
+5. `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs` - Handle Results
 
 ### Expected Outcome:
 - No more panics in builder code
