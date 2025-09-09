@@ -347,7 +347,7 @@ impl ToolName {
                 EnvironmentImpact::ReadOnly,
             ),
             Self::BevyRegistrySchema => Annotation::new(
-                "Get Type Schemas",
+                "Get Type Schemas from Registry",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
