@@ -23,13 +23,15 @@ use bevy::core_pipeline::contrast_adaptive_sharpening::ContrastAdaptiveSharpenin
 use bevy::core_pipeline::dof::DepthOfField;
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::post_process::ChromaticAberration;
+use bevy::core_pipeline::prepass::MotionVectorPrepass;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::pbr::irradiance_volume::IrradianceVolume;
 use bevy::pbr::prelude::EnvironmentMapLight;
 use bevy::pbr::{
-    AmbientLight, LightProbe, ScreenSpaceAmbientOcclusion, ScreenSpaceReflections, VolumetricFog,
+    AmbientLight, LightProbe, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusion, 
+    ScreenSpaceReflections, VolumetricFog, VolumetricLight,
 };
 use bevy::prelude::*;
 use bevy::render::camera::{MipBias, TemporalJitter};
@@ -346,6 +348,11 @@ fn main() {
         .register_type::<GamepadSettings>()
         // Register Screenshot type for BRP access
         .register_type::<Screenshot>()
+        // Register missing components for BRP access
+        .register_type::<MotionVectorPrepass>()
+        .register_type::<NotShadowCaster>()
+        .register_type::<NotShadowReceiver>()
+        .register_type::<VolumetricLight>()
         .add_systems(Startup, (setup_test_entities, setup_ui))
         .add_systems(PostStartup, setup_skybox_test)
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
@@ -505,6 +512,7 @@ fn spawn_visual_entities(commands: &mut Commands) {
         Name::new("DirectionalLightTestEntity"),
         bevy::pbr::CascadeShadowConfig::default(),
         bevy::pbr::Cascades::default(),
+        VolumetricLight, // For testing mutations - enables light shafts/god rays
     ));
 
     // Entity with SpotLight for testing mutations
@@ -535,6 +543,24 @@ fn spawn_visual_entities(commands: &mut Commands) {
             },
         },
         Name::new("DistanceFogTestEntity"),
+    ));
+
+    // Entity with NotShadowCaster for testing mutations
+    commands.spawn((
+        Mesh3d(Handle::default()), // Dummy mesh handle
+        MeshMaterial3d::<StandardMaterial>(Handle::default()), // Dummy material handle
+        Transform::from_xyz(-2.0, 1.0, 0.0),
+        NotShadowCaster, // For testing mutations
+        Name::new("NotShadowCasterTestEntity"),
+    ));
+
+    // Entity with NotShadowReceiver for testing mutations  
+    commands.spawn((
+        Mesh3d(Handle::default()), // Dummy mesh handle
+        MeshMaterial3d::<StandardMaterial>(Handle::default()), // Dummy material handle
+        Transform::from_xyz(2.0, 1.0, 0.0),
+        NotShadowReceiver, // For testing mutations
+        Name::new("NotShadowReceiverTestEntity"),
     ));
 }
 
@@ -874,6 +900,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         ScreenSpaceAmbientOcclusion::default(), // For testing mutations
         ScreenSpaceReflections::default(),      // For testing mutations
         VolumetricFog::default(),               // For testing mutations
+        MotionVectorPrepass,                    // For testing mutations
     ));
 
     // Background

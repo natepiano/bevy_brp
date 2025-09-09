@@ -297,12 +297,17 @@ Each builder migration follows this pattern:
 4. **IMPORTANT**: Keep `build_paths()` but make it panic with tracing::error! and panic!
    - This ensures it's never called when wrapped by ProtocolEnforcer
    - The panic message should include the type name for debugging
-5. Delete old methods (build_schema_example, static helper methods)
+5. **CRITICAL**: Update TypeKind::build_paths() to use trait dispatch for this type
+   - Change from direct call: `BuilderName.build_paths(ctx, depth)`
+   - To trait dispatch: `self.builder().build_paths(ctx, depth)`
+   - This ensures the ProtocolEnforcer wrapper is used
+6. Delete old methods (build_schema_example, static helper methods)
 
 ### Builder 1: DefaultMutationBuilder ✅ COMPLETED
 
 **Status**: Migration complete with fixes applied
 **Commit**: 87d9e77 (WIP: Camera crash fixed but enum regression in spawn_format)
+**TypeKind Dispatch**: ✅ Updated to use `self.builder().build_paths()` for Value type
 
 #### Final Implementation:
 ```rust
@@ -335,6 +340,13 @@ impl MutationPathBuilder for DefaultMutationBuilder {
 ### Builder 2: StructMutationBuilder (Container Type Example)
 
 #### After Migration:
+
+**CRITICAL**: Also update TypeKind::build_paths() in type_kind.rs:
+```rust
+// Change line for Struct type:
+Self::Struct => self.builder().build_paths(ctx, builder_depth),
+```
+
 ```rust
 impl MutationPathBuilder for StructMutationBuilder {
     fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) 
@@ -391,49 +403,59 @@ impl MutationPathBuilder for StructMutationBuilder {
 Following the same order as the original ExampleBuilder removal:
 
 1. ✅ **DefaultMutationBuilder** - COMPLETED in commit 87d9e77
+   - ✅ TypeKind: `Self::Value => self.builder().build_paths(ctx, builder_depth)`
 
 2. **MapMutationBuilder** (error path only) - Simple error case
    - Fix line 161 error path
+   - **TypeKind**: Update `Self::Map => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh  
    - **STOP and ask user to validate and discuss**
 
 3. **ArrayMutationBuilder** - Single child type
    - Fix line 220 static method, implement protocol methods
+   - **TypeKind**: Update `Self::Array => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 4. **ListMutationBuilder** - Single child type
    - Fix line 165 static method, implement protocol methods
+   - **TypeKind**: Update `Self::List => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 5. **SetMutationBuilder** - Single child type
    - Fix line 120 static method, implement protocol methods
+   - **TypeKind**: Update `Self::Set => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 6. **TupleMutationBuilder** - Multiple children
    - Fix lines 390, 285, 317, implement protocol methods
+   - **TypeKind**: Update `Self::Tuple | Self::TupleStruct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 7. **StructMutationBuilder** - Named fields
    - Fix line 403 static method, implement protocol methods
+   - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 8. **MapMutationBuilder** (complete) - Key/value pairs
    - Fix lines 79-80, 132-133, implement full protocol methods
+   - **TypeKind**: Already updated in step 2
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 9. **EnumMutationBuilder** - Most complex
    - Fix lines 170, 193, implement protocol methods
+   - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 10. **mod.rs default trait** - Must be last
     - Fix line 79 default implementation
+    - No TypeKind change needed (trait default)
     - Run build-check.sh
     - **STOP and ask user to validate and discuss**
 25. Remove all ExampleBuilder import statements
@@ -674,11 +696,23 @@ For each migration:
 - Implement collect_children()
 - Implement assemble_from_children()
 - Keep build_paths() but make it panic (with tracing::error! and panic!)
+- **Update TypeKind::build_paths() to use self.builder() for this type**
 - Delete build_schema_example() override
 - Delete static helper methods
 - Remove ExampleBuilder import
 - Run build-check.sh
 - **STOP: Ask user to validate and discuss each builder migration**
+
+#### TypeKind::build_paths() Dispatch Pattern
+In `type_kind.rs`, update the match arm for each migrated type:
+```rust
+// BEFORE migration (direct call):
+Self::Map => MapMutationBuilder.build_paths(ctx, builder_depth),
+
+// AFTER migration (trait dispatch through builder()):
+Self::Map => self.builder().build_paths(ctx, builder_depth),
+```
+This ensures the ProtocolEnforcer wrapper is used for migrated builders.
 
 ### Phase 6: Atomic Change to PathBuilder
 1. Create PathBuilder trait

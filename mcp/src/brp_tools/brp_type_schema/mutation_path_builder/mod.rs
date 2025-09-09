@@ -9,10 +9,7 @@ mod types;
 
 use std::collections::HashMap;
 
-pub use builders::{
-    ArrayMutationBuilder, EnumMutationBuilder, EnumVariantInfo, ListMutationBuilder,
-    MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
-};
+pub use builders::EnumVariantInfo;
 pub use mutation_knowledge::KnowledgeKey;
 pub use path_kind::PathKind;
 pub use recursion_context::RecursionContext;
