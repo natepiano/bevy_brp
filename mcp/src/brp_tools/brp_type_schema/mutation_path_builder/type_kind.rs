@@ -174,7 +174,7 @@ impl MutationPathBuilder for TypeKind {
             Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx, builder_depth),
             Self::Array => ArrayMutationBuilder.build_paths(ctx, builder_depth),
             Self::List => ListMutationBuilder.build_paths(ctx, builder_depth),
-            Self::Map => MapMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Map => self.builder().build_paths(ctx, builder_depth),
             Self::Set => SetMutationBuilder.build_paths(ctx, builder_depth),
             Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
             Self::Value => {

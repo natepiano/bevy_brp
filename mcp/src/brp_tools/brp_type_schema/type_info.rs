@@ -157,7 +157,7 @@ impl TypeInfo {
 
     // Private helper methods
 
-    /// Extract spawn format from root mutation path  
+    /// Extract spawn format from root mutation path
     /// Uses the root path `""` example as the spawn format for consistency
     /// Should only be called for types that support spawn/insert operations
     fn extract_spawn_format_from_paths(
@@ -236,11 +236,8 @@ impl TypeInfo {
         let mut result = HashMap::new();
 
         for path in paths {
-            // Generate description using the context
-            let description = path.path_kind.description();
-
             // Create MutationPathInfo from MutationPath
-            let path_info = MutationPath::from_mutation_path_internal(path, description, registry);
+            let path_info = MutationPath::from_mutation_path_internal(path, registry);
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."

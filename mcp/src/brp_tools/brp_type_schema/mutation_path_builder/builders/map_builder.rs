@@ -9,14 +9,13 @@
 
 use std::collections::HashMap;
 
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 
 use super::super::MutationPathBuilder;
 use super::super::mutation_support::MutationSupport;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_schema::constants::RecursionDepth;
-use crate::brp_tools::brp_type_schema::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_schema::response_types::{BrpTypeName, SchemaField};
 use crate::error::Result;
 use crate::string_traits::JsonFieldAccess;
@@ -27,149 +26,222 @@ impl MutationPathBuilder for MapMutationBuilder {
     fn build_paths(
         &self,
         ctx: &RecursionContext,
-        depth: RecursionDepth,
+        _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        if ctx.require_schema().is_none() {
-            return Ok(vec![Self::build_not_mutatable_path(
-                ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
-            )]);
-        }
-
-        // Maps can only be mutated at the top level - no individual key access
-        // Generate the example using build_schema_example
-        let example = self.build_schema_example(ctx, depth);
-
-        Ok(vec![MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example,
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
-            error_reason: None,
-        }])
+        tracing::error!(
+            "MapMutationBuilder::build_paths() called directly! Type: {}",
+            ctx.type_name()
+        );
+        panic!(
+            "MapMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
+            ctx.type_name()
+        );
     }
 
-    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
+    fn is_migrated(&self) -> bool {
+        true
+    }
+    
+    fn include_child_paths(&self) -> bool {
+        // Maps DON'T include child paths in the result
+        // 
+        // Why: A HashMap<String, Transform> should only expose:
+        //   Path: ""  ->  {"key1": {transform1}, "key2": {transform2}}
+        // 
+        // It should NOT expose Transform's internal paths like:
+        //   Path: ".rotation"     -> [0,0,0,1]  // Makes no sense for a map!
+        //   Path: ".rotation.x"   -> 0.0        // These aren't valid map mutations
+        // 
+        // The recursion still happens (we need Transform examples to build the map),
+        // but those paths aren't included in the final mutation paths list.
+        false
+    }
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
+        tracing::warn!(
+            "MapMutationBuilder::collect_children called for type: {}",
+            ctx.type_name()
+        );
+
         let Some(schema) = ctx.require_schema() else {
-            return json!(null);
+            tracing::warn!("No schema found for map type: {}", ctx.type_name());
+            return vec![];
         };
 
+        tracing::warn!(
+            "Map schema found for type: {}, schema: {}",
+            ctx.type_name(),
+            schema
+        );
+        
+        // Debug schema structure in detail
+        tracing::warn!("Schema keys: {:?}", schema.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+        if let Some(obj) = schema.as_object() {
+            for (key, value) in obj {
+                tracing::warn!("Schema field '{}': {}", key, value);
+            }
+        }
+
+        // Debug: Check what SchemaField::KeyType actually produces
+        tracing::warn!("SchemaField::KeyType as_ref: '{}'", SchemaField::KeyType.as_ref());
+        
         // Extract key and value types from schema
         let key_type = schema
             .get_field(SchemaField::KeyType)
-            .and_then(|key_field| key_field.get_field(SchemaField::Type))
-            .and_then(|type_ref| type_ref.as_str())
-            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from);
+            .and_then(|key_field| {
+                tracing::warn!("Found KeyType field: {}", key_field);
+                key_field.get_field(SchemaField::Type)
+            })
+            .and_then(|type_field| {
+                tracing::warn!("Found key Type field: {}", type_field);
+                // Now get the $ref field from the type object
+                type_field.get_field(SchemaField::Ref)
+            })
+            .and_then(|ref_value| {
+                tracing::warn!("Found key $ref field: {}", ref_value);
+                ref_value.as_str()
+            })
+            .and_then(|type_ref| {
+                tracing::warn!("Key type ref string: {}", type_ref);
+                type_ref.strip_prefix("#/$defs/")
+            })
+            .map(|type_name| {
+                tracing::warn!("Extracted key type name: {}", type_name);
+                BrpTypeName::from(type_name)
+            });
 
         let value_type = schema
             .get_field(SchemaField::ValueType)
-            .and_then(|value_field| value_field.get_field(SchemaField::Type))
-            .and_then(|type_ref| type_ref.as_str())
-            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from);
+            .and_then(|value_field| {
+                tracing::warn!("Found ValueType field: {}", value_field);
+                value_field.get_field(SchemaField::Type)
+            })
+            .and_then(|type_field| {
+                tracing::warn!("Found value Type field: {}", type_field);
+                // Now get the $ref field from the type object
+                type_field.get_field(SchemaField::Ref)
+            })
+            .and_then(|ref_value| {
+                tracing::warn!("Found value $ref field: {}", ref_value);
+                ref_value.as_str()
+            })
+            .and_then(|type_ref| {
+                tracing::warn!("Value type ref string: {}", type_ref);
+                type_ref.strip_prefix("#/$defs/")
+            })
+            .map(|type_name| {
+                tracing::warn!("Extracted value type name: {}", type_name);
+                BrpTypeName::from(type_name)
+            });
 
-        // Generate proper examples for key and value types
-        let mut map = Map::new();
+        let mut children = vec![];
 
-        match (key_type, value_type) {
-            (Some(key_t), Some(val_t)) => {
-                // Build example key and value using ExampleBuilder
-                let key_example = ExampleBuilder::build_example(&key_t, &ctx.registry, depth);
-                let value_example = ExampleBuilder::build_example(&val_t, &ctx.registry, depth);
-
-                // Convert key to string (maps in JSON must have string keys)
-                let key_str = match key_example {
-                    Value::String(s) => s,
-                    Value::Number(n) => n.to_string(),
-                    other => {
-                        serde_json::to_string(&other).unwrap_or_else(|_| "example_key".to_string())
-                    }
-                };
-
-                map.insert(key_str, value_example);
-            }
-            _ => {
-                // Fallback to simple example if type extraction fails
-                map.insert("example_key".to_string(), json!("example_value"));
-            }
+        if let Some(key_t) = key_type {
+            tracing::info!("Creating context for key type: {}", key_t);
+            // Create context for key recursion
+            let key_path_kind = super::super::path_kind::PathKind::new_root_value(key_t);
+            let key_ctx = ctx.create_field_context(key_path_kind);
+            children.push(("key".to_string(), key_ctx));
+        } else {
+            tracing::warn!(
+                "Failed to extract key type from schema for type: {}",
+                ctx.type_name()
+            );
         }
 
-        json!(map)
+        if let Some(val_t) = value_type {
+            tracing::info!("Creating context for value type: {}", val_t);
+            // Create context for value recursion
+            let val_path_kind = super::super::path_kind::PathKind::new_root_value(val_t);
+            let val_ctx = ctx.create_field_context(val_path_kind);
+            children.push(("value".to_string(), val_ctx));
+        } else {
+            tracing::warn!(
+                "Failed to extract value type from schema for type: {}",
+                ctx.type_name()
+            );
+        }
+
+        tracing::info!(
+            "MapMutationBuilder::collect_children returning {} children for type: {}",
+            children.len(),
+            ctx.type_name()
+        );
+        children
+    }
+
+    fn assemble_from_children(
+        &self,
+        ctx: &RecursionContext,
+        children: HashMap<String, Value>,
+    ) -> Value {
+        // At this point, children contains COMPLETE examples:
+        // - "key": Full example for the key type (e.g., "example_key" for String)
+        // - "value": Full example for the value type (e.g., complete Transform JSON)
+        
+        tracing::warn!(
+            "MapMutationBuilder::assemble_from_children called for type: {}, received {} children",
+            ctx.type_name(),
+            children.len()
+        );
+        
+        for (name, value) in &children {
+            tracing::warn!("  Child '{}': {}", name, value);
+        }
+
+        let Some(key_example) = children.get("key") else {
+            tracing::warn!(
+                "Missing key example for map type {}, using fallback",
+                ctx.type_name()
+            );
+            return json!({"example_key": "example_value"});
+        };
+
+        let Some(value_example) = children.get("value") else {
+            tracing::warn!(
+                "Missing value example for map type {}, using fallback",
+                ctx.type_name()
+            );
+            return json!({"example_key": "example_value"});
+        };
+
+        // Convert key to string (JSON maps need string keys)
+        let key_str = match key_example {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            other => {
+                tracing::warn!(
+                    "Complex key type for map serialization, type: {}, falling back to generic key",
+                    ctx.type_name()
+                );
+                serde_json::to_string(other).unwrap_or_else(|e| {
+                    tracing::error!(
+                        "Failed to serialize map key for type {}: {}",
+                        ctx.type_name(),
+                        e
+                    );
+                    "example_key".to_string()
+                })
+            }
+        };
+
+        // Build final map with the COMPLETE value example
+        // For HashMap<String, Transform>, value_example is the full Transform
+        let mut map = serde_json::Map::new();
+        map.insert(key_str.clone(), value_example.clone());
+        let result = json!(map);
+        
+        tracing::warn!(
+            "MapMutationBuilder assembled final map for {}: {}",
+            ctx.type_name(),
+            result
+        );
+        
+        result
     }
 }
 
 impl MapMutationBuilder {
-    /// Build map example using extracted logic - creates example key-value pairs
-    /// This is the static method version that calls `ExampleBuilder` for key/value types
-    pub fn build_map_example_static(
-        schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Extract key and value types from schema
-        let key_type = schema
-            .get_field(SchemaField::KeyType)
-            .and_then(|key_field| key_field.get_field(SchemaField::Type))
-            .and_then(|type_ref| type_ref.as_str())
-            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from);
-
-        let value_type = schema
-            .get_field(SchemaField::ValueType)
-            .and_then(|value_field| value_field.get_field(SchemaField::Type))
-            .and_then(|type_ref| type_ref.as_str())
-            .and_then(|type_ref| type_ref.strip_prefix("#/$defs/"))
-            .map(BrpTypeName::from);
-
-        // Generate proper examples for key and value types
-        let mut map = Map::new();
-
-        match (key_type, value_type) {
-            (Some(key_t), Some(val_t)) => {
-                // Build example key and value using ExampleBuilder
-                let key_example = ExampleBuilder::build_example(&key_t, registry, depth);
-                let value_example = ExampleBuilder::build_example(&val_t, registry, depth);
-
-                // Convert key to string (maps in JSON must have string keys)
-                let key_str = match key_example {
-                    Value::String(s) => s,
-                    Value::Number(n) => n.to_string(),
-                    other => {
-                        serde_json::to_string(&other).unwrap_or_else(|_| "example_key".to_string())
-                    }
-                };
-
-                map.insert(key_str, value_example);
-            }
-            _ => {
-                // Fallback to simple example if type extraction fails
-                map.insert("example_key".to_string(), json!("example_value"));
-            }
-        }
-
-        json!(map)
-    }
-
-    /// Build a mutation path for the entire Map field
-    fn build_map_mutation_path(
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> MutationPathInternal {
-        // Generate example value for the Map type
-        let example = ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth);
-
-        MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example,
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
-            error_reason: None,
-        }
-    }
-
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
         ctx: &RecursionContext,

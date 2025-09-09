@@ -4,6 +4,7 @@ use std::fmt::Display;
 use serde::{Deserialize, Serialize};
 
 use super::super::response_types::BrpTypeName;
+use super::type_kind::TypeKind;
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum PathKind {
@@ -86,27 +87,37 @@ impl PathKind {
     }
 
     /// Generate a human-readable description for this mutation
-    pub fn description(&self) -> String {
+    pub fn description(&self, type_kind: &TypeKind) -> String {
+        let type_kind_str = if matches!(type_kind, TypeKind::Value) {
+            String::new()
+        } else {
+            format!(" {}", type_kind.as_ref().to_lowercase())
+        };
+        
         match self {
             Self::RootValue { type_name, .. } => {
-                format!("Replace the entire {type_name} value")
+                let short_name = type_name.short_name();
+                format!("Replace the entire {short_name}{type_kind_str}")
             }
             Self::StructField {
                 field_name,
                 parent_type,
                 ..
             } => {
-                format!("Mutate the {field_name} field of {parent_type}")
+                let short_parent = parent_type.short_name();
+                format!("Mutate the {field_name} field of {short_parent}{type_kind_str}")
             }
             Self::IndexedElement {
                 index, parent_type, ..
             } => {
-                format!("Mutate element {index} of {parent_type}")
+                let short_parent = parent_type.short_name();
+                format!("Mutate element {index} of {short_parent}{type_kind_str}")
             }
             Self::ArrayElement {
                 index, parent_type, ..
             } => {
-                format!("Mutate element [{index}] of {parent_type}")
+                let short_parent = parent_type.short_name();
+                format!("Mutate element [{index}] of {short_parent}{type_kind_str}")
             }
         }
     }

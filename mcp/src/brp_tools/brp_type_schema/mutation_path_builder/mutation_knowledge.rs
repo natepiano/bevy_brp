@@ -551,10 +551,6 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
                                                    * component access */
         );
         map.insert(
-            KnowledgeKey::generic("std::collections::HashMap"),
-            MutationKnowledge::simple(json!({})),
-        );
-        map.insert(
             KnowledgeKey::generic("std::collections::BTreeMap"),
             MutationKnowledge::simple(json!({})),
         );

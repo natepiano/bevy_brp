@@ -95,15 +95,17 @@ impl MutationPath {
     /// Create from `MutationPathInternal` with proper formatting logic
     pub fn from_mutation_path_internal(
         path: &MutationPathInternal,
-        description: String,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Self {
         // Get TypeKind for the field type
         let field_schema = registry.get(&path.type_name).unwrap_or(&Value::Null);
         let type_kind = TypeKind::from_schema(field_schema, &path.type_name);
 
+        // Generate description using the context
+        let description = path.path_kind.description(&type_kind);
+
         // Handle examples array creation - clean up variant context wrapping
-        let clean_example = if let Some(variant_context) = path.example.get("__variant_context") {
+        let clean_example = if let Some(_variant_context) = path.example.get("__variant_context") {
             // Extract the actual value from variant context wrapper
             if let Some(value) = path.example.get("value") {
                 value.clone()

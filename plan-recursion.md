@@ -51,6 +51,17 @@ pub trait MutationPathBuilder {
         // Default: fallback to old build_schema_example for unmigrated builders
         self.build_schema_example(ctx, RecursionDepth::ZERO)
     }
+    
+    /// Controls whether child paths are included in the final mutation paths result
+    /// 
+    /// Container types (Map, Set) that only support whole-value replacement should return false.
+    /// This prevents exposing invalid mutation paths for child elements that cannot be
+    /// individually addressed through BRP's reflection system.
+    /// 
+    /// Default: true (include child paths for structured types)
+    fn include_child_paths(&self) -> bool {
+        true  // Default: include child paths (for structured types like Struct, Array, Tuple)
+    }
 ```
 
 }
@@ -130,7 +141,12 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 .unwrap_or(json!(null));
             
             child_examples.insert(name, child_example);
-            all_paths.extend(child_paths);
+            
+            // Only include child paths if the builder wants them
+            // Container types (like Maps) don't want child paths exposed
+            if self.inner.include_child_paths() {
+                all_paths.extend(child_paths);
+            }
         }
         
         // 5. Assemble THIS level from children (post-order)
@@ -213,7 +229,9 @@ use protocol_enforcer::ProtocolEnforcer;
 
 1. ✅ Add is_migrated(), collect_children(), assemble_from_children() to MutationPathBuilder trait
    - **Adjustment**: Default `assemble_from_children()` returns `json!(null)` directly instead of calling `self.build_schema_example()` due to Rust trait object safety constraints
+   - **Addition**: Added `include_child_paths()` method to control whether child mutation paths are exposed in the final result. Default is `true` for structured types, but container types (Map, Set) override to `false`
 2. ✅ Create protocol_enforcer.rs file with ProtocolEnforcer implementation
+   - **Updated**: ProtocolEnforcer now checks `include_child_paths()` before extending the paths list with child paths
 3. ✅ Update TypeKind::builder() to wrap migrated builders
    - **Adjustment**: Added explicit type annotation `let base_builder: Box<dyn MutationPathBuilder>` to resolve type compatibility between match arms
 4. ✅ Add protocol_enforcer module to mod.rs
@@ -404,6 +422,7 @@ Following the same order as the original ExampleBuilder removal:
 
 1. ✅ **DefaultMutationBuilder** - COMPLETED in commit 87d9e77
    - ✅ TypeKind: `Self::Value => self.builder().build_paths(ctx, builder_depth)`
+   - ✅ **Note**: No need to override `include_child_paths()` - Default/Value types are leaf nodes with no children
 
 2. **MapMutationBuilder** (error path only) - Simple error case
    - Fix line 161 error path
@@ -413,42 +432,48 @@ Following the same order as the original ExampleBuilder removal:
 
 3. **ArrayMutationBuilder** - Single child type
    - Fix line 220 static method, implement protocol methods
+   - **Note**: No need to override `include_child_paths()` - Arrays expose indexed element paths
    - **TypeKind**: Update `Self::Array => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 4. **ListMutationBuilder** - Single child type
    - Fix line 165 static method, implement protocol methods
+   - **Note**: No need to override `include_child_paths()` - Lists expose indexed element paths like `[0].field`
    - **TypeKind**: Update `Self::List => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 5. **SetMutationBuilder** - Single child type
    - Fix line 120 static method, implement protocol methods
+   - **Special**: Add `include_child_paths() -> false` override (like MapMutationBuilder) with comment explaining Sets are terminal mutation points
    - **TypeKind**: Update `Self::Set => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 6. **TupleMutationBuilder** - Multiple children
    - Fix lines 390, 285, 317, implement protocol methods
+   - **Note**: No need to override `include_child_paths()` - Tuples expose indexed element paths
    - **TypeKind**: Update `Self::Tuple | Self::TupleStruct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
 7. **StructMutationBuilder** - Named fields
    - Fix line 403 static method, implement protocol methods
+   - **Note**: No need to override `include_child_paths()` - Structs expose field paths
    - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
 
-8. **MapMutationBuilder** (complete) - Key/value pairs
-   - Fix lines 79-80, 132-133, implement full protocol methods
-   - **TypeKind**: Already updated in step 2
-   - Run build-check.sh
-   - **STOP and ask user to validate and discuss**
+8. ✅ **MapMutationBuilder** (complete) - Key/value pairs - COMPLETED
+   - ✅ Implemented full protocol methods (is_migrated, collect_children, assemble_from_children)
+   - ✅ **Special**: Added `include_child_paths() -> false` override to prevent exposing invalid child mutation paths
+   - ✅ **TypeKind**: Already using trait dispatch
+   - ✅ Comment added explaining why Maps don't expose child paths (BRP doesn't support string keys for map mutations)
 
 9. **EnumMutationBuilder** - Most complex
    - Fix lines 170, 193, implement protocol methods
+   - **Note**: No need to override `include_child_paths()` - Enums expose variant field paths
    - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
    - **STOP and ask user to validate and discuss**
@@ -695,6 +720,7 @@ For each migration:
 - Implement is_migrated() -> true
 - Implement collect_children()
 - Implement assemble_from_children()
+- **For Map and Set only**: Override include_child_paths() -> false with explanatory comment
 - Keep build_paths() but make it panic (with tracing::error! and panic!)
 - **Update TypeKind::build_paths() to use self.builder() for this type**
 - Delete build_schema_example() override

@@ -73,6 +73,29 @@ impl BrpTypeName {
     pub fn base_type(&self) -> Option<&str> {
         self.0.split('<').next()
     }
+    
+    /// Get the short name (last segment after ::)
+    /// For example: `bevy_transform::components::transform::Transform` returns `Transform`
+    /// For generic types: `HashMap<String, i32>` returns `HashMap<String, i32>`
+    /// For arrays: `[glam::Vec3; 2]` returns `[Vec3; 2]`
+    pub fn short_name(&self) -> String {
+        // Special handling for array types like [Type; size]
+        if self.0.starts_with('[') && self.0.ends_with(']') {
+            // For arrays, we need to shorten the inner type but keep the array syntax
+            if let Some(semicolon_pos) = self.0.rfind(';') {
+                if let Some(bracket_pos) = self.0.find('[') {
+                    let inner_type = &self.0[bracket_pos + 1..semicolon_pos];
+                    let size_part = &self.0[semicolon_pos..];
+                    let short_inner = inner_type.rsplit("::").next().unwrap_or(inner_type);
+                    return format!("[{short_inner}{size_part}");
+                }
+            }
+        }
+        
+        // Find the last :: and take everything after it
+        // If no :: found, return the whole name (handles primitives and generics)
+        self.0.rsplit("::").next().unwrap_or(&self.0).to_string()
+    }
 }
 
 impl From<&str> for BrpTypeName {

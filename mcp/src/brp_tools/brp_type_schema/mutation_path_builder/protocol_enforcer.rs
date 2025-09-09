@@ -57,25 +57,39 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
         // 4. Recurse to each child (they handle their own protocol)
         for (name, child_ctx) in children {
+            tracing::warn!("ProtocolEnforcer recursing to child '{}' of type '{}'", name, child_ctx.type_name());
+            
             // Get child's schema and create its builder
             let child_schema = child_ctx.require_schema().unwrap_or(&json!(null));
+            tracing::warn!("Child '{}' schema found: {}", name, child_schema != &json!(null));
+            
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
+            tracing::warn!("Child '{}' TypeKind: {:?}", name, child_kind);
+            
             let child_builder = child_kind.builder();
 
             // Child handles its OWN depth increment and protocol
             // If child is migrated -> wrapped with ProtocolEnforcer
             // If not migrated -> uses old implementation
             let child_paths = child_builder.build_paths(&child_ctx, depth.increment())?;
+            tracing::warn!("Child '{}' returned {} paths", name, child_paths.len());
 
             // Extract child's example from its root path
             let child_example = child_paths
                 .first()
                 .map(|p| p.example.clone())
                 .unwrap_or(json!(null));
+            
+            tracing::warn!("Child '{}' example: {}", name, child_example);
 
             child_examples.insert(name, child_example);
-            all_paths.extend(child_paths);
+            
+            // Only include child paths if the builder wants them
+            // Container types (like Maps) don't want child paths exposed
+            if self.inner.include_child_paths() {
+                all_paths.extend(child_paths);
+            }
         }
 
         // 5. Assemble THIS level from children (post-order)
