@@ -2,8 +2,7 @@ Check if a Bevy app is running with BRP enabled to verify app status, confirm BR
 
 Return status values:
 - "running_with_brp": App running with BRP responding
-- "running_no_brp": App running but BRP not responding (check RemotePlugin)
-- "brp_found_app_not_detected": BRP responds but app process not detected (different build profile?)
+- "running_no_brp": App running but BRP not responding
 - "not_running": App not running
 
 Response includes:
