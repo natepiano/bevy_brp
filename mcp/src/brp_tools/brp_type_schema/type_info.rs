@@ -5,12 +5,12 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::Serialize;
-use serde_json::{Map, Value, json};
+use serde_json::Value;
 
 use super::constants::{RecursionDepth, SCHEMA_REF_PREFIX};
 use super::mutation_path_builder::{
-    EnumVariantInfo, KnowledgeKey, MutationPath, MutationPathBuilder, MutationPathInternal,
-    PathKind, RecursionContext, TypeKind,
+    EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal, PathKind,
+    RecursionContext, TypeKind,
 };
 use super::response_types::{
     BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaField, SchemaInfo,
