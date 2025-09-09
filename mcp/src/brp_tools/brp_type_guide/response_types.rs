@@ -205,7 +205,7 @@ pub enum ReflectTrait {
 
 /// response structure
 #[derive(Debug, Clone, Serialize)]
-pub struct TypeSchemaResponse {
+pub struct TypeGuideResponse {
     /// Number of types successfully discovered
     pub discovered_count: usize,
     /// List of type names that were requested

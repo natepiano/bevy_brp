@@ -12,7 +12,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::response_types::{BrpTypeName, TypeGuideSummary, TypeSchemaResponse};
+use super::response_types::{BrpTypeName, TypeGuideResponse, TypeGuideSummary};
 use super::type_info::TypeInfo;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};
@@ -34,7 +34,7 @@ pub struct TypeGuideParams {
 pub struct TypeGuideResult {
     /// The type schema information containing format discovery results
     #[to_result]
-    result: TypeSchemaResponse,
+    result: TypeGuideResponse,
 
     /// Count of types discovered
     #[to_metadata]
@@ -104,8 +104,8 @@ impl TypeGuideEngine {
     }
 
     /// Generate response for requested types using the V2 approach
-    pub fn generate_response(&self, requested_types: &[String]) -> TypeSchemaResponse {
-        let mut response = TypeSchemaResponse {
+    pub fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
+        let mut response = TypeGuideResponse {
             discovered_count: 0,
             requested_types:  requested_types.to_vec(),
             summary:          TypeGuideSummary {
