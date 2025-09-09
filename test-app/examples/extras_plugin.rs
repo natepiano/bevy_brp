@@ -320,6 +320,7 @@ fn main() {
             primary_window: Some(bevy::window::Window {
                 title: format!("BRP Extras Test - Port {port}"),
                 resolution: (800.0, 600.0).into(),
+                window_level: bevy::window::WindowLevel::AlwaysOnBottom,
                 ..default()
             }),
             ..default()

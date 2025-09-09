@@ -14,6 +14,7 @@ fn main() {
             primary_window: Some(Window {
                 title: format!("Test Extras Plugin App - BRP Port {port}"),
                 resolution: (400.0, 300.0).into(),
+                window_level: bevy::window::WindowLevel::AlwaysOnBottom,
                 ..default()
             }),
             ..default()
