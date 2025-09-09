@@ -528,7 +528,7 @@ Delete these static methods as they're no longer needed:
   ```
 
 #### Step 28: Delete `TypeGuide` methods
-In `mcp/src/brp_tools/brp_type_guide/type_info.rs`, delete:
+In `mcp/src/brp_tools/brp_type_guide/"type_guide".rs`, delete:
 - `build_type_example()` method (lines ~310-410)
 - `build_spawn_format()` method (if it still exists)
 - Any helper methods only used by these
