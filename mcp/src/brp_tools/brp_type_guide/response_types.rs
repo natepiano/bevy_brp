@@ -213,7 +213,7 @@ pub struct TypeGuideResponse {
     /// Summary statistics for the discovery operation
     pub summary:          TypeGuideSummary,
     /// Detailed information for each type, keyed by type name
-    pub type_info:        HashMap<BrpTypeName, TypeGuide>,
+    pub type_guide:       HashMap<BrpTypeName, TypeGuide>,
 }
 
 /// Summary statistics for the discovery operation

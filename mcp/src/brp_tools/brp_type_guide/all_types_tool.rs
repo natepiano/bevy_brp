@@ -24,7 +24,7 @@ pub struct AllTypeGuidesParams {
 /// The main tool struct for getting all type guides
 #[derive(ToolFn)]
 #[tool_fn(params = "AllTypeGuidesParams", output = "TypeGuideResult")]
-pub struct AllTypeGuides;
+pub struct BrpAllTypeGuides;
 
 /// Implementation that fetches all types then gets their guides
 async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {

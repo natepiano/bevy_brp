@@ -514,10 +514,10 @@ fn generate_from_brp_client_response(
                         .unwrap_or(0)
                 }
             }
-            "count_type_info" => {
+            "count_type_guide" => {
                 quote! {
                     #source.as_ref()
-                        .and_then(|v| v.get("type_info"))
+                        .and_then(|v| v.get("type_guide"))
                         .and_then(|v| v.as_object())
                         .map(|obj| obj.len())
                         .unwrap_or(0)

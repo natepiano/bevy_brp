@@ -48,7 +48,7 @@ pub struct TypeGuideResult {
 /// The main tool struct for type schema discovery
 #[derive(ToolFn)]
 #[tool_fn(params = "TypeGuideParams", output = "TypeGuideResult")]
-pub struct TypeGuide;
+pub struct BrpTypeGuide;
 
 /// Thin orchestration function: build engine and delegate the work to it.
 async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
@@ -103,7 +103,7 @@ impl TypeGuideEngine {
         }
     }
 
-    /// Generate response for requested types using the V2 approach
+    /// Generate response for requested types
     pub fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
         let mut response = TypeGuideResponse {
             discovered_count: 0,
@@ -113,7 +113,7 @@ impl TypeGuideEngine {
                 successful_discovery: 0,
                 total_requested:      requested_types.len(),
             },
-            type_info:        HashMap::new(),
+            type_guide:       HashMap::new(),
         };
 
         for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
@@ -133,7 +133,7 @@ impl TypeGuideEngine {
                 )
             };
 
-            response.type_info.insert(brp_type_name, type_info);
+            response.type_guide.insert(brp_type_name, type_info);
         }
 
         response

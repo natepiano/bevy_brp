@@ -17,7 +17,8 @@ use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
 /// this is all of the information we provide about a type
-/// we serialize this to our output
+/// we serialize this to our output - and we call it `type_guide`
+/// because that's what's on the tin
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeGuide {
     /// Fully-qualified type name
