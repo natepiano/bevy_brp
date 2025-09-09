@@ -264,7 +264,7 @@ pub enum ToolName {
 
     // Type Schema - In a class of its own
     /// `brp_type_schema` - type schema discovery
-    BrpTypeSchema,
+    BrpTypeGuide,
     /// `brp_all_type_guides` - Get type guides for all registered types
     BrpAllTypeGuides,
 }
@@ -476,7 +476,7 @@ impl ToolName {
                 ToolCategory::App,
                 EnvironmentImpact::DestructiveIdempotent,
             ),
-            Self::BrpTypeSchema => Annotation::new(
+            Self::BrpTypeGuide => Annotation::new(
                 "Type schema for components and resources",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
@@ -560,7 +560,7 @@ impl ToolName {
             }
             Self::BrpStatus => Some(parameters::build_parameters_from::<StatusParams>),
             Self::BrpShutdown => Some(parameters::build_parameters_from::<ShutdownParams>),
-            Self::BrpTypeSchema => Some(parameters::build_parameters_from::<TypeGuideParams>),
+            Self::BrpTypeGuide => Some(parameters::build_parameters_from::<TypeGuideParams>),
             Self::BrpAllTypeGuides => {
                 Some(parameters::build_parameters_from::<AllTypeGuidesParams>)
             }
@@ -612,7 +612,7 @@ impl ToolName {
             Self::BrpSetTracingLevel => Arc::new(SetTracingLevel),
             Self::BrpStatus => Arc::new(Status),
             Self::BrpShutdown => Arc::new(Shutdown),
-            Self::BrpTypeSchema => Arc::new(TypeGuide),
+            Self::BrpTypeGuide => Arc::new(TypeGuide),
             Self::BrpAllTypeGuides => Arc::new(AllTypeGuides),
         }
     }
