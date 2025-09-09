@@ -6,4 +6,4 @@ Notes:
 - Use list_bevy_examples to see available examples. View logs with list_logs/read_log.
 - If multiple examples with the same name exist in different paths, you must specify the path parameter. The error message will list available paths.
 - Path matching supports: full relative paths (e.g., "bevy_brp/my-example"), partial paths (e.g., "my-example"), or workspace names for disambiguation.
-- When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_PORT`.
+- When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_EXTRAS_PORT`.

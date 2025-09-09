@@ -6,7 +6,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::brp_tools::constants::{DEFAULT_BRP_PORT, VALID_PORT_RANGE};
+use crate::brp_tools::constants::{DEFAULT_BRP_EXTRAS_PORT, VALID_PORT_RANGE};
 
 /// A validated port number for BRP connections
 ///
@@ -27,7 +27,7 @@ impl<'de> Deserialize<'de> for Port {
 
 impl Default for Port {
     fn default() -> Self {
-        Self(DEFAULT_BRP_PORT)
+        Self(DEFAULT_BRP_EXTRAS_PORT)
     }
 }
 

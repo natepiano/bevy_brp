@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional `enable_debug_info` parameter for `brp_extras/discover_format` method
   - Provides detailed diagnostic information about type discovery process when enabled
   - Helps troubleshoot format discovery issues with complex types
-- Environment variable port override support via `BRP_PORT`
+- Environment variable port override support via `BRP_EXTRAS_PORT`
   - Allows runtime port configuration without code changes
-  - Priority: `BRP_PORT` environment variable > `with_port()` > default port (15702)
+  - Priority: `BRP_EXTRAS_PORT` environment variable > `with_port()` > default port (15702)
   - Enables unique port assignment for testing and CI/CD environments
 
 ### Breaking Change

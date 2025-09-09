@@ -1,9 +1,9 @@
-use bevy::prelude::*;
 use bevy::input::InputPlugin;
+use bevy::prelude::*;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 fn main() {
-    let port = std::env::var("BRP_PORT")
+    let port = std::env::var("BRP_EXTRAS_PORT")
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(15702);

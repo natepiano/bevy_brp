@@ -6,4 +6,4 @@ Notes:
 - App must be built first. Check with list_bevy_apps. View logs with list_logs/read_log.
 - If multiple apps with the same name exist in different paths, you must specify the path parameter. The error message will list available paths.
 - Path matching supports: full relative paths (e.g., "bevy_brp/my-app"), partial paths (e.g., "my-app"), or workspace names for disambiguation.
-- When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_PORT`.
+- When specifying a port, bevy_brp_extras is required to support listening on the environment variable `BRP_EXTRAS_PORT`.

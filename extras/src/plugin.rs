@@ -46,12 +46,12 @@ impl BrpExtrasPlugin {
     /// Get the effective port, checking environment variable first
     ///
     /// Priority order:
-    /// 1. `BRP_PORT` environment variable (highest priority)
+    /// 1. `BRP_EXTRAS_PORT` environment variable (highest priority)
     /// 2. Explicitly set port via `with_port()`
     /// 3. Default port (15702)
     #[must_use]
     pub fn get_effective_port(&self) -> (u16, String) {
-        let env_port = std::env::var("BRP_PORT")
+        let env_port = std::env::var("BRP_EXTRAS_PORT")
             .ok()
             .and_then(|s| s.parse::<u16>().ok());
 

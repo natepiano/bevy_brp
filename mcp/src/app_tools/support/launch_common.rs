@@ -87,7 +87,7 @@ pub struct LaunchResult {
     message_template:   String,
 }
 
-use crate::brp_tools::{BRP_PORT_ENV_VAR, Port};
+use crate::brp_tools::{BRP_EXTRAS_PORT_ENV_VAR, Port};
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
@@ -228,7 +228,7 @@ pub fn validate_manifest_directory(manifest_path: &Path) -> Result<&Path> {
 ///   read
 pub fn set_brp_env_vars(cmd: &mut Command, port: Option<Port>) {
     if let Some(port) = port {
-        cmd.env(BRP_PORT_ENV_VAR, port.to_string());
+        cmd.env(BRP_EXTRAS_PORT_ENV_VAR, port.to_string());
     }
 }
 
@@ -611,7 +611,7 @@ pub fn launch_target<T: LaunchConfigTrait>(
     let launch_start = Instant::now();
 
     // Log additional debug info
-    debug!("Environment variable: BRP_PORT={}", config.port());
+    debug!("Environment variable: BRP_EXTRAS_PORT={}", config.port());
 
     // Find and validate the target
     let target = match find_and_validate_target(config, search_paths) {
