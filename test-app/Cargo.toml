@@ -23,6 +23,7 @@ name = "no_extras_plugin"
 path = "examples/no_extras_plugin.rs"
 
 
+
 [dependencies]
 bevy_brp_extras = { path = "../extras" }
 bevy_mesh       = { workspace = true }

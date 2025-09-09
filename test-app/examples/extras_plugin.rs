@@ -34,7 +34,6 @@ use bevy::pbr::{
     ScreenSpaceReflections, VolumetricFog, VolumetricLight,
 };
 use bevy::prelude::*;
-// use bevy::render::camera::manual_texture_view::ManualTextureViewHandle; // Private module in
 // Bevy 0.16
 use bevy::render::camera::{MipBias, TemporalJitter};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
@@ -44,7 +43,7 @@ use bevy::render::view::ColorGrading;
 use bevy::render::view::visibility::NoFrustumCulling;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::ui::widget::{Button, Label};
-use bevy::ui::{BoxShadowSamples, CalculatedClip};
+use bevy::ui::{BoxShadowSamples, CalculatedClip, Overflow};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
@@ -358,7 +357,6 @@ fn main() {
         .register_type::<NotShadowCaster>()
         .register_type::<NotShadowReceiver>()
         .register_type::<VolumetricLight>()
-        // .register_type::<ManualTextureViewHandle>() // Private in Bevy 0.16
         .register_type::<OcclusionCulling>()
         .register_type::<NoFrustumCulling>()
         .register_type::<CalculatedClip>()
@@ -949,6 +947,7 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                     CalculatedClip {
                         clip: bevy::math::Rect::from_corners(Vec2::ZERO, Vec2::new(100.0, 100.0))
                     },
+                    Name::new("CalculatedClipTestEntity"),
                 ))
                 .with_children(|parent| {
                     // Keyboard display text directly
