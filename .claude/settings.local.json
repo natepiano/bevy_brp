@@ -100,7 +100,10 @@
       "Read(//Users/natemccoy/.claude/commands/bash/**)",
       "Bash(./.claude/commands/scripts/create_mutation_test_json_stats.sh:*)",
       "Bash(./.claude/commands/scripts/compare_mutations_quick.sh:*)",
-      "Bash(diff:*)"
+      "Bash(diff:*)",
+      "Read(//Users/natemccoy/.claude/**)",
+      "Read(//Users/natemccoy/**)",
+      "Bash(/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_merge_batch_results.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
