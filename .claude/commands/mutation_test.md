@@ -86,9 +86,9 @@ This prevents interference from previous test runs and ensures clean batch resul
 
 Process each batch sequentially, with parallel subagents within each batch:
 
-1. **Identify batch types**: Get all types in current batch (up to BATCH_SIZE types)
+1. **Identify batch types**: Get all types WITH FULL SCHEMAS in current batch (up to BATCH_SIZE types)
    ```bash
-   # Get types for batch N
+   # Get types for batch N - returns COMPLETE type schemas with examples
    python3 ./.claude/commands/scripts/mutation_test_get_batch_types.py N
    ```
 2. **Divide into groups**: Split types into groups of TYPES_PER_SUBAGENT each
@@ -109,8 +109,8 @@ Task(
     subagent_type="general-purpose", 
     prompt="""CRITICAL: You are a subagent. DO NOT launch any apps! Use the existing extras_plugin on port 20116.
 
-Test these types: 
-[List all assigned full::qualified::type::names here, one per line]
+Test these types WITH COMPLETE SCHEMAS (DO NOT call brp_type_schema - use these provided schemas): 
+[Include the FULL type schemas from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths with examples, etc.]
 
 [Include ENTIRE TestInstructions section below]
 
@@ -155,8 +155,8 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 **For EACH assigned type**:
 
-1. **Get Type Schema** - Call `mcp__brp__brp_type_schema`
-2. **Test Spawn/Insert** (if supported) - When `spawn_support` is "supported":
+1. **Use Provided Schema** - DO NOT call `mcp__brp__brp_type_schema` - use the complete schema provided in your instructions
+2. **Test Spawn/Insert** (if supported) - When spawn_format exists in the provided schema:
    - Test `bevy/spawn` using spawn_format from schema (creates new entity)
    - Test `bevy/insert` using spawn_format on an existing entity (for validation)
 3. **Prepare Mutations** - Query for entity with component by **substituting the actual component type name**:
@@ -206,7 +206,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 - Skip paths with `path_kind: "NotMutatable"`
 
 **CRITICAL TYPE HANDLING - NUMBERS MUST BE NUMBERS**:
-When you get examples from `brp_type_schema`, pay EXTREME attention to the type:
+When you get examples from the provided schema, pay EXTREME attention to the type:
 - If the example is a primitive number type (f32, u32, i32, usize, f64, u64, i64, etc.), you MUST pass it as a JSON number
 - If the example is a string (like `"example"`), pass it as a JSON string
 - **NEVER** convert numbers to strings - this will cause "invalid type: string \"20\", expected u32" errors
@@ -325,7 +325,7 @@ After completion or failure:
 
 ### Progress Tracking Schema
 
-**Type schemas**: Retrieved via `mcp__brp__brp_type_schema`  
+**Type schemas**: Stored in `{temp_dir}/all_types.json` with COMPLETE schemas including examples  
 **Progress file**: `{temp_dir}/all_types.json` (where `{temp_dir}` is the actual expanded temp directory path)
 
 Each type entry structure:

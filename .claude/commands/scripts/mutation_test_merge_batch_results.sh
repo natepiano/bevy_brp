@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Merge Batch Test Results into Mutation Test JSON
+# Merge Batch Test Results into Mutation Test JSON (FULL SCHEMA format)
 # Usage: ./merge_batch_results.sh <results_file> <mutation_test_file>
 #
 # Expects results_file to contain JSON array:
@@ -33,26 +33,61 @@ if [ ! -f "$MUTATION_TEST_FILE" ]; then
     exit 1
 fi
 
-
-# Merge results into mutation test file
+# Merge results into mutation test file (handle both wrapped and direct formats)
 jq --slurpfile results "$RESULTS_FILE" '
   . as $mutation_test |
   $results[0] as $batch_results |
   # Create a lookup map from batch results for efficient access
   ($batch_results | map({key: .type, value: .}) | from_entries) as $result_map |
-  # Map over all mutation test entries, updating only those with results
-  $mutation_test | map(
-    . as $entry |
-    if $result_map[.type] then
-      # Update entry with test result
-      $entry | 
-      .test_status = (if $result_map[.type].status == "PASS" then "passed" else "failed" end) |
-      .fail_reason = $result_map[.type].fail_reason
-    else
-      # Keep entry unchanged if no result for this type
-      $entry
-    end
-  )
+  
+  # Handle different file structures
+  if .type_info then
+    # Update type_info array
+    .type_info |= map(
+      . as $entry |
+      # Use type_name or type field
+      ($entry.type_name // $entry.type // "unknown") as $type_key |
+      if $result_map[$type_key] then
+        # Update entry with test result
+        $entry | 
+        .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
+        .fail_reason = $result_map[$type_key].fail_reason
+      else
+        # Keep entry unchanged if no result for this type
+        $entry
+      end
+    )
+  elif .result.type_info then
+    # Update result.type_info array
+    .result.type_info |= map(
+      . as $entry |
+      # Use type_name or type field
+      ($entry.type_name // $entry.type // "unknown") as $type_key |
+      if $result_map[$type_key] then
+        # Update entry with test result
+        $entry | 
+        .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
+        .fail_reason = $result_map[$type_key].fail_reason
+      else
+        # Keep entry unchanged if no result for this type
+        $entry
+      end
+    )
+  else
+    # Handle direct array format (legacy)
+    map(
+      . as $entry |
+      if $result_map[.type] then
+        # Update entry with test result
+        $entry | 
+        .test_status = (if $result_map[.type].status == "PASS" then "passed" else "failed" end) |
+        .fail_reason = $result_map[.type].fail_reason
+      else
+        # Keep entry unchanged if no result for this type
+        $entry
+      end
+    )
+  end
 ' "$MUTATION_TEST_FILE" > "${MUTATION_TEST_FILE}.tmp"
 
 # Atomic move

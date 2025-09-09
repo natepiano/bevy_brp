@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Mutation Test - Batch Renumbering Script
+# Mutation Test - Batch Renumbering Script for FULL SCHEMA format
 # Clears and reassigns batch numbers for untested/failed types
 
 set -e
@@ -21,44 +21,151 @@ if [ ! -f "$JSON_FILE" ]; then
     exit 1
 fi
 
+# Helper function to process types regardless of structure
+process_types() {
+    local operation="$1"
+    
+    jq "$operation" "$JSON_FILE"
+}
+
 echo "Resetting failed tests to untested..."
 # Reset all failed tests to untested and clear fail_reason
-jq 'map(
-  if .test_status == "failed" then
-    .test_status = "untested" |
-    .fail_reason = ""
-  else
-    .
-  end
-)' "$JSON_FILE" > "${JSON_FILE}.tmp" && \
-    mv "${JSON_FILE}.tmp" "$JSON_FILE"
+# Handle both wrapped (type_info) and direct array formats
+process_types '
+    if .type_info then
+        .type_info |= map(
+            if .test_status == "failed" then
+                .test_status = "untested" |
+                .fail_reason = ""
+            else
+                .
+            end
+        )
+    elif .result.type_info then
+        .result.type_info |= map(
+            if .test_status == "failed" then
+                .test_status = "untested" |
+                .fail_reason = ""
+            else
+                .
+            end
+        )
+    else
+        map(
+            if .test_status == "failed" then
+                .test_status = "untested" |
+                .fail_reason = ""
+            else
+                .
+            end
+        )
+    end
+' > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Clearing existing batch numbers..."
 # Clear all batch numbers
-jq 'map(.batch_number = null)' "$JSON_FILE" > "${JSON_FILE}.tmp" && \
-    mv "${JSON_FILE}.tmp" "$JSON_FILE"
+process_types '
+    if .type_info then
+        .type_info |= map(.batch_number = null)
+    elif .result.type_info then
+        .result.type_info |= map(.batch_number = null)
+    else
+        map(.batch_number = null)
+    end
+' > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Assigning batch numbers to untested types..."
 # Assign batch numbers to untested types only (divide by BATCH_SIZE)
 jq --argjson batch_size "$BATCH_SIZE" '
-  [.[] | select(.test_status == "untested")] as $untested |
-  ($untested | to_entries | map({key: .value.type, value: ((.key / $batch_size) | floor + 1)}) | from_entries) as $batch_map |
-  map(
-    if .test_status == "untested" then
-      .batch_number = $batch_map[.type]
+    if .type_info then
+        # Process wrapped format with type_info at root
+        ([.type_info[] | select(.test_status == "untested")] | to_entries | 
+         map({key: (.value.type_name // .value.type // ("index_" + (.key | tostring))), 
+              value: ((.key / $batch_size) | floor + 1)}) | from_entries) as $batch_map |
+        .type_info |= map(
+            if .test_status == "untested" then
+                .batch_number = $batch_map[(.type_name // .type // "unknown")]
+            else
+                .batch_number = null
+            end
+        )
+    elif .result.type_info then
+        # Process wrapped format with result.type_info
+        ([.result.type_info[] | select(.test_status == "untested")] | to_entries | 
+         map({key: (.value.type_name // .value.type // ("index_" + (.key | tostring))), 
+              value: ((.key / $batch_size) | floor + 1)}) | from_entries) as $batch_map |
+        .result.type_info |= map(
+            if .test_status == "untested" then
+                .batch_number = $batch_map[(.type_name // .type // "unknown")]
+            else
+                .batch_number = null
+            end
+        )
     else
-      .batch_number = null
+        # Process direct array format
+        ([.[] | select(.test_status == "untested")] | to_entries | 
+         map({key: (.value.type // ("index_" + (.key | tostring))), 
+              value: ((.key / $batch_size) | floor + 1)}) | from_entries) as $batch_map |
+        map(
+            if .test_status == "untested" then
+                .batch_number = $batch_map[.type]
+            else
+                .batch_number = null
+            end
+        )
     end
-  )
-' "$JSON_FILE" > "${JSON_FILE}.tmp" && \
-    mv "${JSON_FILE}.tmp" "$JSON_FILE"
+' "$JSON_FILE" > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
-# Count statistics
-TOTAL=$(jq 'length' "$JSON_FILE")
-UNTESTED=$(jq '[.[] | select(.test_status == "untested")] | length' "$JSON_FILE")
-FAILED=$(jq '[.[] | select(.test_status == "failed")] | length' "$JSON_FILE")
-PASSED=$(jq '[.[] | select(.test_status == "passed")] | length' "$JSON_FILE")
-MAX_BATCH=$(jq '[.[] | select(.batch_number != null) | .batch_number] | max // 0' "$JSON_FILE")
+# Count statistics (handle both formats)
+TOTAL=$(process_types '
+    if .type_info then
+        .type_info | length
+    elif .result.type_info then
+        .result.type_info | length
+    else
+        length
+    end
+')
+
+UNTESTED=$(process_types '
+    if .type_info then
+        [.type_info[] | select(.test_status == "untested")] | length
+    elif .result.type_info then
+        [.result.type_info[] | select(.test_status == "untested")] | length
+    else
+        [.[] | select(.test_status == "untested")] | length
+    end
+')
+
+FAILED=$(process_types '
+    if .type_info then
+        [.type_info[] | select(.test_status == "failed")] | length
+    elif .result.type_info then
+        [.result.type_info[] | select(.test_status == "failed")] | length
+    else
+        [.[] | select(.test_status == "failed")] | length
+    end
+')
+
+PASSED=$(process_types '
+    if .type_info then
+        [.type_info[] | select(.test_status == "passed")] | length
+    elif .result.type_info then
+        [.result.type_info[] | select(.test_status == "passed")] | length
+    else
+        [.[] | select(.test_status == "passed")] | length
+    end
+')
+
+MAX_BATCH=$(process_types '
+    if .type_info then
+        [.type_info[] | select(.batch_number != null) | .batch_number] | max // 0
+    elif .result.type_info then
+        [.result.type_info[] | select(.batch_number != null) | .batch_number] | max // 0
+    else
+        [.[] | select(.batch_number != null) | .batch_number] | max // 0
+    end
+')
 
 echo "✓ Batch renumbering complete!"
 echo ""

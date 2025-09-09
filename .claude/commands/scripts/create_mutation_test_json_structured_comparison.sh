@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Enhanced structured comparison for mutation test files
+# Enhanced structured comparison for mutation test files with FULL SCHEMA support
+# Now compares not just paths but actual examples and formats
 # Usage: create_mutation_test_json_structured_comparison.sh <baseline_file> <current_file>
 
 set -e
@@ -24,8 +25,8 @@ if [ ! -f "$CURRENT_FILE" ]; then
     exit 1
 fi
 
-echo "🔍 STRUCTURED MUTATION TEST COMPARISON"
-echo "======================================"
+echo "🔍 STRUCTURED MUTATION TEST COMPARISON (Full Schema)"
+echo "===================================================="
 echo ""
 
 # 1. Binary Identity Check
@@ -44,20 +45,35 @@ echo "⚠️  FILES DIFFER - ANALYZING CHANGES"
 echo "   └─ Found differences requiring review"
 echo ""
 
+# Helper function to extract type_info array from either format
+extract_type_info() {
+    local file="$1"
+    # Handle both wrapped (with type_info at root) and direct array formats
+    jq '
+        if .type_info then
+            .type_info
+        elif .result.type_info then
+            .result.type_info
+        else
+            .
+        end
+    ' "$file"
+}
+
 # 3. Metadata Comparison using jq
 echo "📈 METADATA COMPARISON"
 
 # Get type counts
-BASELINE_COUNT=$(jq 'length' "$BASELINE_FILE")
-CURRENT_COUNT=$(jq 'length' "$CURRENT_FILE")
+BASELINE_COUNT=$(extract_type_info "$BASELINE_FILE" | jq 'length')
+CURRENT_COUNT=$(extract_type_info "$CURRENT_FILE" | jq 'length')
 
-# Get spawn-supported counts
-BASELINE_SPAWN=$(jq '[.[] | select(.spawn_support == "supported")] | length' "$BASELINE_FILE")
-CURRENT_SPAWN=$(jq '[.[] | select(.spawn_support == "supported")] | length' "$CURRENT_FILE")
+# Get spawn-supported counts (check spawn_format existence)
+BASELINE_SPAWN=$(extract_type_info "$BASELINE_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
+CURRENT_SPAWN=$(extract_type_info "$CURRENT_FILE" | jq '[.[] | select(has("spawn_format"))] | length')
 
-# Get mutation counts
-BASELINE_MUTATIONS=$(jq '[.[] | select(.mutation_paths | length > 0)] | length' "$BASELINE_FILE")
-CURRENT_MUTATIONS=$(jq '[.[] | select(.mutation_paths | length > 0)] | length' "$CURRENT_FILE")
+# Get mutation counts (check mutation_paths not null/empty)
+BASELINE_MUTATIONS=$(extract_type_info "$BASELINE_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
+CURRENT_MUTATIONS=$(extract_type_info "$CURRENT_FILE" | jq '[.[] | select(.mutation_paths != null and .mutation_paths != {} and .mutation_paths != [])] | length')
 
 # Display metadata comparison
 if [ "$BASELINE_COUNT" -eq "$CURRENT_COUNT" ]; then
@@ -87,45 +103,95 @@ echo "🔍 TYPE-LEVEL CHANGES"
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
-# Extract type info for comparison
-jq -r '.[] | "\(.type)|\(.spawn_support)|\(.mutation_paths | length)|\(.test_status)"' "$BASELINE_FILE" | sort > "$TEMP_DIR/baseline_types"
-jq -r '.[] | "\(.type)|\(.spawn_support)|\(.mutation_paths | length)|\(.test_status)"' "$CURRENT_FILE" | sort > "$TEMP_DIR/current_types"
+# Extract type names and key properties
+extract_type_info "$BASELINE_FILE" | jq -r '.[] | .type_name // .type // "unknown"' | sort > "$TEMP_DIR/baseline_types"
+extract_type_info "$CURRENT_FILE" | jq -r '.[] | .type_name // .type // "unknown"' | sort > "$TEMP_DIR/current_types"
 
 # Find new types
-NEW_TYPES=$(comm -13 "$TEMP_DIR/baseline_types" "$TEMP_DIR/current_types" | cut -d'|' -f1)
+NEW_TYPES=$(comm -13 "$TEMP_DIR/baseline_types" "$TEMP_DIR/current_types")
 NEW_COUNT=$(echo "$NEW_TYPES" | grep -v "^$" | wc -l | tr -d ' ')
 
 # Find removed types  
-REMOVED_TYPES=$(comm -23 "$TEMP_DIR/baseline_types" "$TEMP_DIR/current_types" | cut -d'|' -f1)
+REMOVED_TYPES=$(comm -23 "$TEMP_DIR/baseline_types" "$TEMP_DIR/current_types")
 REMOVED_COUNT=$(echo "$REMOVED_TYPES" | grep -v "^$" | wc -l | tr -d ' ')
 
-# Find modified types (different attributes for same type name)
-MODIFIED_TYPES=""
-MODIFIED_COUNT=0
+# Find common types for detailed comparison
+COMMON_TYPES=$(comm -12 "$TEMP_DIR/baseline_types" "$TEMP_DIR/current_types")
 
-while IFS='|' read -r type spawn_support mutation_count test_status; do
-    if [ -n "$type" ]; then
-        # Check if type exists in current but with different attributes
-        CURRENT_ENTRY=$(grep "^$type|" "$TEMP_DIR/current_types" || true)
-        if [ -n "$CURRENT_ENTRY" ]; then
-            BASELINE_ENTRY="$type|$spawn_support|$mutation_count|$test_status"
-            if [ "$BASELINE_ENTRY" != "$CURRENT_ENTRY" ]; then
-                if [ -z "$MODIFIED_TYPES" ]; then
-                    MODIFIED_TYPES="$type"
+# Check for mutation path changes in common types
+MODIFIED_COUNT=0
+MODIFIED_TYPES=""
+FORMAT_CHANGES=""
+
+while read -r type_name; do
+    if [ -n "$type_name" ]; then
+        # Extract mutation paths for this type from both files
+        BASELINE_PATHS=$(extract_type_info "$BASELINE_FILE" | jq -r --arg t "$type_name" '
+            .[] | select((.type_name // .type // "unknown") == $t) | 
+            if .mutation_paths | type == "object" then
+                .mutation_paths | keys | .[]
+            elif .mutation_paths | type == "array" then
+                .mutation_paths[]
+            else
+                empty
+            end
+        ' | sort)
+        
+        CURRENT_PATHS=$(extract_type_info "$CURRENT_FILE" | jq -r --arg t "$type_name" '
+            .[] | select((.type_name // .type // "unknown") == $t) | 
+            if .mutation_paths | type == "object" then
+                .mutation_paths | keys | .[]
+            elif .mutation_paths | type == "array" then
+                .mutation_paths[]
+            else
+                empty
+            end
+        ' | sort)
+        
+        # Check if paths differ
+        if [ "$BASELINE_PATHS" != "$CURRENT_PATHS" ]; then
+            MODIFIED_COUNT=$((MODIFIED_COUNT + 1))
+            if [ -z "$MODIFIED_TYPES" ]; then
+                MODIFIED_TYPES="$type_name"
+            else
+                MODIFIED_TYPES="$MODIFIED_TYPES\n$type_name"
+            fi
+        fi
+        
+        # Check for format changes in examples (specifically looking for Vec3-like changes)
+        # This is where we detect if examples changed from object to array format
+        if echo "$type_name" | grep -q "TestComplexComponent\|Vec3\|Quat"; then
+            # Extract and compare example formats for key paths
+            BASELINE_EXAMPLE=$(extract_type_info "$BASELINE_FILE" | jq --arg t "$type_name" '
+                .[] | select((.type_name // .type // "unknown") == $t) | 
+                if .mutation_paths | type == "object" then
+                    .mutation_paths | to_entries | .[0].value.example
                 else
-                    MODIFIED_TYPES="$MODIFIED_TYPES\n$type"
-                fi
-                MODIFIED_COUNT=$((MODIFIED_COUNT + 1))
+                    null
+                end
+            ')
+            
+            CURRENT_EXAMPLE=$(extract_type_info "$CURRENT_FILE" | jq --arg t "$type_name" '
+                .[] | select((.type_name // .type // "unknown") == $t) | 
+                if .mutation_paths | type == "object" then
+                    .mutation_paths | to_entries | .[0].value.example
+                else
+                    null
+                end
+            ')
+            
+            if [ "$BASELINE_EXAMPLE" != "$CURRENT_EXAMPLE" ] && [ "$BASELINE_EXAMPLE" != "null" ]; then
+                FORMAT_CHANGES="${FORMAT_CHANGES}   ├─ $type_name: Example format changed\n"
             fi
         fi
     fi
-done < "$TEMP_DIR/baseline_types"
+done <<< "$COMMON_TYPES"
 
 # Display type-level changes
 echo "   ├─ Modified Types: $MODIFIED_COUNT"
 if [ "$MODIFIED_COUNT" -gt 0 ]; then
     echo -e "$MODIFIED_TYPES" | head -5 | while read -r type; do
-        [ -n "$type" ] && echo "   │  ├─ $type: attributes changed"
+        [ -n "$type" ] && echo "   │  ├─ $type: mutation paths changed"
     done
     if [ "$MODIFIED_COUNT" -gt 5 ]; then
         echo "   │  └─ ... and $((MODIFIED_COUNT - 5)) more"
@@ -158,10 +224,46 @@ fi
 
 echo ""
 
-# 5. Change Assessment and Summary
+# 5. Format Changes Detection (NEW)
+if [ -n "$FORMAT_CHANGES" ]; then
+    echo "🔄 FORMAT CHANGES DETECTED"
+    echo -e "$FORMAT_CHANGES"
+    echo ""
+fi
+
+# 6. Example Comparison for Critical Types
+echo "🔎 CRITICAL TYPE VERIFICATION"
+
+# Check TestComplexComponent specifically for Vec3 format
+check_vec3_format() {
+    local file="$1"
+    local label="$2"
+    
+    local example=$(extract_type_info "$file" | jq -r '
+        .[] | select((.type_name // .type // "unknown") == "extras_plugin::TestComplexComponent") |
+        if .mutation_paths | type == "object" then
+            .mutation_paths.".points[0]".example // "not found"
+        else
+            "format not recognized"
+        end
+    ')
+    
+    echo "   $label Vec3 in TestComplexComponent.points[0]: $example"
+}
+
+check_vec3_format "$BASELINE_FILE" "Baseline"
+check_vec3_format "$CURRENT_FILE" "Current"
+
+echo ""
+
+# 7. Change Assessment and Summary
 echo "📋 CHANGE ASSESSMENT"
 
 TOTAL_CHANGES=$((MODIFIED_COUNT + NEW_COUNT + REMOVED_COUNT))
+
+if [ -n "$FORMAT_CHANGES" ]; then
+    echo "   ⚠️  FORMAT CHANGES DETECTED - These affect mutation test behavior!"
+fi
 
 if [ "$TOTAL_CHANGES" -eq 0 ]; then
     echo "   └─ No structural changes detected - metadata only differences"
@@ -171,4 +273,13 @@ elif [ "$REMOVED_COUNT" -gt 0 ] || [ "$TOTAL_CHANGES" -gt 10 ]; then
     echo "   └─ Major changes detected - review recommended before promotion"
 else
     echo "   └─ Moderate changes detected - review changes before promotion"
+fi
+
+echo ""
+echo "💡 RECOMMENDATION"
+if [ -n "$FORMAT_CHANGES" ] || [ "$MODIFIED_COUNT" -gt 0 ]; then
+    echo "   Review the changes carefully, especially format changes which may affect test behavior."
+    echo "   Use 'promote' to accept as new baseline or 'skip' to keep existing baseline."
+else
+    echo "   Changes appear to be additions only. Safe to promote if expected."
 fi

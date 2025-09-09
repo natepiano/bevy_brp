@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Get types for a specific batch number from the mutation test tracking file.
+Get FULL TYPE SCHEMAS for a specific batch number from the mutation test tracking file.
+Returns complete type information including spawn_format and mutation_paths with examples.
 Usage: python3 mutation_test_get_batch_types.py <batch_number>
 """
 import json
@@ -32,13 +33,53 @@ except json.JSONDecodeError as e:
     print(f"Error parsing JSON: {e}", file=sys.stderr)
     sys.exit(1)
 
-# Get types for the specified batch
-batch_types = [t['type'] for t in data if t.get('batch_number') == batch_num]
+# Handle different file structures (wrapped vs direct array)
+type_info = None
+if isinstance(data, dict):
+    if 'type_info' in data:
+        # Format with type_info at root
+        type_info = data['type_info']
+    elif 'result' in data and 'type_info' in data['result']:
+        # Format with result.type_info
+        type_info = data['result']['type_info']
+    else:
+        # Unknown dict format, treat as empty
+        type_info = []
+else:
+    # Direct array format (legacy)
+    type_info = data
+
+# Get complete type schemas for the specified batch
+batch_types = []
+for t in type_info:
+    if t.get('batch_number') == batch_num:
+        # Extract the complete type information
+        type_data = {
+            'type_name': t.get('type_name') or t.get('type', 'unknown'),
+            'spawn_format': t.get('spawn_format'),
+            'mutation_paths': t.get('mutation_paths'),
+            'supported_operations': t.get('supported_operations'),
+            'has_serialize': t.get('has_serialize'),
+            'has_deserialize': t.get('has_deserialize'),
+            'in_registry': t.get('in_registry'),
+            'schema_info': t.get('schema_info'),
+            # Include test metadata
+            'test_status': t.get('test_status'),
+            'batch_number': t.get('batch_number'),
+            'fail_reason': t.get('fail_reason', '')
+        }
+        batch_types.append(type_data)
 
 if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(0)
 
-# Print each type on a new line
-for t in batch_types:
-    print(t)
+# Output the complete batch information as JSON
+# This provides full schema information to the mutation test runner
+output = {
+    'batch_number': batch_num,
+    'type_count': len(batch_types),
+    'types': batch_types
+}
+
+print(json.dumps(output, indent=2))

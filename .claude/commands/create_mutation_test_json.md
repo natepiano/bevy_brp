@@ -82,7 +82,7 @@
 <TypeDiscovery>
     Get all type schemas using the comprehensive discovery tool:
 
-    Call `brp_all_type_schemas` to get schemas for all registered types in one operation:
+    Call `brp_all_type_guides` to get type guides for all registered types in one operation:
     ```bash
     mcp__brp__brp_all_type_schemas(port=[APP_PORT])
     ```
@@ -95,37 +95,30 @@
 ## STEP 3: FILE TRANSFORMATION
 
 <FileTransformation>
-    Transform the BRP response into the mutation test tracking format:
+    Augment the BRP response with test metadata while preserving FULL SCHEMAS:
 
-    Execute the transformation script:
+    Execute the augmentation script:
     ```bash
-    .claude/commands/scripts/create_mutation_test_json_transform_response.sh [FILEPATH] [TARGET_FILE]
+    .claude/commands/scripts/create_mutation_test_json_augment_response.sh [FILEPATH] [TARGET_FILE]
     ```
 
     Replace `[FILEPATH]` with the actual path from Step 2 and `[TARGET_FILE]` with the target location from <CreateContext/>.
 
-    The script creates the target file with all discovered types initialized with `batch_number: null`.
+    The script augments the full BRP response with test metadata for each type:
+    - Preserves ALL original schema data (mutation_paths with examples, spawn_format, etc.)
+    - Adds: batch_number: null
+    - Adds: test_status: "untested" (or "passed" for auto-pass types)
+    - Adds: fail_reason: ""
 
-    **File Structure Validation**:
-    The completed file is structured as a JSON array of type objects with this structure:
-    ```json
-    {
-      "type": "fully::qualified::TypeName",
-      "spawn_support": "supported" | "not_supported",
-      "mutation_paths": ["array", "of", "mutation", "paths"],
-      "test_status": "untested" | "passed",
-      "batch_number": null,
-      "fail_reason": ""
-    }
-    ```
+    **File Structure**: The file is the COMPLETE BRP response with added test fields
 
     Expected characteristics:
-    - All types with spawn support properly identified (`"supported"` or `"not_supported"`)
-    - All types with mutation paths listed as arrays (includes root path `""` for full component replacement using spawn_format)
-    - All types starting with `test_status: "untested"` (except auto-passed spawn types)
-    - All types starting with `batch_number: null` (batch assignment done separately)
-    
-    **IMPORTANT**: The root mutation path `""` (empty string) represents full component replacement and uses the same format as spawn/insert operations. This allows mutation testing to validate both spawn/insert capabilities and full component replacement.
+    - Complete type schemas with spawn_format including examples
+    - Complete mutation_paths as objects with path keys and example values
+    - All test metadata fields added (test_status, batch_number, fail_reason)
+    - Full preservation of schema_info, supported_operations, reflection traits
+
+    **CRITICAL**: This maintains complete fidelity with BRP responses, storing actual examples for reproducible testing
 </FileTransformation>
 
 ## STEP 4: RESULTS REPORTING
