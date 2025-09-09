@@ -34,7 +34,8 @@ use bevy::pbr::{
     ScreenSpaceReflections, VolumetricFog, VolumetricLight,
 };
 use bevy::prelude::*;
-use bevy::render::camera::manual_texture_view::ManualTextureViewHandle;
+// use bevy::render::camera::manual_texture_view::ManualTextureViewHandle; // Private module in
+// Bevy 0.16
 use bevy::render::camera::{MipBias, TemporalJitter};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::primitives::CascadesFrusta;
@@ -357,7 +358,7 @@ fn main() {
         .register_type::<NotShadowCaster>()
         .register_type::<NotShadowReceiver>()
         .register_type::<VolumetricLight>()
-        .register_type::<ManualTextureViewHandle>()
+        // .register_type::<ManualTextureViewHandle>() // Private in Bevy 0.16
         .register_type::<OcclusionCulling>()
         .register_type::<NoFrustumCulling>()
         .register_type::<CalculatedClip>()
@@ -874,12 +875,6 @@ fn spawn_render_entities(commands: &mut Commands) {
         Name::new("ScreenshotTestEntity"),
     ));
 
-    // Entity with ManualTextureViewHandle for testing mutations
-    commands.spawn((
-        ManualTextureViewHandle::default(),
-        Name::new("ManualTextureViewHandleTestEntity"),
-    ));
-
     // Entity with OcclusionCulling for testing mutations
     commands.spawn((OcclusionCulling, Name::new("OcclusionCullingTestEntity")));
 
@@ -1004,14 +999,14 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                         Name::new("ButtonTestEntity"),
                     ));
 
-                    // Label component for testing mutations  
+                    // Label component for testing mutations
                     parent.spawn((
                         Text::new("Test Label"),
                         TextFont {
                             font_size: 16.0,
                             ..default()
                         },
-                        TextColor(Color::YELLOW),
+                        TextColor(Color::srgb(1.0, 1.0, 0.0)), // Yellow color
                         Label,
                         Name::new("LabelTestEntity"),
                     ));
