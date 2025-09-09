@@ -6,7 +6,6 @@
 //! **Recursion**: YES - Arrays recurse into each element to generate mutation paths
 //! for nested structures (e.g., `[Transform; 3]` generates paths for each Transform).
 //! This is because array elements are addressable by stable indices `[0]`, `[1]`, etc.
-use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
@@ -19,7 +18,6 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::{
     DEFAULT_EXAMPLE_ARRAY_SIZE, MAX_EXAMPLE_ARRAY_SIZE, RecursionDepth,
 };
-use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_types::SchemaField;
@@ -241,40 +239,6 @@ impl ArrayMutationBuilder {
                 let size_str = &type_str[size_start + 2..size_end];
                 size_str.parse().ok()
             })
-        })
-    }
-
-    /// Build array example using extracted logic from `TypeGuide::build_type_example`
-    /// This is the static method version that calls ``TypeGuide`` for element types
-    pub fn build_array_example_static(
-        type_name: &BrpTypeName,
-        schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Extract array element type using the same logic as `TypeGuide`
-        let item_type = schema
-            .get_field(SchemaField::Items)
-            .and_then(SchemaField::extract_field_type);
-
-        item_type.map_or(json!(null), |item_type_name| {
-            // Generate example value for the item type
-            let item_example =
-                ExampleBuilder::build_example(&item_type_name, registry, depth.increment());
-
-            // Parse the array size from the type name (e.g., "[f32; 4]" -> 4)
-            let size = type_name
-                .as_str()
-                .rsplit_once("; ")
-                .and_then(|(_, rest)| rest.strip_suffix(']'))
-                .and_then(|s| s.parse::<usize>().ok())
-                .map_or(DEFAULT_EXAMPLE_ARRAY_SIZE, |s| {
-                    s.min(MAX_EXAMPLE_ARRAY_SIZE)
-                });
-
-            // Create array with the appropriate number of elements
-            let array = vec![item_example; size];
-            json!(array)
         })
     }
 

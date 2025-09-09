@@ -608,7 +608,7 @@ impl EnumMutationBuilder {
         variants: &[EnumVariantInfo],
         variant_examples_map: &HashMap<String, Value>,
         enum_type: &BrpTypeName,
-        ctx: &RecursionContext,
+        _ctx: &RecursionContext,
     ) -> Value {
         // Check for exact enum type knowledge first
         if let Some(knowledge) =

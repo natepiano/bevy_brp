@@ -7,8 +7,6 @@
 //! addresses (no indices or keys) and cannot be individually mutated. Only the entire
 //! set can be replaced. Mutating an element could change its hash, breaking set invariants.
 
-use std::collections::HashMap;
-
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
@@ -18,8 +16,6 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;
-use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
@@ -102,30 +98,6 @@ impl MutationPathBuilder for SetMutationBuilder {
 }
 
 impl SetMutationBuilder {
-    /// Build set example using extracted logic from `TypeGuide::build_type_example`
-    /// This is the static method version that calls ``TypeGuide`` for element types
-    pub fn build_set_example_static(
-        schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Extract element type using the same logic as `TypeGuide`
-        let item_type = schema
-            .get_field(SchemaField::Items)
-            .and_then(SchemaField::extract_field_type);
-
-        item_type.map_or(json!(null), |item_type_name| {
-            // Generate example value for the item type
-            let item_example =
-                ExampleBuilder::build_example(&item_type_name, registry, depth.increment());
-
-            // Create array with 2 example elements
-            // For Sets, these represent unique values to add
-            let array = vec![item_example; 2];
-            json!(array)
-        })
-    }
-
     /// Build a mutation path for the entire Set field
 
     /// Build a not-mutatable path with structured error details

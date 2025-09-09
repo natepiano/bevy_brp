@@ -6,7 +6,6 @@
 //! **Recursion**: YES - Structs recurse into each field to generate mutation paths
 //! for nested structures (e.g., `Transform.translation.x`). Each field has a stable
 //! name that can be used in paths, allowing deep mutation of nested structures.
-use std::collections::HashMap;
 
 use serde_json::{Value, json};
 use tracing::warn;
@@ -18,7 +17,6 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_guide::response_types::{BrpTypeName, MathComponent};
 use crate::error::Result;
 use crate::json_types::SchemaField;
@@ -483,56 +481,6 @@ impl StructMutationBuilder {
         }
     }
 
-    /// Build struct example using extracted logic from `TypeGuide::build_type_example`
-    /// This is the static method version that calls ``TypeGuide`` for field types
-    pub fn build_struct_example_static(
-        schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Extract properties using the same logic as `TypeGuide`
-        schema
-            .get_field(SchemaField::Properties)
-            .map_or(json!(null), |properties| {
-                Self::build_struct_example_from_properties(properties, registry, depth.increment())
-            })
-    }
-
-    /// Build example struct from properties
-    pub fn build_struct_example_from_properties(
-        properties: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-        depth: RecursionDepth,
-    ) -> Value {
-        // Check depth limit to prevent infinite recursion
-        if depth.exceeds_limit() {
-            return json!("...");
-        }
-
-        let Some(props_map) = properties.as_object() else {
-            return json!({});
-        };
-
-        let mut example = serde_json::Map::new();
-
-        for (field_name, field_schema) in props_map {
-            // Use `TypeGuide` to build example for each field type with depth tracking
-            let field_value = SchemaField::extract_field_type(field_schema)
-                .map(|field_type| {
-                    ExampleBuilder::build_example(
-                        &field_type,
-                        registry,
-                        depth, // Don't increment - `TypeGuide` will handle it
-                    )
-                })
-                .unwrap_or(json!(null));
-
-            example.insert(field_name.clone(), field_value);
-        }
-
-        json!(example)
-    }
-
     /// Build example struct from properties with context (trait method version)
     fn build_struct_example_from_properties_with_context(
         properties: &Value,
@@ -560,11 +508,8 @@ impl StructMutationBuilder {
                         .map_or_else(
                             || {
                                 // Get field schema and use trait dispatch
-                                ctx.get_registry_schema(&field_type).map_or(
-                                    json!(null),
-                                    |field_schema| {
-                                        let field_kind =
-                                            TypeKind::from_schema(field_schema, &field_type);
+                                ctx.get_registry_schema(&field_type)
+                                    .map_or(json!(null), |_| {
                                         // Create field context for recursive building
                                         let field_path_kind = PathKind::new_struct_field(
                                             field_name.clone(),
@@ -581,8 +526,7 @@ impl StructMutationBuilder {
                                                     .build_schema_example(&field_ctx, depth)
                                             })
                                             .unwrap_or(json!(null))
-                                    },
-                                )
+                                    })
                             },
                             |k| k.example().clone(),
                         )

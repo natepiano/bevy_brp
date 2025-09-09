@@ -58,14 +58,14 @@ pub trait MutationPathBuilder {
     /// - If this is `.address`, the example is the complete address object {"street": "123 Main
     ///   St", "city": "Portland"}
     /// - If this is root level, the example becomes the spawn format
-    fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        // First check BRP_MUTATION_KNOWLEDGE for hardcoded examples
-        if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
-            return example;
-        }
+    // fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) ->
+    // Value {     // First check BRP_MUTATION_KNOWLEDGE for hardcoded examples
+    //     if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
+    //         return example;
+    //     }
 
-        self.build_schema_example(ctx, depth)
-    }
+    //     self.build_schema_example(ctx, depth)
+    // }
 
     /// Build example from schema - implemented by each builder for their specific type
     /// Each builder focuses ONLY on type-specific assembly logic

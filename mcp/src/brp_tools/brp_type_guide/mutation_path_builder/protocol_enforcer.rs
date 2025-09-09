@@ -136,9 +136,9 @@ impl MutationPathBuilder for ProtocolEnforcer {
         self.inner.assemble_from_children(ctx, children)
     }
 
-    fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        self.inner.build_example_with_knowledge(ctx, depth)
-    }
+    // fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) ->
+    // Value {     self.inner.build_example_with_knowledge(ctx, depth)
+    // }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
         self.inner.build_schema_example(ctx, depth)
