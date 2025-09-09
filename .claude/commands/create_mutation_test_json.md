@@ -220,11 +220,19 @@
 <UserValidation>
     **Present Comparison Results to User for Baseline Decision**
 
+    **First, dynamically determine excluded types**:
+    ```bash
+    # Get list of excluded types from the exclusion file
+    EXCLUDED_TYPES=$(grep -v '^#' /Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.txt | grep -v '^$' | tr '\n' ', ' | sed 's/, $//')
+    ```
+
 Present the comparison analysis in this format:
 
 ## Mutation Test File Generation Complete
 - **File created**: [TARGET_FILE]
-- **Total types discovered**: [count from statistics]
+- **Types registered in Bevy**: [types discovered by BRP]
+- **Types in mutation test file**: [total count] ([types discovered] - [excluded count] excluded)
+  - Excluded: [actual excluded types from EXCLUDED_TYPES variable]
 - **Spawn-supported types**: [count from statistics]
 - **Types with mutations**: [count from statistics]
 
