@@ -71,8 +71,9 @@ impl MutationPathBuilder for SetMutationBuilder {
                 .map_or_else(
                     || {
                         // Get the element type schema and use trait dispatch
-                        ctx.get_type_schema(&item_type_name)
-                            .map_or(json!(null), |element_schema| {
+                        ctx.get_registry_type_schema(&item_type_name).map_or(
+                            json!(null),
+                            |element_schema| {
                                 let element_kind =
                                     TypeKind::from_schema(element_schema, &item_type_name);
                                 // Create element context for recursive building
@@ -86,7 +87,8 @@ impl MutationPathBuilder for SetMutationBuilder {
                                 element_kind
                                     .builder()
                                     .build_schema_example(&element_ctx, depth.increment())
-                            })
+                            },
+                        )
                     },
                     |k| k.example().clone(),
                 );

@@ -81,7 +81,7 @@ impl MutationPathBuilder for StructMutationBuilder {
             }
 
             // Check if field is a Value type needing serialization
-            let Some(field_schema) = ctx.get_type_schema(&field_type) else {
+            let Some(field_schema) = ctx.get_registry_type_schema(&field_type) else {
                 paths.push(Self::build_not_mutatable_field_from_support(
                     &field_ctx,
                     MutationSupport::NotInRegistry(field_type.clone()),
@@ -382,7 +382,7 @@ impl StructMutationBuilder {
                         || {
                             // Generate example using trait dispatch
                             field_ctx
-                                .get_type_schema(field_type)
+                                .get_registry_type_schema(field_type)
                                 .map(|schema| {
                                     let kind = TypeKind::from_schema(schema, field_type);
                                     kind.builder().build_schema_example(&field_ctx, depth)
@@ -408,7 +408,7 @@ impl StructMutationBuilder {
                                     || {
                                         // Generate example using trait dispatch
                                         field_ctx
-                                            .get_type_schema(field_type)
+                                            .get_registry_type_schema(field_type)
                                             .map(|schema| {
                                                 let kind =
                                                     TypeKind::from_schema(schema, field_type);
@@ -560,7 +560,7 @@ impl StructMutationBuilder {
                         .map_or_else(
                             || {
                                 // Get field schema and use trait dispatch
-                                ctx.get_type_schema(&field_type).map_or(
+                                ctx.get_registry_type_schema(&field_type).map_or(
                                     json!(null),
                                     |field_schema| {
                                         let field_kind =
@@ -573,7 +573,7 @@ impl StructMutationBuilder {
                                         );
                                         let field_ctx = ctx.create_field_context(field_path_kind);
                                         // Use trait dispatch directly
-                                        ctx.get_type_schema(&field_type)
+                                        ctx.get_registry_type_schema(&field_type)
                                             .map(|schema| {
                                                 let kind =
                                                     TypeKind::from_schema(schema, &field_type);

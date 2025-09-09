@@ -240,15 +240,14 @@ impl BrpClient {
 
         // Step 3: Handle results based on whether types were extracted
         if extracted_types.is_empty() {
-            Self::create_minimal_type_schema_error(error)
+            Self::create_minimal_type_error(error)
         } else {
-            self.create_full_type_schema_error(error, extracted_types)
-                .await
+            self.create_full_type_error(error, extracted_types).await
         }
     }
 
     /// Create minimal error when no types can be extracted
-    fn create_minimal_type_schema_error(error: &BrpClientError) -> Result<ResponseStatus> {
+    fn create_minimal_type_error(error: &BrpClientError) -> Result<ResponseStatus> {
         Err(Error::tool_call_failed_with_details(
             "Format error occurred but could not extract type information",
             serde_json::json!({
@@ -263,7 +262,7 @@ impl BrpClient {
     }
 
     /// Create full error with type schema embedded for extracted types
-    async fn create_full_type_schema_error(
+    async fn create_full_type_error(
         &self,
         error: &BrpClientError,
         extracted_types: Vec<String>,

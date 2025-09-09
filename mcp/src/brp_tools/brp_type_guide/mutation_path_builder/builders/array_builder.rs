@@ -157,8 +157,9 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                             item_type_name.as_str()
                         );
                         // Get the element type schema and use trait dispatch directly
-                        ctx.get_type_schema(&item_type_name)
-                            .map_or(json!(null), |element_schema| {
+                        ctx.get_registry_type_schema(&item_type_name).map_or(
+                            json!(null),
+                            |element_schema| {
                                 let element_kind =
                                     TypeKind::from_schema(element_schema, &item_type_name);
                                 // Create element context for recursive building
@@ -172,7 +173,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                                 element_kind
                                     .builder()
                                     .build_schema_example(&element_ctx, depth.increment())
-                            })
+                            },
+                        )
                     },
                     |k| {
                         tracing::debug!(
@@ -220,7 +222,7 @@ impl ArrayMutationBuilder {
             )]);
         };
 
-        let Some(element_schema) = ctx.get_type_schema(&element_type) else {
+        let Some(element_schema) = ctx.get_registry_type_schema(&element_type) else {
             return Err(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(element_type),

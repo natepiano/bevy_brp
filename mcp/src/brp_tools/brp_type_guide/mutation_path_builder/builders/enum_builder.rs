@@ -382,7 +382,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     let mut tuple_values = Vec::new();
 
                     for (index, type_name) in types.iter().enumerate() {
-                        let Some(inner_schema) = ctx.get_type_schema(type_name) else {
+                        let Some(inner_schema) = ctx.get_registry_type_schema(type_name) else {
                             tuple_values.push(json!(null));
                             continue;
                         };
@@ -481,7 +481,8 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     let mut struct_obj = serde_json::Map::new();
 
                     for field in fields {
-                        let Some(inner_schema) = ctx.get_type_schema(&field.type_name) else {
+                        let Some(inner_schema) = ctx.get_registry_type_schema(&field.type_name)
+                        else {
                             struct_obj.insert(field.field_name.clone(), json!(null));
                             continue;
                         };
