@@ -109,7 +109,10 @@
       "Bash(.claude/commands/scripts/create_mutation_test_json_structured_comparison.sh:*)",
       "Bash(.claude/commands/scripts/create_mutation_test_json_promote_baseline.sh:*)",
       "Bash(.claude/commands/scripts/create_mutation_test_json_augment_response.sh:*)",
-      "Bash(.claude/commands/scripts/mutation_test_renumber_batches.sh:*)"
+      "Bash(.claude/commands/scripts/mutation_test_renumber_batches.sh:*)",
+      "mcp__brp__brp_all_type_guides",
+      "Bash(if [ -f \"$TMPDIR/all_types_baseline.json\" ])",
+      "Bash(else)"
     ],
     "deny": [
       "Bash(sed:*)"
