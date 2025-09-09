@@ -30,15 +30,19 @@ use bevy::pbr::decal::clustered::ClusteredDecal;
 use bevy::pbr::irradiance_volume::IrradianceVolume;
 use bevy::pbr::prelude::EnvironmentMapLight;
 use bevy::pbr::{
-    AmbientLight, LightProbe, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusion, 
+    AmbientLight, LightProbe, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusion,
     ScreenSpaceReflections, VolumetricFog, VolumetricLight,
 };
 use bevy::prelude::*;
+use bevy::render::camera::manual_texture_view::ManualTextureViewHandle;
 use bevy::render::camera::{MipBias, TemporalJitter};
+use bevy::render::experimental::occlusion_culling::OcclusionCulling;
 use bevy::render::primitives::CascadesFrusta;
 use bevy::render::render_resource::{TextureViewDescriptor, TextureViewDimension};
 use bevy::render::view::ColorGrading;
+use bevy::render::view::visibility::NoFrustumCulling;
 use bevy::render::view::window::screenshot::Screenshot;
+use bevy::ui::widget::{Button, Label};
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
@@ -353,6 +357,12 @@ fn main() {
         .register_type::<NotShadowCaster>()
         .register_type::<NotShadowReceiver>()
         .register_type::<VolumetricLight>()
+        .register_type::<ManualTextureViewHandle>()
+        .register_type::<OcclusionCulling>()
+        .register_type::<NoFrustumCulling>()
+        .register_type::<CalculatedClip>()
+        .register_type::<Button>()
+        .register_type::<Label>()
         .add_systems(Startup, (setup_test_entities, setup_ui))
         .add_systems(PostStartup, setup_skybox_test)
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
@@ -547,16 +557,16 @@ fn spawn_visual_entities(commands: &mut Commands) {
 
     // Entity with NotShadowCaster for testing mutations
     commands.spawn((
-        Mesh3d(Handle::default()), // Dummy mesh handle
+        Mesh3d(Handle::default()),                             // Dummy mesh handle
         MeshMaterial3d::<StandardMaterial>(Handle::default()), // Dummy material handle
         Transform::from_xyz(-2.0, 1.0, 0.0),
         NotShadowCaster, // For testing mutations
         Name::new("NotShadowCasterTestEntity"),
     ));
 
-    // Entity with NotShadowReceiver for testing mutations  
+    // Entity with NotShadowReceiver for testing mutations
     commands.spawn((
-        Mesh3d(Handle::default()), // Dummy mesh handle
+        Mesh3d(Handle::default()),                             // Dummy mesh handle
         MeshMaterial3d::<StandardMaterial>(Handle::default()), // Dummy material handle
         Transform::from_xyz(2.0, 1.0, 0.0),
         NotShadowReceiver, // For testing mutations
@@ -863,6 +873,22 @@ fn spawn_render_entities(commands: &mut Commands) {
         Screenshot::primary_window(),
         Name::new("ScreenshotTestEntity"),
     ));
+
+    // Entity with ManualTextureViewHandle for testing mutations
+    commands.spawn((
+        ManualTextureViewHandle::default(),
+        Name::new("ManualTextureViewHandleTestEntity"),
+    ));
+
+    // Entity with OcclusionCulling for testing mutations
+    commands.spawn((OcclusionCulling, Name::new("OcclusionCullingTestEntity")));
+
+    // Entity with NoFrustumCulling for testing mutations
+    commands.spawn((
+        NoFrustumCulling,
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        Name::new("NoFrustumCullingTestEntity"),
+    ));
 }
 
 /// Setup UI for keyboard input display
@@ -963,6 +989,31 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                             texture_atlas: None,
                         },
                         Name::new("TextBoundsTestEntity"),
+                    ));
+
+                    // Button component for testing mutations
+                    parent.spawn((
+                        Node {
+                            width: Val::Px(100.0),
+                            height: Val::Px(40.0),
+                            margin: UiRect::all(Val::Px(10.0)),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.4, 0.6, 0.8)),
+                        Button,
+                        Name::new("ButtonTestEntity"),
+                    ));
+
+                    // Label component for testing mutations  
+                    parent.spawn((
+                        Text::new("Test Label"),
+                        TextFont {
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::YELLOW),
+                        Label,
+                        Name::new("LabelTestEntity"),
                     ));
                 });
         });
