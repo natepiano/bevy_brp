@@ -43,7 +43,7 @@ use bevy::render::view::ColorGrading;
 use bevy::render::view::visibility::NoFrustumCulling;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::ui::widget::{Button, Label};
-use bevy::ui::{BoxShadowSamples, CalculatedClip, Overflow};
+use bevy::ui::{BoxShadowSamples, CalculatedClip};
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
