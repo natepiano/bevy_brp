@@ -50,7 +50,7 @@ pub struct EnumFieldInfo {
 }
 
 /// Variant signatures for deduplication - same signature means same inner structure
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum VariantSignature {
     /// Unit variants (no data)
     Unit,
@@ -338,7 +338,7 @@ fn build_all_enum_examples(
 /// Returns a mapping from signature to all variants that share that signature
 fn group_variants_by_signature(
     variants: Vec<EnumVariantInfo>,
-) -> HashMap<VariantSignature, Vec<EnumVariantInfo>> {
+) -> Vec<(VariantSignature, Vec<EnumVariantInfo>)> {
     let mut signature_groups: HashMap<VariantSignature, Vec<EnumVariantInfo>> = HashMap::new();
 
     for variant in variants {
@@ -346,7 +346,10 @@ fn group_variants_by_signature(
         signature_groups.entry(signature).or_default().push(variant);
     }
 
-    signature_groups
+    // Convert to sorted Vec for deterministic ordering
+    let mut groups: Vec<(VariantSignature, Vec<EnumVariantInfo>)> = signature_groups.into_iter().collect();
+    groups.sort_by_key(|(signature, _)| signature.clone());
+    groups
 }
 
 /// Deduplicate variants by signature, returning first variant of each unique signature
@@ -447,12 +450,27 @@ impl MutationPathBuilder for EnumMutationBuilder {
                         );
                         let field_ctx = ctx.create_field_context(field_path_kind);
                         let inner_kind = TypeKind::from_schema(inner_schema, type_name);
-                        tracing::error!("ENUM VARIANT {} - Before build_paths for tuple element {} (parent: {})", variant_name, index, ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Before build_paths for tuple element {} (parent: {})",
+                            variant_name,
+                            index,
+                            ctx.type_name()
+                        );
                         let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
-                        tracing::error!("ENUM VARIANT {} - After build_paths for tuple element {}, got {} paths (parent: {})", variant_name, index, field_paths.len(), ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - After build_paths for tuple element {}, got {} paths (parent: {})",
+                            variant_name,
+                            index,
+                            field_paths.len(),
+                            ctx.type_name()
+                        );
 
                         // Extract the example from the field's root path
-                        tracing::error!("ENUM VARIANT {} - Extracting field example (parent: {})", variant_name, ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Extracting field example (parent: {})",
+                            variant_name,
+                            ctx.type_name()
+                        );
                         let field_example = field_paths
                             .iter()
                             .find(|p| p.path == field_ctx.mutation_path)
@@ -465,21 +483,50 @@ impl MutationPathBuilder for EnumMutationBuilder {
                                     .build_schema_example(&field_ctx, depth.increment())
                             });
 
-                        tracing::error!("ENUM VARIANT {} - Pushing field example to tuple_values (parent: {})", variant_name, ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Pushing field example to tuple_values (parent: {})",
+                            variant_name,
+                            ctx.type_name()
+                        );
                         tuple_values.push(field_example);
 
                         // Add variant context to child paths before extending
                         let path_count = field_paths.len();
-                        tracing::error!("ENUM VARIANT {} - Adding variant context to {} paths (parent: {})", variant_name, path_count, ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Adding variant context to {} paths (parent: {})",
+                            variant_name,
+                            path_count,
+                            ctx.type_name()
+                        );
                         for (i, path) in field_paths.iter_mut().enumerate() {
-                            tracing::error!("ENUM VARIANT {} - Processing path {} of {} (parent: {})", variant_name, i + 1, path_count, ctx.type_name());
+                            tracing::error!(
+                                "ENUM VARIANT {} - Processing path {} of {} (parent: {})",
+                                variant_name,
+                                i + 1,
+                                path_count,
+                                ctx.type_name()
+                            );
                             path.example =
                                 Self::add_variant_context_to_example(&path.example, variant_name);
                         }
-                        tracing::error!("ENUM VARIANT {} - Finished adding variant context (parent: {})", variant_name, ctx.type_name());
-                        tracing::error!("ENUM VARIANT {} - Before extending paths, current: {} (parent: {})", variant_name, paths.len(), ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Finished adding variant context (parent: {})",
+                            variant_name,
+                            ctx.type_name()
+                        );
+                        tracing::error!(
+                            "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
+                            variant_name,
+                            paths.len(),
+                            ctx.type_name()
+                        );
                         paths.extend(field_paths);
-                        tracing::error!("ENUM VARIANT {} - After extending paths, new total: {} (parent: {})", variant_name, paths.len(), ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
+                            variant_name,
+                            paths.len(),
+                            ctx.type_name()
+                        );
                     }
 
                     // Build tuple variant example from accumulated values
@@ -508,9 +555,20 @@ impl MutationPathBuilder for EnumMutationBuilder {
                         );
                         let field_ctx = ctx.create_field_context(field_path_kind);
                         let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
-                        tracing::error!("ENUM VARIANT {} - Before build_paths for struct field {} (parent: {})", variant_name, field.field_name, ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Before build_paths for struct field {} (parent: {})",
+                            variant_name,
+                            field.field_name,
+                            ctx.type_name()
+                        );
                         let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
-                        tracing::error!("ENUM VARIANT {} - After build_paths for struct field {}, got {} paths (parent: {})", variant_name, field.field_name, field_paths.len(), ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - After build_paths for struct field {}, got {} paths (parent: {})",
+                            variant_name,
+                            field.field_name,
+                            field_paths.len(),
+                            ctx.type_name()
+                        );
 
                         // Extract the example from the field's root path
                         let field_example = field_paths
@@ -531,9 +589,19 @@ impl MutationPathBuilder for EnumMutationBuilder {
                             path.example =
                                 Self::add_variant_context_to_example(&path.example, variant_name);
                         }
-                        tracing::error!("ENUM VARIANT {} - Before extending paths, current: {} (parent: {})", variant_name, paths.len(), ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
+                            variant_name,
+                            paths.len(),
+                            ctx.type_name()
+                        );
                         paths.extend(field_paths);
-                        tracing::error!("ENUM VARIANT {} - After extending paths, new total: {} (parent: {})", variant_name, paths.len(), ctx.type_name());
+                        tracing::error!(
+                            "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
+                            variant_name,
+                            paths.len(),
+                            ctx.type_name()
+                        );
                     }
 
                     // Build struct variant example from accumulated fields
@@ -548,6 +616,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
             &variants,
             &variant_examples_map,
             ctx.type_name(),
+            ctx,
         );
 
         paths.insert(
@@ -587,6 +656,7 @@ impl EnumMutationBuilder {
         variants: &[EnumVariantInfo],
         variant_examples_map: &HashMap<String, Value>,
         enum_type: &BrpTypeName,
+        ctx: &RecursionContext,
     ) -> Value {
         // Check for exact enum type knowledge first
         if let Some(knowledge) =
@@ -595,7 +665,10 @@ impl EnumMutationBuilder {
             return knowledge.example().clone();
         }
 
-        // Group variants by signature
+        // Note: Always return signature groups for enum mutation paths
+        // Concrete examples are only used when building parent struct examples
+
+        // For non-root paths, continue with signature groups format
         let variant_groups = group_variants_by_signature(variants.to_vec());
         let mut signature_examples = Vec::new();
 

@@ -75,15 +75,23 @@ impl TypeInfo {
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
             Self::build_mutation_paths(&brp_type_name, type_schema, Arc::clone(&registry));
-        tracing::error!("AFTER build_mutation_paths: {} returned {} paths", brp_type_name, mutation_paths_vec.len());
-        
+        tracing::error!(
+            "AFTER build_mutation_paths: {} returned {} paths",
+            brp_type_name,
+            mutation_paths_vec.len()
+        );
+
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
-        tracing::error!("AFTER convert_mutation_paths: {} converted {} paths", brp_type_name, mutation_paths.len());
+        tracing::error!(
+            "AFTER convert_mutation_paths: {} converted {} paths",
+            brp_type_name,
+            mutation_paths.len()
+        );
 
         // Add Mutate operation if any paths are actually mutatable
         let mut supported_operations = supported_operations;
         tracing::error!("BEFORE has_mutatable_paths check: {}", brp_type_name);
-        
+
         if Self::has_mutatable_paths(&mutation_paths) {
             supported_operations.push(BrpSupportedOperation::Mutate);
         }
@@ -155,10 +163,17 @@ impl TypeInfo {
     fn extract_spawn_format_from_paths(
         mutation_paths: &HashMap<String, MutationPath>,
     ) -> Option<Value> {
-        mutation_paths
-            .get("")
-            .and_then(|root_path| root_path.examples.first())
-            .map(|example_group| example_group.example.clone())
+        mutation_paths.get("").and_then(|root_path| {
+            // Handle both the new `example` field and the legacy `examples` array
+            if let Some(example) = &root_path.example {
+                Some(example.clone())
+            } else {
+                root_path
+                    .examples
+                    .first()
+                    .map(|example_group| example_group.example.clone())
+            }
+        })
     }
 
     /// Check if any mutation paths are mutatable (fully or partially)

@@ -80,8 +80,12 @@ pub struct MutationPath {
     /// List of applicable variants (for enum types only)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variants:        Option<Vec<String>>,
-    /// Array of example groups with variants, signatures, and examples
+    /// Array of example groups with variants, signatures, and examples (for enums)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub examples:        Vec<ExampleGroup>,
+    /// Single example value (for non-enum types) 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub example:         Option<Value>,
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
     pub note:            Option<String>,
@@ -221,6 +225,18 @@ impl MutationPath {
                 |variant_context| Some(vec![variant_context.to_string()]),
             );
 
+        // Determine if this should use examples array or single example
+        let (final_examples, final_example) = if matches!(type_kind, TypeKind::Enum) && !examples.is_empty() {
+            // Enum type with variants - use examples array
+            (examples, None)
+        } else if examples.len() == 1 && examples[0].applicable_variants.is_none() && examples[0].signature.is_none() {
+            // Single example without enum context - use simple example field
+            (vec![], Some(examples[0].example.clone()))
+        } else {
+            // Multiple examples or enum context - keep examples array
+            (examples, None)
+        };
+
         Self {
             description,
             path_info: PathInfo {
@@ -229,7 +245,8 @@ impl MutationPath {
                 type_kind,
             },
             variants,
-            examples,
+            examples: final_examples,
+            example: final_example,
             note: None,
             mutation_status: path.mutation_status,
             error_reason: path.error_reason.clone(),

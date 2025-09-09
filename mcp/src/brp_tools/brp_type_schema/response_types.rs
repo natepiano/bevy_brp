@@ -44,7 +44,7 @@ impl From<BrpSupportedOperation> for String {
 /// This type provides documentation and type safety for strings that represent
 /// fully-qualified Rust type names (e.g., "`bevy_transform::components::transform::Transform`")
 /// when used as keys in type information maps.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default, PartialOrd, Ord)]
 #[serde(transparent)]
 pub struct BrpTypeName(String);
 
