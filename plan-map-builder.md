@@ -215,7 +215,17 @@ TypeKind::Map -> ProtocolEnforcer::build_paths()
    - TO: `Self::Map => self.builder().build_paths(ctx, builder_depth),`
    - This ensures the ProtocolEnforcer wrapper is used when is_migrated() = true
    - Without this change, the panic guard in MapMutationBuilder::build_paths() would trigger!
-5. Test that maps still generate correct examples
+5. Build and install MCP tool for testing
+   - Run: `cargo build && cargo +nightly fmt && cargo install --path mcp`
+   - **STOP**: Ask user to run `/mcp reconnect brp` to reload the MCP tool
+6. Test that maps generate correct examples (not placeholders)
+   - Launch test-app with extras_plugin example
+   - Use `brp_all_type_schemas` to get complete type information
+   - Verify TestMapComponent fields now have real examples:
+     - `strings: HashMap<String, String>` should have `{"example_key": "example string"}`
+     - `values: HashMap<String, f32>` should have `{"example_key": 0.0}`
+     - `transforms: HashMap<String, Transform>` should have real Transform JSON, not placeholder
+7. Verify no regressions in other map types
 
 ## Why This Works
 
@@ -236,3 +246,51 @@ The ProtocolEnforcer pattern means MapMutationBuilder becomes MUCH simpler:
 6. Final map contains real Transform data, not placeholders!
 
 This is the same pattern that worked for DefaultMutationBuilder, just with the added step of identifying and assembling from key/value children.
+
+## Expected Testing Outcome
+
+### BEFORE Migration (Current Broken State)
+All HashMap types return the same placeholder:
+```json
+{
+  "spawn_format": {
+    "example_key": "example_value"
+  }
+}
+```
+
+### AFTER Migration (Fixed State)
+HashMap types return real examples based on their value types:
+
+**HashMap<String, String>**:
+```json
+{
+  "spawn_format": {
+    "example_key": "example string"
+  }
+}
+```
+
+**HashMap<String, f32>**:
+```json
+{
+  "spawn_format": {
+    "example_key": 0.0
+  }
+}
+```
+
+**HashMap<String, Transform>**:
+```json
+{
+  "spawn_format": {
+    "player": {
+      "translation": [10.0, 0.0, 5.0],
+      "rotation": [0.0, 0.0, 0.0, 1.0],
+      "scale": [1.0, 1.0, 1.0]
+    }
+  }
+}
+```
+
+The key insight: The value in the map is now a **real example** from the value type's mutation path, not a hardcoded placeholder!
