@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables unique port assignment for testing and CI/CD environments
 
 ### Breaking Change
-- Removed `brp_extras/discover_format` method in favor of using the BevyBrpMcp tool, `brp_type_schema` method which uses the TypeRegistry to create a more accurate response than this retired method. And given it is built into the mcp tool itself, will not require `BevyBrpExtras` dependency.
+- Removed `brp_extras/discover_format` method in favor of using the BevyBrpMcp tool, `brp_type_guide` method which uses the TypeRegistry to create a more accurate response than this retired method. And given it is built into the mcp tool itself, will not require `BevyBrpExtras` dependency.
 
 ## [0.2.0] - 2025-06-24
 

@@ -487,7 +487,7 @@ Following the same order as the original ExampleBuilder removal:
 25. Remove all ExampleBuilder import statements
 26. Remove all static example building methods from builders
 27. Delete example_builder.rs file entirely
-28. Delete TypeInfo::build_type_example and build_spawn_format methods
+28. Delete TypeGuide::build_type_example and build_spawn_format methods
 29. Stop and ask user to validate final cleanup
 30. DISCUSSION: Consider removing MutationPathBuilder implementation from TypeKind
 31. FINAL VALIDATION: Install MCP and ask user to reconnect for complete validation
@@ -527,7 +527,7 @@ Delete these static methods as they're no longer needed:
   // DELETE: mod example_builder;
   ```
 
-#### Step 28: Delete TypeInfo methods
+#### Step 28: Delete `TypeGuide` methods
 In `mcp/src/brp_tools/brp_type_guide/type_info.rs`, delete:
 - `build_type_example()` method (lines ~310-410)
 - `build_spawn_format()` method (if it still exists)
@@ -537,7 +537,7 @@ In `mcp/src/brp_tools/brp_type_guide/type_info.rs`, delete:
 #### Step 30: DISCUSSION - TypeKind MutationPathBuilder
 Consider whether to:
 - Remove `impl MutationPathBuilder for TypeKind`
-- Change TypeInfo to call `type_kind.builder().build_paths()` instead of `type_kind.build_paths()`
+- Change `TypeGuide` to call `type_kind.builder().build_paths()` instead of `type_kind.build_paths()`
 - This would make TypeKind purely a dispatcher/factory
 
 ## Phase 6: Atomic Change to PathBuilder Pattern
@@ -689,7 +689,7 @@ impl TypeKind {
 ### Cleanup Tasks
 1. Remove TypeKind's MutationPathBuilder implementation (optional)
 2. Delete all static example methods from builders
-3. Delete TypeInfo::build_type_example() and build_spawn_format()
+3. Delete TypeGuide::build_type_example() and build_spawn_format()
 4. Clean up all unused imports
 5. Run final validation
 
@@ -751,7 +751,7 @@ This ensures the ProtocolEnforcer wrapper is used for migrated builders.
 
 ### Phase 7: Final Cleanup
 1. Delete example_builder.rs
-2. Delete TypeInfo::build_type_example() and build_spawn_format()
+2. Delete TypeGuide::build_type_example() and build_spawn_format()
 3. Remove all static example methods
 4. Clean up imports
 5. Optional: Remove MutationPathBuilder from TypeKind
