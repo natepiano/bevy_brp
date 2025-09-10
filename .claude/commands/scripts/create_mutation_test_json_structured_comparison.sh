@@ -176,31 +176,17 @@ FORMAT_CHANGES=""
 
 while read -r type_name; do
     if [ -n "$type_name" ]; then
-        # Extract mutation paths for this type from both files
-        BASELINE_PATHS=$(extract_type_guide "$BASELINE_FILE" | jq -r --arg t "$type_name" '
-            .[] | select((.type_name // .type // "unknown") == $t) | 
-            if .mutation_paths | type == "object" then
-                .mutation_paths | keys | .[]
-            elif .mutation_paths | type == "array" then
-                .mutation_paths[]
-            else
-                empty
-            end
-        ' | sort)
+        # Extract FULL type data and compare (not just path keys)
+        BASELINE_TYPE=$(extract_type_guide "$BASELINE_FILE" | jq -c --arg t "$type_name" '
+            .[] | select((.type_name // .type // "unknown") == $t)
+        ')
         
-        CURRENT_PATHS=$(extract_type_guide "$CURRENT_FILE" | jq -r --arg t "$type_name" '
-            .[] | select((.type_name // .type // "unknown") == $t) | 
-            if .mutation_paths | type == "object" then
-                .mutation_paths | keys | .[]
-            elif .mutation_paths | type == "array" then
-                .mutation_paths[]
-            else
-                empty
-            end
-        ' | sort)
+        CURRENT_TYPE=$(extract_type_guide "$CURRENT_FILE" | jq -c --arg t "$type_name" '
+            .[] | select((.type_name // .type // "unknown") == $t)
+        ')
         
-        # Check if paths differ
-        if [ "$BASELINE_PATHS" != "$CURRENT_PATHS" ]; then
+        # Check if the full type data differs (this catches value changes too)
+        if [ "$BASELINE_TYPE" != "$CURRENT_TYPE" ]; then
             MODIFIED_COUNT=$((MODIFIED_COUNT + 1))
             if [ -z "$MODIFIED_TYPES" ]; then
                 MODIFIED_TYPES="$type_name"
@@ -275,62 +261,57 @@ fi
 
 echo ""
 
-# 5. Format Changes Detection (NEW)
-if [ -n "$FORMAT_CHANGES" ]; then
-    echo "🔄 FORMAT CHANGES DETECTED"
-    echo -e "$FORMAT_CHANGES"
+# 5. Deep Structural Analysis (if differences found)
+# Use Python script for detailed structural comparison
+SCRIPT_DIR="$(dirname "$0")"
+if [ "$MODIFIED_COUNT" -gt 0 ] || [ "$NEW_COUNT" -gt 0 ] || [ "$REMOVED_COUNT" -gt 0 ]; then
+    echo "🔬 DEEP STRUCTURAL ANALYSIS"
+    echo "─────────────────────────────────────────────"
+    
+    # Run the Python deep comparison script
+    if [ -f "$SCRIPT_DIR/create_mutation_test_json_deep_comparison.py" ]; then
+        python3 "$SCRIPT_DIR/create_mutation_test_json_deep_comparison.py" "$BASELINE_FILE" "$CURRENT_FILE"
+    else
+        # Fallback to basic format detection if Python script not available
+        if [ -n "$FORMAT_CHANGES" ]; then
+            echo "🔄 FORMAT CHANGES DETECTED"
+            echo -e "$FORMAT_CHANGES"
+        fi
+        
+        # Check TestComplexComponent specifically for Vec3 format
+        check_vec3_format() {
+            local file="$1"
+            local label="$2"
+            
+            local example=$(extract_type_guide "$file" | jq -r '
+                .[] | select((.type_name // .type // "unknown") == "extras_plugin::TestComplexComponent") |
+                if .mutation_paths | type == "object" then
+                    .mutation_paths.".points[0]".example // "not found"
+                else
+                    "format not recognized"
+                end
+            ')
+            
+            echo "   $label Vec3 in TestComplexComponent.points[0]: $example"
+        }
+        
+        echo "🔎 CRITICAL TYPE VERIFICATION"
+        check_vec3_format "$BASELINE_FILE" "Baseline"
+        check_vec3_format "$CURRENT_FILE" "Current"
+    fi
     echo ""
-fi
-
-# 6. Example Comparison for Critical Types
-echo "🔎 CRITICAL TYPE VERIFICATION"
-
-# Check TestComplexComponent specifically for Vec3 format
-check_vec3_format() {
-    local file="$1"
-    local label="$2"
-    
-    local example=$(extract_type_guide "$file" | jq -r '
-        .[] | select((.type_name // .type // "unknown") == "extras_plugin::TestComplexComponent") |
-        if .mutation_paths | type == "object" then
-            .mutation_paths.".points[0]".example // "not found"
-        else
-            "format not recognized"
-        end
-    ')
-    
-    echo "   $label Vec3 in TestComplexComponent.points[0]: $example"
-}
-
-check_vec3_format "$BASELINE_FILE" "Baseline"
-check_vec3_format "$CURRENT_FILE" "Current"
-
-echo ""
-
-# 7. Change Assessment and Summary
-echo "📋 CHANGE ASSESSMENT"
-
-TOTAL_CHANGES=$((MODIFIED_COUNT + NEW_COUNT + REMOVED_COUNT))
-
-if [ -n "$FORMAT_CHANGES" ]; then
-    echo "   ⚠️  FORMAT CHANGES DETECTED - These affect mutation test behavior!"
-fi
-
-if [ "$TOTAL_CHANGES" -eq 0 ]; then
-    echo "   └─ No structural changes detected - metadata only differences"
-elif [ "$TOTAL_CHANGES" -le 3 ] && [ "$REMOVED_COUNT" -eq 0 ]; then
-    echo "   └─ Minor changes detected - safe for promotion"
-elif [ "$REMOVED_COUNT" -gt 0 ] || [ "$TOTAL_CHANGES" -gt 10 ]; then
-    echo "   └─ Major changes detected - review recommended before promotion"
+elif [ "$BASELINE_COUNT" != "$CURRENT_COUNT" ] || [ "$BASELINE_SPAWN" != "$CURRENT_SPAWN" ] || [ "$BASELINE_MUTATIONS" != "$CURRENT_MUTATIONS" ] || [ "$BASELINE_TOTAL_PATHS" != "$CURRENT_TOTAL_PATHS" ]; then
+    # Metadata-only changes
+    echo "📋 CHANGE ASSESSMENT"
+    echo "   └─ Metadata changes only - no structural differences"
+    echo ""
+    echo "💡 RECOMMENDATION"
+    echo "   Changes appear to be metadata only. Safe to promote if expected."
 else
-    echo "   └─ Moderate changes detected - review changes before promotion"
-fi
-
-echo ""
-echo "💡 RECOMMENDATION"
-if [ -n "$FORMAT_CHANGES" ] || [ "$MODIFIED_COUNT" -gt 0 ]; then
-    echo "   Review the changes carefully, especially format changes which may affect test behavior."
-    echo "   Use 'promote' to accept as new baseline or 'skip' to keep existing baseline."
-else
-    echo "   Changes appear to be additions only. Safe to promote if expected."
+    # No changes at all (shouldn't happen as we check identity earlier)
+    echo "📋 CHANGE ASSESSMENT"
+    echo "   └─ No changes detected"
+    echo ""
+    echo "💡 RECOMMENDATION"
+    echo "   Files are effectively identical. Safe to promote."
 fi

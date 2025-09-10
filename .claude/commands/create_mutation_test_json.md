@@ -154,12 +154,15 @@
     .claude/commands/scripts/create_mutation_test_json_structured_comparison.sh $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
     ```
 
-    This single comprehensive comparison provides:
+    This comprehensive comparison provides:
     - Binary identity check with early exit if identical
     - Structured metadata analysis (type counts, spawn support, mutations)
     - Type-level change detection (modified, new, removed types)
-    - Change assessment and recommendation
-    - Pre-formatted output ready for user presentation
+    - **Deep structural analysis** when changes are detected:
+      - Categorizes changes into known patterns (enum representation, vec format, etc.)
+      - Identifies unknown patterns that need investigation
+      - Shows specific paths and examples of what changed
+    - Clear recommendations based on the type of changes found
 </ComparisonValidation>
 
 ## STEP 6: USER VALIDATION
@@ -186,7 +189,13 @@
 - **Excluded types**: [from EXCLUDED_TYPES variable]
 
 ### Comparison with Baseline:
-[Present the comparison results - either "Files are identical" or the detailed changes]
+[Present the comparison results including:
+ - If files are identical: Simple confirmation
+ - If metadata only differs: Count differences
+ - If structural changes exist: Full deep analysis output showing:
+   * Known patterns (enum representation, vec format changes, etc.)
+   * Unknown patterns requiring investigation
+   * Specific examples of what changed]
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?
@@ -194,7 +203,7 @@ Based on the comparison results above, should I mark this version as the new goo
 ## Available Actions
 - **promote** - Mark this version as the new good baseline
 - **skip** - Keep existing baseline, don't promote this version
-- **investigate** - Launch deeper investigation of the differences
+- **investigate** - Launch deeper investigation of the differences (especially for unknown patterns)
 
     **CRITICAL**: STOP and wait for user's keyword response before proceeding.
 </UserValidation>
