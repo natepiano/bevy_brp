@@ -379,190 +379,24 @@ impl MutationPathBuilder for EnumMutationBuilder {
                     variant_examples_map.insert(name.clone(), json!(name));
                 }
                 EnumVariantInfo::Tuple(variant_name, types) => {
-                    let mut tuple_values = Vec::new();
-
-                    for (index, type_name) in types.iter().enumerate() {
-                        let Some(inner_schema) = ctx.get_registry_schema(type_name) else {
-                            tuple_values.push(json!(null));
-                            continue;
-                        };
-
-                        // Create field context using PathKind
-                        let field_path_kind = PathKind::new_indexed_element(
-                            index,
-                            type_name.clone(),
-                            ctx.type_name().clone(),
-                        );
-                        let field_ctx = ctx.create_field_context(field_path_kind);
-                        let inner_kind = TypeKind::from_schema(inner_schema, type_name);
-                        tracing::error!(
-                            "ENUM VARIANT {} - Before build_paths for tuple element {} (parent: {})",
-                            variant_name,
-                            index,
-                            ctx.type_name()
-                        );
-                        let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
-                        tracing::error!(
-                            "ENUM VARIANT {} - After build_paths for tuple element {}, got {} paths (parent: {})",
-                            variant_name,
-                            index,
-                            field_paths.len(),
-                            ctx.type_name()
-                        );
-
-                        // Extract the example from the field's root path
-                        tracing::error!(
-                            "ENUM VARIANT {} - Extracting field example (parent: {})",
-                            variant_name,
-                            ctx.type_name()
-                        );
-                        let field_example = field_paths
-                            .iter()
-                            .find(|p| p.path == field_ctx.mutation_path)
-                            .map_or_else(
-                                || {
-                                    // Fallback to trait dispatch if no direct path
-                                    tracing::error!("ENUM VARIANT {} - No direct path, using trait dispatch (parent: {})", variant_name, ctx.type_name());
-                                    inner_kind
-                                        .builder()
-                                        .build_schema_example(&field_ctx, depth.increment())
-                                },
-                                |p| p.example.clone(),
-                            );
-
-                        tracing::error!(
-                            "ENUM VARIANT {} - Pushing field example to tuple_values (parent: {})",
-                            variant_name,
-                            ctx.type_name()
-                        );
-                        tuple_values.push(field_example);
-
-                        // Add variant context to field paths for proper inheritance
-                        tracing::error!(
-                            "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
-                            variant_name,
-                            paths.len(),
-                            ctx.type_name()
-                        );
-
-                        // Add variant context to each field path before extending
-                        for field_path in &mut field_paths {
-                            // Create variant context for this field path
-                            let variant_context = json!([variant_name.clone()]);
-                            // Store variant context in the example - the conversion will extract it
-                            if let Some(obj) = field_path.example.as_object_mut() {
-                                obj.insert("__variant_context".to_string(), variant_context);
-                            } else {
-                                // For non-object examples, wrap in object with variant context
-                                field_path.example = json!({
-                                    "value": field_path.example,
-                                    "__variant_context": variant_context
-                                });
-                            }
-                        }
-
-                        paths.extend(field_paths);
-                        tracing::error!(
-                            "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
-                            variant_name,
-                            paths.len(),
-                            ctx.type_name()
-                        );
-                    }
-
-                    // Build tuple variant example from accumulated values
-                    let content = if tuple_values.len() == 1 {
-                        tuple_values[0].clone()
-                    } else {
-                        Value::Array(tuple_values)
-                    };
-                    variant_examples_map
-                        .insert(variant_name.clone(), json!({ variant_name: content }));
+                    Self::process_tuple_variant(
+                        ctx,
+                        variant_name,
+                        types,
+                        depth,
+                        &mut paths,
+                        &mut variant_examples_map,
+                    )?;
                 }
                 EnumVariantInfo::Struct(variant_name, fields) => {
-                    let mut struct_obj = serde_json::Map::new();
-
-                    for field in fields {
-                        let Some(inner_schema) = ctx.get_registry_schema(&field.type_name) else {
-                            struct_obj.insert(field.field_name.clone(), json!(null));
-                            continue;
-                        };
-
-                        // Create field context using PathKind
-                        let field_path_kind = PathKind::new_struct_field(
-                            field.field_name.clone(),
-                            field.type_name.clone(),
-                            ctx.type_name().clone(),
-                        );
-                        let field_ctx = ctx.create_field_context(field_path_kind);
-                        let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
-                        tracing::error!(
-                            "ENUM VARIANT {} - Before build_paths for struct field {} (parent: {})",
-                            variant_name,
-                            field.field_name,
-                            ctx.type_name()
-                        );
-                        let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
-                        tracing::error!(
-                            "ENUM VARIANT {} - After build_paths for struct field {}, got {} paths (parent: {})",
-                            variant_name,
-                            field.field_name,
-                            field_paths.len(),
-                            ctx.type_name()
-                        );
-
-                        // Extract the example from the field's root path
-                        let field_example = field_paths
-                            .iter()
-                            .find(|p| p.path == field_ctx.mutation_path)
-                            .map_or_else(
-                                || {
-                                    // Fallback to trait dispatch if no direct path
-                                    inner_kind
-                                        .builder()
-                                        .build_schema_example(&field_ctx, depth.increment())
-                                },
-                                |p| p.example.clone(),
-                            );
-
-                        struct_obj.insert(field.field_name.clone(), field_example);
-
-                        // Add variant context to field paths for proper inheritance
-                        tracing::error!(
-                            "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
-                            variant_name,
-                            paths.len(),
-                            ctx.type_name()
-                        );
-
-                        // Add variant context to each field path before extending
-                        for field_path in &mut field_paths {
-                            // Create variant context for this field path
-                            let variant_context = json!([variant_name.clone()]);
-                            // Store variant context in the example - the conversion will extract it
-                            if let Some(obj) = field_path.example.as_object_mut() {
-                                obj.insert("__variant_context".to_string(), variant_context);
-                            } else {
-                                // For non-object examples, wrap in object with variant context
-                                field_path.example = json!({
-                                    "value": field_path.example,
-                                    "__variant_context": variant_context
-                                });
-                            }
-                        }
-
-                        paths.extend(field_paths);
-                        tracing::error!(
-                            "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
-                            variant_name,
-                            paths.len(),
-                            ctx.type_name()
-                        );
-                    }
-
-                    // Build struct variant example from accumulated fields
-                    variant_examples_map
-                        .insert(variant_name.clone(), json!({ variant_name: struct_obj }));
+                    Self::process_struct_variant(
+                        ctx,
+                        variant_name,
+                        fields,
+                        depth,
+                        &mut paths,
+                        &mut variant_examples_map,
+                    )?;
                 }
             }
         }
@@ -732,6 +566,212 @@ impl EnumMutationBuilder {
             return Self::transform_option_example(example, variant_name);
         }
         example
+    }
+
+    /// Process a tuple variant and accumulate paths and examples
+    fn process_tuple_variant(
+        ctx: &RecursionContext,
+        variant_name: &str,
+        types: &[BrpTypeName],
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+        variant_examples_map: &mut HashMap<String, Value>,
+    ) -> Result<()> {
+        let mut tuple_values = Vec::new();
+
+        for (index, type_name) in types.iter().enumerate() {
+            let Some(inner_schema) = ctx.get_registry_schema(type_name) else {
+                tuple_values.push(json!(null));
+                continue;
+            };
+
+            // Create field context using PathKind
+            let field_path_kind =
+                PathKind::new_indexed_element(index, type_name.clone(), ctx.type_name().clone());
+            let field_ctx = ctx.create_field_context(field_path_kind);
+            let inner_kind = TypeKind::from_schema(inner_schema, type_name);
+
+            tracing::error!(
+                "ENUM VARIANT {} - Before build_paths for tuple element {} (parent: {})",
+                variant_name,
+                index,
+                ctx.type_name()
+            );
+            let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
+            tracing::error!(
+                "ENUM VARIANT {} - After build_paths for tuple element {}, got {} paths (parent: {})",
+                variant_name,
+                index,
+                field_paths.len(),
+                ctx.type_name()
+            );
+
+            // Extract the example from the field's root path
+            let field_example = Self::extract_field_example(
+                &field_paths,
+                &field_ctx,
+                &inner_kind,
+                depth,
+                variant_name,
+                ctx,
+            );
+            tuple_values.push(field_example);
+
+            // Add variant context to field paths
+            Self::add_variant_context_to_paths(&mut field_paths, variant_name);
+
+            tracing::error!(
+                "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
+                variant_name,
+                paths.len(),
+                ctx.type_name()
+            );
+            paths.extend(field_paths);
+            tracing::error!(
+                "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
+                variant_name,
+                paths.len(),
+                ctx.type_name()
+            );
+        }
+
+        // Build tuple variant example from accumulated values
+        let content = if tuple_values.len() == 1 {
+            tuple_values[0].clone()
+        } else {
+            Value::Array(tuple_values)
+        };
+        variant_examples_map.insert(variant_name.to_string(), json!({ variant_name: content }));
+        Ok(())
+    }
+
+    /// Process a struct variant and accumulate paths and examples
+    fn process_struct_variant(
+        ctx: &RecursionContext,
+        variant_name: &str,
+        fields: &[EnumFieldInfo],
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+        variant_examples_map: &mut HashMap<String, Value>,
+    ) -> Result<()> {
+        let mut struct_obj = serde_json::Map::new();
+
+        for field in fields {
+            let Some(inner_schema) = ctx.get_registry_schema(&field.type_name) else {
+                struct_obj.insert(field.field_name.clone(), json!(null));
+                continue;
+            };
+
+            // Create field context using PathKind
+            let field_path_kind = PathKind::new_struct_field(
+                field.field_name.clone(),
+                field.type_name.clone(),
+                ctx.type_name().clone(),
+            );
+            let field_ctx = ctx.create_field_context(field_path_kind);
+            let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
+
+            tracing::error!(
+                "ENUM VARIANT {} - Before build_paths for struct field {} (parent: {})",
+                variant_name,
+                field.field_name,
+                ctx.type_name()
+            );
+            let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
+            tracing::error!(
+                "ENUM VARIANT {} - After build_paths for struct field {}, got {} paths (parent: {})",
+                variant_name,
+                field.field_name,
+                field_paths.len(),
+                ctx.type_name()
+            );
+
+            // Extract the example from the field's root path
+            let field_example = Self::extract_field_example(
+                &field_paths,
+                &field_ctx,
+                &inner_kind,
+                depth,
+                variant_name,
+                ctx,
+            );
+            struct_obj.insert(field.field_name.clone(), field_example);
+
+            // Add variant context to field paths
+            Self::add_variant_context_to_paths(&mut field_paths, variant_name);
+
+            tracing::error!(
+                "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
+                variant_name,
+                paths.len(),
+                ctx.type_name()
+            );
+            paths.extend(field_paths);
+            tracing::error!(
+                "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
+                variant_name,
+                paths.len(),
+                ctx.type_name()
+            );
+        }
+
+        // Build struct variant example from accumulated fields
+        variant_examples_map.insert(
+            variant_name.to_string(),
+            json!({ variant_name: struct_obj }),
+        );
+        Ok(())
+    }
+
+    /// Extract field example from paths or use fallback
+    fn extract_field_example(
+        field_paths: &[MutationPathInternal],
+        field_ctx: &RecursionContext,
+        inner_kind: &TypeKind,
+        depth: RecursionDepth,
+        variant_name: &str,
+        ctx: &RecursionContext,
+    ) -> Value {
+        tracing::error!(
+            "ENUM VARIANT {} - Extracting field example (parent: {})",
+            variant_name,
+            ctx.type_name()
+        );
+        field_paths
+            .iter()
+            .find(|p| p.path == field_ctx.mutation_path)
+            .map_or_else(
+                || {
+                    // Fallback to trait dispatch if no direct path
+                    tracing::error!(
+                        "ENUM VARIANT {} - No direct path, using trait dispatch (parent: {})",
+                        variant_name,
+                        ctx.type_name()
+                    );
+                    inner_kind
+                        .builder()
+                        .build_schema_example(field_ctx, depth.increment())
+                },
+                |p| p.example.clone(),
+            )
+    }
+
+    /// Add variant context to field paths for proper inheritance
+    fn add_variant_context_to_paths(field_paths: &mut [MutationPathInternal], variant_name: &str) {
+        for field_path in field_paths {
+            // Create variant context for this field path
+            let variant_context = json!([variant_name]);
+            // Store variant context in the example - the conversion will extract it
+            if let Some(obj) = field_path.example.as_object_mut() {
+                obj.insert("__variant_context".to_string(), variant_context);
+            } else {
+                // For non-object examples, wrap in object with variant context
+                field_path.example = json!({
+                    "value": field_path.example.clone(),
+                    "__variant_context": variant_context
+                });
+            }
+        }
     }
 
     /// Build single concrete enum example for spawn format (returns usable value)
