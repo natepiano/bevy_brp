@@ -126,13 +126,6 @@ impl RecursionContext {
         })
     }
 
-    /// Extract element type from List or Array schema
-    pub fn extract_list_element_type(schema: &Value) -> Option<BrpTypeName> {
-        schema
-            .get("items")
-            .and_then(SchemaField::extract_field_type)
-    }
-
     /// Extract all element types from Tuple/TupleStruct schema
     pub fn extract_tuple_element_types(schema: &Value) -> Option<Vec<BrpTypeName>> {
         Self::get_schema_field_as_array(schema, SchemaField::PrefixItems).map(|items| {

@@ -460,10 +460,14 @@ pub fn build_parameters_from<T: JsonSchema>() -> ParameterBuilder {
         return builder;
     };
 
-    let Some(properties) = root_obj
-        .get_field(SchemaField::Properties)
-        .and_then(|p| p.as_object())
-    else {
+    // let Some(properties) = root_obj
+    //     .get_field(SchemaField::Properties)
+    //     .and_then(|p| p.as_object())
+    // else {
+    //     return builder;
+    // };
+
+    let Some(properties) = root_obj.get_properties() else {
         return builder;
     };
 

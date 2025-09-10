@@ -6,6 +6,9 @@
 
 use serde_json::{Map, Value};
 
+use crate::brp_tools::BrpTypeName;
+use crate::json_types::SchemaField;
+
 /// Extension trait for type-safe JSON field access
 pub trait JsonFieldAccess {
     /// Get field value using any type that can be a string reference
@@ -20,6 +23,18 @@ pub trait JsonFieldAccess {
     where
         F: Into<String>,
         V: Into<Value>;
+
+    /// Extract a single type reference from a schema field (Items, KeyType, ValueType, etc.)
+    fn get_type(&self, field: SchemaField) -> Option<BrpTypeName> {
+        self.get_field(field)
+            .and_then(SchemaField::extract_field_type)
+    }
+
+    /// Get Properties field as a Map
+    fn get_properties(&self) -> Option<&Map<String, Value>> {
+        self.get_field(SchemaField::Properties)
+            .and_then(Value::as_object)
+    }
 }
 
 impl JsonFieldAccess for Value {

@@ -63,13 +63,8 @@ impl MutationPathBuilder for MapMutationBuilder {
         };
 
         // Extract key and value types from schema
-        let key_type = schema
-            .get_field(SchemaField::KeyType)
-            .and_then(SchemaField::extract_field_type);
-
-        let value_type = schema
-            .get_field(SchemaField::ValueType)
-            .and_then(SchemaField::extract_field_type);
+        let key_type = schema.get_type(SchemaField::KeyType);
+        let value_type = schema.get_type(SchemaField::ValueType);
 
         let mut children = vec![];
 

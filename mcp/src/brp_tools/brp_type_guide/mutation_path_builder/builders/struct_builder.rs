@@ -439,10 +439,7 @@ impl StructMutationBuilder {
             return Vec::new();
         };
 
-        let Some(properties) = schema
-            .get_field(SchemaField::Properties)
-            .and_then(Value::as_object)
-        else {
+        let Some(properties) = schema.get_properties() else {
             warn!(
                 type_name = %ctx.type_name(),
                 "No properties field found in struct schema - mutation paths may be incomplete"

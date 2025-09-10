@@ -24,7 +24,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        tracing::warn!("ProtocolEnforcer processing type: {}", ctx.type_name());
+        tracing::debug!("ProtocolEnforcer processing type: {}", ctx.type_name());
 
         // 1. Check depth limit for THIS level
         if depth.exceeds_limit() {
@@ -57,7 +57,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
         // 4. Recurse to each child (they handle their own protocol)
         for (name, child_ctx) in children {
-            tracing::warn!(
+            tracing::debug!(
                 "ProtocolEnforcer recursing to child '{}' of type '{}'",
                 name,
                 child_ctx.type_name()
@@ -65,7 +65,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
             // Get child's schema and create its builder
             let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
-            tracing::warn!(
+            tracing::debug!(
                 "Child '{}' schema found: {}",
                 name,
                 child_schema != &json!(null)
@@ -73,7 +73,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
-            tracing::warn!("Child '{}' TypeKind: {:?}", name, child_kind);
+            tracing::debug!("Child '{}' TypeKind: {:?}", name, child_kind);
 
             let child_builder = child_kind.builder();
 
@@ -81,7 +81,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
             // If child is migrated -> wrapped with ProtocolEnforcer
             // If not migrated -> uses old implementation
             let child_paths = child_builder.build_paths(&child_ctx, depth.increment())?;
-            tracing::warn!("Child '{}' returned {} paths", name, child_paths.len());
+            tracing::debug!("Child '{}' returned {} paths", name, child_paths.len());
 
             // Extract child's example from its root path
             let child_example = child_paths
@@ -89,7 +89,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 .map(|p| p.example.clone())
                 .unwrap_or(json!(null));
 
-            tracing::warn!("Child '{}' example: {}", name, child_example);
+            tracing::debug!("Child '{}' example: {}", name, child_example);
 
             child_examples.insert(name, child_example);
 

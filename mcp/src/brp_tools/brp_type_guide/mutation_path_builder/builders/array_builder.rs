@@ -137,10 +137,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             return json!(null);
         };
 
-        // Extract array element type using the same logic as the static method
-        let item_type = schema
-            .get_field(SchemaField::Items)
-            .and_then(SchemaField::extract_field_type);
+        // Extract array element type
+        let item_type = schema.get_type(SchemaField::Items);
 
         item_type.map_or(json!(null), |item_type_name| {
             // Generate example value for the item type using trait dispatch
@@ -213,7 +211,7 @@ impl ArrayMutationBuilder {
             )]);
         };
 
-        let Some(element_type) = RecursionContext::extract_list_element_type(schema) else {
+        let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NotInRegistry(ctx.type_name().clone()),

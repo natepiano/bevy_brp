@@ -36,7 +36,7 @@ impl MutationPathBuilder for ListMutationBuilder {
             )]);
         };
 
-        let Some(element_type) = RecursionContext::extract_list_element_type(schema) else {
+        let Some(element_type) = schema.get_type(SchemaField::Items) else {
             // If we have a schema but can't extract element type, treat as NotInRegistry
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
@@ -110,9 +110,7 @@ impl MutationPathBuilder for ListMutationBuilder {
         };
 
         // Extract element type using the same logic as the static method
-        let item_type = schema
-            .get_field(SchemaField::Items)
-            .and_then(SchemaField::extract_field_type);
+        let item_type = schema.get_type(SchemaField::Items);
 
         item_type.map_or(json!(null), |item_type_name| {
             // Generate example value for the item type using trait dispatch
