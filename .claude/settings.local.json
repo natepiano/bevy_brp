@@ -112,9 +112,12 @@
       "Bash(.claude/commands/scripts/mutation_test_renumber_batches.sh:*)",
       "mcp__brp__brp_all_type_guides",
       "Bash(if [ -f \"$TMPDIR/all_types_baseline.json\" ])",
-      "Bash(else)"
+      "Bash(else)",
+      "WebFetch(domain:github.com)"
     ],
-    "deny": ["Bash(sed:*)"],
+    "deny": [
+      "Bash(sed:*)"
+    ],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
