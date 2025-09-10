@@ -16,6 +16,7 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
@@ -39,12 +40,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         let elements = RecursionContext::extract_tuple_element_types(schema).unwrap_or_default();
 
         // Check if this is a single-element TupleStruct containing only a Handle type
-        if elements.len() == 1
-            && elements[0]
-                .as_str()
-                .starts_with("bevy_asset::handle::Handle<")
-        {
-            // This is a Handle-only component wrapper that cannot be mutated
+        if Self::is_handle_only_wrapper(&elements) {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
                 MutationSupport::NonMutatableHandle {
@@ -55,120 +51,19 @@ impl MutationPathBuilder for TupleMutationBuilder {
         }
 
         // Check if parent knowledge indicates this should be treated as opaque
-        let should_stop_recursion = ctx.parent_knowledge.is_some_and(|knowledge| {
-            matches!(
-                knowledge.guidance(),
-                super::super::mutation_knowledge::KnowledgeGuidance::TreatAsValue { .. }
-            )
-        });
+        let should_stop_recursion = Self::should_treat_as_opaque(ctx);
 
         let mut tuple_examples = Vec::new();
 
-        // Build paths for each element and collect examples (unless parent knowledge says to treat
-        // as opaque)
+        // Build paths for each element and collect examples
         if should_stop_recursion {
-            // Use parent knowledge for example if not recursing
-            if let Some(knowledge) = ctx.parent_knowledge {
-                let example = knowledge.example();
-                if let Some(arr) = example.as_array() {
-                    tuple_examples.clone_from(arr);
-                }
-            }
+            Self::collect_parent_knowledge_examples(ctx, &mut tuple_examples);
         } else {
-            for (index, element_type) in elements.iter().enumerate() {
-                let element_path_kind = PathKind::new_indexed_element(
-                    index,
-                    element_type.clone(),
-                    ctx.type_name().clone(),
-                );
-                let element_ctx = ctx.create_field_context(element_path_kind);
-
-                let Some(element_schema) = ctx.get_registry_schema(element_type) else {
-                    // Element not in registry - create error path
-                    let path = if ctx.mutation_path.is_empty() {
-                        format!(".{index}")
-                    } else {
-                        format!("{}.{index}", ctx.mutation_path)
-                    };
-                    paths.push(MutationPathInternal {
-                        path,
-                        example: json!({
-                            "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
-                            "agent_directive": "Element type not found in registry"
-                        }),
-                        type_name: element_type.clone(),
-                        path_kind: element_ctx.path_kind,
-                        mutation_status: MutationStatus::NotMutatable,
-                        error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
-                    });
-                    tuple_examples.push(json!(null));
-                    continue;
-                };
-
-                let element_kind = TypeKind::from_schema(element_schema, element_type);
-
-                if matches!(element_kind, TypeKind::Value) {
-                    // For Value types, check serialization and build directly
-                    if ctx.value_type_has_serialization(element_type) {
-                        let element_example = element_kind
-                            .builder()
-                            .build_schema_example(&element_ctx, depth.increment());
-                        tuple_examples.push(element_example.clone());
-                        paths.push(MutationPathInternal {
-                            path:            element_ctx.mutation_path.clone(),
-                            example:         element_example,
-                            type_name:       element_type.clone(),
-                            path_kind:       element_ctx.path_kind,
-                            mutation_status: MutationStatus::Mutatable,
-                            error_reason:    None,
-                        });
-                    } else {
-                        tuple_examples.push(json!(null));
-                        paths.push(MutationPathInternal {
-                            path: element_ctx.mutation_path.clone(),
-                            example: json!({
-                                "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
-                                "agent_directive": "Element type cannot be mutated through BRP"
-                            }),
-                            type_name: element_type.clone(),
-                            path_kind: element_ctx.path_kind,
-                            mutation_status: MutationStatus::NotMutatable,
-                            error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
-                        });
-                    }
-                } else {
-                    // Recurse for complex types
-                    let element_paths = element_kind.build_paths(&element_ctx, depth)?;
-
-                    // Extract the element example from the root path
-                    let element_example = element_paths
-                        .iter()
-                        .find(|p| p.path == element_ctx.mutation_path)
-                        .map_or_else(
-                            || {
-                                // If no direct path, generate example using trait dispatch
-                                element_kind
-                                    .builder()
-                                    .build_schema_example(&element_ctx, depth.increment())
-                            },
-                            |p| p.example.clone(),
-                        );
-
-                    tuple_examples.push(element_example);
-                    paths.extend(element_paths);
-                }
-            }
+            Self::build_element_paths(ctx, &elements, depth, &mut paths, &mut tuple_examples)?;
         }
 
         // Build root tuple path with accumulated examples
-        let root_example = if tuple_examples.len() == 1 {
-            // Single-field tuple structs are unwrapped by BRP
-            tuple_examples.into_iter().next().unwrap_or(json!(null))
-        } else if tuple_examples.is_empty() {
-            json!(null)
-        } else {
-            json!(tuple_examples)
-        };
+        let root_example = Self::build_root_example(tuple_examples);
 
         paths.insert(
             0,
@@ -258,6 +153,192 @@ impl MutationPathBuilder for TupleMutationBuilder {
 }
 
 impl TupleMutationBuilder {
+    /// Check if this is a single-element tuple containing only a Handle type
+    fn is_handle_only_wrapper(elements: &[BrpTypeName]) -> bool {
+        elements.len() == 1
+            && elements[0]
+                .as_str()
+                .starts_with("bevy_asset::handle::Handle<")
+    }
+
+    /// Check if parent knowledge indicates this should be treated as opaque
+    fn should_treat_as_opaque(ctx: &RecursionContext) -> bool {
+        ctx.parent_knowledge.is_some_and(|knowledge| {
+            matches!(
+                knowledge.guidance(),
+                super::super::mutation_knowledge::KnowledgeGuidance::TreatAsValue { .. }
+            )
+        })
+    }
+
+    /// Collect examples from parent knowledge
+    fn collect_parent_knowledge_examples(ctx: &RecursionContext, tuple_examples: &mut Vec<Value>) {
+        if let Some(knowledge) = ctx.parent_knowledge {
+            let example = knowledge.example();
+            if let Some(arr) = example.as_array() {
+                tuple_examples.clone_from(arr);
+            }
+        }
+    }
+
+    /// Build paths for all tuple elements
+    fn build_element_paths(
+        ctx: &RecursionContext,
+        elements: &[BrpTypeName],
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+        tuple_examples: &mut Vec<Value>,
+    ) -> Result<()> {
+        for (index, element_type) in elements.iter().enumerate() {
+            let element_path_kind =
+                PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone());
+            let element_ctx = ctx.create_field_context(element_path_kind);
+
+            let Some(element_schema) = ctx.get_registry_schema(element_type) else {
+                Self::handle_missing_element(
+                    index,
+                    element_type,
+                    &element_ctx,
+                    paths,
+                    tuple_examples,
+                );
+                continue;
+            };
+
+            let element_kind = TypeKind::from_schema(element_schema, element_type);
+
+            if matches!(element_kind, TypeKind::Value) {
+                Self::handle_value_element(
+                    ctx,
+                    element_type,
+                    &element_ctx,
+                    &element_kind,
+                    depth,
+                    paths,
+                    tuple_examples,
+                );
+            } else {
+                Self::handle_complex_element(
+                    &element_ctx,
+                    &element_kind,
+                    depth,
+                    paths,
+                    tuple_examples,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Handle a missing element (not in registry)
+    fn handle_missing_element(
+        index: usize,
+        element_type: &BrpTypeName,
+        element_ctx: &RecursionContext,
+        paths: &mut Vec<MutationPathInternal>,
+        tuple_examples: &mut Vec<Value>,
+    ) {
+        let path = if element_ctx.mutation_path.is_empty() {
+            format!(".{index}")
+        } else {
+            format!("{}.{index}", element_ctx.mutation_path)
+        };
+        paths.push(MutationPathInternal {
+            path,
+            example: json!({
+                "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
+                "agent_directive": "Element type not found in registry"
+            }),
+            type_name: element_type.clone(),
+            path_kind: element_ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutatable,
+            error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(
+                element_type.clone(),
+            )),
+        });
+        tuple_examples.push(json!(null));
+    }
+
+    /// Handle a value element
+    fn handle_value_element(
+        ctx: &RecursionContext,
+        element_type: &BrpTypeName,
+        element_ctx: &RecursionContext,
+        element_kind: &TypeKind,
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+        tuple_examples: &mut Vec<Value>,
+    ) {
+        if ctx.value_type_has_serialization(element_type) {
+            let element_example = element_kind
+                .builder()
+                .build_schema_example(element_ctx, depth.increment());
+            tuple_examples.push(element_example.clone());
+            paths.push(MutationPathInternal {
+                path:            element_ctx.mutation_path.clone(),
+                example:         element_example,
+                type_name:       element_type.clone(),
+                path_kind:       element_ctx.path_kind.clone(),
+                mutation_status: MutationStatus::Mutatable,
+                error_reason:    None,
+            });
+        } else {
+            tuple_examples.push(json!(null));
+            paths.push(MutationPathInternal {
+                path: element_ctx.mutation_path.clone(),
+                example: json!({
+                    "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
+                    "agent_directive": "Element type cannot be mutated through BRP"
+                }),
+                type_name: element_type.clone(),
+                path_kind: element_ctx.path_kind.clone(),
+                mutation_status: MutationStatus::NotMutatable,
+                error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
+            });
+        }
+    }
+
+    /// Handle a complex element (requires recursion)
+    fn handle_complex_element(
+        element_ctx: &RecursionContext,
+        element_kind: &TypeKind,
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+        tuple_examples: &mut Vec<Value>,
+    ) -> Result<()> {
+        let element_paths = element_kind.build_paths(element_ctx, depth)?;
+
+        // Extract the element example from the root path
+        let element_example = element_paths
+            .iter()
+            .find(|p| p.path == element_ctx.mutation_path)
+            .map_or_else(
+                || {
+                    // If no direct path, generate example using trait dispatch
+                    element_kind
+                        .builder()
+                        .build_schema_example(element_ctx, depth.increment())
+                },
+                |p| p.example.clone(),
+            );
+
+        tuple_examples.push(element_example);
+        paths.extend(element_paths);
+        Ok(())
+    }
+
+    /// Build the root example from collected tuple examples
+    fn build_root_example(tuple_examples: Vec<Value>) -> Value {
+        if tuple_examples.len() == 1 {
+            // Single-field tuple structs are unwrapped by BRP
+            tuple_examples.into_iter().next().unwrap_or(json!(null))
+        } else if tuple_examples.is_empty() {
+            json!(null)
+        } else {
+            json!(tuple_examples)
+        }
+    }
+
     /// Propagate mixed mutability from tuple elements to root path according to DESIGN-001
     fn propagate_tuple_mixed_mutability(paths: &mut [MutationPathInternal]) {
         let has_root = paths.iter().any(|p| p.path.is_empty());
