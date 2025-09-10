@@ -68,13 +68,15 @@ impl MutationPathBuilder for ListMutationBuilder {
         let element_example = element_paths
             .iter()
             .find(|p| p.path == element_ctx.mutation_path)
-            .map(|p| p.example.clone())
-            .unwrap_or_else(|| {
-                // If no direct path, generate example using trait dispatch
-                element_kind
-                    .builder()
-                    .build_schema_example(&element_ctx, depth.increment())
-            });
+            .map_or_else(
+                || {
+                    // If no direct path, generate example using trait dispatch
+                    element_kind
+                        .builder()
+                        .build_schema_example(&element_ctx, depth.increment())
+                },
+                |p| p.example.clone(),
+            );
 
         // Build the main list path using the element example (like Array builder does)
         let list_example = vec![element_example.clone(); 2];
@@ -93,7 +95,7 @@ impl MutationPathBuilder for ListMutationBuilder {
             path:            indexed_path,
             example:         element_example,
             type_name:       element_type.clone(),
-            path_kind:       element_ctx.path_kind.clone(),
+            path_kind:       element_ctx.path_kind,
             mutation_status: MutationStatus::Mutatable,
             error_reason:    None,
         });

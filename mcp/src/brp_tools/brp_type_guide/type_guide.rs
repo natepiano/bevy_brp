@@ -165,14 +165,15 @@ impl TypeGuide {
     ) -> Option<Value> {
         mutation_paths.get("").and_then(|root_path| {
             // Handle both the new `example` field and the legacy `examples` array
-            if let Some(example) = &root_path.example {
-                Some(example.clone())
-            } else {
-                root_path
-                    .examples
-                    .first()
-                    .map(|example_group| example_group.example.clone())
-            }
+            root_path.example.as_ref().map_or_else(
+                || {
+                    root_path
+                        .examples
+                        .first()
+                        .map(|example_group| example_group.example.clone())
+                },
+                |example| Some(example.clone()),
+            )
         })
     }
 

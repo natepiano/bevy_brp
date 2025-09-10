@@ -97,7 +97,6 @@ impl MutationPathBuilder for SetMutationBuilder {
 
 impl SetMutationBuilder {
     /// Build a mutation path for the entire Set field
-
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
         ctx: &RecursionContext,

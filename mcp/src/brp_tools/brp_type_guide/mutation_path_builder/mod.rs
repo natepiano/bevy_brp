@@ -63,14 +63,13 @@ pub trait MutationPathBuilder {
     //     if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
     //         return example;
     //     }
-
     //     self.build_schema_example(ctx, depth)
     // }
-
-    /// Build example from schema - implemented by each builder for their specific type
-    /// Each builder focuses ONLY on type-specific assembly logic
-    /// The trait's build_example_with_knowledge() handles all common patterns:
-    /// - Knowledge lookup (BRP_MUTATION_KNOWLEDGE)
+    ///   Build example from schema - implemented by each builder for their specific type.
+    ///
+    /// Each builder focuses ONLY on type-specific assembly logic.
+    /// The trait's `build_example_with_knowledge()` handles all common patterns:
+    /// - Knowledge lookup (`BRP_MUTATION_KNOWLEDGE`)
     /// - Depth checking and recursion
     /// - Type dispatch to child builders
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
@@ -91,7 +90,7 @@ pub trait MutationPathBuilder {
     /// Most types return true (default) because their child paths are valid mutation targets.
     /// Container types like Maps return false because they only expose the container itself.
     ///
-    /// Example: HashMap<String, Transform>
+    /// Example: `HashMap<String, Transform>`
     /// - Returns false: only exposes path "" with complete map {"key": {transform}}
     /// - Does NOT expose ".rotation", ".scale" etc. from the Transform values
     fn include_child_paths(&self) -> bool {

@@ -419,14 +419,16 @@ impl MutationPathBuilder for EnumMutationBuilder {
                         let field_example = field_paths
                             .iter()
                             .find(|p| p.path == field_ctx.mutation_path)
-                            .map(|p| p.example.clone())
-                            .unwrap_or_else(|| {
-                                // Fallback to trait dispatch if no direct path
-                                tracing::error!("ENUM VARIANT {} - No direct path, using trait dispatch (parent: {})", variant_name, ctx.type_name());
-                                inner_kind
-                                    .builder()
-                                    .build_schema_example(&field_ctx, depth.increment())
-                            });
+                            .map_or_else(
+                                || {
+                                    // Fallback to trait dispatch if no direct path
+                                    tracing::error!("ENUM VARIANT {} - No direct path, using trait dispatch (parent: {})", variant_name, ctx.type_name());
+                                    inner_kind
+                                        .builder()
+                                        .build_schema_example(&field_ctx, depth.increment())
+                                },
+                                |p| p.example.clone(),
+                            );
 
                         tracing::error!(
                             "ENUM VARIANT {} - Pushing field example to tuple_values (parent: {})",
@@ -513,13 +515,15 @@ impl MutationPathBuilder for EnumMutationBuilder {
                         let field_example = field_paths
                             .iter()
                             .find(|p| p.path == field_ctx.mutation_path)
-                            .map(|p| p.example.clone())
-                            .unwrap_or_else(|| {
-                                // Fallback to trait dispatch if no direct path
-                                inner_kind
-                                    .builder()
-                                    .build_schema_example(&field_ctx, depth.increment())
-                            });
+                            .map_or_else(
+                                || {
+                                    // Fallback to trait dispatch if no direct path
+                                    inner_kind
+                                        .builder()
+                                        .build_schema_example(&field_ctx, depth.increment())
+                                },
+                                |p| p.example.clone(),
+                            );
 
                         struct_obj.insert(field.field_name.clone(), field_example);
 

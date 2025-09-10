@@ -561,7 +561,7 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // obtained from spawn operations or queries. Using invalid entity IDs will cause errors.
         map.insert(
             KnowledgeKey::exact("bevy_ecs::entity::Entity"),
-            MutationKnowledge::as_value(json!(8589934670_u64), "Entity".to_string()),
+            MutationKnowledge::as_value(json!(8_589_934_670_u64), "Entity".to_string()),
         );
 
         // Name serializes as a plain string, not as a struct with hash/name fields

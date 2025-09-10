@@ -94,11 +94,20 @@ impl SchemaField {
     /// This extracts the type reference from a field definition in the schema,
     /// handling the standard pattern of type.$ref with #/$defs/ prefix.
     pub fn extract_field_type(field_info: &Value) -> Option<BrpTypeName> {
-        field_info
+        let field_type = field_info
             .get_field(Self::Type)
             .and_then(|t| t.get_field(Self::Ref))
             .and_then(Value::as_str)
             .and_then(|ref_str| ref_str.strip_prefix(SCHEMA_REF_PREFIX))
-            .map(BrpTypeName::from)
+            .map(BrpTypeName::from);
+
+        if field_type.is_none() {
+            tracing::debug!(
+                "Failed to extract field type from schema: {}",
+                serde_json::to_string(field_info).unwrap_or_else(|_| "<invalid json>".to_string())
+            );
+        }
+
+        field_type
     }
 }

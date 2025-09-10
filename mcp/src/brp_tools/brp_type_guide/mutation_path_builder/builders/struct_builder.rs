@@ -146,27 +146,31 @@ impl MutationPathBuilder for StructMutationBuilder {
                 let field_example = field_paths
                     .iter()
                     .find(|p| p.path == field_ctx.mutation_path)
-                    .map(|p| {
-                        // Check if this is signature groups array from enum builder
-                        if let Some(signature_groups) = p.example.as_array() {
-                            // Extract first concrete example from signature groups
-                            signature_groups
-                                .first()
-                                .and_then(|group| group.get("example"))
-                                .cloned()
-                                .unwrap_or(p.example.clone())
-                        } else {
-                            p.example.clone()
-                        }
-                    })
-                    .unwrap_or_else(|| {
-                        // If no direct path, generate example using trait dispatch
-                        // For struct root paths with enum fields, this ensures concrete examples
-                        // (like "Active") instead of __enum_signature_groups documentation format
-                        field_kind
-                            .builder()
-                            .build_schema_example(&field_ctx, depth.increment())
-                    });
+                    .map_or_else(
+                        || {
+                            // If no direct path, generate example using trait dispatch
+                            // For struct root paths with enum fields, this ensures concrete
+                            // examples (like "Active") instead of
+                            // __enum_signature_groups documentation format
+                            field_kind
+                                .builder()
+                                .build_schema_example(&field_ctx, depth.increment())
+                        },
+                        |p| {
+                            // Check if this is signature groups array from enum builder
+                            p.example.as_array().map_or_else(
+                                || p.example.clone(),
+                                |signature_groups| {
+                                    // Extract first concrete example from signature groups
+                                    signature_groups
+                                        .first()
+                                        .and_then(|group| group.get("example"))
+                                        .cloned()
+                                        .unwrap_or_else(|| p.example.clone())
+                                },
+                            )
+                        },
+                    );
 
                 tracing::error!(
                     "    STRUCT FIELD {} - Before extending paths, current total: {} (parent: {})",
@@ -383,7 +387,7 @@ impl StructMutationBuilder {
                                 .get_registry_schema(field_type)
                                 .map(|schema| {
                                     let kind = TypeKind::from_schema(schema, field_type);
-                                    kind.builder().build_schema_example(&field_ctx, depth)
+                                    kind.builder().build_schema_example(field_ctx, depth)
                                 })
                                 .unwrap_or(json!(null))
                         },
@@ -411,7 +415,7 @@ impl StructMutationBuilder {
                                                 let kind =
                                                     TypeKind::from_schema(schema, field_type);
                                                 kind.builder()
-                                                    .build_schema_example(&field_ctx, depth)
+                                                    .build_schema_example(field_ctx, depth)
                                             })
                                             .unwrap_or(json!(null))
                                     },

@@ -41,12 +41,12 @@ impl MutationPathBuilder for ProtocolEnforcer {
         // 2. Check knowledge for THIS level
         if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
             return Ok(vec![MutationPathInternal {
-                path:            ctx.mutation_path.clone(),
-                example:         example.clone(),
-                type_name:       ctx.type_name().clone(),
-                path_kind:       ctx.path_kind.clone(),
+                path: ctx.mutation_path.clone(),
+                example,
+                type_name: ctx.type_name().clone(),
+                path_kind: ctx.path_kind.clone(),
                 mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
+                error_reason: None,
             }]);
         }
 

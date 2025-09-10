@@ -105,21 +105,22 @@ impl MutationPath {
         let description = path.path_kind.description(&type_kind);
 
         // Handle examples array creation - clean up variant context wrapping
-        let clean_example = if let Some(_variant_context) = path.example.get("__variant_context") {
-            // Extract the actual value from variant context wrapper
-            if let Some(value) = path.example.get("value") {
-                value.clone()
-            } else {
-                // Remove the variant context and keep the rest
-                let mut clean = path.example.clone();
-                if let Some(obj) = clean.as_object_mut() {
-                    obj.remove("__variant_context");
-                }
-                clean
-            }
-        } else {
-            path.example.clone()
-        };
+        let clean_example = path.example.get("__variant_context").map_or_else(
+            || path.example.clone(),
+            |_variant_context| {
+                path.example.get("value").map_or_else(
+                    || {
+                        // Remove the variant context and keep the rest
+                        let mut clean = path.example.clone();
+                        if let Some(obj) = clean.as_object_mut() {
+                            obj.remove("__variant_context");
+                        }
+                        clean
+                    },
+                    std::clone::Clone::clone,
+                )
+            },
+        );
 
         // Handle examples array creation - new clean logic
         let examples = if clean_example.is_null() {
@@ -137,45 +138,46 @@ impl MutationPath {
         };
 
         // Extract variants - check both signature groups and variant context
-        let variants = if let Some(signature_groups) = path.example.as_array() {
-            // Extract all variants from signature groups array (for enum root paths)
-            let mut all_variants = Vec::new();
-            for group in signature_groups {
-                if let Some(group_variants) = group.get("variants").and_then(Value::as_array) {
-                    for variant in group_variants {
-                        if let Some(variant_name) = variant.as_str() {
-                            all_variants.push(variant_name.to_string());
+        let variants = path.example.as_array().map_or_else(
+            || {
+                path.example
+                    .get("__variant_context")
+                    .and_then(Value::as_array)
+                    .and_then(|variant_context| {
+                        // Extract variants from variant context (for enum sub-paths)
+                        let mut variants = Vec::new();
+                        for variant in variant_context {
+                            if let Some(variant_name) = variant.as_str() {
+                                variants.push(variant_name.to_string());
+                            }
+                        }
+                        if variants.is_empty() {
+                            None
+                        } else {
+                            Some(variants)
+                        }
+                    })
+            },
+            |signature_groups| {
+                // Extract all variants from signature groups array (for enum root paths)
+                let mut all_variants = Vec::new();
+                for group in signature_groups {
+                    if let Some(group_variants) = group.get("variants").and_then(Value::as_array) {
+                        for variant in group_variants {
+                            if let Some(variant_name) = variant.as_str() {
+                                all_variants.push(variant_name.to_string());
+                            }
                         }
                     }
                 }
-            }
-            all_variants.sort();
-            if all_variants.is_empty() {
-                None
-            } else {
-                Some(all_variants)
-            }
-        } else if let Some(variant_context) = path
-            .example
-            .get("__variant_context")
-            .and_then(Value::as_array)
-        {
-            // Extract variants from variant context (for enum sub-paths)
-            let mut variants = Vec::new();
-            for variant in variant_context {
-                if let Some(variant_name) = variant.as_str() {
-                    variants.push(variant_name.to_string());
+                all_variants.sort();
+                if all_variants.is_empty() {
+                    None
+                } else {
+                    Some(all_variants)
                 }
-            }
-            if variants.is_empty() {
-                None
-            } else {
-                Some(variants)
-            }
-        } else {
-            // Not an enum or variant context format - no variants
-            None
-        };
+            },
+        );
 
         // Determine if this should use examples array or single example
         let (final_examples, final_example) = if matches!(type_kind, TypeKind::Enum)
@@ -191,7 +193,7 @@ impl MutationPath {
             (vec![], Some(examples[0].example.clone()))
         } else if examples.is_empty() && !clean_example.is_null() {
             // Direct example without going through examples array (for TupleStruct, Array, etc.)
-            (vec![], Some(clean_example.clone()))
+            (vec![], Some(clean_example))
         } else {
             // Multiple examples or enum context - keep examples array
             (examples, None)

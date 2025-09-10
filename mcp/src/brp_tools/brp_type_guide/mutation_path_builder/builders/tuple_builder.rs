@@ -66,7 +66,15 @@ impl MutationPathBuilder for TupleMutationBuilder {
 
         // Build paths for each element and collect examples (unless parent knowledge says to treat
         // as opaque)
-        if !should_stop_recursion {
+        if should_stop_recursion {
+            // Use parent knowledge for example if not recursing
+            if let Some(knowledge) = ctx.parent_knowledge {
+                let example = knowledge.example();
+                if let Some(arr) = example.as_array() {
+                    tuple_examples.clone_from(arr);
+                }
+            }
+        } else {
             for (index, element_type) in elements.iter().enumerate() {
                 let element_path_kind = PathKind::new_indexed_element(
                     index,
@@ -89,7 +97,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                             "agent_directive": "Element type not found in registry"
                         }),
                         type_name: element_type.clone(),
-                        path_kind: element_ctx.path_kind.clone(),
+                        path_kind: element_ctx.path_kind,
                         mutation_status: MutationStatus::NotMutatable,
                         error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(element_type.clone())),
                     });
@@ -110,7 +118,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                             path:            element_ctx.mutation_path.clone(),
                             example:         element_example,
                             type_name:       element_type.clone(),
-                            path_kind:       element_ctx.path_kind.clone(),
+                            path_kind:       element_ctx.path_kind,
                             mutation_status: MutationStatus::Mutatable,
                             error_reason:    None,
                         });
@@ -123,7 +131,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                 "agent_directive": "Element type cannot be mutated through BRP"
                             }),
                             type_name: element_type.clone(),
-                            path_kind: element_ctx.path_kind.clone(),
+                            path_kind: element_ctx.path_kind,
                             mutation_status: MutationStatus::NotMutatable,
                             error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
                         });
@@ -136,24 +144,18 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     let element_example = element_paths
                         .iter()
                         .find(|p| p.path == element_ctx.mutation_path)
-                        .map(|p| p.example.clone())
-                        .unwrap_or_else(|| {
-                            // If no direct path, generate example using trait dispatch
-                            element_kind
-                                .builder()
-                                .build_schema_example(&element_ctx, depth.increment())
-                        });
+                        .map_or_else(
+                            || {
+                                // If no direct path, generate example using trait dispatch
+                                element_kind
+                                    .builder()
+                                    .build_schema_example(&element_ctx, depth.increment())
+                            },
+                            |p| p.example.clone(),
+                        );
 
                     tuple_examples.push(element_example);
                     paths.extend(element_paths);
-                }
-            }
-        } else {
-            // Use parent knowledge for example if not recursing
-            if let Some(knowledge) = ctx.parent_knowledge {
-                let example = knowledge.example();
-                if let Some(arr) = example.as_array() {
-                    tuple_examples = arr.clone();
                 }
             }
         }

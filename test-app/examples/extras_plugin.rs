@@ -24,6 +24,7 @@ use bevy::core_pipeline::dof::DepthOfField;
 use bevy::core_pipeline::fxaa::Fxaa;
 use bevy::core_pipeline::post_process::ChromaticAberration;
 use bevy::core_pipeline::prepass::MotionVectorPrepass;
+use bevy::ecs::relationship::RelatedSpawnerCommands;
 use bevy::input::gamepad::{Gamepad, GamepadSettings};
 use bevy::input::keyboard::KeyboardInput;
 use bevy::pbr::decal::clustered::ClusteredDecal;
@@ -33,7 +34,7 @@ use bevy::pbr::{
     AmbientLight, LightProbe, NotShadowCaster, NotShadowReceiver, ScreenSpaceAmbientOcclusion,
     ScreenSpaceReflections, VolumetricFog, VolumetricLight,
 };
-use bevy::prelude::*;
+use bevy::prelude::{ChildOf, *};
 // Bevy 0.16
 use bevy::render::camera::{MipBias, TemporalJitter};
 use bevy::render::experimental::occlusion_culling::OcclusionCulling;
@@ -887,6 +888,11 @@ fn spawn_render_entities(commands: &mut Commands) {
 
 /// Setup UI for keyboard input display
 fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
+    spawn_cameras(&mut commands);
+    spawn_ui_elements(&mut commands, &port);
+}
+
+fn spawn_cameras(commands: &mut Commands) {
     // Single 2D Camera that handles both UI and 2D sprites
     commands.spawn((
         Camera2d,
@@ -922,7 +928,9 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
         VolumetricFog::default(),               // For testing mutations
         MotionVectorPrepass,                    // For testing mutations
     ));
+}
 
+fn spawn_ui_elements(commands: &mut Commands, port: &Res<CurrentPort>) {
     // Background
     commands
         .spawn((
@@ -933,85 +941,103 @@ fn setup_ui(mut commands: Commands, port: Res<CurrentPort>) {
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),  // Back to dark background
+            BackgroundColor(Color::srgb(0.1, 0.1, 0.1)), // Back to dark background
         ))
         .with_children(|parent| {
-            // Text container with blue background
-            parent
-                .spawn((
-                    Node {
-                        padding: UiRect::all(Val::Px(20.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(0.2, 0.3, 0.5)),  // Blue background for the entire text area
-                    BoxShadowSamples(4),
-                    CalculatedClip {
-                        clip: bevy::math::Rect::from_corners(Vec2::ZERO, Vec2::new(100.0, 100.0))
-                    },
-                    Name::new("CalculatedClipTestEntity"),
-                ))
-                .with_children(|parent| {
-                    // Keyboard display text directly
-                    parent.spawn((
-                            Text::new(format!(
-                                "Waiting for keyboard input...\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
-                                port.0
-                            )),
-                            TextFont {
-                                font_size: 20.0,
-                                ..default()
-                            },
-                            TextColor(Color::WHITE),
-                            KeyboardDisplayText,
-                        bevy::text::TextBounds {
-                            width: Some(400.0),
-                            height: Some(200.0),
-                        },
-                        bevy::text::TextSpan("Test TextSpan Component".to_string()),
-                        bevy::prelude::TextShadow {
-                            offset: Vec2::new(2.0, 2.0),
-                            color: Color::srgba(0.0, 0.0, 0.0, 0.5),
-                        },
-                        bevy::prelude::UiAntiAlias::On,
-                        bevy::prelude::UiTargetCamera(Entity::PLACEHOLDER),
-                        bevy::prelude::ImageNode {
-                            image: Handle::default(),
-                            color: Color::srgb(0.2, 0.3, 0.5),  // Blue background instead of white
-                            flip_x: false,
-                            flip_y: false,
-                            image_mode: bevy::prelude::NodeImageMode::Auto,
-                            rect: None,
-                            texture_atlas: None,
-                        },
-                        Name::new("TextBoundsTestEntity"),
-                    ));
-
-                    // Button component for testing mutations
-                    parent.spawn((
-                        Node {
-                            width: Val::Px(100.0),
-                            height: Val::Px(40.0),
-                            margin: UiRect::all(Val::Px(10.0)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.4, 0.6, 0.8)),
-                        Button,
-                        Name::new("ButtonTestEntity"),
-                    ));
-
-                    // Label component for testing mutations
-                    parent.spawn((
-                        Text::new("Test Label"),
-                        TextFont {
-                            font_size: 16.0,
-                            ..default()
-                        },
-                        TextColor(Color::srgb(1.0, 1.0, 0.0)), // Yellow color
-                        Label,
-                        Name::new("LabelTestEntity"),
-                    ));
-                });
+            spawn_text_container(parent, port);
         });
+}
+
+fn spawn_text_container(parent: &mut RelatedSpawnerCommands<ChildOf>, port: &Res<CurrentPort>) {
+    // Text container with blue background
+    parent
+        .spawn((
+            Node {
+                padding: UiRect::all(Val::Px(20.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.2, 0.3, 0.5)), /* Blue background for the entire text
+                                                          * area */
+            BoxShadowSamples(4),
+            CalculatedClip {
+                clip: bevy::math::Rect::from_corners(Vec2::ZERO, Vec2::new(100.0, 100.0)),
+            },
+            Name::new("CalculatedClipTestEntity"),
+        ))
+        .with_children(|parent| {
+            spawn_keyboard_display_text(parent, port);
+            spawn_button_test(parent);
+            spawn_label_test(parent);
+        });
+}
+
+fn spawn_keyboard_display_text(
+    parent: &mut RelatedSpawnerCommands<ChildOf>,
+    port: &Res<CurrentPort>,
+) {
+    // Keyboard display text directly
+    parent.spawn((
+        Text::new(format!(
+            "Waiting for keyboard input...\n\nUse curl to send keys:\ncurl -X POST http://localhost:{}/brp_extras/send_keys \\\n  -H \"Content-Type: application/json\" \\\n  -d '{{\"keys\": [\"KeyA\", \"Space\"]}}'",
+            port.0
+        )),
+        TextFont {
+            font_size: 20.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        KeyboardDisplayText,
+        bevy::text::TextBounds {
+            width: Some(400.0),
+            height: Some(200.0),
+        },
+        bevy::text::TextSpan("Test TextSpan Component".to_string()),
+        bevy::prelude::TextShadow {
+            offset: Vec2::new(2.0, 2.0),
+            color: Color::srgba(0.0, 0.0, 0.0, 0.5),
+        },
+        bevy::prelude::UiAntiAlias::On,
+        bevy::prelude::UiTargetCamera(Entity::PLACEHOLDER),
+        bevy::prelude::ImageNode {
+            image: Handle::default(),
+            color: Color::srgb(0.2, 0.3, 0.5),  // Blue background instead of white
+            flip_x: false,
+            flip_y: false,
+            image_mode: bevy::prelude::NodeImageMode::Auto,
+            rect: None,
+            texture_atlas: None,
+        },
+        Name::new("TextBoundsTestEntity"),
+    ));
+}
+
+fn spawn_button_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
+    // Button component for testing mutations
+    parent.spawn((
+        Node {
+            width: Val::Px(100.0),
+            height: Val::Px(40.0),
+            margin: UiRect::all(Val::Px(10.0)),
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.4, 0.6, 0.8)),
+        Button,
+        Name::new("ButtonTestEntity"),
+    ));
+}
+
+fn spawn_label_test(parent: &mut RelatedSpawnerCommands<ChildOf>) {
+    // Label component for testing mutations
+    parent.spawn((
+        Text::new("Test Label"),
+        TextFont {
+            font_size: 16.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // Yellow color
+        Label,
+        Name::new("LabelTestEntity"),
+    ));
 }
 
 /// Track keyboard input events

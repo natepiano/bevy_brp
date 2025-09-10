@@ -18,6 +18,7 @@ use crate::error::Result;
 pub struct DefaultMutationBuilder;
 
 impl MutationPathBuilder for DefaultMutationBuilder {
+    #[allow(clippy::panic)]
     fn build_paths(
         &self,
         ctx: &RecursionContext,

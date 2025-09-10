@@ -24,7 +24,7 @@ pub trait JsonFieldAccess {
         F: Into<String>,
         V: Into<Value>;
 
-    /// Extract a single type reference from a schema field (Items, KeyType, ValueType, etc.)
+    /// Extract a single type reference from a schema field (Items, `KeyType`, `ValueType`, etc.)
     fn get_type(&self, field: SchemaField) -> Option<BrpTypeName> {
         self.get_field(field)
             .and_then(SchemaField::extract_field_type)

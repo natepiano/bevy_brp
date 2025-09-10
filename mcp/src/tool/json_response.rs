@@ -27,7 +27,7 @@ pub struct ToolCallJsonResponse {
 
 impl ToolCallJsonResponse {
     /// Convert to JSON string with error-stack context
-    /// Uses PrettyCompactFormatter for readable structure with compact arrays
+    /// Uses `PrettyCompactFormatter` for readable structure with compact arrays
     pub fn to_json(&self) -> Result<String> {
         use error_stack::ResultExt;
         use json_pretty_compact::PrettyCompactFormatter;

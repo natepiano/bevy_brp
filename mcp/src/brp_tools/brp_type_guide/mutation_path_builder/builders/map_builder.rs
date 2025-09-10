@@ -22,6 +22,7 @@ use crate::string_traits::JsonFieldAccess;
 pub struct MapMutationBuilder;
 
 impl MutationPathBuilder for MapMutationBuilder {
+    #[allow(clippy::panic)]
     fn build_paths(
         &self,
         ctx: &RecursionContext,
@@ -143,7 +144,7 @@ impl MutationPathBuilder for MapMutationBuilder {
         // Build final map with the COMPLETE value example
         // For HashMap<String, Transform>, value_example is the full Transform
         let mut map = serde_json::Map::new();
-        map.insert(key_str.clone(), value_example.clone());
+        map.insert(key_str, value_example.clone());
         json!(map)
     }
 }

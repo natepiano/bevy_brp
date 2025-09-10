@@ -1,4 +1,4 @@
-//! Public API response types for the `brp_type_guide tool
+//! Public API response types for the `brp_type_guide` tool
 //!
 //! This module contains the strongly-typed structures that form the public API
 //! for type schema discovery results. These types are separate from the internal
@@ -80,13 +80,13 @@ impl BrpTypeName {
         // Special handling for array types like [Type; size]
         if self.0.starts_with('[') && self.0.ends_with(']') {
             // For arrays, we need to shorten the inner type but keep the array syntax
-            if let Some(semicolon_pos) = self.0.rfind(';') {
-                if let Some(bracket_pos) = self.0.find('[') {
-                    let inner_type = &self.0[bracket_pos + 1..semicolon_pos];
-                    let size_part = &self.0[semicolon_pos..];
-                    let short_inner = inner_type.rsplit("::").next().unwrap_or(inner_type);
-                    return format!("[{short_inner}{size_part}");
-                }
+            if let Some(semicolon_pos) = self.0.rfind(';')
+                && let Some(bracket_pos) = self.0.find('[')
+            {
+                let inner_type = &self.0[bracket_pos + 1..semicolon_pos];
+                let size_part = &self.0[semicolon_pos..];
+                let short_inner = inner_type.rsplit("::").next().unwrap_or(inner_type);
+                return format!("[{short_inner}{size_part}");
             }
         }
 

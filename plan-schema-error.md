@@ -11,8 +11,8 @@ Replace panics and incorrect fallback values in mutation path builders with prop
 - **14 json! fallback returns** that may need error handling
 - **30+ unwrap_or/unwrap_or_else calls** to review
 - **50+ tracing calls** to clean up
-- **4 assemble_from_children implementations** to update
-- **2 assemble_from_children callers** to update
+- **4 assemble_from_children implementations** to update (Map, Default, ProtocolEnforcer + trait)
+- **2 assemble_from_children callers** to update (in ProtocolEnforcer)
 
 ## EXECUTION PROTOCOL
 
@@ -79,59 +79,44 @@ For each step in the implementation sequence:
 - Code compiles (default impl prevents breakage)
 - Sets foundation for error propagation
 
-### STEP 3: Fix Critical Panics
+### STEP 3: Update MapMutationBuilder Completely
 **Status:** ⏳ PENDING
 
-**Objective:** Replace panics with proper error returns
+**Objective:** Fully migrate MapMutationBuilder to new error handling
 
 **Changes to make:**
-1. Replace panic at `map_builder.rs:35`
-2. Replace panic at `default_builder.rs:30`
-3. Both use `Err(Error::InvalidState(...).into())`
-
-**Files to modify:**
-- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
-- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs`
-
-**Expected outcome:**
-- No more panics in migrated builders
-- Proper error messages for protocol violations
-
-### STEP 4: Fix MapMutationBuilder Fallbacks
-**Status:** ⏳ PENDING
-
-**Objective:** Replace incorrect placeholder returns with errors
-
-**Changes to make:**
-1. Fix line 118: Replace `json!({"example_key": "example_value"})` with error
-2. Fix line 126: Replace `json!({"example_key": "example_value"})` with error
-3. Update `assemble_from_children` signature to `Result<Value>`
-4. Wrap successful return in `Ok(...)`
+1. Replace panic at line 35 with `Err(Error::InvalidState(...))`
+2. Fix line 118: Replace `json!({"example_key": "example_value"})` with error
+3. Fix line 126: Replace `json!({"example_key": "example_value"})` with error
+4. Update `assemble_from_children` signature to `Result<Value>`
+5. Wrap successful return in `Ok(...)`
+6. Remove/downgrade excessive `tracing::warn!` calls
 
 **Files to modify:**
 - `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
 
 **Expected outcome:**
-- Map builder correctly reports missing children
-- No more placeholder values
+- MapMutationBuilder fully migrated with no panics or placeholder values
+- Cleaner logging
 
-### STEP 5: Update DefaultBuilder
+### STEP 4: Update DefaultBuilder Completely
 **Status:** ⏳ PENDING
 
-**Objective:** Update DefaultBuilder to match new trait signature
+**Objective:** Fully migrate DefaultBuilder to new error handling
 
 **Changes to make:**
-1. Change `assemble_from_children` return type to `Result<Value>`
-2. Wrap `json!(null)` return in `Ok(...)`
+1. Replace panic at line 30 with `Err(Error::InvalidState(...))`
+2. Change `assemble_from_children` return type to `Result<Value>`
+3. Wrap `json!(null)` return in `Ok(...)`
 
 **Files to modify:**
 - `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs`
 
 **Expected outcome:**
-- DefaultBuilder continues to work
+- DefaultBuilder fully migrated with no panics
 - Matches new trait signature
 
-### STEP 6: Update ProtocolEnforcer to Handle Results
+### STEP 5: Update ProtocolEnforcer to Handle Results
 **Status:** ⏳ PENDING
 
 **Objective:** Complete error propagation chain
@@ -141,31 +126,17 @@ For each step in the implementation sequence:
 2. Update `assemble_from_children` signature to `Result<Value>`
 3. Line 67: Handle missing schema properly
 4. Line 90: Handle missing child example properly
+5. Remove all 6 `tracing::warn!` calls (debug traces)
 
 **Files to modify:**
 - `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
 
 **Expected outcome:**
-- Full error propagation working
+- Full error propagation working for both migrated builders
 - System ready for testing
-
-### STEP 7: Clean Up MapMutationBuilder Logging
-**Status:** ⏳ PENDING
-
-**Objective:** Remove excessive logging from MapMutationBuilder
-
-**Changes to make:**
-1. Remove/downgrade `tracing::warn!` calls
-2. Simplify key serialization error handling
-
-**Files to modify:**
-- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
-
-**Expected outcome:**
 - Cleaner logs
-- Same functionality
 
-### STEP 8: Review Other Builders' Fallbacks
+### STEP 6: Review Other Builders' Fallbacks
 **Status:** ⏳ PENDING
 
 **Objective:** Investigate and fix other potential fallback issues
@@ -186,18 +157,16 @@ For each step in the implementation sequence:
 - All error conditions properly handled
 - Legitimate fallbacks documented
 
-### STEP 9: Clean Up Excessive Logging
+### STEP 7: Clean Up Excessive Logging
 **Status:** ⏳ PENDING
 
 **Objective:** Remove debug logging from production code
 
 **Changes to make:**
-1. **Batch 1**: Remove 6 `tracing::warn!` from protocol_enforcer.rs
-2. **Batch 2**: Remove 30+ `tracing::error!` from struct_builder.rs
-3. **Batch 3**: Remove 20+ `tracing::error!` from enum_builder.rs
+1. **Batch 1**: Remove 30+ `tracing::error!` from struct_builder.rs
+2. **Batch 2**: Remove 20+ `tracing::error!` from enum_builder.rs
 
 **Files to modify:**
-- `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
 - `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/struct_builder.rs`
 - `/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
 
@@ -205,7 +174,7 @@ For each step in the implementation sequence:
 - Clean production logs
 - Better performance
 
-### STEP 10: Final Validation
+### STEP 8: Final Validation
 **Status:** ⏳ PENDING
 
 **Objective:** Verify all changes work correctly
