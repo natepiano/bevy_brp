@@ -52,8 +52,13 @@ pub enum Error {
     #[error("Process management error: {0}")]
     ProcessManagement(String),
 
-    #[error("Schema processing error: {0}")]
-    SchemaProcessing(String),
+    #[error("Schema processing error: {message}")]
+    SchemaProcessing {
+        message:   String,
+        type_name: Option<String>,
+        operation: Option<String>,
+        details:   Option<String>,
+    },
 
     #[error("Structured error")] // Generic message, the real message comes from the ResultStruct
     Structured { result: Box<dyn ResultStruct> },
@@ -88,7 +93,18 @@ impl std::fmt::Debug for Error {
             Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
             Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
             Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
-            Self::SchemaProcessing(s) => f.debug_tuple("SchemaProcessing").field(s).finish(),
+            Self::SchemaProcessing {
+                message,
+                type_name,
+                operation,
+                details,
+            } => f
+                .debug_struct("SchemaProcessing")
+                .field("message", message)
+                .field("type_name", type_name)
+                .field("operation", operation)
+                .field("details", details)
+                .finish(),
             Self::Structured { .. } => f
                 .debug_struct("Structured")
                 .field("result", &"<dyn ResultStruct>")
@@ -205,6 +221,30 @@ impl Error {
         Self::ToolCall {
             message: message.into(),
             details: Some(details),
+        }
+    }
+
+    /// Create a schema processing error with just a message
+    pub fn schema_processing(message: impl Into<String>) -> Self {
+        Self::SchemaProcessing {
+            message:   message.into(),
+            type_name: None,
+            operation: None,
+            details:   None,
+        }
+    }
+
+    /// Create a schema processing error for a specific type
+    pub fn schema_processing_for_type(
+        type_name: impl Into<String>,
+        operation: impl Into<String>,
+        details: impl Into<String>,
+    ) -> Self {
+        Self::SchemaProcessing {
+            message:   format!("Failed to process schema for type"),
+            type_name: Some(type_name.into()),
+            operation: Some(operation.into()),
+            details:   Some(details.into()),
         }
     }
 }

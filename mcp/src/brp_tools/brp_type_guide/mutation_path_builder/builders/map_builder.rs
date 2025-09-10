@@ -15,7 +15,7 @@ use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::json_types::SchemaField;
 use crate::string_traits::JsonFieldAccess;
 
@@ -28,14 +28,10 @@ impl MutationPathBuilder for MapMutationBuilder {
         ctx: &RecursionContext,
         _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        tracing::error!(
-            "MapMutationBuilder::build_paths() called directly! Type: {}",
-            ctx.type_name()
-        );
-        panic!(
+        Err(Error::InvalidState(format!(
             "MapMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
             ctx.type_name()
-        );
+        )).into())
     }
 
     fn is_migrated(&self) -> bool {
@@ -100,25 +96,25 @@ impl MutationPathBuilder for MapMutationBuilder {
         &self,
         ctx: &RecursionContext,
         children: HashMap<String, Value>,
-    ) -> Value {
+    ) -> Result<Value> {
         // At this point, children contains COMPLETE examples:
         // - "key": Full example for the key type (e.g., "example_key" for String)
         // - "value": Full example for the value type (e.g., complete Transform JSON)
 
         let Some(key_example) = children.get(SchemaField::Key.as_ref()) else {
-            tracing::warn!(
-                "Missing key example for map type {}, using fallback",
+            return Err(Error::InvalidState(format!(
+                "Protocol violation: Map type {} missing required 'key' child example",
                 ctx.type_name()
-            );
-            return json!({"example_key": "example_value"});
+            ))
+            .into());
         };
 
         let Some(value_example) = children.get(SchemaField::Value.as_ref()) else {
-            tracing::warn!(
-                "Missing value example for map type {}, using fallback",
+            return Err(Error::InvalidState(format!(
+                "Protocol violation: Map type {} missing required 'value' child example",
                 ctx.type_name()
-            );
-            return json!({"example_key": "example_value"});
+            ))
+            .into());
         };
 
         // Convert key to string (JSON maps need string keys)
@@ -145,6 +141,6 @@ impl MutationPathBuilder for MapMutationBuilder {
         // For HashMap<String, Transform>, value_example is the full Transform
         let mut map = serde_json::Map::new();
         map.insert(key_str, value_example.clone());
-        json!(map)
+        Ok(json!(map))
     }
 }

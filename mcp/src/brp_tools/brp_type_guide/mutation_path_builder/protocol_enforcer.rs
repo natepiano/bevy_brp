@@ -101,7 +101,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
 
         // 5. Assemble THIS level from children (post-order)
-        let parent_example = self.inner.assemble_from_children(ctx, child_examples);
+        let parent_example = self.inner.assemble_from_children(ctx, child_examples)?;
 
         // 6. Add THIS level's path at the beginning
         all_paths.insert(
@@ -132,7 +132,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
         &self,
         ctx: &RecursionContext,
         children: HashMap<String, Value>,
-    ) -> Value {
+    ) -> Result<Value> {
         self.inner.assemble_from_children(ctx, children)
     }
 

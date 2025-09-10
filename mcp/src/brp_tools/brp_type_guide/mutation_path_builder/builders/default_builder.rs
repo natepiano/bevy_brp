@@ -13,7 +13,7 @@ use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::error::Result;
+use crate::error::{Error, Result};
 
 pub struct DefaultMutationBuilder;
 
@@ -46,9 +46,9 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         &self,
         _ctx: &RecursionContext,
         _children: HashMap<String, Value>,
-    ) -> Value {
+    ) -> Result<Value> {
         // For leaf types with no children, just return null
         // Knowledge check already handled by ProtocolEnforcer
-        json!(null)
+        Ok(json!(null))
     }
 }

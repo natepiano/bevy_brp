@@ -107,9 +107,9 @@ pub trait MutationPathBuilder {
         &self,
         _ctx: &RecursionContext,
         _children: HashMap<String, Value>,
-    ) -> Value {
+    ) -> Result<Value> {
         // Default: fallback to old build_schema_example for unmigrated builders
         // Note: Can't call build_schema_example here due to object safety
-        json!(null)
+        Ok(json!(null))
     }
 }
