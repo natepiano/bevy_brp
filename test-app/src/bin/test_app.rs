@@ -1,6 +1,7 @@
 //! Test app with `BrpExtrasPlugin` for testing app launch and extras functionality
 
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 
 fn main() {
@@ -14,13 +15,16 @@ fn main() {
             primary_window: Some(Window {
                 title: format!("Test Extras Plugin App - BRP Port {port}"),
                 resolution: (400.0, 300.0).into(),
-                window_level: bevy::window::WindowLevel::AlwaysOnBottom,
+                focused: false,
+                position: bevy::window::WindowPosition::Centered(
+                    bevy::window::MonitorSelection::Primary,
+                ),
                 ..default()
             }),
             ..default()
         }))
         .add_plugins(BrpExtrasPlugin)
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, minimize_window_on_start))
         .add_systems(Update, rotate_sprite)
         .run();
 }
@@ -28,6 +32,13 @@ fn main() {
 #[derive(Component)]
 struct Rotator {
     speed: f32,
+}
+
+/// Minimize the window immediately on startup
+fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    for mut window in &mut windows {
+        window.set_minimized(true);
+    }
 }
 
 fn setup(mut commands: Commands) {

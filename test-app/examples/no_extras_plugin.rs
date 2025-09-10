@@ -8,6 +8,7 @@
 use bevy::prelude::*;
 use bevy::remote::RemotePlugin;
 use bevy::remote::http::RemoteHttpPlugin;
+use bevy::window::PrimaryWindow;
 
 /// Hard-coded port for this example (to avoid conflicts)
 const FIXED_PORT: u16 = 25000;
@@ -20,7 +21,10 @@ fn main() {
             primary_window: Some(bevy::window::Window {
                 title: format!("BRP No Plugin Test - Port {FIXED_PORT}"),
                 resolution: (800.0, 600.0).into(),
-                window_level: bevy::window::WindowLevel::AlwaysOnBottom,
+                focused: false,
+                position: bevy::window::WindowPosition::Centered(
+                    bevy::window::MonitorSelection::Primary,
+                ),
                 ..default()
             }),
             ..default()
@@ -29,8 +33,18 @@ fn main() {
             RemotePlugin::default(),
             RemoteHttpPlugin::default().with_port(FIXED_PORT),
         ))
-        .add_systems(Startup, (setup_test_entities, setup_ui))
+        .add_systems(
+            Startup,
+            (setup_test_entities, setup_ui, minimize_window_on_start),
+        )
         .run();
+}
+
+/// Minimize the window immediately on startup
+fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    for mut window in &mut windows {
+        window.set_minimized(true);
+    }
 }
 
 /// Setup test entities for BRP testing

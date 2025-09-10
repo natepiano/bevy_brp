@@ -45,6 +45,7 @@ use bevy::render::view::visibility::NoFrustumCulling;
 use bevy::render::view::window::screenshot::Screenshot;
 use bevy::ui::widget::{Button, Label};
 use bevy::ui::{BoxShadowSamples, CalculatedClip};
+use bevy::window::PrimaryWindow;
 use bevy_brp_extras::BrpExtrasPlugin;
 use bevy_mesh::morph::{MeshMorphWeights, MorphWeights};
 use bevy_mesh::skinning::SkinnedMesh;
@@ -124,7 +125,7 @@ struct TestMapComponent {
 
 /// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
 #[derive(Component, Default, Reflect)]
-#[reflect(Component)]
+#[reflect(Component, FromReflect)]
 struct TestStructNoSerDe {
     pub value:   f32,
     pub name:    String,
@@ -321,7 +322,10 @@ fn main() {
             primary_window: Some(bevy::window::Window {
                 title: format!("BRP Extras Test - Port {port}"),
                 resolution: (800.0, 600.0).into(),
-                window_level: bevy::window::WindowLevel::AlwaysOnBottom,
+                focused: false,
+                position: bevy::window::WindowPosition::Centered(
+                    bevy::window::MonitorSelection::Primary,
+                ),
                 ..default()
             }),
             ..default()
@@ -364,7 +368,10 @@ fn main() {
         .register_type::<CalculatedClip>()
         .register_type::<Button>()
         .register_type::<Label>()
-        .add_systems(Startup, (setup_test_entities, setup_ui))
+        .add_systems(
+            Startup,
+            (setup_test_entities, setup_ui, minimize_window_on_start),
+        )
         .add_systems(PostStartup, setup_skybox_test)
         .add_systems(Update, (track_keyboard_input, update_keyboard_display))
         .run();
@@ -373,6 +380,13 @@ fn main() {
 /// Resource to store the current port
 #[derive(Resource)]
 struct CurrentPort(u16);
+
+/// Minimize the window immediately on startup
+fn minimize_window_on_start(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+    for mut window in &mut windows {
+        window.set_minimized(true);
+    }
+}
 
 /// Setup a skybox with a simple cube texture for testing mutations
 fn setup_skybox_test(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
