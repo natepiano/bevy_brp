@@ -137,15 +137,14 @@ For each step in the implementation sequence:
 - Cleaner logs
 
 ### STEP 6: Review Other Builders' Fallbacks
-**Status:** ⏳ PENDING
+**Status:** 🔄 DEFERRED - Will be addressed during builder migrations in plan-recursion.md
 
 **Objective:** Investigate and fix other potential fallback issues
 
-**Investigation needed:**
-- Determine if each `json!(...)` return is legitimate or an error
-- Fix any that are error conditions
+**Deferred Reason:**
+These builders (SetMutationBuilder, ListMutationBuilder, ArrayMutationBuilder, TupleMutationBuilder, StructMutationBuilder, EnumMutationBuilder) will be completely migrated to the new recursion protocol as part of plan-recursion.md. During those migrations, all `json!(...)` fallback returns will be reviewed and replaced with proper error handling where appropriate.
 
-**Files to review:**
+**Files to review (during migration):**
 - `list_builder.rs:113`
 - `tuple_builder.rs:193`
 - `enum_builder.rs:592, 597`
@@ -154,7 +153,7 @@ For each step in the implementation sequence:
 - `set_builder.rs:58`
 
 **Expected outcome:**
-- All error conditions properly handled
+- All error conditions properly handled during builder migrations
 - Legitimate fallbacks documented
 
 ### STEP 7: Clean Up Excessive Logging

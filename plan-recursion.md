@@ -432,6 +432,7 @@ Following the same order as the original ExampleBuilder removal:
 
 3. **SetMutationBuilder** - Single child type
    - Fix line 120 static method, implement protocol methods
+   - **ERROR HANDLING**: Review `set_builder.rs:58` - `return json!(null);` fallback (see plan-schema-error.md Step 6)
    - **Special**: Add `include_child_paths() -> false` override (like MapMutationBuilder) with comment explaining Sets are terminal mutation points
    - **TypeKind**: Update `Self::Set => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -440,6 +441,7 @@ Following the same order as the original ExampleBuilder removal:
 
 4. **ListMutationBuilder** - Single child type
    - Fix line 165 static method, implement protocol methods
+   - **ERROR HANDLING**: Review `list_builder.rs:113` - `return json!(null);` fallback (see plan-schema-error.md Step 6)
    - **Note**: No need to override `include_child_paths()` - Lists expose indexed element paths like `[0].field`
    - **TypeKind**: Update `Self::List => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -448,6 +450,7 @@ Following the same order as the original ExampleBuilder removal:
 
 5. **ArrayMutationBuilder** - Single child type
    - Fix line 220 static method, implement protocol methods
+   - **ERROR HANDLING**: Review `array_builder.rs:139` - `return json!(null);` fallback (see plan-schema-error.md Step 6)
    - **Note**: No need to override `include_child_paths()` - Arrays expose indexed element paths
    - **TypeKind**: Update `Self::Array => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -456,6 +459,7 @@ Following the same order as the original ExampleBuilder removal:
 
 6. **TupleMutationBuilder** - Multiple children
    - Fix lines 390, 285, 317, implement protocol methods
+   - **ERROR HANDLING**: Review `tuple_builder.rs:193` - `return json!(null);` fallback (see plan-schema-error.md Step 6)
    - **Note**: No need to override `include_child_paths()` - Tuples expose indexed element paths
    - **TypeKind**: Update `Self::Tuple | Self::TupleStruct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -464,6 +468,7 @@ Following the same order as the original ExampleBuilder removal:
 
 7. **StructMutationBuilder** - Named fields
    - Fix line 403 static method, implement protocol methods
+   - **ERROR HANDLING**: Review multiple `json!` fallbacks at lines 302, 306, 509, 513, 544, 548 (see plan-schema-error.md Step 6)
    - **Note**: No need to override `include_child_paths()` - Structs expose field paths
    - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -472,6 +477,7 @@ Following the same order as the original ExampleBuilder removal:
 
 8. **EnumMutationBuilder** - Most complex
    - Fix lines 170, 193, implement protocol methods
+   - **ERROR HANDLING**: Review `enum_builder.rs:592, 597` - `return json!(null);` and `return json!("...");` fallbacks (see plan-schema-error.md Step 6)
    - **Note**: No need to override `include_child_paths()` - Enums expose variant field paths
    - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
