@@ -114,7 +114,8 @@
       "Bash(if [ -f \"$TMPDIR/all_types_baseline.json\" ])",
       "Bash(else)",
       "WebFetch(domain:github.com)",
-      "Read(///**)"
+      "Read(///**)",
+      "WebFetch(domain:status.anthropic.com)"
     ],
     "deny": [
       "Bash(sed:*)"
