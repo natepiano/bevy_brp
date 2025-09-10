@@ -50,191 +50,10 @@ impl MutationPathBuilder for StructMutationBuilder {
         let properties = Self::extract_properties(ctx);
 
         for (field_name, field_info) in properties {
-            let field_type = SchemaField::extract_field_type(field_info)
-                .unwrap_or_else(|| BrpTypeName::from(field_name.as_str()));
-
-            tracing::error!(
-                "    STRUCT FIELD: {} -> {} (parent: {})",
-                field_name,
-                field_type,
-                ctx.type_name()
-            );
-
-            // Create field context using PathKind
-            let field_path_kind = PathKind::new_struct_field(
-                field_name.clone(),
-                field_type.clone(),
-                ctx.type_name().clone(),
-            );
-            let field_ctx = ctx.create_field_context(field_path_kind);
-
-            // If type extraction failed, handle it
-            if SchemaField::extract_field_type(field_info).is_none() {
-                paths.push(Self::build_not_mutatable_field_from_support(
-                    &field_ctx,
-                    MutationSupport::NotInRegistry(field_type.clone()),
-                ));
-                struct_example.insert(field_name.clone(), json!(null));
-                continue;
-            }
-
-            // Check if field is a Value type needing serialization
-            let Some(field_schema) = ctx.get_registry_schema(&field_type) else {
-                paths.push(Self::build_not_mutatable_field_from_support(
-                    &field_ctx,
-                    MutationSupport::NotInRegistry(field_type.clone()),
-                ));
-                struct_example.insert(field_name.clone(), json!(null));
-                continue;
-            };
-            let field_kind = TypeKind::from_schema(field_schema, &field_type);
-
-            // Check if this type has hardcoded knowledge (like Vec3, Vec4, etc.)
-            let has_hardcoded_knowledge = BRP_MUTATION_KNOWLEDGE
-                .get(&KnowledgeKey::exact(&field_type))
-                .is_some();
-
-            let field_example = if matches!(field_kind, TypeKind::Value) {
-                if ctx.value_type_has_serialization(&field_type) {
-                    let path = Self::build_field_mutation_path(&field_ctx, depth);
-                    let example = path.example.clone();
-                    paths.push(path);
-                    example
-                } else {
-                    paths.push(Self::build_not_mutatable_field_from_support(
-                        &field_ctx,
-                        MutationSupport::MissingSerializationTraits(field_type.clone()),
-                    ));
-                    json!(null)
-                }
-            } else {
-                // Recurse for nested containers or structs
-                tracing::error!(
-                    "    STRUCT FIELD {} - Before build_paths call (parent: {})",
-                    field_name,
-                    ctx.type_name()
-                );
-                let field_paths = field_kind.build_paths(&field_ctx, depth)?;
-                tracing::error!(
-                    "    STRUCT FIELD {} - After build_paths call, got {} paths (parent: {})",
-                    field_name,
-                    field_paths.len(),
-                    ctx.type_name()
-                );
-
-                // CRITICAL DEBUG: Log what ProtocolEnforcer returns vs what we expect
-                tracing::error!(
-                    "CRITICAL: Field {} (type: {}, kind: {:?}) - Looking for path '{}', got {} paths: [{}]",
-                    field_name,
-                    field_type,
-                    field_kind,
-                    field_ctx.mutation_path,
-                    field_paths.len(),
-                    field_paths
-                        .iter()
-                        .map(|p| format!("'{}'", p.path))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                );
-
-                // Extract the field example from the root path
-                tracing::error!(
-                    "    STRUCT FIELD {} - Extracting field example from paths (parent: {})",
-                    field_name,
-                    ctx.type_name()
-                );
-                let field_example = field_paths
-                    .iter()
-                    .find(|p| p.path == field_ctx.mutation_path)
-                    .map_or_else(
-                        || {
-                            // If no direct path, generate example using trait dispatch
-                            // For struct root paths with enum fields, this ensures concrete
-                            // examples (like "Active") instead of
-                            // __enum_signature_groups documentation format
-                            field_kind
-                                .builder()
-                                .build_schema_example(&field_ctx, depth.increment())
-                        },
-                        |p| {
-                            // Check if this is signature groups array from enum builder
-                            p.example.as_array().map_or_else(
-                                || p.example.clone(),
-                                |signature_groups| {
-                                    // Extract first concrete example from signature groups
-                                    signature_groups
-                                        .first()
-                                        .and_then(|group| group.get("example"))
-                                        .cloned()
-                                        .unwrap_or_else(|| p.example.clone())
-                                },
-                            )
-                        },
-                    );
-
-                tracing::error!(
-                    "    STRUCT FIELD {} - Before extending paths, current total: {} (parent: {})",
-                    field_name,
-                    paths.len(),
-                    ctx.type_name()
-                );
-                paths.extend(field_paths);
-                tracing::error!(
-                    "    STRUCT FIELD {} - After extending paths, new total: {} (parent: {})",
-                    field_name,
-                    paths.len(),
-                    ctx.type_name()
-                );
-                field_example
-            };
-
-            // Always create a direct field path if it doesn't exist yet
-            if ctx.value_type_has_serialization(&field_type) {
-                // Check if a direct field path already exists
-                if !paths.iter().any(|p| p.path == field_ctx.mutation_path) {
-                    // Create direct field path with computed example
-                    let field_path = MutationPathInternal {
-                        path:            field_ctx.mutation_path.clone(),
-                        example:         field_example.clone(),
-                        type_name:       field_type.clone(),
-                        path_kind:       field_ctx.path_kind.clone(),
-                        mutation_status: MutationStatus::Mutatable,
-                        error_reason:    None,
-                    };
-                    paths.push(field_path);
-                }
-
-                // Special case: Types with hardcoded knowledge that are also structs
-                // (like Vec3, Quat, etc.) should have their direct path updated with hardcoded
-                // example
-                if has_hardcoded_knowledge && matches!(field_kind, TypeKind::Struct) {
-                    // Find and update the direct field path to use hardcoded example
-                    if let Some(path) = paths.iter_mut().find(|p| p.path == field_ctx.mutation_path)
-                    {
-                        if let Some(knowledge) =
-                            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(&field_type))
-                        {
-                            path.example = knowledge.example().clone();
-                            struct_example.insert(field_name.clone(), path.example.clone());
-                        } else {
-                            struct_example.insert(field_name.clone(), field_example);
-                        }
-                    } else {
-                        struct_example.insert(field_name.clone(), field_example);
-                    }
-                } else {
-                    struct_example.insert(field_name.clone(), field_example);
-                }
-            } else {
-                struct_example.insert(field_name.clone(), field_example);
-            }
-
-            tracing::error!(
-                "    STRUCT FIELD COMPLETE: {} (parent: {}, paths so far: {})",
-                field_name,
-                ctx.type_name(),
-                paths.len()
-            );
+            let (field_example, field_paths) =
+                Self::process_field(ctx, &field_name, field_info, depth)?;
+            paths.extend(field_paths);
+            struct_example.insert(field_name, field_example);
         }
 
         tracing::error!(
@@ -322,6 +141,257 @@ impl MutationPathBuilder for StructMutationBuilder {
 }
 
 impl StructMutationBuilder {
+    /// Process a single struct field and return its example and paths
+    fn process_field(
+        ctx: &RecursionContext,
+        field_name: &str,
+        field_info: &Value,
+        depth: RecursionDepth,
+    ) -> Result<(Value, Vec<MutationPathInternal>)> {
+        let mut paths = Vec::new();
+
+        let field_type = SchemaField::extract_field_type(field_info)
+            .unwrap_or_else(|| BrpTypeName::from(field_name));
+
+        tracing::error!(
+            "    STRUCT FIELD: {} -> {} (parent: {})",
+            field_name,
+            field_type,
+            ctx.type_name()
+        );
+
+        // Create field context using PathKind
+        let field_path_kind = PathKind::new_struct_field(
+            field_name.to_string(),
+            field_type.clone(),
+            ctx.type_name().clone(),
+        );
+        let field_ctx = ctx.create_field_context(field_path_kind);
+
+        // If type extraction failed, handle it
+        if SchemaField::extract_field_type(field_info).is_none() {
+            paths.push(Self::build_not_mutatable_field_from_support(
+                &field_ctx,
+                MutationSupport::NotInRegistry(field_type.clone()),
+            ));
+            return Ok((json!(null), paths));
+        }
+
+        // Check if field is a Value type needing serialization
+        let Some(field_schema) = ctx.get_registry_schema(&field_type) else {
+            paths.push(Self::build_not_mutatable_field_from_support(
+                &field_ctx,
+                MutationSupport::NotInRegistry(field_type.clone()),
+            ));
+            return Ok((json!(null), paths));
+        };
+
+        let field_kind = TypeKind::from_schema(field_schema, &field_type);
+        let has_hardcoded_knowledge = BRP_MUTATION_KNOWLEDGE
+            .get(&KnowledgeKey::exact(&field_type))
+            .is_some();
+
+        let field_example = if matches!(field_kind, TypeKind::Value) {
+            Self::process_value_field(&field_ctx, &field_type, depth, &mut paths)
+        } else {
+            Self::process_complex_field(
+                &field_ctx,
+                &field_type,
+                &field_kind,
+                field_name,
+                depth,
+                &mut paths,
+            )?
+        };
+
+        // Handle direct field path creation and hardcoded knowledge
+        let final_example = Self::finalize_field_paths(
+            &field_ctx,
+            &field_type,
+            &field_kind,
+            has_hardcoded_knowledge,
+            field_example,
+            &mut paths,
+        );
+
+        tracing::error!(
+            "    STRUCT FIELD COMPLETE: {} (parent: {}, paths so far: {})",
+            field_name,
+            ctx.type_name(),
+            paths.len()
+        );
+
+        Ok((final_example, paths))
+    }
+
+    /// Process a value field type
+    fn process_value_field(
+        field_ctx: &RecursionContext,
+        field_type: &BrpTypeName,
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+    ) -> Value {
+        if field_ctx.value_type_has_serialization(field_type) {
+            let path = Self::build_field_mutation_path(field_ctx, depth);
+            let example = path.example.clone();
+            paths.push(path);
+            example
+        } else {
+            paths.push(Self::build_not_mutatable_field_from_support(
+                field_ctx,
+                MutationSupport::MissingSerializationTraits(field_type.clone()),
+            ));
+            json!(null)
+        }
+    }
+
+    /// Process a complex field (struct, array, etc.)
+    fn process_complex_field(
+        field_ctx: &RecursionContext,
+        field_type: &BrpTypeName,
+        field_kind: &TypeKind,
+        field_name: &str,
+        depth: RecursionDepth,
+        paths: &mut Vec<MutationPathInternal>,
+    ) -> Result<Value> {
+        tracing::error!(
+            "    STRUCT FIELD {} - Before build_paths call (parent: {})",
+            field_name,
+            field_ctx.type_name()
+        );
+
+        let field_paths = field_kind.build_paths(field_ctx, depth)?;
+
+        tracing::error!(
+            "    STRUCT FIELD {} - After build_paths call, got {} paths (parent: {})",
+            field_name,
+            field_paths.len(),
+            field_ctx.type_name()
+        );
+
+        // CRITICAL DEBUG: Log what ProtocolEnforcer returns vs what we expect
+        tracing::error!(
+            "CRITICAL: Field {} (type: {}, kind: {:?}) - Looking for path '{}', got {} paths: [{}]",
+            field_name,
+            field_type,
+            field_kind,
+            field_ctx.mutation_path,
+            field_paths.len(),
+            field_paths
+                .iter()
+                .map(|p| format!("'{}'", p.path))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+
+        // Extract the field example from the root path
+        tracing::error!(
+            "    STRUCT FIELD {} - Extracting field example from paths (parent: {})",
+            field_name,
+            field_ctx.type_name()
+        );
+
+        let field_example = Self::extract_field_example(&field_paths, field_ctx, field_kind, depth);
+
+        tracing::error!(
+            "    STRUCT FIELD {} - Before extending paths, current total: {} (parent: {})",
+            field_name,
+            paths.len(),
+            field_ctx.type_name()
+        );
+
+        paths.extend(field_paths);
+
+        tracing::error!(
+            "    STRUCT FIELD {} - After extending paths, new total: {} (parent: {})",
+            field_name,
+            paths.len(),
+            field_ctx.type_name()
+        );
+
+        Ok(field_example)
+    }
+
+    /// Extract field example from paths
+    fn extract_field_example(
+        field_paths: &[MutationPathInternal],
+        field_ctx: &RecursionContext,
+        field_kind: &TypeKind,
+        depth: RecursionDepth,
+    ) -> Value {
+        field_paths
+            .iter()
+            .find(|p| p.path == field_ctx.mutation_path)
+            .map_or_else(
+                || {
+                    // If no direct path, generate example using trait dispatch
+                    // For struct root paths with enum fields, this ensures concrete
+                    // examples (like "Active") instead of
+                    // __enum_signature_groups documentation format
+                    field_kind
+                        .builder()
+                        .build_schema_example(field_ctx, depth.increment())
+                },
+                |p| {
+                    // Check if this is signature groups array from enum builder
+                    p.example.as_array().map_or_else(
+                        || p.example.clone(),
+                        |signature_groups| {
+                            // Extract first concrete example from signature groups
+                            signature_groups
+                                .first()
+                                .and_then(|group| group.get("example"))
+                                .cloned()
+                                .unwrap_or_else(|| p.example.clone())
+                        },
+                    )
+                },
+            )
+    }
+
+    /// Finalize field paths and handle hardcoded knowledge
+    fn finalize_field_paths(
+        field_ctx: &RecursionContext,
+        field_type: &BrpTypeName,
+        field_kind: &TypeKind,
+        has_hardcoded_knowledge: bool,
+        field_example: Value,
+        paths: &mut Vec<MutationPathInternal>,
+    ) -> Value {
+        // Always create a direct field path if it doesn't exist yet
+        if field_ctx.value_type_has_serialization(field_type) {
+            // Check if a direct field path already exists
+            if !paths.iter().any(|p| p.path == field_ctx.mutation_path) {
+                // Create direct field path with computed example
+                let field_path = MutationPathInternal {
+                    path:            field_ctx.mutation_path.clone(),
+                    example:         field_example.clone(),
+                    type_name:       field_type.clone(),
+                    path_kind:       field_ctx.path_kind.clone(),
+                    mutation_status: MutationStatus::Mutatable,
+                    error_reason:    None,
+                };
+                paths.push(field_path);
+            }
+
+            // Special case: Types with hardcoded knowledge that are also structs
+            // (like Vec3, Quat, etc.) should have their direct path updated with hardcoded
+            // example
+            if has_hardcoded_knowledge && matches!(field_kind, TypeKind::Struct) {
+                // Find and update the direct field path to use hardcoded example
+                if let Some(path) = paths.iter_mut().find(|p| p.path == field_ctx.mutation_path)
+                    && let Some(knowledge) =
+                        BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type))
+                {
+                    path.example = knowledge.example().clone();
+                    return path.example.clone();
+                }
+            }
+        }
+
+        field_example
+    }
+
     /// Build a not mutatable path from `MutationSupport` for struct-level errors
     fn build_not_mutatable_path_from_support(
         ctx: &RecursionContext,
