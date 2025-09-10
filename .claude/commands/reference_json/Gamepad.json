@@ -1,0 +1,251 @@
+{
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire Gamepad struct",
+      "example": {
+        "analog": {
+          "axis_data": {
+            "[{\"example\":{\"Axis\":[{\"example\":\"LeftStickX\",\"signature\":\"unit\",\"variants\":[\"LeftStickX\",\"LeftStickY\",\"LeftZ\",\"RightStickX\",\"RightStickY\",\"RightZ\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadAxis)\",\"variants\":[\"Axis\"]},{\"example\":{\"Button\":[{\"example\":\"South\",\"signature\":\"unit\",\"variants\":[\"South\",\"East\",\"North\",\"West\",\"C\",\"Z\",\"LeftTrigger\",\"LeftTrigger2\",\"RightTrigger\",\"RightTrigger2\",\"Select\",\"Start\",\"Mode\",\"LeftThumb\",\"RightThumb\",\"DPadUp\",\"DPadDown\",\"DPadLeft\",\"DPadRight\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadButton)\",\"variants\":[\"Button\"]}]": 3.1415927410125732
+          }
+        },
+        "digital": {
+          "just_pressed": [
+            "South",
+            "South"
+          ],
+          "just_released": [
+            "South",
+            "South"
+          ],
+          "pressed": [
+            "South",
+            "South"
+          ]
+        },
+        "product_id": null,
+        "vendor_id": null
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "RootValue",
+        "type": "bevy_input::gamepad::Gamepad",
+        "type_kind": "Struct"
+      }
+    },
+    ".analog": {
+      "description": "Mutate the analog field of Gamepad struct",
+      "example": {
+        "axis_data": {
+          "[{\"example\":{\"Axis\":[{\"example\":\"LeftStickX\",\"signature\":\"unit\",\"variants\":[\"LeftStickX\",\"LeftStickY\",\"LeftZ\",\"RightStickX\",\"RightStickY\",\"RightZ\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadAxis)\",\"variants\":[\"Axis\"]},{\"example\":{\"Button\":[{\"example\":\"South\",\"signature\":\"unit\",\"variants\":[\"South\",\"East\",\"North\",\"West\",\"C\",\"Z\",\"LeftTrigger\",\"LeftTrigger2\",\"RightTrigger\",\"RightTrigger2\",\"Select\",\"Start\",\"Mode\",\"LeftThumb\",\"RightThumb\",\"DPadUp\",\"DPadDown\",\"DPadLeft\",\"DPadRight\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadButton)\",\"variants\":[\"Button\"]}]": 3.1415927410125732
+        }
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_input::axis::Axis<bevy_input::gamepad::GamepadInput>",
+        "type_kind": "Struct"
+      }
+    },
+    ".analog.axis_data": {
+      "description": "Mutate the axis_data field of GamepadInput> map",
+      "example": {
+        "[{\"example\":{\"Axis\":[{\"example\":\"LeftStickX\",\"signature\":\"unit\",\"variants\":[\"LeftStickX\",\"LeftStickY\",\"LeftZ\",\"RightStickX\",\"RightStickY\",\"RightZ\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadAxis)\",\"variants\":[\"Axis\"]},{\"example\":{\"Button\":[{\"example\":\"South\",\"signature\":\"unit\",\"variants\":[\"South\",\"East\",\"North\",\"West\",\"C\",\"Z\",\"LeftTrigger\",\"LeftTrigger2\",\"RightTrigger\",\"RightTrigger2\",\"Select\",\"Start\",\"Mode\",\"LeftThumb\",\"RightThumb\",\"DPadUp\",\"DPadDown\",\"DPadLeft\",\"DPadRight\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadButton)\",\"variants\":[\"Button\"]}]": 3.1415927410125732
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadInput, f32, bevy_platform::hash::FixedHasher>",
+        "type_kind": "Map"
+      }
+    },
+    ".digital": {
+      "description": "Mutate the digital field of Gamepad struct",
+      "example": {
+        "just_pressed": [
+          "South",
+          "South"
+        ],
+        "just_released": [
+          "South",
+          "South"
+        ],
+        "pressed": [
+          "South",
+          "South"
+        ]
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_input::button_input::ButtonInput<bevy_input::gamepad::GamepadButton>",
+        "type_kind": "Struct"
+      }
+    },
+    ".digital.just_pressed": {
+      "description": "Mutate the just_pressed field of GamepadButton> set",
+      "example": [
+        "South",
+        "South"
+      ],
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
+        "type_kind": "Set"
+      }
+    },
+    ".digital.just_released": {
+      "description": "Mutate the just_released field of GamepadButton> set",
+      "example": [
+        "South",
+        "South"
+      ],
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
+        "type_kind": "Set"
+      }
+    },
+    ".digital.pressed": {
+      "description": "Mutate the pressed field of GamepadButton> set",
+      "example": [
+        "South",
+        "South"
+      ],
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
+        "type_kind": "Set"
+      }
+    },
+    ".product_id": {
+      "description": "Mutate the product_id field of Gamepad enum",
+      "examples": [
+        {
+          "applicable_variants": [
+            "None"
+          ],
+          "example": null,
+          "signature": "unit"
+        },
+        {
+          "applicable_variants": [
+            "Some"
+          ],
+          "example": 5000,
+          "signature": "tuple(u16)"
+        }
+      ],
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "core::option::Option<u16>",
+        "type_kind": "Enum"
+      },
+      "variants": [
+        "None",
+        "Some"
+      ]
+    },
+    ".product_id.0": {
+      "description": "Mutate element 0 of Option<u16>",
+      "example": 5000,
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "IndexedElement",
+        "type": "u16",
+        "type_kind": "Value"
+      },
+      "variants": [
+        "Some"
+      ]
+    },
+    ".vendor_id": {
+      "description": "Mutate the vendor_id field of Gamepad enum",
+      "examples": [
+        {
+          "applicable_variants": [
+            "None"
+          ],
+          "example": null,
+          "signature": "unit"
+        },
+        {
+          "applicable_variants": [
+            "Some"
+          ],
+          "example": 5000,
+          "signature": "tuple(u16)"
+        }
+      ],
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "core::option::Option<u16>",
+        "type_kind": "Enum"
+      },
+      "variants": [
+        "None",
+        "Some"
+      ]
+    },
+    ".vendor_id.0": {
+      "description": "Mutate element 0 of Option<u16>",
+      "example": 5000,
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "IndexedElement",
+        "type": "u16",
+        "type_kind": "Value"
+      },
+      "variants": [
+        "Some"
+      ]
+    }
+  },
+  "schema_info": {
+    "crate_name": "bevy_input",
+    "module_path": "bevy_input::gamepad",
+    "properties": {
+      "analog": {
+        "type": {
+          "$ref": "#/$defs/bevy_input::axis::Axis<bevy_input::gamepad::GamepadInput>"
+        }
+      },
+      "digital": {
+        "type": {
+          "$ref": "#/$defs/bevy_input::button_input::ButtonInput<bevy_input::gamepad::GamepadButton>"
+        }
+      },
+      "product_id": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<u16>"
+        }
+      },
+      "vendor_id": {
+        "type": {
+          "$ref": "#/$defs/core::option::Option<u16>"
+        }
+      }
+    },
+    "required": [
+      "digital",
+      "analog"
+    ],
+    "type_kind": "Struct"
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "mutate"
+  ],
+  "type_name": "bevy_input::gamepad::Gamepad",
+  "batch_number": null,
+  "test_status": "untested",
+  "fail_reason": ""
+}
