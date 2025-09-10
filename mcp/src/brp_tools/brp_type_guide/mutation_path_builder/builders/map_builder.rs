@@ -121,20 +121,13 @@ impl MutationPathBuilder for MapMutationBuilder {
         let key_str = match key_example {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),
-            other => {
-                tracing::warn!(
-                    "Complex key type for map serialization, type: {}, falling back to generic key",
-                    ctx.type_name()
-                );
-                serde_json::to_string(other).unwrap_or_else(|e| {
-                    tracing::error!(
-                        "Failed to serialize map key for type {}: {}",
-                        ctx.type_name(),
-                        e
-                    );
-                    "example_key".to_string()
-                })
-            }
+            other => serde_json::to_string(other).map_err(|e| {
+                Error::schema_processing_for_type(
+                    ctx.type_name(),
+                    "serialize_map_key",
+                    format!("Failed to serialize complex key type to string: {}", e),
+                )
+            })?,
         };
 
         // Build final map with the COMPLETE value example

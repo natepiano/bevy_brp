@@ -219,7 +219,6 @@ fn extract_variant_name(v: &Value) -> Option<String> {
 /// Helper function to check if recursion depth exceeds the maximum allowed
 fn check_depth_exceeded(depth: usize, operation: &str) -> bool {
     if depth > MAX_TYPE_RECURSION_DEPTH {
-        tracing::warn!("Max recursion depth reached while {operation}, using fallback");
         true
     } else {
         false
@@ -329,11 +328,7 @@ fn extract_enum_variants(
                 .iter()
                 .enumerate()
                 .filter_map(|(i, v)| {
-                    EnumVariantInfo::from_schema_variant(v, registry, depth)
-                        .or_else(|| {
-                            tracing::warn!("Failed to parse enum variant {i} in schema - this is unexpected as BRP should provide valid variants");
-                            None
-                        })
+                    EnumVariantInfo::from_schema_variant(v, registry, depth).or_else(|| None)
                 })
                 .collect()
         })
@@ -347,7 +342,6 @@ impl MutationPathBuilder for EnumMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        tracing::error!("ENUM {} - Starting build_paths", ctx.type_name());
         let Some(registry_schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
@@ -421,7 +415,6 @@ impl MutationPathBuilder for EnumMutationBuilder {
             },
         );
 
-        tracing::error!("ENUM {} - Returning {} paths", ctx.type_name(), paths.len());
         Ok(paths)
     }
 
@@ -591,21 +584,7 @@ impl EnumMutationBuilder {
             let field_ctx = ctx.create_field_context(field_path_kind);
             let inner_kind = TypeKind::from_schema(inner_schema, type_name);
 
-            tracing::error!(
-                "ENUM VARIANT {} - Before build_paths for tuple element {} (parent: {})",
-                variant_name,
-                index,
-                ctx.type_name()
-            );
             let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
-            tracing::error!(
-                "ENUM VARIANT {} - After build_paths for tuple element {}, got {} paths (parent: {})",
-                variant_name,
-                index,
-                field_paths.len(),
-                ctx.type_name()
-            );
-
             // Extract the example from the field's root path
             let field_example = Self::extract_field_example(
                 &field_paths,
@@ -620,19 +599,7 @@ impl EnumMutationBuilder {
             // Add variant context to field paths
             Self::add_variant_context_to_paths(&mut field_paths, variant_name);
 
-            tracing::error!(
-                "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
-                variant_name,
-                paths.len(),
-                ctx.type_name()
-            );
             paths.extend(field_paths);
-            tracing::error!(
-                "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
-                variant_name,
-                paths.len(),
-                ctx.type_name()
-            );
         }
 
         // Build tuple variant example from accumulated values
@@ -671,21 +638,7 @@ impl EnumMutationBuilder {
             let field_ctx = ctx.create_field_context(field_path_kind);
             let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
 
-            tracing::error!(
-                "ENUM VARIANT {} - Before build_paths for struct field {} (parent: {})",
-                variant_name,
-                field.field_name,
-                ctx.type_name()
-            );
             let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
-            tracing::error!(
-                "ENUM VARIANT {} - After build_paths for struct field {}, got {} paths (parent: {})",
-                variant_name,
-                field.field_name,
-                field_paths.len(),
-                ctx.type_name()
-            );
-
             // Extract the example from the field's root path
             let field_example = Self::extract_field_example(
                 &field_paths,
@@ -700,19 +653,7 @@ impl EnumMutationBuilder {
             // Add variant context to field paths
             Self::add_variant_context_to_paths(&mut field_paths, variant_name);
 
-            tracing::error!(
-                "ENUM VARIANT {} - Before extending paths, current: {} (parent: {})",
-                variant_name,
-                paths.len(),
-                ctx.type_name()
-            );
             paths.extend(field_paths);
-            tracing::error!(
-                "ENUM VARIANT {} - After extending paths, new total: {} (parent: {})",
-                variant_name,
-                paths.len(),
-                ctx.type_name()
-            );
         }
 
         // Build struct variant example from accumulated fields
@@ -732,22 +673,12 @@ impl EnumMutationBuilder {
         variant_name: &str,
         ctx: &RecursionContext,
     ) -> Value {
-        tracing::error!(
-            "ENUM VARIANT {} - Extracting field example (parent: {})",
-            variant_name,
-            ctx.type_name()
-        );
         field_paths
             .iter()
             .find(|p| p.path == field_ctx.mutation_path)
             .map_or_else(
                 || {
                     // Fallback to trait dispatch if no direct path
-                    tracing::error!(
-                        "ENUM VARIANT {} - No direct path, using trait dispatch (parent: {})",
-                        variant_name,
-                        ctx.type_name()
-                    );
                     inner_kind
                         .builder()
                         .build_schema_example(field_ctx, depth.increment())
