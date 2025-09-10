@@ -113,7 +113,8 @@
       "mcp__brp__brp_all_type_guides",
       "Bash(if [ -f \"$TMPDIR/all_types_baseline.json\" ])",
       "Bash(else)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Read(///**)"
     ],
     "deny": [
       "Bash(sed:*)"
