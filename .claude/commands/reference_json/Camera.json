@@ -4,163 +4,28 @@
   "in_registry": true,
   "mutation_paths": {
     "": {
-      "description": "Replace the entire bevy_render::camera::camera::Camera value",
-      "examples": [
-        {
-          "example": {
-            "clear_color": {
-              "__enum_signature_groups": [
-                {
-                  "example": "Default",
-                  "signature": "unit",
-                  "variants": [
-                    "Default",
-                    "None"
-                  ]
-                },
-                {
-                  "example": {
-                    "Custom": {
-                      "Srgba": [
-                        1.0,
-                        0.0,
-                        0.0,
-                        1.0
-                      ]
-                    }
-                  },
-                  "signature": "tuple(Color)",
-                  "variants": [
-                    "Custom"
-                  ]
+      "description": "Replace the entire Camera struct",
+      "example": {
+        "clear_color": "Default",
+        "hdr": true,
+        "is_active": true,
+        "msaa_writeback": true,
+        "order": 1000000,
+        "sub_camera_view": null,
+        "target": {
+          "Image": {
+            "handle": {
+              "Weak": {
+                "Uuid": {
+                  "uuid": "12345678-1234-1234-1234-123456789012"
                 }
-              ]
+              }
             },
-            "hdr": true,
-            "is_active": true,
-            "msaa_writeback": true,
-            "order": 1000000,
-            "sub_camera_view": {
-              "__enum_signature_groups": [
-                {
-                  "example": {
-                    "full_size": [
-                      0,
-                      0
-                    ],
-                    "offset": [
-                      1.0,
-                      2.0
-                    ],
-                    "size": [
-                      0,
-                      0
-                    ]
-                  },
-                  "signature": "tuple(SubCameraView)",
-                  "variants": [
-                    "Some"
-                  ]
-                },
-                {
-                  "example": null,
-                  "signature": "unit",
-                  "variants": [
-                    "None"
-                  ]
-                }
-              ]
-            },
-            "target": {
-              "__enum_signature_groups": [
-                {
-                  "example": {
-                    "Window": {
-                      "__enum_signature_groups": [
-                        {
-                          "example": {
-                            "Entity": 8589934670
-                          },
-                          "signature": "tuple(Entity)",
-                          "variants": [
-                            "Entity"
-                          ]
-                        },
-                        {
-                          "example": "Primary",
-                          "signature": "unit",
-                          "variants": [
-                            "Primary"
-                          ]
-                        }
-                      ]
-                    }
-                  },
-                  "signature": "tuple(WindowRef)",
-                  "variants": [
-                    "Window"
-                  ]
-                },
-                {
-                  "example": {
-                    "Image": {
-                      "handle": {
-                        "Weak": {
-                          "Uuid": {
-                            "uuid": "12345678-1234-1234-1234-123456789012"
-                          }
-                        }
-                      },
-                      "scale_factor": 3.1415927410125732
-                    }
-                  },
-                  "signature": "tuple(ImageRenderTarget)",
-                  "variants": [
-                    "Image"
-                  ]
-                },
-                {
-                  "example": {
-                    "TextureView": 1000000
-                  },
-                  "signature": "tuple(ManualTextureViewHandle)",
-                  "variants": [
-                    "TextureView"
-                  ]
-                }
-              ]
-            },
-            "viewport": {
-              "__enum_signature_groups": [
-                {
-                  "example": null,
-                  "signature": "unit",
-                  "variants": [
-                    "None"
-                  ]
-                },
-                {
-                  "example": {
-                    "depth": null,
-                    "physical_position": [
-                      0,
-                      0
-                    ],
-                    "physical_size": [
-                      0,
-                      0
-                    ]
-                  },
-                  "signature": "tuple(Viewport)",
-                  "variants": [
-                    "Some"
-                  ]
-                }
-              ]
-            }
+            "scale_factor": 3.1415927410125732
           }
-        }
-      ],
+        },
+        "viewport": null
+      },
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "RootValue",
@@ -169,7 +34,7 @@
       }
     },
     ".clear_color": {
-      "description": "Mutate the clear_color field of bevy_render::camera::camera::Camera",
+      "description": "Mutate the clear_color field of Camera enum",
       "examples": [
         {
           "applicable_variants": [
@@ -209,7 +74,7 @@
       ]
     },
     ".clear_color.0": {
-      "description": "Mutate element 0 of bevy_render::camera::clear_color::ClearColorConfig",
+      "description": "Mutate element 0 of ClearColorConfig enum",
       "examples": [
         {
           "example": {
@@ -232,16 +97,27 @@
         "Custom"
       ]
     },
+    ".clear_color.0.0": {
+      "description": "Mutate element 0 of Color struct",
+      "example": {
+        "alpha": 3.1415927410125732,
+        "x": 3.1415927410125732,
+        "y": 3.1415927410125732,
+        "z": 3.1415927410125732
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "IndexedElement",
+        "type": "bevy_color::xyza::Xyza",
+        "type_kind": "Struct"
+      },
+      "variants": [
+        "Custom"
+      ]
+    },
     ".clear_color.0.0.a": {
-      "description": "Mutate the a field of bevy_color::oklaba::Oklaba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Oklaba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the a field of Oklaba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -253,15 +129,8 @@
       ]
     },
     ".clear_color.0.0.alpha": {
-      "description": "Mutate the alpha field of bevy_color::xyza::Xyza",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Xyza",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the alpha field of Xyza",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -273,15 +142,8 @@
       ]
     },
     ".clear_color.0.0.b": {
-      "description": "Mutate the b field of bevy_color::oklaba::Oklaba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Oklaba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the b field of Oklaba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -293,15 +155,8 @@
       ]
     },
     ".clear_color.0.0.blackness": {
-      "description": "Mutate the blackness field of bevy_color::hwba::Hwba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Hwba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the blackness field of Hwba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -313,15 +168,8 @@
       ]
     },
     ".clear_color.0.0.blue": {
-      "description": "Mutate the blue field of bevy_color::linear_rgba::LinearRgba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "LinearRgba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the blue field of LinearRgba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -333,15 +181,8 @@
       ]
     },
     ".clear_color.0.0.chroma": {
-      "description": "Mutate the chroma field of bevy_color::oklcha::Oklcha",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Oklcha",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the chroma field of Oklcha",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -353,15 +194,8 @@
       ]
     },
     ".clear_color.0.0.green": {
-      "description": "Mutate the green field of bevy_color::linear_rgba::LinearRgba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "LinearRgba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the green field of LinearRgba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -373,15 +207,8 @@
       ]
     },
     ".clear_color.0.0.hue": {
-      "description": "Mutate the hue field of bevy_color::oklcha::Oklcha",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Oklcha",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the hue field of Oklcha",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -393,15 +220,8 @@
       ]
     },
     ".clear_color.0.0.lightness": {
-      "description": "Mutate the lightness field of bevy_color::oklcha::Oklcha",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Oklcha",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the lightness field of Oklcha",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -413,15 +233,8 @@
       ]
     },
     ".clear_color.0.0.red": {
-      "description": "Mutate the red field of bevy_color::linear_rgba::LinearRgba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "LinearRgba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the red field of LinearRgba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -433,15 +246,8 @@
       ]
     },
     ".clear_color.0.0.saturation": {
-      "description": "Mutate the saturation field of bevy_color::hsva::Hsva",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Hsva",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the saturation field of Hsva",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -453,15 +259,8 @@
       ]
     },
     ".clear_color.0.0.value": {
-      "description": "Mutate the value field of bevy_color::hsva::Hsva",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Hsva",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the value field of Hsva",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -473,15 +272,8 @@
       ]
     },
     ".clear_color.0.0.whiteness": {
-      "description": "Mutate the whiteness field of bevy_color::hwba::Hwba",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Hwba",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the whiteness field of Hwba",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -493,15 +285,8 @@
       ]
     },
     ".clear_color.0.0.x": {
-      "description": "Mutate the x field of bevy_color::xyza::Xyza",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Xyza",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the x field of Xyza",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -513,15 +298,8 @@
       ]
     },
     ".clear_color.0.0.y": {
-      "description": "Mutate the y field of bevy_color::xyza::Xyza",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Xyza",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the y field of Xyza",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -533,15 +311,8 @@
       ]
     },
     ".clear_color.0.0.z": {
-      "description": "Mutate the z field of bevy_color::xyza::Xyza",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Xyza",
-            "example": 3.1415927410125732
-          }
-        }
-      ],
+      "description": "Mutate the z field of Xyza",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -553,12 +324,8 @@
       ]
     },
     ".hdr": {
-      "description": "Mutate the hdr field of bevy_render::camera::camera::Camera",
-      "examples": [
-        {
-          "example": true
-        }
-      ],
+      "description": "Mutate the hdr field of Camera",
+      "example": true,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -567,12 +334,8 @@
       }
     },
     ".is_active": {
-      "description": "Mutate the is_active field of bevy_render::camera::camera::Camera",
-      "examples": [
-        {
-          "example": true
-        }
-      ],
+      "description": "Mutate the is_active field of Camera",
+      "example": true,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -581,12 +344,8 @@
       }
     },
     ".msaa_writeback": {
-      "description": "Mutate the msaa_writeback field of bevy_render::camera::camera::Camera",
-      "examples": [
-        {
-          "example": true
-        }
-      ],
+      "description": "Mutate the msaa_writeback field of Camera",
+      "example": true,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -595,12 +354,8 @@
       }
     },
     ".order": {
-      "description": "Mutate the order field of bevy_render::camera::camera::Camera",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the order field of Camera",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -609,8 +364,15 @@
       }
     },
     ".sub_camera_view": {
-      "description": "Mutate the sub_camera_view field of bevy_render::camera::camera::Camera",
+      "description": "Mutate the sub_camera_view field of Camera enum",
       "examples": [
+        {
+          "applicable_variants": [
+            "None"
+          ],
+          "example": null,
+          "signature": "unit"
+        },
         {
           "applicable_variants": [
             "Some"
@@ -630,13 +392,6 @@
             ]
           },
           "signature": "tuple(SubCameraView)"
-        },
-        {
-          "applicable_variants": [
-            "None"
-          ],
-          "example": null,
-          "signature": "unit"
         }
       ],
       "mutation_status": "mutatable",
@@ -650,15 +405,37 @@
         "Some"
       ]
     },
+    ".sub_camera_view.0": {
+      "description": "Mutate element 0 of SubCameraView> struct",
+      "example": {
+        "full_size": [
+          0,
+          0
+        ],
+        "offset": [
+          1.0,
+          2.0
+        ],
+        "size": [
+          0,
+          0
+        ]
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "IndexedElement",
+        "type": "bevy_render::camera::camera::SubCameraView",
+        "type_kind": "Struct"
+      },
+      "variants": [
+        "Some"
+      ]
+    },
     ".sub_camera_view.0.full_size": {
-      "description": "Mutate the full_size field of bevy_render::camera::camera::SubCameraView",
-      "examples": [
-        {
-          "example": [
-            0,
-            0
-          ]
-        }
+      "description": "Mutate the full_size field of SubCameraView struct",
+      "example": [
+        0,
+        0
       ],
       "mutation_status": "mutatable",
       "path_info": {
@@ -671,12 +448,8 @@
       ]
     },
     ".sub_camera_view.0.full_size.x": {
-      "description": "Mutate the x field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the x field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -688,12 +461,8 @@
       ]
     },
     ".sub_camera_view.0.full_size.y": {
-      "description": "Mutate the y field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the y field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -705,14 +474,10 @@
       ]
     },
     ".sub_camera_view.0.offset": {
-      "description": "Mutate the offset field of bevy_render::camera::camera::SubCameraView",
-      "examples": [
-        {
-          "example": [
-            1.0,
-            2.0
-          ]
-        }
+      "description": "Mutate the offset field of SubCameraView struct",
+      "example": [
+        1.0,
+        2.0
       ],
       "mutation_status": "mutatable",
       "path_info": {
@@ -725,12 +490,8 @@
       ]
     },
     ".sub_camera_view.0.offset.x": {
-      "description": "Mutate the x field of glam::Vec2",
-      "examples": [
-        {
-          "example": 3.1415927410125732
-        }
-      ],
+      "description": "Mutate the x field of Vec2",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -742,12 +503,8 @@
       ]
     },
     ".sub_camera_view.0.offset.y": {
-      "description": "Mutate the y field of glam::Vec2",
-      "examples": [
-        {
-          "example": 3.1415927410125732
-        }
-      ],
+      "description": "Mutate the y field of Vec2",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -759,14 +516,10 @@
       ]
     },
     ".sub_camera_view.0.size": {
-      "description": "Mutate the size field of bevy_render::camera::camera::SubCameraView",
-      "examples": [
-        {
-          "example": [
-            0,
-            0
-          ]
-        }
+      "description": "Mutate the size field of SubCameraView struct",
+      "example": [
+        0,
+        0
       ],
       "mutation_status": "mutatable",
       "path_info": {
@@ -779,12 +532,8 @@
       ]
     },
     ".sub_camera_view.0.size.x": {
-      "description": "Mutate the x field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the x field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -796,12 +545,8 @@
       ]
     },
     ".sub_camera_view.0.size.y": {
-      "description": "Mutate the y field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the y field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -813,36 +558,8 @@
       ]
     },
     ".target": {
-      "description": "Mutate the target field of bevy_render::camera::camera::Camera",
+      "description": "Mutate the target field of Camera enum",
       "examples": [
-        {
-          "applicable_variants": [
-            "Window"
-          ],
-          "example": {
-            "Window": {
-              "__enum_signature_groups": [
-                {
-                  "example": {
-                    "Entity": 8589934670
-                  },
-                  "signature": "tuple(Entity)",
-                  "variants": [
-                    "Entity"
-                  ]
-                },
-                {
-                  "example": "Primary",
-                  "signature": "unit",
-                  "variants": [
-                    "Primary"
-                  ]
-                }
-              ]
-            }
-          },
-          "signature": "tuple(WindowRef)"
-        },
         {
           "applicable_variants": [
             "Image"
@@ -869,6 +586,32 @@
             "TextureView": 1000000
           },
           "signature": "tuple(ManualTextureViewHandle)"
+        },
+        {
+          "applicable_variants": [
+            "Window"
+          ],
+          "example": {
+            "Window": [
+              {
+                "example": "Primary",
+                "signature": "unit",
+                "variants": [
+                  "Primary"
+                ]
+              },
+              {
+                "example": {
+                  "Entity": 8589934670
+                },
+                "signature": "tuple(Entity)",
+                "variants": [
+                  "Entity"
+                ]
+              }
+            ]
+          },
+          "signature": "tuple(WindowRef)"
         }
       ],
       "mutation_status": "mutatable",
@@ -884,12 +627,8 @@
       ]
     },
     ".target.0": {
-      "description": "Mutate element 0 of bevy_render::camera::camera::RenderTarget",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate element 0 of RenderTarget tuplestruct",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "IndexedElement",
@@ -901,12 +640,8 @@
       ]
     },
     ".target.0.0": {
-      "description": "Mutate element 0 of bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate element 0 of ManualTextureViewHandle",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "IndexedElement",
@@ -918,7 +653,7 @@
       ]
     },
     ".target.0.handle": {
-      "description": "Mutate the handle field of bevy_render::camera::camera::ImageRenderTarget",
+      "description": "Mutate the handle field of ImageRenderTarget enum",
       "examples": [
         {
           "example": {
@@ -941,41 +676,32 @@
       ]
     },
     ".target.0.handle.0": {
-      "description": "Mutate element 0 of bevy_asset::handle::Handle<bevy_image::image::Image>",
+      "description": "Mutate element 0 of Image> enum",
       "examples": [
         {
+          "applicable_variants": [
+            "Index"
+          ],
           "example": {
-            "__variant_context": "Weak",
-            "example": {
-              "__enum_signature_groups": [
-                {
-                  "example": {
-                    "Index": {
-                      "index": {
-                        "generation": 1000000,
-                        "index": 1000000
-                      }
-                    }
-                  },
-                  "signature": "struct{index: AssetIndex}",
-                  "variants": [
-                    "Index"
-                  ]
-                },
-                {
-                  "example": {
-                    "Uuid": {
-                      "uuid": null
-                    }
-                  },
-                  "signature": "struct{uuid: Uuid}",
-                  "variants": [
-                    "Uuid"
-                  ]
-                }
-              ]
+            "Index": {
+              "index": {
+                "generation": 1000000,
+                "index": 1000000
+              }
             }
-          }
+          },
+          "signature": "struct{index: AssetIndex}"
+        },
+        {
+          "applicable_variants": [
+            "Uuid"
+          ],
+          "example": {
+            "Uuid": {
+              "uuid": null
+            }
+          },
+          "signature": "struct{uuid: Uuid}"
         }
       ],
       "mutation_status": "mutatable",
@@ -988,19 +714,25 @@
         "Image"
       ]
     },
+    ".target.0.handle.0.index": {
+      "description": "Mutate the index field of Image> struct",
+      "example": {
+        "generation": 1000000,
+        "index": 1000000
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "bevy_asset::assets::AssetIndex",
+        "type_kind": "Struct"
+      },
+      "variants": [
+        "Image"
+      ]
+    },
     ".target.0.handle.0.index.generation": {
-      "description": "Mutate the generation field of bevy_asset::assets::AssetIndex",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Weak",
-            "example": {
-              "__variant_context": "Index",
-              "example": 1000000
-            }
-          }
-        }
-      ],
+      "description": "Mutate the generation field of AssetIndex",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1012,18 +744,8 @@
       ]
     },
     ".target.0.handle.0.index.index": {
-      "description": "Mutate the index field of bevy_asset::assets::AssetIndex",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Weak",
-            "example": {
-              "__variant_context": "Index",
-              "example": 1000000
-            }
-          }
-        }
-      ],
+      "description": "Mutate the index field of AssetIndex",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1035,18 +757,7 @@
       ]
     },
     ".target.0.handle.0.uuid": {
-      "description": "Mutate the uuid field of bevy_asset::id::AssetId<bevy_image::image::Image>",
-      "examples": [
-        {
-          "example": {
-            "__variant_context": "Weak",
-            "example": {
-              "__variant_context": "Uuid",
-              "example": null
-            }
-          }
-        }
-      ],
+      "description": "Mutate the uuid field of Image>",
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1058,12 +769,8 @@
       ]
     },
     ".target.0.scale_factor": {
-      "description": "Mutate the scale_factor field of bevy_render::camera::camera::ImageRenderTarget",
-      "examples": [
-        {
-          "example": 3.1415927410125732
-        }
-      ],
+      "description": "Mutate the scale_factor field of ImageRenderTarget tuplestruct",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1075,12 +782,8 @@
       ]
     },
     ".target.0.scale_factor.0": {
-      "description": "Mutate element 0 of bevy_math::float_ord::FloatOrd",
-      "examples": [
-        {
-          "example": 3.1415927410125732
-        }
-      ],
+      "description": "Mutate element 0 of FloatOrd",
+      "example": 3.1415927410125732,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "IndexedElement",
@@ -1092,7 +795,7 @@
       ]
     },
     ".viewport": {
-      "description": "Mutate the viewport field of bevy_render::camera::camera::Camera",
+      "description": "Mutate the viewport field of Camera enum",
       "examples": [
         {
           "applicable_variants": [
@@ -1130,17 +833,36 @@
         "Some"
       ]
     },
+    ".viewport.0": {
+      "description": "Mutate element 0 of Viewport> struct",
+      "example": {
+        "depth": null,
+        "physical_position": [
+          0,
+          0
+        ],
+        "physical_size": [
+          0,
+          0
+        ]
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "IndexedElement",
+        "type": "bevy_render::camera::camera::Viewport",
+        "type_kind": "Struct"
+      },
+      "variants": [
+        "Some"
+      ]
+    },
     ".viewport.0.depth": {
-      "description": "Mutate the depth field of bevy_render::camera::camera::Viewport",
+      "description": "Mutate the depth field of Viewport",
       "error_reason": "missing_serialization_traits",
-      "examples": [
-        {
-          "example": {
-            "NotMutatable": "Type core::ops::Range<f32> lacks Serialize/Deserialize traits required for mutation",
-            "agent_directive": "This field cannot be mutated - see error message for details"
-          }
-        }
-      ],
+      "example": {
+        "NotMutatable": "Type core::ops::Range<f32> lacks Serialize/Deserialize traits required for mutation",
+        "agent_directive": "This field cannot be mutated - see error message for details"
+      },
       "mutation_status": "not_mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1152,14 +874,10 @@
       ]
     },
     ".viewport.0.physical_position": {
-      "description": "Mutate the physical_position field of bevy_render::camera::camera::Viewport",
-      "examples": [
-        {
-          "example": [
-            0,
-            0
-          ]
-        }
+      "description": "Mutate the physical_position field of Viewport struct",
+      "example": [
+        0,
+        0
       ],
       "mutation_status": "mutatable",
       "path_info": {
@@ -1172,12 +890,8 @@
       ]
     },
     ".viewport.0.physical_position.x": {
-      "description": "Mutate the x field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the x field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1189,12 +903,8 @@
       ]
     },
     ".viewport.0.physical_position.y": {
-      "description": "Mutate the y field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the y field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1206,14 +916,10 @@
       ]
     },
     ".viewport.0.physical_size": {
-      "description": "Mutate the physical_size field of bevy_render::camera::camera::Viewport",
-      "examples": [
-        {
-          "example": [
-            0,
-            0
-          ]
-        }
+      "description": "Mutate the physical_size field of Viewport struct",
+      "example": [
+        0,
+        0
       ],
       "mutation_status": "mutatable",
       "path_info": {
@@ -1226,12 +932,8 @@
       ]
     },
     ".viewport.0.physical_size.x": {
-      "description": "Mutate the x field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the x field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",
@@ -1243,12 +945,8 @@
       ]
     },
     ".viewport.0.physical_size.y": {
-      "description": "Mutate the y field of glam::UVec2",
-      "examples": [
-        {
-          "example": 1000000
-        }
-      ],
+      "description": "Mutate the y field of UVec2",
+      "example": 1000000,
       "mutation_status": "mutatable",
       "path_info": {
         "path_kind": "StructField",

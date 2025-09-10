@@ -1,136 +1,160 @@
 {
-  "status": "success",
-  "message": "Discovered 1 type(s)",
-  "call_info": {
-    "mcp_tool": "brp_type_guide"
-  },
-  "metadata": {
-    "type_count": 1
-  },
-  "parameters": {
-    "port": 15702,
-    "types": ["extras_plugin::TestMapComponent"]
-  },
-  "result": {
-    "discovered_count": 1,
-    "requested_types": ["extras_plugin::TestMapComponent"],
-    "summary": {
-      "failed_discoveries": 0,
-      "successful_discoveries": 1,
-      "total_requested": 1
+  "has_deserialize": true,
+  "has_serialize": true,
+  "in_registry": true,
+  "mutation_paths": {
+    "": {
+      "description": "Replace the entire TestMapComponent struct",
+      "example": {
+        "strings": {
+          "Hello, World!": "Hello, World!"
+        },
+        "transforms": {
+          "Hello, World!": {
+            "rotation": [
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "scale": [
+              1.0,
+              2.0,
+              3.0
+            ],
+            "translation": [
+              1.0,
+              2.0,
+              3.0
+            ]
+          }
+        },
+        "values": {
+          "Hello, World!": 3.1415927410125732
+        }
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "RootValue",
+        "type": "extras_plugin::TestMapComponent",
+        "type_kind": "Struct"
+      }
     },
-    ""type_guide"": {
-      "extras_plugin::TestMapComponent": {
-        "has_deserialize": true,
-        "has_serialize": true,
-        "in_registry": true,
-        "mutation_paths": {
-          "": {
-            "description": "Replace the entire TestMapComponent struct",
-            "example": {
-              "strings": {
-                "Hello, World!": "Hello, World!"
-              },
-              "transforms": {
-                "Hello, World!": {
-                  "rotation": [0.0, 0.0, 0.0, 1.0],
-                  "scale": [1.0, 2.0, 3.0],
-                  "translation": [1.0, 2.0, 3.0]
-                }
-              },
-              "values": {
-                "Hello, World!": 3.1415927410125732
-              }
-            },
-            "mutation_status": "mutatable",
-            "path_info": {
-              "path_kind": "RootValue",
-              "type": "extras_plugin::TestMapComponent",
-              "type_kind": "Struct"
-            }
-          },
-          ".strings": {
-            "description": "Mutate the strings field of TestMapComponent map",
-            "example": {
-              "Hello, World!": "Hello, World!"
-            },
-            "mutation_status": "mutatable",
-            "path_info": {
-              "path_kind": "StructField",
-              "type": "std::collections::HashMap<alloc::string::String, alloc::string::String, std::collections::hash_map::RandomState>",
-              "type_kind": "Map"
-            }
-          },
-          ".transforms": {
-            "description": "Mutate the transforms field of TestMapComponent map",
-            "example": {
-              "Hello, World!": {
-                "rotation": [0.0, 0.0, 0.0, 1.0],
-                "scale": [1.0, 2.0, 3.0],
-                "translation": [1.0, 2.0, 3.0]
-              }
-            },
-            "mutation_status": "mutatable",
-            "path_info": {
-              "path_kind": "StructField",
-              "type": "std::collections::HashMap<alloc::string::String, bevy_transform::components::transform::Transform, std::collections::hash_map::RandomState>",
-              "type_kind": "Map"
-            }
-          },
-          ".values": {
-            "description": "Mutate the values field of TestMapComponent map",
-            "example": {
-              "Hello, World!": 3.1415927410125732
-            },
-            "mutation_status": "mutatable",
-            "path_info": {
-              "path_kind": "StructField",
-              "type": "std::collections::HashMap<alloc::string::String, f32, std::collections::hash_map::RandomState>",
-              "type_kind": "Map"
-            }
-          }
-        },
-        "schema_info": {
-          "crate_name": "extras_plugin",
-          "module_path": "extras_plugin",
-          "properties": {
-            "strings": {
-              "type": {
-                "$ref": "#/$defs/std::collections::HashMap<alloc::string::String, alloc::string::String, std::collections::hash_map::RandomState>"
-              }
-            },
-            "transforms": {
-              "type": {
-                "$ref": "#/$defs/std::collections::HashMap<alloc::string::String, bevy_transform::components::transform::Transform, std::collections::hash_map::RandomState>"
-              }
-            },
-            "values": {
-              "type": {
-                "$ref": "#/$defs/std::collections::HashMap<alloc::string::String, f32, std::collections::hash_map::RandomState>"
-              }
-            }
-          },
-          "required": ["strings", "values", "transforms"],
-          "type_kind": "Struct"
-        },
-        "spawn_format": {
-          "strings": {
-            "Hello, World!": "Hello, World!"
-          },
-          "transforms": {
-            "Hello, World!": {
-              "rotation": [0.0, 0.0, 0.0, 1.0],
-              "scale": [1.0, 2.0, 3.0],
-              "translation": [1.0, 2.0, 3.0]
-            }
-          },
-          "values": {
-            "Hello, World!": 3.1415927410125732
-          }
-        },
-        "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
-        "type_name": "extras_plugin::TestMapComponent"
+    ".strings": {
+      "description": "Mutate the strings field of TestMapComponent map",
+      "example": {
+        "Hello, World!": "Hello, World!"
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "std::collections::HashMap<alloc::string::String, alloc::string::String, std::collections::hash_map::RandomState>",
+        "type_kind": "Map"
+      }
+    },
+    ".transforms": {
+      "description": "Mutate the transforms field of TestMapComponent map",
+      "example": {
+        "Hello, World!": {
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            2.0,
+            3.0
+          ],
+          "translation": [
+            1.0,
+            2.0,
+            3.0
+          ]
+        }
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "std::collections::HashMap<alloc::string::String, bevy_transform::components::transform::Transform, std::collections::hash_map::RandomState>",
+        "type_kind": "Map"
+      }
+    },
+    ".values": {
+      "description": "Mutate the values field of TestMapComponent map",
+      "example": {
+        "Hello, World!": 3.1415927410125732
+      },
+      "mutation_status": "mutatable",
+      "path_info": {
+        "path_kind": "StructField",
+        "type": "std::collections::HashMap<alloc::string::String, f32, std::collections::hash_map::RandomState>",
+        "type_kind": "Map"
       }
     }
-  }
+  },
+  "schema_info": {
+    "crate_name": "extras_plugin",
+    "module_path": "extras_plugin",
+    "properties": {
+      "strings": {
+        "type": {
+          "$ref": "#/$defs/std::collections::HashMap<alloc::string::String, alloc::string::String, std::collections::hash_map::RandomState>"
+        }
+      },
+      "transforms": {
+        "type": {
+          "$ref": "#/$defs/std::collections::HashMap<alloc::string::String, bevy_transform::components::transform::Transform, std::collections::hash_map::RandomState>"
+        }
+      },
+      "values": {
+        "type": {
+          "$ref": "#/$defs/std::collections::HashMap<alloc::string::String, f32, std::collections::hash_map::RandomState>"
+        }
+      }
+    },
+    "required": [
+      "strings",
+      "values",
+      "transforms"
+    ],
+    "type_kind": "Struct"
+  },
+  "spawn_format": {
+    "strings": {
+      "Hello, World!": "Hello, World!"
+    },
+    "transforms": {
+      "Hello, World!": {
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          2.0,
+          3.0
+        ],
+        "translation": [
+          1.0,
+          2.0,
+          3.0
+        ]
+      }
+    },
+    "values": {
+      "Hello, World!": 3.1415927410125732
+    }
+  },
+  "supported_operations": [
+    "query",
+    "get",
+    "spawn",
+    "insert",
+    "mutate"
+  ],
+  "type_name": "extras_plugin::TestMapComponent"
 }
