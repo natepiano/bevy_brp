@@ -67,6 +67,14 @@ def detect_pattern(before: Any, after: Any, path: str) -> ChangePattern:
     before_struct = describe_structure(before)
     after_struct = describe_structure(after)
     
+    # Field removal: before had value, after is null (likely missing field)
+    if before is not None and after is None and before_struct != "null":
+        return ChangePattern.FIELD_REMOVED
+    
+    # Field addition: before was null, after has value
+    if before is None and after is not None and after_struct != "null":
+        return ChangePattern.FIELD_ADDED
+    
     # Enum representation change
     if before_struct == "string" and "enum_schema" in after_struct:
         return ChangePattern.ENUM_REPRESENTATION
@@ -95,6 +103,10 @@ def find_differences(
     differences = []
     
     def recurse(b_val: Any, c_val: Any, path: str):
+        # CRITICAL FIX: Don't flag identical values as changes
+        if b_val == c_val:
+            return
+            
         if type(b_val) != type(c_val):
             # Structural difference
             pattern = detect_pattern(b_val, c_val, path)
@@ -352,6 +364,38 @@ def main(baseline_file: str, current_file: str):
         affected_types = list(set(d.type_name for d in diffs))
         print(f"Types affected: {len(affected_types)}")
         print(f"Total changes: {len(diffs)}")
+        
+        # Special handling for field removals/additions - show which fields changed
+        if pattern == ChangePattern.FIELD_REMOVED:
+            # Group by field name to show what's being removed
+            field_changes = {}
+            for diff in diffs:
+                field_name = diff.path.split('.')[-1]  # Get the last part of the path as field name
+                if field_name not in field_changes:
+                    field_changes[field_name] = []
+                field_changes[field_name].append(diff)
+            
+            print()
+            print(f"Fields removed breakdown:")
+            for field_name, field_diffs in field_changes.items():
+                affected_types_for_field = len(set(d.type_name for d in field_diffs))
+                print(f"  • '{field_name}' field: {len(field_diffs)} removal(s) across {affected_types_for_field} type(s)")
+                
+        elif pattern == ChangePattern.FIELD_ADDED:
+            # Group by field name to show what's being added
+            field_changes = {}
+            for diff in diffs:
+                field_name = diff.path.split('.')[-1]  # Get the last part of the path as field name
+                if field_name not in field_changes:
+                    field_changes[field_name] = []
+                field_changes[field_name].append(diff)
+            
+            print()
+            print(f"Fields added breakdown:")
+            for field_name, field_diffs in field_changes.items():
+                affected_types_for_field = len(set(d.type_name for d in field_diffs))
+                print(f"  • '{field_name}' field: {len(field_diffs)} addition(s) across {affected_types_for_field} type(s)")
+        
         print()
         
         # Show up to 3 examples with actual data

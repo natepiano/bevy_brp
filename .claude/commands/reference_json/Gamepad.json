@@ -7,29 +7,18 @@
       "description": "Replace the entire Gamepad struct",
       "example": {
         "analog": {
-          "axis_data": {
-            "[{\"example\":{\"Axis\":[{\"example\":\"LeftStickX\",\"signature\":\"unit\",\"variants\":[\"LeftStickX\",\"LeftStickY\",\"LeftZ\",\"RightStickX\",\"RightStickY\",\"RightZ\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadAxis)\",\"variants\":[\"Axis\"]},{\"example\":{\"Button\":[{\"example\":\"South\",\"signature\":\"unit\",\"variants\":[\"South\",\"East\",\"North\",\"West\",\"C\",\"Z\",\"LeftTrigger\",\"LeftTrigger2\",\"RightTrigger\",\"RightTrigger2\",\"Select\",\"Start\",\"Mode\",\"LeftThumb\",\"RightThumb\",\"DPadUp\",\"DPadDown\",\"DPadLeft\",\"DPadRight\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadButton)\",\"variants\":[\"Button\"]}]": 3.1415927410125732
-          }
+          "axis_data": null
         },
         "digital": {
-          "just_pressed": [
-            "South",
-            "South"
-          ],
-          "just_released": [
-            "South",
-            "South"
-          ],
-          "pressed": [
-            "South",
-            "South"
-          ]
+          "just_pressed": null,
+          "just_released": null,
+          "pressed": null
         },
         "product_id": null,
         "vendor_id": null
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "RootValue",
         "type": "bevy_input::gamepad::Gamepad",
         "type_kind": "Struct"
@@ -38,24 +27,20 @@
     ".analog": {
       "description": "Mutate the analog field of Gamepad struct",
       "example": {
-        "axis_data": {
-          "[{\"example\":{\"Axis\":[{\"example\":\"LeftStickX\",\"signature\":\"unit\",\"variants\":[\"LeftStickX\",\"LeftStickY\",\"LeftZ\",\"RightStickX\",\"RightStickY\",\"RightZ\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadAxis)\",\"variants\":[\"Axis\"]},{\"example\":{\"Button\":[{\"example\":\"South\",\"signature\":\"unit\",\"variants\":[\"South\",\"East\",\"North\",\"West\",\"C\",\"Z\",\"LeftTrigger\",\"LeftTrigger2\",\"RightTrigger\",\"RightTrigger2\",\"Select\",\"Start\",\"Mode\",\"LeftThumb\",\"RightThumb\",\"DPadUp\",\"DPadDown\",\"DPadLeft\",\"DPadRight\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadButton)\",\"variants\":[\"Button\"]}]": 3.1415927410125732
-        }
+        "axis_data": null
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "bevy_input::axis::Axis<bevy_input::gamepad::GamepadInput>",
         "type_kind": "Struct"
       }
     },
     ".analog.axis_data": {
-      "description": "Mutate the axis_data field of GamepadInput> map",
-      "example": {
-        "[{\"example\":{\"Axis\":[{\"example\":\"LeftStickX\",\"signature\":\"unit\",\"variants\":[\"LeftStickX\",\"LeftStickY\",\"LeftZ\",\"RightStickX\",\"RightStickY\",\"RightZ\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadAxis)\",\"variants\":[\"Axis\"]},{\"example\":{\"Button\":[{\"example\":\"South\",\"signature\":\"unit\",\"variants\":[\"South\",\"East\",\"North\",\"West\",\"C\",\"Z\",\"LeftTrigger\",\"LeftTrigger2\",\"RightTrigger\",\"RightTrigger2\",\"Select\",\"Start\",\"Mode\",\"LeftThumb\",\"RightThumb\",\"DPadUp\",\"DPadDown\",\"DPadLeft\",\"DPadRight\"]},{\"example\":{\"Other\":128},\"signature\":\"tuple(u8)\",\"variants\":[\"Other\"]}]},\"signature\":\"tuple(GamepadButton)\",\"variants\":[\"Button\"]}]": 3.1415927410125732
-      },
-      "mutation_status": "mutatable",
+      "description": "Mutate the axis_data field of Axis map",
       "path_info": {
+        "mutation_status": "not_mutatable",
+        "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadInput, f32, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadInput, f32, bevy_platform::hash::FixedHasher>",
         "type_kind": "Map"
@@ -64,60 +49,42 @@
     ".digital": {
       "description": "Mutate the digital field of Gamepad struct",
       "example": {
-        "just_pressed": [
-          "South",
-          "South"
-        ],
-        "just_released": [
-          "South",
-          "South"
-        ],
-        "pressed": [
-          "South",
-          "South"
-        ]
+        "just_pressed": null,
+        "just_released": null,
+        "pressed": null
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "bevy_input::button_input::ButtonInput<bevy_input::gamepad::GamepadButton>",
         "type_kind": "Struct"
       }
     },
     ".digital.just_pressed": {
-      "description": "Mutate the just_pressed field of GamepadButton> set",
-      "example": [
-        "South",
-        "South"
-      ],
-      "mutation_status": "mutatable",
+      "description": "Mutate the just_pressed field of ButtonInput set",
       "path_info": {
+        "mutation_status": "not_mutatable",
+        "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
         "type_kind": "Set"
       }
     },
     ".digital.just_released": {
-      "description": "Mutate the just_released field of GamepadButton> set",
-      "example": [
-        "South",
-        "South"
-      ],
-      "mutation_status": "mutatable",
+      "description": "Mutate the just_released field of ButtonInput set",
       "path_info": {
+        "mutation_status": "not_mutatable",
+        "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
         "type_kind": "Set"
       }
     },
     ".digital.pressed": {
-      "description": "Mutate the pressed field of GamepadButton> set",
-      "example": [
-        "South",
-        "South"
-      ],
-      "mutation_status": "mutatable",
+      "description": "Mutate the pressed field of ButtonInput set",
       "path_info": {
+        "mutation_status": "not_mutatable",
+        "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
         "type_kind": "Set"
@@ -141,8 +108,8 @@
           "signature": "tuple(u16)"
         }
       ],
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "core::option::Option<u16>",
         "type_kind": "Enum"
@@ -153,10 +120,10 @@
       ]
     },
     ".product_id.0": {
-      "description": "Mutate element 0 of Option<u16>",
+      "description": "Mutate element 0 of Option",
       "example": 5000,
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "IndexedElement",
         "type": "u16",
         "type_kind": "Value"
@@ -183,8 +150,8 @@
           "signature": "tuple(u16)"
         }
       ],
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "core::option::Option<u16>",
         "type_kind": "Enum"
@@ -195,10 +162,10 @@
       ]
     },
     ".vendor_id.0": {
-      "description": "Mutate element 0 of Option<u16>",
+      "description": "Mutate element 0 of Option",
       "example": 5000,
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "IndexedElement",
         "type": "u16",
         "type_kind": "Value"

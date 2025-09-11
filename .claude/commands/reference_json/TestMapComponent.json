@@ -33,8 +33,8 @@
           "Hello, World!": 3.1415927410125732
         }
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "RootValue",
         "type": "extras_plugin::TestMapComponent",
         "type_kind": "Struct"
@@ -45,8 +45,8 @@
       "example": {
         "Hello, World!": "Hello, World!"
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "std::collections::HashMap<alloc::string::String, alloc::string::String, std::collections::hash_map::RandomState>",
         "type_kind": "Map"
@@ -74,8 +74,8 @@
           ]
         }
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "std::collections::HashMap<alloc::string::String, bevy_transform::components::transform::Transform, std::collections::hash_map::RandomState>",
         "type_kind": "Map"
@@ -86,8 +86,8 @@
       "example": {
         "Hello, World!": 3.1415927410125732
       },
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "std::collections::HashMap<alloc::string::String, f32, std::collections::hash_map::RandomState>",
         "type_kind": "Map"
@@ -156,5 +156,8 @@
     "insert",
     "mutate"
   ],
-  "type_name": "extras_plugin::TestMapComponent"
+  "type_name": "extras_plugin::TestMapComponent",
+  "batch_number": null,
+  "test_status": "untested",
+  "fail_reason": ""
 }

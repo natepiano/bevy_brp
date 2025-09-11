@@ -76,8 +76,8 @@
           "signature": "struct{enabled: bool, name: String, value: f32}"
         }
       ],
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "RootValue",
         "type": "extras_plugin::TestEnumWithSerDe",
         "type_kind": "Enum"
@@ -92,8 +92,8 @@
     ".0": {
       "description": "Mutate element 0 of TestEnumWithSerDe",
       "example": "Hello, World!",
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "IndexedElement",
         "type": "alloc::string::String",
         "type_kind": "Value"
@@ -105,8 +105,8 @@
     ".1": {
       "description": "Mutate element 1 of TestEnumWithSerDe",
       "example": 1000000,
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "IndexedElement",
         "type": "u32",
         "type_kind": "Value"
@@ -118,8 +118,8 @@
     ".enabled": {
       "description": "Mutate the enabled field of TestEnumWithSerDe",
       "example": true,
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "bool",
         "type_kind": "Value"
@@ -131,8 +131,8 @@
     ".name": {
       "description": "Mutate the name field of TestEnumWithSerDe",
       "example": "Hello, World!",
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "alloc::string::String",
         "type_kind": "Value"
@@ -144,8 +144,8 @@
     ".value": {
       "description": "Mutate the value field of TestEnumWithSerDe",
       "example": 3.1415927410125732,
-      "mutation_status": "mutatable",
       "path_info": {
+        "mutation_status": "mutatable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -168,5 +168,8 @@
     "insert",
     "mutate"
   ],
-  "type_name": "extras_plugin::TestEnumWithSerDe"
+  "type_name": "extras_plugin::TestEnumWithSerDe",
+  "batch_number": null,
+  "test_status": "untested",
+  "fail_reason": ""
 }

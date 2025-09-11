@@ -11,4 +11,7 @@ cp $TMPDIR/all_types.json $TMPDIR/all_types_baseline.json
 # Create timestamped backup
 cp $TMPDIR/all_types.json $TMPDIR/all_types_good_$(date +%Y%m%d_%H%M%S).json
 
-echo "✅ Version marked as good baseline"
+# Update reference JSON files with new baseline
+./.claude/commands/scripts/create_mutation_test_json_update_reference.sh
+
+echo "✅ Version marked as good baseline and reference files updated"
