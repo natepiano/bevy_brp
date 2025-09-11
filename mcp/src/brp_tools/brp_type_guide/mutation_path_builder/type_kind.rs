@@ -13,7 +13,7 @@ use super::builders::{
     MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
-use super::mutation_support::MutationSupport;
+use super::not_mutatable_reason::NotMutatableReason;
 use super::protocol_enforcer::ProtocolEnforcer;
 use super::recursion_context::RecursionContext;
 use super::types::{MutationPathInternal, MutationStatus};
@@ -114,7 +114,7 @@ impl TypeKind {
     /// Build `NotMutatable` path from `MutationSupport` error details
     fn build_not_mutatable_path_from_support(
         ctx: &RecursionContext,
-        support: &MutationSupport,
+        support: &NotMutatableReason,
         directive_suffix: &str,
     ) -> MutationPathInternal {
         MutationPathInternal {
@@ -143,7 +143,7 @@ impl MutationPathBuilder for TypeKind {
         if depth.exceeds_limit() {
             let recursion_limit_path = Self::build_not_mutatable_path_from_support(
                 ctx,
-                &MutationSupport::RecursionLimitExceeded(ctx.type_name().clone()),
+                &NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
                 "",
             );
             return Ok(vec![recursion_limit_path]);
@@ -176,7 +176,7 @@ impl MutationPathBuilder for TypeKind {
             Self::Array => ArrayMutationBuilder.build_paths(ctx, builder_depth),
             Self::List => ListMutationBuilder.build_paths(ctx, builder_depth),
             Self::Map => self.builder().build_paths(ctx, builder_depth),
-            Self::Set => SetMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Set => self.builder().build_paths(ctx, builder_depth),
             Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
             Self::Value => {
                 // Check serialization inline, no recursion needed
@@ -187,7 +187,7 @@ impl MutationPathBuilder for TypeKind {
                 } else {
                     let not_mutatable_path = Self::build_not_mutatable_path_from_support(
                         ctx,
-                        &MutationSupport::MissingSerializationTraits(ctx.type_name().clone()),
+                        &NotMutatableReason::MissingSerializationTraits(ctx.type_name().clone()),
                         "",
                     );
                     Ok(vec![not_mutatable_path])

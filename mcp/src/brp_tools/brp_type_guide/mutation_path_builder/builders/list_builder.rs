@@ -11,7 +11,7 @@
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::mutation_support::MutationSupport;
+use super::super::not_mutatable_reason::NotMutatableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -32,7 +32,7 @@ impl MutationPathBuilder for ListMutationBuilder {
         let Some(schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
@@ -40,7 +40,7 @@ impl MutationPathBuilder for ListMutationBuilder {
             // If we have a schema but can't extract element type, treat as NotInRegistry
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
@@ -50,7 +50,7 @@ impl MutationPathBuilder for ListMutationBuilder {
         let Some(element_schema) = ctx.get_registry_schema(&element_type) else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::NotInRegistry(element_type),
+                NotMutatableReason::NotInRegistry(element_type),
             )]);
         };
         let element_kind = TypeKind::from_schema(element_schema, &element_type);
@@ -156,7 +156,7 @@ impl ListMutationBuilder {
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
         ctx: &RecursionContext,
-        support: MutationSupport,
+        support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path:            ctx.mutation_path.clone(),

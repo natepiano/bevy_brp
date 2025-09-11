@@ -1,6 +1,6 @@
 mod builders;
 mod mutation_knowledge;
-mod mutation_support;
+mod not_mutatable_reason;
 mod path_kind;
 mod protocol_enforcer;
 mod recursion_context;
@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 pub use builders::EnumVariantInfo;
 pub use mutation_knowledge::KnowledgeKey;
+pub use not_mutatable_reason::NotMutatableReason;
 pub use path_kind::PathKind;
 pub use recursion_context::RecursionContext;
 use serde_json::{Value, json};

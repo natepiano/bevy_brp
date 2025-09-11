@@ -10,7 +10,7 @@
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::mutation_support::MutationSupport;
+use super::super::not_mutatable_reason::NotMutatableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -32,7 +32,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         let Some(schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
@@ -43,7 +43,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         if Self::is_handle_only_wrapper(&elements) {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::NonMutatableHandle {
+                NotMutatableReason::NonMutatableHandle {
                     container_type: ctx.type_name().clone(),
                     element_type:   elements[0].clone(),
                 },
@@ -246,13 +246,13 @@ impl TupleMutationBuilder {
         paths.push(MutationPathInternal {
             path,
             example: json!({
-                "NotMutatable": format!("{}", MutationSupport::NotInRegistry(element_type.clone())),
+                "NotMutatable": format!("{}", NotMutatableReason::NotInRegistry(element_type.clone())),
                 "agent_directive": "Element type not found in registry"
             }),
             type_name: element_type.clone(),
             path_kind: element_ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason: Option::<String>::from(&MutationSupport::NotInRegistry(
+            error_reason: Option::<String>::from(&NotMutatableReason::NotInRegistry(
                 element_type.clone(),
             )),
         });
@@ -287,13 +287,13 @@ impl TupleMutationBuilder {
             paths.push(MutationPathInternal {
                 path: element_ctx.mutation_path.clone(),
                 example: json!({
-                    "NotMutatable": format!("{}", MutationSupport::MissingSerializationTraits(element_type.clone())),
+                    "NotMutatable": format!("{}", NotMutatableReason::MissingSerializationTraits(element_type.clone())),
                     "agent_directive": "Element type cannot be mutated through BRP"
                 }),
                 type_name: element_type.clone(),
                 path_kind: element_ctx.path_kind.clone(),
                 mutation_status: MutationStatus::NotMutatable,
-                error_reason: Option::<String>::from(&MutationSupport::MissingSerializationTraits(element_type.clone())),
+                error_reason: Option::<String>::from(&NotMutatableReason::MissingSerializationTraits(element_type.clone())),
             });
         }
     }
@@ -388,7 +388,7 @@ impl TupleMutationBuilder {
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
         ctx: &RecursionContext,
-        support: MutationSupport,
+        support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path:            ctx.mutation_path.clone(),

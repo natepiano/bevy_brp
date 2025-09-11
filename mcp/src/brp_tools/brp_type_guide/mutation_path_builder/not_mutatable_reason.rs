@@ -5,9 +5,7 @@ use super::super::response_types::BrpTypeName;
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MutationSupport {
-    /// Type fully supports mutation operations
-    Supported,
+pub enum NotMutatableReason {
     /// Type lacks required serialization traits
     MissingSerializationTraits(BrpTypeName),
     /// Container type has non-mutatable element type
@@ -19,25 +17,26 @@ pub enum MutationSupport {
     NotInRegistry(BrpTypeName),
     /// Recursion depth limit exceeded during analysis
     RecursionLimitExceeded(BrpTypeName),
+    /// HashMap or HashSet with complex (non-primitive) key type that cannot be mutated via BRP
+    ComplexCollectionKey(BrpTypeName),
 }
 
-impl MutationSupport {
+impl NotMutatableReason {
     /// Extract the deepest failing type from nested error contexts
     pub fn get_deepest_failing_type(&self) -> Option<BrpTypeName> {
         match self {
-            Self::Supported => None,
             Self::MissingSerializationTraits(type_name)
             | Self::NotInRegistry(type_name)
-            | Self::RecursionLimitExceeded(type_name) => Some(type_name.clone()),
+            | Self::RecursionLimitExceeded(type_name)
+            | Self::ComplexCollectionKey(type_name) => Some(type_name.clone()),
             Self::NonMutatableHandle { element_type, .. } => Some(element_type.clone()),
         }
     }
 }
 
-impl Display for MutationSupport {
+impl Display for NotMutatableReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Supported => write!(f, "Type supports mutation"),
             Self::MissingSerializationTraits(type_name) => write!(
                 f,
                 "Type {type_name} lacks Serialize/Deserialize traits required for mutation"
@@ -56,24 +55,30 @@ impl Display for MutationSupport {
                 f,
                 "Type {type_name} analysis exceeded maximum recursion depth"
             ),
+            Self::ComplexCollectionKey(type_name) => write!(
+                f,
+                "HashMap type {type_name} has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot be reliably serialized/deserialized as HashMap keys"
+            ),
         }
     }
 }
 
 /// Convert `MutationSupport` to structured error reason string
-impl From<&MutationSupport> for Option<String> {
-    fn from(support: &MutationSupport) -> Self {
+impl From<&NotMutatableReason> for Option<String> {
+    fn from(support: &NotMutatableReason) -> Self {
         match support {
-            MutationSupport::Supported => None,
-            MutationSupport::MissingSerializationTraits(_) => {
+            NotMutatableReason::MissingSerializationTraits(_) => {
                 Some("missing_serialization_traits".to_string())
             }
-            MutationSupport::NonMutatableHandle { .. } => {
+            NotMutatableReason::NonMutatableHandle { .. } => {
                 Some("handle_wrapper_component".to_string())
             }
-            MutationSupport::NotInRegistry(_) => Some("not_in_registry".to_string()),
-            MutationSupport::RecursionLimitExceeded(_) => {
+            NotMutatableReason::NotInRegistry(_) => Some("not_in_registry".to_string()),
+            NotMutatableReason::RecursionLimitExceeded(_) => {
                 Some("recursion_limit_exceeded".to_string())
+            }
+            NotMutatableReason::ComplexCollectionKey(_) => {
+                Some("complex_collection_key".to_string())
             }
         }
     }

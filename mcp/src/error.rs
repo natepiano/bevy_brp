@@ -1,6 +1,7 @@
 use error_stack::Report;
 use thiserror::Error;
 
+use crate::brp_tools::NotMutatableReason;
 use crate::tool::ResultStruct;
 
 // Error message prefixes
@@ -45,6 +46,9 @@ pub enum Error {
 
     #[error("Configuration error: {0}")]
     MissingMessageTemplate(String),
+
+    #[error("Type cannot be mutated: {0}")]
+    NotMutatable(NotMutatableReason),
 
     #[error("Unable to extract parameters: {0}")]
     ParameterExtraction(String),
@@ -91,6 +95,7 @@ impl std::fmt::Debug for Error {
                 f.debug_tuple("McpClientCommunication").field(s).finish()
             }
             Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
+            Self::NotMutatable(reason) => f.debug_tuple("NotMutatable").field(reason).finish(),
             Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
             Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
             Self::SchemaProcessing {
@@ -124,6 +129,14 @@ impl std::fmt::Debug for Error {
 }
 
 impl Error {
+    /// Check if this error represents a NotMutatable condition
+    pub fn as_not_mutatable(&self) -> Option<&NotMutatableReason> {
+        match self {
+            Error::NotMutatable(reason) => Some(reason),
+            _ => None,
+        }
+    }
+
     // Builder methods for common patterns
 
     /// Create a "Failed to X" error

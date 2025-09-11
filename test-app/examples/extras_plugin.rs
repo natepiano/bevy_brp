@@ -121,6 +121,22 @@ struct TestMapComponent {
     pub values:     HashMap<String, f32>,
     /// String to Transform map (complex nested type)
     pub transforms: HashMap<String, Transform>,
+    /// Enum to String map (should be NotMutatable due to complex key)
+    pub enum_keyed: HashMap<SimpleTestEnum, String>,
+}
+
+/// Simple test enum for HashMap key testing
+#[derive(Reflect, Serialize, Deserialize, Hash, Eq, PartialEq, Clone)]
+enum SimpleTestEnum {
+    Variant1,
+    Variant2,
+    Variant3,
+}
+
+impl Default for SimpleTestEnum {
+    fn default() -> Self {
+        Self::Variant1
+    }
 }
 
 /// Test component struct WITHOUT Serialize/Deserialize (only Reflect)
@@ -341,6 +357,7 @@ fn main() {
         .register_type::<TestStructNoSerDe>()
         .register_type::<SimpleSetComponent>()
         .register_type::<TestMapComponent>()
+        .register_type::<SimpleTestEnum>()
         .register_type::<TestEnumWithSerDe>()
         .register_type::<SimpleNestedEnum>()
         .register_type::<OptionTestEnum>()
@@ -665,6 +682,14 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Transform::from_xyz(0.0, 5.0, 0.0).with_scale(Vec3::splat(2.0)),
     );
 
+    // Add enum-keyed entries (these should become NotMutatable)
+    test_map
+        .enum_keyed
+        .insert(SimpleTestEnum::Variant1, "first".to_string());
+    test_map
+        .enum_keyed
+        .insert(SimpleTestEnum::Variant2, "second".to_string());
+
     commands.spawn((test_map, Name::new("TestMapEntity")));
 
     // Entity with TestComplexComponent using the struct variant
@@ -805,6 +830,10 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         ))),
         Name::new("WrapperEnumOptionalEntity"),
     ));
+
+    // Entity with Gamepad component for testing Set/Map types with enums
+    // Note: Gamepad fields are private, so we use Default
+    commands.spawn((Gamepad::default(), Name::new("TestGamepad")));
 }
 
 fn spawn_render_entities(commands: &mut Commands) {

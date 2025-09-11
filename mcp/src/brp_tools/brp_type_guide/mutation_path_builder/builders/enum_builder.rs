@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::mutation_support::MutationSupport;
+use super::super::not_mutatable_reason::NotMutatableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -217,7 +217,7 @@ fn extract_variant_name(v: &Value) -> Option<String> {
 }
 
 /// Helper function to check if recursion depth exceeds the maximum allowed
-fn check_depth_exceeded(depth: usize, operation: &str) -> bool {
+fn check_depth_exceeded(depth: usize) -> bool {
     if depth > MAX_TYPE_RECURSION_DEPTH {
         true
     } else {
@@ -245,7 +245,7 @@ fn extract_tuple_types(
     _registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
 ) -> Vec<BrpTypeName> {
-    if check_depth_exceeded(depth, "extracting tuple types") {
+    if check_depth_exceeded(depth) {
         return vec![create_fallback_type()];
     }
 
@@ -262,7 +262,7 @@ fn extract_struct_fields(
     _registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
 ) -> Vec<EnumFieldInfo> {
-    if check_depth_exceeded(depth, "extracting struct fields") {
+    if check_depth_exceeded(depth) {
         return vec![create_fallback_field()];
     }
 
@@ -327,7 +327,7 @@ fn extract_enum_variants(
             variants
                 .iter()
                 .enumerate()
-                .filter_map(|(i, v)| {
+                .filter_map(|(_, v)| {
                     EnumVariantInfo::from_schema_variant(v, registry, depth).or_else(|| None)
                 })
                 .collect()
@@ -345,7 +345,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         let Some(registry_schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
@@ -353,7 +353,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         if depth.exceeds_limit() {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                MutationSupport::RecursionLimitExceeded(ctx.type_name().clone()),
+                NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]);
         }
 
@@ -504,7 +504,7 @@ impl EnumMutationBuilder {
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
         ctx: &RecursionContext,
-        support: MutationSupport,
+        support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path:            ctx.mutation_path.clone(),
@@ -586,14 +586,8 @@ impl EnumMutationBuilder {
 
             let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
             // Extract the example from the field's root path
-            let field_example = Self::extract_field_example(
-                &field_paths,
-                &field_ctx,
-                &inner_kind,
-                depth,
-                variant_name,
-                ctx,
-            );
+            let field_example =
+                Self::extract_field_example(&field_paths, &field_ctx, &inner_kind, depth);
             tuple_values.push(field_example);
 
             // Add variant context to field paths
@@ -640,14 +634,8 @@ impl EnumMutationBuilder {
 
             let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
             // Extract the example from the field's root path
-            let field_example = Self::extract_field_example(
-                &field_paths,
-                &field_ctx,
-                &inner_kind,
-                depth,
-                variant_name,
-                ctx,
-            );
+            let field_example =
+                Self::extract_field_example(&field_paths, &field_ctx, &inner_kind, depth);
             struct_obj.insert(field.field_name.clone(), field_example);
 
             // Add variant context to field paths
@@ -670,8 +658,6 @@ impl EnumMutationBuilder {
         field_ctx: &RecursionContext,
         inner_kind: &TypeKind,
         depth: RecursionDepth,
-        variant_name: &str,
-        ctx: &RecursionContext,
     ) -> Value {
         field_paths
             .iter()

@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use tracing::warn;
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::mutation_support::MutationSupport;
+use super::super::not_mutatable_reason::NotMutatableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -34,14 +34,14 @@ impl MutationPathBuilder for StructMutationBuilder {
         if depth.exceeds_limit() {
             return Ok(vec![Self::build_not_mutatable_path_from_support(
                 ctx,
-                MutationSupport::RecursionLimitExceeded(ctx.type_name().clone()),
+                NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]);
         }
 
         let Some(_schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path_from_support(
                 ctx,
-                MutationSupport::NotInRegistry(ctx.type_name().clone()),
+                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
@@ -129,7 +129,7 @@ impl StructMutationBuilder {
         if SchemaField::extract_field_type(field_info).is_none() {
             paths.push(Self::build_not_mutatable_field_from_support(
                 &field_ctx,
-                MutationSupport::NotInRegistry(field_type.clone()),
+                NotMutatableReason::NotInRegistry(field_type.clone()),
             ));
             return Ok((json!(null), paths));
         }
@@ -138,7 +138,7 @@ impl StructMutationBuilder {
         let Some(field_schema) = ctx.get_registry_schema(&field_type) else {
             paths.push(Self::build_not_mutatable_field_from_support(
                 &field_ctx,
-                MutationSupport::NotInRegistry(field_type.clone()),
+                NotMutatableReason::NotInRegistry(field_type.clone()),
             ));
             return Ok((json!(null), paths));
         };
@@ -151,14 +151,7 @@ impl StructMutationBuilder {
         let field_example = if matches!(field_kind, TypeKind::Value) {
             Self::process_value_field(&field_ctx, &field_type, depth, &mut paths)
         } else {
-            Self::process_complex_field(
-                &field_ctx,
-                &field_type,
-                &field_kind,
-                field_name,
-                depth,
-                &mut paths,
-            )?
+            Self::process_complex_field(&field_ctx, &field_kind, depth, &mut paths)?
         };
 
         // Handle direct field path creation and hardcoded knowledge
@@ -189,7 +182,7 @@ impl StructMutationBuilder {
         } else {
             paths.push(Self::build_not_mutatable_field_from_support(
                 field_ctx,
-                MutationSupport::MissingSerializationTraits(field_type.clone()),
+                NotMutatableReason::MissingSerializationTraits(field_type.clone()),
             ));
             json!(null)
         }
@@ -198,9 +191,7 @@ impl StructMutationBuilder {
     /// Process a complex field (struct, array, etc.)
     fn process_complex_field(
         field_ctx: &RecursionContext,
-        field_type: &BrpTypeName,
         field_kind: &TypeKind,
-        field_name: &str,
         depth: RecursionDepth,
         paths: &mut Vec<MutationPathInternal>,
     ) -> Result<Value> {
@@ -298,7 +289,7 @@ impl StructMutationBuilder {
     /// Build a not mutatable path from `MutationSupport` for struct-level errors
     fn build_not_mutatable_path_from_support(
         ctx: &RecursionContext,
-        support: MutationSupport,
+        support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path:            ctx.mutation_path.clone(),
@@ -316,7 +307,7 @@ impl StructMutationBuilder {
     /// Build a not mutatable field path from `MutationSupport` for field-level errors
     fn build_not_mutatable_field_from_support(
         field_ctx: &RecursionContext,
-        support: MutationSupport,
+        support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path:            field_ctx.mutation_path.clone(),

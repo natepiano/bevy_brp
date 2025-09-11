@@ -16,7 +16,8 @@ pub use brp_client::{
 //
 // Export brp_type_guide tools
 pub use brp_type_guide::{
-    AllTypeGuidesParams, BrpAllTypeGuides, BrpTypeGuide, BrpTypeName, TypeGuideParams,
+    AllTypeGuidesParams, BrpAllTypeGuides, BrpTypeGuide, BrpTypeName, NotMutatableReason,
+    TypeGuideParams,
 };
 pub use constants::BRP_EXTRAS_PORT_ENV_VAR;
 pub use port::Port;

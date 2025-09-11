@@ -18,20 +18,15 @@ use crate::error::{Error, Result};
 pub struct DefaultMutationBuilder;
 
 impl MutationPathBuilder for DefaultMutationBuilder {
-    #[allow(clippy::panic)]
     fn build_paths(
         &self,
         ctx: &RecursionContext,
         _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        tracing::error!(
+        Err(Error::InvalidState(format!(
             "DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
             ctx.type_name()
-        );
-        panic!(
-            "DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        );
+        )).into())
     }
 
     fn is_migrated(&self) -> bool {

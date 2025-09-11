@@ -312,9 +312,10 @@ Each builder migration follows this pattern:
 1. Remove ExampleBuilder usage
 2. Implement protocol methods
 3. Set is_migrated() to true
-4. **IMPORTANT**: Keep `build_paths()` but make it panic with tracing::error! and panic!
+4. **IMPORTANT**: Keep `build_paths()` but make it return `Error::InvalidState`
    - This ensures it's never called when wrapped by ProtocolEnforcer
-   - The panic message should include the type name for debugging
+   - The error message should include the type name for debugging
+   - Following error handling from plan-schema-error.md: no panics, only errors
 5. **CRITICAL**: Update TypeKind::build_paths() to use trait dispatch for this type
    - Change from direct call: `BuilderName.build_paths(ctx, depth)`
    - To trait dispatch: `self.builder().build_paths(ctx, depth)`
@@ -332,8 +333,10 @@ Each builder migration follows this pattern:
 impl MutationPathBuilder for DefaultMutationBuilder {
     fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>> {
-        tracing::error!("DefaultMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
-        panic!("DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
+        Err(Error::InvalidState(format!(
+            "DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
+            ctx.type_name()
+        )).into())
     }
 
     fn is_migrated(&self) -> bool {
@@ -344,15 +347,15 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         vec![] // Leaf type - no children
     }
 
-    fn assemble_from_children(&self, _ctx: &RecursionContext, _children: HashMap<String, Value>) -> Value {
-        json!(null) // Leaf types return null, knowledge handled by ProtocolEnforcer
+    fn assemble_from_children(&self, _ctx: &RecursionContext, _children: HashMap<String, Value>) -> Result<Value> {
+        Ok(json!(null)) // Leaf types return null, knowledge handled by ProtocolEnforcer
     }
 }
 ```
 
 **Lessons Learned**:
 - ✅ Protocol enforcer pattern works correctly
-- ✅ Panic guards prevent direct build_paths() calls
+- ✅ Error returns (not panics) prevent direct build_paths() calls
 - ✅ Simple leaf type implementation confirmed
 - ⚠️ Revealed output format regressions requiring fixes in enum/struct builders
 ### Builder 2: StructMutationBuilder (Container Type Example)
@@ -369,9 +372,11 @@ Self::Struct => self.builder().build_paths(ctx, builder_depth),
 impl MutationPathBuilder for StructMutationBuilder {
     fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
         -> Result<Vec<MutationPathInternal>> {
-        // IMPORTANT: Add panic to ensure this is never called when migrated
-        tracing::error!("StructMutationBuilder::build_paths() called directly! Type: {}", ctx.type_name());
-        panic!("StructMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}", ctx.type_name());
+        // IMPORTANT: Return error to ensure this is never called when migrated
+        Err(Error::InvalidState(format!(
+            "StructMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
+            ctx.type_name()
+        )).into())
     }
 
     fn is_migrated(&self) -> bool {
@@ -401,13 +406,13 @@ impl MutationPathBuilder for StructMutationBuilder {
             })
     }
 
-    fn assemble_from_children(&self, _ctx: &RecursionContext, children: HashMap<String, Value>) -> Value {
+    fn assemble_from_children(&self, _ctx: &RecursionContext, children: HashMap<String, Value>) -> Result<Value> {
         // Assemble struct from field examples
         let mut obj = serde_json::Map::new();
         for (field_name, example) in children {
             obj.insert(field_name, example);
         }
-        json!(obj)
+        Ok(json!(obj))
     }
 
     // DELETE build_schema_example() - no longer needed
@@ -430,19 +435,15 @@ Following the same order as the original ExampleBuilder removal:
    - ✅ **TypeKind**: Already using trait dispatch
    - ✅ Comment added explaining why Maps don't expose child paths (BRP doesn't support string keys for map mutations)
 
-3. **SetMutationBuilder** - Single child type
-   - Fix line 120 static method, implement protocol methods
-   - **ERROR HANDLING**: 
-     - Review `set_builder.rs:58` - `return json!(null);` fallback
-     - Use `Error::InvalidState` for protocol violations (missing required children)
-     - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
-     - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
-     - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **Special**: Add `include_child_paths() -> false` override (like MapMutationBuilder) with comment explaining Sets are terminal mutation points
-   - **TypeKind**: Update `Self::Set => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh
-   - **STOP and ask user to validate and discuss**
-   - **CODE REVIEW**: After validation, stop and ask user to review the SetMutationBuilder implementation before proceeding to next builder
+3. ✅ **SetMutationBuilder** - COMPLETED
+   - ✅ Implemented protocol methods (is_migrated, collect_children, assemble_from_children)
+   - ✅ **ERROR HANDLING**: 
+     - ✅ Used `Error::InvalidState` for protocol violations (missing required 'items' child)
+     - ✅ Updated `assemble_from_children` to return `Result<Value>`
+     - ✅ Updated `build_paths()` to return `Error::InvalidState` instead of panic
+   - ✅ **Special**: Added `include_child_paths() -> false` override with detailed comment explaining Sets are unordered collections
+   - ✅ **TypeKind**: Updated `Self::Set => self.builder().build_paths(ctx, builder_depth)`
+   - ✅ Build passes successfully
 
 4. **ListMutationBuilder** - Single child type
    - Fix line 165 static method, implement protocol methods
@@ -757,7 +758,7 @@ For each migration:
 - Implement collect_children()
 - Implement assemble_from_children()
 - **For Map and Set only**: Override include_child_paths() -> false with explanatory comment
-- Keep build_paths() but make it panic (with tracing::error! and panic!)
+- Keep build_paths() but make it return Error::InvalidState (no panics)
 - **Update TypeKind::build_paths() to use self.builder() for this type**
 - Delete build_schema_example() override
 - Delete static helper methods

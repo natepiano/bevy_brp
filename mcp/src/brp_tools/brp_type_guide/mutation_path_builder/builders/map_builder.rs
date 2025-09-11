@@ -117,17 +117,35 @@ impl MutationPathBuilder for MapMutationBuilder {
             .into());
         };
 
+        // Check if the key is complex (non-primitive) type
+        if Self::is_complex_key(key_example) {
+            // Return error to signal that this should be NotMutatable
+            return Err(Error::schema_processing_for_type(
+                ctx.type_name(),
+                "complex_map_key",
+                "HashMap has complex key type that cannot be mutated through BRP",
+            )
+            .into());
+        }
+
         // Convert key to string (JSON maps need string keys)
         let key_str = match key_example {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),
-            other => serde_json::to_string(other).map_err(|e| {
-                Error::schema_processing_for_type(
+            Value::Bool(b) => b.to_string(),
+            Value::Null => "null".to_string(),
+            other => {
+                // This should not happen since we checked for complex keys above
+                return Err(Error::schema_processing_for_type(
                     ctx.type_name(),
                     "serialize_map_key",
-                    format!("Failed to serialize complex key type to string: {}", e),
+                    format!(
+                        "Unexpected complex key type after complexity check: {:?}",
+                        other
+                    ),
                 )
-            })?,
+                .into());
+            }
         };
 
         // Build final map with the COMPLETE value example
@@ -135,5 +153,17 @@ impl MutationPathBuilder for MapMutationBuilder {
         let mut map = serde_json::Map::new();
         map.insert(key_str, value_example.clone());
         Ok(json!(map))
+    }
+}
+
+impl MapMutationBuilder {
+    /// Check if a key value is complex (non-primitive) and cannot be used as a HashMap key in BRP
+    fn is_complex_key(value: &Value) -> bool {
+        match value {
+            // Primitive types that work as HashMap keys
+            Value::String(_) | Value::Number(_) | Value::Bool(_) | Value::Null => false,
+            // Complex types (arrays, objects) that cannot work as HashMap keys
+            Value::Array(_) | Value::Object(_) => true,
+        }
     }
 }

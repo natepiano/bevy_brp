@@ -15,5 +15,6 @@ mod type_guide;
 // Re-export public API
 // Internal use for format discovery
 pub use all_types_tool::{AllTypeGuidesParams, BrpAllTypeGuides};
+pub use mutation_path_builder::NotMutatableReason;
 pub use response_types::BrpTypeName;
 pub use tool::{BrpTypeGuide, TypeGuideEngine, TypeGuideParams};
