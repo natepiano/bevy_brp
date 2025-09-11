@@ -45,7 +45,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 ctx,
                 NotMutatableReason::NonMutatableHandle {
                     container_type: ctx.type_name().clone(),
-                    element_type: elements[0].clone(),
+                    element_type:   elements[0].clone(),
                 },
             )]);
         }
@@ -68,11 +68,11 @@ impl MutationPathBuilder for TupleMutationBuilder {
         paths.insert(
             0,
             MutationPathInternal {
-                path: ctx.mutation_path.clone(),
-                example: root_example,
-                type_name: ctx.type_name().clone(),
-                path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::Mutatable,
+                path:                   ctx.mutation_path.clone(),
+                example:                root_example,
+                type_name:              ctx.type_name().clone(),
+                path_kind:              ctx.path_kind.clone(),
+                mutation_status:        MutationStatus::Mutatable,
                 mutation_status_reason: None,
             },
         );
@@ -272,21 +272,21 @@ impl TupleMutationBuilder {
                 .build_schema_example(element_ctx, depth.increment());
             tuple_examples.push(element_example.clone());
             paths.push(MutationPathInternal {
-                path: element_ctx.mutation_path.clone(),
-                example: element_example,
-                type_name: element_type.clone(),
-                path_kind: element_ctx.path_kind.clone(),
-                mutation_status: MutationStatus::Mutatable,
+                path:                   element_ctx.mutation_path.clone(),
+                example:                element_example,
+                type_name:              element_type.clone(),
+                path_kind:              element_ctx.path_kind.clone(),
+                mutation_status:        MutationStatus::Mutatable,
                 mutation_status_reason: None,
             });
         } else {
             tuple_examples.push(json!(null));
             paths.push(MutationPathInternal {
-                path: element_ctx.mutation_path.clone(),
-                example: json!(null), // No example for NotMutatable paths
-                type_name: element_type.clone(),
-                path_kind: element_ctx.path_kind.clone(),
-                mutation_status: MutationStatus::NotMutatable,
+                path:                   element_ctx.mutation_path.clone(),
+                example:                json!(null), // No example for NotMutatable paths
+                type_name:              element_type.clone(),
+                path_kind:              element_ctx.path_kind.clone(),
+                mutation_status:        MutationStatus::NotMutatable,
                 mutation_status_reason: Option::<String>::from(
                     &NotMutatableReason::MissingSerializationTraits(element_type.clone()),
                 ),
@@ -385,11 +385,11 @@ impl TupleMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example: json!(null), // No example for NotMutatable paths
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutatable,
+            path:                   ctx.mutation_path.clone(),
+            example:                json!(null), // No example for NotMutatable paths
+            type_name:              ctx.type_name().clone(),
+            path_kind:              ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::NotMutatable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

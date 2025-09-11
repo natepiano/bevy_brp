@@ -125,9 +125,8 @@ impl ProtocolEnforcer {
 
         match (has_mutatable, has_not_mutatable) {
             (true, true) => MutationStatus::PartiallyMutatable, // Mixed
-            (true, false) => MutationStatus::Mutatable,         // All mutatable
-            (false, true) => MutationStatus::NotMutatable,      // All not mutatable
-            (false, false) => MutationStatus::Mutatable,        // No children (leaf)
+            (_, false) => MutationStatus::Mutatable, // All mutatable or no children (leaf)
+            (false, true) => MutationStatus::NotMutatable, // All not mutatable
         }
     }
 }

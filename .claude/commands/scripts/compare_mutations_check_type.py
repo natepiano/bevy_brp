@@ -57,12 +57,8 @@ def check_type(type_name):
                     sorted_paths = sorted(mutation_paths.keys())
                     for path in sorted_paths[:10]:
                         path_info = mutation_paths[path]
-                        # Check for mutation_status in path_info (new structure)
-                        if 'path_info' in path_info and 'mutation_status' in path_info['path_info']:
-                            status = path_info['path_info']['mutation_status']
-                        else:
-                            # Fall back to old structure
-                            status = path_info.get('mutation_status', 'unknown')
+                        # Get mutation_status from path_info (standard structure)
+                        status = path_info.get('path_info', {}).get('mutation_status', 'unknown')
                         print(f"     {path} ({status})")
                     if len(mutation_paths) > 10:
                         print(f"     ... and {len(mutation_paths) - 10} more")

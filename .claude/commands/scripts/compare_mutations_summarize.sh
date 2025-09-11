@@ -33,8 +33,7 @@ if jq -e '.type_guide' "$JSON_FILE" > /dev/null 2>&1; then
     echo "Mutation status breakdown:"
     jq -r '
       [.type_guide[] | .mutation_paths | to_entries[] | 
-       if .value.path_info.mutation_status then .value.path_info.mutation_status 
-       else .value.mutation_status // "unknown" end
+       .value.path_info.mutation_status // "unknown"
       ] | group_by(.) | map({status: .[0], count: length}) | 
       .[] | "\(.status): \(.count)"
     ' "$JSON_FILE"

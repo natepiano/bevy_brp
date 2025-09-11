@@ -60,17 +60,14 @@ impl MutationPathBuilder for StructMutationBuilder {
         // Always add root path - all PathKind variants can contain structs that may need direct
         // access
         {
-            // DEBUG: Log the struct example to see what we're building
-            if ctx.type_name().as_str() == "bevy_transform::components::transform::Transform" {}
-
             paths.insert(
                 0,
                 MutationPathInternal {
-                    path: ctx.mutation_path.clone(),
-                    example: json!(struct_example),
-                    type_name: ctx.type_name().clone(),
-                    path_kind: ctx.path_kind.clone(),
-                    mutation_status: MutationStatus::Mutatable,
+                    path:                   ctx.mutation_path.clone(),
+                    example:                json!(struct_example),
+                    type_name:              ctx.type_name().clone(),
+                    path_kind:              ctx.path_kind.clone(),
+                    mutation_status:        MutationStatus::Mutatable,
                     mutation_status_reason: None,
                 },
             );
@@ -258,11 +255,11 @@ impl StructMutationBuilder {
             if !paths.iter().any(|p| p.path == field_ctx.mutation_path) {
                 // Create direct field path with computed example
                 let field_path = MutationPathInternal {
-                    path: field_ctx.mutation_path.clone(),
-                    example: field_example.clone(),
-                    type_name: field_type.clone(),
-                    path_kind: field_ctx.path_kind.clone(),
-                    mutation_status: MutationStatus::Mutatable,
+                    path:                   field_ctx.mutation_path.clone(),
+                    example:                field_example.clone(),
+                    type_name:              field_type.clone(),
+                    path_kind:              field_ctx.path_kind.clone(),
+                    mutation_status:        MutationStatus::Mutatable,
                     mutation_status_reason: None,
                 };
                 paths.push(field_path);
@@ -292,11 +289,11 @@ impl StructMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example: json!(null), // No example for NotMutatable paths
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutatable,
+            path:                   ctx.mutation_path.clone(),
+            example:                json!(null), // No example for NotMutatable paths
+            type_name:              ctx.type_name().clone(),
+            path_kind:              ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::NotMutatable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }
@@ -307,11 +304,11 @@ impl StructMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path: field_ctx.mutation_path.clone(),
-            example: json!(null), // No example for NotMutatable paths
-            type_name: field_ctx.type_name().clone(),
-            path_kind: field_ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutatable,
+            path:                   field_ctx.mutation_path.clone(),
+            example:                json!(null), // No example for NotMutatable paths
+            type_name:              field_ctx.type_name().clone(),
+            path_kind:              field_ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::NotMutatable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

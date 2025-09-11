@@ -21,11 +21,11 @@ use crate::json_schema::SchemaField;
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind: PathKind,
+    pub path_kind:        PathKind,
     /// Reference to the type registry
-    pub registry: Arc<HashMap<BrpTypeName, Value>>,
+    pub registry:         Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
-    pub mutation_path: String,
+    pub mutation_path:    String,
     /// Parent's mutation knowledge for extracting component examples
     pub parent_knowledge: Option<&'static MutationKnowledge>,
 }

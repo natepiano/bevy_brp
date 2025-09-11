@@ -45,7 +45,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:  BrpTypeName,
 }
 
 /// Variant signatures for deduplication - same signature means same inner structure
@@ -230,7 +230,7 @@ fn create_fallback_type() -> BrpTypeName {
 fn create_fallback_field() -> EnumFieldInfo {
     EnumFieldInfo {
         field_name: "value".to_string(),
-        type_name: create_fallback_type(),
+        type_name:  create_fallback_type(),
     }
 }
 
@@ -500,11 +500,11 @@ impl EnumMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example: json!(null), // No example for NotMutatable paths
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutatable,
+            path:                   ctx.mutation_path.clone(),
+            example:                json!(null), // No example for NotMutatable paths
+            type_name:              ctx.type_name().clone(),
+            path_kind:              ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::NotMutatable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

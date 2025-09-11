@@ -123,7 +123,7 @@ struct TestMapComponent {
     pub transforms: HashMap<String, Transform>,
 }
 
-/// Test component with enum-keyed HashMap (NotMutatable due to complex key)
+/// Test component with enum-keyed `HashMap` (`NotMutatable` due to complex key)
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 struct TestEnumKeyedMap {

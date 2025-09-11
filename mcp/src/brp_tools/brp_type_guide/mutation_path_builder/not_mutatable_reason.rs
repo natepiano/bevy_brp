@@ -17,19 +17,19 @@ pub enum NotMutatableReason {
     NotInRegistry(BrpTypeName),
     /// Recursion depth limit exceeded during analysis
     RecursionLimitExceeded(BrpTypeName),
-    /// HashMap or HashSet with complex (non-primitive) key type that cannot be mutated via BRP
+    /// `HashMap` or `HashSet` with complex (non-primitive) key type that cannot be mutated via BRP
     ComplexCollectionKey(BrpTypeName),
 }
 
 impl NotMutatableReason {
     /// Extract the deepest failing type from nested error contexts
-    pub fn get_deepest_failing_type(&self) -> Option<BrpTypeName> {
+    pub fn get_deepest_failing_type(&self) -> BrpTypeName {
         match self {
             Self::MissingSerializationTraits(type_name)
             | Self::NotInRegistry(type_name)
             | Self::RecursionLimitExceeded(type_name)
-            | Self::ComplexCollectionKey(type_name) => Some(type_name.clone()),
-            Self::NonMutatableHandle { element_type, .. } => Some(element_type.clone()),
+            | Self::ComplexCollectionKey(type_name) => type_name.clone(),
+            Self::NonMutatableHandle { element_type, .. } => element_type.clone(),
         }
     }
 }
@@ -68,17 +68,17 @@ impl From<&NotMutatableReason> for Option<String> {
     fn from(support: &NotMutatableReason) -> Self {
         match support {
             NotMutatableReason::MissingSerializationTraits(_) => {
-                Some(format!("missing_serialization_traits: {}", support))
+                Some(format!("missing_serialization_traits: {support}"))
             }
             NotMutatableReason::NonMutatableHandle { .. } => {
-                Some(format!("handle_wrapper_component: {}", support))
+                Some(format!("handle_wrapper_component: {support}"))
             }
-            NotMutatableReason::NotInRegistry(_) => Some(format!("not_in_registry: {}", support)),
+            NotMutatableReason::NotInRegistry(_) => Some(format!("not_in_registry: {support}")),
             NotMutatableReason::RecursionLimitExceeded(_) => {
-                Some(format!("recursion_limit_exceeded: {}", support))
+                Some(format!("recursion_limit_exceeded: {support}"))
             }
             NotMutatableReason::ComplexCollectionKey(_) => {
-                Some(format!("complex_collection_key: {}", support))
+                Some(format!("complex_collection_key: {support}"))
             }
         }
     }

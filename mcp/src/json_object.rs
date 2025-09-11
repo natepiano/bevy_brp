@@ -37,7 +37,7 @@ pub trait JsonObjectAccess {
     }
 
     /// Check if this JSON value represents a complex (non-primitive) type
-    /// Complex types (Array, Object) cannot be used as HashMap keys or HashSet elements in BRP
+    /// Complex types (Array, Object) cannot be used as `HashMap` keys or `HashSet` elements in BRP
     fn is_complex_type(&self) -> bool;
 }
 
@@ -61,7 +61,7 @@ impl JsonObjectAccess for Value {
     }
 
     fn is_complex_type(&self) -> bool {
-        matches!(self, Value::Array(_) | Value::Object(_))
+        matches!(self, Self::Array(_) | Self::Object(_))
     }
 }
 

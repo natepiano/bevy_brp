@@ -79,11 +79,11 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         };
 
         paths.push(MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example: json!(array_example),
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
+            path:                   ctx.mutation_path.clone(),
+            example:                json!(array_example),
+            type_name:              ctx.type_name().clone(),
+            path_kind:              ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::Mutatable,
             mutation_status_reason: None,
         });
 
@@ -225,11 +225,11 @@ impl ArrayMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example: json!(null), // No example for NotMutatable paths
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutatable,
+            path:                   ctx.mutation_path.clone(),
+            example:                json!(null), // No example for NotMutatable paths
+            type_name:              ctx.type_name().clone(),
+            path_kind:              ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::NotMutatable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

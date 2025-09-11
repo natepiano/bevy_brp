@@ -114,8 +114,8 @@ pub trait MutationPathBuilder {
         Ok(json!(null))
     }
 
-    /// Check if a collection element (HashMap key or HashSet element) is complex
-    /// and return NotMutatable error if it is
+    /// Check if a collection element (`HashMap` key or `HashSet` element) is complex
+    /// and return `NotMutatable` error if it is
     fn check_collection_element_complexity(
         &self,
         element: &Value,
