@@ -19,8 +19,8 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::brp_tools::brp_type_guide::response_types::{BrpTypeName, MathComponent};
 use crate::error::Result;
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 pub struct StructMutationBuilder;
 
@@ -66,12 +66,12 @@ impl MutationPathBuilder for StructMutationBuilder {
             paths.insert(
                 0,
                 MutationPathInternal {
-                    path:            ctx.mutation_path.clone(),
-                    example:         json!(struct_example),
-                    type_name:       ctx.type_name().clone(),
-                    path_kind:       ctx.path_kind.clone(),
+                    path: ctx.mutation_path.clone(),
+                    example: json!(struct_example),
+                    type_name: ctx.type_name().clone(),
+                    path_kind: ctx.path_kind.clone(),
                     mutation_status: MutationStatus::Mutatable,
-                    error_reason:    None,
+                    mutation_status_reason: None,
                 },
             );
         }
@@ -258,12 +258,12 @@ impl StructMutationBuilder {
             if !paths.iter().any(|p| p.path == field_ctx.mutation_path) {
                 // Create direct field path with computed example
                 let field_path = MutationPathInternal {
-                    path:            field_ctx.mutation_path.clone(),
-                    example:         field_example.clone(),
-                    type_name:       field_type.clone(),
-                    path_kind:       field_ctx.path_kind.clone(),
+                    path: field_ctx.mutation_path.clone(),
+                    example: field_example.clone(),
+                    type_name: field_type.clone(),
+                    path_kind: field_ctx.path_kind.clone(),
                     mutation_status: MutationStatus::Mutatable,
-                    error_reason:    None,
+                    mutation_status_reason: None,
                 };
                 paths.push(field_path);
             }
@@ -292,15 +292,12 @@ impl StructMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!({
-                "NotMutatable": format!("{support}"),
-                "agent_directive": format!("This struct type cannot be mutated - {support}")
-            }),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(null), // No example for NotMutatable paths
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(&support),
+            mutation_status_reason: Option::<String>::from(&support),
         }
     }
 
@@ -310,15 +307,12 @@ impl StructMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            field_ctx.mutation_path.clone(),
-            example:         json!({
-                "NotMutatable": format!("{support}"),
-                "agent_directive": "This field cannot be mutated - see error message for details"
-            }),
-            type_name:       field_ctx.type_name().clone(),
-            path_kind:       field_ctx.path_kind.clone(),
+            path: field_ctx.mutation_path.clone(),
+            example: json!(null), // No example for NotMutatable paths
+            type_name: field_ctx.type_name().clone(),
+            path_kind: field_ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(&support),
+            mutation_status_reason: Option::<String>::from(&support),
         }
     }
 
@@ -397,7 +391,7 @@ impl StructMutationBuilder {
             type_name: field_type.clone(),
             path_kind: field_ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
-            error_reason: None,
+            mutation_status_reason: None,
         }
     }
 
@@ -435,11 +429,8 @@ impl StructMutationBuilder {
                 for path in paths.iter_mut() {
                     if matches!(path.path_kind, PathKind::RootValue { .. }) {
                         path.mutation_status = MutationStatus::NotMutatable;
-                        path.error_reason = Some("non_mutatable_fields".to_string());
-                        path.example = json!({
-                            "NotMutatable": format!("Type {} contains non-mutatable field types", path.type_name),
-                            "agent_directive": "This struct cannot be mutated - all fields contain non-mutatable types"
-                        });
+                        path.mutation_status_reason = Some("non_mutatable_fields".to_string());
+                        path.example = json!(null); // No example for NotMutatable paths
                     }
                 }
             }

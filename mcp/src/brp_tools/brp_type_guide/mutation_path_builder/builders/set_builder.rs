@@ -17,8 +17,8 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 pub struct SetMutationBuilder;
 
@@ -47,19 +47,22 @@ impl MutationPathBuilder for SetMutationBuilder {
         // Extract element type from schema
         let item_type = schema.get_type(SchemaField::Items);
 
-        if let Some(item_type_name) = item_type {
-            // Create context for item recursion
-            let item_path_kind =
-                PathKind::new_array_element(0, item_type_name, ctx.type_name().clone());
-            let item_ctx = ctx.create_field_context(item_path_kind);
-            vec![(SchemaField::Items.to_string(), item_ctx)]
-        } else {
-            tracing::debug!(
-                "Failed to extract item type from schema for type: {}",
-                ctx.type_name()
-            );
-            vec![]
-        }
+        item_type.map_or_else(
+            || {
+                tracing::debug!(
+                    "Failed to extract item type from schema for type: {}",
+                    ctx.type_name()
+                );
+                vec![]
+            },
+            |item_type_name| {
+                // Create context for item recursion
+                let item_path_kind =
+                    PathKind::new_array_element(0, item_type_name, ctx.type_name().clone());
+                let item_ctx = ctx.create_field_context(item_path_kind);
+                vec![(SchemaField::Items.to_string(), item_ctx)]
+            },
+        )
     }
 
     fn assemble_from_children(
@@ -75,6 +78,9 @@ impl MutationPathBuilder for SetMutationBuilder {
             ))
             .into());
         };
+
+        // Check if the element is complex (non-primitive) type
+        self.check_collection_element_complexity(item_example, ctx)?;
 
         // Create array with 2 example elements
         // For Sets, these represent unique values to add

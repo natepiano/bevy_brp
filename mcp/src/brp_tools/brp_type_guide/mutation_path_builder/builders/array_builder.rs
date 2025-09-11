@@ -20,8 +20,8 @@ use crate::brp_tools::brp_type_guide::constants::{
 };
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 pub struct ArrayMutationBuilder;
 
@@ -79,12 +79,12 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         };
 
         paths.push(MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!(array_example),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(array_example),
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
+            mutation_status_reason: None,
         });
 
         // Build the indexed element path
@@ -98,7 +98,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             type_name: element_type.clone(),
             path_kind: element_ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
-            error_reason: None,
+            mutation_status_reason: None,
         };
 
         // Check if we need to override an existing indexed path with hardcoded knowledge
@@ -225,15 +225,12 @@ impl ArrayMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!({
-                "NotMutatable": format!("{support}"),
-                "agent_directive": format!("This array type cannot be mutated - {support}")
-            }),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(null), // No example for NotMutatable paths
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(&support),
+            mutation_status_reason: Option::<String>::from(&support),
         }
     }
 }

@@ -18,8 +18,8 @@ use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 pub struct TupleMutationBuilder;
 
@@ -45,7 +45,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 ctx,
                 NotMutatableReason::NonMutatableHandle {
                     container_type: ctx.type_name().clone(),
-                    element_type:   elements[0].clone(),
+                    element_type: elements[0].clone(),
                 },
             )]);
         }
@@ -68,12 +68,12 @@ impl MutationPathBuilder for TupleMutationBuilder {
         paths.insert(
             0,
             MutationPathInternal {
-                path:            ctx.mutation_path.clone(),
-                example:         root_example,
-                type_name:       ctx.type_name().clone(),
-                path_kind:       ctx.path_kind.clone(),
+                path: ctx.mutation_path.clone(),
+                example: root_example,
+                type_name: ctx.type_name().clone(),
+                path_kind: ctx.path_kind.clone(),
                 mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
+                mutation_status_reason: None,
             },
         );
 
@@ -245,14 +245,11 @@ impl TupleMutationBuilder {
         };
         paths.push(MutationPathInternal {
             path,
-            example: json!({
-                "NotMutatable": format!("{}", NotMutatableReason::NotInRegistry(element_type.clone())),
-                "agent_directive": "Element type not found in registry"
-            }),
+            example: json!(null), // No example for NotMutatable paths
             type_name: element_type.clone(),
             path_kind: element_ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason: Option::<String>::from(&NotMutatableReason::NotInRegistry(
+            mutation_status_reason: Option::<String>::from(&NotMutatableReason::NotInRegistry(
                 element_type.clone(),
             )),
         });
@@ -275,25 +272,24 @@ impl TupleMutationBuilder {
                 .build_schema_example(element_ctx, depth.increment());
             tuple_examples.push(element_example.clone());
             paths.push(MutationPathInternal {
-                path:            element_ctx.mutation_path.clone(),
-                example:         element_example,
-                type_name:       element_type.clone(),
-                path_kind:       element_ctx.path_kind.clone(),
+                path: element_ctx.mutation_path.clone(),
+                example: element_example,
+                type_name: element_type.clone(),
+                path_kind: element_ctx.path_kind.clone(),
                 mutation_status: MutationStatus::Mutatable,
-                error_reason:    None,
+                mutation_status_reason: None,
             });
         } else {
             tuple_examples.push(json!(null));
             paths.push(MutationPathInternal {
                 path: element_ctx.mutation_path.clone(),
-                example: json!({
-                    "NotMutatable": format!("{}", NotMutatableReason::MissingSerializationTraits(element_type.clone())),
-                    "agent_directive": "Element type cannot be mutated through BRP"
-                }),
+                example: json!(null), // No example for NotMutatable paths
                 type_name: element_type.clone(),
                 path_kind: element_ctx.path_kind.clone(),
                 mutation_status: MutationStatus::NotMutatable,
-                error_reason: Option::<String>::from(&NotMutatableReason::MissingSerializationTraits(element_type.clone())),
+                mutation_status_reason: Option::<String>::from(
+                    &NotMutatableReason::MissingSerializationTraits(element_type.clone()),
+                ),
             });
         }
     }
@@ -359,11 +355,8 @@ impl TupleMutationBuilder {
                     (0, _) => {
                         // All elements immutable - root cannot be mutated
                         root.mutation_status = MutationStatus::NotMutatable;
-                        root.error_reason = Some("non_mutatable_elements".to_string());
-                        root.example = json!({
-                            "NotMutatable": format!("Type {} contains non-mutatable element types", root.type_name),
-                            "agent_directive": "This tuple cannot be mutated - all elements contain non-mutatable types"
-                        });
+                        root.mutation_status_reason = Some("non_mutatable_elements".to_string());
+                        root.example = json!(null); // No example for NotMutatable paths
                     }
                     (_, 0) => {
                         // All elements mutable - keep existing mutable root path
@@ -372,7 +365,8 @@ impl TupleMutationBuilder {
                         // Mixed mutability - root cannot be replaced, but individual elements can
                         // be mutated
                         root.mutation_status = MutationStatus::PartiallyMutatable;
-                        root.error_reason = Some("partially_mutable_elements".to_string());
+                        root.mutation_status_reason =
+                            Some("partially_mutable_elements".to_string());
                         root.example = json!({
                             "PartialMutation": format!("Some elements of {} are immutable", root.type_name),
                             "agent_directive": "Use individual element paths - root replacement not supported",
@@ -391,15 +385,12 @@ impl TupleMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!({
-                "NotMutatable": format!("{support}"),
-                "agent_directive": format!("This tuple type cannot be mutated - {support}")
-            }),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(null), // No example for NotMutatable paths
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(&support),
+            mutation_status_reason: Option::<String>::from(&support),
         }
     }
 }

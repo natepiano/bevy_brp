@@ -20,8 +20,8 @@ use super::types::{MutationPathInternal, MutationStatus};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
 #[serde(rename_all = "PascalCase")]
@@ -102,7 +102,7 @@ impl TypeKind {
                 type_name: BrpTypeName::from(simplified_type),
                 path_kind: ctx.path_kind.clone(),
                 mutation_status: MutationStatus::Mutatable,
-                error_reason: None,
+                mutation_status_reason: None,
             };
 
             return Some(path);
@@ -118,15 +118,15 @@ impl TypeKind {
         directive_suffix: &str,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!({
+            path: ctx.mutation_path.clone(),
+            example: json!({
                 "NotMutatable": format!("{support}"),
                 "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
             }),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(support),
+            mutation_status_reason: Option::<String>::from(support),
         }
     }
 }
@@ -175,8 +175,7 @@ impl MutationPathBuilder for TypeKind {
             Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx, builder_depth),
             Self::Array => ArrayMutationBuilder.build_paths(ctx, builder_depth),
             Self::List => ListMutationBuilder.build_paths(ctx, builder_depth),
-            Self::Map => self.builder().build_paths(ctx, builder_depth),
-            Self::Set => self.builder().build_paths(ctx, builder_depth),
+            Self::Map | Self::Set => self.builder().build_paths(ctx, builder_depth),
             Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
             Self::Value => {
                 // Check serialization inline, no recursion needed

@@ -13,8 +13,8 @@ use super::mutation_path_builder::{
     RecursionContext, TypeKind,
 };
 use super::response_types::{BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaInfo};
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 /// this is all of the information we provide about a type
 /// we serialize this to our output - and we call it `type_guide`
@@ -22,34 +22,34 @@ use crate::string_traits::JsonFieldAccess;
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeGuide {
     /// Fully-qualified type name
-    pub type_name:            BrpTypeName,
+    pub type_name: BrpTypeName,
     /// Whether the type is registered in the Bevy registry
-    pub in_registry:          bool,
+    pub in_registry: bool,
     /// Whether the type has the Serialize trait
-    pub has_serialize:        bool,
+    pub has_serialize: bool,
     /// Whether the type has the Deserialize trait
-    pub has_deserialize:      bool,
+    pub has_deserialize: bool,
     /// List of BRP operations supported by this type
     pub supported_operations: Vec<BrpSupportedOperation>,
     /// Mutation paths available for this type - using same format as V1
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub mutation_paths:       HashMap<String, MutationPath>,
+    pub mutation_paths: HashMap<String, MutationPath>,
     /// Example values for spawn/insert operations (currently empty to match V1)
     #[serde(skip_serializing_if = "HashMap::is_empty")]
-    pub example_values:       HashMap<String, Value>,
+    pub example_values: HashMap<String, Value>,
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawn_format:         Option<Value>,
+    pub spawn_format: Option<Value>,
     /// Information about enum variants if this is an enum
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_info:            Option<Vec<EnumVariantInfo>>,
+    pub enum_info: Option<Vec<EnumVariantInfo>>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schema_info:          Option<SchemaInfo>,
+    pub schema_info: Option<SchemaInfo>,
     /// Type information for direct fields (struct fields only, one level deep)
     /// Error message if discovery failed
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error:                Option<String>,
+    pub error: Option<String>,
 }
 
 impl TypeGuide {
@@ -184,7 +184,7 @@ impl TypeGuide {
 
         mutation_paths.values().any(|path| {
             matches!(
-                path.mutation_status,
+                path.path_info.mutation_status,
                 MutationStatus::Mutatable | MutationStatus::PartiallyMutatable
             )
         })

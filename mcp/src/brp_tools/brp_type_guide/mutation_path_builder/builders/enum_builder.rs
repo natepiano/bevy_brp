@@ -23,8 +23,8 @@ use crate::brp_tools::brp_type_guide::constants::{MAX_TYPE_RECURSION_DEPTH, Recu
 use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 /// Type-safe enum variant information - replaces `EnumVariantInfoOld`
 /// This enum makes invalid states impossible to construct
@@ -45,7 +45,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name:  BrpTypeName,
+    pub type_name: BrpTypeName,
 }
 
 /// Variant signatures for deduplication - same signature means same inner structure
@@ -217,12 +217,8 @@ fn extract_variant_name(v: &Value) -> Option<String> {
 }
 
 /// Helper function to check if recursion depth exceeds the maximum allowed
-fn check_depth_exceeded(depth: usize) -> bool {
-    if depth > MAX_TYPE_RECURSION_DEPTH {
-        true
-    } else {
-        false
-    }
+const fn check_depth_exceeded(depth: usize) -> bool {
+    depth > MAX_TYPE_RECURSION_DEPTH
 }
 
 /// Create a fallback type for when depth is exceeded
@@ -234,7 +230,7 @@ fn create_fallback_type() -> BrpTypeName {
 fn create_fallback_field() -> EnumFieldInfo {
     EnumFieldInfo {
         field_name: "value".to_string(),
-        type_name:  create_fallback_type(),
+        type_name: create_fallback_type(),
     }
 }
 
@@ -326,10 +322,7 @@ fn extract_enum_variants(
         .map(|variants| {
             variants
                 .iter()
-                .enumerate()
-                .filter_map(|(_, v)| {
-                    EnumVariantInfo::from_schema_variant(v, registry, depth).or_else(|| None)
-                })
+                .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, depth).or(None))
                 .collect()
         })
         .unwrap_or_default()
@@ -411,7 +404,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                 type_name: ctx.type_name().clone(),
                 path_kind: ctx.path_kind.clone(),
                 mutation_status: MutationStatus::Mutatable,
-                error_reason: None,
+                mutation_status_reason: None,
             },
         );
 
@@ -507,15 +500,12 @@ impl EnumMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!({
-                "NotMutatable": format!("{support}"),
-                "agent_directive": format!("This enum type cannot be mutated - {support}")
-            }),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(null), // No example for NotMutatable paths
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(&support),
+            mutation_status_reason: Option::<String>::from(&support),
         }
     }
 

@@ -57,28 +57,28 @@ impl Display for NotMutatableReason {
             ),
             Self::ComplexCollectionKey(type_name) => write!(
                 f,
-                "HashMap type {type_name} has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot be reliably serialized/deserialized as HashMap keys"
+                "HashMap type {type_name} has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet"
             ),
         }
     }
 }
 
-/// Convert `MutationSupport` to structured error reason string
+/// Convert `MutationSupport` to structured error reason string with detailed explanation
 impl From<&NotMutatableReason> for Option<String> {
     fn from(support: &NotMutatableReason) -> Self {
         match support {
             NotMutatableReason::MissingSerializationTraits(_) => {
-                Some("missing_serialization_traits".to_string())
+                Some(format!("missing_serialization_traits: {}", support))
             }
             NotMutatableReason::NonMutatableHandle { .. } => {
-                Some("handle_wrapper_component".to_string())
+                Some(format!("handle_wrapper_component: {}", support))
             }
-            NotMutatableReason::NotInRegistry(_) => Some("not_in_registry".to_string()),
+            NotMutatableReason::NotInRegistry(_) => Some(format!("not_in_registry: {}", support)),
             NotMutatableReason::RecursionLimitExceeded(_) => {
-                Some("recursion_limit_exceeded".to_string())
+                Some(format!("recursion_limit_exceeded: {}", support))
             }
             NotMutatableReason::ComplexCollectionKey(_) => {
-                Some("complex_collection_key".to_string())
+                Some(format!("complex_collection_key: {}", support))
             }
         }
     }

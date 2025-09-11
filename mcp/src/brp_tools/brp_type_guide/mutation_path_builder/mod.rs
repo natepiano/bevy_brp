@@ -113,4 +113,24 @@ pub trait MutationPathBuilder {
         // Note: Can't call build_schema_example here due to object safety
         Ok(json!(null))
     }
+
+    /// Check if a collection element (HashMap key or HashSet element) is complex
+    /// and return NotMutatable error if it is
+    fn check_collection_element_complexity(
+        &self,
+        element: &Value,
+        ctx: &RecursionContext,
+    ) -> Result<()> {
+        use crate::error::Error;
+        use crate::json_object::JsonObjectAccess;
+        if element.is_complex_type() {
+            return Err(
+                Error::NotMutatable(NotMutatableReason::ComplexCollectionKey(
+                    ctx.type_name().clone(),
+                ))
+                .into(),
+            );
+        }
+        Ok(())
+    }
 }

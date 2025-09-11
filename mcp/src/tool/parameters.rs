@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use strum::{Display, EnumString};
 
-use crate::json_types::{JsonSchemaType, SchemaField};
-use crate::string_traits::{IntoStrings, JsonFieldAccess};
+use crate::json_object::{IntoStrings, JsonObjectAccess};
+use crate::json_schema::{JsonSchemaType, SchemaField};
 
 /// Trait for parameter types used in tools
 ///
@@ -134,7 +134,7 @@ enum ParameterType {
 #[derive(Clone, Default)]
 pub struct ParameterBuilder {
     properties: Map<String, Value>,
-    required:   Vec<String>,
+    required: Vec<String>,
 }
 
 impl ParameterBuilder {

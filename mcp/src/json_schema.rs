@@ -8,7 +8,7 @@ use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
 use crate::brp_tools::BrpTypeName;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
 
 /// JSON Schema reference prefix for type definitions
 pub const SCHEMA_REF_PREFIX: &str = "#/$defs/";

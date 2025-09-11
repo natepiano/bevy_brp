@@ -129,10 +129,10 @@ impl std::fmt::Debug for Error {
 }
 
 impl Error {
-    /// Check if this error represents a NotMutatable condition
-    pub fn as_not_mutatable(&self) -> Option<&NotMutatableReason> {
+    /// Check if this error represents a `NotMutatable` condition
+    pub const fn as_not_mutatable(&self) -> Option<&NotMutatableReason> {
         match self {
-            Error::NotMutatable(reason) => Some(reason),
+            Self::NotMutatable(reason) => Some(reason),
             _ => None,
         }
     }
@@ -254,7 +254,7 @@ impl Error {
         details: impl Into<String>,
     ) -> Self {
         Self::SchemaProcessing {
-            message:   format!("Failed to process schema for type"),
+            message:   "Failed to process schema for type".to_string(),
             type_name: Some(type_name.into()),
             operation: Some(operation.into()),
             details:   Some(details.into()),

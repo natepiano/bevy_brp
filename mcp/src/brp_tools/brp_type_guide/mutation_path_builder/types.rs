@@ -27,29 +27,34 @@ pub enum MutationStatus {
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path
-    pub example:         Value,
+    pub example:                Value,
     /// Path for mutation, e.g., ".translation.x"
-    pub path:            String,
+    pub path:                   String,
     /// Type information for this path
-    pub type_name:       BrpTypeName,
+    pub type_name:              BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:       PathKind,
+    pub path_kind:              PathKind,
     /// Status of whether this path can be mutated
-    pub mutation_status: MutationStatus,
-    /// Error reason if mutation is not possible
-    pub error_reason:    Option<String>,
+    pub mutation_status:        MutationStatus,
+    /// Reason if mutation is not possible
+    pub mutation_status_reason: Option<String>,
 }
 
 /// Path information combining navigation and type metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathInfo {
     /// Context describing what kind of mutation this is (how to navigate to this path)
-    pub path_kind: PathKind,
+    pub path_kind:              PathKind,
     /// Fully-qualified type name of the field
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:              BrpTypeName,
     /// The kind of type this field contains (Struct, Enum, Array, etc.)
-    pub type_kind: TypeKind,
+    pub type_kind:              TypeKind,
+    /// Status of whether this path can be mutated
+    pub mutation_status:        MutationStatus,
+    /// Reason if mutation is not possible
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mutation_status_reason: Option<String>,
 }
 
 /// Example group for the unified examples array
@@ -69,26 +74,21 @@ pub struct ExampleGroup {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MutationPath {
     /// Human-readable description of what this path mutates
-    pub description:     String,
+    pub description: String,
     /// Combined path navigation and type metadata
-    pub path_info:       PathInfo,
-    /// Status of whether this path can be mutated
-    pub mutation_status: MutationStatus,
-    /// Error reason if mutation is not possible
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error_reason:    Option<String>,
+    pub path_info:   PathInfo,
     /// List of applicable variants (for enum types only)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub variants:        Option<Vec<String>>,
+    pub variants:    Option<Vec<String>>,
     /// Array of example groups with variants, signatures, and examples (for enums)
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub examples:        Vec<ExampleGroup>,
+    pub examples:    Vec<ExampleGroup>,
     /// Single example value (for non-enum types)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub example:         Option<Value>,
+    pub example:     Option<Value>,
     /// Additional note about how to use this mutation path
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub note:            Option<String>,
+    pub note:        Option<String>,
 }
 
 impl MutationPath {
@@ -179,10 +179,11 @@ impl MutationPath {
             },
         );
 
-        // Determine if this should use examples array or single example
-        let (final_examples, final_example) = if matches!(type_kind, TypeKind::Enum)
-            && !examples.is_empty()
-        {
+        // Only process examples if the path is mutatable
+        let (final_examples, final_example) = if path.mutation_status != MutationStatus::Mutatable {
+            // Not mutatable - no examples to show
+            (vec![], None)
+        } else if matches!(type_kind, TypeKind::Enum) && !examples.is_empty() {
             // Enum type with variants - use examples array
             (examples, None)
         } else if examples.len() == 1
@@ -205,13 +206,13 @@ impl MutationPath {
                 path_kind: path.path_kind.clone(),
                 type_name: path.type_name.clone(),
                 type_kind,
+                mutation_status: path.mutation_status,
+                mutation_status_reason: path.mutation_status_reason.clone(),
             },
             variants,
             examples: final_examples,
             example: final_example,
             note: None,
-            mutation_status: path.mutation_status,
-            error_reason: path.error_reason.clone(),
         }
     }
 

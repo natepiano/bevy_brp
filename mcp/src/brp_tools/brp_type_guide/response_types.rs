@@ -77,6 +77,13 @@ impl BrpTypeName {
     /// For generic types: `HashMap<String, i32>` returns `HashMap<String, i32>`
     /// For arrays: `[glam::Vec3; 2]` returns `[Vec3; 2]`
     pub fn short_name(&self) -> String {
+        // Handle generic types like HashMap<K, V, H> - return just the base type for descriptions
+        if let Some(angle_pos) = self.0.find('<') {
+            let base_type = &self.0[..angle_pos];
+            let short_base = base_type.rsplit("::").next().unwrap_or(base_type);
+            return short_base.to_string(); // Just return "Axis", not "Axis<...>"
+        }
+
         // Special handling for array types like [Type; size]
         if self.0.starts_with('[') && self.0.ends_with(']') {
             // For arrays, we need to shorten the inner type but keep the array syntax

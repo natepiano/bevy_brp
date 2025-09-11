@@ -16,8 +16,8 @@ use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 pub struct MapMutationBuilder;
 
@@ -118,15 +118,7 @@ impl MutationPathBuilder for MapMutationBuilder {
         };
 
         // Check if the key is complex (non-primitive) type
-        if Self::is_complex_key(key_example) {
-            // Return error to signal that this should be NotMutatable
-            return Err(Error::schema_processing_for_type(
-                ctx.type_name(),
-                "complex_map_key",
-                "HashMap has complex key type that cannot be mutated through BRP",
-            )
-            .into());
-        }
+        self.check_collection_element_complexity(key_example, ctx)?;
 
         // Convert key to string (JSON maps need string keys)
         let key_str = match key_example {
@@ -139,10 +131,7 @@ impl MutationPathBuilder for MapMutationBuilder {
                 return Err(Error::schema_processing_for_type(
                     ctx.type_name(),
                     "serialize_map_key",
-                    format!(
-                        "Unexpected complex key type after complexity check: {:?}",
-                        other
-                    ),
+                    format!("Unexpected complex key type after complexity check: {other:?}"),
                 )
                 .into());
             }
@@ -153,17 +142,5 @@ impl MutationPathBuilder for MapMutationBuilder {
         let mut map = serde_json::Map::new();
         map.insert(key_str, value_example.clone());
         Ok(json!(map))
-    }
-}
-
-impl MapMutationBuilder {
-    /// Check if a key value is complex (non-primitive) and cannot be used as a HashMap key in BRP
-    fn is_complex_key(value: &Value) -> bool {
-        match value {
-            // Primitive types that work as HashMap keys
-            Value::String(_) | Value::Number(_) | Value::Bool(_) | Value::Null => false,
-            // Complex types (arrays, objects) that cannot work as HashMap keys
-            Value::Array(_) | Value::Object(_) => true,
-        }
     }
 }

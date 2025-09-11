@@ -18,8 +18,8 @@ use super::super::types::{MutationPathInternal, MutationStatus};
 use super::super::{MutationPathBuilder, TypeKind};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
-use crate::json_types::SchemaField;
-use crate::string_traits::JsonFieldAccess;
+use crate::json_object::JsonObjectAccess;
+use crate::json_schema::SchemaField;
 
 pub struct ListMutationBuilder;
 
@@ -81,23 +81,23 @@ impl MutationPathBuilder for ListMutationBuilder {
         // Build the main list path using the element example (like Array builder does)
         let list_example = vec![element_example.clone(); 2];
         paths.push(MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!(list_example),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(list_example),
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
+            mutation_status_reason: None,
         });
 
         // Build the indexed element path (like Array builder does)
         let indexed_path = format!("{}[0]", ctx.mutation_path);
         paths.push(MutationPathInternal {
-            path:            indexed_path,
-            example:         element_example,
-            type_name:       element_type.clone(),
-            path_kind:       element_ctx.path_kind,
+            path: indexed_path,
+            example: element_example,
+            type_name: element_type.clone(),
+            path_kind: element_ctx.path_kind,
             mutation_status: MutationStatus::Mutatable,
-            error_reason:    None,
+            mutation_status_reason: None,
         });
 
         // Add the nested paths
@@ -159,15 +159,12 @@ impl ListMutationBuilder {
         support: NotMutatableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:            ctx.mutation_path.clone(),
-            example:         json!({
-                "NotMutatable": format!("{support}"),
-                "agent_directive": format!("This list type cannot be mutated - {support}")
-            }),
-            type_name:       ctx.type_name().clone(),
-            path_kind:       ctx.path_kind.clone(),
+            path: ctx.mutation_path.clone(),
+            example: json!(null), // No example for NotMutatable paths
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutatable,
-            error_reason:    Option::<String>::from(&support),
+            mutation_status_reason: Option::<String>::from(&support),
         }
     }
 }

@@ -7,10 +7,10 @@
 use serde_json::{Map, Value};
 
 use crate::brp_tools::BrpTypeName;
-use crate::json_types::SchemaField;
+use crate::json_schema::SchemaField;
 
 /// Extension trait for type-safe JSON field access
-pub trait JsonFieldAccess {
+pub trait JsonObjectAccess {
     /// Get field value using any type that can be a string reference
     fn get_field<T: AsRef<str>>(&self, field: T) -> Option<&Value>;
 
@@ -35,9 +35,13 @@ pub trait JsonFieldAccess {
         self.get_field(SchemaField::Properties)
             .and_then(Value::as_object)
     }
+
+    /// Check if this JSON value represents a complex (non-primitive) type
+    /// Complex types (Array, Object) cannot be used as HashMap keys or HashSet elements in BRP
+    fn is_complex_type(&self) -> bool;
 }
 
-impl JsonFieldAccess for Value {
+impl JsonObjectAccess for Value {
     fn get_field<T: AsRef<str>>(&self, field: T) -> Option<&Self> {
         self.get(field.as_ref())
     }
@@ -55,9 +59,13 @@ impl JsonFieldAccess for Value {
             obj.insert(field.into(), value.into());
         }
     }
+
+    fn is_complex_type(&self) -> bool {
+        matches!(self, Value::Array(_) | Value::Object(_))
+    }
 }
 
-impl JsonFieldAccess for Map<String, Value> {
+impl JsonObjectAccess for Map<String, Value> {
     fn get_field<T: AsRef<str>>(&self, field: T) -> Option<&Value> {
         self.get(field.as_ref())
     }
@@ -72,6 +80,11 @@ impl JsonFieldAccess for Map<String, Value> {
         V: Into<Value>,
     {
         self.insert(field.into(), value.into());
+    }
+
+    fn is_complex_type(&self) -> bool {
+        // A Map is always a complex type (JSON Object)
+        true
     }
 }
 
