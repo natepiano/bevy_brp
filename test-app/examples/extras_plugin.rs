@@ -121,11 +121,17 @@ struct TestMapComponent {
     pub values:     HashMap<String, f32>,
     /// String to Transform map (complex nested type)
     pub transforms: HashMap<String, Transform>,
-    /// Enum to String map (should be NotMutatable due to complex key)
+}
+
+/// Test component with enum-keyed HashMap (NotMutatable due to complex key)
+#[derive(Component, Default, Reflect, Serialize, Deserialize)]
+#[reflect(Component, Serialize, Deserialize)]
+struct TestEnumKeyedMap {
+    /// Enum to String map (should be `NotMutatable` due to complex key)
     pub enum_keyed: HashMap<SimpleTestEnum, String>,
 }
 
-/// Simple test enum for HashMap key testing
+/// Simple test enum for `HashMap` key testing
 #[derive(Reflect, Serialize, Deserialize, Hash, Eq, PartialEq, Clone)]
 enum SimpleTestEnum {
     Variant1,
@@ -357,6 +363,7 @@ fn main() {
         .register_type::<TestStructNoSerDe>()
         .register_type::<SimpleSetComponent>()
         .register_type::<TestMapComponent>()
+        .register_type::<TestEnumKeyedMap>()
         .register_type::<SimpleTestEnum>()
         .register_type::<TestEnumWithSerDe>()
         .register_type::<SimpleNestedEnum>()
@@ -682,15 +689,21 @@ fn spawn_test_component_entities(commands: &mut Commands) {
         Transform::from_xyz(0.0, 5.0, 0.0).with_scale(Vec3::splat(2.0)),
     );
 
-    // Add enum-keyed entries (these should become NotMutatable)
-    test_map
+    commands.spawn((test_map, Name::new("TestMapEntity")));
+
+    // Entity with TestEnumKeyedMap for testing NotMutatable paths with complex keys
+    let mut enum_keyed_map = TestEnumKeyedMap::default();
+    enum_keyed_map
         .enum_keyed
         .insert(SimpleTestEnum::Variant1, "first".to_string());
-    test_map
+    enum_keyed_map
         .enum_keyed
         .insert(SimpleTestEnum::Variant2, "second".to_string());
+    enum_keyed_map
+        .enum_keyed
+        .insert(SimpleTestEnum::Variant3, "third".to_string());
 
-    commands.spawn((test_map, Name::new("TestMapEntity")));
+    commands.spawn((enum_keyed_map, Name::new("TestEnumKeyedMapEntity")));
 
     // Entity with TestComplexComponent using the struct variant
     commands.spawn((

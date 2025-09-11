@@ -30,24 +30,42 @@ def check_type(type_name):
         
         try:
             with open(filepath, 'r') as f:
-                types = json.load(f)
+                data = json.load(f)
+            
+            # Handle new JSON structure with type_guide array
+            type_guide = data.get('type_guide', data if isinstance(data, list) else [])
             
             # Find the type
-            type_data = next((t for t in types if t['type'] == type_name), None)
+            type_data = next((t for t in type_guide if t.get('type_name') == type_name), None)
             
             if type_data:
                 found_any = True
-                paths = type_data.get('mutation_paths', [])
-                spawn = type_data.get('spawn_support', 'not_supported')
+                mutation_paths = type_data.get('mutation_paths', {})
+                supported_ops = type_data.get('supported_operations', [])
+                
+                # Check for spawn/insert support
+                spawn_supported = any(op in ['Spawn', 'Insert'] for op in supported_ops)
+                spawn_status = "supported" if spawn_supported else "not_supported"
                 
                 print(f"\n📄 {filename}")
-                print(f"   Spawn support: {spawn}")
-                print(f"   Mutation paths: {len(paths)}")
-                if paths:
-                    for path in sorted(paths)[:10]:
-                        print(f"     {path}")
-                    if len(paths) > 10:
-                        print(f"     ... and {len(paths) - 10} more")
+                print(f"   Spawn support: {spawn_status}")
+                print(f"   Supported operations: {', '.join(supported_ops)}")
+                print(f"   Mutation paths: {len(mutation_paths)}")
+                
+                if mutation_paths:
+                    # Show mutation paths with their status
+                    sorted_paths = sorted(mutation_paths.keys())
+                    for path in sorted_paths[:10]:
+                        path_info = mutation_paths[path]
+                        # Check for mutation_status in path_info (new structure)
+                        if 'path_info' in path_info and 'mutation_status' in path_info['path_info']:
+                            status = path_info['path_info']['mutation_status']
+                        else:
+                            # Fall back to old structure
+                            status = path_info.get('mutation_status', 'unknown')
+                        print(f"     {path} ({status})")
+                    if len(mutation_paths) > 10:
+                        print(f"     ... and {len(mutation_paths) - 10} more")
                 else:
                     print("     (none)")
         except Exception as e:
@@ -58,8 +76,9 @@ def check_type(type_name):
         print("\nAvailable types (from latest file):")
         try:
             with open(files[-1], 'r') as f:
-                types = json.load(f)
-            all_type_names = sorted([t['type'] for t in types])
+                data = json.load(f)
+            type_guide = data.get('type_guide', data if isinstance(data, list) else [])
+            all_type_names = sorted([t.get('type_name', 'unknown') for t in type_guide])
             # Show types that partially match
             matches = [t for t in all_type_names if type_name.lower() in t.lower()]
             if matches:

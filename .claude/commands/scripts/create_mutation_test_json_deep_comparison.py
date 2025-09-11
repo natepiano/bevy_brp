@@ -164,33 +164,168 @@ def find_differences(
     recurse(baseline_type, current_type, "")
     return differences
 
+def extract_type_guide(data: Dict) -> List[Dict]:
+    """Extract type_guide array from either format"""
+    if 'type_guide' in data:
+        return data['type_guide']
+    elif 'result' in data and 'type_guide' in data['result']:
+        return data['result']['type_guide']
+    else:
+        return data
+
+def calculate_metadata(type_guide: List[Dict]) -> Dict[str, int]:
+    """Calculate metadata statistics for a type guide"""
+    total_types = len(type_guide)
+    
+    spawn_supported = len([t for t in type_guide if 'spawn_format' in t])
+    
+    with_mutations = len([
+        t for t in type_guide 
+        if t.get('mutation_paths') and t['mutation_paths'] != {} and t['mutation_paths'] != []
+    ])
+    
+    total_paths = sum([
+        len(t['mutation_paths'].keys()) if isinstance(t.get('mutation_paths'), dict) else 0
+        for t in type_guide
+    ])
+    
+    return {
+        'total_types': total_types,
+        'spawn_supported': spawn_supported, 
+        'with_mutations': with_mutations,
+        'total_paths': total_paths
+    }
+
 def main(baseline_file: str, current_file: str):
     """Main comparison logic"""
     
+    print("🔍 STRUCTURED MUTATION TEST COMPARISON (Full Schema)")
+    print("=" * 60)
+    print()
+    
     # Load files
-    with open(baseline_file) as f:
-        baseline = json.load(f)
-    with open(current_file) as f:
-        current = json.load(f)
+    try:
+        with open(baseline_file) as f:
+            baseline = json.load(f)
+    except FileNotFoundError:
+        print(f"❌ Baseline file not found: {baseline_file}")
+        return 1
+    except json.JSONDecodeError:
+        print(f"❌ Invalid JSON in baseline file: {baseline_file}")
+        return 1
+        
+    try:
+        with open(current_file) as f:
+            current = json.load(f)
+    except FileNotFoundError:
+        print(f"❌ Current file not found: {current_file}")
+        return 1
+    except json.JSONDecodeError:
+        print(f"❌ Invalid JSON in current file: {current_file}")
+        return 1
+    
+    # Binary identity check
+    print("📊 IDENTITY CHECK")
+    with open(baseline_file, 'rb') as f1, open(current_file, 'rb') as f2:
+        if f1.read() == f2.read():
+            print("✅ FILES ARE IDENTICAL")
+            print("   └─ Baseline and current files are byte-for-byte identical")
+            print()
+            
+            # Show current stats even for identical files
+            current_tg = extract_type_guide(current)
+            current_meta = calculate_metadata(current_tg)
+            
+            print("📈 CURRENT FILE STATISTICS")
+            print(f"   Total Types: {current_meta['total_types']}")
+            print(f"   Spawn-Supported: {current_meta['spawn_supported']}")
+            print(f"   Types with Mutations: {current_meta['with_mutations']}")
+            print(f"   Total Mutation Paths: {current_meta['total_paths']}")
+            print()
+            print("📋 SUMMARY")
+            print("   └─ No changes detected - safe for promotion")
+            return 0
+    
+    print("⚠️  FILES DIFFER - ANALYZING CHANGES")
+    print("   └─ Found differences requiring review")
+    print()
     
     # Extract type_guide arrays
-    baseline_tg = baseline.get('type_guide', baseline)
-    current_tg = current.get('type_guide', current)
+    baseline_tg = extract_type_guide(baseline)
+    current_tg = extract_type_guide(current)
+    
+    # Metadata comparison
+    baseline_meta = calculate_metadata(baseline_tg)
+    current_meta = calculate_metadata(current_tg)
+    
+    print("📈 METADATA COMPARISON")
+    for key in ['total_types', 'spawn_supported', 'with_mutations', 'total_paths']:
+        baseline_val = baseline_meta[key]
+        current_val = current_meta[key]
+        label = key.replace('_', ' ').title().replace('Total ', 'Total Mutation ')
+        
+        if baseline_val == current_val:
+            print(f"   {label}: {baseline_val} → {current_val} (no change)")
+        else:
+            diff = current_val - baseline_val
+            print(f"   {label}: {baseline_val} → {current_val} ({current_val} - {baseline_val} = {diff:+d})")
+    print()
+    
+    # Type-level changes analysis
+    print("🔍 TYPE-LEVEL CHANGES")
+    
+    baseline_types = set(t['type_name'] for t in baseline_tg)
+    current_types = set(t['type_name'] for t in current_tg)
+    
+    new_types = current_types - baseline_types
+    removed_types = baseline_types - current_types
+    common_types = baseline_types & current_types
     
     # Create lookups
     baseline_dict = {t['type_name']: t for t in baseline_tg}
     current_dict = {t['type_name']: t for t in current_tg}
     
-    # Find all differences
+    # Check for changes in common types
+    modified_types = []
+    for type_name in common_types:
+        if baseline_dict[type_name] != current_dict[type_name]:
+            modified_types.append(type_name)
+    
+    print(f"   ├─ Modified Types: {len(modified_types)}")
+    if modified_types:
+        for type_name in modified_types[:5]:
+            print(f"   │  ├─ {type_name}: mutation paths changed")
+        if len(modified_types) > 5:
+            print(f"   │  └─ ... and {len(modified_types) - 5} more")
+    
+    print(f"   ├─ New Types: {len(new_types)}")
+    if new_types and len(new_types) <= 5:
+        for type_name in sorted(new_types):
+            print(f"   │  ├─ {type_name}")
+    elif len(new_types) > 5:
+        for type_name in sorted(list(new_types)[:5]):
+            print(f"   │  ├─ {type_name}")
+        print(f"   │  └─ ... and {len(new_types) - 5} more")
+    
+    print(f"   └─ Removed Types: {len(removed_types)}")
+    if removed_types and len(removed_types) <= 5:
+        for type_name in sorted(removed_types):
+            print(f"       ├─ {type_name}")
+    elif len(removed_types) > 5:
+        for type_name in sorted(list(removed_types)[:5]):
+            print(f"       ├─ {type_name}")
+        print(f"       └─ ... and {len(removed_types) - 5} more")
+    print()
+    
+    # Find all structural differences in modified types
     all_differences = []
-    for type_name in baseline_dict:
-        if type_name in current_dict:
-            diffs = find_differences(
-                baseline_dict[type_name],
-                current_dict[type_name],
-                type_name
-            )
-            all_differences.extend(diffs)
+    for type_name in modified_types:
+        diffs = find_differences(
+            baseline_dict[type_name],
+            current_dict[type_name],
+            type_name
+        )
+        all_differences.extend(diffs)
     
     if not all_differences:
         print("✅ NO STRUCTURAL DIFFERENCES FOUND")
