@@ -193,9 +193,14 @@
  - If files are identical: Simple confirmation
  - If metadata only differs: Count differences
  - If structural changes exist: Full deep analysis output showing:
+   * **Field Removals**: List ALL removed fields with counts (e.g., "example field: 25 removals across 18 types")
+   * **Field Additions**: List ALL added fields with counts (e.g., "mutation_status_reason field: 25 additions")
+   * **Value Changes**: Significant value changes while structure remains the same
    * Known patterns (enum representation, vec format changes, etc.)
    * Unknown patterns requiring investigation
-   * Specific examples of what changed]
+   * Specific examples of what changed
+ 
+ CRITICAL: Always explicitly list ALL field removals and additions from the "FIELD REMOVED" and "FIELD ADDED" sections of the comparison output]
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?
