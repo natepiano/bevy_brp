@@ -1,7 +1,7 @@
 # Interactive Plan: Centralized NotMutatable Path Generation and MutationStatus Handling
 
 ## Overview
-Implement consistent `NotMutatable` path generation with a shared helper function and proper `MutationStatus` propagation in `ProtocolEnforcer` for migrated builders (Default, Map, Set). Builders handle their own NotMutatable conditions by returning appropriate paths directly, while ProtocolEnforcer manages status propagation from children to parents.
+Implement consistent `NotMutatable` path generation with a private helper function in `ProtocolEnforcer` and proper `MutationStatus` propagation for migrated builders (Default, Map, Set). Builders return `Error::NotMutatable` when they detect non-mutatable conditions, while ProtocolEnforcer converts these errors to paths and manages status propagation from children to parents.
 
 ## Current Problem
 - Each builder has duplicate `build_not_mutatable_path` helper functions with identical logic
@@ -11,7 +11,7 @@ Implement consistent `NotMutatable` path generation with a shared helper functio
 - Need a single source of truth for NotMutatable path construction
 
 ## COMPREHENSIVE CHANGES REQUIRED
-- **1 helper function** - `MutationPathInternal::build_not_mutatable()` for consistent path generation
+- **1 helper function** - Private `build_not_mutatable_path()` in ProtocolEnforcer for consistent path generation
 - **1 enum rename** - `ComplexMapKey` → `ComplexCollectionKey` to cover both HashMap and HashSet
 - **1 error variant** - Add `Error::NotMutatable(NotMutatableReason)` to distinguish NotMutatable from real errors
 - **1 trait extension** - Add `is_complex_type()` to `JsonFieldAccess` trait
@@ -99,31 +99,32 @@ impl Error {
 - Type-safe way to return NotMutatable from builders
 - ProtocolEnforcer can identify and handle NotMutatable specially
 
-### STEP 2: Add NotMutatable Helper Function
-**Status:** ⏳ PENDING
+### STEP 2: Add NotMutatable Helper Function  
+**Status:** ✅ COMPLETED
 
-**Objective:** Add shared helper function for consistent NotMutatable path generation
+**Objective:** Add private helper function in ProtocolEnforcer for consistent NotMutatable path generation
 
 **Changes to make:**
-1. Add `build_not_mutatable()` as an associated function on `MutationPathInternal`
+1. Add `build_not_mutatable_path()` as a private method in `ProtocolEnforcer`
 2. Function automatically determines context description from `PathKind`
 3. Provides consistent formatting for all NotMutatable paths
+4. Only ProtocolEnforcer can create NotMutatable paths - builders return errors
 
 **Files to modify:**
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
 
 **Code changes:**
 ```rust
-// In types.rs
-impl MutationPathInternal {
-    /// Build a NotMutatable path with consistent formatting
+// In protocol_enforcer.rs
+impl ProtocolEnforcer {
+    /// Build a NotMutatable path with consistent formatting (private to ProtocolEnforcer)
     /// 
-    /// This replaces the duplicate helper functions across all builders,
-    /// providing a single source of truth for NotMutatable path construction.
-    pub fn build_not_mutatable(
+    /// This centralizes NotMutatable path creation, ensuring only ProtocolEnforcer
+    /// can create these paths while builders simply return Error::NotMutatable.
+    fn build_not_mutatable_path(
         ctx: &RecursionContext,
         reason: NotMutatableReason,
-    ) -> Self {
+    ) -> MutationPathInternal {
         // Automatically determine context description from path_kind
         let context_description = match &ctx.path_kind {
             PathKind::StructField { .. } => "field",
@@ -136,7 +137,7 @@ impl MutationPathInternal {
             _ => "element",
         };
         
-        Self {
+        MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example: json!({
                 "NotMutatable": format!("{reason}"),
@@ -152,12 +153,13 @@ impl MutationPathInternal {
 ```
 
 **Expected outcome:**
-- Single helper function eliminates code duplication across builders
+- Single helper function eliminates code duplication
 - Consistent NotMutatable path formatting
 - Automatic context description based on PathKind
+- Builders cannot accidentally create NotMutatable paths directly
 
 ### STEP 3: Add ProtocolEnforcer Helper Method
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED
 
 **Objective:** Add helper method to ProtocolEnforcer for handling NotMutatable errors cleanly
 
@@ -181,7 +183,7 @@ impl ProtocolEnforcer {
         // Check if it's a NotMutatable condition
         if let Some(reason) = error.as_not_mutatable() {
             // Return a single NotMutatable path for this type
-            Ok(vec![MutationPathInternal::build_not_mutatable(ctx, reason.clone())])
+            Ok(vec![Self::build_not_mutatable_path(ctx, reason.clone())])
         } else {
             // Real error - propagate it
             Err(error)
@@ -196,7 +198,7 @@ impl ProtocolEnforcer {
 - Consistent NotMutatable path creation
 
 ### STEP 4: Verify Test Components  
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED
 
 **Objective:** Verify existing test components adequately cover mutation status scenarios
 
@@ -216,8 +218,40 @@ impl ProtocolEnforcer {
 - Leverage existing test components without duplication
 - All mutation status scenarios already covered by current infrastructure
 
+### STEP 4a: Add NotInRegistry Handling to ProtocolEnforcer
+**Status:** ✅ COMPLETED
+
+**Objective:** Add NotInRegistry check and handling in ProtocolEnforcer right after recursion limit check
+
+**Changes to make:**
+1. Add registry check immediately after recursion limit check in `build_paths()`
+2. Use existing `build_not_mutatable_path()` helper to create consistent NotMutatable paths
+3. This centralizes all infrastructure-level NotMutatable conditions in ProtocolEnforcer
+
+**Files to modify:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
+
+**Code changes:**
+```rust
+// In ProtocolEnforcer::build_paths()
+// Right after recursion limit check (line 77), add:
+
+// 1a. Check if type is in registry
+if ctx.require_registry_schema().is_none() {
+    return Ok(vec![Self::build_not_mutatable_path(
+        ctx,
+        NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
+    )]);
+}
+```
+
+**Expected outcome:**
+- Types not in registry are caught early by ProtocolEnforcer
+- Consistent NotMutatable path formatting for registry issues
+- Individual builders no longer need registry checks
+
 ### STEP 5: Add MutationStatus Propagation Handler
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED
 
 **Objective:** Implement mutation status propagation in `ProtocolEnforcer` to compute parent status from children
 
@@ -286,7 +320,7 @@ impl ProtocolEnforcer {
 - Simple error handling preserved with `?` operator
 
 ### STEP 6: Update MapMutationBuilder to Return NotMutatable Error
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED
 
 **Objective:** Update MapMutationBuilder to detect complex keys and return NotMutatable error
 
@@ -321,8 +355,8 @@ if Self::is_complex_key(key_example) {
 - ProtocolEnforcer creates the NotMutatable path
 - Type system enforces proper reason usage
 
-### STEP 7: Implement SetMutationBuilder Complex Element Detection
-**Status:** ⏳ PENDING
+### STEP 8: Implement SetMutationBuilder Complex Element Detection
+**Status:** ✅ COMPLETED
 
 **Objective:** Add complex element detection for HashSet types and return NotMutatable error
 
@@ -376,8 +410,8 @@ if Self::is_complex_element(item_example) {
 - ProtocolEnforcer creates the NotMutatable path
 - Type system enforces proper reason usage
 
-### STEP 8: Test and Validate Complete System
-**Status:** ⏳ PENDING
+### STEP 9: Test and Validate Complete System
+**Status:** ✅ COMPLETED
 
 **Objective:** Verify all mutation status scenarios work correctly
 
@@ -522,12 +556,12 @@ Rename the existing `ComplexMapKey` variant to `ComplexCollectionKey`. This sing
 - **Investigation Result**: Selective error catching is common in Rust (146+ instances in codebase)
 
 ### New Approach:
-Instead of error throwing/catching, builders return NotMutatable paths directly using a shared helper function `MutationPathInternal::build_not_mutatable()`. This treats NotMutatable as a valid result rather than an error condition, simplifying the mental model and eliminating boilerplate code across builders.
+Builders return `Error::NotMutatable` when they detect non-mutatable conditions, and only ProtocolEnforcer creates the actual NotMutatable paths using its private `build_not_mutatable_path()` helper. This enforces proper separation: builders detect conditions and return errors, ProtocolEnforcer handles path creation.
 
 ### Implementation Notes:
-- Builders handle their own NotMutatable conditions
-- ProtocolEnforcer only handles mutation status propagation
-- Clean separation of concerns with no error conversion needed
+- Builders detect NotMutatable conditions and return errors
+- Only ProtocolEnforcer creates NotMutatable paths
+- Clean separation of concerns with proper encapsulation
 
 ### DESIGN-3: Missing Test Component Conflicts - **Verdict**: CONFIRMED ✅
 - **Status**: APPROVED - To be implemented
