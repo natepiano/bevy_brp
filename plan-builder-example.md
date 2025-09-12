@@ -469,7 +469,7 @@ Then use these enum variants instead of ad-hoc strings:
 - Backward compatible with unmigrated builders
 
 ### STEP 5: Update MapMutationBuilder's assemble_from_children
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED (Already implemented)
 
 **Objective:** Implement assemble_from_children with HashMap<String, Value>
 
@@ -527,7 +527,7 @@ Then use these enum variants instead of ad-hoc strings:
 ---
 
 ### STEP 6: Update SetMutationBuilder's assemble_from_children
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED (Already implemented)
 
 **Objective:** Implement assemble_from_children with HashMap<String, Value>
 
