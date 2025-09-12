@@ -86,13 +86,14 @@ impl PathKind {
         }
     }
 
-    /// Extract a key suitable for HashMap<String, Value> from this PathKind
-    /// Used by ProtocolEnforcer to build child_examples HashMap
+    /// Extract a key suitable for `HashMap<String, Value>` from this `PathKind`
+    /// Used by `ProtocolEnforcer` to build `child_examples` `HashMap`
     pub fn to_child_key(&self) -> String {
         match self {
             Self::StructField { field_name, .. } => field_name.clone(),
-            Self::IndexedElement { index, .. } => index.to_string(),
-            Self::ArrayElement { index, .. } => index.to_string(),
+            Self::IndexedElement { index, .. } | Self::ArrayElement { index, .. } => {
+                index.to_string()
+            }
             Self::RootValue { .. } => String::new(),
         }
     }

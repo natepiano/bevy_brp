@@ -87,12 +87,12 @@ impl MutationPathBuilder for MapMutationBuilder {
         Ok(vec![
             PathKind::StructField {
                 field_name:  SchemaField::Key.to_string(),
-                type_name:   key_t.clone(),
+                type_name:   key_t,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
                 field_name:  SchemaField::Value.to_string(),
-                type_name:   val_t.clone(),
+                type_name:   val_t,
                 parent_type: ctx.type_name().clone(),
             },
         ])

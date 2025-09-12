@@ -98,27 +98,27 @@ pub trait MutationPathBuilder {
         true // Default: most types want child paths for field mutation
     }
 
-    /// Collect PathKinds for child elements
+    /// Collect `PathKinds` for child elements
     ///
-    /// Migrated builders should return PathKinds without creating contexts.
-    /// PathKinds contain the necessary information (field names, indices) for child identification.
+    /// Migrated builders should return `PathKinds` without creating contexts.
+    /// `PathKinds` contain the necessary information (field names, indices) for child identification.
     fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         Ok(vec![]) // Default: no children (leaf types)
     }
 
     /// Assemble a parent value from child examples
     ///
-    /// Receives HashMap where keys are extracted from PathKinds by ProtocolEnforcer:
-    /// - StructField: uses field_name as key
-    /// - IndexedElement/ArrayElement: uses index.to_string() as key
-    /// - RootValue: uses empty string as key
+    /// Receives `HashMap` where keys are extracted from `PathKinds` by `ProtocolEnforcer`:
+    /// - `StructField`: uses `field_name` as key
+    /// - `IndexedElement`/`ArrayElement`: uses `index.to_string()` as key
+    /// - `RootValue`: uses empty string as key
     ///
-    /// Builders ONLY assemble examples - mutation status is determined by ProtocolEnforcer.
+    /// Builders ONLY assemble examples - mutation status is determined by `ProtocolEnforcer`.
     ///
     /// Examples:
-    /// - MapMutationBuilder: receives {"key": key_example, "value": value_example}
-    /// - SetMutationBuilder: receives {"items": item_example}
-    /// - StructBuilder: receives {"field1": example1, "field2": example2, ...}
+    /// - `MapMutationBuilder`: receives {"key": `key_example`, "value": `value_example`}
+    /// - `SetMutationBuilder`: receives {"items": `item_example`}
+    /// - `StructBuilder`: receives {"field1": `example1`, "field2": `example2`, ...}
     fn assemble_from_children(
         &self,
         _ctx: &RecursionContext,

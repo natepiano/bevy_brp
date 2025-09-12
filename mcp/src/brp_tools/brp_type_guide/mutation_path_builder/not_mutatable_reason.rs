@@ -19,9 +19,9 @@ pub enum NotMutableReason {
     RecursionLimitExceeded(BrpTypeName),
     /// `HashMap` or `HashSet` with complex (non-primitive) key type that cannot be mutated via BRP
     ComplexCollectionKey(BrpTypeName),
-    /// All child paths are NotMutatable
+    /// All child paths are `NotMutatable`
     NoMutableChildren { parent_type: BrpTypeName },
-    /// Some children are mutatable, others are not (results in PartiallyMutatable)
+    /// Some children are mutatable, others are not (results in `PartiallyMutatable`)
     PartialChildMutability { parent_type: BrpTypeName },
 }
 

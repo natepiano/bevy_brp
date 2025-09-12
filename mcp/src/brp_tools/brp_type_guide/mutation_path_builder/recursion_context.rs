@@ -29,7 +29,7 @@ pub struct RecursionContext {
     pub mutation_path:    String,
     /// Parent's mutation knowledge for extracting component examples
     pub parent_knowledge: Option<&'static MutationKnowledge>,
-    /// Action to take regarding path creation (set by ProtocolEnforcer)
+    /// Action to take regarding path creation (set by `ProtocolEnforcer`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
     pub path_action:      PathAction,
 }
