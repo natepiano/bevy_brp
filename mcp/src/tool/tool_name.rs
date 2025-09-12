@@ -633,4 +633,10 @@ impl ToolName {
 
         Self::iter().map(Self::to_tool_def).collect()
     }
+
+    /// Get a short human-readable title for this tool
+    /// Extracted from the annotation data we already have
+    pub fn short_title(self) -> String {
+        self.get_annotations().title
+    }
 }

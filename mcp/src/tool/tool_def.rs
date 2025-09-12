@@ -83,10 +83,12 @@ impl ToolDef {
 
         rmcp::model::Tool {
             name:          <&'static str>::from(self.tool_name).into(),
+            title:         Some(self.tool_name.short_title()),
             description:   Some(self.tool_name.description().into()),
             input_schema:  builder.build(),
             output_schema: Some(Self::generate_output_schema()),
             annotations:   Some(enhanced_annotations.into()),
+            icons:         None,
         }
     }
 }
