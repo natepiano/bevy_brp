@@ -15,6 +15,7 @@ use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::PathKind;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -67,7 +68,7 @@ impl MutationPathBuilder for MapMutationBuilder {
 
         if let Some(key_t) = key_type {
             // Create context for key recursion
-            let key_path_kind = super::super::path_kind::PathKind::new_root_value(key_t);
+            let key_path_kind = PathKind::new_root_value(key_t);
             let key_ctx = ctx.create_field_context(key_path_kind);
             children.push((SchemaField::Key.to_string(), key_ctx));
         } else {
@@ -79,7 +80,7 @@ impl MutationPathBuilder for MapMutationBuilder {
 
         if let Some(val_t) = value_type {
             // Create context for value recursion
-            let val_path_kind = super::super::path_kind::PathKind::new_root_value(val_t);
+            let val_path_kind = PathKind::new_root_value(val_t);
             let val_ctx = ctx.create_field_context(val_path_kind);
             children.push((SchemaField::Value.to_string(), val_ctx));
         } else {
