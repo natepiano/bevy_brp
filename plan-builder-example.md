@@ -150,18 +150,21 @@ impl RecursionContext {
 
 ---
 
-### STEP 2: Update collect_children() signature
+### STEP 2: Update collect_children() signature and migrated builders
 **Status:** ⏳ PENDING
 
-**Objective:** Change to return PathKinds instead of creating RecursionContexts
+**Objective:** Change trait signature and update MapMutationBuilder/SetMutationBuilder to prevent build breakage
 
 **Changes to make:**
-1. Change return type from `Vec<(String, RecursionContext)>` to `Vec<PathKind>`
-2. Builders return just PathKinds with embedded identifiers
-3. ProtocolEnforcer will create the contexts and extract keys
+1. Change trait signature from `Vec<(String, RecursionContext)>` to `Result<Vec<PathKind>>`
+2. Update MapMutationBuilder's collect_children() to return PathKinds
+3. Update SetMutationBuilder's collect_children() to return PathKinds
+4. Update ProtocolEnforcer to handle the new Result type
 
-**File to modify:**
+**Files to modify:**
 - `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/mod.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
 
 **Code changes in trait:**
 ```rust
@@ -169,16 +172,90 @@ impl RecursionContext {
     ///
     /// Migrated builders should return PathKinds without creating contexts.
     /// PathKinds contain the necessary information (field names, indices) for child identification.
-    fn collect_children(&self, ctx: &RecursionContext) -> Vec<PathKind> {
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         // Default implementation for backward compatibility
-        vec![]
+        Ok(vec![])
+    }
+```
+
+**Code changes in MapMutationBuilder:**
+```rust
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+        let Some(schema) = ctx.require_registry_schema() else {
+            return Err(Error::InvalidState(format!(
+                "No schema found for map type: {}",
+                ctx.type_name()
+            )).into());
+        };
+
+        // Extract key and value types from schema
+        let key_type = schema.get_type(SchemaField::KeyType);
+        let value_type = schema.get_type(SchemaField::ValueType);
+
+        let Some(key_t) = key_type else {
+            return Err(Error::InvalidState(format!(
+                "Failed to extract key type from schema for type: {}",
+                ctx.type_name()
+            )).into());
+        };
+
+        let Some(val_t) = value_type else {
+            return Err(Error::InvalidState(format!(
+                "Failed to extract value type from schema for type: {}",
+                ctx.type_name()
+            )).into());
+        };
+
+        // Create PathKinds for key and value (ProtocolEnforcer will create contexts)
+        Ok(vec![
+            PathKind::StructField {
+                field_name: SchemaField::Key.to_string(),
+                field_type: key_t.clone(),
+                optional: false,
+            },
+            PathKind::StructField {
+                field_name: SchemaField::Value.to_string(),
+                field_type: val_t.clone(),
+                optional: false,
+            },
+        ])
+    }
+```
+
+**Code changes in SetMutationBuilder:**
+```rust
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+        let Some(schema) = ctx.require_registry_schema() else {
+            return Err(Error::InvalidState(format!(
+                "No schema found for set type: {}",
+                ctx.type_name()
+            )).into());
+        };
+
+        // Extract item type from schema
+        let item_type = schema.get_type(SchemaField::Items);
+
+        let Some(item_t) = item_type else {
+            return Err(Error::InvalidState(format!(
+                "Failed to extract item type from schema for type: {}",
+                ctx.type_name()
+            )).into());
+        };
+
+        // Create PathKind for items (ProtocolEnforcer will create context)
+        Ok(vec![PathKind::StructField {
+            field_name: SchemaField::Items.to_string(),
+            field_type: item_t.clone(),
+            optional: false,
+        }])
     }
 ```
 
 **Expected outcome:**
-- New signature ready
-- Still backward compatible
+- New signature with proper error handling
+- MapMutationBuilder and SetMutationBuilder updated to prevent build breakage
 - PathKinds carry child identification info
+- Errors properly propagated instead of silently logged
 
 ---
 
@@ -261,7 +338,7 @@ impl RecursionContext {
         }
 
         // Get child PathKinds (not contexts!)
-        let child_path_kinds = self.inner.collect_children(ctx);
+        let child_path_kinds = self.inner.collect_children(ctx)?;
         let mut all_paths = vec![];
         let mut child_examples = HashMap::new();
 
@@ -393,121 +470,17 @@ Then use these enum variants instead of ad-hoc strings:
 
 ---
 
-### STEP 4.5: Update MapMutationBuilder collect_children() to use PathKinds
-**Status:** ⏳ PENDING
+### STEP 4.5: (Merged into STEP 2)
+**Status:** ✅ COMPLETED IN STEP 2
 
-**Objective:** Remove context creation from MapMutationBuilder and return PathKinds instead
-
-**Changes to make:**
-1. Change `collect_children()` return type from `Vec<(String, RecursionContext)>` to `Vec<PathKind>`
-2. Remove all `ctx.create_field_context()` calls
-3. Return PathKinds with proper field identification using SchemaField constants
-
-**File to modify:**
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
-
-**Code to replace (lines 57-94):**
-```rust
-    fn collect_children(&self, ctx: &RecursionContext) -> Vec<PathKind> {
-        let Some(schema) = ctx.require_registry_schema() else {
-            tracing::debug!("No schema found for map type: {}", ctx.type_name());
-            return vec![];
-        };
-
-        // Extract key and value types from schema
-        let key_type = schema.get_type(SchemaField::KeyType);
-        let value_type = schema.get_type(SchemaField::ValueType);
-
-        let mut path_kinds = vec![];
-
-        if let Some(key_t) = key_type {
-            // Create PathKind for key (ProtocolEnforcer will create context)
-            let key_path_kind = PathKind::StructField {
-                field_name: SchemaField::Key.to_string(),
-                field_type: key_t.clone(),
-                optional: false,
-            };
-            path_kinds.push(key_path_kind);
-        } else {
-            tracing::debug!(
-                "Failed to extract key type from schema for type: {}",
-                ctx.type_name()
-            );
-        }
-
-        if let Some(val_t) = value_type {
-            // Create PathKind for value (ProtocolEnforcer will create context)
-            let val_path_kind = PathKind::StructField {
-                field_name: SchemaField::Value.to_string(),
-                field_type: val_t.clone(),
-                optional: false,
-            };
-            path_kinds.push(val_path_kind);
-        } else {
-            tracing::debug!(
-                "Failed to extract value type from schema for type: {}",
-                ctx.type_name()
-            );
-        }
-
-        path_kinds
-    }
-```
-
-**Expected outcome:**
-- MapMutationBuilder no longer creates contexts
-- Returns PathKinds with SchemaField::Key and SchemaField::Value field names
-- ProtocolEnforcer will handle all context creation
-- Maintains consistency with existing SchemaField usage
+**Note:** The MapMutationBuilder collect_children() changes have been moved to STEP 2 to prevent build breakage.
 
 ---
 
-### STEP 4.6: Update SetMutationBuilder collect_children() to use PathKinds
-**Status:** ⏳ PENDING
+### STEP 4.6: (Merged into STEP 2)
+**Status:** ✅ COMPLETED IN STEP 2
 
-**Objective:** Remove context creation from SetMutationBuilder and return PathKinds instead
-
-**Changes to make:**
-1. Change `collect_children()` return type from `Vec<(String, RecursionContext)>` to `Vec<PathKind>`
-2. Remove all `ctx.create_field_context()` calls
-3. Return PathKind with proper element identification using SchemaField constants
-
-**File to modify:**
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
-
-**Code pattern to replace:**
-```rust
-    fn collect_children(&self, ctx: &RecursionContext) -> Vec<PathKind> {
-        let Some(schema) = ctx.require_registry_schema() else {
-            tracing::debug!("No schema found for set type: {}", ctx.type_name());
-            return vec![];
-        };
-
-        // Extract item type from schema
-        let item_type = schema.get_type(SchemaField::Items);
-
-        if let Some(item_t) = item_type {
-            // Create PathKind for items (ProtocolEnforcer will create context)
-            vec![PathKind::StructField {
-                field_name: SchemaField::Items.to_string(),
-                field_type: item_t.clone(),
-                optional: false,
-            }]
-        } else {
-            tracing::debug!(
-                "Failed to extract item type from schema for type: {}",
-                ctx.type_name()
-            );
-            vec![]
-        }
-    }
-```
-
-**Expected outcome:**
-- SetMutationBuilder no longer creates contexts
-- Returns PathKind with SchemaField::Items field name
-- ProtocolEnforcer will handle all context creation
-- Maintains consistency with existing SchemaField usage
+**Note:** The SetMutationBuilder collect_children() changes have been moved to STEP 2 to prevent build breakage.
 
 ---
 
