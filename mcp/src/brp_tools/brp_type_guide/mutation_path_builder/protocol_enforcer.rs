@@ -106,6 +106,60 @@ impl ProtocolEnforcer {
         Err(error)
     }
 
+    /// Process a single child and return its paths and example value
+    fn process_child(
+        name: &str,
+        child_ctx: &RecursionContext,
+        depth: RecursionDepth,
+    ) -> Result<(Vec<MutationPathInternal>, Value)> {
+        tracing::debug!(
+            "ProtocolEnforcer recursing to child '{}' of type '{}'",
+            name,
+            child_ctx.type_name()
+        );
+
+        // Get child's schema and create its builder
+        let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
+        tracing::debug!(
+            "Child '{}' schema found: {}",
+            name,
+            child_schema != &json!(null)
+        );
+
+        let child_type = child_ctx.type_name();
+        let child_kind = TypeKind::from_schema(child_schema, child_type);
+        tracing::debug!("Child '{}' TypeKind: {:?}", name, child_kind);
+
+        // we need builder() so that unmigrated children return to their normal unmigrated path
+        // as builder() in `TypeKind` will check the `is_migrated()` method
+        //
+        //  1. If child is migrated: child_builder becomes ANOTHER ProtocolEnforcer wrapping the
+        //     migrated child
+        //  - So it calls _ProtocolEnforcer.build_paths()_ (this again), NOT the migrated builder's
+        //    build_paths()
+        //    - The migrated builder's build_paths() that returns Error::InvalidState is NEVER
+        //      called
+        //  2. If child is unmigrated: child_builder is the raw unmigrated builder
+        //  - So it calls the unmigrated builder's build_paths() directly
+        let child_builder = child_kind.builder();
+
+        // Child handles its OWN depth increment and protocol
+        // If child is migrated -> wrapped with ProtocolEnforcer and calls back through
+        // If not migrated -> uses old implementation
+        let child_paths = child_builder.build_paths(child_ctx, depth.increment())?;
+        tracing::debug!("Child '{}' returned {} paths", name, child_paths.len());
+
+        // Extract child's example from its root path
+        let child_example = child_paths
+            .first()
+            .map(|p| p.example.clone())
+            .unwrap_or(json!(null));
+
+        tracing::debug!("Child '{}' example: {}", name, child_example);
+
+        Ok((child_paths, child_example))
+    }
+
     /// Determine parent's mutation status based on children's statuses
     fn determine_parent_mutation_status(child_paths: &[MutationPathInternal]) -> MutationStatus {
         // Fast path: if ANY child is PartiallyMutatable, parent must be too
@@ -125,7 +179,8 @@ impl ProtocolEnforcer {
 
         match (has_mutatable, has_not_mutatable) {
             (true, true) => MutationStatus::PartiallyMutatable, // Mixed
-            (_, false) => MutationStatus::Mutatable, // All mutatable or no children (leaf)
+            (_, false) => MutationStatus::Mutatable,            /* All mutatable or no children */
+            // (leaf)
             (false, true) => MutationStatus::NotMutatable, // All not mutatable
         }
     }
@@ -155,45 +210,14 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
 
         // Collect children for depth-first traversal
+        // calls the migrated builders (the inner) collect_children method
         let children = self.inner.collect_children(ctx);
         let mut all_paths = vec![];
         let mut child_examples = HashMap::new();
 
         // Recurse to each child (they handle their own protocol)
         for (name, child_ctx) in children {
-            tracing::debug!(
-                "ProtocolEnforcer recursing to child '{}' of type '{}'",
-                name,
-                child_ctx.type_name()
-            );
-
-            // Get child's schema and create its builder
-            let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
-            tracing::debug!(
-                "Child '{}' schema found: {}",
-                name,
-                child_schema != &json!(null)
-            );
-
-            let child_type = child_ctx.type_name();
-            let child_kind = TypeKind::from_schema(child_schema, child_type);
-            tracing::debug!("Child '{}' TypeKind: {:?}", name, child_kind);
-
-            let child_builder = child_kind.builder();
-
-            // Child handles its OWN depth increment and protocol
-            // If child is migrated -> wrapped with ProtocolEnforcer
-            // If not migrated -> uses old implementation
-            let child_paths = child_builder.build_paths(&child_ctx, depth.increment())?;
-            tracing::debug!("Child '{}' returned {} paths", name, child_paths.len());
-
-            // Extract child's example from its root path
-            let child_example = child_paths
-                .first()
-                .map(|p| p.example.clone())
-                .unwrap_or(json!(null));
-
-            tracing::debug!("Child '{}' example: {}", name, child_example);
+            let (child_paths, child_example) = Self::process_child(&name, &child_ctx, depth)?;
 
             child_examples.insert(name, child_example);
 
@@ -230,30 +254,5 @@ impl MutationPathBuilder for ProtocolEnforcer {
         );
 
         Ok(all_paths)
-    }
-
-    // Delegate all other methods to inner builder
-    fn is_migrated(&self) -> bool {
-        self.inner.is_migrated()
-    }
-
-    fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
-        self.inner.collect_children(ctx)
-    }
-
-    fn assemble_from_children(
-        &self,
-        ctx: &RecursionContext,
-        children: HashMap<String, Value>,
-    ) -> Result<Value> {
-        self.inner.assemble_from_children(ctx, children)
-    }
-
-    // fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) ->
-    // Value {     self.inner.build_example_with_knowledge(ctx, depth)
-    // }
-
-    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        self.inner.build_schema_example(ctx, depth)
     }
 }
