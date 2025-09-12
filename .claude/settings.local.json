@@ -33,9 +33,6 @@
       "Bash(touch:*)",
       "Bash(zoxide query:*)",
       "Read(/Users/natemccoy/**)",
-      "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_mesh-0.16.1/src/**)",
-      "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_pbr-0.16.1/src/light_probe/**)",
-      "Read(/Users/natemccoy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render-0.16.1/src/view/visibility/**)",
       "Read(/Users/natemccoy/.claude/commands/**)",
       "Read(/Users/natemccoy/.claude/commands/shared/**)",
       "Read(/tmp/**)",
@@ -121,9 +118,7 @@
       "Bash(if [ -f \"/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types.json\" ])",
       "Bash(then cp /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types.json /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types_previous.json)"
     ],
-    "deny": [
-      "Bash(sed:*)"
-    ],
+    "deny": ["Bash(sed:*)"],
     "ask": [],
     "additionalDirectories": [
       "/Users/natemccoy/rust/bevy",
