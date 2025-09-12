@@ -19,20 +19,20 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
     if children.len() != 2 {
         return Err(anyhow::anyhow!("Map requires exactly 2 children, got {}", children.len()));
     }
-    
+
     let key_value = &children[0];
     let value_value = &children[1];
-    
+
     // Create the map with the example key-value pair
     let mut map = serde_json::Map::new();
-    
+
     // Convert key to string for JSON map
     let key_str = match key_value {
         Value::String(s) => s.clone(),
         _ => serde_json::to_string(key_value)
             .unwrap_or_else(|_| "example_key".to_string()),
     };
-    
+
     map.insert(key_str, value_value.clone());
     Ok(Value::Object(map))
 }
@@ -49,9 +49,9 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
     if children.len() != 1 {
         return Err(anyhow::anyhow!("Set requires exactly 1 child, got {}", children.len()));
     }
-    
+
     let items_value = &children[0];
-    
+
     // Create array with single example item
     Ok(Value::Array(vec![items_value.clone()]))
 }
@@ -68,9 +68,9 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
     if children.len() != 1 {
         return Err(anyhow::anyhow!("List requires exactly 1 child, got {}", children.len()));
     }
-    
+
     let element_value = &children[0];
-    
+
     // Create array with single example element
     Ok(Value::Array(vec![element_value.clone()]))
 }
@@ -85,16 +85,16 @@ Creates a JSON array with all elements (fixed size).
 fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -> Result<Value> {
     // Array includes all children as elements
     // The number of children should match the array's fixed size
-    
+
     // For arrays with many elements, might want to limit examples
     const MAX_ARRAY_EXAMPLES: usize = 3;
-    
+
     let examples = if children.len() > MAX_ARRAY_EXAMPLES {
         children.into_iter().take(MAX_ARRAY_EXAMPLES).collect()
     } else {
         children
     };
-    
+
     Ok(Value::Array(examples))
 }
 ```
@@ -108,11 +108,11 @@ Creates a JSON array with elements in exact positional order.
 fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -> Result<Value> {
     // Tuple includes all children in their exact positions
     // The number of children should match the tuple's arity
-    
+
     // Could validate expected arity here
     // let expected_arity = self.get_arity_from_schema(ctx);
     // if children.len() != expected_arity { ... }
-    
+
     Ok(Value::Array(children))
 }
 ```
@@ -126,17 +126,17 @@ Creates a JSON object with named fields.
 fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -> Result<Value> {
     // Struct needs to recover field names from PathKinds
     let path_kinds = self.collect_children(ctx);
-    
+
     if path_kinds.len() != children.len() {
         return Err(anyhow::anyhow!(
-            "Mismatch between PathKinds ({}) and children ({})", 
-            path_kinds.len(), 
+            "Mismatch between PathKinds ({}) and children ({})",
+            path_kinds.len(),
             children.len()
         ));
     }
-    
+
     let mut obj = serde_json::Map::new();
-    
+
     // Zip PathKinds with values to reconstruct field mapping
     for (path_kind, value) in path_kinds.iter().zip(children.iter()) {
         match path_kind {
@@ -149,7 +149,7 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
             }
         }
     }
-    
+
     Ok(Value::Object(obj))
 }
 ```
@@ -162,10 +162,10 @@ Creates variant-specific JSON structures. Most complex due to multiple variant t
 ```rust
 fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -> Result<Value> {
     // Enum is the most complex - needs to handle different variant types
-    
+
     // Get the variant information from context or schema
     let variant_info = self.get_variant_info(ctx)?;
-    
+
     match variant_info {
         VariantType::Unit(name) => {
             // Unit variant: just the name as string
@@ -184,8 +184,8 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
             // Tuple variant: {"VariantName": [field0, field1, ...]}
             if children.len() != arity {
                 return Err(anyhow::anyhow!(
-                    "Tuple variant expects {} children, got {}", 
-                    arity, 
+                    "Tuple variant expects {} children, got {}",
+                    arity,
                     children.len()
                 ));
             }
@@ -198,13 +198,13 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
             // Similar to StructMutationBuilder but wrapped in variant name
             let path_kinds = self.collect_children(ctx);
             let mut fields = serde_json::Map::new();
-            
+
             for (path_kind, value) in path_kinds.iter().zip(children.iter()) {
                 if let PathKind::StructField { field_name, .. } = path_kind {
                     fields.insert(field_name.clone(), value.clone());
                 }
             }
-            
+
             let mut obj = serde_json::Map::new();
             obj.insert(name, Value::Object(fields));
             Ok(Value::Object(obj))
@@ -237,7 +237,7 @@ fn assemble_from_children(&self, ctx: &RecursionContext, children: Vec<Value>) -
 - Builders NEVER determine mutation status
 - Builders ONLY assemble examples from children
 - ProtocolEnforcer is the sole authority for:
-  - Determining mutation status (Mutatable/NotMutatable/PartiallyMutatable)
+  - Determining mutation status (Mutable/NotMutable/PartiallyMutable)
   - Generating mutation_status_reason strings
   - Aggregating child statuses
 

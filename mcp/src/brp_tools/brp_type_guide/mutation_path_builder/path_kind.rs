@@ -18,12 +18,6 @@ use super::type_kind::TypeKind;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MutationPathDescriptor(String);
 
-impl MutationPathDescriptor {
-    pub const fn new(s: String) -> Self {
-        Self(s)
-    }
-}
-
 impl Deref for MutationPathDescriptor {
     type Target = str;
     fn deref(&self) -> &Self::Target {
@@ -55,21 +49,21 @@ pub enum PathKind {
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name:  String,
-        type_name:   BrpTypeName,
+        field_name: String,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
 }

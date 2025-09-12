@@ -18,7 +18,7 @@
         "vendor_id": null
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "RootValue",
         "type": "bevy_input::gamepad::Gamepad",
         "type_kind": "Struct"
@@ -30,7 +30,7 @@
         "axis_data": null
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_input::axis::Axis<bevy_input::gamepad::GamepadInput>",
         "type_kind": "Struct"
@@ -39,7 +39,7 @@
     ".analog.axis_data": {
       "description": "Mutate the axis_data field of Axis map",
       "path_info": {
-        "mutation_status": "not_mutatable",
+        "mutation_status": "not_mutable",
         "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadInput, f32, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashMap<bevy_input::gamepad::GamepadInput, f32, bevy_platform::hash::FixedHasher>",
@@ -54,7 +54,7 @@
         "pressed": null
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_input::button_input::ButtonInput<bevy_input::gamepad::GamepadButton>",
         "type_kind": "Struct"
@@ -63,7 +63,7 @@
     ".digital.just_pressed": {
       "description": "Mutate the just_pressed field of ButtonInput set",
       "path_info": {
-        "mutation_status": "not_mutatable",
+        "mutation_status": "not_mutable",
         "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
@@ -73,7 +73,7 @@
     ".digital.just_released": {
       "description": "Mutate the just_released field of ButtonInput set",
       "path_info": {
-        "mutation_status": "not_mutatable",
+        "mutation_status": "not_mutable",
         "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
@@ -83,7 +83,7 @@
     ".digital.pressed": {
       "description": "Mutate the pressed field of ButtonInput set",
       "path_info": {
-        "mutation_status": "not_mutatable",
+        "mutation_status": "not_mutable",
         "mutation_status_reason": "complex_collection_key: HashMap type bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher> has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet",
         "path_kind": "StructField",
         "type": "bevy_platform::collections::HashSet<bevy_input::gamepad::GamepadButton, bevy_platform::hash::FixedHasher>",
@@ -109,7 +109,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "core::option::Option<u16>",
         "type_kind": "Enum"
@@ -123,7 +123,7 @@
       "description": "Mutate element 0 of Option",
       "example": 5000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "u16",
         "type_kind": "Value"
@@ -151,7 +151,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "core::option::Option<u16>",
         "type_kind": "Enum"
@@ -165,7 +165,7 @@
       "description": "Mutate element 0 of Option",
       "example": 5000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "u16",
         "type_kind": "Value"

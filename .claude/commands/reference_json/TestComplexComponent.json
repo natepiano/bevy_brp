@@ -44,7 +44,7 @@
         }
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "RootValue",
         "type": "extras_plugin::TestComplexComponent",
         "type_kind": "Struct"
@@ -88,7 +88,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "extras_plugin::TestEnumWithSerDe",
         "type_kind": "Enum"
@@ -104,7 +104,7 @@
       "description": "Mutate element 0 of TestEnumWithSerDe",
       "example": "Hello, World!",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "alloc::string::String",
         "type_kind": "Value"
@@ -117,7 +117,7 @@
       "description": "Mutate element 1 of TestEnumWithSerDe",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "u32",
         "type_kind": "Value"
@@ -130,7 +130,7 @@
       "description": "Mutate the enabled field of TestEnumWithSerDe",
       "example": true,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bool",
         "type_kind": "Value"
@@ -143,7 +143,7 @@
       "description": "Mutate the name field of TestEnumWithSerDe",
       "example": "Hello, World!",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "alloc::string::String",
         "type_kind": "Value"
@@ -156,7 +156,7 @@
       "description": "Mutate the value field of TestEnumWithSerDe",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -184,7 +184,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "core::option::Option<f32>",
         "type_kind": "Enum"
@@ -198,7 +198,7 @@
       "description": "Mutate element 0 of Option",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "f32",
         "type_kind": "Value"
@@ -222,7 +222,7 @@
         ]
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "[glam::Vec3; 2]",
         "type_kind": "Array"
@@ -236,7 +236,7 @@
         3.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "ArrayElement",
         "type": "glam::Vec3",
         "type_kind": "Struct"
@@ -246,7 +246,7 @@
       "description": "Mutate the x field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -256,7 +256,7 @@
       "description": "Mutate the y field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -266,7 +266,7 @@
       "description": "Mutate the z field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -279,7 +279,7 @@
         3.1415927410125732
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "(f32, f32)",
         "type_kind": "Tuple"
@@ -289,7 +289,7 @@
       "description": "Mutate element 0 of (f32, f32)",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "f32",
         "type_kind": "Value"
@@ -299,7 +299,7 @@
       "description": "Mutate element 1 of (f32, f32)",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "f32",
         "type_kind": "Value"
@@ -326,7 +326,7 @@
         ]
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_transform::components::transform::Transform",
         "type_kind": "Struct"
@@ -341,7 +341,7 @@
         1.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Quat",
         "type_kind": "Struct"
@@ -351,7 +351,7 @@
       "description": "Mutate the w field of Quat",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -361,7 +361,7 @@
       "description": "Mutate the x field of Quat",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -371,7 +371,7 @@
       "description": "Mutate the y field of Quat",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -381,7 +381,7 @@
       "description": "Mutate the z field of Quat",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -395,7 +395,7 @@
         3.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Vec3",
         "type_kind": "Struct"
@@ -405,7 +405,7 @@
       "description": "Mutate the x field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -415,7 +415,7 @@
       "description": "Mutate the y field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -425,7 +425,7 @@
       "description": "Mutate the z field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -439,7 +439,7 @@
         3.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Vec3",
         "type_kind": "Struct"
@@ -449,7 +449,7 @@
       "description": "Mutate the x field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -459,7 +459,7 @@
       "description": "Mutate the y field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -469,7 +469,7 @@
       "description": "Mutate the z field of Vec3",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"

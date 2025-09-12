@@ -25,11 +25,11 @@ pub enum PathAction {
 #[serde(rename_all = "snake_case")]
 pub enum MutationStatus {
     /// Path can be fully mutated
-    Mutatable,
+    Mutable,
     /// Path cannot be mutated (missing traits, unsupported type, etc.)
-    NotMutatable,
-    /// Path is partially mutatable (some elements mutable, others not)
-    PartiallyMutatable,
+    NotMutable,
+    /// Path is partially mutable (some elements mutable, others not)
+    PartiallyMutable,
 }
 
 /// Mutation path information (internal representation)
@@ -188,9 +188,9 @@ impl MutationPath {
             },
         );
 
-        // Only process examples if the path is mutatable
-        let (final_examples, final_example) = if path.mutation_status != MutationStatus::Mutatable {
-            // Not mutatable - no examples to show
+        // Only process examples if the path is mutable
+        let (final_examples, final_example) = if path.mutation_status != MutationStatus::Mutable {
+            // Not mutable - no examples to show
             (vec![], None)
         } else if matches!(type_kind, TypeKind::Enum) && !examples.is_empty() {
             // Enum type with variants - use examples array

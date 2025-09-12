@@ -77,7 +77,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "RootValue",
         "type": "extras_plugin::TestEnumWithSerDe",
         "type_kind": "Enum"
@@ -93,7 +93,7 @@
       "description": "Mutate element 0 of TestEnumWithSerDe",
       "example": "Hello, World!",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "alloc::string::String",
         "type_kind": "Value"
@@ -106,7 +106,7 @@
       "description": "Mutate element 1 of TestEnumWithSerDe",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "u32",
         "type_kind": "Value"
@@ -119,7 +119,7 @@
       "description": "Mutate the enabled field of TestEnumWithSerDe",
       "example": true,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bool",
         "type_kind": "Value"
@@ -132,7 +132,7 @@
       "description": "Mutate the name field of TestEnumWithSerDe",
       "example": "Hello, World!",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "alloc::string::String",
         "type_kind": "Value"
@@ -145,7 +145,7 @@
       "description": "Mutate the value field of TestEnumWithSerDe",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"

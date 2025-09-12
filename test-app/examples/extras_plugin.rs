@@ -123,11 +123,11 @@ struct TestMapComponent {
     pub transforms: HashMap<String, Transform>,
 }
 
-/// Test component with enum-keyed `HashMap` (`NotMutatable` due to complex key)
+/// Test component with enum-keyed `HashMap` (`NotMutable` due to complex key)
 #[derive(Component, Default, Reflect, Serialize, Deserialize)]
 #[reflect(Component, Serialize, Deserialize)]
 struct TestEnumKeyedMap {
-    /// Enum to String map (should be `NotMutatable` due to complex key)
+    /// Enum to String map (should be `NotMutable` due to complex key)
     pub enum_keyed: HashMap<SimpleTestEnum, String>,
 }
 
@@ -691,7 +691,7 @@ fn spawn_test_component_entities(commands: &mut Commands) {
 
     commands.spawn((test_map, Name::new("TestMapEntity")));
 
-    // Entity with TestEnumKeyedMap for testing NotMutatable paths with complex keys
+    // Entity with TestEnumKeyedMap for testing NotMutable paths with complex keys
     let mut enum_keyed_map = TestEnumKeyedMap::default();
     enum_keyed_map
         .enum_keyed

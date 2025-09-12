@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::not_mutatable_reason::NotMutableReason;
+use super::super::not_mutable_reason::NotMutableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -336,7 +336,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         let Some(registry_schema) = ctx.require_registry_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(
+            return Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
@@ -344,7 +344,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
         // Check depth limit first (like StructMutationBuilder does)
         if depth.exceeds_limit() {
-            return Ok(vec![Self::build_not_mutatable_path(
+            return Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]);
@@ -403,7 +403,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                 example,
                 type_name: ctx.type_name().clone(),
                 path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::Mutatable,
+                mutation_status: MutationStatus::Mutable,
                 mutation_status_reason: None,
             },
         );
@@ -495,7 +495,7 @@ impl EnumMutationBuilder {
     }
 
     /// Build a not-mutatable path with structured error details
-    fn build_not_mutatable_path(
+    fn build_not_mutable_path(
         ctx: &RecursionContext,
         support: NotMutableReason,
     ) -> MutationPathInternal {
@@ -504,7 +504,7 @@ impl EnumMutationBuilder {
             example:                json!(null), // No example for NotMutatable paths
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutatable,
+            mutation_status:        MutationStatus::NotMutable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

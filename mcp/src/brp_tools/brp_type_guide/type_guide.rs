@@ -88,14 +88,14 @@ impl TypeGuide {
             mutation_paths.len()
         );
 
-        // Add Mutate operation if any paths are actually mutatable
+        // Add Mutate operation if any paths are actually mutable
         let mut supported_operations = supported_operations;
-        tracing::error!("BEFORE has_mutatable_paths check: {}", brp_type_name);
+        tracing::error!("BEFORE has_mutable_paths check: {}", brp_type_name);
 
-        if Self::has_mutatable_paths(&mutation_paths) {
+        if Self::has_mutable_paths(&mutation_paths) {
             supported_operations.push(BrpSupportedOperation::Mutate);
         }
-        tracing::error!("AFTER has_mutatable_paths check: {}", brp_type_name);
+        tracing::error!("AFTER has_mutable_paths check: {}", brp_type_name);
 
         // Build spawn format from root path mutation example - ONLY for types that support
         // spawn/insert
@@ -177,15 +177,15 @@ impl TypeGuide {
         })
     }
 
-    /// Check if any mutation paths are mutatable (fully or partially)
+    /// Check if any mutation paths are mutable (fully or partially)
     /// This determines if the type supports the Mutate operation
-    fn has_mutatable_paths(mutation_paths: &HashMap<String, MutationPath>) -> bool {
+    fn has_mutable_paths(mutation_paths: &HashMap<String, MutationPath>) -> bool {
         use super::mutation_path_builder::MutationStatus;
 
         mutation_paths.values().any(|path| {
             matches!(
                 path.path_info.mutation_status,
-                MutationStatus::Mutatable | MutationStatus::PartiallyMutatable
+                MutationStatus::Mutable | MutationStatus::PartiallyMutable
             )
         })
     }

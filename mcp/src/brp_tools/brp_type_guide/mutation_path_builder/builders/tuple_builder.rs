@@ -10,7 +10,7 @@
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::not_mutatable_reason::NotMutableReason;
+use super::super::not_mutable_reason::NotMutableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -30,7 +30,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_registry_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path(
+            return Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
@@ -41,9 +41,9 @@ impl MutationPathBuilder for TupleMutationBuilder {
 
         // Check if this is a single-element TupleStruct containing only a Handle type
         if Self::is_handle_only_wrapper(&elements) {
-            return Ok(vec![Self::build_not_mutatable_path(
+            return Ok(vec![Self::build_not_mutable_path(
                 ctx,
-                NotMutableReason::NonMutatableHandle {
+                NotMutableReason::NonMutableHandle {
                     container_type: ctx.type_name().clone(),
                     element_type:   elements[0].clone(),
                 },
@@ -72,7 +72,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
                 example:                root_example,
                 type_name:              ctx.type_name().clone(),
                 path_kind:              ctx.path_kind.clone(),
-                mutation_status:        MutationStatus::Mutatable,
+                mutation_status:        MutationStatus::Mutable,
                 mutation_status_reason: None,
             },
         );
@@ -250,7 +250,7 @@ impl TupleMutationBuilder {
             example: json!(null), // No example for NotMutatable paths
             type_name: element_type.clone(),
             path_kind: element_ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutatable,
+            mutation_status: MutationStatus::NotMutable,
             mutation_status_reason: Option::<String>::from(&NotMutableReason::NotInRegistry(
                 element_type.clone(),
             )),
@@ -278,7 +278,7 @@ impl TupleMutationBuilder {
                 example:                element_example,
                 type_name:              element_type.clone(),
                 path_kind:              element_ctx.path_kind.clone(),
-                mutation_status:        MutationStatus::Mutatable,
+                mutation_status:        MutationStatus::Mutable,
                 mutation_status_reason: None,
             });
         } else {
@@ -288,7 +288,7 @@ impl TupleMutationBuilder {
                 example:                json!(null), // No example for NotMutatable paths
                 type_name:              element_type.clone(),
                 path_kind:              element_ctx.path_kind.clone(),
-                mutation_status:        MutationStatus::NotMutatable,
+                mutation_status:        MutationStatus::NotMutable,
                 mutation_status_reason: Option::<String>::from(
                     &NotMutableReason::MissingSerializationTraits(element_type.clone()),
                 ),
@@ -346,7 +346,7 @@ impl TupleMutationBuilder {
                 paths.iter().filter(|p| !p.path.is_empty()).fold(
                     (0, 0),
                     |(mut_count, immut_count), path| match path.mutation_status {
-                        MutationStatus::NotMutatable => (mut_count, immut_count + 1),
+                        MutationStatus::NotMutable => (mut_count, immut_count + 1),
                         _ => (mut_count + 1, immut_count),
                     },
                 );
@@ -356,7 +356,7 @@ impl TupleMutationBuilder {
                 match (mutable_count, immutable_count) {
                     (0, _) => {
                         // All elements immutable - root cannot be mutated
-                        root.mutation_status = MutationStatus::NotMutatable;
+                        root.mutation_status = MutationStatus::NotMutable;
                         root.mutation_status_reason = Some("non_mutatable_elements".to_string());
                         root.example = json!(null); // No example for NotMutatable paths
                     }
@@ -366,7 +366,7 @@ impl TupleMutationBuilder {
                     (_, _) => {
                         // Mixed mutability - root cannot be replaced, but individual elements can
                         // be mutated
-                        root.mutation_status = MutationStatus::PartiallyMutatable;
+                        root.mutation_status = MutationStatus::PartiallyMutable;
                         root.mutation_status_reason =
                             Some("partially_mutable_elements".to_string());
                         root.example = json!({
@@ -382,7 +382,7 @@ impl TupleMutationBuilder {
     }
 
     /// Build a not-mutatable path with structured error details
-    fn build_not_mutatable_path(
+    fn build_not_mutable_path(
         ctx: &RecursionContext,
         support: NotMutableReason,
     ) -> MutationPathInternal {
@@ -391,7 +391,7 @@ impl TupleMutationBuilder {
             example:                json!(null), // No example for NotMutatable paths
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutatable,
+            mutation_status:        MutationStatus::NotMutable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

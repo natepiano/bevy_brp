@@ -40,27 +40,27 @@ impl ProtocolEnforcer {
 
     /// Build a `NotMutatable` path with consistent formatting (private to `ProtocolEnforcer`)
     ///
-    /// This centralizes `NotMutatable` path creation, ensuring only `ProtocolEnforcer`
-    /// can create these paths while builders simply return `Error::NotMutatable`.
-    fn build_not_mutatable_path(
+    /// This centralizes `NotMutable` path creation, ensuring only `ProtocolEnforcer`
+    /// can create these paths while builders simply return `Error::NotMutable`.
+    fn build_not_mutable_path(
         ctx: &RecursionContext,
         reason: NotMutableReason,
     ) -> MutationPathInternal {
         Self::build_mutation_path_internal(
             ctx,
-            json!(null), // No example for NotMutatable paths
-            MutationStatus::NotMutatable,
+            json!(null), // No example for NotMutable paths
+            MutationStatus::NotMutable,
             Option::<String>::from(&reason),
         )
     }
 
-    /// Check depth limit and return `NotMutatable` path if exceeded
+    /// Check depth limit and return `NotMutable` path if exceeded
     fn check_depth_limit(
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Option<Result<Vec<MutationPathInternal>>> {
         if depth.exceeds_limit() {
-            Some(Ok(vec![Self::build_not_mutatable_path(
+            Some(Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]))
@@ -69,10 +69,10 @@ impl ProtocolEnforcer {
         }
     }
 
-    /// Check if type is in registry and return `NotMutatable` path if not found
+    /// Check if type is in registry and return `NotMutable` path if not found
     fn check_registry(ctx: &RecursionContext) -> Option<Result<Vec<MutationPathInternal>>> {
         if ctx.require_registry_schema().is_none() {
-            Some(Ok(vec![Self::build_not_mutatable_path(
+            Some(Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]))
@@ -87,7 +87,7 @@ impl ProtocolEnforcer {
             Ok(vec![Self::build_mutation_path_internal(
                 ctx,
                 example,
-                MutationStatus::Mutatable,
+                MutationStatus::Mutable,
                 None,
             )])
         })
@@ -100,9 +100,9 @@ impl ProtocolEnforcer {
     ) -> Result<Vec<MutationPathInternal>> {
         // Check if it's a NotMutatable condition
         // Need to check the root cause of the error stack
-        if let Some(reason) = error.current_context().as_not_mutatable() {
+        if let Some(reason) = error.current_context().as_not_mutable() {
             // Return a single NotMutatable path for this type
-            return Ok(vec![Self::build_not_mutatable_path(ctx, reason.clone())]);
+            return Ok(vec![Self::build_not_mutable_path(ctx, reason.clone())]);
         }
         // Real error - propagate it
         Err(error)
@@ -169,26 +169,26 @@ impl ProtocolEnforcer {
 
     /// Determine parent's mutation status based on children's statuses
     fn determine_parent_mutation_status(child_paths: &[MutationPathInternal]) -> MutationStatus {
-        // Fast path: if ANY child is PartiallyMutatable, parent must be too
+        // Fast path: if ANY child is PartiallyMutable, parent must be too
         if child_paths
             .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::PartiallyMutatable))
+            .any(|p| matches!(p.mutation_status, MutationStatus::PartiallyMutable))
         {
-            return MutationStatus::PartiallyMutatable;
+            return MutationStatus::PartiallyMutable;
         }
 
         let has_mutatable = child_paths
             .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::Mutatable));
-        let has_not_mutatable = child_paths
+            .any(|p| matches!(p.mutation_status, MutationStatus::Mutable));
+        let has_not_mutable = child_paths
             .iter()
-            .any(|p| matches!(p.mutation_status, MutationStatus::NotMutatable));
+            .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
 
-        match (has_mutatable, has_not_mutatable) {
-            (true, true) => MutationStatus::PartiallyMutatable, // Mixed
-            (_, false) => MutationStatus::Mutatable,            /* All mutatable or no children */
+        match (has_mutatable, has_not_mutable) {
+            (true, true) => MutationStatus::PartiallyMutable, // Mixed
+            (_, false) => MutationStatus::Mutable,            /* All mutatable or no children */
             // (leaf)
-            (false, true) => MutationStatus::NotMutatable, // All not mutatable
+            (false, true) => MutationStatus::NotMutable, // All not mutatable
         }
     }
 }
@@ -257,13 +257,13 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
         // Set appropriate error reason based on computed status using enum variants
         let mutation_status_reason = match parent_status {
-            MutationStatus::NotMutatable => Some(NotMutableReason::NoMutableChildren {
+            MutationStatus::NotMutable => Some(NotMutableReason::NoMutableChildren {
                 parent_type: ctx.type_name().clone(),
             }),
-            MutationStatus::PartiallyMutatable => Some(NotMutableReason::PartialChildMutability {
+            MutationStatus::PartiallyMutable => Some(NotMutableReason::PartialChildMutability {
                 parent_type: ctx.type_name().clone(),
             }),
-            MutationStatus::Mutatable => None,
+            MutationStatus::Mutable => None,
         }
         .and_then(|reason| Option::<String>::from(&reason));
 

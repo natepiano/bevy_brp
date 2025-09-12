@@ -10,7 +10,7 @@
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::not_mutatable_reason::NotMutableReason;
+use super::super::not_mutable_reason::NotMutableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -83,7 +83,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             example:                json!(array_example),
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::Mutatable,
+            mutation_status:        MutationStatus::Mutable,
             mutation_status_reason: None,
         });
 
@@ -97,7 +97,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
             example,
             type_name: element_type.clone(),
             path_kind: element_ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
+            mutation_status: MutationStatus::Mutable,
             mutation_status_reason: None,
         };
 
@@ -185,21 +185,21 @@ impl ArrayMutationBuilder {
         ctx: &RecursionContext,
     ) -> core::result::Result<(BrpTypeName, &Value), Vec<MutationPathInternal>> {
         let Some(schema) = ctx.require_registry_schema() else {
-            return Err(vec![Self::build_not_mutatable_path(
+            return Err(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
-            return Err(vec![Self::build_not_mutatable_path(
+            return Err(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
         let Some(element_schema) = ctx.get_registry_schema(&element_type) else {
-            return Err(vec![Self::build_not_mutatable_path(
+            return Err(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(element_type),
             )]);
@@ -221,7 +221,7 @@ impl ArrayMutationBuilder {
     }
 
     /// Build a not-mutatable path with structured error details
-    fn build_not_mutatable_path(
+    fn build_not_mutable_path(
         ctx: &RecursionContext,
         support: NotMutableReason,
     ) -> MutationPathInternal {
@@ -230,7 +230,7 @@ impl ArrayMutationBuilder {
             example:                json!(null), // No example for NotMutatable paths
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutatable,
+            mutation_status:        MutationStatus::NotMutable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }

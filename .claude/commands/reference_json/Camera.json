@@ -27,7 +27,7 @@
         "viewport": null
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "RootValue",
         "type": "bevy_render::camera::camera::Camera",
         "type_kind": "Struct"
@@ -62,7 +62,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_render::camera::clear_color::ClearColorConfig",
         "type_kind": "Enum"
@@ -88,7 +88,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_color::color::Color",
         "type_kind": "Enum"
@@ -106,7 +106,7 @@
         "z": 3.1415927410125732
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_color::xyza::Xyza",
         "type_kind": "Struct"
@@ -119,7 +119,7 @@
       "description": "Mutate the a field of Oklaba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -132,7 +132,7 @@
       "description": "Mutate the alpha field of Xyza",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -145,7 +145,7 @@
       "description": "Mutate the b field of Oklaba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -158,7 +158,7 @@
       "description": "Mutate the blackness field of Hwba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -171,7 +171,7 @@
       "description": "Mutate the blue field of LinearRgba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -184,7 +184,7 @@
       "description": "Mutate the chroma field of Oklcha",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -197,7 +197,7 @@
       "description": "Mutate the green field of LinearRgba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -210,7 +210,7 @@
       "description": "Mutate the hue field of Oklcha",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -223,7 +223,7 @@
       "description": "Mutate the lightness field of Oklcha",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -236,7 +236,7 @@
       "description": "Mutate the red field of LinearRgba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -249,7 +249,7 @@
       "description": "Mutate the saturation field of Hsva",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -262,7 +262,7 @@
       "description": "Mutate the value field of Hsva",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -275,7 +275,7 @@
       "description": "Mutate the whiteness field of Hwba",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -288,7 +288,7 @@
       "description": "Mutate the x field of Xyza",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -301,7 +301,7 @@
       "description": "Mutate the y field of Xyza",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -314,7 +314,7 @@
       "description": "Mutate the z field of Xyza",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -327,7 +327,7 @@
       "description": "Mutate the hdr field of Camera",
       "example": true,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bool",
         "type_kind": "Value"
@@ -337,7 +337,7 @@
       "description": "Mutate the is_active field of Camera",
       "example": true,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bool",
         "type_kind": "Value"
@@ -347,7 +347,7 @@
       "description": "Mutate the msaa_writeback field of Camera",
       "example": true,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bool",
         "type_kind": "Value"
@@ -357,7 +357,7 @@
       "description": "Mutate the order field of Camera",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "isize",
         "type_kind": "Value"
@@ -395,7 +395,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "core::option::Option<bevy_render::camera::camera::SubCameraView>",
         "type_kind": "Enum"
@@ -422,7 +422,7 @@
         ]
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_render::camera::camera::SubCameraView",
         "type_kind": "Struct"
@@ -438,7 +438,7 @@
         0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::UVec2",
         "type_kind": "Struct"
@@ -451,7 +451,7 @@
       "description": "Mutate the x field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -464,7 +464,7 @@
       "description": "Mutate the y field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -480,7 +480,7 @@
         2.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Vec2",
         "type_kind": "Struct"
@@ -493,7 +493,7 @@
       "description": "Mutate the x field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -506,7 +506,7 @@
       "description": "Mutate the y field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -522,7 +522,7 @@
         0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::UVec2",
         "type_kind": "Struct"
@@ -535,7 +535,7 @@
       "description": "Mutate the x field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -548,7 +548,7 @@
       "description": "Mutate the y field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -615,7 +615,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_render::camera::camera::RenderTarget",
         "type_kind": "Enum"
@@ -630,7 +630,7 @@
       "description": "Mutate element 0 of RenderTarget tuplestruct",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_render::camera::manual_texture_view::ManualTextureViewHandle",
         "type_kind": "TupleStruct"
@@ -643,7 +643,7 @@
       "description": "Mutate element 0 of ManualTextureViewHandle",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "u32",
         "type_kind": "Value"
@@ -666,7 +666,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_asset::handle::Handle<bevy_image::image::Image>",
         "type_kind": "Enum"
@@ -705,7 +705,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_asset::id::AssetId<bevy_image::image::Image>",
         "type_kind": "Enum"
@@ -721,7 +721,7 @@
         "index": 1000000
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_asset::assets::AssetIndex",
         "type_kind": "Struct"
@@ -734,7 +734,7 @@
       "description": "Mutate the generation field of AssetIndex",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -747,7 +747,7 @@
       "description": "Mutate the index field of AssetIndex",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -759,7 +759,7 @@
     ".target.0.handle.0.uuid": {
       "description": "Mutate the uuid field of AssetId",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "uuid::Uuid",
         "type_kind": "Value"
@@ -772,7 +772,7 @@
       "description": "Mutate the scale_factor field of ImageRenderTarget tuplestruct",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_math::float_ord::FloatOrd",
         "type_kind": "TupleStruct"
@@ -785,7 +785,7 @@
       "description": "Mutate element 0 of FloatOrd",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "f32",
         "type_kind": "Value"
@@ -823,7 +823,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "core::option::Option<bevy_render::camera::camera::Viewport>",
         "type_kind": "Enum"
@@ -847,7 +847,7 @@
         ]
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_render::camera::camera::Viewport",
         "type_kind": "Struct"
@@ -859,7 +859,7 @@
     ".viewport.0.depth": {
       "description": "Mutate the depth field of Viewport",
       "path_info": {
-        "mutation_status": "not_mutatable",
+        "mutation_status": "not_mutable",
         "mutation_status_reason": "missing_serialization_traits: Type core::ops::Range<f32> lacks Serialize/Deserialize traits required for mutation",
         "path_kind": "StructField",
         "type": "core::ops::Range<f32>",
@@ -876,7 +876,7 @@
         0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::UVec2",
         "type_kind": "Struct"
@@ -889,7 +889,7 @@
       "description": "Mutate the x field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -902,7 +902,7 @@
       "description": "Mutate the y field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -918,7 +918,7 @@
         0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::UVec2",
         "type_kind": "Struct"
@@ -931,7 +931,7 @@
       "description": "Mutate the x field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -944,7 +944,7 @@
       "description": "Mutate the y field of UVec2",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"

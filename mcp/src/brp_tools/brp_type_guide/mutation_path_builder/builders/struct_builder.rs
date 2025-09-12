@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use tracing::warn;
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::not_mutatable_reason::NotMutableReason;
+use super::super::not_mutable_reason::NotMutableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -32,14 +32,14 @@ impl MutationPathBuilder for StructMutationBuilder {
     ) -> Result<Vec<MutationPathInternal>> {
         // Check depth limit to prevent infinite recursion
         if depth.exceeds_limit() {
-            return Ok(vec![Self::build_not_mutatable_path_from_support(
+            return Ok(vec![Self::build_not_mutable_path_from_support(
                 ctx,
                 NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]);
         }
 
         let Some(_schema) = ctx.require_registry_schema() else {
-            return Ok(vec![Self::build_not_mutatable_path_from_support(
+            return Ok(vec![Self::build_not_mutable_path_from_support(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
@@ -67,7 +67,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                     example:                json!(struct_example),
                     type_name:              ctx.type_name().clone(),
                     path_kind:              ctx.path_kind.clone(),
-                    mutation_status:        MutationStatus::Mutatable,
+                    mutation_status:        MutationStatus::Mutable,
                     mutation_status_reason: None,
                 },
             );
@@ -259,7 +259,7 @@ impl StructMutationBuilder {
                     example:                field_example.clone(),
                     type_name:              field_type.clone(),
                     path_kind:              field_ctx.path_kind.clone(),
-                    mutation_status:        MutationStatus::Mutatable,
+                    mutation_status:        MutationStatus::Mutable,
                     mutation_status_reason: None,
                 };
                 paths.push(field_path);
@@ -284,7 +284,7 @@ impl StructMutationBuilder {
     }
 
     /// Build a not mutatable path from `MutationSupport` for struct-level errors
-    fn build_not_mutatable_path_from_support(
+    fn build_not_mutable_path_from_support(
         ctx: &RecursionContext,
         support: NotMutableReason,
     ) -> MutationPathInternal {
@@ -293,7 +293,7 @@ impl StructMutationBuilder {
             example:                json!(null), // No example for NotMutatable paths
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutatable,
+            mutation_status:        MutationStatus::NotMutable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }
@@ -308,7 +308,7 @@ impl StructMutationBuilder {
             example:                json!(null), // No example for NotMutatable paths
             type_name:              field_ctx.type_name().clone(),
             path_kind:              field_ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutatable,
+            mutation_status:        MutationStatus::NotMutable,
             mutation_status_reason: Option::<String>::from(&support),
         }
     }
@@ -387,7 +387,7 @@ impl StructMutationBuilder {
             example,
             type_name: field_type.clone(),
             path_kind: field_ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
+            mutation_status: MutationStatus::Mutable,
             mutation_status_reason: None,
         }
     }
@@ -419,13 +419,13 @@ impl StructMutationBuilder {
         if !field_paths.is_empty() {
             let all_fields_not_mutatable = field_paths
                 .iter()
-                .all(|p| matches!(p.mutation_status, MutationStatus::NotMutatable));
+                .all(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
 
             if all_fields_not_mutatable {
                 // Mark any root-level paths as NotMutatable
                 for path in paths.iter_mut() {
                     if matches!(path.path_kind, PathKind::RootValue { .. }) {
-                        path.mutation_status = MutationStatus::NotMutatable;
+                        path.mutation_status = MutationStatus::NotMutable;
                         path.mutation_status_reason = Some("non_mutatable_fields".to_string());
                         path.example = json!(null); // No example for NotMutatable paths
                     }

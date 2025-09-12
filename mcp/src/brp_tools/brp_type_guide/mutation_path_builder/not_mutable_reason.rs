@@ -8,8 +8,8 @@ use super::super::response_types::BrpTypeName;
 pub enum NotMutableReason {
     /// Type lacks required serialization traits
     MissingSerializationTraits(BrpTypeName),
-    /// Container type has non-mutatable element type
-    NonMutatableHandle {
+    /// Container type has non-mutable element type
+    NonMutableHandle {
         container_type: BrpTypeName,
         element_type:   BrpTypeName,
     },
@@ -19,9 +19,9 @@ pub enum NotMutableReason {
     RecursionLimitExceeded(BrpTypeName),
     /// `HashMap` or `HashSet` with complex (non-primitive) key type that cannot be mutated via BRP
     ComplexCollectionKey(BrpTypeName),
-    /// All child paths are `NotMutatable`
+    /// All child paths are `NotMutable`
     NoMutableChildren { parent_type: BrpTypeName },
-    /// Some children are mutatable, others are not (results in `PartiallyMutatable`)
+    /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability { parent_type: BrpTypeName },
 }
 
@@ -33,7 +33,7 @@ impl NotMutableReason {
             | Self::NotInRegistry(type_name)
             | Self::RecursionLimitExceeded(type_name)
             | Self::ComplexCollectionKey(type_name) => type_name.clone(),
-            Self::NonMutatableHandle { element_type, .. } => element_type.clone(),
+            Self::NonMutableHandle { element_type, .. } => element_type.clone(),
             Self::NoMutableChildren { parent_type }
             | Self::PartialChildMutability { parent_type } => parent_type.clone(),
         }
@@ -47,7 +47,7 @@ impl Display for NotMutableReason {
                 f,
                 "Type {type_name} lacks Serialize/Deserialize traits required for mutation"
             ),
-            Self::NonMutatableHandle {
+            Self::NonMutableHandle {
                 container_type,
                 element_type,
             } => write!(
@@ -84,7 +84,7 @@ impl From<&NotMutableReason> for Option<String> {
             NotMutableReason::MissingSerializationTraits(_) => {
                 Some(format!("missing_serialization_traits: {support}"))
             }
-            NotMutableReason::NonMutatableHandle { .. } => {
+            NotMutableReason::NonMutableHandle { .. } => {
                 Some(format!("handle_wrapper_component: {support}"))
             }
             NotMutableReason::NotInRegistry(_) => Some(format!("not_in_registry: {support}")),

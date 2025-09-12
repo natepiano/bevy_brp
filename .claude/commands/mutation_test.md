@@ -11,22 +11,22 @@
 **Configuration**:
 ```
 TYPES_PER_SUBAGENT = 5                                      # Types each subagent tests
-MAX_SUBAGENTS = 10                                          # Parallel subagents per batch  
+MAX_SUBAGENTS = 10                                          # Parallel subagents per batch
 BATCH_SIZE = MAX_SUBAGENTS * TYPES_PER_SUBAGENT            # Types per batch
 PORT = 20116                                                # BRP port for testing
 ```
 
 ## Critical Execution Requirements
 
-**CRITICAL PATH HANDLING**: 
+**CRITICAL PATH HANDLING**:
 - **NEVER use `$TMPDIR` directly in Write tool file paths** - The Write tool does not expand environment variables
-- **ALWAYS get the actual temp directory path first** using `echo $TMPDIR` 
+- **ALWAYS get the actual temp directory path first** using `echo $TMPDIR`
 - **USE the expanded path** (e.g., `/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/`) in all Write tool calls
 - **This prevents creating literal `$TMPDIR` directories**
 
 **Core Rules**:
 1. **ALWAYS reassign batch numbers** - Clear and reassign every run using renumber script
-2. **ALWAYS use parallel subagents** - Launch MAX_SUBAGENTS in parallel per batch  
+2. **ALWAYS use parallel subagents** - Launch MAX_SUBAGENTS in parallel per batch
 3. **Main agent orchestrates, subagents test** - Main agent never tests directly
 4. **STOP ON ANY FAILURE** - If ANY type fails in a batch, STOP IMMEDIATELY. Do not continue to next batch
 5. **Simple pass/fail per type** - One overall result per type
@@ -94,7 +94,7 @@ Process each batch sequentially, with parallel subagents within each batch:
 2. **Divide into groups**: Split types into groups of TYPES_PER_SUBAGENT each
 3. **Launch parallel subagents**:
    - Create one Task tool call for EACH group
-   - Number of Tasks = ceil(types_in_batch / TYPES_PER_SUBAGENT)  
+   - Number of Tasks = ceil(types_in_batch / TYPES_PER_SUBAGENT)
    - Each Task receives exactly TYPES_PER_SUBAGENT types (except possibly the last)
    - **ALL Tasks MUST be sent in a SINGLE message** to run in parallel
 4. **Wait for completion**: Wait for ALL subagents to complete before proceeding
@@ -106,10 +106,10 @@ Process each batch sequentially, with parallel subagents within each batch:
 ```python
 Task(
     description="Test [concatenate all short type names with ' + '] (batch [X], subagent [Y]/[MAX_SUBAGENTS])",
-    subagent_type="general-purpose", 
+    subagent_type="general-purpose",
     prompt="""CRITICAL: You are a subagent. DO NOT launch any apps! Use the existing extras_plugin on port 20116.
 
-Test these types WITH COMPLETE TYPE GUIDES (DO NOT call brp_type_guide - use these provided type guides): 
+Test these types WITH COMPLETE TYPE GUIDES (DO NOT call brp_type_guide - use these provided type guides):
 [Include the FULL type guides from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths with examples, etc.]
 
 [Include ENTIRE TestInstructions section below]
@@ -132,7 +132,7 @@ Return structured JSON array with results for ALL assigned types."""
 
 ⚠️ **WARNING - MOST COMMON FAILURE CAUSE** ⚠️
 The #1 reason tests fail is passing numbers as strings in JSON!
-- ❌ WRONG: `"value": "42"` or `"value": "3.14"` or `"value": "18446744073709551615"`  
+- ❌ WRONG: `"value": "42"` or `"value": "3.14"` or `"value": "18446744073709551615"`
 - ✅ RIGHT: `"value": 42` or `"value": 3.14` or `"value": 18446744073709551615`
 ALL primitive number types (u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64) MUST be JSON numbers!
 If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it and retry!
@@ -147,7 +147,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 □ I understand that if I get "invalid type: string" errors, it's MY mistake and I must retry with proper types
 □ I will NOT mark a type as FAIL on first type error - I will fix my JSON and retry
 
-**CRITICAL**: 
+**CRITICAL**:
 - Do NOT update any JSON files
 - Test spawn/insert only if `spawn_support` is "supported"
 - Test ALL mutation paths in the `mutation_paths` array
@@ -166,7 +166,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
      "data": {"components": []}
    }
    ```
-   
+
    **Example:** For component `bevy_ecs::name::Name`, use:
    ```json
    {
@@ -174,14 +174,14 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
      "data": {"components": []}
    }
    ```
-   
+
    **CRITICAL:** Replace `ACTUAL_COMPONENT_TYPE_NAME_HERE` with the real component type from your assigned list. Do NOT use the placeholder text literally.
 4. **Test Mutations** - Test each path from mutation_paths array:
    - **Root path `""`** (empty string): Full component replacement using the SAME spawn_format from type guide
    - **Field paths** (e.g., `.translation.x`): Individual field mutations
 5. **Return Results** - Structured JSON for all types
 
-**REMEMBER**: 
+**REMEMBER**:
 - You are a subagent - you ONLY test and return results
 - The main agent handles ALL app management
 - If BRP fails, return error - DO NOT try to fix it yourself
@@ -203,7 +203,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 - Float types: Use numeric values (3.14, not "3.14")
 - Strings: Use quoted strings
 - Enums: Use variant names from examples
-- Skip paths with `path_kind: "NotMutatable"`
+- Skip paths with `path_kind: "NotMutable"`
 
 **CRITICAL TYPE HANDLING - NUMBERS MUST BE NUMBERS**:
 When you get examples from the provided type guide, pay EXTREME attention to the type:
@@ -240,7 +240,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
   - Use specific values for the field type (numbers for numeric fields, strings for string fields)
 
 **CRITICAL Parameter Formatting**:
-- **Empty paths**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)  
+- **Empty paths**: For empty paths, use `""` (empty string), NEVER `"\"\""` (quoted string)
 - **Parameter ordering**: If you encounter repeated "Unable to extract parameters" errors when calling `mcp__brp__bevy_mutate_component`, try reordering the parameters. The recommended order is: entity, component, path, value, port (with port last)
 
 **Example of CORRECT mutation calls**:
@@ -263,7 +263,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
   "port": 20116
 }
 
-// ROOT PATH for complex component - Use full spawn_format structure  
+// ROOT PATH for complex component - Use full spawn_format structure
 {
   "entity": 123,
   "component": "bevy_transform::components::transform::Transform",
@@ -325,18 +325,18 @@ After completion or failure:
 
 ### Progress Tracking Schema
 
-**Type guides**: Stored in `{temp_dir}/all_types.json` with COMPLETE type guides including examples  
+**Type guides**: Stored in `{temp_dir}/all_types.json` with COMPLETE type guides including examples
 **Progress file**: `{temp_dir}/all_types.json` (where `{temp_dir}` is the actual expanded temp directory path)
 
 Each type entry structure:
 ```json
 {
   "type": "bevy_transform::components::transform::Transform",
-  "spawn_support": "supported",  
-  "mutation_paths": [".translation.x", ".rotation", ".scale"],  
-  "test_status": "untested",  
+  "spawn_support": "supported",
+  "mutation_paths": [".translation.x", ".rotation", ".scale"],
+  "test_status": "untested",
   "batch_number": 1,
-  "fail_reason": ""  
+  "fail_reason": ""
 }
 ```
 
@@ -344,7 +344,7 @@ Each type entry structure:
 
 If app crashes during testing:
 1. Run `mcp__brp__brp_shutdown` (safety cleanup)
-2. Restart application 
+2. Restart application
 3. Mark type as failed with reason "App crashed during [operation]"
 4. Continue with next type
 5. Stop if same type crashes 2+ times
@@ -355,7 +355,7 @@ If app crashes during testing:
 
 **Failure**: ANY single type fails = IMMEDIATE STOP
 - Save progress for the passed types
-- Report which types failed and why  
+- Report which types failed and why
 - **DO NOT CONTINUE TO NEXT BATCH**
 - Test can be resumed later after fixing issues
 

@@ -34,7 +34,7 @@
         }
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "RootValue",
         "type": "extras_plugin::TestMapComponent",
         "type_kind": "Struct"
@@ -46,7 +46,7 @@
         "Hello, World!": "Hello, World!"
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "std::collections::HashMap<alloc::string::String, alloc::string::String, std::collections::hash_map::RandomState>",
         "type_kind": "Map"
@@ -75,7 +75,7 @@
         }
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "std::collections::HashMap<alloc::string::String, bevy_transform::components::transform::Transform, std::collections::hash_map::RandomState>",
         "type_kind": "Map"
@@ -87,7 +87,7 @@
         "Hello, World!": 3.1415927410125732
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "std::collections::HashMap<alloc::string::String, f32, std::collections::hash_map::RandomState>",
         "type_kind": "Map"

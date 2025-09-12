@@ -48,7 +48,7 @@ pub enum Error {
     MissingMessageTemplate(String),
 
     #[error("Type cannot be mutated: {0}")]
-    NotMutatable(NotMutableReason),
+    NotMutable(NotMutableReason),
 
     #[error("Unable to extract parameters: {0}")]
     ParameterExtraction(String),
@@ -95,7 +95,7 @@ impl std::fmt::Debug for Error {
                 f.debug_tuple("McpClientCommunication").field(s).finish()
             }
             Self::MissingMessageTemplate(s) => f.debug_tuple("Configuration").field(s).finish(),
-            Self::NotMutatable(reason) => f.debug_tuple("NotMutatable").field(reason).finish(),
+            Self::NotMutable(reason) => f.debug_tuple("NotMutable").field(reason).finish(),
             Self::ParameterExtraction(s) => f.debug_tuple("ParameterExtraction").field(s).finish(),
             Self::ProcessManagement(s) => f.debug_tuple("ProcessManagement").field(s).finish(),
             Self::SchemaProcessing {
@@ -129,10 +129,10 @@ impl std::fmt::Debug for Error {
 }
 
 impl Error {
-    /// Check if this error represents a `NotMutatable` condition
-    pub const fn as_not_mutatable(&self) -> Option<&NotMutableReason> {
+    /// Check if this error represents a `NotMutable` condition
+    pub const fn as_not_mutable(&self) -> Option<&NotMutableReason> {
         match self {
-            Self::NotMutatable(reason) => Some(reason),
+            Self::NotMutable(reason) => Some(reason),
             _ => None,
         }
     }

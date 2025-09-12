@@ -132,7 +132,7 @@
         ]
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "RootValue",
         "type": "bevy_text::pipeline::TextLayoutInfo",
         "type_kind": "Struct"
@@ -261,7 +261,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "alloc::vec::Vec<bevy_text::glyph::PositionedGlyph>",
         "type_kind": "List"
@@ -329,7 +329,7 @@
         "span_index": 2000000
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "ArrayElement",
         "type": "bevy_text::glyph::PositionedGlyph",
         "type_kind": "Struct"
@@ -383,7 +383,7 @@
         }
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_text::glyph::GlyphAtlasInfo",
         "type_kind": "Struct"
@@ -399,7 +399,7 @@
         ]
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_text::glyph::GlyphAtlasLocation",
         "type_kind": "Struct"
@@ -409,7 +409,7 @@
       "description": "Mutate the glyph_index field of GlyphAtlasLocation",
       "example": 2000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "usize",
         "type_kind": "Value"
@@ -422,7 +422,7 @@
         0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::IVec2",
         "type_kind": "Struct"
@@ -432,7 +432,7 @@
       "description": "Mutate the x field of IVec2",
       "example": 100000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "i32",
         "type_kind": "Value"
@@ -442,7 +442,7 @@
       "description": "Mutate the y field of IVec2",
       "example": 100000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "i32",
         "type_kind": "Value"
@@ -462,7 +462,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_asset::handle::Handle<bevy_image::image::Image>",
         "type_kind": "Enum"
@@ -498,7 +498,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_asset::id::AssetId<bevy_image::image::Image>",
         "type_kind": "Enum"
@@ -514,7 +514,7 @@
         "index": 1000000
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_asset::assets::AssetIndex",
         "type_kind": "Struct"
@@ -527,7 +527,7 @@
       "description": "Mutate the generation field of AssetIndex",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -540,7 +540,7 @@
       "description": "Mutate the index field of AssetIndex",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -552,7 +552,7 @@
     ".glyphs[0].atlas_info.texture.0.uuid": {
       "description": "Mutate the uuid field of AssetId",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "uuid::Uuid",
         "type_kind": "Value"
@@ -605,7 +605,7 @@
           ],
           "example": {
             "Strong": {
-              "NotMutatable": "Type bevy_platform::sync::Arc<bevy_asset::handle::StrongHandle> lacks Serialize/Deserialize traits required for mutation",
+              "NotMutable": "Type bevy_platform::sync::Arc<bevy_asset::handle::StrongHandle> lacks Serialize/Deserialize traits required for mutation",
               "agent_directive": "This type cannot be mutated - see error message for details"
             }
           },
@@ -613,7 +613,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_asset::handle::Handle<bevy_image::texture_atlas::TextureAtlasLayout>",
         "type_kind": "Enum"
@@ -653,7 +653,7 @@
         }
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "IndexedElement",
         "type": "bevy_asset::id::AssetId<bevy_image::texture_atlas::TextureAtlasLayout>",
         "type_kind": "Enum"
@@ -669,7 +669,7 @@
         "index": 1000000
       },
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "bevy_asset::assets::AssetIndex",
         "type_kind": "Struct"
@@ -682,7 +682,7 @@
       "description": "Mutate the generation field of AssetIndex",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -695,7 +695,7 @@
       "description": "Mutate the index field of AssetIndex",
       "example": 1000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "u32",
         "type_kind": "Value"
@@ -707,7 +707,7 @@
     ".glyphs[0].atlas_info.texture_atlas.0.uuid": {
       "description": "Mutate the uuid field of AssetId",
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "uuid::Uuid",
         "type_kind": "Value"
@@ -720,7 +720,7 @@
       "description": "Mutate the byte_index field of PositionedGlyph",
       "example": 2000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "usize",
         "type_kind": "Value"
@@ -730,7 +730,7 @@
       "description": "Mutate the byte_length field of PositionedGlyph",
       "example": 2000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "usize",
         "type_kind": "Value"
@@ -740,7 +740,7 @@
       "description": "Mutate the line_index field of PositionedGlyph",
       "example": 2000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "usize",
         "type_kind": "Value"
@@ -753,7 +753,7 @@
         2.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Vec2",
         "type_kind": "Struct"
@@ -763,7 +763,7 @@
       "description": "Mutate the x field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -773,7 +773,7 @@
       "description": "Mutate the y field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -786,7 +786,7 @@
         2.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Vec2",
         "type_kind": "Struct"
@@ -796,7 +796,7 @@
       "description": "Mutate the x field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -806,7 +806,7 @@
       "description": "Mutate the y field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -816,7 +816,7 @@
       "description": "Mutate the span_index field of PositionedGlyph",
       "example": 2000000,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "usize",
         "type_kind": "Value"
@@ -829,7 +829,7 @@
         2.0
       ],
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "glam::Vec2",
         "type_kind": "Struct"
@@ -839,7 +839,7 @@
       "description": "Mutate the x field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"
@@ -849,7 +849,7 @@
       "description": "Mutate the y field of Vec2",
       "example": 3.1415927410125732,
       "path_info": {
-        "mutation_status": "mutatable",
+        "mutation_status": "mutable",
         "path_kind": "StructField",
         "type": "f32",
         "type_kind": "Value"

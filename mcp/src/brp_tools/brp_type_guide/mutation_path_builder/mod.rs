@@ -1,6 +1,6 @@
 mod builders;
 mod mutation_knowledge;
-mod not_mutatable_reason;
+mod not_mutable_reason;
 mod path_kind;
 mod protocol_enforcer;
 mod recursion_context;
@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 pub use builders::EnumVariantInfo;
 pub use mutation_knowledge::KnowledgeKey;
-pub use not_mutatable_reason::NotMutableReason;
+pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::RecursionContext;
 use serde_json::{Value, json};
@@ -130,7 +130,7 @@ pub trait MutationPathBuilder {
     }
 
     /// Check if a collection element (`HashMap` key or `HashSet` element) is complex
-    /// and return `NotMutatable` error if it is
+    /// and return `NotMutable` error if it is
     fn check_collection_element_complexity(
         &self,
         element: &Value,
@@ -139,7 +139,7 @@ pub trait MutationPathBuilder {
         use crate::error::Error;
         use crate::json_object::JsonObjectAccess;
         if element.is_complex_type() {
-            return Err(Error::NotMutatable(NotMutableReason::ComplexCollectionKey(
+            return Err(Error::NotMutable(NotMutableReason::ComplexCollectionKey(
                 ctx.type_name().clone(),
             ))
             .into());
