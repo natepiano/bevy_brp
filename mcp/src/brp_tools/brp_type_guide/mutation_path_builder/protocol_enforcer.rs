@@ -20,11 +20,11 @@ impl ProtocolEnforcer {
     }
 
     /// Build a `MutationPathInternal` with the provided status and example
-    fn build_mutation_path(
+    fn build_mutation_path_internal(
         ctx: &RecursionContext,
         example: Value,
         status: MutationStatus,
-        error_reason: Option<String>,
+        mutation_status_reason: Option<String>,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path: ctx.mutation_path.clone(),
@@ -32,7 +32,7 @@ impl ProtocolEnforcer {
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
-            mutation_status_reason: error_reason,
+            mutation_status_reason,
         }
     }
 
@@ -44,7 +44,7 @@ impl ProtocolEnforcer {
         ctx: &RecursionContext,
         reason: NotMutatableReason,
     ) -> MutationPathInternal {
-        Self::build_mutation_path(
+        Self::build_mutation_path_internal(
             ctx,
             json!(null), // No example for NotMutatable paths
             MutationStatus::NotMutatable,
@@ -82,7 +82,7 @@ impl ProtocolEnforcer {
     /// Check knowledge base and return path with known example if found
     fn check_knowledge(ctx: &RecursionContext) -> Option<Result<Vec<MutationPathInternal>>> {
         KnowledgeKey::find_example_for_type(ctx.type_name()).map(|example| {
-            Ok(vec![Self::build_mutation_path(
+            Ok(vec![Self::build_mutation_path_internal(
                 ctx,
                 example,
                 MutationStatus::Mutatable,
@@ -241,7 +241,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
         let parent_status = Self::determine_parent_mutation_status(&all_paths);
 
         // Set appropriate error reason based on computed status
-        let error_reason = match parent_status {
+        let mutation_status_reason = match parent_status {
             MutationStatus::NotMutatable => Some("all_children_not_mutatable".to_string()),
             MutationStatus::PartiallyMutatable => Some("mixed_mutability_children".to_string()),
             MutationStatus::Mutatable => None,
@@ -250,7 +250,12 @@ impl MutationPathBuilder for ProtocolEnforcer {
         // Add THIS level's path at the beginning with computed status
         all_paths.insert(
             0,
-            Self::build_mutation_path(ctx, parent_example, parent_status, error_reason),
+            Self::build_mutation_path_internal(
+                ctx,
+                parent_example,
+                parent_status,
+                mutation_status_reason,
+            ),
         );
 
         Ok(all_paths)
