@@ -457,7 +457,7 @@ Following the same order as the original ExampleBuilder removal:
 
 3. ✅ **SetMutationBuilder** - COMPLETED
    - ✅ Implemented protocol methods (is_migrated, collect_children, assemble_from_children)
-   - ✅ **ERROR HANDLING**: 
+   - ✅ **ERROR HANDLING**:
      - ✅ Used `Error::InvalidState` for protocol violations (missing required 'items' child)
      - ✅ Updated `assemble_from_children` to return `Result<Value>`
      - ✅ Updated `build_paths()` to return `Error::InvalidState` instead of panic
@@ -468,10 +468,10 @@ Following the same order as the original ExampleBuilder removal:
 4. **ListMutationBuilder** - Single child type
    - Fix line 165 static method, implement protocol methods
    - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::{Error, Result};` import for `Result<Value>` return type
-     - This is required for the updated `assemble_from_children` signature
-   - **ERROR HANDLING**: 
-     - Review `list_builder.rs:113` - `return json!(null);` fallback
+     - Add `use crate::error::Error;` import for error handling
+   - **ERROR HANDLING**:
+     - **Line 111**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
+     - **Line 126**: `.map_or(json!(null), ...)` when element schema missing - should be `Error::SchemaProcessing`
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
@@ -502,10 +502,10 @@ Following the same order as the original ExampleBuilder removal:
 5. **ArrayMutationBuilder** - Single child type
    - Fix line 220 static method, implement protocol methods
    - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::{Error, Result};` import for `Result<Value>` return type
-     - This is required for the updated `assemble_from_children` signature
-   - **ERROR HANDLING**: 
-     - Review `array_builder.rs:139` - `return json!(null);` fallback
+     - Add `use crate::error::Error;` import for error handling
+   - **ERROR HANDLING**:
+     - **Line 127**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
+     - **Line 142**: `.map_or(json!(null), ...)` when element schema missing - should be `Error::SchemaProcessing`
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
@@ -536,10 +536,11 @@ Following the same order as the original ExampleBuilder removal:
 6. **TupleMutationBuilder** - Multiple children
    - Fix lines 390, 285, 317, implement protocol methods
    - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::{Error, Result};` import for `Result<Value>` return type
-     - This is required for the updated `assemble_from_children` signature
-   - **ERROR HANDLING**: 
-     - Review `tuple_builder.rs:193` - `return json!(null);` fallback
+     - Add `use crate::error::Error;` import for error handling
+   - **ERROR HANDLING**:
+     - **Line 87**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
+     - **Line 94**: `.map_or(json!(null), ...)` when prefixItems missing - should be `Error::SchemaProcessing`
+     - **Line 99**: `.map_or_else(|| json!(null), ...)` when field type extraction fails - should be `Error::SchemaProcessing`
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
@@ -570,10 +571,13 @@ Following the same order as the original ExampleBuilder removal:
 7. **StructMutationBuilder** - Named fields
    - Fix line 403 static method, implement protocol methods
    - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::{Error, Result};` import for `Result<Value>` return type
-     - This is required for the updated `assemble_from_children` signature
-   - **ERROR HANDLING**: 
-     - Review multiple `json!` fallbacks at lines 302, 306, 509, 513, 544, 548
+     - Add `use crate::error::Error;` import for error handling
+   - **ERROR HANDLING**:
+     - **Line 47**: `warn!` when no properties field - should be `Error::SchemaProcessing`  
+     - **Line 84**: `return json!("...");` when depth exceeds limit - already handled by ProtocolEnforcer, remove
+     - **Line 88**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
+     - **Line 94**: `.map_or(json!(null), ...)` when properties missing - should be `Error::SchemaProcessing`
+     - **Lines 445, 449**: Similar schema extraction failures in other methods
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
@@ -604,10 +608,10 @@ Following the same order as the original ExampleBuilder removal:
 8. **EnumMutationBuilder** - Most complex
    - Fix lines 170, 193, implement protocol methods
    - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::{Error, Result};` import for `Result<Value>` return type
-     - This is required for the updated `assemble_from_children` signature
-   - **ERROR HANDLING**: 
-     - Review `enum_builder.rs:592, 597` - `return json!(null);` and `return json!("...");` fallbacks
+     - Add `use crate::error::Error;` import for error handling
+   - **ERROR HANDLING**:
+     - **Line 416**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
+     - **Line 421**: `return json!("...");` when depth exceeds limit - already handled by ProtocolEnforcer, remove
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
