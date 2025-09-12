@@ -106,14 +106,25 @@ pub trait MutationPathBuilder {
         Ok(vec![]) // Default: no children (leaf types)
     }
 
-    /// Assemble parent example from child examples (post-order assembly)
+    /// Assemble a parent value from child examples
+    ///
+    /// Receives HashMap where keys are extracted from PathKinds by ProtocolEnforcer:
+    /// - StructField: uses field_name as key
+    /// - IndexedElement/ArrayElement: uses index.to_string() as key  
+    /// - RootValue: uses empty string as key
+    ///
+    /// Builders ONLY assemble examples - mutation status is determined by ProtocolEnforcer.
+    /// 
+    /// Examples:
+    /// - MapMutationBuilder: receives {"key": key_example, "value": value_example}
+    /// - SetMutationBuilder: receives {"items": item_example}
+    /// - StructBuilder: receives {"field1": example1, "field2": example2, ...}
     fn assemble_from_children(
         &self,
         _ctx: &RecursionContext,
         _children: HashMap<String, Value>,
     ) -> Result<Value> {
-        // Default: fallback to old build_schema_example for unmigrated builders
-        // Note: Can't call build_schema_example here due to object safety
+        // Default: return null for unmigrated builders
         Ok(json!(null))
     }
 
