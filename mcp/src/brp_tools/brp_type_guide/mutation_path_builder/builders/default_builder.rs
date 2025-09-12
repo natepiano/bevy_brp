@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::super::MutationPathBuilder;
+use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
@@ -33,8 +34,8 @@ impl MutationPathBuilder for DefaultMutationBuilder {
         true // MIGRATED!
     }
 
-    fn collect_children(&self, _ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
-        vec![] // Leaf type - no children
+    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+        Ok(vec![]) // Leaf type - no children
     }
 
     fn assemble_from_children(

@@ -11,6 +11,15 @@ use super::super::response_types::BrpTypeName;
 use super::TypeKind;
 use super::path_kind::PathKind;
 
+/// Action to take regarding path creation during recursion
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathAction {
+    /// Create mutation paths during recursion
+    Create,
+    /// Skip path creation during recursion
+    Skip,
+}
+
 /// Status of whether a mutation path can be mutated
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

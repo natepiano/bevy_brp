@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::mutation_knowledge::KnowledgeKey;
+use super::path_kind::PathKind;
 use super::type_kind::TypeKind;
 use super::{
     MutationPathBuilder, MutationPathInternal, MutationStatus, NotMutatableReason, RecursionContext,
@@ -211,15 +212,21 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
         // Collect children for depth-first traversal
         // calls the migrated builders (the inner) collect_children method
-        let children = self.inner.collect_children(ctx);
+        let child_path_kinds = self.inner.collect_children(ctx)?;
         let mut all_paths = vec![];
         let mut child_examples = HashMap::new();
 
         // Recurse to each child (they handle their own protocol)
-        for (name, child_ctx) in children {
-            let (child_paths, child_example) = Self::process_child(&name, &child_ctx, depth)?;
+        for path_kind in child_path_kinds {
+            // ProtocolEnforcer creates the context from PathKind
+            let child_ctx = ctx.create_field_context(path_kind.clone());
 
-            child_examples.insert(name, child_example);
+            // Extract key from PathKind for HashMap
+            let child_key = path_kind.to_child_key();
+
+            let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
+
+            child_examples.insert(child_key, child_example);
 
             // Only include child paths if the builder wants them
             // Container types (like Maps) don't want child paths exposed

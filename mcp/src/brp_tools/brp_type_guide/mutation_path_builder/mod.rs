@@ -98,9 +98,12 @@ pub trait MutationPathBuilder {
         true // Default: most types want child paths for field mutation
     }
 
-    /// Collect child contexts that need recursion (for depth-first traversal)
-    fn collect_children(&self, _ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
-        vec![] // Default: no children (leaf types)
+    /// Collect PathKinds for child elements
+    ///
+    /// Migrated builders should return PathKinds without creating contexts.
+    /// PathKinds contain the necessary information (field names, indices) for child identification.
+    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+        Ok(vec![]) // Default: no children (leaf types)
     }
 
     /// Assemble parent example from child examples (post-order assembly)

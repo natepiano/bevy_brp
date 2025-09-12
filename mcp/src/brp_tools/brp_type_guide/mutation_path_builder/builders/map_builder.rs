@@ -54,43 +54,48 @@ impl MutationPathBuilder for MapMutationBuilder {
         false
     }
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let Some(schema) = ctx.require_registry_schema() else {
-            tracing::debug!("No schema found for map type: {}", ctx.type_name());
-            return vec![];
+            return Err(Error::InvalidState(format!(
+                "No schema found for map type: {}",
+                ctx.type_name()
+            ))
+            .into());
         };
 
         // Extract key and value types from schema
         let key_type = schema.get_type(SchemaField::KeyType);
         let value_type = schema.get_type(SchemaField::ValueType);
 
-        let mut children = vec![];
-
-        if let Some(key_t) = key_type {
-            // Create context for key recursion
-            let key_path_kind = PathKind::new_root_value(key_t);
-            let key_ctx = ctx.create_field_context(key_path_kind);
-            children.push((SchemaField::Key.to_string(), key_ctx));
-        } else {
-            tracing::debug!(
+        let Some(key_t) = key_type else {
+            return Err(Error::InvalidState(format!(
                 "Failed to extract key type from schema for type: {}",
                 ctx.type_name()
-            );
-        }
+            ))
+            .into());
+        };
 
-        if let Some(val_t) = value_type {
-            // Create context for value recursion
-            let val_path_kind = PathKind::new_root_value(val_t);
-            let val_ctx = ctx.create_field_context(val_path_kind);
-            children.push((SchemaField::Value.to_string(), val_ctx));
-        } else {
-            tracing::debug!(
+        let Some(val_t) = value_type else {
+            return Err(Error::InvalidState(format!(
                 "Failed to extract value type from schema for type: {}",
                 ctx.type_name()
-            );
-        }
+            ))
+            .into());
+        };
 
-        children
+        // Create PathKinds for key and value (ProtocolEnforcer will create contexts)
+        Ok(vec![
+            PathKind::StructField {
+                field_name:  SchemaField::Key.to_string(),
+                type_name:   key_t.clone(),
+                parent_type: ctx.type_name().clone(),
+            },
+            PathKind::StructField {
+                field_name:  SchemaField::Value.to_string(),
+                type_name:   val_t.clone(),
+                parent_type: ctx.type_name().clone(),
+            },
+        ])
     }
 
     fn assemble_from_children(

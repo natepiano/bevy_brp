@@ -38,31 +38,32 @@ impl MutationPathBuilder for SetMutationBuilder {
         true // MIGRATED!
     }
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Vec<(String, RecursionContext)> {
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let Some(schema) = ctx.require_registry_schema() else {
-            tracing::debug!("No schema found for set type: {}", ctx.type_name());
-            return vec![];
+            return Err(Error::InvalidState(format!(
+                "No schema found for set type: {}",
+                ctx.type_name()
+            ))
+            .into());
         };
 
-        // Extract element type from schema
+        // Extract item type from schema
         let item_type = schema.get_type(SchemaField::Items);
 
-        item_type.map_or_else(
-            || {
-                tracing::debug!(
-                    "Failed to extract item type from schema for type: {}",
-                    ctx.type_name()
-                );
-                vec![]
-            },
-            |item_type_name| {
-                // Create context for item recursion
-                let item_path_kind =
-                    PathKind::new_array_element(0, item_type_name, ctx.type_name().clone());
-                let item_ctx = ctx.create_field_context(item_path_kind);
-                vec![(SchemaField::Items.to_string(), item_ctx)]
-            },
-        )
+        let Some(item_t) = item_type else {
+            return Err(Error::InvalidState(format!(
+                "Failed to extract item type from schema for type: {}",
+                ctx.type_name()
+            ))
+            .into());
+        };
+
+        // Create PathKind for items (ProtocolEnforcer will create context)
+        Ok(vec![PathKind::StructField {
+            field_name:  SchemaField::Items.to_string(),
+            type_name:   item_t.clone(),
+            parent_type: ctx.type_name().clone(),
+        }])
     }
 
     fn assemble_from_children(

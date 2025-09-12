@@ -251,11 +251,47 @@ impl RecursionContext {
     }
 ```
 
+**Code changes in ProtocolEnforcer (to handle PathKinds):**
+```rust
+// In build_paths method, replace line 214:
+// OLD: let children = self.inner.collect_children(ctx);
+// NEW:
+let child_path_kinds = self.inner.collect_children(ctx)?;
+let mut all_paths = vec![];
+let mut child_examples = HashMap::new();
+
+// Recurse to each child
+for path_kind in child_path_kinds {
+    // ProtocolEnforcer creates the context from PathKind
+    let child_ctx = ctx.create_field_context(path_kind.clone());
+    
+    // Extract key from PathKind for HashMap
+    let child_key = match &path_kind {
+        PathKind::StructField { field_name, .. } => field_name.clone(),
+        PathKind::IndexedElement { index, .. } => index.to_string(),
+        PathKind::ArrayElement { index, .. } => index.to_string(),
+        PathKind::RootValue { .. } => String::new(),
+    };
+    
+    // Process child (using existing process_child helper)
+    let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
+    
+    child_examples.insert(child_key, child_example);
+    
+    // Only include child paths if the builder wants them
+    if self.inner.include_child_paths() {
+        all_paths.extend(child_paths);
+    }
+}
+```
+
 **Expected outcome:**
 - New signature with proper error handling
 - MapMutationBuilder and SetMutationBuilder updated to prevent build breakage
+- ProtocolEnforcer creates contexts from PathKinds
 - PathKinds carry child identification info
 - Errors properly propagated instead of silently logged
+- Build succeeds without breakage
 
 ---
 
@@ -298,17 +334,15 @@ impl RecursionContext {
 
 ---
 
-### STEP 4: Rewrite ProtocolEnforcer to Create Contexts and Determine Mutation Status
+### STEP 4: Update ProtocolEnforcer to set path_action and determine mutation status
 **Status:** ⏳ PENDING
 
-**Objective:** ProtocolEnforcer creates all contexts, controls path creation, and determines mutation status
+**Objective:** ProtocolEnforcer controls path creation and determines mutation status
 
 **Changes to make:**
-1. Update to create RecursionContexts itself
-2. Set `path_action` based on `include_child_paths()`
-3. Check `path_action` when creating paths on ascent
-4. Extract keys from PathKinds to build HashMap for child values
-5. **ProtocolEnforcer is sole authority for mutation status and reasons**
+1. Set `path_action` based on `include_child_paths()` (context creation moved to STEP 2)
+2. Check `path_action` when creating paths on ascent
+3. **ProtocolEnforcer is sole authority for mutation status and reasons**
 
 **Files to modify:**
 - `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
@@ -337,59 +371,25 @@ impl RecursionContext {
             return result;
         }
 
-        // Get child PathKinds (not contexts!)
+        // (This section moved to STEP 2 - ProtocolEnforcer now receives PathKinds and creates contexts)
+        // Get child PathKinds and process them
         let child_path_kinds = self.inner.collect_children(ctx)?;
         let mut all_paths = vec![];
         let mut child_examples = HashMap::new();
 
-        // Recurse to each child
         for path_kind in child_path_kinds {
-            // ProtocolEnforcer creates the context
+            // Create context and set path_action
             let mut child_ctx = ctx.create_field_context(path_kind.clone());
-
+            
             // Set the path action based on parent's include_child_paths()
             child_ctx.path_action = if self.inner.include_child_paths() {
                 PathAction::Create
             } else {
                 PathAction::Skip
             };
-
-            // Extract key from PathKind for HashMap
-            let child_key = match &path_kind {
-                PathKind::StructField { field_name, .. } => field_name.clone(),
-                PathKind::IndexedElement { index, .. } => index.to_string(),
-                PathKind::ArrayElement { index, .. } => index.to_string(),
-                PathKind::RootValue { .. } => String::new(),
-            };
-
-            tracing::debug!(
-                "ProtocolEnforcer recursing to child '{}' of type '{}' (path_action: {:?})",
-                child_key,
-                child_ctx.type_name(),
-                child_ctx.path_action
-            );
-
-            // Get child's schema and create its builder
-            let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
-            let child_type = child_ctx.type_name();
-            let child_kind = TypeKind::from_schema(child_schema, child_type);
-            let child_builder = child_kind.builder();
-
-            // Recurse (child handles its OWN protocol)
-            let child_paths = child_builder.build_paths(&child_ctx, depth.increment())?;
-
-            // Extract child's example from its root path
-            let child_example = child_paths
-                .first()
-                .map(|p| p.example.clone())
-                .unwrap_or(json!(null));
-
-            child_examples.insert(child_key, child_example);
-
-            // Only include child paths if the builder wants them
-            if self.inner.include_child_paths() {
-                all_paths.extend(child_paths);
-            }
+            
+            // Extract key and process child (implementation detail)
+            // ... rest of processing ...
         }
 
         // Assemble THIS level from children (HashMap with semantic keys)

@@ -11,6 +11,7 @@ use tracing::warn;
 use super::super::response_types::{BrpTypeName, ReflectTrait};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 use super::path_kind::PathKind;
+use super::types::PathAction;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -28,6 +29,9 @@ pub struct RecursionContext {
     pub mutation_path:    String,
     /// Parent's mutation knowledge for extracting component examples
     pub parent_knowledge: Option<&'static MutationKnowledge>,
+    /// Action to take regarding path creation (set by ProtocolEnforcer)
+    /// Design Review: Using enum instead of boolean for clarity and type safety
+    pub path_action:      PathAction,
 }
 
 impl RecursionContext {
@@ -38,6 +42,7 @@ impl RecursionContext {
             registry,
             mutation_path: String::new(),
             parent_knowledge: None,
+            path_action: PathAction::Create, // Default to creating paths
         }
     }
 
@@ -106,6 +111,7 @@ impl RecursionContext {
             registry: Arc::clone(&self.registry),
             mutation_path: new_path_prefix,
             parent_knowledge: field_knowledge,
+            path_action: self.path_action, // Preserve parent's setting
         }
     }
 
