@@ -516,20 +516,44 @@ cargo run --example complex_types
 ### STEP 9: Update plan-recursion.md for Remaining Builders
 **Status:** ⏳ PENDING
 
-**Objective:** Update migration instructions for unmigrated builders
+**Objective:** Update migration instructions for unmigrated builders with responsibility audit
 
 **File to modify:**
 - `plan-recursion.md`
 
-**Key changes to document:**
+**Phase 1: Builder Responsibility Audit**
+Before documenting the migration pattern, investigate each unmigrated builder to identify responsibilities that should be "pulled up" to ProtocolEnforcer:
+
+**Builders to audit:**
+- ListMutationBuilder
+- ArrayMutationBuilder  
+- TupleMutationBuilder
+- StructMutationBuilder
+- EnumMutationBuilder
+
+**Responsibilities to identify and remove from builders:**
+1. **Recursion depth checking** - Any `depth.exceeds_limit()` checks
+2. **Registry validation** - Checks if type exists in registry
+3. **Knowledge checks** - Direct mutation knowledge lookups
+4. **Mutation status computation** - Calculating status from children
+5. **NotMutatable path creation** - Creating paths for non-mutatable types
+6. **Error path formatting** - Building error-specific paths
+7. **Child path filtering** - Deciding which child paths to include
+
+**Phase 2: Document Migration Pattern**
+After audit, document:
 1. Builders should implement `build_example()` returning `Result<BuilderExample>`
 2. The method should use `collect_children()` and recursively call `build_example()`
 3. No path creation happens in builders anymore
 4. Status computation happens in ProtocolEnforcer
+5. **NEW:** List of specific code patterns to remove from each builder type
+6. **NEW:** Clear documentation of what remains in builders (only structural logic)
 
 **Expected outcome:**
 - Clear migration path for remaining builders
 - Consistent pattern documented
+- Specific guidance on code to eliminate from each builder
+- Builders become simpler, focused only on type structure
 
 ---
 
