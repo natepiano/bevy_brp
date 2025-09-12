@@ -178,7 +178,7 @@ impl RecursionContext {
     }
 ```
 
-**Code changes in MapMutationBuilder:**
+**ACTUAL Code in MapMutationBuilder (corrected):**
 ```rust
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let Some(schema) = ctx.require_registry_schema() else {
@@ -209,20 +209,27 @@ impl RecursionContext {
         // Create PathKinds for key and value (ProtocolEnforcer will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name: SchemaField::Key.to_string(),
-                field_type: key_t.clone(),
-                optional: false,
+                field_name:  SchemaField::Key.to_string(),
+                type_name:   key_t,  // NOT field_type!
+                parent_type: ctx.type_name().clone(),  // Required field!
             },
             PathKind::StructField {
-                field_name: SchemaField::Value.to_string(),
-                field_type: val_t.clone(),
-                optional: false,
+                field_name:  SchemaField::Value.to_string(),
+                type_name:   val_t,  // NOT field_type!
+                parent_type: ctx.type_name().clone(),  // Required field!
             },
         ])
     }
+
+    // CRITICAL: Maps override child_path_action() NOT include_child_paths()!
+    fn child_path_action(&self) -> PathAction {
+        // Maps DON'T include child paths in the result
+        // Returns PathAction::Skip to prevent child path exposure
+        PathAction::Skip
+    }
 ```
 
-**Code changes in SetMutationBuilder:**
+**ACTUAL Code in SetMutationBuilder (corrected):**
 ```rust
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let Some(schema) = ctx.require_registry_schema() else {
@@ -244,10 +251,17 @@ impl RecursionContext {
 
         // Create PathKind for items (ProtocolEnforcer will create context)
         Ok(vec![PathKind::StructField {
-            field_name: SchemaField::Items.to_string(),
-            field_type: item_t.clone(),
-            optional: false,
+            field_name:  SchemaField::Items.to_string(),
+            type_name:   item_t,  // NOT field_type!
+            parent_type: ctx.type_name().clone(),  // Required field!
         }])
+    }
+
+    // CRITICAL: Sets override child_path_action() NOT include_child_paths()!
+    fn child_path_action(&self) -> PathAction {
+        // Sets DON'T include child paths in the result
+        // Returns PathAction::Skip to prevent child path exposure
+        PathAction::Skip
     }
 ```
 
@@ -649,20 +663,43 @@ if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(type_na
 For EACH unmigrated builder section (lines 468-640), add these SPECIFIC removal instructions:
 
 ```markdown
+**MIGRATION FOCUS:**
+After removing duplication, builders should ONLY implement:
+1. `collect_children()` - Return PathKinds with correct structure (type_name, parent_type)
+2. `assemble_from_children()` - Build parent value from child examples
+3. `child_path_action()` (if needed) - Return PathAction::Skip for containers like Map/Set
+
+**CRITICAL METHOD CHANGE:**
+The plan-recursion.md incorrectly references `include_child_paths()` returning bool.
+This must be changed to `child_path_action()` returning PathAction enum:
+- OLD: fn include_child_paths(&self) -> bool { false }
+- NEW: fn child_path_action(&self) -> PathAction { PathAction::Skip }
+
+**REFERENCE IMPLEMENTATIONS:**
+See these completed migrations for the EXACT pattern:
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
+
+Key patterns from actual code:
+- PathKind uses `type_name` and `parent_type` fields (NOT field_type/optional)
+- Map/Set override `child_path_action()` to return `PathAction::Skip`
+- collect_children() returns Result<Vec<PathKind>>
+- assemble_from_children() receives HashMap with semantic keys
+
 **CODE TO REMOVE:**
 - Lines containing `depth.exceeds_limit()`
-- Lines containing `ctx.require_registry_schema() else`
-- The entire `build_not_Mutable_path` method (usually ~12 lines)
+- Lines containing `ctx.require_registry_schema() else` creating NotMutable paths
+- The entire `build_not_Mutable_path` method
 - Any line setting `mutation_status:` field
 - Any line setting `mutation_status_reason:` field
 - Any imports of `NotMutableReason`
 
-**CODE TO KEEP:**
-- Schema field extraction logic
-- Child type identification
-- Array/List element handling
-- Struct field iteration
-- Enum variant handling
+**CODE TO KEEP (but adapt):**
+- Schema field extraction logic → adapt to return PathKinds with type_name/parent_type
+- Child type identification → use correct PathKind structure
+- Array/List element handling → return indexed PathKinds
+- Struct field iteration → return field PathKinds with parent_type
+- Enum variant handling → return variant PathKinds
 ```
 
 **Phase 3: Document What ProtocolEnforcer Now Handles**
@@ -686,9 +723,13 @@ Builders ONLY handle:
 
 **Expected outcome:**
 - plan-recursion.md updated with exact code patterns to remove
+- **CRITICAL: Replace all references to `include_child_paths()` with `child_path_action()`**
+- **Correct PathKind structure documented (type_name/parent_type, not field_type/optional)**
 - Each unmigrated builder section has specific removal instructions
+- **Clear references to MapMutationBuilder and SetMutationBuilder as EXACT implementation examples**
+- **Emphasis on the pattern: collect_children(), assemble_from_children(), and optionally child_path_action()**
 - ProtocolEnforcer responsibilities clearly documented
-- Builders simplified to only collect_children() and assemble_from_children()
+- Builders simplified to only essential methods
 - All duplication eliminated: depth checks, registry validation, NotMutable paths, mutation status logic
 
 ---
