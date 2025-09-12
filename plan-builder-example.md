@@ -264,7 +264,7 @@ let mut child_examples = HashMap::new();
 for path_kind in child_path_kinds {
     // ProtocolEnforcer creates the context from PathKind
     let child_ctx = ctx.create_field_context(path_kind.clone());
-    
+
     // Extract key from PathKind for HashMap
     let child_key = match &path_kind {
         PathKind::StructField { field_name, .. } => field_name.clone(),
@@ -272,12 +272,12 @@ for path_kind in child_path_kinds {
         PathKind::ArrayElement { index, .. } => index.to_string(),
         PathKind::RootValue { .. } => String::new(),
     };
-    
+
     // Process child (using existing process_child helper)
     let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
-    
+
     child_examples.insert(child_key, child_example);
-    
+
     // Only include child paths if the builder wants them
     if self.inner.include_child_paths() {
         all_paths.extend(child_paths);
@@ -380,14 +380,14 @@ for path_kind in child_path_kinds {
         for path_kind in child_path_kinds {
             // Create context and set path_action
             let mut child_ctx = ctx.create_field_context(path_kind.clone());
-            
+
             // Set the path action based on parent's include_child_paths()
             child_ctx.path_action = if self.inner.include_child_paths() {
                 PathAction::Create
             } else {
                 PathAction::Skip
             };
-            
+
             // Extract key and process child (implementation detail)
             // ... rest of processing ...
         }
@@ -411,7 +411,7 @@ for path_kind in child_path_kinds {
                 })
             },
             MutationStatus::PartiallyMutatable => {
-                Some(NotMutatableReason::MixedChildMutability {
+                Some(NotMutatableReason::PartialChildMutability {
                     parent_type: ctx.type_name().clone()
                 })
             },
@@ -450,7 +450,7 @@ First, extend the enum in `mcp/src/brp_tools/brp_type_guide/mutation_path_builde
 pub enum NotMutatableReason {
     // ... existing variants ...
     AllChildrenNotMutatable { parent_type: BrpTypeName },
-    MixedChildMutability { parent_type: BrpTypeName },
+    PartialChildMutability { parent_type: BrpTypeName },
 }
 ```
 
@@ -459,7 +459,7 @@ Then use these enum variants instead of ad-hoc strings:
 - **NotMutatableReason::NotInRegistry** - When type lookup fails
 - **NotMutatableReason::MissingSerializationTraits** - When type lacks required traits
 - **NotMutatableReason::AllChildrenNotMutatable** - When all child paths are NotMutatable
-- **NotMutatableReason::MixedChildMutability** - When some children are mutatable, others not
+- **NotMutatableReason::PartialChildMutability** - When some children are mutatable, others not
 
 **Expected outcome:**
 - Smart recursion ready
@@ -509,7 +509,7 @@ Then use these enum variants instead of ad-hoc strings:
 
         let value_value = children.get(&SchemaField::Value.to_string())
             .ok_or_else(|| Error::InvalidState(format!(
-                "Map type {} missing required '{}' child example", 
+                "Map type {} missing required '{}' child example",
                 ctx.type_name(),
                 SchemaField::Value.to_string()
             )).into())?;
