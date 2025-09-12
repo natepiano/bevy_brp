@@ -70,7 +70,7 @@ pub trait MutationPathBuilder {
 ### Step 2: Create ProtocolEnforcer Wrapper
 Create new file `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`:
 
-**IMPORTANT**: ProtocolEnforcer is now responsible for creating NotMutatable paths. Builders should return `Error::NotMutatable(reason)` when they detect non-mutatable conditions, and ProtocolEnforcer will handle path creation.
+**IMPORTANT**: ProtocolEnforcer is now responsible for creating NotMutable paths. Builders should return `Error::NotMutable(reason)` when they detect non-mutable conditions, and ProtocolEnforcer will handle path creation.
 
 ```rust
 use std::collections::HashMap;
@@ -101,7 +101,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 example: json!({"error": "recursion limit exceeded"}),
                 type_name: ctx.type_name().clone(),
                 path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::NotMutatable,
+                mutation_status: MutationStatus::NotMutable,
                 mutation_status_reason: Some("Recursion limit exceeded".to_string()),
             }]);
         }
@@ -113,7 +113,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 example: example.clone(),
                 type_name: ctx.type_name().clone(),
                 path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::Mutatable,
+                mutation_status: MutationStatus::mutable,
                 mutation_status_reason: None,
             }]);
         }
@@ -152,14 +152,14 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
 
         // 5. Assemble THIS level from children (post-order)
-        // Handle NotMutatable errors from builders
+        // Handle NotMutable errors from builders
         let parent_example = match self.inner.assemble_from_children(ctx, child_examples) {
             Ok(example) => example,
             Err(e) => {
-                // Check if it's a NotMutatable error
-                if let Some(reason) = e.as_not_mutatable() {
-                    // ProtocolEnforcer creates the NotMutatable path
-                    return Ok(vec![Self::build_not_mutatable_path(ctx, reason.clone())]);
+                // Check if it's a NotMutable error
+                if let Some(reason) = e.as_not_mutable() {
+                    // ProtocolEnforcer creates the NotMutable path
+                    return Ok(vec![Self::build_not_mutable_path(ctx, reason.clone())]);
                 }
                 // Real error - propagate it
                 return Err(e);
@@ -172,7 +172,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
             example: parent_example,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
+            mutation_status: MutationStatus::mutable,
             mutation_status_reason: None,
         });
 
@@ -334,11 +334,11 @@ Each builder migration follows this pattern:
    - Change from direct call: `BuilderName.build_paths(ctx, depth)`
    - To trait dispatch: `self.builder().build_paths(ctx, depth)`
    - This ensures the ProtocolEnforcer wrapper is used
-6. **IMPORTANT**: Handle NotMutatable conditions properly
-   - Do NOT create NotMutatable paths directly in the builder
-   - Instead, return `Error::NotMutatable(reason)` from `assemble_from_children()`
-   - ProtocolEnforcer will catch these errors and create the NotMutatable path
-   - This ensures consistent NotMutatable path formatting across all builders
+6. **IMPORTANT**: Handle NotMutable conditions properly
+   - Do NOT create NotMutable paths directly in the builder
+   - Instead, return `Error::NotMutable(reason)` from `assemble_from_children()`
+   - ProtocolEnforcer will catch these errors and create the NotMutable path
+   - This ensures consistent NotMutable path formatting across all builders
 7. Delete old methods (build_schema_example, static helper methods)
 
 ### Builder 1: DefaultMutationBuilder ✅ COMPLETED
@@ -476,16 +476,16 @@ Following the same order as the original ExampleBuilder removal:
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NOTMUTATABLE HANDLING**:
-     - Check for any local NotMutatable path creation
-     - Replace with `return Err(Error::NotMutatable(reason).into())`
+   - **NotMutable HANDLING**:
+     - Check for any local NotMutable path creation
+     - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
      - Check if this builder has any `depth.exceeds_limit()` checks
      - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
      - The builder should NOT check depth limits after migration
    - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutatable paths
+     - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
      - The builder should NOT check if type is in registry after migration
    - **MUTATION STATUS PROPAGATION REMOVAL**:
@@ -510,16 +510,16 @@ Following the same order as the original ExampleBuilder removal:
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NOTMUTATABLE HANDLING**:
-     - Check for any local NotMutatable path creation
-     - Replace with `return Err(Error::NotMutatable(reason).into())`
+   - **NotMutable HANDLING**:
+     - Check for any local NotMutable path creation
+     - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
      - Check if this builder has any `depth.exceeds_limit()` checks
      - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
      - The builder should NOT check depth limits after migration
    - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutatable paths
+     - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
      - The builder should NOT check if type is in registry after migration
    - **MUTATION STATUS PROPAGATION REMOVAL**:
@@ -545,16 +545,16 @@ Following the same order as the original ExampleBuilder removal:
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NOTMUTATABLE HANDLING**:
-     - Check for any local NotMutatable path creation
-     - Replace with `return Err(Error::NotMutatable(reason).into())`
+   - **NotMutable HANDLING**:
+     - Check for any local NotMutable path creation
+     - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
      - Check if this builder has any `depth.exceeds_limit()` checks
      - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
      - The builder should NOT check depth limits after migration
    - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutatable paths
+     - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
      - The builder should NOT check if type is in registry after migration
    - **MUTATION STATUS PROPAGATION REMOVAL**:
@@ -573,7 +573,7 @@ Following the same order as the original ExampleBuilder removal:
    - **IMPORT REQUIREMENT**:
      - Add `use crate::error::Error;` import for error handling
    - **ERROR HANDLING**:
-     - **Line 47**: `warn!` when no properties field - should be `Error::SchemaProcessing`  
+     - **Line 47**: `warn!` when no properties field - should be `Error::SchemaProcessing`
      - **Line 84**: `return json!("...");` when depth exceeds limit - already handled by ProtocolEnforcer, remove
      - **Line 88**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
      - **Line 94**: `.map_or(json!(null), ...)` when properties missing - should be `Error::SchemaProcessing`
@@ -582,16 +582,16 @@ Following the same order as the original ExampleBuilder removal:
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NOTMUTATABLE HANDLING**:
-     - Check for any local NotMutatable path creation
-     - Replace with `return Err(Error::NotMutatable(reason).into())`
+   - **NotMutable HANDLING**:
+     - Check for any local NotMutable path creation
+     - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
      - Check if this builder has any `depth.exceeds_limit()` checks
      - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
      - The builder should NOT check depth limits after migration
    - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutatable paths
+     - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
      - The builder should NOT check if type is in registry after migration
    - **MUTATION STATUS PROPAGATION REMOVAL**:
@@ -616,16 +616,16 @@ Following the same order as the original ExampleBuilder removal:
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
      - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NOTMUTATABLE HANDLING**:
-     - Check for any local NotMutatable path creation
-     - Replace with `return Err(Error::NotMutatable(reason).into())`
+   - **NotMutable HANDLING**:
+     - Check for any local NotMutable path creation
+     - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
      - Check if this builder has any `depth.exceeds_limit()` checks
      - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
      - The builder should NOT check depth limits after migration
    - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutatable paths
+     - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
      - The builder should NOT check if type is in registry after migration
    - **MUTATION STATUS PROPAGATION REMOVAL**:
@@ -728,7 +728,7 @@ impl<T: PathBuilder> MutationPathBuilder for T {
                 example: json!({"error": "recursion limit exceeded"}),
                 type_name: ctx.type_name().clone(),
                 path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::NotMutatable,
+                mutation_status: MutationStatus::NotMutable,
                 error_reason: Some("Recursion limit exceeded".to_string()),
             }]);
         }
@@ -740,7 +740,7 @@ impl<T: PathBuilder> MutationPathBuilder for T {
                 example: example.clone(),
                 type_name: ctx.type_name().clone(),
                 path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::Mutatable,
+                mutation_status: MutationStatus::mutable,
                 error_reason: None,
             }]);
         }
@@ -775,7 +775,7 @@ impl<T: PathBuilder> MutationPathBuilder for T {
             example: parent_example,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutatable,
+            mutation_status: MutationStatus::mutable,
             error_reason: None,
         });
 
@@ -884,7 +884,7 @@ For each migration:
 - **For Map and Set only**: Override include_child_paths() -> false with explanatory comment
 - Keep build_paths() but make it return Error::InvalidState (no panics)
 - **Update TypeKind::build_paths() to use self.builder() for this type**
-- **Handle NotMutatable conditions**: Return `Error::NotMutatable(reason)` instead of creating paths directly
+- **Handle NotMutable conditions**: Return `Error::NotMutable(reason)` instead of creating paths directly
 - Delete build_schema_example() override
 - Delete static helper methods
 - Remove ExampleBuilder import
@@ -925,5 +925,5 @@ This ensures the ProtocolEnforcer wrapper is used for migrated builders.
 - ExampleBuilder completely removed
 - Simple builder implementations (just collect_children and assemble_from_children)
 - All complexity centralized in trait's build_paths()
-- Centralized NotMutatable path creation in ProtocolEnforcer
+- Centralized NotMutable path creation in ProtocolEnforcer
 - Builders return errors, ProtocolEnforcer handles path formatting

@@ -335,7 +335,7 @@ for path_kind in child_path_kinds {
 ---
 
 ### STEP 4: Update ProtocolEnforcer to set path_action and determine mutation status
-**Status:** ⏳ PENDING
+**Status:** ✅ COMPLETED
 
 **Objective:** ProtocolEnforcer controls path creation and determines mutation status
 
@@ -403,19 +403,19 @@ for path_kind in child_path_kinds {
         // Compute parent's mutation status from children's statuses
         let parent_status = Self::determine_parent_mutation_status(&all_paths);
 
-        // Generate appropriate mutation_status_reason using NotMutatableReason enum
+        // Generate appropriate mutation_status_reason using NotMutableReason enum
         let parent_reason = match parent_status {
-            MutationStatus::NotMutatable => {
-                Some(NotMutatableReason::AllChildrenNotMutatable {
+            MutationStatus::NotMutable => {
+                Some(NotMutableReason::NoMutableChild {
                     parent_type: ctx.type_name().clone()
                 })
             },
-            MutationStatus::PartiallyMutatable => {
-                Some(NotMutatableReason::PartialChildMutability {
+            MutationStatus::PartiallyMutable => {
+                Some(NotMutableReason::PartialChildMutability {
                     parent_type: ctx.type_name().clone()
                 })
             },
-            MutationStatus::Mutatable => None,
+            MutationStatus::Mutable => None,
         }.map(|reason| Option::<String>::from(&reason)).flatten();
 
         // Add THIS level's path at the beginning (only if path_action is Create)
@@ -432,34 +432,34 @@ for path_kind in child_path_kinds {
 
 **Mutation Status Reason Generation:**
 
-ProtocolEnforcer is the SOLE authority for generating mutation_status_reason by extending the `NotMutatableReason` enum.
+ProtocolEnforcer is the SOLE authority for generating mutation_status_reason by extending the `NotMutableReason` enum.
 
 **Current code to fix** (protocol_enforcer.rs lines 245-248):
 ```rust
 // CURRENT - using ad-hoc strings
 let mutation_status_reason = match parent_status {
-    MutationStatus::NotMutatable => Some("all_children_not_mutatable".to_string()),
-    MutationStatus::PartiallyMutatable => Some("mixed_mutability_children".to_string()),
-    MutationStatus::Mutatable => None,
+    MutationStatus::NotMutable => Some("all_children_not_Mutable".to_string()),
+    MutationStatus::PartiallyMutable => Some("mixed_mutability_children".to_string()),
+    MutationStatus::Mutable => None,
 };
 ```
 
 First, extend the enum in `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`:
 ```rust
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NotMutatableReason {
+pub enum NotMutableReason {
     // ... existing variants ...
-    AllChildrenNotMutatable { parent_type: BrpTypeName },
+    NoMutableChild { parent_type: BrpTypeName },
     PartialChildMutability { parent_type: BrpTypeName },
 }
 ```
 
 Then use these enum variants instead of ad-hoc strings:
-- **NotMutatableReason::RecursionLimitExceeded** - When depth limit is hit
-- **NotMutatableReason::NotInRegistry** - When type lookup fails
-- **NotMutatableReason::MissingSerializationTraits** - When type lacks required traits
-- **NotMutatableReason::AllChildrenNotMutatable** - When all child paths are NotMutatable
-- **NotMutatableReason::PartialChildMutability** - When some children are mutatable, others not
+- **NotMutableReason::RecursionLimitExceeded** - When depth limit is hit
+- **NotMutableReason::NotInRegistry** - When type lookup fails
+- **NotMutableReason::MissingSerializationTraits** - When type lacks required traits
+- **NotMutableReason::NoMutableChild** - When all child paths are NotMutable
+- **NotMutableReason::PartialChildMutability** - When some children are mutable, others not
 
 **Expected outcome:**
 - Smart recursion ready
@@ -467,22 +467,6 @@ Then use these enum variants instead of ad-hoc strings:
 - Centralized mutation status logic in ProtocolEnforcer
 - Meaningful, specific mutation reasons
 - Backward compatible with unmigrated builders
-
----
-
-### STEP 4.5: (Merged into STEP 2)
-**Status:** ✅ COMPLETED IN STEP 2
-
-**Note:** The MapMutationBuilder collect_children() changes have been moved to STEP 2 to prevent build breakage.
-
----
-
-### STEP 4.6: (Merged into STEP 2)
-**Status:** ✅ COMPLETED IN STEP 2
-
-**Note:** The SetMutationBuilder collect_children() changes have been moved to STEP 2 to prevent build breakage.
-
----
 
 ### STEP 5: Update MapMutationBuilder's assemble_from_children
 **Status:** ⏳ PENDING
@@ -619,9 +603,9 @@ cargo run --example complex_types
 1. **Depth checking (lines like these):**
 ```rust
 if depth.exceeds_limit() {
-    return Ok(vec![Self::build_not_mutatable_path(
+    return Ok(vec![Self::build_not_Mutable_path(
         ctx,
-        NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
+        NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
     )]);
 }
 ```
@@ -629,18 +613,18 @@ if depth.exceeds_limit() {
 2. **Registry validation (lines like these):**
 ```rust
 let Some(schema) = ctx.require_registry_schema() else {
-    return Ok(vec![Self::build_not_mutatable_path(
+    return Ok(vec![Self::build_not_Mutable_path(
         ctx,
-        NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
+        NotMutableReason::NotInRegistry(ctx.type_name().clone()),
     )]);
 };
 ```
 
-3. **build_not_mutatable_path method (entire method):**
+3. **build_not_Mutable_path method (entire method):**
 ```rust
-fn build_not_mutatable_path(
+fn build_not_Mutable_path(
     ctx: &RecursionContext,
-    reason: NotMutatableReason,
+    reason: NotMutableReason,
 ) -> MutationPathInternal {
     // ENTIRE METHOD - REMOVE
 }
@@ -649,7 +633,7 @@ fn build_not_mutatable_path(
 4. **Mutation status propagation logic:**
 ```rust
 // REMOVE any code that sets mutation_status or mutation_status_reason
-mutation_status: if all_mutatable { MutationStatus::Mutatable } else { ... },
+mutation_status: if all_Mutable { MutationStatus::Mutable } else { ... },
 mutation_status_reason: Some("...".to_string()),
 ```
 
@@ -668,10 +652,10 @@ For EACH unmigrated builder section (lines 468-640), add these SPECIFIC removal 
 **CODE TO REMOVE:**
 - Lines containing `depth.exceeds_limit()`
 - Lines containing `ctx.require_registry_schema() else`
-- The entire `build_not_mutatable_path` method (usually ~12 lines)
+- The entire `build_not_Mutable_path` method (usually ~12 lines)
 - Any line setting `mutation_status:` field
 - Any line setting `mutation_status_reason:` field
-- Any imports of `NotMutatableReason`
+- Any imports of `NotMutableReason`
 
 **CODE TO KEEP:**
 - Schema field extraction logic
@@ -691,7 +675,7 @@ After migration, ProtocolEnforcer handles ALL of:
 1. Depth limit checking (lines 98-107)
 2. Registry validation (implicit via schema checks)
 3. Knowledge lookups (lines 110-119)
-4. NotMutatable path creation (line 162)
+4. NotMutable path creation (line 162)
 5. Mutation status computation (lines 241-248 in plan-builder-example)
 6. Child path filtering via include_child_paths()
 
@@ -705,7 +689,7 @@ Builders ONLY handle:
 - Each unmigrated builder section has specific removal instructions
 - ProtocolEnforcer responsibilities clearly documented
 - Builders simplified to only collect_children() and assemble_from_children()
-- All duplication eliminated: depth checks, registry validation, NotMutatable paths, mutation status logic
+- All duplication eliminated: depth checks, registry validation, NotMutable paths, mutation status logic
 
 ---
 

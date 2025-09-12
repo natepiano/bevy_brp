@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::mutation_knowledge::KnowledgeKey;
-use super::path_kind::PathKind;
 use super::type_kind::TypeKind;
 use super::{
-    MutationPathBuilder, MutationPathInternal, MutationStatus, NotMutatableReason, RecursionContext,
+    MutationPathBuilder, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
+    RecursionContext,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
@@ -43,7 +43,7 @@ impl ProtocolEnforcer {
     /// can create these paths while builders simply return `Error::NotMutatable`.
     fn build_not_mutatable_path(
         ctx: &RecursionContext,
-        reason: NotMutatableReason,
+        reason: NotMutableReason,
     ) -> MutationPathInternal {
         Self::build_mutation_path_internal(
             ctx,
@@ -61,7 +61,7 @@ impl ProtocolEnforcer {
         if depth.exceeds_limit() {
             Some(Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
+                NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]))
         } else {
             None
@@ -73,7 +73,7 @@ impl ProtocolEnforcer {
         if ctx.require_registry_schema().is_none() {
             Some(Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
+                NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]))
         } else {
             None
@@ -220,7 +220,15 @@ impl MutationPathBuilder for ProtocolEnforcer {
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_path_kinds {
             // ProtocolEnforcer creates the context from PathKind
-            let child_ctx = ctx.create_field_context(path_kind.clone());
+            let mut child_ctx = ctx.create_field_context(path_kind.clone());
+
+            // Set the path action based on parent's include_child_paths()
+            // When false (Map/Set), children shouldn't create paths
+            child_ctx.path_action = if self.inner.include_child_paths() {
+                PathAction::Create
+            } else {
+                PathAction::Skip
+            };
 
             // Extract key from PathKind for HashMap
             let child_key = path_kind.to_child_key();
@@ -248,23 +256,31 @@ impl MutationPathBuilder for ProtocolEnforcer {
         // Compute parent's mutation status from children's statuses
         let parent_status = Self::determine_parent_mutation_status(&all_paths);
 
-        // Set appropriate error reason based on computed status
+        // Set appropriate error reason based on computed status using enum variants
         let mutation_status_reason = match parent_status {
-            MutationStatus::NotMutatable => Some("all_children_not_mutatable".to_string()),
-            MutationStatus::PartiallyMutatable => Some("mixed_mutability_children".to_string()),
+            MutationStatus::NotMutatable => Some(NotMutableReason::NoMutableChildren {
+                parent_type: ctx.type_name().clone(),
+            }),
+            MutationStatus::PartiallyMutatable => Some(NotMutableReason::PartialChildMutability {
+                parent_type: ctx.type_name().clone(),
+            }),
             MutationStatus::Mutatable => None,
-        };
+        }
+        .and_then(|reason| Option::<String>::from(&reason));
 
         // Add THIS level's path at the beginning with computed status
-        all_paths.insert(
-            0,
-            Self::build_mutation_path_internal(
-                ctx,
-                parent_example,
-                parent_status,
-                mutation_status_reason,
-            ),
-        );
+        // Only create path if path_action is Create (skipped for Map/Set children)
+        if matches!(ctx.path_action, PathAction::Create) {
+            all_paths.insert(
+                0,
+                Self::build_mutation_path_internal(
+                    ctx,
+                    parent_example,
+                    parent_status,
+                    mutation_status_reason,
+                ),
+            );
+        }
 
         Ok(all_paths)
     }

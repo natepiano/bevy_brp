@@ -11,12 +11,12 @@ use std::collections::HashMap;
 
 pub use builders::EnumVariantInfo;
 pub use mutation_knowledge::KnowledgeKey;
-pub use not_mutatable_reason::NotMutatableReason;
+pub use not_mutatable_reason::NotMutableReason;
 pub use path_kind::PathKind;
 pub use recursion_context::RecursionContext;
 use serde_json::{Value, json};
 pub use type_kind::TypeKind;
-pub use types::{MutationPath, MutationPathInternal, MutationStatus};
+pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction};
 
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
@@ -110,11 +110,11 @@ pub trait MutationPathBuilder {
     ///
     /// Receives HashMap where keys are extracted from PathKinds by ProtocolEnforcer:
     /// - StructField: uses field_name as key
-    /// - IndexedElement/ArrayElement: uses index.to_string() as key  
+    /// - IndexedElement/ArrayElement: uses index.to_string() as key
     /// - RootValue: uses empty string as key
     ///
     /// Builders ONLY assemble examples - mutation status is determined by ProtocolEnforcer.
-    /// 
+    ///
     /// Examples:
     /// - MapMutationBuilder: receives {"key": key_example, "value": value_example}
     /// - SetMutationBuilder: receives {"items": item_example}
@@ -138,12 +138,10 @@ pub trait MutationPathBuilder {
         use crate::error::Error;
         use crate::json_object::JsonObjectAccess;
         if element.is_complex_type() {
-            return Err(
-                Error::NotMutatable(NotMutatableReason::ComplexCollectionKey(
-                    ctx.type_name().clone(),
-                ))
-                .into(),
-            );
+            return Err(Error::NotMutatable(NotMutableReason::ComplexCollectionKey(
+                ctx.type_name().clone(),
+            ))
+            .into());
         }
         Ok(())
     }

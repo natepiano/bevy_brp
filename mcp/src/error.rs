@@ -1,7 +1,7 @@
 use error_stack::Report;
 use thiserror::Error;
 
-use crate::brp_tools::NotMutatableReason;
+use crate::brp_tools::NotMutableReason;
 use crate::tool::ResultStruct;
 
 // Error message prefixes
@@ -48,7 +48,7 @@ pub enum Error {
     MissingMessageTemplate(String),
 
     #[error("Type cannot be mutated: {0}")]
-    NotMutatable(NotMutatableReason),
+    NotMutatable(NotMutableReason),
 
     #[error("Unable to extract parameters: {0}")]
     ParameterExtraction(String),
@@ -130,7 +130,7 @@ impl std::fmt::Debug for Error {
 
 impl Error {
     /// Check if this error represents a `NotMutatable` condition
-    pub const fn as_not_mutatable(&self) -> Option<&NotMutatableReason> {
+    pub const fn as_not_mutatable(&self) -> Option<&NotMutableReason> {
         match self {
             Self::NotMutatable(reason) => Some(reason),
             _ => None,

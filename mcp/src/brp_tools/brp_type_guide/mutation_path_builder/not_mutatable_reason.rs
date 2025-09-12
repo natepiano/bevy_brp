@@ -5,7 +5,7 @@ use super::super::response_types::BrpTypeName;
 
 /// Represents detailed mutation support status for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NotMutatableReason {
+pub enum NotMutableReason {
     /// Type lacks required serialization traits
     MissingSerializationTraits(BrpTypeName),
     /// Container type has non-mutatable element type
@@ -19,9 +19,13 @@ pub enum NotMutatableReason {
     RecursionLimitExceeded(BrpTypeName),
     /// `HashMap` or `HashSet` with complex (non-primitive) key type that cannot be mutated via BRP
     ComplexCollectionKey(BrpTypeName),
+    /// All child paths are NotMutatable
+    NoMutableChildren { parent_type: BrpTypeName },
+    /// Some children are mutatable, others are not (results in PartiallyMutatable)
+    PartialChildMutability { parent_type: BrpTypeName },
 }
 
-impl NotMutatableReason {
+impl NotMutableReason {
     /// Extract the deepest failing type from nested error contexts
     pub fn get_deepest_failing_type(&self) -> BrpTypeName {
         match self {
@@ -30,11 +34,13 @@ impl NotMutatableReason {
             | Self::RecursionLimitExceeded(type_name)
             | Self::ComplexCollectionKey(type_name) => type_name.clone(),
             Self::NonMutatableHandle { element_type, .. } => element_type.clone(),
+            Self::NoMutableChildren { parent_type }
+            | Self::PartialChildMutability { parent_type } => parent_type.clone(),
         }
     }
 }
 
-impl Display for NotMutatableReason {
+impl Display for NotMutableReason {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::MissingSerializationTraits(type_name) => write!(
@@ -59,26 +65,40 @@ impl Display for NotMutatableReason {
                 f,
                 "HashMap type {type_name} has complex (enum/struct) keys that cannot be mutated through BRP - JSON requires string keys but complex types cannot currently be used with HashMap or HashSet"
             ),
+            Self::NoMutableChildren { parent_type } => write!(
+                f,
+                "Type {parent_type} has no mutable child paths - all children lack required traits"
+            ),
+            Self::PartialChildMutability { parent_type } => write!(
+                f,
+                "Type {parent_type} has partial child mutability - some children can be mutated, others cannot"
+            ),
         }
     }
 }
 
 /// Convert `MutationSupport` to structured error reason string with detailed explanation
-impl From<&NotMutatableReason> for Option<String> {
-    fn from(support: &NotMutatableReason) -> Self {
+impl From<&NotMutableReason> for Option<String> {
+    fn from(support: &NotMutableReason) -> Self {
         match support {
-            NotMutatableReason::MissingSerializationTraits(_) => {
+            NotMutableReason::MissingSerializationTraits(_) => {
                 Some(format!("missing_serialization_traits: {support}"))
             }
-            NotMutatableReason::NonMutatableHandle { .. } => {
+            NotMutableReason::NonMutatableHandle { .. } => {
                 Some(format!("handle_wrapper_component: {support}"))
             }
-            NotMutatableReason::NotInRegistry(_) => Some(format!("not_in_registry: {support}")),
-            NotMutatableReason::RecursionLimitExceeded(_) => {
+            NotMutableReason::NotInRegistry(_) => Some(format!("not_in_registry: {support}")),
+            NotMutableReason::RecursionLimitExceeded(_) => {
                 Some(format!("recursion_limit_exceeded: {support}"))
             }
-            NotMutatableReason::ComplexCollectionKey(_) => {
+            NotMutableReason::ComplexCollectionKey(_) => {
                 Some(format!("complex_collection_key: {support}"))
+            }
+            NotMutableReason::NoMutableChildren { .. } => {
+                Some(format!("no_mutable_children: {support}"))
+            }
+            NotMutableReason::PartialChildMutability { .. } => {
+                Some(format!("partial_child_mutability: {support}"))
             }
         }
     }

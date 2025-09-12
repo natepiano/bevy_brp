@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::not_mutatable_reason::NotMutatableReason;
+use super::super::not_mutatable_reason::NotMutableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::{MutationPathInternal, MutationStatus};
@@ -338,7 +338,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         let Some(registry_schema) = ctx.require_registry_schema() else {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                NotMutatableReason::NotInRegistry(ctx.type_name().clone()),
+                NotMutableReason::NotInRegistry(ctx.type_name().clone()),
             )]);
         };
 
@@ -346,7 +346,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         if depth.exceeds_limit() {
             return Ok(vec![Self::build_not_mutatable_path(
                 ctx,
-                NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
+                NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
             )]);
         }
 
@@ -497,7 +497,7 @@ impl EnumMutationBuilder {
     /// Build a not-mutatable path with structured error details
     fn build_not_mutatable_path(
         ctx: &RecursionContext,
-        support: NotMutatableReason,
+        support: NotMutableReason,
     ) -> MutationPathInternal {
         MutationPathInternal {
             path:                   ctx.mutation_path.clone(),

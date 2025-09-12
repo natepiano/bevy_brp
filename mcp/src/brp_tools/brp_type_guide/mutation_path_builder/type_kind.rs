@@ -13,7 +13,7 @@ use super::builders::{
     MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
-use super::not_mutatable_reason::NotMutatableReason;
+use super::not_mutatable_reason::NotMutableReason;
 use super::protocol_enforcer::ProtocolEnforcer;
 use super::recursion_context::RecursionContext;
 use super::types::{MutationPathInternal, MutationStatus};
@@ -114,7 +114,7 @@ impl TypeKind {
     /// Build `NotMutatable` path from `MutationSupport` error details
     fn build_not_mutatable_path_from_support(
         ctx: &RecursionContext,
-        support: &NotMutatableReason,
+        support: &NotMutableReason,
         directive_suffix: &str,
     ) -> MutationPathInternal {
         MutationPathInternal {
@@ -143,7 +143,7 @@ impl MutationPathBuilder for TypeKind {
         if depth.exceeds_limit() {
             let recursion_limit_path = Self::build_not_mutatable_path_from_support(
                 ctx,
-                &NotMutatableReason::RecursionLimitExceeded(ctx.type_name().clone()),
+                &NotMutableReason::RecursionLimitExceeded(ctx.type_name().clone()),
                 "",
             );
             return Ok(vec![recursion_limit_path]);
@@ -186,7 +186,7 @@ impl MutationPathBuilder for TypeKind {
                 } else {
                     let not_mutatable_path = Self::build_not_mutatable_path_from_support(
                         ctx,
-                        &NotMutatableReason::MissingSerializationTraits(ctx.type_name().clone()),
+                        &NotMutableReason::MissingSerializationTraits(ctx.type_name().clone()),
                         "",
                     );
                     Ok(vec![not_mutatable_path])
