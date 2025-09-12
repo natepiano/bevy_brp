@@ -417,7 +417,7 @@ impl MutationPathBuilder for StructMutationBuilder {
                                     field_type,
                                     ctx.type_name().clone(),
                                 );
-                                let field_ctx = ctx.create_field_context(field_path_kind);
+                                let field_ctx = ctx.create_unmigrated_recursion_context(field_path_kind);
                                 (field_name.clone(), field_ctx)
                             })
                     })
@@ -901,6 +901,25 @@ Self::Map => MapMutationBuilder.build_paths(ctx, builder_depth),
 Self::Map => self.builder().build_paths(ctx, builder_depth),
 ```
 This ensures the ProtocolEnforcer wrapper is used for migrated builders.
+
+#### remove the check PathAction::Create in ProtcolEnforcer
+once we migrate all builders to ProtocolEnforcer, then children of a parent that has a PathAction::Skip will not build paths for themselves.  At that time we can remove the check for PathAction::Create in ProtocolEnforcer - currently in the last step of the build_paths() method.
+
+```rust
+//
+// Only extend paths when in Create mode
+// WE NEED TO REMOVE THE CONDITIONAL WHEN ALL ARE MIGRATED
+// as the new create_recursion_context will ensure children DON'T build paths
+if matches!(ctx.path_action, PathAction::Create) {
+    all_paths.extend(child_paths);
+}
+
+// should just be
+// because if a child doesn't build any paths because it was using PathAction::Skip, then
+// extend is a no-op
+all_paths.extend(child_paths);
+
+```
 
 ### Phase 6: Atomic Change to PathBuilder
 1. Create PathBuilder trait

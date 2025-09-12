@@ -59,7 +59,7 @@ impl MutationPathBuilder for ListMutationBuilder {
         // Lists/Vecs use array notation [0], not tuple notation .0
         let element_path_kind =
             PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
-        let element_ctx = ctx.create_field_context(element_path_kind);
+        let element_ctx = ctx.create_unmigrated_recursion_context(element_path_kind);
 
         // Continue recursion to actual mutation endpoints
         let element_paths = element_kind.build_paths(&element_ctx, depth)?;
@@ -133,7 +133,8 @@ impl MutationPathBuilder for ListMutationBuilder {
                                     item_type_name.clone(),
                                     ctx.type_name().clone(),
                                 );
-                                let element_ctx = ctx.create_field_context(element_path_kind);
+                                let element_ctx =
+                                    ctx.create_unmigrated_recursion_context(element_path_kind);
                                 // Use trait dispatch directly
                                 element_kind
                                     .builder()

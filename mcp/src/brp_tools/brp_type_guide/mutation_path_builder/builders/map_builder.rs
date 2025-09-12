@@ -15,7 +15,7 @@ use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::brp_tools::brp_type_guide::mutation_path_builder::PathKind;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::{PathAction, PathKind};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -39,7 +39,7 @@ impl MutationPathBuilder for MapMutationBuilder {
         true
     }
 
-    fn include_child_paths(&self) -> bool {
+    fn child_path_action(&self) -> PathAction {
         // Maps DON'T include child paths in the result
         //
         // Why: A HashMap<String, Transform> should only expose:
@@ -51,7 +51,7 @@ impl MutationPathBuilder for MapMutationBuilder {
         //
         // The recursion still happens (we need Transform examples to build the map),
         // but those paths aren't included in the final mutation paths list.
-        false
+        PathAction::Skip
     }
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {

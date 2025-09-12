@@ -120,7 +120,7 @@ impl StructMutationBuilder {
             field_type.clone(),
             ctx.type_name().clone(),
         );
-        let field_ctx = ctx.create_field_context(field_path_kind);
+        let field_ctx = ctx.create_unmigrated_recursion_context(field_path_kind);
 
         // If type extraction failed, handle it
         if SchemaField::extract_field_type(field_info).is_none() {
@@ -469,7 +469,8 @@ impl StructMutationBuilder {
                                             field_type.clone(),
                                             ctx.type_name().clone(),
                                         );
-                                        let field_ctx = ctx.create_field_context(field_path_kind);
+                                        let field_ctx = ctx
+                                            .create_unmigrated_recursion_context(field_path_kind);
                                         // Use trait dispatch directly
                                         ctx.get_registry_schema(&field_type)
                                             .map(|schema| {

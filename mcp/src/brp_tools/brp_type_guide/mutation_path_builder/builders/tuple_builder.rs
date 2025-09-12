@@ -120,8 +120,10 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                                             element_type.clone(),
                                                             ctx.type_name().clone(),
                                                         );
-                                                    let element_ctx =
-                                                        ctx.create_field_context(element_path_kind);
+                                                    let element_ctx = ctx
+                                                        .create_unmigrated_recursion_context(
+                                                            element_path_kind,
+                                                        );
                                                     // Use trait dispatch directly
                                                     element_kind.builder().build_schema_example(
                                                         &element_ctx,
@@ -192,7 +194,7 @@ impl TupleMutationBuilder {
         for (index, element_type) in elements.iter().enumerate() {
             let element_path_kind =
                 PathKind::new_indexed_element(index, element_type.clone(), ctx.type_name().clone());
-            let element_ctx = ctx.create_field_context(element_path_kind);
+            let element_ctx = ctx.create_unmigrated_recursion_context(element_path_kind);
 
             let Some(element_schema) = ctx.get_registry_schema(element_type) else {
                 Self::handle_missing_element(

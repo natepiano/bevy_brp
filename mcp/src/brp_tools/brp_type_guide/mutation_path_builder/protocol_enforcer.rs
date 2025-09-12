@@ -219,16 +219,9 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_path_kinds {
-            // ProtocolEnforcer creates the context from PathKind
-            let mut child_ctx = ctx.create_field_context(path_kind.clone());
-
-            // Set the path action based on parent's include_child_paths()
-            // When false (Map/Set), children shouldn't create paths
-            child_ctx.path_action = if self.inner.include_child_paths() {
-                PathAction::Create
-            } else {
-                PathAction::Skip
-            };
+            // ProtocolEnforcer creates the context with proper path_action handling
+            let child_ctx =
+                ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
 
             // Extract key from PathKind for HashMap
             let child_key = path_kind.to_child_key();
@@ -237,9 +230,10 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
             child_examples.insert(child_key, child_example);
 
-            // Only include child paths if the builder wants them
-            // Container types (like Maps) don't want child paths exposed
-            if self.inner.include_child_paths() {
+            // Only extend paths when child's path_action is Create
+            // WE NEED TO REMOVE THE CONDITIONAL WHEN ALL ARE MIGRATED
+            // as the new create_recursion_context will ensure children DON'T build paths
+            if matches!(child_ctx.path_action, PathAction::Create) {
                 all_paths.extend(child_paths);
             }
         }

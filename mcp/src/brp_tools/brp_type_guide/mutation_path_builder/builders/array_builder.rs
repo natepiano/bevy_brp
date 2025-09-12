@@ -43,7 +43,7 @@ impl MutationPathBuilder for ArrayMutationBuilder {
         // First get nested paths for complex element types - we'll use these to build our examples
         let element_path_kind =
             PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
-        let element_ctx = ctx.create_field_context(element_path_kind);
+        let element_ctx = ctx.create_unmigrated_recursion_context(element_path_kind);
         let element_kind = TypeKind::from_schema(element_schema, &element_type);
 
         let element_paths = if matches!(element_kind, TypeKind::Value) {
@@ -149,7 +149,8 @@ impl MutationPathBuilder for ArrayMutationBuilder {
                                     item_type_name.clone(),
                                     ctx.type_name().clone(),
                                 );
-                                let element_ctx = ctx.create_field_context(element_path_kind);
+                                let element_ctx =
+                                    ctx.create_unmigrated_recursion_context(element_path_kind);
                                 // Use trait dispatch directly instead of ExampleBuilder
                                 element_kind
                                     .builder()

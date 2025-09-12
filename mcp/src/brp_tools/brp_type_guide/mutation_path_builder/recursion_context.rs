@@ -79,7 +79,11 @@ impl RecursionContext {
     }
 
     /// Create a new context for a child element (field, array element, tuple element)
-    pub fn create_field_context(&self, path_kind: PathKind) -> Self {
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use create_recursion_context instead. This method is only for unmigrated builders and will be removed once all builders are migrated to the protocol-driven pattern."
+    )]
+    pub fn create_unmigrated_recursion_context(&self, path_kind: PathKind) -> Self {
         let parent_type = self.type_name();
         let new_path_prefix = format!(
             "{}{}",
@@ -112,6 +116,61 @@ impl RecursionContext {
             mutation_path: new_path_prefix,
             parent_knowledge: field_knowledge,
             path_action: self.path_action, // Preserve parent's setting
+        }
+    }
+
+    /// Create a new context for protocol-driven recursion
+    ///
+    /// Key differences from create_field_context (which unmigrated builders use):
+    /// - Takes a PathAction parameter to control child path creation
+    /// - Ensures Skip mode propagates to all descendants (once Skip, always Skip)
+    /// - Self-contained implementation (doesn't call create_field_context)
+    pub fn create_recursion_context(
+        &self,
+        path_kind: PathKind,
+        child_path_action: PathAction,
+    ) -> Self {
+        let parent_type = self.type_name();
+        let new_path_prefix = format!(
+            "{}{}",
+            self.mutation_path,
+            Self::path_kind_to_segment(&path_kind)
+        );
+
+        // Look up mutation knowledge based on path kind
+        // Only struct fields can have field-specific knowledge
+        let field_knowledge = match &path_kind {
+            PathKind::StructField { field_name, .. } => {
+                // Check for struct field-specific knowledge, then fall back to exact type
+                BRP_MUTATION_KNOWLEDGE
+                    .get(&KnowledgeKey::struct_field(parent_type, field_name))
+                    .or_else(|| {
+                        BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name()))
+                    })
+            }
+            PathKind::IndexedElement { .. }
+            | PathKind::ArrayElement { .. }
+            | PathKind::RootValue { .. } => {
+                // Non-struct types only have exact type knowledge
+                BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(path_kind.type_name()))
+            }
+        };
+
+        // Set path_action with proper propagation logic:
+        // If parent is already Skip, stay Skip (regardless of what child wants)
+        // Otherwise, use the child's preference
+        let path_action = if matches!(self.path_action, PathAction::Skip) {
+            PathAction::Skip // Once skipping, keep skipping for entire subtree
+        } else {
+            child_path_action
+        };
+
+        Self {
+            path_kind,
+            registry: Arc::clone(&self.registry),
+            mutation_path: new_path_prefix,
+            parent_knowledge: field_knowledge,
+            path_action,
         }
     }
 

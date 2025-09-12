@@ -94,8 +94,8 @@ pub trait MutationPathBuilder {
     /// Example: `HashMap<String, Transform>`
     /// - Returns false: only exposes path "" with complete map {"key": {transform}}
     /// - Does NOT expose ".rotation", ".scale" etc. from the Transform values
-    fn include_child_paths(&self) -> bool {
-        true // Default: most types want child paths for field mutation
+    fn child_path_action(&self) -> PathAction {
+        PathAction::Create
     }
 
     /// Collect `PathKinds` for child elements

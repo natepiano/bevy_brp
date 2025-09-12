@@ -16,6 +16,7 @@ use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
+use crate::brp_tools::brp_type_guide::mutation_path_builder::PathAction;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -89,7 +90,7 @@ impl MutationPathBuilder for SetMutationBuilder {
         Ok(json!(array))
     }
 
-    fn include_child_paths(&self) -> bool {
+    fn child_path_action(&self) -> PathAction {
         // Sets DON'T include child paths in the result
         //
         // Why: A HashSet<String> should only expose:
@@ -101,6 +102,6 @@ impl MutationPathBuilder for SetMutationBuilder {
         // Sets are unordered collections - elements have no stable indices.
         // The recursion still happens (we need element examples to build the set),
         // but those paths aren't included in the final mutation paths list.
-        false
+        PathAction::Skip
     }
 }

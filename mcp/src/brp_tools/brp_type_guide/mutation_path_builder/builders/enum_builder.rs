@@ -571,7 +571,7 @@ impl EnumMutationBuilder {
             // Create field context using PathKind
             let field_path_kind =
                 PathKind::new_indexed_element(index, type_name.clone(), ctx.type_name().clone());
-            let field_ctx = ctx.create_field_context(field_path_kind);
+            let field_ctx = ctx.create_unmigrated_recursion_context(field_path_kind);
             let inner_kind = TypeKind::from_schema(inner_schema, type_name);
 
             let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
@@ -619,7 +619,7 @@ impl EnumMutationBuilder {
                 field.type_name.clone(),
                 ctx.type_name().clone(),
             );
-            let field_ctx = ctx.create_field_context(field_path_kind);
+            let field_ctx = ctx.create_unmigrated_recursion_context(field_path_kind);
             let inner_kind = TypeKind::from_schema(inner_schema, &field.type_name);
 
             let mut field_paths = inner_kind.build_paths(&field_ctx, depth)?;
