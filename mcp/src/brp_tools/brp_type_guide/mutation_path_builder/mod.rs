@@ -12,7 +12,7 @@ use std::collections::HashMap;
 pub use builders::EnumVariantInfo;
 pub use mutation_knowledge::KnowledgeKey;
 pub use not_mutatable_reason::NotMutableReason;
-pub use path_kind::PathKind;
+pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::RecursionContext;
 use serde_json::{Value, json};
 pub use type_kind::TypeKind;
@@ -123,7 +123,7 @@ pub trait MutationPathBuilder {
     fn assemble_from_children(
         &self,
         _ctx: &RecursionContext,
-        _children: HashMap<String, Value>,
+        _children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
         // Default: return null for unmigrated builders
         Ok(json!(null))

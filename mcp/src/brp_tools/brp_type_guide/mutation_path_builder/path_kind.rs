@@ -1,10 +1,53 @@
 //! Context for a mutation path describing what kind of mutation this is
+use std::borrow::Borrow;
 use std::fmt::Display;
+use std::ops::Deref;
 
 use serde::{Deserialize, Serialize};
 
 use super::super::response_types::BrpTypeName;
 use super::type_kind::TypeKind;
+
+/// A semantic identifier for mutation paths in the builder system
+///
+/// This newtype wraps the path descriptor strings used as keys in the
+/// HashMap passed to `assemble_from_children`. The descriptor varies by `PathKind`:
+/// - `StructField`: field name (e.g., "translation", "rotation")
+/// - `IndexedElement`/`ArrayElement`: index as string (e.g., "0", "1")
+/// - `RootValue`: empty string ""
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MutationPathDescriptor(String);
+
+impl MutationPathDescriptor {
+    pub const fn new(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl Deref for MutationPathDescriptor {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Borrow<str> for MutationPathDescriptor {
+    fn borrow(&self) -> &str {
+        &self.0
+    }
+}
+
+impl From<String> for MutationPathDescriptor {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&str> for MutationPathDescriptor {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum PathKind {
@@ -86,15 +129,17 @@ impl PathKind {
         }
     }
 
-    /// Extract a key suitable for `HashMap<String, Value>` from this `PathKind`
-    /// Used by `ProtocolEnforcer` to build `child_examples` `HashMap`
-    pub fn to_child_key(&self) -> String {
+    /// Extract a descriptor suitable for `HashMap<MutationPathDescriptor, Value>` from this
+    /// `PathKind` Used by `ProtocolEnforcer` to build `child_examples` HashMap
+    pub fn to_mutation_path_descriptor(&self) -> MutationPathDescriptor {
         match self {
-            Self::StructField { field_name, .. } => field_name.clone(),
-            Self::IndexedElement { index, .. } | Self::ArrayElement { index, .. } => {
-                index.to_string()
+            Self::StructField { field_name, .. } => {
+                MutationPathDescriptor::from(field_name.clone())
             }
-            Self::RootValue { .. } => String::new(),
+            Self::IndexedElement { index, .. } | Self::ArrayElement { index, .. } => {
+                MutationPathDescriptor::from(index.to_string())
+            }
+            Self::RootValue { .. } => MutationPathDescriptor::from(String::new()),
         }
     }
 

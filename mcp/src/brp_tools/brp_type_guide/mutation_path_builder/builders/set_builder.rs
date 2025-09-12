@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use serde_json::{Value, json};
 
 use super::super::MutationPathBuilder;
-use super::super::path_kind::PathKind;
+use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
@@ -70,7 +70,7 @@ impl MutationPathBuilder for SetMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        children: HashMap<String, Value>,
+        children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
         // At this point, children contains a COMPLETE example for the item type
         let Some(item_example) = children.get(SchemaField::Items.as_ref()) else {

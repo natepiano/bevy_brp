@@ -15,7 +15,9 @@ use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
 use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::brp_tools::brp_type_guide::mutation_path_builder::{PathAction, PathKind};
+use crate::brp_tools::brp_type_guide::mutation_path_builder::{
+    MutationPathDescriptor, PathAction, PathKind,
+};
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -101,7 +103,7 @@ impl MutationPathBuilder for MapMutationBuilder {
     fn assemble_from_children(
         &self,
         ctx: &RecursionContext,
-        children: HashMap<String, Value>,
+        children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
         // At this point, children contains COMPLETE examples:
         // - "key": Full example for the key type (e.g., "example_key" for String)

@@ -1,12 +1,13 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use serde_json::{Value, json};
 
 use super::mutation_knowledge::KnowledgeKey;
 use super::type_kind::TypeKind;
 use super::{
-    MutationPathBuilder, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
-    RecursionContext,
+    MutationPathBuilder, MutationPathDescriptor, MutationPathInternal, MutationStatus,
+    NotMutableReason, PathAction, RecursionContext,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
@@ -109,13 +110,13 @@ impl ProtocolEnforcer {
 
     /// Process a single child and return its paths and example value
     fn process_child(
-        name: &str,
+        descriptor: &MutationPathDescriptor,
         child_ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<(Vec<MutationPathInternal>, Value)> {
         tracing::debug!(
             "ProtocolEnforcer recursing to child '{}' of type '{}'",
-            name,
+            descriptor.deref(),
             child_ctx.type_name()
         );
 
@@ -123,13 +124,13 @@ impl ProtocolEnforcer {
         let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
         tracing::debug!(
             "Child '{}' schema found: {}",
-            name,
+            descriptor.deref(),
             child_schema != &json!(null)
         );
 
         let child_type = child_ctx.type_name();
         let child_kind = TypeKind::from_schema(child_schema, child_type);
-        tracing::debug!("Child '{}' TypeKind: {:?}", name, child_kind);
+        tracing::debug!("Child '{}' TypeKind: {:?}", descriptor.deref(), child_kind);
 
         // we need builder() so that unmigrated children return to their normal unmigrated path
         // as builder() in `TypeKind` will check the `is_migrated()` method
@@ -149,7 +150,11 @@ impl ProtocolEnforcer {
         // If not migrated -> uses old implementation
         // THIS is the recursion point - after this everything pops back up to build examples
         let child_paths = child_builder.build_paths(child_ctx, depth.increment())?;
-        tracing::debug!("Child '{}' returned {} paths", name, child_paths.len());
+        tracing::debug!(
+            "Child '{}' returned {} paths",
+            descriptor.deref(),
+            child_paths.len()
+        );
 
         // Extract child's example from its root path
         let child_example = child_paths
@@ -157,7 +162,7 @@ impl ProtocolEnforcer {
             .map(|p| p.example.clone())
             .unwrap_or(json!(null));
 
-        tracing::debug!("Child '{}' example: {}", name, child_example);
+        tracing::debug!("Child '{}' example: {}", descriptor.deref(), child_example);
 
         Ok((child_paths, child_example))
     }
@@ -215,7 +220,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
         // calls the migrated builders (the inner) collect_children method
         let child_path_kinds = self.inner.collect_children(ctx)?;
         let mut all_paths = vec![];
-        let mut child_examples = HashMap::new();
+        let mut child_examples = HashMap::<MutationPathDescriptor, Value>::new();
 
         // Recurse to each child (they handle their own protocol)
         for path_kind in child_path_kinds {
@@ -223,8 +228,8 @@ impl MutationPathBuilder for ProtocolEnforcer {
             let child_ctx =
                 ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
 
-            // Extract key from PathKind for HashMap
-            let child_key = path_kind.to_child_key();
+            // Extract descriptor from PathKind for HashMap
+            let child_key = path_kind.to_mutation_path_descriptor();
 
             let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
 
