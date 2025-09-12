@@ -116,7 +116,8 @@
       "WebFetch(domain:github.com)",
       "Read(///**)",
       "WebFetch(domain:status.anthropic.com)",
-      "Bash(for file in mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/*.rs)"
+      "Bash(for file in mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/*.rs)",
+      "WebFetch(domain:docs.rs)"
     ],
     "deny": [
       "Bash(sed:*)"
