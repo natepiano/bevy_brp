@@ -269,7 +269,7 @@ impl BrpClient {
     ) -> Result<ResponseStatus> {
         // Create TypeGuideEngine and generate response for extracted types
         let engine = TypeGuideEngine::new(self.port).await?;
-        let type_guide_response = engine.generate_response(&extracted_types);
+        let type_guide_response = engine.generate_response(&extracted_types)?;
 
         Err(Error::tool_call_failed_with_details(
             "Format error - see 'type_guide' field for correct format",

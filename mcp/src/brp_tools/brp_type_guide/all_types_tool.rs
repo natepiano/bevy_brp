@@ -65,7 +65,7 @@ async fn handle_impl(params: AllTypeGuidesParams) -> Result<TypeGuideResult> {
 
     // Construct TypeSchemaEngine and generate response for all types
     let engine = TypeGuideEngine::new(params.port).await?;
-    let response = engine.generate_response(&all_types);
+    let response = engine.generate_response(&all_types)?;
     let type_count = response.discovered_count;
 
     Ok(

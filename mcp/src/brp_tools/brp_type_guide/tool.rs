@@ -56,7 +56,7 @@ async fn handle_impl(params: TypeGuideParams) -> Result<TypeGuideResult> {
     let engine = TypeGuideEngine::new(params.port).await?;
 
     // Run the engine to produce the typed response
-    let response = engine.generate_response(&params.types);
+    let response = engine.generate_response(&params.types)?;
     let type_count = response.discovered_count;
 
     Ok(TypeGuideResult::new(response, type_count)
@@ -104,7 +104,7 @@ impl TypeGuideEngine {
     }
 
     /// Generate response for requested types
-    pub fn generate_response(&self, requested_types: &[String]) -> TypeGuideResponse {
+    pub fn generate_response(&self, requested_types: &[String]) -> Result<TypeGuideResponse> {
         let mut response = TypeGuideResponse {
             discovered_count: 0,
             requested_types:  requested_types.to_vec(),
@@ -124,7 +124,7 @@ impl TypeGuideEngine {
                     brp_type_name.clone(),
                     registry_schema,
                     Arc::clone(&self.registry),
-                )
+                )?
             } else {
                 response.summary.failed_discovery += 1;
                 TypeGuide::not_found_in_registry(
@@ -136,6 +136,6 @@ impl TypeGuideEngine {
             response.type_guide.insert(brp_type_name, type_info);
         }
 
-        response
+        Ok(response)
     }
 }

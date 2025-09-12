@@ -13,6 +13,7 @@ use super::mutation_path_builder::{
     RecursionContext, TypeKind,
 };
 use super::response_types::{BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaInfo};
+use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -58,7 +59,7 @@ impl TypeGuide {
         brp_type_name: BrpTypeName,
         registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> Self {
+    ) -> Result<Self> {
         // Extract type kind
         let type_kind = TypeKind::from_schema(registry_schema, &brp_type_name);
 
@@ -74,7 +75,7 @@ impl TypeGuide {
 
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
-            Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry));
+            Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry))?;
         tracing::error!(
             "AFTER build_mutation_paths: {} returned {} paths",
             brp_type_name,
@@ -123,7 +124,7 @@ impl TypeGuide {
         let schema_info = Self::extract_schema_info(registry_schema);
         tracing::error!("AFTER extract_schema_info: {}", brp_type_name);
 
-        Self {
+        Ok(Self {
             type_name: brp_type_name,
             in_registry: true,
             has_serialize,
@@ -135,7 +136,7 @@ impl TypeGuide {
             enum_info,
             schema_info,
             error: None,
-        }
+        })
     }
 
     /// Builder method to create ``TypeGuide`` for type not found in registry
@@ -195,7 +196,7 @@ impl TypeGuide {
         brp_type_name: &BrpTypeName,
         registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
-    ) -> Vec<MutationPathInternal> {
+    ) -> Result<Vec<MutationPathInternal>> {
         tracing::error!(">>> TOP LEVEL TYPE START: {}", brp_type_name);
 
         let type_kind = TypeKind::from_schema(registry_schema, brp_type_name);
@@ -205,16 +206,14 @@ impl TypeGuide {
         let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
 
         // Use the new trait dispatch system
-        let result = type_kind
-            .build_paths(&ctx, RecursionDepth::ZERO)
-            .unwrap_or_else(|_| Vec::new());
+        let result = type_kind.build_paths(&ctx, RecursionDepth::ZERO)?;
 
         tracing::error!(
             "<<< TOP LEVEL TYPE COMPLETE: {} (returned {} paths)",
             brp_type_name,
             result.len()
         );
-        result
+        Ok(result)
     }
 
     /// Convert `Vec<MutationPath>` to `HashMap<String, MutationPathInfo>`
