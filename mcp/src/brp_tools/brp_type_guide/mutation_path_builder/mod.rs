@@ -100,8 +100,9 @@ pub trait MutationPathBuilder {
 
     /// Collect `PathKinds` for child elements
     ///
-    /// Migrated builders should return `PathKinds` without creating contexts.
-    /// `PathKinds` contain the necessary information (field names, indices) for child identification.
+    /// Migrated builders should return `PathKind` without creating contexts.
+    /// `PathKind` contain the necessary information (field names, indices) for child
+    /// identification.
     fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         Ok(vec![]) // Default: no children (leaf types)
     }
