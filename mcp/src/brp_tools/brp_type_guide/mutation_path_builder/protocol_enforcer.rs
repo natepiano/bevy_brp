@@ -147,6 +147,7 @@ impl ProtocolEnforcer {
         // Child handles its OWN depth increment and protocol
         // If child is migrated -> wrapped with ProtocolEnforcer and calls back through
         // If not migrated -> uses old implementation
+        // THIS is the recursion point - after this everything pops back up to build examples
         let child_paths = child_builder.build_paths(child_ctx, depth.increment())?;
         tracing::debug!("Child '{}' returned {} paths", name, child_paths.len());
 
