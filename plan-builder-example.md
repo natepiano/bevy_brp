@@ -542,6 +542,39 @@ cargo run --example complex_types
 
 ## Design Review Skip Notes
 
+### SIMPLIFICATION-1: Plan could reuse existing collect_children pattern instead of changing signatures
+- **Status**: SKIPPED
+- **Location**: Section: STEP 3: Update collect_children() signature
+- **Issue**: Current collect_children returns Vec<(String, RecursionContext)> which already provides the context creation. Plan proposes changing to Vec<PathKind> requiring ProtocolEnforcer to recreate contexts, adding complexity
+- **Reasoning**: While the finding identifies a possible short-term simplification, it conflicts with the plan's fundamental architectural goals and prevents important improvements. The plan explicitly aims to have ProtocolEnforcer control ALL context creation rather than having builders create contexts that ProtocolEnforcer then modifies. The PathKind approach enables key benefits: (1) cleaner separation where builders describe 'what' (PathKind) and ProtocolEnforcer handles 'how' (context creation), (2) elimination of arbitrary string-based child identification in favor of positional ordering, (3) performance improvements by replacing HashMap with Vec, and (4) consistent object ownership patterns. The suggested alternative creates an antipattern where ProtocolEnforcer modifies builder-created contexts, making ownership unclear and preventing the transition to positional ordering that eliminates string-key overhead.
+- **Decision**: User elected to skip this recommendation
+
+### DESIGN-3: Plan references wrong field name in ProtocolEnforcer rewrite ✅
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: STEP 5: Rewrite ProtocolEnforcer to Create Contexts
+- **Issue**: STEP 5 code references child_ctx.should_create_path and ctx.should_create_path but STEP 2 defines path_action: PathAction field, not should_create_path boolean
+- **Reasoning**: The plan document contains inconsistent field references. Early sections properly define path_action: PathAction enum, but later code examples use should_create_path boolean field that doesn't exist in the defined types. This creates confusion and would cause compilation errors if someone tried to implement the plan as written.
+
+### Approved Change:
+The plan has been updated to consistently use `path_action: PathAction` throughout, including proper enum comparison using `matches!` macro.
+
+### Implementation Notes:
+All references to `should_create_path` have been replaced with `path_action`, and boolean comparisons have been updated to use `matches!(ctx.path_action, PathAction::Create)` for proper Rust enum handling.
+
+### ⚠️ PREJUDICE WARNING - DESIGN-2: Positional ordering approach unclear for complex builders
+- **Status**: PERMANENTLY REJECTED
+- **Location**: Section: STEP 4: Update assemble_from_children() signature
+- **Issue**: Plan establishes positional Vec<Value> approach but skip notes mention Struct/Enum will use different approach with PathKind::StructField embedding field names, creating inconsistent patterns across builders
+- **Reasoning**: This finding is a false positive based on a misunderstanding of the design intent. The different approaches between positional types (arrays, tuples) and named types (structs, enums) is intentional and correct architecture. Arrays and tuples naturally use indices because their elements are ordered, while structs and enums use field names because they have stable identifiers. The plan document explicitly acknowledges this distinction in the skip notes (lines 551-552), stating that 'Struct/Enum will use different approach...with field names embedded in PathKind::StructField'. The PathKind enum properly supports both patterns through IndexedElement/ArrayElement variants for positional access and StructField for named access. This is appropriate polymorphism, not inconsistency.
+- **Critical Note**: DO NOT SUGGEST THIS AGAIN - Permanently rejected by user
+
+### DESIGN-1: BuilderExample struct duplicates existing MutationPathInternal fields
+- **Status**: SKIPPED
+- **Location**: Section: STEP 1: Add BuilderExample Struct
+- **Issue**: BuilderExample struct has identical fields to MutationPathInternal (value, mutation_status, mutation_status_reason) creating structural duplication
+- **Reasoning**: This is a false positive. While the structs share 2 fields (mutation_status and mutation_status_reason), they serve completely different purposes and the duplication is minimal and semantically appropriate. MutationPathInternal is a comprehensive internal structure with 6 fields including path navigation and type information. BuilderExample is designed as a lightweight result with only 3 fields for simple value and status reporting. The shared fields represent the same logical concept (mutation capability) which both structs legitimately need. Creating shared abstractions for just 2 fields would add more complexity than it solves, and this pattern of having lightweight vs full-featured variants is common and acceptable in Rust.
+- **Decision**: User elected to skip this recommendation
+
 ### TYPE-SYSTEM-1: Positional Vec indexing lacks compile-time safety guarantees - **Verdict**: REJECTED
 - **Status**: SKIPPED
 - **Location**: Section: STEP 4: Update assemble_from_children() signature
