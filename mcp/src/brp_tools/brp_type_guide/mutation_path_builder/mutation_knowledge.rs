@@ -35,8 +35,6 @@ pub enum KnowledgeGuidance {
 pub enum KnowledgeKey {
     /// Exact type name match (current behavior)
     Exact(String),
-    /// Generic type match - matches base type ignoring type parameters
-    Generic(String),
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
@@ -59,11 +57,6 @@ impl KnowledgeKey {
     /// Create an exact match key
     pub fn exact(s: impl Into<String>) -> Self {
         Self::Exact(s.into())
-    }
-
-    /// Create a generic match key
-    pub fn generic(s: impl Into<String>) -> Self {
-        Self::Generic(s.into())
     }
 
     /// Create a newtype variant match key
@@ -96,16 +89,7 @@ impl KnowledgeKey {
                     .map(|k| k.example().clone())
             }
             Self::Exact(_) => None, // Exact type doesn't match
-            Self::Generic(generic_type) => {
-                let base_type = type_name.base_type()?;
-                if base_type == generic_type {
-                    BRP_MUTATION_KNOWLEDGE
-                        .get(self)
-                        .map(|k| k.example().clone())
-                } else {
-                    None
-                }
-            }
+
             Self::NewtypeVariant { .. } => {
                 // Newtype variant matching logic
                 BRP_MUTATION_KNOWLEDGE
@@ -119,18 +103,10 @@ impl KnowledgeKey {
         }
     }
 
-    /// Try to resolve example value by iterating through all knowledge keys
+    /// Try to resolve example value for a specific type
     pub fn find_example_for_type(type_name: &BrpTypeName) -> Option<Value> {
-        let resolvers: Vec<Box<dyn Fn() -> Option<Value>>> = vec![
-            Box::new(|| Self::exact(type_name.type_string()).resolve_example(type_name)),
-            Box::new(|| {
-                type_name
-                    .base_type()
-                    .and_then(|generic| Self::generic(generic).resolve_example(type_name))
-            }),
-        ];
-
-        resolvers.iter().find_map(|resolver| resolver())
+        // Simply check for an exact match since we no longer support generic matching
+        Self::exact(type_name.type_string()).resolve_example(type_name)
     }
 }
 
@@ -542,17 +518,6 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_COLOR),
             MutationKnowledge::simple(json!({"Srgba": [1.0, 0.0, 0.0, 1.0]})),
-        );
-
-        // ===== Collections =====
-        map.insert(
-            KnowledgeKey::generic("alloc::vec::Vec"),
-            MutationKnowledge::simple(json!([])), /* Collections have index access, not
-                                                   * component access */
-        );
-        map.insert(
-            KnowledgeKey::generic("std::collections::BTreeMap"),
-            MutationKnowledge::simple(json!({})),
         );
 
         // ===== Bevy ECS types =====

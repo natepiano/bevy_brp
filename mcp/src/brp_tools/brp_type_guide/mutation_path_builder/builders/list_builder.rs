@@ -1,23 +1,23 @@
 //! Builder for List types (Vec, etc.)
 //!
 //! Similar to `ArrayMutationBuilder` but for dynamic containers like Vec<T>.
-//! Uses single-pass recursion to extract element type and recurse deeper.
+//! Lists support indexed access and element-level mutations through BRP.
 //!
 //! **Recursion**: YES - Lists recurse into elements to generate mutation paths
 //! for nested structures (e.g., `Vec<Transform>` generates `[0].translation`).
 //! Elements are addressable by index, though indices may change as list mutates.
-//! use `std::collections::HashMap`;
+
+use std::collections::HashMap;
+use std::ops::Deref;
 
 use serde_json::{Value, json};
 
-use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
-use super::super::not_mutable_reason::NotMutableReason;
-use super::super::path_kind::PathKind;
+use super::super::MutationPathBuilder;
+use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::{MutationPathInternal, MutationStatus};
-use super::super::{MutationPathBuilder, TypeKind};
+use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -27,145 +27,75 @@ impl MutationPathBuilder for ListMutationBuilder {
     fn build_paths(
         &self,
         ctx: &RecursionContext,
-        depth: RecursionDepth,
+        _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
+        Err(Error::InvalidState(format!(
+            "ListMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
+            ctx.type_name()
+        )).into())
+    }
+
+    fn is_migrated(&self) -> bool {
+        true // MIGRATED!
+    }
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let Some(schema) = ctx.require_registry_schema() else {
-            return Ok(vec![Self::build_not_mutable_path(
-                ctx,
-                NotMutableReason::NotInRegistry(ctx.type_name().clone()),
-            )]);
+            return Err(Error::SchemaProcessing {
+                message:   format!("No schema found for list type: {}", ctx.type_name()),
+                type_name: Some(ctx.type_name().to_string()),
+                operation: Some("collect_children".to_string()),
+                details:   None,
+            }
+            .into());
         };
 
+        // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
-            // If we have a schema but can't extract element type, treat as NotInRegistry
-            return Ok(vec![Self::build_not_mutable_path(
-                ctx,
-                NotMutableReason::NotInRegistry(ctx.type_name().clone()),
-            )]);
+            return Err(Error::SchemaProcessing {
+                message:   format!(
+                    "Failed to extract element type from schema for list: {}",
+                    ctx.type_name()
+                ),
+                type_name: Some(ctx.type_name().to_string()),
+                operation: Some("extract_items_type".to_string()),
+                details:   None,
+            }
+            .into());
         };
 
-        let mut paths = Vec::new();
-
-        // RECURSE DEEPER - add element-level paths
-        let Some(element_schema) = ctx.get_registry_schema(&element_type) else {
-            return Ok(vec![Self::build_not_mutable_path(
-                ctx,
-                NotMutableReason::NotInRegistry(element_type),
-            )]);
-        };
-        let element_kind = TypeKind::from_schema(element_schema, &element_type);
-
-        // Create a child context for the element type using PathKind
-        // Lists/Vecs use array notation [0], not tuple notation .0
-        let element_path_kind =
-            PathKind::new_array_element(0, element_type.clone(), ctx.type_name().clone());
-        let element_ctx = ctx.create_unmigrated_recursion_context(element_path_kind);
-
-        // Continue recursion to actual mutation endpoints
-        let element_paths = element_kind.build_paths(&element_ctx, depth)?;
-
-        // Extract element example from child paths
-        let element_example = element_paths
-            .iter()
-            .find(|p| p.path == element_ctx.mutation_path)
-            .map_or_else(
-                || {
-                    // If no direct path, generate example using trait dispatch
-                    element_kind
-                        .builder()
-                        .build_schema_example(&element_ctx, depth.increment())
-                },
-                |p| p.example.clone(),
-            );
-
-        // Build the main list path using the element example (like Array builder does)
-        let list_example = vec![element_example.clone(); 2];
-        paths.push(MutationPathInternal {
-            path:                   ctx.mutation_path.clone(),
-            example:                json!(list_example),
-            type_name:              ctx.type_name().clone(),
-            path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::Mutable,
-            mutation_status_reason: None,
-        });
-
-        // Build the indexed element path (like Array builder does)
-        let indexed_path = format!("{}[0]", ctx.mutation_path);
-        paths.push(MutationPathInternal {
-            path:                   indexed_path,
-            example:                element_example,
-            type_name:              element_type.clone(),
-            path_kind:              element_ctx.path_kind,
-            mutation_status:        MutationStatus::Mutable,
-            mutation_status_reason: None,
-        });
-
-        // Add the nested paths
-        paths.extend(element_paths);
-
-        Ok(paths)
+        // Lists use indexed PathKind for the element at [0]
+        // We only recurse into one element for efficiency
+        Ok(vec![PathKind::ArrayElement {
+            index:       0,
+            type_name:   element_type,
+            parent_type: ctx.type_name().clone(),
+        }])
     }
 
-    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        let Some(schema) = ctx.require_registry_schema() else {
-            return json!(null);
-        };
-
-        // Extract element type using the same logic as the static method
-        let item_type = schema.get_type(SchemaField::Items);
-
-        item_type.map_or(json!(null), |item_type_name| {
-            // Generate example value for the item type using trait dispatch
-            // First check for hardcoded knowledge
-            let item_example = BRP_MUTATION_KNOWLEDGE
-                .get(&KnowledgeKey::exact(&item_type_name))
-                .map_or_else(
-                    || {
-                        // Get the element type schema and use trait dispatch
-                        ctx.get_registry_schema(&item_type_name).map_or(
-                            json!(null),
-                            |element_schema| {
-                                let element_kind =
-                                    TypeKind::from_schema(element_schema, &item_type_name);
-                                // Create element context for recursive building
-                                let element_path_kind = PathKind::new_array_element(
-                                    0,
-                                    item_type_name.clone(),
-                                    ctx.type_name().clone(),
-                                );
-                                let element_ctx =
-                                    ctx.create_unmigrated_recursion_context(element_path_kind);
-                                // Use trait dispatch directly
-                                element_kind
-                                    .builder()
-                                    .build_schema_example(&element_ctx, depth.increment())
-                            },
-                        )
-                    },
-                    |k| k.example().clone(),
-                );
-
-            // Create array with 2 example elements
-            // For Lists, these are ordered elements
-            let array = vec![item_example; 2];
-            json!(array)
-        })
-    }
-}
-
-impl ListMutationBuilder {
-    /// Build a not-mutatable path with structured error details
-    fn build_not_mutable_path(
+    fn assemble_from_children(
+        &self,
         ctx: &RecursionContext,
-        support: NotMutableReason,
-    ) -> MutationPathInternal {
-        MutationPathInternal {
-            path:                   ctx.mutation_path.clone(),
-            example:                json!(null), // No example for NotMutatable paths
-            type_name:              ctx.type_name().clone(),
-            path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutable,
-            mutation_status_reason: Option::<String>::from(&support),
-        }
+        children: HashMap<MutationPathDescriptor, Value>,
+    ) -> Result<Value> {
+        // Get the single element at index 0
+        // The key is just "0", not "[0]" - that's how ArrayElement converts to
+        // MutationPathDescriptor
+        let element_example = children.get("0").ok_or_else(|| {
+            Error::InvalidState(format!(
+                "Protocol violation: List {} missing element at index 0. Available keys: {:?}",
+                ctx.type_name(),
+                children.keys().map(|k| k.deref()).collect::<Vec<_>>()
+            ))
+        })?;
+
+        // Create single-element array to show it's a list
+        // One element is sufficient to demonstrate the pattern
+        // Create single-element array to show it's a list
+        // One element is sufficient to demonstrate the pattern
+        Ok(json!([element_example]))
     }
+
+    // NO child_path_action() override - Lists DO expose indexed child paths
+    // This allows mutations like: myList[0].field = value
 }

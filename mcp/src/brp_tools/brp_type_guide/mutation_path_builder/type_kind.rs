@@ -77,9 +77,7 @@ impl TypeKind {
         };
 
         // Wrap with protocol enforcer if migrated
-        let is_migrated = base_builder.is_migrated();
-
-        if is_migrated {
+        if base_builder.is_migrated() {
             Box::new(ProtocolEnforcer::new(base_builder))
         } else {
             base_builder
@@ -174,7 +172,7 @@ impl MutationPathBuilder for TypeKind {
             Self::Struct => StructMutationBuilder.build_paths(ctx, builder_depth),
             Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx, builder_depth),
             Self::Array => ArrayMutationBuilder.build_paths(ctx, builder_depth),
-            Self::List => ListMutationBuilder.build_paths(ctx, builder_depth),
+            Self::List => self.builder().build_paths(ctx, builder_depth),
             Self::Map | Self::Set => self.builder().build_paths(ctx, builder_depth),
             Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
             Self::Value => {

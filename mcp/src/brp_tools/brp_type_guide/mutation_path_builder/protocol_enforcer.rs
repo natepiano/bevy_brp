@@ -150,19 +150,12 @@ impl ProtocolEnforcer {
         // If not migrated -> uses old implementation
         // THIS is the recursion point - after this everything pops back up to build examples
         let child_paths = child_builder.build_paths(child_ctx, depth.increment())?;
-        tracing::debug!(
-            "Child '{}' returned {} paths",
-            descriptor.deref(),
-            child_paths.len()
-        );
 
         // Extract child's example from its root path
         let child_example = child_paths
             .first()
             .map(|p| p.example.clone())
             .unwrap_or(json!(null));
-
-        tracing::debug!("Child '{}' example: {}", descriptor.deref(), child_example);
 
         Ok((child_paths, child_example))
     }
@@ -232,7 +225,6 @@ impl MutationPathBuilder for ProtocolEnforcer {
             let child_key = path_kind.to_mutation_path_descriptor();
 
             let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
-
             child_examples.insert(child_key, child_example);
 
             // Only extend paths when child's path_action is Create
@@ -267,20 +259,32 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
         .and_then(|reason| Option::<String>::from(&reason));
 
-        // Add THIS level's path at the beginning with computed status
-        // Only create path if path_action is Create (skipped for Map/Set children)
-        if matches!(ctx.path_action, PathAction::Create) {
-            all_paths.insert(
-                0,
-                Self::build_mutation_path_internal(
+        // Decide what to return based on PathAction
+        match ctx.path_action {
+            PathAction::Create => {
+                // Normal mode: Add root path to all_paths and return everything
+                all_paths.insert(
+                    0,
+                    Self::build_mutation_path_internal(
+                        ctx,
+                        parent_example,
+                        parent_status,
+                        mutation_status_reason,
+                    ),
+                );
+                Ok(all_paths)
+            }
+            PathAction::Skip => {
+                // Skip mode: Return ONLY a root path with the example
+                // This ensures the example is available for parent assembly
+                // but child paths aren't exposed in the final result
+                Ok(vec![Self::build_mutation_path_internal(
                     ctx,
                     parent_example,
                     parent_status,
                     mutation_status_reason,
-                ),
-            );
+                )])
+            }
         }
-
-        Ok(all_paths)
     }
 }

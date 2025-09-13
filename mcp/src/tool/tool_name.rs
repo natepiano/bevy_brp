@@ -477,7 +477,7 @@ impl ToolName {
                 EnvironmentImpact::DestructiveIdempotent,
             ),
             Self::BrpTypeGuide => Annotation::new(
-                "Type schema for components and resources",
+                "Type guide for components and resources",
                 ToolCategory::Discovery,
                 EnvironmentImpact::ReadOnly,
             ),
