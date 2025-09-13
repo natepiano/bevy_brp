@@ -193,14 +193,14 @@
  - If files are identical: Simple confirmation
  - If metadata only differs: Count differences
  - If structural changes exist: Full deep analysis output showing:
-   * **Field Removals**: List ALL removed fields with counts (e.g., "example field: 25 removals across 18 types")
-   * **Field Additions**: List ALL added fields with counts (e.g., "mutation_status_reason field: 25 additions")
+   * **Field Removals**: List ALL removed fields with specific type names and mutation paths (e.g., "example" field removed from bevy_text::pipeline::TextLayoutInfo mutation path ".glyphs")
+   * **Field Additions**: List ALL added fields with specific type names and mutation paths (e.g., "mutation_status_reason" field added to bevy_mesh::skinning::SkinnedMesh mutation path ".joints")
    * **Value Changes**: Significant value changes while structure remains the same
    * Known patterns (enum representation, vec format changes, etc.)
    * Unknown patterns requiring investigation
    * Specific examples of what changed
- 
- CRITICAL: Always explicitly list ALL field removals and additions from the "FIELD REMOVED" and "FIELD ADDED" sections of the comparison output]
+
+ CRITICAL: Always explicitly list ALL field removals and additions showing the specific type name and mutation path for each field change. Parse the JSON path format (e.g., "mutation_paths..glyphs.example") to extract the actual mutation path (the part between the double dots, e.g., ".glyphs") and show each removal/addition separately if multiple occur in the same type]
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?

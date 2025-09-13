@@ -119,7 +119,11 @@
       "Bash(then cp /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types.json /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types_previous.json)",
       "Bash(then cp $TMPDIR/all_types.json $TMPDIR/all_types_previous.json)",
       "Bash(.claude/commands/scripts/get_type_kind.sh:*)",
-      "Bash(.claude/commands/scripts/get_type_guide.sh:*)"
+      "Bash(.claude/commands/scripts/get_type_guide.sh:*)",
+      "Bash(.claude/commands/scripts/compare_mutation_path.sh:*)",
+      "Bash(__NEW_LINE__ echo -e \"\\n=== CURRENT Cascades ===\")",
+      "Bash(CURRENT_JSON='{\"\"bevy_pbr::light::Cascades\"\": {\"\"has_deserialize\"\": false, \"\"has_serialize\"\": false, \"\"in_registry\"\": true, \"\"mutation_paths\"\": {\"\"\"\": {\"\"description\"\": \"\"Replace the entire Cascades struct\"\", \"\"example\"\": {\"\"cascades\"\": {\"\"8589934670\"\": [{\"\"clip_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"clip_from_world\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"texel_size\"\": 3.1415927410125732, \"\"world_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]}]}}}}}')",
+      "Bash(BASELINE_JSON='{\"\"guide\"\": {\"\"has_deserialize\"\": false, \"\"has_serialize\"\": false, \"\"in_registry\"\": true, \"\"mutation_paths\"\": {\"\"\"\": {\"\"description\"\": \"\"Replace the entire Cascades struct\"\", \"\"example\"\": {\"\"cascades\"\": {\"\"8589934670\"\": [{\"\"clip_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"clip_from_world\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"texel_size\"\": 3.1415927410125732, \"\"world_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]}, {\"\"clip_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"clip_from_world\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"texel_size\"\": 3.1415927410125732, \"\"world_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]}]}}}}}}')"
     ],
     "deny": [
       "Bash(sed:*)"
