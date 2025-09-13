@@ -117,7 +117,9 @@
       "WebFetch(domain:docs.rs)",
       "Bash(if [ -f \"/var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types.json\" ])",
       "Bash(then cp /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types.json /var/folders/rf/twhh0jfd243fpltn5k0w1t980000gn/T/all_types_previous.json)",
-      "Bash(then cp $TMPDIR/all_types.json $TMPDIR/all_types_previous.json)"
+      "Bash(then cp $TMPDIR/all_types.json $TMPDIR/all_types_previous.json)",
+      "Bash(.claude/commands/scripts/get_type_kind.sh:*)",
+      "Bash(.claude/commands/scripts/get_type_guide.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
