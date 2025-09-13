@@ -1088,7 +1088,7 @@ impl TypeKind {
 For each builder in order:
 1. DefaultMutationBuilder (✅ completed)
 2. MapMutationBuilder (✅ completed)
-3. SetMutationBuilder
+3. SetMutationBuilder (✅ completed)
 4. ListMutationBuilder
 5. ArrayMutationBuilder
 6. TupleMutationBuilder
