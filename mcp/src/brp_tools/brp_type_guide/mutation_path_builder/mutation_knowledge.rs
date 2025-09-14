@@ -483,22 +483,17 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
             KnowledgeKey::exact(TYPE_GLAM_MAT3),
             MutationKnowledge::simple(json!([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])),
         );
+        // Mat4 - BRP expects flat array of 16 values, not nested 2D array
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_MAT4),
             MutationKnowledge::simple(json!([
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0]
+                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
             ])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_MAT4),
             MutationKnowledge::simple(json!([
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0]
+                1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0
             ])),
         );
 

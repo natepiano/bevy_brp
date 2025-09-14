@@ -251,7 +251,7 @@ impl TupleMutationBuilder {
             type_name: element_type.clone(),
             path_kind: element_ctx.path_kind.clone(),
             mutation_status: MutationStatus::NotMutable,
-            mutation_status_reason: Option::<String>::from(&NotMutableReason::NotInRegistry(
+            mutation_status_reason: Option::<Value>::from(&NotMutableReason::NotInRegistry(
                 element_type.clone(),
             )),
         });
@@ -289,7 +289,7 @@ impl TupleMutationBuilder {
                 type_name:              element_type.clone(),
                 path_kind:              element_ctx.path_kind.clone(),
                 mutation_status:        MutationStatus::NotMutable,
-                mutation_status_reason: Option::<String>::from(
+                mutation_status_reason: Option::<Value>::from(
                     &NotMutableReason::MissingSerializationTraits(element_type.clone()),
                 ),
             });
@@ -357,7 +357,8 @@ impl TupleMutationBuilder {
                     (0, _) => {
                         // All elements immutable - root cannot be mutated
                         root.mutation_status = MutationStatus::NotMutable;
-                        root.mutation_status_reason = Some("non_mutatable_elements".to_string());
+                        root.mutation_status_reason =
+                            Some(Value::String("non_mutatable_elements".to_string()));
                         root.example = json!(null); // No example for NotMutatable paths
                     }
                     (_, 0) => {
@@ -368,7 +369,7 @@ impl TupleMutationBuilder {
                         // be mutated
                         root.mutation_status = MutationStatus::PartiallyMutable;
                         root.mutation_status_reason =
-                            Some("partially_mutable_elements".to_string());
+                            Some(Value::String("partially_mutable_elements".to_string()));
                         root.example = json!({
                             "PartialMutation": format!("Some elements of {} are immutable", root.type_name),
                             "agent_directive": "Use individual element paths - root replacement not supported",
@@ -392,7 +393,7 @@ impl TupleMutationBuilder {
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
             mutation_status:        MutationStatus::NotMutable,
-            mutation_status_reason: Option::<String>::from(&support),
+            mutation_status_reason: Option::<Value>::from(&support),
         }
     }
 }

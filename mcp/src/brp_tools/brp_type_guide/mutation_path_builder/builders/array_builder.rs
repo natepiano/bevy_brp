@@ -231,7 +231,7 @@ impl ArrayMutationBuilder {
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
             mutation_status:        MutationStatus::NotMutable,
-            mutation_status_reason: Option::<String>::from(&support),
+            mutation_status_reason: Option::<Value>::from(&support),
         }
     }
 }

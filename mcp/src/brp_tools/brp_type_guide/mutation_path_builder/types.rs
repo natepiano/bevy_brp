@@ -46,7 +46,28 @@ pub struct MutationPathInternal {
     /// Status of whether this path can be mutated
     pub mutation_status:        MutationStatus,
     /// Reason if mutation is not possible
-    pub mutation_status_reason: Option<String>,
+    pub mutation_status_reason: Option<Value>,
+}
+
+impl MutationPathInternal {
+    /// Convert to summary for reason reporting
+    pub fn to_path_summary(&self) -> PathSummary {
+        PathSummary {
+            path:      self.path.clone(),
+            type_name: self.type_name.clone(),
+            status:    self.mutation_status,
+            reason:    self.mutation_status_reason.clone(),
+        }
+    }
+}
+
+/// Summary of a mutation path for reason reporting
+#[derive(Debug, Clone)]
+pub struct PathSummary {
+    pub path:      String,
+    pub type_name: BrpTypeName,
+    pub status:    MutationStatus,
+    pub reason:    Option<Value>,
 }
 
 /// Path information combining navigation and type metadata
@@ -63,7 +84,7 @@ pub struct PathInfo {
     pub mutation_status:        MutationStatus,
     /// Reason if mutation is not possible
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub mutation_status_reason: Option<String>,
+    pub mutation_status_reason: Option<Value>,
 }
 
 /// Example group for the unified examples array

@@ -294,7 +294,7 @@ impl StructMutationBuilder {
             type_name:              ctx.type_name().clone(),
             path_kind:              ctx.path_kind.clone(),
             mutation_status:        MutationStatus::NotMutable,
-            mutation_status_reason: Option::<String>::from(&support),
+            mutation_status_reason: Option::<Value>::from(&support),
         }
     }
 
@@ -309,7 +309,7 @@ impl StructMutationBuilder {
             type_name:              field_ctx.type_name().clone(),
             path_kind:              field_ctx.path_kind.clone(),
             mutation_status:        MutationStatus::NotMutable,
-            mutation_status_reason: Option::<String>::from(&support),
+            mutation_status_reason: Option::<Value>::from(&support),
         }
     }
 
@@ -426,7 +426,8 @@ impl StructMutationBuilder {
                 for path in paths.iter_mut() {
                     if matches!(path.path_kind, PathKind::RootValue { .. }) {
                         path.mutation_status = MutationStatus::NotMutable;
-                        path.mutation_status_reason = Some("non_mutatable_fields".to_string());
+                        path.mutation_status_reason =
+                            Some(Value::String("non_mutatable_fields".to_string()));
                         path.example = json!(null); // No example for NotMutatable paths
                     }
                 }
