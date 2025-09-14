@@ -10,10 +10,10 @@
 
 **Configuration**:
 ```
-TYPES_PER_SUBAGENT = 5                                      # Types each subagent tests
+TYPES_PER_SUBAGENT = 1                                      # Types each subagent tests
 MAX_SUBAGENTS = 10                                          # Parallel subagents per batch
 BATCH_SIZE = MAX_SUBAGENTS * TYPES_PER_SUBAGENT            # Types per batch
-PORT = 20116                                                # BRP port for testing
+BASE_PORT = 30001                                           # Starting port for subagents (30001-30010)
 ```
 
 ## Critical Execution Requirements
@@ -38,9 +38,11 @@ PORT = 20116                                                # BRP port for testi
 - Test can be resumed later after fixing issues
 
 **App Management**:
-- Only ONE extras_plugin should run on port 20116
-- Subagents MUST NOT launch apps - they use the existing app
-- Main agent handles ALL app lifecycle (launch/restart/shutdown)
+- **NEW MULTI-PORT ARCHITECTURE**: Each subagent gets its own dedicated port (30001-30010)
+- **Main agent launches ALL apps**: Main agent launches 10 extras_plugin instances on ports 30001-30010
+- **Subagents use their assigned port**: Subagent N uses port 30000+N (e.g., subagent 1 uses 30001)
+- **Each subagent has isolated app**: No port conflicts, no shared state between tests
+- **Main agent handles ALL app lifecycle**: Launch all 10 apps before testing, shutdown all after
 
 **Common Failure Prevention**:
 - **JSON Number Types**: ALL numeric primitives (u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, f32, f64) MUST be JSON numbers, not strings
@@ -74,15 +76,26 @@ This prevents interference from previous test runs and ensures clean batch resul
 
 ### Step 2: Application Management
 
-1. **Check Status**: Use `mcp__brp__brp_status(app_name="extras_plugin", port=20116)` to check if extras_plugin is running
-   - If running with BRP responding: Skip to Step 3
-   - If not running or BRP not responding: Continue with launch procedure
+**NEW: Launch ALL 10 apps on different ports (30001-30010)**:
 
-2. **Launch Example**: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
+1. **Shutdown any existing apps**: Clean slate for testing
+   - Shutdown apps on ports 30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30010
+   - Use `mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)` for each
 
-3. **Verify Launch**: Use `mcp__brp__brp_status` to confirm BRP connectivity on port 20116
+2. **Launch 10 parallel apps**: Launch all extras_plugin instances
+   - Launch on ports 30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30010
+   - Use `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=PORT)` for each
 
-4. **Set Window Title**: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
+3. **Verify ALL launches**: Confirm BRP connectivity on all ports
+   - Check ports 30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30010
+   - Use `mcp__brp__brp_status(app_name="extras_plugin", port=PORT)` for each
+
+4. **Set Window Titles**: Main agent sets window titles based on type assignments
+   - After determining which types go to which subagent
+   - Set window title for each port based on the types that subagent will test
+   - Port 30001: `mcp__brp__brp_extras_set_window_title(port=30001, title="[type names for subagent 1]")`
+   - Port 30002: `mcp__brp__brp_extras_set_window_title(port=30002, title="[type names for subagent 2]")`
+   - Continue for all 10 ports with their assigned type names
 
 Process each batch sequentially, with parallel subagents within each batch:
 
@@ -107,7 +120,11 @@ Process each batch sequentially, with parallel subagents within each batch:
 Task(
     description="Test [concatenate all short type names with ' + '] (batch [X], subagent [Y]/[MAX_SUBAGENTS])",
     subagent_type="general-purpose",
-    prompt="""CRITICAL: You are a subagent. DO NOT launch any apps! Use the existing extras_plugin on port 20116.
+    prompt="""CRITICAL: You are subagent [Y] assigned to port [30000+Y].
+
+YOUR ASSIGNED PORT: [30000+Y] (e.g., subagent 1 uses 30001, subagent 2 uses 30002, etc.)
+
+DO NOT launch any apps! Use the EXISTING extras_plugin on YOUR assigned port [30000+Y].
 
 Test these types WITH COMPLETE TYPE GUIDES (DO NOT call brp_type_guide - use these provided type guides):
 [Include the FULL type guides from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths dict with examples, etc.]
@@ -122,13 +139,13 @@ Return structured JSON array with results for ALL assigned types."""
 
 <TestInstructions>
 ⚠️ **CRITICAL - WHAT YOU MUST NOT DO** ⚠️
-- **DO NOT launch any apps** - The main agent already launched extras_plugin on port 20116
+- **DO NOT launch any apps** - The main agent already launched YOUR extras_plugin on YOUR assigned port
 - **DO NOT use brp_launch_bevy_app or brp_launch_bevy_example** - NEVER!
 - **DO NOT restart or shutdown apps** - The main agent manages the app lifecycle
 - **DO NOT modify test-app/examples/extras_plugin.rs** - Only the main agent does this
-- **You are ONLY testing** - Use the EXISTING app on port 20116
+- **You are ONLY testing** - Use the EXISTING app on YOUR assigned port
 
-**THE APP IS ALREADY RUNNING**: There is ONE extras_plugin running on port 20116. Use it for ALL tests. If you get connection errors, report them - DO NOT try to fix by launching apps!
+**THE APP IS ALREADY RUNNING**: Your dedicated extras_plugin is running on YOUR assigned port. Use it for ALL tests. If you get connection errors, report them - DO NOT try to fix by launching apps!
 
 ⚠️ **WARNING - MOST COMMON FAILURE CAUSE** ⚠️
 The #1 reason tests fail is passing numbers as strings in JSON!
@@ -139,7 +156,7 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 **Your Task**: Test ALL assigned component types with simple pass/fail results. Return structured results array to main agent.
 
-**Port**: Use the EXISTING app on port 20116 for ALL BRP operations. This app was already launched by the main agent. DO NOT launch your own app!
+**Port**: Use YOUR ASSIGNED PORT for ALL BRP operations. Your dedicated extras_plugin app was already launched by the main agent on YOUR port. DO NOT launch your own app!
 
 **BEFORE YOU START - CRITICAL CHECKLIST**:
 □ I understand that ALL numeric types (f32, u32, i32, usize, etc.) must be JSON numbers, not strings
@@ -181,6 +198,17 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
    - **Field paths** (e.g., `.translation.x`): Individual field mutations using the example value for each path
    - Use the `example` value provided in each mutation path entry
    - Skip paths where `path_info.mutation_status` is "not_mutable" or "partially_mutable"
+
+**CRITICAL - Missing Component Detection**:
+When testing mutations, if you encounter a "Component not found" or "Unknown component type" error:
+1. **Identify the context**: Record which type you were testing and which mutation path caused the error
+2. **Extract the missing component**: The error message will indicate which component type is not registered
+3. **Include full context in response**: Your result MUST include:
+   - `outer_type`: The component you were testing (e.g., "bevy_transform::components::transform::Transform")
+   - `mutation_path`: The specific path that failed (e.g., ".rotation" or ".scale.x")
+   - `missing_type`: The component type that wasn't found (e.g., "glam::Quat" or "glam::Vec3")
+4. **Mark as COMPONENT_NOT_FOUND**: Set status to "COMPONENT_NOT_FOUND" with complete context
+
 5. **Return Results** - Structured JSON for all types
 
 **REMEMBER**:
@@ -194,7 +222,12 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
   {
     "type": "[full::qualified::type::name]",
     "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
-    "fail_reason": "Error message or empty string"
+    "fail_reason": "Error message or empty string",
+    "missing_component_context": {
+      "outer_type": "[type being tested when component was missing]",
+      "mutation_path": "[mutation path that referenced the missing component]",
+      "missing_type": "[the component type that was not found]"
+    }
   }
   // ... one entry per assigned type
 ]
@@ -252,7 +285,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
   "component": "bevy_ecs::name::Name",
   "path": "",
   "value": "Entity Name",  // ← Use spawn_format structure from type guide
-  "port": 20116
+  "port": YOUR_ASSIGNED_PORT
 }
 
 // FIELD PATH - Individual field mutation
@@ -261,7 +294,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
   "component": "bevy_core_pipeline::core_3d::camera_3d::Camera3d",
   "path": ".depth_texture_usages",
   "value": 20,  // ← NUMBER, not "20" string!
-  "port": 20116
+  "port": YOUR_ASSIGNED_PORT
 }
 
 // ROOT PATH for complex component - Use full spawn_format structure
@@ -274,7 +307,7 @@ If you get "invalid type: string \"X\", expected TYPE" errors:
     "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0},
     "scale": {"x": 1.0, "y": 1.0, "z": 1.0}
   },  // ← ENTIRE spawn_format structure
-  "port": 20116
+  "port": YOUR_ASSIGNED_PORT
 }
 ```
 </TestInstructions>
@@ -301,7 +334,16 @@ After each batch completes:
 [
   {"type": "full::type::name", "status": "PASS", "fail_reason": ""},
   {"type": "other::type", "status": "FAIL", "fail_reason": "Error message"},
-  {"type": "third::type", "status": "COMPONENT_NOT_FOUND", "fail_reason": "Component not registered"}
+  {
+    "type": "third::type",
+    "status": "COMPONENT_NOT_FOUND",
+    "fail_reason": "Component not registered",
+    "missing_component_context": {
+      "outer_type": "third::type",
+      "mutation_path": ".some_field",
+      "missing_type": "missing::component::Type"
+    }
+  }
 ]
 ```
 
@@ -309,18 +351,24 @@ After each batch completes:
 
 ### Step 6: Component Not Found Handling
 
-When subagent returns `COMPONENT_NOT_FOUND`:
-1. Stop current testing
-2. Add missing component to `test-app/examples/extras_plugin.rs`
-3. Shutdown: `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
-4. Relaunch: `mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=20116)`
-5. Reset title: `mcp__brp__brp_extras_set_window_title(port=20116, title="type_validation test - port 20116")`
-6. Retry SAME batch
+When subagent returns `COMPONENT_NOT_FOUND` (this is a FAILURE):
+1. **STOP IMMEDIATELY** - This is a failure condition
+2. **Collect failure details**: Extract from all COMPONENT_NOT_FOUND results:
+   - Which outer component types were being tested
+   - Which mutation paths referenced missing components
+   - The complete list of missing component types
+3. **Save progress** for any types that passed before the failure
+4. **Report failure to user** with details:
+   - "Component `missing::type` not found when testing `outer::type` at mutation path `.field`"
+5. **Shutdown ALL apps**:
+   - Shutdown apps on ports 30001, 30002, 30003, 30004, 30005, 30006, 30007, 30008, 30009, 30010
+6. **DO NOT CONTINUE** to next batch - test stops here
 
 ### Step 7: Cleanup
 
 After completion or failure:
-- Shutdown example using `mcp__brp__brp_shutdown(app_name="extras_plugin", port=20116)`
+- Shutdown ALL apps on ports 30001-30010
+- Use `mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)` for each port
 
 ## Reference Information
 
