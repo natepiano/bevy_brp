@@ -170,15 +170,9 @@
 <UserValidation>
     **Present Comparison Results to User for Baseline Decision**
 
-    **First, dynamically determine excluded types**:
-    ```bash
-    # Get list of excluded types from the exclusion file
-    EXCLUDED_TYPES=$(.claude/commands/scripts/create_mutation_test_json_get_excluded_types.sh)
-    ```
-
     **Parse the comparison output and format the final presentation:**
-    
-    The comparison script provides all statistics. Extract and present them in this format:
+
+    The comparison script now provides all statistics including excluded types. Extract and present them in this format:
 
 ## Mutation Test File Generation Complete
 - **File created**: [TARGET_FILE]
@@ -186,7 +180,7 @@
 - **Spawn-supported types**: [extract from comparison output]
 - **Types with mutations**: [extract from comparison output]
 - **Total mutation paths**: [extract from comparison output]
-- **Excluded types**: [from EXCLUDED_TYPES variable]
+- **Excluded types**: [extract from comparison output]
 
 ### Comparison with Baseline:
 [Present the comparison results including:

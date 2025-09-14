@@ -208,13 +208,39 @@ def calculate_metadata(type_guide: List[Dict]) -> Dict[str, int]:
         'total_paths': total_paths
     }
 
+def get_excluded_types() -> List[str]:
+    """Get list of excluded types from the exclusion file"""
+    exclusion_file = "/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.json"
+    excluded = []
+
+    try:
+        with open(exclusion_file, 'r') as f:
+            import json
+            data = json.load(f)
+            excluded = [item['type_name'] for item in data.get('excluded_types', [])]
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Fall back to old text file format if JSON doesn't exist or is invalid
+        old_file = "/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.txt"
+        try:
+            with open(old_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip comments and empty lines
+                    if line and not line.startswith('#'):
+                        excluded.append(line)
+        except FileNotFoundError:
+            # If neither file exists, return empty list
+            pass
+
+    return excluded
+
 def main(baseline_file: str, current_file: str):
     """Main comparison logic"""
-    
+
     print("🔍 STRUCTURED MUTATION TEST COMPARISON (Full Schema)")
     print("=" * 60)
     print()
-    
+
     # Load files
     try:
         with open(baseline_file) as f:
@@ -225,7 +251,7 @@ def main(baseline_file: str, current_file: str):
     except json.JSONDecodeError:
         print(f"❌ Invalid JSON in baseline file: {baseline_file}")
         return 1
-        
+
     try:
         with open(current_file) as f:
             current = json.load(f)
@@ -247,12 +273,16 @@ def main(baseline_file: str, current_file: str):
             # Show current stats even for identical files
             current_tg = extract_type_guide(current)
             current_meta = calculate_metadata(current_tg)
-            
+
+            # Get excluded types
+            excluded_types = get_excluded_types()
+
             print("📈 CURRENT FILE STATISTICS")
             print(f"   Total Types: {current_meta['total_types']}")
             print(f"   Spawn-Supported: {current_meta['spawn_supported']}")
             print(f"   Types with Mutations: {current_meta['with_mutations']}")
             print(f"   Total Mutation Paths: {current_meta['total_paths']}")
+            print(f"   Excluded Types: {', '.join(excluded_types) if excluded_types else 'None'}")
             print()
             print("📋 SUMMARY")
             print("   └─ No changes detected - safe for promotion")
@@ -269,18 +299,23 @@ def main(baseline_file: str, current_file: str):
     # Metadata comparison
     baseline_meta = calculate_metadata(baseline_tg)
     current_meta = calculate_metadata(current_tg)
-    
+
+    # Get excluded types
+    excluded_types = get_excluded_types()
+
     print("📈 METADATA COMPARISON")
     for key in ['total_types', 'spawn_supported', 'with_mutations', 'total_paths']:
         baseline_val = baseline_meta[key]
         current_val = current_meta[key]
         label = key.replace('_', ' ').title().replace('Total ', 'Total Mutation ')
-        
+
         if baseline_val == current_val:
             print(f"   {label}: {baseline_val} → {current_val} (no change)")
         else:
             diff = current_val - baseline_val
             print(f"   {label}: {baseline_val} → {current_val} ({current_val} - {baseline_val} = {diff:+d})")
+
+    print(f"   Excluded Types: {', '.join(excluded_types) if excluded_types else 'None'}")
     print()
     
     # Type-level changes analysis

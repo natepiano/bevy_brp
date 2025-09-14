@@ -1,0 +1,12 @@
+{
+  "excluded_types": [
+    {
+      "type_name": "bevy_ecs::hierarchy::ChildOf",
+      "reason": "Immutable type - causes panic when mutated. Bevy's immutable types are not properly reflected yet; query says it supports mutation but it doesn't."
+    },
+    {
+      "type_name": "bevy_render::view::window::screenshot::Screenshot",
+      "reason": "Ephemeral component - only exists during screenshot operations. Not suitable for mutation testing as it's immediately consumed."
+    }
+  ]
+}

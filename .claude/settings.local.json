@@ -126,7 +126,9 @@
       "Bash(BASELINE_JSON='{\"\"guide\"\": {\"\"has_deserialize\"\": false, \"\"has_serialize\"\": false, \"\"in_registry\"\": true, \"\"mutation_paths\"\": {\"\"\"\": {\"\"description\"\": \"\"Replace the entire Cascades struct\"\", \"\"example\"\": {\"\"cascades\"\": {\"\"8589934670\"\": [{\"\"clip_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"clip_from_world\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"texel_size\"\": 3.1415927410125732, \"\"world_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]}, {\"\"clip_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"clip_from_world\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]], \"\"texel_size\"\": 3.1415927410125732, \"\"world_from_cascade\"\": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]}]}}}}}}')",
       "Bash(xargs:*)",
       "Bash(for file in array_builder enum_builder struct_builder tuple_builder)",
-      "Bash(do echo \"=== $file ===\")"
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(then echo \"File exists\")",
+      "Bash(else echo \"File does not exist\")"
     ],
     "deny": [
       "Bash(sed:*)"

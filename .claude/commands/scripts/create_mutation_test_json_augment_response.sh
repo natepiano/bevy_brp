@@ -17,11 +17,12 @@ if [ ! -f "$FILEPATH" ]; then
     exit 1
 fi
 
-# Read excluded types list (same as transform script)
-EXCLUSION_FILE="/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.txt"
+# Read excluded types list from JSON file
+EXCLUSION_FILE="/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.json"
 EXCLUDED_TYPES=""
 if [ -f "$EXCLUSION_FILE" ]; then
-    EXCLUDED_TYPES=$(grep -v '^#' "$EXCLUSION_FILE" | grep -v '^$' | tr '\n' '|' | sed 's/|$//')
+    # Extract type_name values from JSON and create pipe-separated regex
+    EXCLUDED_TYPES=$(jq -r '.excluded_types[].type_name' "$EXCLUSION_FILE" 2>/dev/null | tr '\n' '|' | sed 's/|$//')
 fi
 
 # Create the augmented JSON using jq
