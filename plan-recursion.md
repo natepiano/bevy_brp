@@ -348,135 +348,25 @@ Each builder migration follows this pattern:
    - This ensures consistent NotMutable path formatting across all builders
 7. Delete old methods (build_schema_example, static helper methods)
 
-### Builder 1: DefaultMutationBuilder ✅ COMPLETED
+### Completed Builder Migrations (Phase 5b)
 
-**Status**: Migration complete with fixes applied
-**Commit**: 87d9e77 (WIP: Camera crash fixed but enum regression in spawn_format)
-**TypeKind Dispatch**: ✅ Updated to use `self.builder().build_paths()` for Value type
+1. ✅ **DefaultMutationBuilder** - Leaf type, no children, returns null
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs`
+   - TypeKind: `Self::Value => self.builder().build_paths(ctx, builder_depth)`
+2. ✅ **MapMutationBuilder** - Container with key/value pairs, skips child paths (BRP limitation)
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
+   - TypeKind: Already using trait dispatch
+   - Special: `child_path_action() -> PathAction::Skip`
 
-#### Final Implementation:
-```rust
-impl MutationPathBuilder for DefaultMutationBuilder {
-    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
-        -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(format!(
-            "DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        )).into())
-    }
+3. ✅ **SetMutationBuilder** - Unordered collection, skips child paths (no stable indices)
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
+   - TypeKind: `Self::Set => self.builder().build_paths(ctx, builder_depth)`
+   - Special: `child_path_action() -> PathAction::Skip`
 
-    fn is_migrated(&self) -> bool {
-        true // MIGRATED!
-    }
-
-    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        Ok(vec![]) // Leaf type - no children
-    }
-
-    fn assemble_from_children(&self, _ctx: &RecursionContext, _children: HashMap<MutationPathDescriptor, Value>) -> Result<Value> {
-        Ok(json!(null)) // Leaf types return null, knowledge handled by ProtocolEnforcer
-    }
-}
-```
-
-**Lessons Learned**:
-- ✅ Protocol enforcer pattern works correctly
-- ✅ Error returns (not panics) prevent direct build_paths() calls
-- ✅ Simple leaf type implementation confirmed
-- ⚠️ Revealed output format regressions requiring fixes in enum/struct builders
-### Builder 2: StructMutationBuilder (Container Type Example)
-
-#### After Migration:
-
-**CRITICAL**: Also update TypeKind::build_paths() in type_kind.rs:
-```rust
-// Change line for Struct type:
-Self::Struct => self.builder().build_paths(ctx, builder_depth),
-```
-
-```rust
-impl MutationPathBuilder for StructMutationBuilder {
-    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth)
-        -> Result<Vec<MutationPathInternal>> {
-        // IMPORTANT: Return error to ensure this is never called when migrated
-        Err(Error::InvalidState(format!(
-            "StructMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        )).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true  // MIGRATED!
-    }
-
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        // Identify all struct fields that need recursion
-        Ok(ctx.require_registry_schema()
-            .and_then(|s| s.get_field(SchemaField::Properties))
-            .and_then(Value::as_object)
-            .map_or(vec![], |properties| {
-                properties.iter()
-                    .filter_map(|(field_name, field_value)| {
-                        SchemaField::extract_field_type(field_value)
-                            .map(|field_type| {
-                                PathKind::new_struct_field(
-                                    field_name.clone(),
-                                    field_type,
-                                    ctx.type_name().clone(),
-                                )
-                            })
-                    })
-                    .collect()
-            }))
-    }
-
-    fn assemble_from_children(&self, _ctx: &RecursionContext, children: HashMap<MutationPathDescriptor, Value>) -> Result<Value> {
-        // Assemble struct from field examples
-        // Note: ProtocolEnforcer handles mutation status propagation automatically
-        let mut obj = serde_json::Map::new();
-        for (field_name, example) in children {
-            // MutationPathDescriptor derefs to str, convert to String for Map insertion
-            obj.insert((*field_name).to_string(), example);
-        }
-        Ok(json!(obj))
-    }
-
-    // DELETE build_schema_example() - no longer needed
-    // DELETE build_struct_example_from_properties() static method
-}
-```
-
-### Complete Migration Order
-
-Following the same order as the original ExampleBuilder removal:
-
-1. ✅ **DefaultMutationBuilder** - COMPLETED in commit 87d9e77
-   - ✅ TypeKind: `Self::Value => self.builder().build_paths(ctx, builder_depth)`
-   - ✅ **Note**: No need to override `child_path_action()` - Default/Value types are leaf nodes with no children
-
-2. ✅ **MapMutationBuilder** - COMPLETED in commit e465607
-   - ✅ Fixed line 161 error path
-   - ✅ Implemented full protocol methods (is_migrated, collect_children, assemble_from_children)
-   - ✅ **Special**: Added `child_path_action() -> PathAction::Skip` override to prevent exposing invalid child mutation paths
-   - ✅ **TypeKind**: Already using trait dispatch
-   - ✅ Comment added explaining why Maps don't expose child paths (BRP doesn't support string keys for map mutations)
-
-3. ✅ **SetMutationBuilder** - COMPLETED
-   - ✅ Implemented protocol methods (is_migrated, collect_children, assemble_from_children)
-   - ✅ **ERROR HANDLING**:
-     - ✅ Used `Error::InvalidState` for protocol violations (missing required 'items' child)
-     - ✅ Updated `assemble_from_children` to return `Result<Value>`
-     - ✅ Updated `build_paths()` to return `Error::InvalidState` instead of panic
-   - ✅ **Special**: Added `child_path_action() -> PathAction::Skip` override with detailed comment explaining Sets are unordered collections
-   - ✅ **TypeKind**: Updated `Self::Set => self.builder().build_paths(ctx, builder_depth)`
-   - ✅ Build passes successfully
-
-4. ✅ **ListMutationBuilder** - COMPLETED
-   - ✅ Implemented protocol methods (is_migrated, collect_children, assemble_from_children)
-   - ✅ Fixed line 165 static method removal
-   - ✅ **TypeKind**: Updated `Self::List => self.builder().build_paths(ctx, builder_depth)`
-   - ✅ Note: Does NOT override `child_path_action()` - Lists expose indexed element paths like `[0].field`
-   - ✅ Build passes successfully
+4. ✅ **ListMutationBuilder** - Dynamic array with indexed access, exposes child paths
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/list_builder.rs`
+   - TypeKind: `Self::List => self.builder().build_paths(ctx, builder_depth)`
+   - Note: No `child_path_action()` override - exposes paths like `[0].field`
 
 5. **ArrayMutationBuilder** - Single child type
 
@@ -1128,11 +1018,11 @@ impl TypeKind {
 5. ✅ Validate infrastructure compiles
 
 ### Phase 5b: Incremental Builder Migration
-For each builder in order:
-1. DefaultMutationBuilder (✅ completed)
-2. MapMutationBuilder (✅ completed)
-3. SetMutationBuilder (✅ completed)
-4. ListMutationBuilder (✅ completed)
+**Completed**: 4 of 8 builders migrated
+- ✅ DefaultMutationBuilder, MapMutationBuilder, SetMutationBuilder, ListMutationBuilder
+- See implementations in `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/`
+
+**Remaining**: 4 builders + trait default
 5. ArrayMutationBuilder
 6. TupleMutationBuilder
 7. StructMutationBuilder
