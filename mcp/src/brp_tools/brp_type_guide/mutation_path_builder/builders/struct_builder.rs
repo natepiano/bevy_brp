@@ -409,7 +409,7 @@ impl StructMutationBuilder {
         properties.iter().map(|(k, v)| (k.clone(), v)).collect()
     }
 
-    /// Propagate `NotMutatable` status from all struct fields to the root path
+    /// Propagate `NotMutable` or `PartiallyMutable` status from struct fields to the root path
     fn propagate_struct_immutability(paths: &mut [MutationPathInternal]) {
         let field_paths: Vec<_> = paths
             .iter()
@@ -417,18 +417,34 @@ impl StructMutationBuilder {
             .collect();
 
         if !field_paths.is_empty() {
-            let all_fields_not_mutatable = field_paths
+            let all_fields_not_mutable = field_paths
                 .iter()
                 .all(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
 
-            if all_fields_not_mutatable {
-                // Mark any root-level paths as NotMutatable
+            let some_fields_not_mutable = field_paths
+                .iter()
+                .any(|p| matches!(p.mutation_status, MutationStatus::NotMutable));
+
+            if all_fields_not_mutable {
+                // All fields are not mutable - mark root as NotMutable
                 for path in paths.iter_mut() {
                     if matches!(path.path_kind, PathKind::RootValue { .. }) {
                         path.mutation_status = MutationStatus::NotMutable;
                         path.mutation_status_reason =
-                            Some(Value::String("non_mutatable_fields".to_string()));
-                        path.example = json!(null); // No example for NotMutatable paths
+                            Some(Value::String("non_mutable_fields".to_string()));
+                        path.example = json!(null); // No example for NotMutable paths
+                    }
+                }
+            } else if some_fields_not_mutable {
+                // Some (but not all) fields are not mutable - mark root as PartiallyMutable
+                // This is a temporary fix until StructMutationBuilder is migrated
+                for path in paths.iter_mut() {
+                    if matches!(path.path_kind, PathKind::RootValue { .. }) {
+                        path.mutation_status = MutationStatus::PartiallyMutable;
+                        path.mutation_status_reason =
+                            Some(Value::String("some_fields_not_mutable".to_string()));
+                        // Remove the example for PartiallyMutable paths
+                        path.example = json!(null);
                     }
                 }
             }
