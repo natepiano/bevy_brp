@@ -471,7 +471,14 @@ Following the same order as the original ExampleBuilder removal:
    - ✅ **TypeKind**: Updated `Self::Set => self.builder().build_paths(ctx, builder_depth)`
    - ✅ Build passes successfully
 
-4. **ListMutationBuilder** - Single child type
+4. ✅ **ListMutationBuilder** - COMPLETED
+   - ✅ Implemented protocol methods (is_migrated, collect_children, assemble_from_children)
+   - ✅ Fixed line 165 static method removal
+   - ✅ **TypeKind**: Updated `Self::List => self.builder().build_paths(ctx, builder_depth)`
+   - ✅ Note: Does NOT override `child_path_action()` - Lists expose indexed element paths like `[0].field`
+   - ✅ Build passes successfully
+
+5. **ArrayMutationBuilder** - Single child type
 
 **📋 MIGRATION GUIDANCE - FOLLOW THESE EXACT PATTERNS:**
 
@@ -646,6 +653,12 @@ Following the same order as the original ExampleBuilder removal:
 - ✏️ For enums: Create variant PathKinds
 
    - Fix lines 390, 285, 317, implement protocol methods
+   - **SPECIAL HANDLE DETECTION LOGIC**:
+     - **KEEP** the `is_handle_only_wrapper()` helper function
+     - **MOVE** the Handle detection check from `build_paths()` to `assemble_from_children()`
+     - When Handle wrapper detected, return `Err(Error::NotMutable(NotMutableReason::NonMutableHandle { container_type, element_type }).into())`
+     - ProtocolEnforcer will catch this error and create the NotMutable path
+     - This preserves the important logic that Handle types can't be mutated through BRP
    - **IMPORT REQUIREMENT**:
      - Add `use crate::error::Error;` import for error handling
    - **ERROR HANDLING**:
@@ -673,6 +686,9 @@ Following the same order as the original ExampleBuilder removal:
      - ProtocolEnforcer now handles ALL mutation status propagation automatically
      - Builders only create examples - ProtocolEnforcer computes status from children
      - Remove any manual mutation status assignment logic
+     - **SPECIFIC TO TUPLE**: Remove the ENTIRE `propagate_tuple_mixed_mutability()` function (lines ~341-383)
+     - **SPECIFIC TO TUPLE**: Remove the call to `Self::propagate_tuple_mixed_mutability(&mut paths)` in build_paths (line ~81)
+     - This complex logic for computing PartiallyMutable status is now handled by ProtocolEnforcer
    - **Note**: No need to override `child_path_action()` - Tuples expose indexed element paths
    - **TypeKind**: Update `Self::Tuple | Self::TupleStruct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -703,7 +719,10 @@ Following the same order as the original ExampleBuilder removal:
 **🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
 - ❌ ALL lines with `depth.exceeds_limit()`
 - ❌ ALL `ctx.require_registry_schema() else` blocks creating NotMutable paths
-- ❌ ENTIRE `build_not_mutable_path` method
+- ❌ **SPECIFIC TO STRUCT**: BOTH NotMutable path creation methods:
+  - ❌ `build_not_mutable_path_from_support()` (lines ~287-299)
+  - ❌ `build_not_mutatable_field_from_support()` (lines ~302-313) - note the typo "mutatable"
+  - ❌ No special logic needs preserving - ProtocolEnforcer handles all registry/serialization checks
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
 - ❌ ALL direct `BRP_MUTATION_KNOWLEDGE` lookups
@@ -715,7 +734,7 @@ Following the same order as the original ExampleBuilder removal:
 - ✏️ For structs: Create field PathKinds with parent_type
 - ✏️ For enums: Create variant PathKinds
 
-   - Fix line 403 static method, implement protocol methods
+   - Fix line 403 (actually not a static method - investigation shows this is a private helper method)
    - **IMPORT REQUIREMENT**:
      - Add `use crate::error::Error;` import for error handling
    - **ERROR HANDLING**:
@@ -733,9 +752,12 @@ Following the same order as the original ExampleBuilder removal:
      - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
-     - Check if this builder has any `depth.exceeds_limit()` checks
-     - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
-     - The builder should NOT check depth limits after migration
+     - **SPECIFIC TO STRUCT**: Has THREE depth.exceeds_limit() checks to remove:
+       - Line 34 in `build_paths()` - returns NotMutable path
+       - Line 83 in `build_schema_example()` - returns "..."
+       - Line 445 in helper method `build_struct_example_from_properties_with_context()` - returns "..."
+     - REMOVE all three recursion limit checks - ProtocolEnforcer now handles all recursion limiting
+     - Note: Both `build_schema_example()` and its helper method will be deleted entirely after migration
    - **REGISTRY CHECK REMOVAL**:
      - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
@@ -745,6 +767,9 @@ Following the same order as the original ExampleBuilder removal:
      - ProtocolEnforcer now handles ALL mutation status propagation automatically
      - Builders only create examples - ProtocolEnforcer computes status from children
      - Remove any manual mutation status assignment logic
+     - **SPECIFIC TO STRUCT**: Remove the ENTIRE `propagate_struct_immutability()` function (lines ~413-436)
+     - **SPECIFIC TO STRUCT**: Remove the call to `Self::propagate_struct_immutability(&mut paths)` in build_paths (line ~76)
+     - This logic for marking root as NotMutable when all fields are immutable is now handled by ProtocolEnforcer
    - **Note**: No need to override `child_path_action()` - Structs expose field paths
    - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -788,6 +813,9 @@ Following the same order as the original ExampleBuilder removal:
 - ✏️ For enums: Create variant PathKinds
 
    - Fix lines 170, 193, implement protocol methods
+   - **STATIC HELPER METHOD**:
+     - `build_enum_spawn_example()` (line ~685) is a large static helper that will need removal/conversion
+     - Contains BRP_MUTATION_KNOWLEDGE check at line ~694 that should be removed
    - **IMPORT REQUIREMENT**:
      - Add `use crate::error::Error;` import for error handling
    - **ERROR HANDLING**:
@@ -802,9 +830,11 @@ Following the same order as the original ExampleBuilder removal:
      - Replace with `return Err(Error::NotMutable(reason).into())`
      - ProtocolEnforcer will handle path creation
    - **RECURSION CHECK REMOVAL**:
-     - Check if this builder has any `depth.exceeds_limit()` checks
-     - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
-     - The builder should NOT check depth limits after migration
+     - **SPECIFIC TO ENUM**: Has TWO depth.exceeds_limit() checks to remove:
+       - Line 346 in `build_paths()` - returns NotMutable path
+       - Line 420 in `build_schema_example()` - returns "..."
+     - REMOVE both recursion limit checks - ProtocolEnforcer now handles all recursion limiting
+     - Note: `build_schema_example()` and its helper `build_enum_spawn_example()` will be deleted entirely after migration
    - **REGISTRY CHECK REMOVAL**:
      - Check if this builder has any registry checks that create NotMutable paths
      - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
@@ -814,6 +844,19 @@ Following the same order as the original ExampleBuilder removal:
      - ProtocolEnforcer now handles ALL mutation status propagation automatically
      - Builders only create examples - ProtocolEnforcer computes status from children
      - Remove any manual mutation status assignment logic
+   - **COMPLEX VARIANT HANDLING - REQUIRES SPECIAL ATTENTION**:
+     - **PRESERVE**: Core variant processing logic needs careful adaptation, NOT simple removal:
+       - `extract_enum_variants()` - Extracts variant info from schema
+       - `deduplicate_variant_signatures()` - Critical for avoiding duplicate work (only process unique signatures)
+       - `process_tuple_variant()` - Handles tuple variants
+       - `process_struct_variant()` - Handles struct variants
+       - `build_enum_example_from_accumulated()` - Builds final consolidated example
+     - **collect_children()**: Must return ONLY unique variant signatures to avoid redundant recursion
+     - **assemble_from_children()**: Must handle different output formats:
+       - Root path needs consolidated enum example format
+       - Mutation paths have different format than root
+     - **INVESTIGATION NEEDED**: Some responsibilities may need to move to ProtocolEnforcer
+     - This is the most complex migration - may require additional design work when reached
    - **Note**: No need to override `child_path_action()` - Enums expose variant field paths
    - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
    - Run build-check.sh
@@ -1089,7 +1132,7 @@ For each builder in order:
 1. DefaultMutationBuilder (✅ completed)
 2. MapMutationBuilder (✅ completed)
 3. SetMutationBuilder (✅ completed)
-4. ListMutationBuilder
+4. ListMutationBuilder (✅ completed)
 5. ArrayMutationBuilder
 6. TupleMutationBuilder
 7. StructMutationBuilder
