@@ -252,6 +252,12 @@ You are subagent [Y] assigned to port [30000+Y].
 - Call brp_type_guide (use provided guides)
 - Update JSON files
 - Provide explanations or commentary
+- Test any type other than the one provided
+- Make up or substitute different types
+- Use your Bevy knowledge to "fix" or "improve" the type name
+- Test related types (like bundles when given components)
+
+**CRITICAL CONSTRAINT**: You MUST test ONLY the exact type provided. Do not attempt any other type, even if you think it's related or "should exist". If the provided type fails, report the failure - do not try alternatives.
 
 **Test this type** (complete guide provided):
 [Include FULL type guide from GetBatchTypes output]
@@ -259,9 +265,17 @@ You are subagent [Y] assigned to port [30000+Y].
 **Testing Protocol**:
 1. Skip spawn/insert if spawn_format is null
 2. Test spawn/insert if spawn_format exists
-3. Query for entities with component
+3. Query for entities with component using EXACT syntax:
+   ```json
+   {
+     "filter": {"with": ["EXACT_TYPE_NAME_FROM_GUIDE"]},
+     "data": {"components": []}
+   }
+   ```
+   CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
 4. Test ALL mutable mutation paths
 5. Return ONLY JSON result array
+6. NEVER test types not explicitly provided
 
 **JSON Number Rules**:
 - ALL primitives (u8, u16, u32, f32, etc.) MUST be JSON numbers
