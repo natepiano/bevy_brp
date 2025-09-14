@@ -64,10 +64,12 @@ mv "${MUTATION_TEST_FILE}.tmp" "$MUTATION_TEST_FILE"
 TOTAL_RESULTS=$(jq 'length' "$RESULTS_FILE")
 PASSED=$(jq '[.[] | select(.status == "PASS")] | length' "$RESULTS_FILE")
 FAILED=$(jq '[.[] | select(.status == "FAIL")] | length' "$RESULTS_FILE")
+MISSING=$(jq '[.[] | select(.status == "COMPONENT_NOT_FOUND")] | length' "$RESULTS_FILE")
 
 echo "✓ Merged $TOTAL_RESULTS results into $MUTATION_TEST_FILE"
 echo "  Passed: $PASSED"
 echo "  Failed: $FAILED"
+echo "  Missing Components: $MISSING"
 
 # Check for failures
 if [ "$FAILED" -gt 0 ]; then
@@ -75,4 +77,12 @@ if [ "$FAILED" -gt 0 ]; then
     echo "⚠️  FAILURES DETECTED:"
     jq -r '.[] | select(.status == "FAIL") | "  - \(.type): \(.fail_reason)"' "$RESULTS_FILE"
     exit 2  # Special exit code for failures
+fi
+
+# Check for missing components
+if [ "$MISSING" -gt 0 ]; then
+    echo ""
+    echo "⚠️  MISSING COMPONENTS DETECTED:"
+    jq -r '.[] | select(.status == "COMPONENT_NOT_FOUND") | "  - \(.type): \(.fail_reason)"' "$RESULTS_FILE"
+    exit 2  # Special exit code for missing components
 fi
