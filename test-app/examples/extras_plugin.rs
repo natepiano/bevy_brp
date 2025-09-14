@@ -15,6 +15,7 @@
 #![allow(clippy::used_underscore_binding)]
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::time::Instant;
 
 use bevy::core_pipeline::Skybox;
@@ -268,6 +269,117 @@ struct TestComplexTuple {
     pub nested_tuple:  (Vec2, (f32, String)),
 }
 
+/// Core type with mixed mutability for mutation_status_reason testing
+/// This type demonstrates all three mutation states:
+/// - fully mutable fields (with Serialize/Deserialize)
+/// - not_mutable fields (without serialization traits)
+/// - partially_mutable fields (nested types with mixed traits)
+#[derive(Default, Reflect)]
+struct TestMixedMutabilityCore {
+    /// Fully mutable field - has Serialize/Deserialize
+    pub mutable_string: String,
+
+    /// Fully mutable field - primitive type
+    pub mutable_float: f32,
+
+    /// Not mutable field - Arc type without serialization
+    pub not_mutable_arc: std::sync::Arc<String>,
+
+    /// Partially mutable field - nested struct with mixed mutability
+    pub partially_mutable_nested: TestPartiallyMutableNested,
+
+    /// Fully mutable nested field - has all traits
+    pub mutable_transform: Transform,
+
+    /// Not mutable field - missing serialization traits
+    pub not_mutable_struct: TestStructNoSerDe,
+}
+
+/// Vec parent containing mixed mutability items
+/// List builder has been migrated to ProtocolEnforcer
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestMixedMutabilityVec {
+    /// Vec of mixed mutability items
+    pub items: Vec<TestMixedMutabilityCore>,
+}
+
+/// Array parent containing mixed mutability items
+/// For testing when Array builder is migrated
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+struct TestMixedMutabilityArray {
+    /// Fixed-size array of mixed mutability items
+    pub items: [TestMixedMutabilityCore; 2],
+}
+
+impl Default for TestMixedMutabilityArray {
+    fn default() -> Self {
+        Self {
+            items: [
+                TestMixedMutabilityCore::default(),
+                TestMixedMutabilityCore::default(),
+            ],
+        }
+    }
+}
+
+/// TupleStruct parent containing mixed mutability item
+/// For testing when Tuple builder is migrated
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+struct TestMixedMutabilityTuple(pub TestMixedMutabilityCore, pub f32, pub String);
+
+/// Enum parent containing mixed mutability variants
+/// For testing when Enum builder is migrated
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
+enum TestMixedMutabilityEnum {
+    #[default]
+    None,
+    /// Variant with mixed mutability struct
+    WithMixed(TestMixedMutabilityCore),
+    /// Variant with multiple fields including mixed
+    Multiple {
+        name:  String,
+        mixed: TestMixedMutabilityCore,
+        value: f32,
+    },
+}
+
+/// Nested type that will be partially mutable
+/// Has some fields that are mutable and some that are not
+#[derive(Default, Reflect)]
+struct TestPartiallyMutableNested {
+    /// Mutable field in nested struct
+    pub nested_mutable_value: f32,
+
+    /// Mutable field in nested struct
+    pub nested_mutable_name: String,
+
+    /// Not mutable - Arc type without serialization
+    pub nested_not_mutable_arc: std::sync::Arc<Vec<u8>>,
+
+    /// Another level of nesting with mixed mutability
+    pub deeply_nested: TestDeeplyNested,
+}
+
+/// Deeply nested type for complex hierarchy testing
+#[derive(Default, Reflect)]
+struct TestDeeplyNested {
+    /// Mutable field at deep level
+    pub deep_value: i32,
+
+    /// Mutable Vec at deep level
+    pub deep_list: Vec<f32>,
+
+    /// Not mutable - Arc at deep level
+    pub deep_arc: std::sync::Arc<String>,
+
+    /// Mutable HashMap at deep level
+    pub deep_map: HashMap<String, f32>,
+}
+
 impl Default for TestComplexTuple {
     fn default() -> Self {
         Self {
@@ -377,6 +489,13 @@ fn main() {
         .register_type::<TestComplexTuple>()
         .register_type::<TestComplexComponent>()
         .register_type::<TestCollectionComponent>()
+        .register_type::<TestMixedMutabilityCore>()
+        .register_type::<TestMixedMutabilityVec>()
+        .register_type::<TestMixedMutabilityArray>()
+        .register_type::<TestMixedMutabilityTuple>()
+        .register_type::<TestMixedMutabilityEnum>()
+        .register_type::<TestPartiallyMutableNested>()
+        .register_type::<TestDeeplyNested>()
         // Register gamepad types for BRP access
         .register_type::<Gamepad>()
         .register_type::<GamepadSettings>()
@@ -847,6 +966,71 @@ fn spawn_test_component_entities(commands: &mut Commands) {
     // Entity with Gamepad component for testing Set/Map types with enums
     // Note: Gamepad fields are private, so we use Default
     commands.spawn((Gamepad::default(), Name::new("TestGamepad")));
+
+    // Helper function to create a TestMixedMutabilityCore instance
+    let create_mixed_core = |suffix: &str| TestMixedMutabilityCore {
+        mutable_string:           format!("test_string_{suffix}"),
+        mutable_float:            42.5,
+        not_mutable_arc:          Arc::new(format!("arc_string_{suffix}")),
+        partially_mutable_nested: TestPartiallyMutableNested {
+            nested_mutable_value:   100.0,
+            nested_mutable_name:    format!("nested_name_{suffix}"),
+            nested_not_mutable_arc: Arc::new(vec![1, 2, 3, 4, 5]),
+            deeply_nested:          TestDeeplyNested {
+                deep_value: 999,
+                deep_list:  vec![1.0, 2.0, 3.0],
+                deep_arc:   Arc::new(format!("deep_string_{suffix}")),
+                deep_map:   {
+                    let mut map = HashMap::new();
+                    map.insert("key1".to_string(), 10.5);
+                    map.insert("key2".to_string(), 20.5);
+                    map
+                },
+            },
+        },
+        mutable_transform:        Transform::from_xyz(1.0, 2.0, 3.0),
+        not_mutable_struct:       TestStructNoSerDe {
+            value:   77.7,
+            name:    format!("not_mutable_{suffix}"),
+            enabled: false,
+        },
+    };
+
+    // Entity with TestMixedMutabilityVec (List parent)
+    commands.spawn((
+        TestMixedMutabilityVec {
+            items: vec![
+                create_mixed_core("vec_0"),
+                create_mixed_core("vec_1"),
+                create_mixed_core("vec_2"),
+            ],
+        },
+        Name::new("TestMixedMutabilityVecEntity"),
+    ));
+
+    // Entity with TestMixedMutabilityArray (Array parent)
+    commands.spawn((
+        TestMixedMutabilityArray {
+            items: [create_mixed_core("array_0"), create_mixed_core("array_1")],
+        },
+        Name::new("TestMixedMutabilityArrayEntity"),
+    ));
+
+    // Entity with TestMixedMutabilityTuple (TupleStruct parent)
+    commands.spawn((
+        TestMixedMutabilityTuple(create_mixed_core("tuple"), 99.9, "tuple_string".to_string()),
+        Name::new("TestMixedMutabilityTupleEntity"),
+    ));
+
+    // Entity with TestMixedMutabilityEnum (Enum parent)
+    commands.spawn((
+        TestMixedMutabilityEnum::Multiple {
+            name:  "enum_multiple".to_string(),
+            mixed: create_mixed_core("enum"),
+            value: 123.45,
+        },
+        Name::new("TestMixedMutabilityEnumEntity"),
+    ));
 }
 
 fn spawn_render_entities(commands: &mut Commands) {
