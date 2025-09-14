@@ -179,9 +179,27 @@ def find_differences(
 def extract_type_guide(data: Dict) -> List[Dict]:
     """Extract type_guide array from either format"""
     if 'type_guide' in data:
-        return data['type_guide']
+        type_guide = data['type_guide']
+        # Handle both object format (keys are type names) and array format
+        if isinstance(type_guide, dict):
+            # Convert object format to array format, adding type_name field
+            return [
+                {**guide, 'type_name': type_name}
+                for type_name, guide in type_guide.items()
+            ]
+        else:
+            return type_guide
     elif 'result' in data and 'type_guide' in data['result']:
-        return data['result']['type_guide']
+        type_guide = data['result']['type_guide']
+        # Handle both object format (keys are type names) and array format
+        if isinstance(type_guide, dict):
+            # Convert object format to array format, adding type_name field
+            return [
+                {**guide, 'type_name': type_name}
+                for type_name, guide in type_guide.items()
+            ]
+        else:
+            return type_guide
     else:
         # If data is a dict with type names as keys, return the values
         if isinstance(data, dict):
