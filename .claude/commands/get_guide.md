@@ -64,6 +64,25 @@ The script returns JSON data that I will process to show:
 3. **Mutation Paths Summary**
 4. **Spawn Format Example** (if available)
 
+### Full Type Guide
+Display the ENTIRE contents of the "guide" field from the JSON response, formatted as JSON:
+
+Example - show the complete guide object:
+```json
+{
+  "has_deserialize": false,
+  "has_serialize": false,
+  "in_registry": true,
+  "mutation_paths": {...},
+  "schema_info": {...},
+  "supported_operations": [...],
+  "type_name": "...",
+  "batch_number": null,
+  "test_status": "...",
+  "fail_reason": ""
+}
+```
+
 ## Script Execution
 
 Run the script with the requested type:
