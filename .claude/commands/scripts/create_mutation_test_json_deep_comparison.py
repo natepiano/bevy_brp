@@ -183,21 +183,24 @@ def extract_type_guide(data: Dict) -> List[Dict]:
     elif 'result' in data and 'type_guide' in data['result']:
         return data['result']['type_guide']
     else:
+        # If data is a dict with type names as keys, return the values
+        if isinstance(data, dict):
+            return list(data.values())
         return data
 
 def calculate_metadata(type_guide: List[Dict]) -> Dict[str, int]:
     """Calculate metadata statistics for a type guide"""
     total_types = len(type_guide)
     
-    spawn_supported = len([t for t in type_guide if 'spawn_format' in t])
-    
+    spawn_supported = len([t for t in type_guide if isinstance(t, dict) and 'spawn_format' in t])
+
     with_mutations = len([
-        t for t in type_guide 
-        if t.get('mutation_paths') and t['mutation_paths'] != {} and t['mutation_paths'] != []
+        t for t in type_guide
+        if isinstance(t, dict) and t.get('mutation_paths') and t['mutation_paths'] != {} and t['mutation_paths'] != []
     ])
     
     total_paths = sum([
-        len(t['mutation_paths'].keys()) if isinstance(t.get('mutation_paths'), dict) else 0
+        len(t['mutation_paths'].keys()) if isinstance(t, dict) and isinstance(t.get('mutation_paths'), dict) else 0
         for t in type_guide
     ])
     

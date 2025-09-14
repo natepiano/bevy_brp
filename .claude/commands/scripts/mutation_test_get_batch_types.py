@@ -33,21 +33,12 @@ except json.JSONDecodeError as e:
     print(f"Error parsing JSON: {e}", file=sys.stderr)
     sys.exit(1)
 
-# Handle different file structures (wrapped vs direct array)
-type_guide = None
-if isinstance(data, dict):
-    if 'type_guide' in data:
-        # Format with type_guide at root
-        type_guide = data['type_guide']
-    elif 'result' in data and 'type_guide' in data['result']:
-        # Format with result.type_guide
-        type_guide = data['result']['type_guide']
-    else:
-        # Unknown dict format, treat as empty
-        type_guide = []
-else:
-    # Direct array format (legacy)
-    type_guide = data
+# Expect type_guide at root
+if not isinstance(data, dict) or 'type_guide' not in data:
+    print(f"Error: Expected dict with 'type_guide' at root", file=sys.stderr)
+    sys.exit(1)
+
+type_guide = data['type_guide']
 
 # Get complete type schemas for the specified batch
 batch_types = []

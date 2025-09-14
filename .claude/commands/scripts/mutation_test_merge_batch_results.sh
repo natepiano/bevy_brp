@@ -33,61 +33,28 @@ if [ ! -f "$MUTATION_TEST_FILE" ]; then
     exit 1
 fi
 
-# Merge results into mutation test file (handle both wrapped and direct formats)
+# Merge results into mutation test file (expect type_guide at root)
 jq --slurpfile results "$RESULTS_FILE" '
   . as $mutation_test |
   $results[0] as $batch_results |
   # Create a lookup map from batch results for efficient access
   ($batch_results | map({key: .type, value: .}) | from_entries) as $result_map |
-  
-  # Handle different file structures
-  if .type_guide then
-    # Update type_guide array
-    .type_guide |= map(
-      . as $entry |
-      # Use type_name or type field
-      ($entry.type_name // $entry.type // "unknown") as $type_key |
-      if $result_map[$type_key] then
-        # Update entry with test result
-        $entry | 
-        .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
-        .fail_reason = $result_map[$type_key].fail_reason
-      else
-        # Keep entry unchanged if no result for this type
-        $entry
-      end
-    )
-  elif .result.type_guide then
-    # Update result.type_guide array
-    .result.type_guide |= map(
-      . as $entry |
-      # Use type_name or type field
-      ($entry.type_name // $entry.type // "unknown") as $type_key |
-      if $result_map[$type_key] then
-        # Update entry with test result
-        $entry | 
-        .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
-        .fail_reason = $result_map[$type_key].fail_reason
-      else
-        # Keep entry unchanged if no result for this type
-        $entry
-      end
-    )
-  else
-    # Handle direct array format (legacy)
-    map(
-      . as $entry |
-      if $result_map[.type] then
-        # Update entry with test result
-        $entry | 
-        .test_status = (if $result_map[.type].status == "PASS" then "passed" else "failed" end) |
-        .fail_reason = $result_map[.type].fail_reason
-      else
-        # Keep entry unchanged if no result for this type
-        $entry
-      end
-    )
-  end
+
+  # Update type_guide array
+  .type_guide |= map(
+    . as $entry |
+    # Use type_name field
+    $entry.type_name as $type_key |
+    if $result_map[$type_key] then
+      # Update entry with test result
+      $entry |
+      .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
+      .fail_reason = $result_map[$type_key].fail_reason
+    else
+      # Keep entry unchanged if no result for this type
+      $entry
+    end
+  )
 ' "$MUTATION_TEST_FILE" > "${MUTATION_TEST_FILE}.tmp"
 
 # Atomic move

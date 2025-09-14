@@ -29,75 +29,43 @@ fi
 # This preserves ALL fields from the original BRP response and adds test metadata
 jq --arg excluded "$EXCLUDED_TYPES" '
 # Process the response, preserving everything and adding test metadata
-if .type_guide then
-    # Handle the brp_all_type_guides format
-    .type_guide |= map(
-        # Skip excluded types entirely
-        if ($excluded != "" and .type != null and (.type | test($excluded))) then
-            empty
-        else
-            # Preserve ALL original fields and add test metadata
-            . + {
+# type_guide is an object with type names as keys
+.type_guide |= with_entries(
+    . as $entry |
+    # Skip excluded types entirely
+    if ($excluded != "" and $entry.key != null and ($entry.key | test($excluded))) then
+        empty
+    else
+        # Preserve the key (type name) and augment the value
+        {
+            key: $entry.key,
+            value: ($entry.value + {
+                # Add the type field from the key
+                "type": $entry.key,
                 # Add test tracking fields
                 "batch_number": null,
                 "test_status": (
-                    # Auto-pass types that only have spawn support
-                    if (.mutation_paths == null or .mutation_paths == [] or
-                        (.mutation_paths | type == "array" and length == 1 and .[0].path == "")) then
+                    # Auto-pass only types with no mutation paths or empty root-only paths
+                    # Types with examples in root path should be tested
+                    if ($entry.value.mutation_paths == null or $entry.value.mutation_paths == {}) then
                         "passed"
+                    elif (($entry.value.mutation_paths | type == "object") and ($entry.value.mutation_paths | length == 1) and ($entry.value.mutation_paths | has(""))) then
+                        # Check if root path has meaningful examples
+                        if ($entry.value.mutation_paths[""].example == {} and
+                            ($entry.value.mutation_paths[""].examples == null or $entry.value.mutation_paths[""].examples == [])) then
+                            "passed"
+                        else
+                            "untested"
+                        end
                     else
                         "untested"
                     end
                 ),
                 "fail_reason": ""
-            }
-        end
-    )
-elif .result.type_guide then
-    # Handle wrapped format (if it exists)
-    .result.type_guide |= map(
-        # Skip excluded types entirely
-        if ($excluded != "" and .type != null and (.type | test($excluded))) then
-            empty
-        else
-            # Preserve ALL original fields and add test metadata
-            . + {
-                # Add test tracking fields
-                "batch_number": null,
-                "test_status": (
-                    # Auto-pass types that only have spawn support
-                    if (.mutation_paths == null or .mutation_paths == [] or
-                        (.mutation_paths | type == "array" and length == 1 and .[0].path == "")) then
-                        "passed"
-                    else
-                        "untested"
-                    end
-                ),
-                "fail_reason": ""
-            }
-        end
-    )
-else
-    # Handle direct array format (fallback)
-    map(
-        if ($excluded != "" and .type != null and (.type | test($excluded))) then
-            empty
-        else
-            . + {
-                "batch_number": null,
-                "test_status": (
-                    if (.mutation_paths == null or .mutation_paths == [] or
-                        (.mutation_paths | type == "array" and length == 1 and .[0].path == "")) then
-                        "passed"
-                    else
-                        "untested"
-                    end
-                ),
-                "fail_reason": ""
-            }
-        end
-    )
-end
+            })
+        }
+    end
+)
 ' "$FILEPATH" > "$TARGET_FILE"
 
 if [ $? -eq 0 ]; then
@@ -116,21 +84,21 @@ if [ $? -eq 0 ]; then
 
     UNTESTED_COUNT=$(jq -r '
         if .type_guide then
-            [.type_guide[] | select(.test_status == "untested")] | length
+            [.type_guide | to_entries | .[] | select(.value.test_status == "untested")] | length
         elif .result.type_guide then
-            [.result.type_guide[] | select(.test_status == "untested")] | length
+            [.result.type_guide | to_entries | .[] | select(.value.test_status == "untested")] | length
         else
-            [.[] | select(.test_status == "untested")] | length
+            [. | to_entries | .[] | select(.value.test_status == "untested")] | length
         end
     ' "$TARGET_FILE")
 
     PASSED_COUNT=$(jq -r '
         if .type_guide then
-            [.type_guide[] | select(.test_status == "passed")] | length
+            [.type_guide | to_entries | .[] | select(.value.test_status == "passed")] | length
         elif .result.type_guide then
-            [.result.type_guide[] | select(.test_status == "passed")] | length
+            [.result.type_guide | to_entries | .[] | select(.value.test_status == "passed")] | length
         else
-            [.[] | select(.test_status == "passed")] | length
+            [. | to_entries | .[] | select(.value.test_status == "passed")] | length
         end
     ' "$TARGET_FILE")
 

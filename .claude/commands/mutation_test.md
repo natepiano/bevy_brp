@@ -4,7 +4,7 @@
 
 **Command**: `/type_validation`
 
-**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `{temp_dir}/all_types.json` with simple pass/fail status for each type.
+**Purpose**: Systematically validate ALL BRP component types by testing spawn/insert and mutation operations. Tracks progress in `{temp_dir}/all_types.json` with simple pass/fail status for each type. The file contains a `type_guide` array at the root with complete type information including mutation paths as a dict with examples.
 
 **Process Summary**: Renumber batches → Launch/verify app → Test types in parallel batches → Process results → Cleanup
 
@@ -110,7 +110,7 @@ Task(
     prompt="""CRITICAL: You are a subagent. DO NOT launch any apps! Use the existing extras_plugin on port 20116.
 
 Test these types WITH COMPLETE TYPE GUIDES (DO NOT call brp_type_guide - use these provided type guides):
-[Include the FULL type guides from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths with examples, etc.]
+[Include the FULL type guides from mutation_test_get_batch_types.py output - includes type_name, spawn_format, mutation_paths dict with examples, etc.]
 
 [Include ENTIRE TestInstructions section below]
 
@@ -149,8 +149,8 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 
 **CRITICAL**:
 - Do NOT update any JSON files
-- Test spawn/insert only if `spawn_support` is "supported"
-- Test ALL mutation paths in the `mutation_paths` array
+- Test spawn/insert only if `spawn_format` exists in the provided type guide
+- Test ALL mutation paths in the `mutation_paths` dict (iterate over all keys)
 - Stop testing a type on first failure
 
 **For EACH assigned type**:
@@ -176,9 +176,11 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
    ```
 
    **CRITICAL:** Replace `ACTUAL_COMPONENT_TYPE_NAME_HERE` with the real component type from your assigned list. Do NOT use the placeholder text literally.
-4. **Test Mutations** - Test each path from mutation_paths array:
-   - **Root path `""`** (empty string): Full component replacement using the SAME spawn_format from type guide
-   - **Field paths** (e.g., `.translation.x`): Individual field mutations
+4. **Test Mutations** - Test each path from mutation_paths dict (iterate over the keys):
+   - **Root path `""`** (empty string): Full component replacement using the example from mutation_paths[""]
+   - **Field paths** (e.g., `.translation.x`): Individual field mutations using the example value for each path
+   - Use the `example` value provided in each mutation path entry
+   - Skip paths where `path_info.mutation_status` is "not_mutable" or "partially_mutable"
 5. **Return Results** - Structured JSON for all types
 
 **REMEMBER**:
@@ -203,7 +205,6 @@ If you get "invalid type: string" errors, YOU serialized a number wrong. Fix it 
 - Float types: Use numeric values (3.14, not "3.14")
 - Strings: Use quoted strings
 - Enums: Use variant names from examples
-- Skip paths with `path_kind: "NotMutable"`
 
 **CRITICAL TYPE HANDLING - NUMBERS MUST BE NUMBERS**:
 When you get examples from the provided type guide, pay EXTREME attention to the type:
@@ -328,12 +329,15 @@ After completion or failure:
 **Type guides**: Stored in `{temp_dir}/all_types.json` with COMPLETE type guides including examples
 **Progress file**: `{temp_dir}/all_types.json` (where `{temp_dir}` is the actual expanded temp directory path)
 
-Each type entry structure:
+File structure contains `type_guide` array at root. Each type entry structure:
 ```json
 {
-  "type": "bevy_transform::components::transform::Transform",
-  "spawn_support": "supported",
-  "mutation_paths": [".translation.x", ".rotation", ".scale"],
+  "type_name": "bevy_transform::components::transform::Transform",
+  "spawn_format": {...},  // Complete spawn example if supported
+  "mutation_paths": {
+    "": {...},              // Root path with example
+    ".translation.x": {...} // Field paths with examples
+  },
   "test_status": "untested",
   "batch_number": 1,
   "fail_reason": ""
