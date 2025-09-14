@@ -368,7 +368,12 @@ Each builder migration follows this pattern:
    - TypeKind: `Self::List => self.builder().build_paths(ctx, builder_depth)`
    - Note: No `child_path_action()` override - exposes paths like `[0].field`
 
-5. **ArrayMutationBuilder** - Single child type
+5. ✅ **ArrayMutationBuilder** - Fixed-size array with indexed access, exposes child paths
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/array_builder.rs`
+   - TypeKind: `Self::Array => self.builder().build_paths(ctx, builder_depth)`
+   - Note: No `child_path_action()` override - exposes paths like `[0].field`
+
+6. **TupleMutationBuilder** - Multiple children
 
 **📋 MIGRATION GUIDANCE - FOLLOW THESE EXACT PATTERNS:**
 
@@ -437,74 +442,7 @@ Each builder migration follows this pattern:
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the ListMutationBuilder implementation before proceeding to next builder
 
-5. **ArrayMutationBuilder** - Single child type
-
-**📋 MIGRATION GUIDANCE - FOLLOW THESE EXACT PATTERNS:**
-
-✅ **Reference Implementations** (study these for the exact pattern):
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
-
-**Key Implementation Details:**
-1. **collect_children()** must return `Result<Vec<PathKind>>` (NOT Vec<(String, RecursionContext)>)
-2. **PathKind structure** uses:
-   - `type_name` (NOT field_type)
-   - `parent_type` (NOT optional)
-3. **assemble_from_children()** returns `Result<Value>` for proper error handling
-4. **For container types** that skip child paths: Override `child_path_action()` to return `PathAction::Skip`
-
-**Pattern Summary:**
-- Implement ONLY: `collect_children()` and `assemble_from_children()`
-- Optional: Override `child_path_action()` if this type shouldn't expose child paths
-- ProtocolEnforcer handles ALL: depth checks, registry validation, mutation status
-
-**🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
-- ❌ ALL lines with `depth.exceeds_limit()`
-- ❌ ALL `ctx.require_registry_schema() else` blocks creating NotMutable paths
-- ❌ ENTIRE `build_not_mutable_path` method
-- ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
-- ❌ ALL `NotMutableReason` imports and usage
-- ❌ ALL direct `BRP_MUTATION_KNOWLEDGE` lookups
-
-**♻️ CODE TO ADAPT (keep logic but change format):**
-- ✏️ Schema extraction → Keep but return PathKinds with correct structure
-- ✏️ Child identification → Convert to PathKind format with type_name/parent_type
-- ✏️ For arrays/lists: Create indexed PathKinds
-- ✏️ For structs: Create field PathKinds with parent_type
-- ✏️ For enums: Create variant PathKinds
-
-   - Fix line 220 static method, implement protocol methods
-   - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::Error;` import for error handling
-   - **ERROR HANDLING**:
-     - **Line 127**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
-     - **Line 142**: `.map_or(json!(null), ...)` when element schema missing - should be `Error::SchemaProcessing`
-     - Use `Error::InvalidState` for protocol violations (missing required children)
-     - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
-     - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
-     - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NotMutable HANDLING**:
-     - Check for any local NotMutable path creation
-     - Replace with `return Err(Error::NotMutable(reason).into())`
-     - ProtocolEnforcer will handle path creation
-   - **RECURSION CHECK REMOVAL**:
-     - Check if this builder has any `depth.exceeds_limit()` checks
-     - REMOVE any recursion limit checks - ProtocolEnforcer now handles all recursion limiting
-     - The builder should NOT check depth limits after migration
-   - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutable paths
-     - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
-     - The builder should NOT check if type is in registry after migration
-   - **MUTATION STATUS PROPAGATION REMOVAL**:
-     - **IMPORTANT**: Do NOT set `mutation_status` or `mutation_status_reason` fields in paths
-     - ProtocolEnforcer now handles ALL mutation status propagation automatically
-     - Builders only create examples - ProtocolEnforcer computes status from children
-     - Remove any manual mutation status assignment logic
-   - **Note**: No need to override `child_path_action()` - Arrays expose indexed element paths
-   - **TypeKind**: Update `Self::Array => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh
-   - **STOP and ask user to validate and discuss**
-   - **CODE REVIEW**: After validation, stop and ask user to review the ArrayMutationBuilder implementation before proceeding to next builder
+## Next: TupleMutationBuilder Migration
 
 6. **TupleMutationBuilder** - Multiple children
 
