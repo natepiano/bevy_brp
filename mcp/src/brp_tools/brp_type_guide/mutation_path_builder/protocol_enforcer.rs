@@ -261,14 +261,30 @@ impl ProtocolEnforcer {
 
     /// Check knowledge base and return path with known example if found
     fn check_knowledge(ctx: &RecursionContext) -> Option<Result<Vec<MutationPathInternal>>> {
-        KnowledgeKey::find_example_for_type(ctx.type_name()).map(|example| {
-            Ok(vec![Self::build_mutation_path_internal(
+        tracing::debug!(
+            "ProtocolEnforcer checking knowledge for type: {}",
+            ctx.type_name()
+        );
+
+        if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
+            tracing::debug!(
+                "ProtocolEnforcer found knowledge for {}: {:?}",
+                ctx.type_name(),
+                example
+            );
+            Some(Ok(vec![Self::build_mutation_path_internal(
                 ctx,
                 example,
                 MutationStatus::Mutable,
                 None,
-            )])
-        })
+            )]))
+        } else {
+            tracing::debug!(
+                "ProtocolEnforcer NO knowledge found for: {}",
+                ctx.type_name()
+            );
+            None
+        }
     }
 
     /// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate

@@ -49,6 +49,8 @@ impl MutationPathBuilder for StructMutationBuilder {
         let mut struct_example = serde_json::Map::new();
         let properties = Self::extract_properties(ctx);
 
+        // First, process all fields to generate field paths (following ArrayMutationBuilder
+        // pattern)
         for (field_name, field_info) in properties {
             let (field_example, field_paths) =
                 Self::process_field(ctx, &field_name, field_info, depth)?;
@@ -56,7 +58,39 @@ impl MutationPathBuilder for StructMutationBuilder {
             struct_example.insert(field_name, field_example);
         }
 
-        // Add the root struct path with the accumulated example
+        // Check for hardcoded knowledge AFTER processing fields (like ArrayMutationBuilder did)
+        // This ensures types like Vec2, Vec3, etc. use their BRP-compatible array format
+        // while preserving individual field mutations for types that support both
+        if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name())) {
+            tracing::debug!(
+                "StructMutationBuilder found hardcoded knowledge for struct '{}', using knowledge example: {:?}",
+                ctx.type_name(),
+                knowledge.example()
+            );
+
+            // Filter out any conflicting root path (paths that match our current mutation_path)
+            // This prevents duplicate root paths while preserving field-level mutations
+            let filtered_paths: Vec<_> = paths
+                .into_iter()
+                .filter(|p| p.path != ctx.mutation_path)
+                .collect();
+
+            // Add knowledge-based root path
+            let mut final_paths = vec![MutationPathInternal {
+                path:                   ctx.mutation_path.clone(),
+                example:                knowledge.example().clone(),
+                type_name:              ctx.type_name().clone(),
+                path_kind:              ctx.path_kind.clone(),
+                mutation_status:        MutationStatus::Mutable,
+                mutation_status_reason: None,
+            }];
+
+            // Add back the filtered field paths
+            final_paths.extend(filtered_paths);
+            return Ok(final_paths);
+        }
+
+        // No hardcoded knowledge - add the root struct path with the accumulated example
         // Always add root path - all PathKind variants can contain structs that may need direct
         // access
         {
@@ -144,6 +178,14 @@ impl StructMutationBuilder {
         let has_hardcoded_knowledge = BRP_MUTATION_KNOWLEDGE
             .get(&KnowledgeKey::exact(&field_type))
             .is_some();
+
+        tracing::debug!(
+            "StructMutationBuilder processing field '{}' type '{}': has_knowledge={}, kind={:?}",
+            field_name,
+            field_type,
+            has_hardcoded_knowledge,
+            field_kind
+        );
 
         let field_example = if matches!(field_kind, TypeKind::Value) {
             Self::process_value_field(&field_ctx, &field_type, depth, &mut paths)
@@ -269,13 +311,27 @@ impl StructMutationBuilder {
             // (like Vec3, Quat, etc.) should have their direct path updated with hardcoded
             // example
             if has_hardcoded_knowledge && matches!(field_kind, TypeKind::Struct) {
+                tracing::debug!(
+                    "StructMutationBuilder applying hardcoded knowledge for struct type '{}'",
+                    field_type
+                );
                 // Find and update the direct field path to use hardcoded example
                 if let Some(path) = paths.iter_mut().find(|p| p.path == field_ctx.mutation_path)
                     && let Some(knowledge) =
                         BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(field_type))
                 {
+                    tracing::debug!(
+                        "StructMutationBuilder found path and knowledge for '{}', updating example to: {:?}",
+                        field_type,
+                        knowledge.example()
+                    );
                     path.example = knowledge.example().clone();
                     return path.example.clone();
+                } else {
+                    tracing::debug!(
+                        "StructMutationBuilder failed to find path or knowledge for '{}'",
+                        field_type
+                    );
                 }
             }
         }
