@@ -5,7 +5,7 @@ Add support for launching multiple instances of the same Bevy app/example on seq
 
 ## Design Principles
 1. **Simplicity**: Keep the existing code structure intact - just loop the existing launch logic
-2. **Backward Compatible**: Default to 1 instance (existing behavior)
+2. **Clean Design**: Use array-based structure for instances (breaking change accepted)
 3. **Minimal Changes**: Reuse existing functions and structures where possible
 
 ## Implementation Steps
@@ -18,7 +18,7 @@ Add support for launching multiple instances of the same Bevy app/example on seq
   - Default of 1 instance
   - Deserialize implementation with both number and string support
   - Display implementation
-  - Constants for min/max/range validation
+  - Constants for min/max/range validation (MIN_INSTANCE_COUNT, MAX_INSTANCE_COUNT, VALID_INSTANCE_RANGE)
 
 ### 2. Add Module Registration
 **File**: `mcp/src/app_tools/mod.rs`
@@ -30,11 +30,26 @@ mod instance_count;
 ### 3. Update Parameter Structs
 **Files**: `brp_launch_bevy_app.rs`, `brp_launch_bevy_example.rs`
 ```rust
-// Add to both LaunchBevyAppParams and LaunchBevyExampleParams:
-#[to_metadata(skip_if_none)]
-pub instance_count: Option<InstanceCount>,
+// Add import at the top of both files:
+use crate::app_tools::instance_count::InstanceCount;
 
-// Update ToLaunchParams impl to pass it through
+// Add to both LaunchBevyAppParams and LaunchBevyExampleParams:
+/// Number of instances to launch (default: 1)
+#[serde(default)]
+pub instance_count: InstanceCount,
+
+// Update ToLaunchParams impl to pass instance_count:
+impl ToLaunchParams for LaunchBevyAppParams {
+    fn to_launch_params(&self, default_profile: &str) -> LaunchParams {
+        LaunchParams {
+            target_name: self.app_name.clone(),
+            profile: self.profile.clone().unwrap_or_else(|| default_profile.to_string()),
+            path: self.path.clone(),
+            port: self.port,
+            instance_count: self.instance_count,
+        }
+    }
+}
 ```
 
 ### 4. Update Support Structures
@@ -42,31 +57,80 @@ pub instance_count: Option<InstanceCount>,
 
 #### 4a. LaunchParams
 ```rust
+use crate::app_tools::instance_count::InstanceCount;
+
 pub struct LaunchParams {
     // ... existing fields ...
-    pub instance_count: Option<InstanceCount>,
+    pub instance_count: InstanceCount,
 }
 ```
 
 #### 4b. LaunchConfig
 ```rust
+#[derive(Clone)]  // Add Clone derive
 pub struct LaunchConfig<T> {
     // ... existing fields ...
-    pub instance_count: Option<InstanceCount>,
+    pub instance_count: InstanceCount,
 }
 
-// Update new() constructor
-// Update FromLaunchParams impls
+// Update new() constructor to accept instance_count:
+impl<T> LaunchConfig<T> {
+    pub fn new(
+        target_name: String,
+        profile: String,
+        path: Option<String>,
+        port: Port,
+        instance_count: InstanceCount,
+    ) -> Self {
+        Self {
+            target_name,
+            profile,
+            path,
+            port,
+            instance_count,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+// Update FromLaunchParams impls:
+impl FromLaunchParams for LaunchConfig<App> {
+    fn from_params(params: &LaunchParams) -> Self {
+        Self::new(
+            params.target_name.clone(),
+            params.profile.clone(),
+            params.path.clone(),
+            params.port,
+            params.instance_count,
+        )
+    }
+}
 ```
 
 #### 4c. LaunchConfigTrait
 ```rust
-trait LaunchConfigTrait {
+trait LaunchConfigTrait: Clone {  // Add Clone bound
     // ... existing methods ...
-    fn instance_count(&self) -> Option<InstanceCount>;
+
+    /// Get the instance count for launching multiple instances
+    fn instance_count(&self) -> InstanceCount;
+
+    /// Set the port (needed for multi-instance launches)
+    fn set_port(&mut self, port: Port);
 }
 
-// Implement in both LaunchConfig<App> and LaunchConfig<Example>
+// Implement in both LaunchConfig<App> and LaunchConfig<Example>:
+impl<T> LaunchConfigTrait for LaunchConfig<T> {
+    // ... existing method implementations ...
+
+    fn instance_count(&self) -> InstanceCount {
+        self.instance_count
+    }
+
+    fn set_port(&mut self, port: Port) {
+        self.port = port;
+    }
+}
 ```
 
 ### 5. Core Launch Logic Changes
@@ -119,6 +183,8 @@ pub fn launch_target<T: LaunchConfigTrait>(
     search_paths: &[PathBuf],
 ) -> Result<LaunchResult> {
     use std::time::Instant;
+    use crate::brp_tools::constants::MAX_VALID_PORT;
+
     let launch_start = Instant::now();
 
     // Find and validate the target
@@ -127,7 +193,19 @@ pub fn launch_target<T: LaunchConfigTrait>(
     // Ensure the target is built
     config.ensure_built(&target)?;
 
-    let instance_count = config.instance_count().map(|ic| ic.0).unwrap_or(1);
+    let instance_count = config.instance_count().0;
+    let base_port = config.port().0;
+
+    // Validate entire port range fits within valid bounds
+    // MAX_VALID_PORT is imported from brp_tools::constants (65534)
+    if base_port.saturating_add(instance_count as u16 - 1) > MAX_VALID_PORT {
+        return Err(Error::tool_call_failed(
+            format!("Port range {} to {} exceeds maximum valid port {}",
+                    base_port,
+                    base_port.saturating_add(instance_count as u16 - 1),
+                    MAX_VALID_PORT)
+        ));
+    }
 
     // SINGLE UNIFIED LOOP - handles both single (1) and multi (N) instances
     let mut all_pids = Vec::new();
@@ -135,11 +213,15 @@ pub fn launch_target<T: LaunchConfigTrait>(
     let mut all_ports = Vec::new();
 
     for i in 0..instance_count {
-        let port = Port(config.port().0 + i as u16);
+        let port = Port(config.port().0 + i as u16); // Now safe after validation
 
-        // Prepare launch environment with specific port
+        // Create a modified config with the updated port for this instance
+        let mut instance_config = config.clone();
+        instance_config.set_port(port);
+
+        // Prepare launch environment with the instance-specific config
         let (mut cmd, manifest_dir, log_file_path, log_file_for_redirect) =
-            prepare_launch_environment_with_port(config, &target, port)?;
+            prepare_launch_environment(&instance_config, &target)?;
 
         // Set working directory and spawn process
         cmd.current_dir(&manifest_dir);
@@ -166,41 +248,7 @@ pub fn launch_target<T: LaunchConfigTrait>(
 }
 ```
 
-#### 5c. Helper Functions
-```rust
-// Modified prepare function that accepts port override
-fn prepare_launch_environment_with_port<T: LaunchConfigTrait>(
-    config: &T,
-    target: &BevyTarget,
-    port: Port,
-) -> Result<(Command, PathBuf, PathBuf, std::fs::File)> {
-    // Get manifest directory
-    let manifest_dir = validate_manifest_directory(&target.manifest_path)?;
-
-    // Build command with port override
-    let mut cmd = config.build_command(target);
-    cmd.env("BRP_EXTRAS_PORT", port.0.to_string());
-
-    // Setup logging with port in filename
-    let (log_file_path, log_file_for_redirect) = setup_launch_logging(
-        config.target_name(),
-        T::TARGET_TYPE,
-        config.profile(),
-        &PathBuf::from(format!("{cmd:?}")),
-        manifest_dir,
-        Some(port),  // Use provided port
-        config.extra_log_info(target).as_deref(),
-    )?;
-
-    Ok((
-        cmd,
-        manifest_dir.to_path_buf(),
-        log_file_path,
-        log_file_for_redirect,
-    ))
-}
-
-// Build unified result from collected vectors
+#### 5c. Build unified result from collected vectors
 fn build_launch_result<T: LaunchConfigTrait>(
     all_pids: Vec<u32>,
     all_log_files: Vec<PathBuf>,
@@ -273,6 +321,72 @@ fn build_launch_result<T: LaunchConfigTrait>(
 
 ## Migration Notes
 
-- Existing code continues to work unchanged
-- instance_count is optional and defaults to 1
-- Result structure is backward compatible (pid field still exists for single instance)
+- **BREAKING CHANGE**: LaunchResult structure changes from single instance fields (pid, log_file) to instances array
+- instance_count is optional and defaults to 1 (single instance behavior)
+- Consumers need to update to access instances[0].pid instead of pid directly
+
+## Design Review Findings
+
+### TYPE-SYSTEM-1: Terminology inconsistency between InstanceCount type and internal constants - **Verdict**: CONFIRMED ✅
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: Create InstanceCount Type
+- **Issue**: The `InstanceCount` type uses 'SEQUENCE_COUNT' terminology throughout constants, functions, and internal structures, but 'InstanceCount' in the type name, creating pervasive inconsistent naming that violates type system design principles
+- **Reasoning**: This is definitely a real issue that's actually worse than originally described. The inconsistency isn't just in the constants - it permeates the entire module. The public type is called 'InstanceCount' but internally everything uses 'sequence' terminology: constants, functions, visitor structs, error messages, and comments. This creates confusion for anyone reading or maintaining the code. When a type is called 'InstanceCount', users expect all related functionality to use 'instance' terminology consistently. This violates the principle of least surprise and makes the API harder to understand.
+
+### Approved Change:
+All "sequence" terminology has been changed to "instance" terminology throughout:
+- Constants: MIN_INSTANCE_COUNT, MAX_INSTANCE_COUNT, VALID_INSTANCE_RANGE
+- Functions: deserialize_instance_count
+- Visitor struct: InstanceCountVisitor
+- Error messages: "instance count" instead of "sequence count"
+
+### Implementation Notes:
+The instance_count.rs file has been updated to use consistent "instance" terminology throughout. The plan has been updated to reflect these changes.
+
+### TYPE-SYSTEM-2: Missing port overflow validation in sequential port assignment - **Verdict**: CONFIRMED ✅
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: Modify launch_target Function - UNIFIED LOOP APPROACH
+- **Issue**: Plan shows `port + i as u16` without validation that the result stays within valid port range (1-65534), which could cause port overflow or invalid ports
+- **Reasoning**: This finding correctly identifies a real vulnerability in the planned multi-instance launch feature. While the problematic code doesn't exist in the current implementation, the plan document shows code that would bypass Port validation by directly constructing Port(value) without checking if the calculated ports stay within the valid range. If a base port of 65530 was used with 10 instances, the final port would be 65540, exceeding the maximum valid port.
+
+### Approved Change:
+Added port range validation before the loop to ensure all calculated ports stay within valid bounds (1024-65534). Uses the existing MAX_VALID_PORT constant from brp_tools::constants.
+
+### Implementation Notes:
+The launch_target function now validates the entire port range before entering the loop, using saturating_add to prevent integer overflow during validation.
+
+## Design Review Skip Notes
+
+### TYPE-SYSTEM-3: Backward compatibility break in LaunchResult structure - **Verdict**: REJECTED
+- **Status**: SKIPPED - Invalid finding after design clarification
+- **Location**: Section: New LaunchResult Structure - Clean Instance Array
+- **Issue**: Plan removes `pid: Option<u32>` field from LaunchResult and replaces with `instances: Vec<LaunchedInstance>`, breaking existing consumers despite claiming backward compatibility
+- **Reasoning**: The finding was based on backward compatibility claims in the plan. After review, we've removed those claims and acknowledged this as an intentional breaking change. The clean array-based design is preferred over maintaining legacy fields, and breaking changes are acceptable for major new features.
+- **Decision**: Plan updated to clearly mark this as a breaking change in Migration Notes. The clean instances array design is retained as originally planned.
+
+### DESIGN-1: Missing instance_count field in LaunchParams struct - **Verdict**: MODIFIED ✅
+- **Status**: APPROVED - To be implemented (with modifications)
+- **Location**: Section: Update Support Structures
+- **Issue**: Plan shows adding instance_count to LaunchParams but current struct doesn't include it, and plan doesn't show the required update
+- **Reasoning**: The finding correctly identified the missing field, but the suggested implementation was wrong. Just like Port is not optional and has a default value, InstanceCount should also be non-optional with its default of 1. This maintains consistency in the API design.
+
+### Approved Change:
+InstanceCount is added as a non-optional field with #[serde(default)] attribute, exactly like Port:
+- LaunchParams: `pub instance_count: InstanceCount`
+- LaunchBevyAppParams/LaunchBevyExampleParams: `#[serde(default)] pub instance_count: InstanceCount`
+- Uses Default implementation returning InstanceCount(1)
+
+### Implementation Notes:
+The plan has been updated to show InstanceCount as a non-optional field throughout, maintaining consistency with the Port pattern. All ToLaunchParams and FromLaunchParams implementations updated to pass instance_count.
+
+### DESIGN-2: Missing instance_count method in LaunchConfigTrait - **Verdict**: CONFIRMED ✅
+- **Status**: APPROVED - To be implemented
+- **Location**: Section: LaunchConfigTrait
+- **Issue**: Plan references config.instance_count() method but LaunchConfigTrait doesn't define this method, and plan doesn't show adding it
+- **Reasoning**: This is a real issue where the plan document shows the LaunchConfigTrait should have an instance_count() method, but the actual trait definition is missing this method. The plan references config.instance_count() in the launch logic, but the trait doesn't define this method.
+
+### Approved Change:
+Added instance_count() method to LaunchConfigTrait with proper documentation and implementation.
+
+### Implementation Notes:
+The trait method returns InstanceCount (non-optional) and the implementation simply returns the stored instance_count field from LaunchConfig.
