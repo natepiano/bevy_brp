@@ -69,18 +69,33 @@ fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
 
     // Extract properties from schema - use proper schema methods
     let Some(properties) = schema.get_properties() else {
-        // Empty struct (no properties) is valid - return empty vector
-        // This is different from missing schema which is an error
-        return Ok(vec![]);
+        // Missing properties field indicates schema error (not empty struct)
+        return Err(Error::SchemaProcessing {
+            message: format!("Struct schema missing 'properties' field for type: {}", ctx.type_name()),
+            type_name: Some(ctx.type_name().to_string()),
+            operation: Some("extract_struct_properties".to_string()),
+            details: None,
+        }.into());
     };
+
+    // Empty properties map is valid (empty struct/marker struct)
+    if properties.is_empty() {
+        return Ok(vec![]); // Valid marker struct
+    }
 
     // Convert each field into a PathKind
     let mut children = Vec::new();
     for (field_name, field_schema) in properties {
-        // Extract the field type name using proper schema field extraction
+        // Extract field type or return error immediately - no fallback
         // Note: SchemaField::extract_field_type handles complex schemas with $ref
-        let field_type = SchemaField::extract_field_type(field_schema)
-            .unwrap_or_else(|| BrpTypeName::from(field_name));
+        let Some(field_type) = SchemaField::extract_field_type(field_schema) else {
+            return Err(Error::SchemaProcessing {
+                message: format!("Failed to extract type for field '{}' in struct '{}'", field_name, ctx.type_name()),
+                type_name: Some(ctx.type_name().to_string()),
+                operation: Some("extract_field_type".to_string()),
+                details: Some(format!("Field: {}", field_name)),
+            }.into());
+        };
 
         // Create PathKind for this field
         let path_kind = PathKind::StructField {
@@ -195,6 +210,29 @@ cargo build
 - [ ] cargo build succeeds
 - [ ] Test suite passes
 - [ ] Transform type uses hardcoded format (verified through testing)
+
+## Design Review Skip Notes
+
+### DC-1: TypeKind dispatch update may already be implemented differently - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Step 4: Update TypeKind Dispatch
+- **Issue**: Step 4 of the plan proposes changing TypeKind::Struct dispatch from `StructMutationBuilder.build_paths(ctx, builder_depth)` to `self.builder().build_paths(ctx, builder_depth)`, but the current code in type_kind.rs line 172 already shows this exact pattern is in use. This suggests the plan may be based on outdated code state.
+- **Reasoning**: The finding misrepresents the current code state. The plan correctly identifies a needed change, and this finding would incorrectly prevent that improvement from being implemented. The proposed change is necessary for architectural coherence by ensuring all variants use the consistent `self.builder()` pattern, which includes proper `ProtocolEnforcer` wrapping for migrated builders.
+- **Decision**: User elected to accept the rejection and continue
+
+### DP-1: New collect_children() logic duplicates existing extract_properties() pattern - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Step 3.2: Implement collect_children()
+- **Issue**: The proposed `collect_children()` method (lines 78-95) implements very similar field iteration logic to the existing `extract_properties()` method (lines 452-466) in struct_builder.rs, but with different error handling and data structures. This creates conceptual duplication even though the methods will be used in different contexts.
+- **Reasoning**: This is not conceptual duplication requiring consolidation - it's the natural evolution from old to new architecture during a planned migration. The temporary similarity will resolve automatically when the migration completes and the old code is removed. The `extract_properties()` method is part of the OLD builder implementation that will be removed during migration, while `collect_children()` is part of the NEW protocol implementation that replaces the old system.
+- **Decision**: User elected to accept the rejection and continue
+
+### AC-1: Migration plan correctly represents complete atomic change - **Verdict**: CONFIRMED ✅
+- **Status**: APPROVED - Plan structure is appropriate
+- **Location**: Success Criteria
+- **Issue**: The plan appropriately structures the migration as a complete, indivisible change from the old ExampleBuilder pattern to the new ProtocolEnforcer pattern. The success criteria ensure all parts of the migration are complete before considering it successful.
+- **Reasoning**: This finding correctly identifies a positive aspect of the codebase planning. The migration plan demonstrates thorough analysis, proven strategy, atomic design, and quality assurance. The plan is well-designed and follows best practices for atomic changes in this codebase.
+- **Decision**: User acknowledged the positive assessment
 
 ## Final Cleanup Checklist
 - [ ] Remove ExampleBuilder import

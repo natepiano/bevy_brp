@@ -14,21 +14,50 @@ Implement multi-port status checking capability for `brp_status` command, follow
 //! Provides a type-safe wrapper that accepts either a single port or an array
 //! of ports with built-in validation and backward compatibility.
 
-use std::ops::Deref;
+use std::ops::RangeInclusive;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use crate::brp_tools::Port;
+
+/// Minimum number of ports (1)
+pub const MIN_PORTS_PER_REQUEST: usize = 1;
+/// Maximum number of ports (100)
+pub const MAX_PORTS_PER_REQUEST: usize = 100;
+/// Valid range for port count
+pub const VALID_PORT_COUNT_RANGE: RangeInclusive<usize> = MIN_PORTS_PER_REQUEST..=MAX_PORTS_PER_REQUEST;
 
 /// A port parameter that accepts either a single port or an array of ports
 ///
 /// This type enables backward compatibility by accepting:
 /// - Single port: `{"port": 15702}`
 /// - Multiple ports: `{"port": [15702, 15703, 15704]}`
+/// - Validates port count (1-100 ports)
 #[derive(Debug, Clone, JsonSchema)]
 #[serde(untagged)]
 pub enum PortOrPorts {
     Single(Port),
+    #[serde(deserialize_with = "deserialize_validated_ports")]
     Multiple(Vec<Port>),
+}
+
+fn deserialize_validated_ports<'de, D>(deserializer: D) -> Result<Vec<Port>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let ports = Vec::<Port>::deserialize(deserializer)?;
+
+    if ports.is_empty() {
+        return Err(serde::de::Error::custom("Port array cannot be empty"));
+    }
+
+    if ports.len() > MAX_PORTS_PER_REQUEST {
+        return Err(serde::de::Error::custom(format!(
+            "Too many ports: {} (max: {})",
+            ports.len(), MAX_PORTS_PER_REQUEST
+        )));
+    }
+
+    Ok(ports)
 }
 
 impl PortOrPorts {
@@ -36,7 +65,7 @@ impl PortOrPorts {
     pub fn to_ports(self) -> Vec<Port> {
         match self {
             PortOrPorts::Single(port) => vec![port],
-            PortOrPorts::Multiple(ports) => ports,
+            PortOrPorts::Multiple(ports) => ports, // Already validated during deserialization
         }
     }
 
@@ -85,157 +114,128 @@ pub use port_or_ports::PortOrPorts;
 
 ## 2. Response Structure Design
 
-### 2.1 Create StatusInstance Structure
+### 2.1 Create Multi-Port Result Structure
 **File**: `mcp/src/app_tools/brp_status.rs` (modify existing)
 
 ```rust
-/// Represents the status of a single port check
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StatusInstance {
-    /// Port that was checked
-    pub port: u16,
-    /// Process ID if app is running (None if not running)
-    pub pid: Option<u32>,
-    /// Whether BRP is responding on this port
-    pub brp_responsive: bool,
-    /// Status summary for this port
-    pub status: PortStatus,
-    /// Detailed message for this port check
-    pub message: String,
-}
-
-/// Status enumeration for each port check
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PortStatus {
-    /// App running with BRP responding
-    RunningWithBrp,
-    /// App running but BRP not responding
-    RunningNoBrp,
-    /// App not running
-    NotRunning,
-}
-
-impl std::fmt::Display for PortStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            PortStatus::RunningWithBrp => write!(f, "running_with_brp"),
-            PortStatus::RunningNoBrp => write!(f, "running_no_brp"),
-            PortStatus::NotRunning => write!(f, "not_running"),
-        }
-    }
-}
-```
-
-### 2.2 Update StatusParams Structure
-```rust
-#[derive(Clone, Deserialize, Serialize, JsonSchema, ParamStruct)]
-pub struct StatusParams {
-    /// Name of the process to check for
-    pub app_name: String,
-    /// The BRP port(s) to check (default: 15702)
-    #[serde(default)]
-    pub port: PortOrPorts,
-}
-```
-
-### 2.3 Update StatusResult Structure
-```rust
-/// Result from checking status of a Bevy app across one or more ports
+// Multi-port result preserving individual port results
 #[derive(Debug, Clone, Serialize, Deserialize, ResultStruct)]
-pub struct StatusResult {
-    /// App name that was checked
+pub struct MultiPortStatusResult {
     #[to_metadata]
     app_name: String,
 
-    /// Array of status results (1 or more ports)
+    // Array of individual port results - each exactly like single-port today
     #[to_result]
-    ports: Vec<StatusInstance>,
+    ports: Vec<PortStatusResult>,
 
-    /// Summary count of ports with app running and BRP responding
+    // Simple summary counts
     #[to_metadata]
-    running_with_brp_count: usize,
+    summary: StatusSummary,
 
-    /// Summary count of ports with app running but BRP not responding
-    #[to_metadata]
-    running_no_brp_count: usize,
-
-    /// Summary count of ports where app is not running
-    #[to_metadata]
-    not_running_count: usize,
-
-    /// Total number of ports checked
-    #[to_metadata]
-    total_ports_checked: usize,
-
-    /// Overall status summary for all ports
-    #[to_metadata]
-    overall_status: String,
-
-    /// Message template for formatting responses
     #[to_message]
     message_template: String,
 }
 
-impl StatusResult {
-    pub fn new(app_name: String, ports: Vec<StatusInstance>) -> Self {
-        let running_with_brp_count = ports.iter().filter(|p| matches!(p.status, PortStatus::RunningWithBrp)).count();
-        let running_no_brp_count = ports.iter().filter(|p| matches!(p.status, PortStatus::RunningNoBrp)).count();
-        let not_running_count = ports.iter().filter(|p| matches!(p.status, PortStatus::NotRunning)).count();
-        let total_ports_checked = ports.len();
+// Individual port result - either success or our structured error
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortStatusResult {
+    pub port: u16,
 
-        let overall_status = if running_with_brp_count == total_ports_checked {
-            "all_running_with_brp".to_string()
-        } else if running_with_brp_count > 0 {
-            "partial_running_with_brp".to_string()
-        } else if running_no_brp_count > 0 {
-            "running_no_brp".to_string()
-        } else {
-            "not_running".to_string()
-        };
+    // Success case: full StatusResult with pid, message, etc.
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub success: Option<StatusResult>,
 
-        let message_template = generate_message_template(&app_name, &ports, &overall_status);
+    // Error case: Our structured error types (ProcessNotFoundError, BrpNotRespondingError, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<Box<dyn ResultStruct>>,
+}
+
+// Simple summary without complex enums
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatusSummary {
+    pub total_ports: usize,
+    pub successful: usize,
+    pub app_running_no_brp: usize,
+    pub app_not_found: usize,
+}
+```
+
+### 2.2 Implementation Preserving Current Single-Port Logic
+```rust
+impl MultiPortStatusResult {
+    pub fn from_port_checks(app_name: String, port_results: Vec<(u16, Result<StatusResult, Error>)>) -> Self {
+        // Convert each port result to PortStatusResult - preserving all original info
+        let ports: Vec<PortStatusResult> = port_results.into_iter()
+            .map(|(port, result)| {
+                match result {
+                    Ok(status_result) => PortStatusResult {
+                        port, // Use actual port from the operation context
+                        success: Some(status_result),
+                        error: None,
+                    },
+                    Err(error) => PortStatusResult {
+                        port, // Use actual port from the operation context - never use 0
+                        success: None,
+                        error: error.downcast::<Box<dyn ResultStruct>>().ok(),
+                    },
+                }
+            })
+            .collect();
+
+        let summary = StatusSummary::from_ports(&ports);
+        let message_template = Self::generate_message(&app_name, &summary);
 
         Self {
             app_name,
             ports,
-            running_with_brp_count,
-            running_no_brp_count,
-            not_running_count,
-            total_ports_checked,
-            overall_status,
+            summary,
             message_template,
+        }
+    }
+
+    // Simple message generation based on counts
+    fn generate_message(app_name: &str, summary: &StatusSummary) -> String {
+        match (summary.successful, summary.total_ports) {
+            (s, t) if s == t && t == 1 => {
+                format!("Process '{app_name}' is running with BRP enabled")
+            },
+            (s, t) if s == t => {
+                format!("Process '{app_name}' is running with BRP enabled on all {t} ports")
+            },
+            (s, t) if s > 0 => {
+                format!("Process '{app_name}' status: {s}/{t} ports with BRP enabled")
+            },
+            (0, _) => {
+                format!("Process '{app_name}' not responding on any checked ports")
+            },
         }
     }
 }
 
-fn generate_message_template(app_name: &str, ports: &[StatusInstance], overall_status: &str) -> String {
-    match overall_status {
-        "all_running_with_brp" => {
-            if ports.len() == 1 {
-                format!("Process '{}' (PID: {}) is running with BRP enabled on port {}",
-                    app_name,
-                    ports[0].pid.unwrap(),
-                    ports[0].port)
-            } else {
-                let port_range = format!("{}-{}", ports.first().unwrap().port, ports.last().unwrap().port);
-                format!("Process '{}' is running with BRP enabled on {} ports ({})",
-                    app_name,
-                    ports.len(),
-                    port_range)
-            }
-        },
-        "partial_running_with_brp" => {
-            let working_count = ports.iter().filter(|p| matches!(p.status, PortStatus::RunningWithBrp)).count();
-            format!("Process '{}' status: {}/{} ports running with BRP",
-                app_name,
-                working_count,
-                ports.len())
-        },
-        "running_no_brp" => {
-            format!("Process '{}' is running but BRP is not responding on checked ports", app_name)
-        },
-        _ => {
-            format!("Process '{}' not found on checked ports", app_name)
+impl StatusSummary {
+    fn from_ports(ports: &[PortStatusResult]) -> Self {
+        let total_ports = ports.len();
+        let successful = ports.iter().filter(|p| p.success.is_some()).count();
+        let (app_running_no_brp, app_not_found) = ports.iter()
+            .filter(|p| p.error.is_some())
+            .fold((0, 0), |(brp_count, not_found_count), port| {
+                if let Some(ref error) = port.error {
+                    // Check the actual error type using our structured error system
+                    if error.downcast_ref::<BrpNotRespondingError>().is_some() {
+                        (brp_count + 1, not_found_count)
+                    } else {
+                        (brp_count, not_found_count + 1)
+                    }
+                } else {
+                    (brp_count, not_found_count)
+                }
+            });
+
+        Self {
+            total_ports,
+            successful,
+            app_running_no_brp,
+            app_not_found,
         }
     }
 }
@@ -247,7 +247,7 @@ fn generate_message_template(app_name: &str, ports: &[StatusInstance], overall_s
 **File**: `mcp/src/app_tools/brp_status.rs`
 
 ```rust
-async fn handle_impl(params: StatusParams) -> Result<StatusResult> {
+async fn handle_impl(params: StatusParams) -> Result<MultiPortStatusResult> {
     let ports = params.port.to_ports();
     let app_name = &params.app_name;
 
@@ -255,82 +255,20 @@ async fn handle_impl(params: StatusParams) -> Result<StatusResult> {
     let port_checks: Vec<_> = ports
         .into_iter()
         .map(|port| async move {
-            check_brp_for_app_on_single_port(app_name, port).await
+            let result = check_brp_for_app_on_single_port(app_name, port).await;
+            (port.0, result)
         })
         .collect();
 
-    let results = futures::future::join_all(port_checks).await;
+    let port_results = futures::future::join_all(port_checks).await;
 
-    // Convert results to StatusInstance objects
-    let status_instances: Vec<StatusInstance> = results
-        .into_iter()
-        .map(|result| match result {
-            Ok(single_result) => StatusInstance {
-                port: single_result.port,
-                pid: Some(single_result.pid),
-                brp_responsive: true,
-                status: PortStatus::RunningWithBrp,
-                message: format!("Running with BRP on port {}", single_result.port),
-            },
-            Err(err) => {
-                // Parse structured errors to determine appropriate StatusInstance
-                match err {
-                    Error::Structured { result } => {
-                        if let Some(process_not_found) = result.downcast_ref::<ProcessNotFoundError>() {
-                            StatusInstance {
-                                port: process_not_found.port,
-                                pid: None,
-                                brp_responsive: process_not_found.brp_responding_on_port,
-                                status: PortStatus::NotRunning,
-                                message: process_not_found.message_template.clone().unwrap_or_default(),
-                            }
-                        } else if let Some(brp_not_responding) = result.downcast_ref::<BrpNotRespondingError>() {
-                            StatusInstance {
-                                port: brp_not_responding.port,
-                                pid: Some(brp_not_responding.pid),
-                                brp_responsive: false,
-                                status: PortStatus::RunningNoBrp,
-                                message: brp_not_responding.message_template.clone(),
-                            }
-                        } else {
-                            // Fallback for unknown structured errors
-                            StatusInstance {
-                                port: 0, // Will need to be updated based on context
-                                pid: None,
-                                brp_responsive: false,
-                                status: PortStatus::NotRunning,
-                                message: "Unknown error".to_string(),
-                            }
-                        }
-                    },
-                    _ => {
-                        // Fallback for non-structured errors
-                        StatusInstance {
-                            port: 0, // Will need to be updated based on context
-                            pid: None,
-                            brp_responsive: false,
-                            status: PortStatus::NotRunning,
-                            message: err.to_string(),
-                        }
-                    }
-                }
-            }
-        })
-        .collect();
-
-    Ok(StatusResult::new(app_name.to_string(), status_instances))
+    Ok(MultiPortStatusResult::from_port_checks(app_name.to_string(), port_results))
 }
 
-// Rename existing function to be more specific
-async fn check_brp_for_app_on_single_port(app_name: &str, port: Port) -> Result<SinglePortStatusResult> {
-    // Current implementation logic, but return a simpler result type
+// Keep existing single-port function unchanged
+async fn check_brp_for_app_on_single_port(app_name: &str, port: Port) -> Result<StatusResult> {
+    // Current implementation logic unchanged - returns existing StatusResult or structured errors
     // ... existing logic ...
-}
-
-#[derive(Debug)]
-struct SinglePortStatusResult {
-    pub port: u16,
-    pub pid: u32,
 }
 ```
 
@@ -348,25 +286,20 @@ Multi-port status checking:
 - Checks all ports in parallel for efficiency
 - Useful for verifying multi-instance deployments
 
-Return status values per port:
-- "running_with_brp": App running with BRP responding
-- "running_no_brp": App running but BRP not responding
-- "not_running": App not running
+Response structure:
+- ports: Array of individual port results (each preserves full success/error information)
+- summary: Simple counts for quick assessment
 
-Response includes:
-- ports: Array of status results (one per port checked)
-- running_with_brp_count: Number of ports with working BRP
-- running_no_brp_count: Number of ports with app but no BRP
-- not_running_count: Number of ports where app is not running
-- total_ports_checked: Total number of ports checked
-- overall_status: Summary status across all ports
+Each port result contains either:
+- success: Full StatusResult with pid, port, app_name, message_template (same as single-port today)
+- error: Structured error information with suggestions and context
+
+Summary fields:
+- total_ports: Total number of ports checked
+- successful: Number of ports with working BRP
+- app_running_no_brp: Number of ports with app but no BRP
+- app_not_found: Number of ports where app is not running
 - app_name: Checked app name
-
-Overall status values:
-- "all_running_with_brp": All ports have app running with BRP
-- "partial_running_with_brp": Some ports have app running with BRP
-- "running_no_brp": App running but no BRP response on any port
-- "not_running": App not running on any port
 
 IMPORTANT: Requires RemotePlugin in Bevy app plugin configuration.
 ```
@@ -483,19 +416,20 @@ For comparison after implementation, here's the current response format from `br
 
 ### 10.2 Expected Post-Implementation Response Format
 
-**Single Port (Backward Compatible)**:
+**Single Port (New Structure)**:
 ```json
 {
   "status": "success",
-  "message": "Process 'extras_plugin' (PID: 22687) is running with BRP enabled on port 15702",
+  "message": "Process 'extras_plugin' is running with BRP enabled",
   "call_info": { "mcp_tool": "brp_status" },
   "metadata": {
     "app_name": "extras_plugin",
-    "running_with_brp_count": 1,
-    "running_no_brp_count": 0,
-    "not_running_count": 0,
-    "total_ports_checked": 1,
-    "overall_status": "all_running_with_brp"
+    "summary": {
+      "total_ports": 1,
+      "successful": 1,
+      "app_running_no_brp": 0,
+      "app_not_found": 0
+    }
   },
   "parameters": {
     "app_name": "extras_plugin",
@@ -504,10 +438,12 @@ For comparison after implementation, here's the current response format from `br
   "result": [
     {
       "port": 15702,
-      "pid": 22687,
-      "brp_responsive": true,
-      "status": "running_with_brp",
-      "message": "Running with BRP on port 15702"
+      "success": {
+        "app_name": "extras_plugin",
+        "pid": 22687,
+        "port": 15702,
+        "message_template": "Process 'extras_plugin' (PID: 22687) is running with BRP enabled on port 15702"
+      }
     }
   ]
 }
@@ -517,15 +453,16 @@ For comparison after implementation, here's the current response format from `br
 ```json
 {
   "status": "success",
-  "message": "Process 'extras_plugin' is running with BRP enabled on 3 ports (15702-15704)",
+  "message": "Process 'extras_plugin' is running with BRP enabled on all 3 ports",
   "call_info": { "mcp_tool": "brp_status" },
   "metadata": {
     "app_name": "extras_plugin",
-    "running_with_brp_count": 3,
-    "running_no_brp_count": 0,
-    "not_running_count": 0,
-    "total_ports_checked": 3,
-    "overall_status": "all_running_with_brp"
+    "summary": {
+      "total_ports": 3,
+      "successful": 3,
+      "app_running_no_brp": 0,
+      "app_not_found": 0
+    }
   },
   "parameters": {
     "app_name": "extras_plugin",
@@ -534,24 +471,31 @@ For comparison after implementation, here's the current response format from `br
   "result": [
     {
       "port": 15702,
-      "pid": 22687,
-      "brp_responsive": true,
-      "status": "running_with_brp",
-      "message": "Running with BRP on port 15702"
+      "success": {
+        "app_name": "extras_plugin",
+        "pid": 22687,
+        "port": 15702,
+        "message_template": "Process 'extras_plugin' (PID: 22687) is running with BRP enabled on port 15702"
+      }
     },
     {
       "port": 15703,
-      "pid": 22688,
-      "brp_responsive": true,
-      "status": "running_with_brp",
-      "message": "Running with BRP on port 15703"
+      "success": {
+        "app_name": "extras_plugin",
+        "pid": 22688,
+        "port": 15703,
+        "message_template": "Process 'extras_plugin' (PID: 22688) is running with BRP enabled on port 15703"
+      }
     },
     {
       "port": 15704,
-      "pid": 22689,
-      "brp_responsive": true,
-      "status": "running_with_brp",
-      "message": "Running with BRP on port 15704"
+      "error": {
+        "app_name": "extras_plugin",
+        "similar_processes": ["bevy_example", "bevy_test"],
+        "brp_responding_on_port": false,
+        "port": 15704,
+        "message_template": "Process 'extras_plugin' not found. Similar processes found: bevy_example, bevy_test. Check if the app is running or verify the app name is correct."
+      }
     }
   ]
 }
@@ -567,9 +511,9 @@ For comparison after implementation, here's the current response format from `br
 - ✅ `metadata.app_name` field (for tooling compatibility)
 
 **New Fields to Add**:
-- ✅ `result` array with detailed per-port status
-- ✅ `metadata` summary counts for status overview
-- ✅ `metadata.overall_status` for quick assessment
+- ✅ `result` array with detailed per-port status (preserving individual StatusResult objects)
+- ✅ `metadata.summary` with simple count fields for status overview
+- ✅ Individual port results maintain all original success/error information
 
 **Testing After Implementation**:
 1. Launch same `extras_plugin` example
@@ -581,6 +525,15 @@ For comparison after implementation, here's the current response format from `br
 ---
 
 ## Design Review Skip Notes
+
+## DESIGN-1: Response structure breaking change without proper backward compatibility - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Response Structure Design
+- **Issue**: The plan changes the response from individual metadata fields (pid, port) to an array-based structure (ports array). This breaks existing tooling that expects metadata.pid and metadata.port fields.
+- **Reasoning**: No existing tooling depends on the current response structure. This is new functionality being added, so there are no backward compatibility concerns. The new multi-port structure is appropriate for the feature being implemented.
+- **Decision**: User elected to skip this recommendation
+
+---
 
 ## TYPE-SYSTEM-1: PortOrPorts duplicates existing InstanceCount pattern unnecessarily - **Verdict**: REJECTED
 - **Status**: SKIPPED
