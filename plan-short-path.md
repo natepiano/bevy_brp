@@ -154,6 +154,15 @@ Simplify the enhanced error system now that unknown types are handled separately
 - **Existing Implementation**: ShortPath resolution operates independently in the error pipeline and doesn't depend on enhanced error configurations
 - **Critical Note**: The original finding was based on the flawed Operation enum approach that has been corrected
 
+## Design Review Skip Notes
+
+### TYPE-SYSTEM-1: ShortPathResolution enum uses raw string types - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Add ShortPath Resolution Module
+- **Issue**: ShortPathResolution enum uses HashMap<String, String> and HashMap<String, Vec<String>> representing finite state transitions but lacks type safety for the resolution status
+- **Reasoning**: This finding misapplies type safety principles. The strings represent dynamic component type paths from Bevy's runtime registry (like 'bevy_transform::components::transform::Transform'), not finite predefined values. These are arbitrary text paths that change based on what components are registered in the Bevy app. Adding newtype wrappers like ShortPath(String) would add boilerplate without providing meaningful compile-time safety, since the actual validation happens at runtime through registry lookups. This is appropriate string usage for arbitrary text processing, not a case where enums would be beneficial.
+- **Decision**: User elected to skip this recommendation
+
 ## Implementation Steps
 
 ### Phase 1: Core Resolution Logic
