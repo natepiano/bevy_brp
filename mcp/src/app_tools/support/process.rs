@@ -14,7 +14,6 @@ pub fn launch_detached_process(
     working_dir: &Path,
     log_file: File,
     process_name: &str,
-    operation: &str,
 ) -> Result<u32> {
     // Clone the log file handle for stderr
     let log_file_for_stderr = log_file
@@ -22,7 +21,7 @@ pub fn launch_detached_process(
         .change_context(Error::ProcessManagement(
             "Failed to clone log file handle".to_string(),
         ))
-        .attach(format!("Process: {process_name}, Operation: {operation}"))?;
+        .attach(format!("Process: {process_name}, Operation: launch"))?;
 
     // Create a new command from the provided one
     let mut new_cmd = std::process::Command::new(cmd.get_program());
@@ -86,7 +85,6 @@ pub fn launch_detached_process(
                     "Failed to spawn process".to_string(),
                 ))
                 .attach(format!("Process: {process_name}"))
-                .attach(format!("Operation: {operation}"))
                 .attach(format!("Working directory: {}", working_dir.display())))?
         }
     }

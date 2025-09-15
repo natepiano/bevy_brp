@@ -1,6 +1,12 @@
 Launches Bevy examples via cargo run --example in detached mode with auto-building, asset loading, and logging.
 
-Features: Non-blocking execution, auto-build if needed, temp directory logs, proper CARGO_MANIFEST_DIR.
+Features: Non-blocking execution, auto-build if needed, temp directory logs, proper CARGO_MANIFEST_DIR, multi-instance support.
+
+Multi-instance launching:
+- When instance_count > 1, launches multiple instances on sequential ports
+- Example: port=15702, instance_count=3 launches on ports 15702, 15703, 15704
+- Each instance gets its own log file with port in filename
+- Useful for parallel testing and load simulation
 
 Notes:
 - Use list_bevy_examples to see available examples. View logs with list_logs/read_log.

@@ -3,46 +3,60 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use bevy_brp_mcp_macros::ResultStruct;
-use chrono::Utc;
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
 
 use super::errors::{NoTargetsFoundError, PathDisambiguationError, TargetNotFoundAtSpecifiedPath};
+use super::process;
 use crate::app_tools::support::cargo_detector::BevyTarget;
 use crate::error::{Error, Result};
 use crate::tool::{HandlerContext, HandlerResult, ParamStruct, ToolFn, ToolResult};
 
 /// Marker type for App launch configuration
+#[derive(Clone)]
 pub struct App;
 
 /// Marker type for Example launch configuration
+#[derive(Clone)]
 pub struct Example;
 
 /// Parameterized launch configuration for apps and examples
+#[derive(Clone)]
 pub struct LaunchConfig<T> {
-    pub target_name: String,
-    pub profile:     String,
-    pub path:        Option<String>,
-    pub port:        Port,
-    _phantom:        PhantomData<T>,
+    pub target_name:    String,
+    pub profile:        String,
+    pub path:           Option<String>,
+    pub port:           Port,
+    pub instance_count: InstanceCount,
+    _phantom:           PhantomData<T>,
 }
 
 impl<T> LaunchConfig<T> {
     /// Create a new launch configuration
-    pub const fn new(
+    pub fn new(
         target_name: String,
         profile: String,
         path: Option<String>,
         port: Port,
+        instance_count: InstanceCount,
     ) -> Self {
         Self {
             target_name,
             profile,
             path,
             port,
+            instance_count,
             _phantom: PhantomData,
         }
     }
+}
+
+/// Represents a single launched instance
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaunchedInstance {
+    pub pid:      u32,
+    pub log_file: String,
+    pub port:     u16,
 }
 
 /// Unified result type for launching Bevy apps and examples
@@ -52,18 +66,15 @@ pub struct LaunchResult {
     /// Name of the target that was launched (app or example)
     #[to_metadata(skip_if_none)]
     target_name:        Option<String>,
-    /// Process ID of the launched target
-    #[to_metadata(skip_if_none)]
-    pid:                Option<u32>,
+    /// Array of launched instances (1 or more)
+    #[to_result]
+    instances:          Vec<LaunchedInstance>,
     /// Working directory used for launch
     #[to_metadata(skip_if_none)]
     working_directory:  Option<String>,
     /// Build profile used (debug/release)
     #[to_metadata(skip_if_none)]
     profile:            Option<String>,
-    /// Log file path for the launched target
-    #[to_metadata(skip_if_none)]
-    log_file:           Option<String>,
     /// Binary path of the launched app (only for apps, not examples)
     #[to_metadata(skip_if_none)]
     binary_path:        Option<String>,
@@ -83,18 +94,20 @@ pub struct LaunchResult {
     #[to_metadata(skip_if_none)]
     duplicate_paths:    Option<Vec<String>>,
     /// Message template for formatting responses
-    #[to_message(message_template = "Successfully launched {target_name} (PID: {pid})")]
-    message_template:   String,
+    #[to_message]
+    message_template:   Option<String>,
 }
 
+use crate::app_tools::instance_count::InstanceCount;
 use crate::brp_tools::{BRP_EXTRAS_PORT_ENV_VAR, Port};
 
 /// Parameters extracted from launch requests
 pub struct LaunchParams {
-    pub target_name: String,
-    pub profile:     String,
-    pub path:        Option<String>,
-    pub port:        Port,
+    pub target_name:    String,
+    pub profile:        String,
+    pub path:           Option<String>,
+    pub port:           Port,
+    pub instance_count: InstanceCount,
 }
 
 /// Generic launch handler that can work with any `LaunchConfig` type
@@ -164,7 +177,7 @@ pub trait FromLaunchParams: LaunchConfigTrait + Sized + Send + Sync {
 }
 
 /// Trait for configuring launch behavior for different target types (app vs example)
-pub trait LaunchConfigTrait {
+pub trait LaunchConfigTrait: Clone {
     /// The target type constant (App or Example)
     const TARGET_TYPE: TargetType;
 
@@ -179,6 +192,12 @@ pub trait LaunchConfigTrait {
 
     /// Get the BRP port
     fn port(&self) -> Port;
+
+    /// Get the instance count for launching multiple instances
+    fn instance_count(&self) -> InstanceCount;
+
+    /// Set the port (needed for multi-instance launches)
+    fn set_port(&mut self, port: Port);
 
     /// Build the command to execute
     fn build_command(&self, target: &BevyTarget) -> Command;
@@ -197,17 +216,6 @@ pub trait LaunchConfigTrait {
             manifest_dir,
         )
     }
-
-    /// Convert to unified `LaunchResult` on success
-    fn to_launch_result(
-        &self,
-        pid: u32,
-        log_file: PathBuf,
-        working_directory: PathBuf,
-        launch_duration_ms: u64,
-        launch_timestamp: String,
-        target: &BevyTarget,
-    ) -> LaunchResult;
 }
 
 /// Validates and extracts the manifest directory from a manifest path
@@ -239,7 +247,7 @@ pub fn setup_launch_logging(
     profile: &str,
     binary_path: &Path,
     manifest_dir: &Path,
-    port: Option<Port>,
+    port: Port,
     extra_log_info: Option<&str>,
 ) -> Result<(PathBuf, std::fs::File)> {
     use super::logging;
@@ -423,43 +431,75 @@ pub fn run_cargo_build(
     Ok(build_state)
 }
 
-/// Execute the process and build the launch result
-fn execute_and_build_result<T: LaunchConfigTrait>(
+/// Build unified result from collected vectors
+fn build_launch_result<T: LaunchConfigTrait>(
+    all_pids: Vec<u32>,
+    all_log_files: Vec<PathBuf>,
+    all_ports: Vec<u16>,
     config: &T,
-    cmd: &Command,
-    manifest_dir: &Path,
-    log_file_path: PathBuf,
-    log_file_for_redirect: std::fs::File,
     target: &BevyTarget,
     launch_start: std::time::Instant,
-) -> Result<LaunchResult> {
-    use super::process;
+) -> LaunchResult {
+    let launch_duration = launch_start.elapsed();
 
-    // Launch the process
-    let pid = process::launch_detached_process(
-        cmd,
-        manifest_dir,
-        log_file_for_redirect,
-        config.target_name(),
-        "launch",
-    )
-    .map_err(|e| Error::tool_call_failed(e.to_string()))?;
+    // Build instances array
+    let instances: Vec<LaunchedInstance> = all_pids
+        .into_iter()
+        .zip(all_log_files.iter())
+        .zip(all_ports.iter())
+        .map(|((pid, log_file), port)| LaunchedInstance {
+            pid,
+            log_file: log_file.display().to_string(),
+            port: *port,
+        })
+        .collect();
 
-    // Calculate launch duration
-    let launch_end = std::time::Instant::now();
-    let launch_duration_ms =
-        u64::try_from(launch_end.duration_since(launch_start).as_millis()).unwrap_or(u64::MAX);
-    let launch_timestamp = Utc::now().to_rfc3339();
+    let workspace = target
+        .workspace_root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(String::from);
 
-    // Build result
-    Ok(config.to_launch_result(
-        pid,
-        log_file_path,
-        manifest_dir.to_path_buf(),
-        launch_duration_ms,
-        launch_timestamp,
-        target,
-    ))
+    // Create port range string for message
+    let port_range = if all_ports.len() == 1 {
+        all_ports[0].to_string()
+    } else {
+        format!("{}-{}", all_ports[0], all_ports[all_ports.len() - 1])
+    };
+
+    let instance_count = all_ports.len();
+    let target_name_str = config.target_name();
+    let message = format!(
+        "Successfully launched {} instance(s) of {} on ports {}",
+        instance_count, target_name_str, port_range
+    );
+
+    LaunchResult {
+        target_name: Some(config.target_name().to_string()),
+        instances,
+        working_directory: Some(std::env::current_dir().unwrap().display().to_string()),
+        profile: Some(config.profile().to_string()),
+        launch_duration_ms: Some(launch_duration.as_millis() as u64),
+        launch_timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        workspace,
+        package_name: if T::TARGET_TYPE == TargetType::Example {
+            Some(target.package_name.clone())
+        } else {
+            None
+        },
+        binary_path: if T::TARGET_TYPE == TargetType::App {
+            Some(
+                target
+                    .get_binary_path(config.profile())
+                    .display()
+                    .to_string(),
+            )
+        } else {
+            None
+        },
+        duplicate_paths: None,
+        message_template: Some(message),
+    }
 }
 
 /// Prepare the launch environment including command, logging, and directory setup
@@ -480,7 +520,7 @@ fn prepare_launch_environment<T: LaunchConfigTrait>(
         config.profile(),
         &PathBuf::from(format!("{cmd:?}")), // Convert command to path for logging
         manifest_dir,
-        Some(config.port()),
+        config.port(),
         config.extra_log_info(target).as_deref(),
     )?;
 
@@ -599,6 +639,78 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
     Ok(target)
 }
 
+/// Validate that the port range for multi-instance launching is within bounds
+fn validate_port_range(base_port: u16, instance_count: usize) -> Result<()> {
+    use crate::brp_tools::MAX_VALID_PORT;
+
+    // MAX_VALID_PORT is imported from brp_tools::constants (65534)
+    if base_port.saturating_add(instance_count as u16 - 1) > MAX_VALID_PORT {
+        return Err(Error::tool_call_failed(format!(
+            "Port range {} to {} exceeds maximum valid port {}",
+            base_port,
+            base_port.saturating_add(instance_count as u16 - 1),
+            MAX_VALID_PORT
+        ))
+        .into());
+    }
+    Ok(())
+}
+
+/// Launch multiple instances of a target
+fn launch_instances<T: LaunchConfigTrait>(
+    config: &T,
+    target: &BevyTarget,
+    instance_count: usize,
+    base_port: u16,
+) -> Result<(Vec<u32>, Vec<PathBuf>, Vec<u16>)> {
+    let mut all_pids = Vec::new();
+    let mut all_log_files = Vec::new();
+    let mut all_ports = Vec::new();
+
+    for i in 0..instance_count {
+        let port = Port(base_port + i as u16); // Safe after validation
+
+        // Create a modified config with the updated port for this instance
+        let mut instance_config = config.clone();
+        instance_config.set_port(port);
+
+        // Prepare launch environment with the instance-specific config
+        let (cmd, manifest_dir, log_file_path, log_file_for_redirect) =
+            prepare_launch_environment(&instance_config, target)?;
+
+        // Use launch_detached_process for proper zombie prevention and process group isolation
+        let pid = process::launch_detached_process(
+            &cmd,
+            &manifest_dir,
+            log_file_for_redirect,
+            config.target_name(),
+        )?;
+
+        all_pids.push(pid);
+        all_log_files.push(log_file_path);
+        all_ports.push(port.0);
+    }
+
+    Ok((all_pids, all_log_files, all_ports))
+}
+
+/// Handle target discovery errors and convert to appropriate error types
+fn handle_target_discovery_error(error: Report<Error>) -> Report<Error> {
+    // Check if this is a structured error that should be preserved
+    if let Error::Structured { .. } = error.current_context() {
+        // Preserve structured errors as-is
+        return error;
+    }
+
+    // Convert other errors to ToolError with details
+    let error_message = format!("{}", error.current_context());
+    let details = serde_json::json!({
+        "error": error_message,
+        "error_chain": format!("{:?}", error)
+    });
+    Error::tool_call_failed_with_details(error_message, details).into()
+}
+
 /// Generic function to launch a Bevy target (app or example)
 pub fn launch_target<T: LaunchConfigTrait>(
     config: &T,
@@ -614,56 +726,39 @@ pub fn launch_target<T: LaunchConfigTrait>(
     debug!("Environment variable: BRP_EXTRAS_PORT={}", config.port());
 
     // Find and validate the target
-    let target = match find_and_validate_target(config, search_paths) {
-        Ok(target) => target,
-        Err(launch_result) => {
-            // Check if this is a structured error that should be preserved
-            if let Error::Structured { .. } = launch_result.current_context() {
-                // Preserve structured errors as-is
-                return Err(launch_result);
-            }
-
-            // Convert other errors to ToolError with details
-            let error_message = format!("{}", launch_result.current_context());
-            let details = serde_json::json!({
-                "error": error_message,
-                "error_chain": format!("{:?}", launch_result)
-            });
-            return Err(Error::tool_call_failed_with_details(error_message, details).into());
-        }
-    };
+    let target =
+        find_and_validate_target(config, search_paths).map_err(handle_target_discovery_error)?;
 
     // Ensure the target is built (blocks until compilation completes if needed)
     let build_state = config.ensure_built(&target)?;
     match build_state {
-        BuildState::Fresh => {
-            use tracing::debug;
-            debug!("Target was already up to date, launching immediately");
-        }
-        BuildState::Rebuilt => {
-            use tracing::debug;
-            debug!("Target was rebuilt before launch");
-        }
+        BuildState::Fresh => debug!("Target was already up to date, launching immediately"),
+        BuildState::Rebuilt => debug!("Target was rebuilt before launch"),
         BuildState::NotFound => {
             use tracing::warn;
             warn!("Target not found in build output but build succeeded");
         }
     }
 
-    // Prepare launch environment
-    let (cmd, manifest_dir, log_file_path, log_file_for_redirect) =
-        prepare_launch_environment(config, &target)?;
+    let instance_count = *config.instance_count();
+    let base_port = *config.port();
 
-    // Execute and build result
-    execute_and_build_result(
+    // Validate entire port range fits within valid bounds
+    validate_port_range(base_port, instance_count)?;
+
+    // Launch all instances
+    let (all_pids, all_log_files, all_ports) =
+        launch_instances(config, &target, instance_count, base_port)?;
+
+    // Build unified result (works for both single and multi)
+    Ok(build_launch_result(
+        all_pids,
+        all_log_files,
+        all_ports,
         config,
-        &cmd,
-        &manifest_dir,
-        log_file_path,
-        log_file_for_redirect,
         &target,
         launch_start,
-    )
+    ))
 }
 
 impl FromLaunchParams for LaunchConfig<App> {
@@ -673,6 +768,7 @@ impl FromLaunchParams for LaunchConfig<App> {
             params.profile.clone(),
             params.path.clone(),
             params.port,
+            params.instance_count,
         )
     }
 }
@@ -696,43 +792,20 @@ impl LaunchConfigTrait for LaunchConfig<App> {
         self.port
     }
 
+    fn instance_count(&self) -> InstanceCount {
+        self.instance_count
+    }
+
+    fn set_port(&mut self, port: Port) {
+        self.port = port;
+    }
+
     fn build_command(&self, target: &BevyTarget) -> Command {
         build_app_command(&target.get_binary_path(self.profile()), Some(self.port))
     }
 
     fn extra_log_info(&self, _target: &BevyTarget) -> Option<String> {
         None
-    }
-
-    fn to_launch_result(
-        &self,
-        pid: u32,
-        log_file: PathBuf,
-        working_directory: PathBuf,
-        launch_duration_ms: u64,
-        launch_timestamp: String,
-        target: &BevyTarget,
-    ) -> LaunchResult {
-        let workspace = target
-            .workspace_root
-            .file_name()
-            .and_then(|name| name.to_str())
-            .map(String::from);
-
-        LaunchResult {
-            target_name: Some(self.target_name.clone()),
-            pid: Some(pid),
-            working_directory: Some(working_directory.display().to_string()),
-            profile: Some(self.profile.clone()),
-            log_file: Some(log_file.display().to_string()),
-            binary_path: Some(target.get_binary_path(self.profile()).display().to_string()),
-            launch_duration_ms: Some(launch_duration_ms),
-            launch_timestamp: Some(launch_timestamp),
-            workspace,
-            package_name: None,
-            duplicate_paths: None,
-            message_template: "Successfully launched {{target_name}} (PID: {{pid}})".to_string(),
-        }
     }
 }
 
@@ -743,6 +816,7 @@ impl FromLaunchParams for LaunchConfig<Example> {
             params.profile.clone(),
             params.path.clone(),
             params.port,
+            params.instance_count,
         )
     }
 }
@@ -766,43 +840,19 @@ impl LaunchConfigTrait for LaunchConfig<Example> {
         self.port
     }
 
+    fn instance_count(&self) -> InstanceCount {
+        self.instance_count
+    }
+
+    fn set_port(&mut self, port: Port) {
+        self.port = port;
+    }
+
     fn build_command(&self, _target: &BevyTarget) -> Command {
         build_cargo_example_command(&self.target_name, self.profile(), Some(self.port))
     }
 
     fn extra_log_info(&self, target: &BevyTarget) -> Option<String> {
         Some(format!("Package: {}", target.package_name))
-    }
-
-    fn to_launch_result(
-        &self,
-        pid: u32,
-        log_file: PathBuf,
-        working_directory: PathBuf,
-        launch_duration_ms: u64,
-        launch_timestamp: String,
-        target: &BevyTarget,
-    ) -> LaunchResult {
-        let workspace = target
-            .workspace_root
-            .file_name()
-            .and_then(|name| name.to_str())
-            .map(String::from);
-
-        LaunchResult {
-            target_name: Some(self.target_name.clone()),
-            pid: Some(pid),
-            working_directory: Some(working_directory.display().to_string()),
-            profile: Some(self.profile.clone()),
-            log_file: Some(log_file.display().to_string()),
-            binary_path: None,
-            launch_duration_ms: Some(launch_duration_ms),
-            launch_timestamp: Some(launch_timestamp),
-            workspace,
-            package_name: Some(target.package_name.clone()),
-            duplicate_paths: None,
-            message_template: "Successfully launched example {{target_name}} (PID: {{pid}})"
-                .to_string(),
-        }
     }
 }

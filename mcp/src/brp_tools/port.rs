@@ -3,6 +3,8 @@
 //! Provides a type-safe wrapper around port numbers with built-in validation
 //! and default values for BRP connections.
 
+use std::ops::Deref;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -34,6 +36,14 @@ impl Default for Port {
 impl std::fmt::Display for Port {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+impl Deref for Port {
+    type Target = u16;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

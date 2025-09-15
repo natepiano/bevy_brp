@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Multi-instance launch support via `instance_count` parameter for `brp_launch_bevy_app` and `brp_launch_bevy_example`
+  - Launch multiple instances on sequential ports for parallel testing and load simulation
 - 'brp_extras_set_window_title` tool, allowing agent to change the running apps window title
 - `brp_extras_send_keys` tool for simulating keyboard input
 - Optional `path` parameter to `brp_launch_bevy_app` and `brp_launch_bevy_example` for disambiguation when multiple apps/examples have the same name
@@ -27,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Some Tool responses now include a `error_info` field showing structured error details
 
 ### Changed
-- Migrated to rmcp 0.4.0 for improved MCP server functionality
 - Added comprehensive output schemas to all tools using automatic schema generation from `ToolCallJsonResponse` struct
 - Improved error messages when duplicate app/example names are found across workspaces
 - All tools will return a pointer to a file in the local temp directory if the response is too large to return to coding agent. Hard coded using heuristics to fit within claude code limits.

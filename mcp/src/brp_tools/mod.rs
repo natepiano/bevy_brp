@@ -19,7 +19,7 @@ pub use brp_type_guide::{
     AllTypeGuidesParams, BrpAllTypeGuides, BrpTypeGuide, BrpTypeName, NotMutableReason,
     TypeGuideParams,
 };
-pub use constants::BRP_EXTRAS_PORT_ENV_VAR;
+pub use constants::{BRP_EXTRAS_PORT_ENV_VAR, MAX_VALID_PORT};
 pub use port::Port;
 //
 // Export all parameter and result structs by name

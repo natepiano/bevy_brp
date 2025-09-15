@@ -1,18 +1,13 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use error_stack::ResultExt;
 
-use crate::brp_tools::Port;
-use crate::error::{Error, Result};
-
-/// Global atomic counter for ensuring unique log file names across concurrent operations
-static LOG_COUNTER: AtomicU64 = AtomicU64::new(0);
-
 /// Create a log file for a Bevy app launch
 use super::cargo_detector::TargetType;
+use crate::brp_tools::Port;
+use crate::error::{Error, Result};
 
 pub fn create_log_file(
     name: &str,
@@ -20,7 +15,7 @@ pub fn create_log_file(
     profile: &str,
     binary_path: &Path,
     manifest_dir: &Path,
-    port: Option<Port>,
+    port: Port,
 ) -> Result<(PathBuf, File)> {
     // Generate unique log file name in temp directory
     let timestamp = std::time::SystemTime::now()
@@ -29,17 +24,9 @@ pub fn create_log_file(
         .attach("System time error")?
         .as_millis();
 
-    // Get unique counter to prevent filename collisions during concurrent operations
-    let unique_id = LOG_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-    let log_file_path = port.map_or_else(
-        || std::env::temp_dir().join(format!("bevy_brp_mcp_{name}_{timestamp}_{unique_id}.log")),
-        |port| {
-            std::env::temp_dir().join(format!(
-                "bevy_brp_mcp_{name}_port{port}_{timestamp}_{unique_id}.log"
-            ))
-        },
-    );
+    // Port provides uniqueness for multiple instances
+    let log_file_path =
+        std::env::temp_dir().join(format!("bevy_brp_mcp_{name}_port{port}_{timestamp}.log"));
 
     // Create log file
     let mut log_file = File::create(&log_file_path)

@@ -1,6 +1,12 @@
 Launches Bevy apps in detached mode with asset loading support, automatic logging, and proper CARGO_MANIFEST_DIR setup.
 
-Features: Non-blocking execution, temp directory logs, debug/release profiles.
+Features: Non-blocking execution, temp directory logs, debug/release profiles, multi-instance support.
+
+Multi-instance launching:
+- When instance_count > 1, launches multiple instances on sequential ports
+- Example: port=15702, instance_count=3 launches on ports 15702, 15703, 15704
+- Each instance gets its own log file with port in filename
+- Useful for parallel testing and load simulation
 
 Notes:
 - App must be built first. Check with list_bevy_apps. View logs with list_logs/read_log.
