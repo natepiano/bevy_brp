@@ -64,7 +64,7 @@ Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app"):
 3. App lifecycle management
 4. Central cleanup
 
-**Note**: Window titles are NOT set by main runner - each test agent sets its own window title
+**Note**: Window titles are set by main runner after status verification
 
 ### Self-Managed Tests
 - **various**: Tests handle their own app launching (path, shutdown tests)
@@ -81,34 +81,13 @@ Configuration: Port [ASSIGNED_PORT], App [APP_NAME]
 
 **Your Task:**
 A [APP_NAME] app is running on port [ASSIGNED_PORT] with BRP enabled.
-
-**MANDATORY FIRST ACTION - WINDOW TITLE VERIFICATION:**
-**ABSOLUTELY NO EXCEPTIONS - THIS MUST BE THE VERY FIRST TOOL CALL**
-
-1. **BEFORE ANY OTHER BRP OPERATION** - set the window title using:
-   mcp__brp__brp_extras_set_window_title(port=[ASSIGNED_PORT], title="[TEST_NAME] test - port [ASSIGNED_PORT]")
-2. **CAPTURE** the complete response from the window title setting
-3. **VERIFY** it returns status: "success"
-4. **INCLUDE** in your response under a new section "### Window Title Setup"
-5. **IF IT FAILS**: IMMEDIATELY mark test as FAILED with reason "Window title setup failed"
-
-**CRITICAL ENFORCEMENT RULES:**
-- **NO BRP OPERATIONS** are permitted before window title is successfully set
-- **NO TEST PROCEDURES** from [TEST_FILE] until window title verification is complete
-- **ANY ATTEMPT** to skip or defer window title setting is a CRITICAL FAILURE
-- **WINDOW TITLE MUST BE SET AND VERIFIED SUCCESSFUL** before reading [TEST_FILE]
-
-Only after successful window title setup and verification, proceed to execute test procedures from file: [TEST_FILE]
+Execute test procedures from file: [TEST_FILE]
 
 **CRITICAL PORT REQUIREMENT:**
 - **ALL BRP operations MUST use port [ASSIGNED_PORT]**
 - **DO NOT launch or shutdown the app** - it's managed externally
 - **Port parameter is MANDATORY** for all BRP tool calls
 
-**WINDOW TITLE ENFORCEMENT:**
-- **FIRST TOOL CALL** must be mcp__brp__brp_extras_set_window_title
-- **NO EXCEPTIONS** - any other BRP operation first is immediate test failure
-- **MUST VERIFY SUCCESS** before proceeding to any test procedures
 
 **Test Context:**
 - Test File: [TEST_FILE]
@@ -120,13 +99,11 @@ Only after successful window title setup and verification, proceed to execute te
 - **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing
 - **CAPTURE EVERYTHING**: Include complete tool responses for all failed operations
 - **NO CONTINUATION**: Do not attempt further test steps after first failure
-- **SKIPPING WINDOW TITLE**: Immediate test failure - no exceptions
 
 **CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
 - Error message quality issues are FAILURES, not minor issues
 - Any deviation from expected behavior is a FAILURE
 - Do NOT categorize any issue as "minor" - mark it as FAILED
-- **SKIPPING MANDATORY WINDOW TITLE SETUP** is an immediate CRITICAL FAILURE
 
 **Required Response Format:**
 
@@ -137,10 +114,6 @@ Only after successful window title setup and verification, proceed to execute te
 - App: [APP_NAME] (externally managed)
 - Test Status: [Completed/Failed]
 
-## Window Title Setup
-- **Status**: [Success/Failed]
-- **Response**: [Include actual response from brp_extras_set_window_title]
-- **Title Set**: "[TEST_NAME] test - port [ASSIGNED_PORT]"
 
 ## Test Results
 ### ✅ PASSED
@@ -216,7 +189,7 @@ Configuration: App [APP_NAME]
 1. **Launch App**: Use appropriate launch tool based on app_type ("example" or "app")
 2. **Assign Port**: Allocate a port from BASE_PORT (20100) upward
 3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
-4. **Execute Test**: Use DedicatedAppPrompt template with assigned port (test will set its own window title)
+4. **Execute Test**: Use DedicatedAppPrompt template with assigned port
 6. **Cleanup**: Shutdown app using `mcp__brp__brp_shutdown`
 
 **For self-managed tests (app_name is "various" or "N/A"):**
@@ -257,6 +230,7 @@ Example: /test extras
 
 4. **Verify all apps**: Use `brp_status` on each port in PARALLEL (single message, multiple tool uses)
 
+
 5. **Track launched apps** for cleanup
 
 **If any app launch fails, STOP immediately and report failure.**
@@ -279,6 +253,7 @@ INCORRECT: 12 separate messages each with one Task tool use
 4. **Continuous Execution Loop**:
    - Build batches of tests to run in parallel:
      - For each test needing an app: assign port from appropriate pool
+     - **Set Window Title**: Use `mcp__brp__brp_extras_set_window_title` with format "{test_name} test - {app_name} - port {port}"
      - For self-managed tests: prepare with SelfManagedPrompt
    - **CRITICAL PARALLEL EXECUTION**:
      - Create a SINGLE message with multiple Task tool invocations
