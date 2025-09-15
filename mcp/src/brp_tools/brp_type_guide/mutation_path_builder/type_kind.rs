@@ -9,8 +9,8 @@ use strum::{AsRefStr, Display, EnumString};
 
 use super::MutationPathBuilder;
 use super::builders::{
-    ArrayMutationBuilder, DefaultMutationBuilder, EnumMutationBuilder, ListMutationBuilder,
-    MapMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
+    ArrayMutationBuilder, EnumMutationBuilder, ListMutationBuilder, MapMutationBuilder,
+    SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::not_mutable_reason::NotMutableReason;
@@ -73,7 +73,7 @@ impl TypeKind {
             Self::Map => Box::new(MapMutationBuilder),
             Self::Set => Box::new(SetMutationBuilder),
             Self::Enum => Box::new(EnumMutationBuilder),
-            Self::Value => Box::new(DefaultMutationBuilder),
+            Self::Value => Box::new(ValueMutationBuilder),
         };
 
         // Wrap with protocol enforcer if migrated
@@ -169,7 +169,7 @@ impl MutationPathBuilder for TypeKind {
         };
 
         match self {
-            Self::Struct => StructMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Struct => self.builder().build_paths(ctx, builder_depth),
             Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx, builder_depth),
             Self::Array => self.builder().build_paths(ctx, builder_depth),
             Self::List => self.builder().build_paths(ctx, builder_depth),
@@ -178,7 +178,7 @@ impl MutationPathBuilder for TypeKind {
             Self::Value => {
                 // Check serialization inline, no recursion needed
                 if ctx.value_type_has_serialization(ctx.type_name()) {
-                    // Use self.builder() for migrated DefaultMutationBuilder to get
+                    // Use self.builder() for migrated ValueMutationBuilder to get
                     // ProtocolEnforcer wrapper
                     self.builder().build_paths(ctx, builder_depth)
                 } else {

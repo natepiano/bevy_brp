@@ -108,16 +108,11 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
 
         // 2. Check knowledge for THIS level
-        if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
-            return Ok(vec![MutationPathInternal {
-                path: ctx.mutation_path.clone(),
-                example: example.clone(),
-                type_name: ctx.type_name().clone(),
-                path_kind: ctx.path_kind.clone(),
-                mutation_status: MutationStatus::mutable,
-                mutation_status_reason: None,
-            }]);
-        }
+        // IMPORTANT: Must distinguish between knowledge guidance types
+        // See actual implementation in protocol_enforcer.rs::check_knowledge()
+        // - TreatAsValue: Returns early with knowledge example, stops recursion
+        // - Teach: Continues recursion but saves knowledge example for later use
+        // The actual implementation returns (Option<Result>, Option<Value>) to handle both cases
 
         // 3. Collect children for depth-first traversal
         let child_path_kinds = self.inner.collect_children(ctx)?;
@@ -159,6 +154,8 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
 
         // 5. Assemble THIS level from children (post-order)
+        // After assembly, use knowledge example if available (for Teach types)
+        // See actual implementation for how knowledge_example is used to override assembled_example
         // Handle NotMutable errors from builders
         let parent_example = match self.inner.assemble_from_children(ctx, child_examples) {
             Ok(example) => example,
@@ -225,7 +222,7 @@ impl TypeKind {
             Self::Map => Box::new(MapMutationBuilder),
             Self::Tuple | Self::TupleStruct => Box::new(TupleMutationBuilder),
             Self::Enum => Box::new(EnumMutationBuilder),
-            Self::Value => Box::new(DefaultMutationBuilder),
+            Self::Value => Box::new(ValueMutationBuilder),
         };
 
         // Wrap with protocol enforcer if migrated
@@ -266,7 +263,7 @@ Remove all ExampleBuilder references and replace with trait dispatch through Typ
 ### Current ExampleBuilder Usage Locations
 Found 16 references across 9 files that need conversion:
 
-1. **default_builder.rs:26** - In `build_paths()` method
+1. **value_builder.rs:26** - In `build_paths()` method
 2. **map_builder.rs:161** - Error path fallback
 3. **array_builder.rs:220** - Static method for array elements
 4. **list_builder.rs:165** - Static method for list elements
@@ -350,8 +347,9 @@ Each builder migration follows this pattern:
 
 ### Completed Builder Migrations (Phase 5b)
 
-1. ✅ **DefaultMutationBuilder** - Leaf type, no children, returns null
-   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/default_builder.rs`
+1. ✅ **ValueMutationBuilder** - Leaf type, no children, returns null
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/value_builder.rs`
+   - Note: Previously named default_builder.rs, renamed to better reflect its purpose as the Value type builder
    - TypeKind: `Self::Value => self.builder().build_paths(ctx, builder_depth)`
 2. ✅ **MapMutationBuilder** - Container with key/value pairs, skips child paths (BRP limitation)
    - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
@@ -373,7 +371,12 @@ Each builder migration follows this pattern:
    - TypeKind: `Self::Array => self.builder().build_paths(ctx, builder_depth)`
    - Note: No `child_path_action()` override - exposes paths like `[0].field`
 
-6. **TupleMutationBuilder** - Multiple children
+6. ✅ **StructMutationBuilder** - Named fields, exposes field paths
+   - Implementation: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/struct_builder.rs`
+   - TypeKind: `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
+   - Note: No `child_path_action()` override - exposes paths like `.field_name`
+
+7. **TupleMutationBuilder** - Multiple children
 
 **📋 MIGRATION GUIDANCE - FOLLOW THESE EXACT PATTERNS:**
 
@@ -403,6 +406,9 @@ Each builder migration follows this pattern:
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
 - ❌ ALL direct `BRP_MUTATION_KNOWLEDGE` lookups
+- ❌ **CRITICAL**: Do NOT add knowledge checks in individual builders!
+  - Knowledge is checked ONLY in ProtocolEnforcer
+  - Adding knowledge checks in builders will break the protocol
 
 **♻️ CODE TO ADAPT (keep logic but change format):**
 - ✏️ Schema extraction → Keep but return PathKinds with correct structure
@@ -419,7 +425,7 @@ Each builder migration follows this pattern:
      - **Line 126**: `.map_or(json!(null), ...)` when element schema missing - should be `Error::SchemaProcessing`
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
-     - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
+     - Follow patterns in ValueMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
    - **NotMutable HANDLING**:
      - Check for any local NotMutable path creation
@@ -476,6 +482,9 @@ Each builder migration follows this pattern:
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
 - ❌ ALL direct `BRP_MUTATION_KNOWLEDGE` lookups
+- ❌ **CRITICAL**: Do NOT add knowledge checks in individual builders!
+  - Knowledge is checked ONLY in ProtocolEnforcer
+  - Adding knowledge checks in builders will break the protocol
 
 **♻️ CODE TO ADAPT (keep logic but change format):**
 - ✏️ Schema extraction → Keep but return PathKinds with correct structure
@@ -499,7 +508,7 @@ Each builder migration follows this pattern:
      - **Line 99**: `.map_or_else(|| json!(null), ...)` when field type extraction fails - should be `Error::SchemaProcessing`
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
-     - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
+     - Follow patterns in ValueMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
    - **NotMutable HANDLING**:
      - Check for any local NotMutable path creation
@@ -527,88 +536,7 @@ Each builder migration follows this pattern:
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the TupleMutationBuilder implementation before proceeding to next builder
 
-7. **StructMutationBuilder** - Named fields
-
-**📋 MIGRATION GUIDANCE - FOLLOW THESE EXACT PATTERNS:**
-
-✅ **Reference Implementations** (study these for the exact pattern):
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/map_builder.rs`
-- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/set_builder.rs`
-
-**Key Implementation Details:**
-1. **collect_children()** must return `Result<Vec<PathKind>>` (NOT Vec<(String, RecursionContext)>)
-   - Use `ctx.require_registry_schema()?` which returns Result (migrated builders)
-   - Unmigrated builders still use `ctx.require_registry_schema_legacy()` which returns Option
-2. **PathKind structure** uses:
-   - `type_name` (NOT field_type)
-   - `parent_type` (NOT optional)
-3. **assemble_from_children()** returns `Result<Value>` for proper error handling
-4. **For container types** that skip child paths: Override `child_path_action()` to return `PathAction::Skip`
-
-**Pattern Summary:**
-- Implement ONLY: `collect_children()` and `assemble_from_children()`
-- Optional: Override `child_path_action()` if this type shouldn't expose child paths
-- ProtocolEnforcer handles ALL: depth checks, registry validation, mutation status
-
-**🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
-- ❌ ALL lines with `depth.exceeds_limit()`
-- ❌ ALL `ctx.require_registry_schema_legacy() else` blocks creating NotMutable paths (unmigrated builders only)
-- ❌ **SPECIFIC TO STRUCT**: BOTH NotMutable path creation methods:
-  - ❌ `build_not_mutable_path_from_support()` (lines ~287-299)
-  - ❌ `build_not_mutatable_field_from_support()` (lines ~302-313) - note the typo "mutatable"
-  - ❌ No special logic needs preserving - ProtocolEnforcer handles all registry/serialization checks
-- ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
-- ❌ ALL `NotMutableReason` imports and usage
-- ❌ ALL direct `BRP_MUTATION_KNOWLEDGE` lookups
-
-**♻️ CODE TO ADAPT (keep logic but change format):**
-- ✏️ Schema extraction → Keep but return PathKinds with correct structure
-- ✏️ Child identification → Convert to PathKind format with type_name/parent_type
-- ✏️ For arrays/lists: Create indexed PathKinds
-- ✏️ For structs: Create field PathKinds with parent_type
-- ✏️ For enums: Create variant PathKinds
-
-   - Fix line 403 (actually not a static method - investigation shows this is a private helper method)
-   - **IMPORT REQUIREMENT**:
-     - Add `use crate::error::Error;` import for error handling
-   - **ERROR HANDLING**:
-     - **Line 47**: `warn!` when no properties field - should be `Error::SchemaProcessing`
-     - **Line 84**: `return json!("...");` when depth exceeds limit - already handled by ProtocolEnforcer, remove
-     - **Line 88**: `return json!(null);` when no registry schema - should be `Error::SchemaProcessing`
-     - **Line 94**: `.map_or(json!(null), ...)` when properties missing - should be `Error::SchemaProcessing`
-     - **Lines 445, 449**: Similar schema extraction failures in other methods
-     - Use `Error::InvalidState` for protocol violations (missing required children)
-     - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
-     - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
-     - Update `assemble_from_children` to return `Result<Value>` not `Value`
-   - **NotMutable HANDLING**:
-     - Check for any local NotMutable path creation
-     - Replace with `return Err(Error::NotMutable(reason).into())`
-     - ProtocolEnforcer will handle path creation
-   - **RECURSION CHECK REMOVAL**:
-     - **SPECIFIC TO STRUCT**: Has THREE depth.exceeds_limit() checks to remove:
-       - Line 34 in `build_paths()` - returns NotMutable path
-       - Line 83 in `build_schema_example()` - returns "..."
-       - Line 445 in helper method `build_struct_example_from_properties_with_context()` - returns "..."
-     - REMOVE all three recursion limit checks - ProtocolEnforcer now handles all recursion limiting
-     - Note: Both `build_schema_example()` and its helper method will be deleted entirely after migration
-   - **REGISTRY CHECK REMOVAL**:
-     - Check if this builder has any registry checks that create NotMutable paths
-     - REMOVE any `NotInRegistry` handling - ProtocolEnforcer now handles registry validation
-     - The builder should NOT check if type is in registry after migration
-   - **MUTATION STATUS PROPAGATION REMOVAL**:
-     - **IMPORTANT**: Do NOT set `mutation_status` or `mutation_status_reason` fields in paths
-     - ProtocolEnforcer now handles ALL mutation status propagation automatically
-     - Builders only create examples - ProtocolEnforcer computes status from children
-     - Remove any manual mutation status assignment logic
-     - **SPECIFIC TO STRUCT**: Remove the ENTIRE `propagate_struct_immutability()` function (lines ~413-436)
-     - **SPECIFIC TO STRUCT**: Remove the call to `Self::propagate_struct_immutability(&mut paths)` in build_paths (line ~76)
-     - This logic for marking root as NotMutable when all fields are immutable is now handled by ProtocolEnforcer
-   - **Note**: No need to override `child_path_action()` - Structs expose field paths
-   - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
-   - do a `cargo build` to check for issues
-   - **STOP and ask user to validate and discuss**
-   - **CODE REVIEW**: After validation, stop and ask user to review the StructMutationBuilder implementation before proceeding to next builder
+7. **TupleMutationBuilder** - Multiple children
 
 8. **EnumMutationBuilder** - Most complex
 
@@ -640,6 +568,9 @@ Each builder migration follows this pattern:
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
 - ❌ ALL direct `BRP_MUTATION_KNOWLEDGE` lookups
+- ❌ **CRITICAL**: Do NOT add knowledge checks in individual builders!
+  - Knowledge is checked ONLY in ProtocolEnforcer
+  - Adding knowledge checks in builders will break the protocol
 
 **♻️ CODE TO ADAPT (keep logic but change format):**
 - ✏️ Schema extraction → Keep but return PathKinds with correct structure
@@ -659,7 +590,7 @@ Each builder migration follows this pattern:
      - **Line 421**: `return json!("...");` when depth exceeds limit - already handled by ProtocolEnforcer, remove
      - Use `Error::InvalidState` for protocol violations (missing required children)
      - Use `Error::SchemaProcessing` for data processing issues (failed serialization, invalid schema)
-     - Follow patterns in DefaultMutationBuilder and MapMutationBuilder for reference
+     - Follow patterns in ValueMutationBuilder and MapMutationBuilder for reference
      - Update `assemble_from_children` to return `Result<Value>` not `Value`
    - **NotMutable HANDLING**:
      - Check for any local NotMutable path creation
@@ -706,7 +637,10 @@ Each builder migration follows this pattern:
 2. **Registry validation** - No builder should validate registry presence
 3. **Knowledge lookups** - No builder should access BRP_MUTATION_KNOWLEDGE
 4. **NotMutable path creation** - Builders return errors, never create paths
-5. **Mutation status computation** - Computed from child statuses
+5. **Mutation status computation** - Computed from child statuses with detailed breakdowns
+   - Automatically determines Mutable vs PartiallyMutable vs NotMutable
+   - Provides detailed mutation_status_reason with mutable/not_mutable path lists
+   - See actual implementation in protocol_enforcer.rs::determine_parent_mutation_status()
 6. **Child path filtering** - Via `child_path_action()` method
 
 ### Builders ONLY Handle:
@@ -756,7 +690,7 @@ Remove these imports from all files:
 - `use crate::brp_tools::brp_type_guide::example_builder::ExampleBuilder;`
 
 Files to clean:
-- default_builder.rs
+- value_builder.rs
 - array_builder.rs
 - list_builder.rs
 - set_builder.rs
@@ -964,14 +898,12 @@ impl TypeKind {
 5. ✅ Validate infrastructure compiles
 
 ### Phase 5b: Incremental Builder Migration
-**Completed**: 4 of 8 builders migrated
-- ✅ DefaultMutationBuilder, MapMutationBuilder, SetMutationBuilder, ListMutationBuilder
+**Completed**: 6 of 8 builders migrated
+- ✅ ValueMutationBuilder, MapMutationBuilder, SetMutationBuilder, ListMutationBuilder, ArrayMutationBuilder, StructMutationBuilder
 - See implementations in `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/`
 
-**Remaining**: 4 builders + trait default
-5. ArrayMutationBuilder
-6. TupleMutationBuilder
-7. StructMutationBuilder
+**Remaining**: 2 builders + trait default
+7. TupleMutationBuilder
 8. EnumMutationBuilder
 9. mod.rs default trait implementation
 

@@ -21,7 +21,11 @@ use crate::brp_tools::Port;
 
 /// Minimum number of ports (1)
 pub const MIN_PORTS_PER_REQUEST: usize = 1;
-/// Maximum number of ports (100)
+/// Maximum number of ports per status check request (100)
+///
+/// Arbitrary limit to prevent unbounded resource usage. Chosen to be consistent
+/// with MAX_INSTANCE_COUNT for launch operations - both use 100 as a reasonable
+/// upper bound that should cover typical use cases.
 pub const MAX_PORTS_PER_REQUEST: usize = 100;
 /// Valid range for port count
 pub const VALID_PORT_COUNT_RANGE: RangeInclusive<usize> = MIN_PORTS_PER_REQUEST..=MAX_PORTS_PER_REQUEST;
@@ -124,19 +128,34 @@ pub struct MultiPortStatusResult {
     #[to_metadata]
     app_name: String,
 
+    // Simple counts as individual metadata fields (following list command pattern)
+    #[to_metadata]
+    total_ports: usize,
+
+    #[to_metadata]
+    successful: usize,
+
+    #[to_metadata]
+    app_running_no_brp: usize,
+
+    #[to_metadata]
+    app_not_found: usize,
+
     // Array of individual port results - each exactly like single-port today
     #[to_result]
     ports: Vec<PortStatusResult>,
-
-    // Simple summary counts
-    #[to_metadata]
-    summary: StatusSummary,
 
     #[to_message]
     message_template: String,
 }
 
 // Individual port result - either success or our structured error
+// DESIGN NOTE: We use Box<dyn ResultStruct> here to maintain consistency with our
+// established error architecture (see mcp/src/error.rs Error::Structured variant).
+// This pattern allows for extensible error types that implement the ResultStruct trait,
+// providing proper serialization and error information without requiring enum updates
+// for new error types. This is the same pattern used successfully in the single-port
+// implementation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortStatusResult {
     pub port: u16,
@@ -146,17 +165,9 @@ pub struct PortStatusResult {
     pub success: Option<StatusResult>,
 
     // Error case: Our structured error types (ProcessNotFoundError, BrpNotRespondingError, etc.)
+    // Uses Box<dyn ResultStruct> consistent with Error::Structured pattern
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<Box<dyn ResultStruct>>,
-}
-
-// Simple summary without complex enums
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StatusSummary {
-    pub total_ports: usize,
-    pub successful: usize,
-    pub app_running_no_brp: usize,
-    pub app_not_found: usize,
 }
 ```
 
@@ -182,20 +193,47 @@ impl MultiPortStatusResult {
             })
             .collect();
 
-        let summary = StatusSummary::from_ports(&ports);
-        let message_template = Self::generate_message(&app_name, &summary);
+        // Compute counts directly (following list command pattern)
+        let total_ports = ports.len();
+        let successful = ports.iter().filter(|p| p.success.is_some()).count();
+        let (app_running_no_brp, app_not_found) = ports.iter()
+            .filter(|p| p.error.is_some())
+            .fold((0, 0), |(brp_count, not_found_count), port| {
+                if let Some(ref error) = port.error {
+                    // Use downcast to differentiate error types for summary counts
+                    // DESIGN NOTE: This limited use of downcast is intentional and correct:
+                    // 1. It's consistent with our Error::Structured pattern (see mcp/src/error.rs)
+                    // 2. It's only for generating summary statistics, not core logic flow
+                    // 3. It maintains extensibility - new error types can be added without changing containers
+                    // 4. The actual error information is preserved in the ResultStruct for serialization
+                    // Using an enum here would be inconsistent with our established error architecture
+                    // and would require enum updates every time we add a new error type.
+                    if error.downcast_ref::<BrpNotRespondingError>().is_some() {
+                        (brp_count + 1, not_found_count)
+                    } else {
+                        (brp_count, not_found_count + 1)
+                    }
+                } else {
+                    (brp_count, not_found_count)
+                }
+            });
+
+        let message_template = Self::generate_message(&app_name, total_ports, successful);
 
         Self {
             app_name,
+            total_ports,
+            successful,
+            app_running_no_brp,
+            app_not_found,
             ports,
-            summary,
             message_template,
         }
     }
 
     // Simple message generation based on counts
-    fn generate_message(app_name: &str, summary: &StatusSummary) -> String {
-        match (summary.successful, summary.total_ports) {
+    fn generate_message(app_name: &str, total_ports: usize, successful: usize) -> String {
+        match (successful, total_ports) {
             (s, t) if s == t && t == 1 => {
                 format!("Process '{app_name}' is running with BRP enabled")
             },
@@ -211,34 +249,6 @@ impl MultiPortStatusResult {
         }
     }
 }
-
-impl StatusSummary {
-    fn from_ports(ports: &[PortStatusResult]) -> Self {
-        let total_ports = ports.len();
-        let successful = ports.iter().filter(|p| p.success.is_some()).count();
-        let (app_running_no_brp, app_not_found) = ports.iter()
-            .filter(|p| p.error.is_some())
-            .fold((0, 0), |(brp_count, not_found_count), port| {
-                if let Some(ref error) = port.error {
-                    // Check the actual error type using our structured error system
-                    if error.downcast_ref::<BrpNotRespondingError>().is_some() {
-                        (brp_count + 1, not_found_count)
-                    } else {
-                        (brp_count, not_found_count + 1)
-                    }
-                } else {
-                    (brp_count, not_found_count)
-                }
-            });
-
-        Self {
-            total_ports,
-            successful,
-            app_running_no_brp,
-            app_not_found,
-        }
-    }
-}
 ```
 
 ## 3. Implementation Logic Changes
@@ -251,11 +261,12 @@ async fn handle_impl(params: StatusParams) -> Result<MultiPortStatusResult> {
     let ports = params.port.to_ports();
     let app_name = &params.app_name;
 
-    // Check all ports in parallel for efficiency
+    // Check all ports in parallel using the existing function
     let port_checks: Vec<_> = ports
         .into_iter()
         .map(|port| async move {
-            let result = check_brp_for_app_on_single_port(app_name, port).await;
+            // Reuse existing check_brp_for_app function directly - no duplication needed
+            let result = check_brp_for_app(app_name, port).await;
             (port.0, result)
         })
         .collect();
@@ -265,11 +276,8 @@ async fn handle_impl(params: StatusParams) -> Result<MultiPortStatusResult> {
     Ok(MultiPortStatusResult::from_port_checks(app_name.to_string(), port_results))
 }
 
-// Keep existing single-port function unchanged
-async fn check_brp_for_app_on_single_port(app_name: &str, port: Port) -> Result<StatusResult> {
-    // Current implementation logic unchanged - returns existing StatusResult or structured errors
-    // ... existing logic ...
-}
+// No new function needed - the existing check_brp_for_app function
+// already provides exactly what we need for single-port checking
 ```
 
 ## 4. Help Text Updates
@@ -288,18 +296,18 @@ Multi-port status checking:
 
 Response structure:
 - ports: Array of individual port results (each preserves full success/error information)
-- summary: Simple counts for quick assessment
+- Metadata fields provide simple counts for quick assessment
 
 Each port result contains either:
 - success: Full StatusResult with pid, port, app_name, message_template (same as single-port today)
 - error: Structured error information with suggestions and context
 
-Summary fields:
+Metadata count fields (following list command pattern):
+- app_name: Checked app name
 - total_ports: Total number of ports checked
 - successful: Number of ports with working BRP
 - app_running_no_brp: Number of ports with app but no BRP
 - app_not_found: Number of ports where app is not running
-- app_name: Checked app name
 
 IMPORTANT: Requires RemotePlugin in Bevy app plugin configuration.
 ```
@@ -312,15 +320,15 @@ IMPORTANT: Requires RemotePlugin in Bevy app plugin configuration.
 3. **Add futures dependency** to Cargo.toml for parallel async operations
 
 ### Phase 2: Status Response Restructure
-1. **Create `StatusInstance` and `PortStatus`** types
-2. **Update `StatusResult`** to use array-based results with metadata counts
+1. **Create `PortStatusResult`** type with success/error variants
+2. **Update `MultiPortStatusResult`** to use individual metadata fields (following list command pattern)
 3. **Implement message template generation** for different scenarios
-4. **Update error handling** to properly populate `StatusInstance` from errors
+4. **Update error handling** to properly populate `PortStatusResult` from errors
 
 ### Phase 3: Handler Logic
 1. **Update `StatusParams`** to use `PortOrPorts`
-2. **Refactor `handle_impl`** to iterate over multiple ports in parallel
-3. **Create helper functions** for single-port checking and result conversion
+2. **Refactor `handle_impl`** to iterate over multiple ports in parallel using existing `check_brp_for_app`
+3. **Create result conversion function** `MultiPortStatusResult::from_port_checks`
 4. **Ensure proper error propagation** and structured error handling
 
 ### Phase 4: Documentation and Testing
@@ -424,12 +432,10 @@ For comparison after implementation, here's the current response format from `br
   "call_info": { "mcp_tool": "brp_status" },
   "metadata": {
     "app_name": "extras_plugin",
-    "summary": {
-      "total_ports": 1,
-      "successful": 1,
-      "app_running_no_brp": 0,
-      "app_not_found": 0
-    }
+    "total_ports": 1,
+    "successful": 1,
+    "app_running_no_brp": 0,
+    "app_not_found": 0
   },
   "parameters": {
     "app_name": "extras_plugin",
@@ -457,12 +463,10 @@ For comparison after implementation, here's the current response format from `br
   "call_info": { "mcp_tool": "brp_status" },
   "metadata": {
     "app_name": "extras_plugin",
-    "summary": {
-      "total_ports": 3,
-      "successful": 3,
-      "app_running_no_brp": 0,
-      "app_not_found": 0
-    }
+    "total_ports": 3,
+    "successful": 3,
+    "app_running_no_brp": 0,
+    "app_not_found": 0
   },
   "parameters": {
     "app_name": "extras_plugin",
@@ -542,6 +546,33 @@ For comparison after implementation, here's the current response format from `br
 - **Issue**: The plan creates a new PortOrPorts enum that duplicates the exact same pattern as the existing InstanceCount type. Both handle single-vs-multiple values with serde(untagged), validation, and conversion methods.
 - **Reasoning**: This finding is a false positive. The InstanceCount and PortOrPorts types serve completely different purposes and use different patterns. InstanceCount is a validated integer wrapper (1-100) that doesn't use serde(untagged) or handle single-vs-multiple values. PortOrPorts is an untagged enum for flexible port specification. There is no actual duplication - these solve different problems: InstanceCount validates launch counts while PortOrPorts accepts explicit port lists for status checking.
 - **Decision**: User elected to skip this recommendation
+
+---
+
+## TYPE-SYSTEM-2: Dynamic type casting violates type safety principles - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Response Structure Design
+- **Issue**: The plan proposes using `Box<dyn ResultStruct>` for PortStatusResult.error field and downcast operations to determine error types. This creates runtime type uncertainty instead of compile-time type safety.
+- **Reasoning**: The use of `Box<dyn ResultStruct>` is intentionally consistent with our established error architecture (Error::Structured in mcp/src/error.rs). This pattern provides extensibility for error types while maintaining proper serialization through the ResultStruct trait. The limited use of downcast for summary statistics is acceptable as it's not in core logic flow. The plan has been updated with design notes to document this architectural choice.
+- **Decision**: User elected to maintain consistency with existing error patterns and updated the plan to document this design choice
+
+---
+
+## DUPLICATION-1: StatusSummary duplicates information computable from ports array - **Verdict**: MODIFIED
+- **Status**: AGREED WITH MODIFICATION
+- **Location**: Section: Response Structure Design
+- **Issue**: The StatusSummary struct stores computed counts (total_ports, successful, etc.) alongside the raw ports array data. This creates two sources of truth and potential inconsistency.
+- **Reasoning**: The concern about duplication has merit, but these are convenience metadata fields, not true duplication. Following the established pattern from list commands (ListBevyApps, ListBevyExamples), we've simplified by using individual `#[to_metadata]` fields instead of a nested StatusSummary struct. This provides the same convenience without unnecessary nesting.
+- **Decision**: Simplified the design to use individual metadata fields, consistent with existing list command patterns
+
+---
+
+## DESIGN-8: Complex downcast logic suggests poor error type architecture - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Implementation Logic Changes
+- **Issue**: The plan proposes complex downcast logic to differentiate error types: `error.downcast_ref::<BrpNotRespondingError>()`. This indicates the error type system is not properly structured.
+- **Reasoning**: The downcast logic is intentional and correct. It's consistent with our established Error::Structured pattern, maintains extensibility for new error types, and is only used for summary statistics, not core logic. Using an enum would be inconsistent with our error architecture and require updates for each new error type. The plan has been updated with additional design notes to clarify this architectural choice.
+- **Decision**: User elected to skip this recommendation after understanding the intentional design choice
 
 ---
 

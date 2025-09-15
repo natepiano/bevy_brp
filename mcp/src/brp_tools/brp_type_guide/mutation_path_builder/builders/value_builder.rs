@@ -16,16 +16,16 @@ use super::super::types::MutationPathInternal;
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
 
-pub struct DefaultMutationBuilder;
+pub struct ValueMutationBuilder;
 
-impl MutationPathBuilder for DefaultMutationBuilder {
+impl MutationPathBuilder for ValueMutationBuilder {
     fn build_paths(
         &self,
         ctx: &RecursionContext,
         _depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
         Err(Error::InvalidState(format!(
-            "DefaultMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
+            "ValueMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
             ctx.type_name()
         )).into())
     }
@@ -40,10 +40,22 @@ impl MutationPathBuilder for DefaultMutationBuilder {
 
     fn assemble_from_children(
         &self,
-        _ctx: &RecursionContext,
+        ctx: &RecursionContext,
         _children: HashMap<MutationPathDescriptor, Value>,
     ) -> Result<Value> {
-        // For leaf types with no children, just return null
+        // Check if this Value type has serialization support
+        // This is critical for the new protocol pattern - unmigrated code checks this
+        // in TypeKind::build_paths but that path is never reached for migrated builders
+        if !ctx.value_type_has_serialization(ctx.type_name()) {
+            // Return NotMutable error for types without serialization
+            // ProtocolEnforcer will catch this and create the appropriate NotMutable path
+            return Err(Error::NotMutable(
+                super::super::NotMutableReason::MissingSerializationTraits(ctx.type_name().clone()),
+            )
+            .into());
+        }
+
+        // For leaf types with no children that have serialization, just return null
         // Knowledge check already handled by ProtocolEnforcer
         Ok(json!(null))
     }

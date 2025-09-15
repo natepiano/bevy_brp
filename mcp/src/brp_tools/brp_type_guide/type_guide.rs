@@ -198,15 +198,23 @@ impl TypeGuide {
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Vec<MutationPathInternal>> {
         tracing::error!(">>> TOP LEVEL TYPE START: {}", brp_type_name);
+        tracing::debug!("DEBUG: Processing type {} with TypeKind", brp_type_name);
 
         let type_kind = TypeKind::from_schema(registry_schema, brp_type_name);
+        tracing::debug!("DEBUG: TypeKind for {} is {:?}", brp_type_name, type_kind);
 
         // Create root context for the new trait system
         let path_kind = PathKind::new_root_value(brp_type_name.clone());
         let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
+        tracing::debug!("DEBUG: Created RecursionContext for {}", brp_type_name);
 
         // Use the new trait dispatch system
         let result = type_kind.build_paths(&ctx, RecursionDepth::ZERO)?;
+        tracing::debug!(
+            "DEBUG: build_paths returned {} paths for {}",
+            result.len(),
+            brp_type_name
+        );
 
         tracing::error!(
             "<<< TOP LEVEL TYPE COMPLETE: {} (returned {} paths)",

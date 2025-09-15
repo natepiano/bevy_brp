@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use serde_json::{Value, json};
 
-use super::mutation_knowledge::KnowledgeKey;
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
 use super::type_kind::TypeKind;
 use super::types::PathSummary;
 use super::{
@@ -32,8 +32,9 @@ impl MutationPathBuilder for ProtocolEnforcer {
         }
 
         // Check knowledge for THIS level
-        if let Some(result) = Self::check_knowledge(ctx) {
-            return result;
+        let (early_return, knowledge_example) = Self::check_knowledge(ctx);
+        if let Some(result) = early_return {
+            return result; // TreatAsValue case - stop recursion
         }
 
         // Process all children and collect paths
@@ -44,12 +45,23 @@ impl MutationPathBuilder for ProtocolEnforcer {
         } = self.process_all_children(ctx, depth)?;
 
         // Assemble THIS level from children (post-order)
-        let parent_example = match self.inner.assemble_from_children(ctx, child_examples) {
+        let assembled_example = match self.inner.assemble_from_children(ctx, child_examples) {
             Ok(example) => example,
             Err(e) => {
                 // Use helper method to handle NotMutatable errors cleanly
                 return Self::handle_assemble_error(ctx, e);
             }
+        };
+
+        // Use knowledge example if available (for Teach types), otherwise use assembled
+        let parent_example = if let Some(knowledge_example) = knowledge_example {
+            tracing::debug!(
+                "Using knowledge example for {} instead of assembled value",
+                ctx.type_name()
+            );
+            knowledge_example
+        } else {
+            assembled_example
         };
 
         // Compute parent's mutation status from children's statuses
@@ -261,32 +273,60 @@ impl ProtocolEnforcer {
         }
     }
 
-    /// Check knowledge base and return path with known example if found
-    fn check_knowledge(ctx: &RecursionContext) -> Option<Result<Vec<MutationPathInternal>>> {
+    /// Check knowledge base and handle based on guidance type
+    /// Returns (should_stop_recursion, Option<knowledge_example>)
+    fn check_knowledge(
+        ctx: &RecursionContext,
+    ) -> (Option<Result<Vec<MutationPathInternal>>>, Option<Value>) {
         tracing::debug!(
             "ProtocolEnforcer checking knowledge for type: {}",
             ctx.type_name()
         );
 
-        if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
+        // Check if we have knowledge for this type
+        if let Some(knowledge) =
+            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name().to_string()))
+        {
+            let example = knowledge.example().clone();
+            let guidance = knowledge.guidance();
             tracing::debug!(
-                "ProtocolEnforcer found knowledge for {}: {:?}",
+                "ProtocolEnforcer found knowledge for {}: {:?} with guidance {:?}",
                 ctx.type_name(),
-                example
-            );
-            Some(Ok(vec![Self::build_mutation_path_internal(
-                ctx,
                 example,
-                MutationStatus::Mutable,
-                None,
-            )]))
+                guidance
+            );
+
+            // Only return early for TreatAsValue types - they should not recurse
+            if matches!(guidance, KnowledgeGuidance::TreatAsValue { .. }) {
+                tracing::debug!(
+                    "ProtocolEnforcer stopping recursion for TreatAsValue type: {}",
+                    ctx.type_name()
+                );
+                return (
+                    Some(Ok(vec![Self::build_mutation_path_internal(
+                        ctx,
+                        example,
+                        MutationStatus::Mutable,
+                        None,
+                    )])),
+                    None,
+                );
+            }
+
+            // For Teach guidance, we continue with normal recursion but save the knowledge example
+            tracing::debug!(
+                "ProtocolEnforcer continuing recursion for Teach type: {}, will use knowledge example",
+                ctx.type_name()
+            );
+            return (None, Some(example));
         } else {
             tracing::debug!(
                 "ProtocolEnforcer NO knowledge found for: {}",
                 ctx.type_name()
             );
-            None
         }
+
+        (None, None) // Continue with normal processing, no knowledge
     }
 
     /// Handle errors from `assemble_from_children`, creating `NotMutatable` paths when appropriate
