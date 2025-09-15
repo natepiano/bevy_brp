@@ -100,19 +100,6 @@ impl PathKind {
         }
     }
 
-    /// Create a new `ArrayElement`
-    pub const fn new_array_element(
-        index: usize,
-        type_name: BrpTypeName,
-        parent_type: BrpTypeName,
-    ) -> Self {
-        Self::ArrayElement {
-            index,
-            type_name,
-            parent_type,
-        }
-    }
-
     /// Get the type name being processed (matches `PathLocation::type_name()` behavior)
     pub const fn type_name(&self) -> &BrpTypeName {
         match self {
