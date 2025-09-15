@@ -128,10 +128,10 @@ impl MutationPathBuilder for ProtocolEnforcer {
         for path_kind in child_path_kinds {
             // ProtocolEnforcer creates the context with proper path_action handling
             let child_ctx = ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
-            
+
             // Extract descriptor from PathKind for HashMap
             let child_descriptor = path_kind.to_mutation_path_descriptor();
-            
+
             // Get child's schema and create its builder
             let child_schema = child_ctx.require_registry_schema()
                 .unwrap_or(&json!(null));
@@ -438,7 +438,7 @@ Each builder migration follows this pattern:
      - Remove any manual mutation status assignment logic
    - **Note**: No need to override `child_path_action()` - Lists expose indexed element paths like `[0].field`
    - **TypeKind**: Update `Self::List => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh
+   - do a `cargo build` to check for issues
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the ListMutationBuilder implementation before proceeding to next builder
 
@@ -519,7 +519,7 @@ Each builder migration follows this pattern:
      - This complex logic for computing PartiallyMutable status is now handled by ProtocolEnforcer
    - **Note**: No need to override `child_path_action()` - Tuples expose indexed element paths
    - **TypeKind**: Update `Self::Tuple | Self::TupleStruct => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh
+   - do a `cargo build` to check for issues
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the TupleMutationBuilder implementation before proceeding to next builder
 
@@ -600,7 +600,7 @@ Each builder migration follows this pattern:
      - This logic for marking root as NotMutable when all fields are immutable is now handled by ProtocolEnforcer
    - **Note**: No need to override `child_path_action()` - Structs expose field paths
    - **TypeKind**: Update `Self::Struct => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh
+   - do a `cargo build` to check for issues
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the StructMutationBuilder implementation before proceeding to next builder
 
@@ -687,7 +687,7 @@ Each builder migration follows this pattern:
      - This is the most complex migration - may require additional design work when reached
    - **Note**: No need to override `child_path_action()` - Enums expose variant field paths
    - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
-   - Run build-check.sh
+   - do a `cargo build` to check for issues
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the EnumMutationBuilder implementation before proceeding to next builder
 
@@ -730,7 +730,7 @@ impl MutationPathBuilder for SomeBuilder {
 9. **mod.rs default trait** - Must be last
     - Fix line 79 default implementation
     - No TypeKind change needed (trait default)
-    - Run build-check.sh
+    - do a `cargo build` to check for issues
     - **STOP and ask user to validate and discuss**
     - **CODE REVIEW**: After validation, stop and ask user to review the final trait default implementation
 25. Remove all ExampleBuilder import statements
@@ -842,7 +842,7 @@ impl<T: PathBuilder> MutationPathBuilder for T {
         for path_kind in child_path_kinds {
             let child_ctx = ctx.create_recursion_context(path_kind.clone(), PathAction::Create);
             let child_descriptor = path_kind.to_mutation_path_descriptor();
-            
+
             let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
@@ -979,7 +979,7 @@ For each migration:
 - Delete build_schema_example() override
 - Delete static helper methods
 - Remove ExampleBuilder import
-- Run build-check.sh
+- do a `cargo build` to check for issues
 - **STOP: Ask user to validate and discuss each builder migration**
 
 #### TypeKind::build_paths() Dispatch Pattern
