@@ -38,7 +38,7 @@ impl MutationPathBuilder for StructMutationBuilder {
             )]);
         }
 
-        let Some(_schema) = ctx.require_registry_schema() else {
+        let Some(_schema) = ctx.require_registry_schema_legacy() else {
             return Ok(vec![Self::build_not_mutable_path_from_support(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
@@ -118,7 +118,7 @@ impl MutationPathBuilder for StructMutationBuilder {
             return json!("...");
         }
 
-        let Some(schema) = ctx.require_registry_schema() else {
+        let Some(schema) = ctx.require_registry_schema_legacy() else {
             return json!(null);
         };
 
@@ -450,7 +450,7 @@ impl StructMutationBuilder {
 
     /// Extract properties from the schema
     fn extract_properties(ctx: &RecursionContext) -> Vec<(String, &Value)> {
-        let Some(schema) = ctx.require_registry_schema() else {
+        let Some(schema) = ctx.require_registry_schema_legacy() else {
             return Vec::new();
         };
 

@@ -57,13 +57,7 @@ impl MutationPathBuilder for MapMutationBuilder {
     }
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        let Some(schema) = ctx.require_registry_schema() else {
-            return Err(Error::InvalidState(format!(
-                "No schema found for map type: {}",
-                ctx.type_name()
-            ))
-            .into());
-        };
+        let schema = ctx.require_registry_schema()?;
 
         // Extract key and value types from schema
         let key_type = schema.get_type(SchemaField::KeyType);

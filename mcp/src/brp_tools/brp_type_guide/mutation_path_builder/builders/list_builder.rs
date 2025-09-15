@@ -40,15 +40,7 @@ impl MutationPathBuilder for ListMutationBuilder {
     }
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        let Some(schema) = ctx.require_registry_schema() else {
-            return Err(Error::SchemaProcessing {
-                message:   format!("No schema found for list type: {}", ctx.type_name()),
-                type_name: Some(ctx.type_name().to_string()),
-                operation: Some("collect_children".to_string()),
-                details:   None,
-            }
-            .into());
-        };
+        let schema = ctx.require_registry_schema()?;
 
         // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {

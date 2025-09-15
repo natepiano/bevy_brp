@@ -61,15 +61,33 @@ impl RecursionContext {
         }
     }
 
-    /// Require the schema to be present, logging a warning if missing
-    /// Looks up the schema from the registry based on the current type
-    pub fn require_registry_schema(&self) -> Option<&Value> {
+    /// Legacy method for unmigrated builders - returns Option and logs warning
+    /// Will be removed once all builders are migrated to protocol-driven pattern
+    #[deprecated(
+        since = "0.1.0",
+        note = "Use require_registry_schema instead. This method is only for unmigrated builders."
+    )]
+    pub fn require_registry_schema_legacy(&self) -> Option<&Value> {
         self.registry.get(self.type_name()).or_else(|| {
             warn!(
                 type_name = %self.type_name(),
                 "Schema missing for type - mutation paths may be incomplete"
             );
             None
+        })
+    }
+
+    /// Require the schema to be present, returning an error if missing
+    /// This is the preferred method for migrated builders
+    pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
+        self.registry.get(self.type_name()).ok_or_else(|| {
+            crate::error::Error::SchemaProcessing {
+                message:   format!("No schema found for type: {}", self.type_name()),
+                type_name: Some(self.type_name().to_string()),
+                operation: Some("require_registry_schema".to_string()),
+                details:   None,
+            }
+            .into()
         })
     }
 

@@ -335,7 +335,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        let Some(registry_schema) = ctx.require_registry_schema() else {
+        let Some(registry_schema) = ctx.require_registry_schema_legacy() else {
             return Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
@@ -412,7 +412,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
     }
 
     fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        let Some(schema) = ctx.require_registry_schema() else {
+        let Some(schema) = ctx.require_registry_schema_legacy() else {
             return json!(null);
         };
 

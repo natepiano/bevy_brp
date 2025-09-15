@@ -40,13 +40,7 @@ impl MutationPathBuilder for SetMutationBuilder {
     }
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        let Some(schema) = ctx.require_registry_schema() else {
-            return Err(Error::InvalidState(format!(
-                "No schema found for set type: {}",
-                ctx.type_name()
-            ))
-            .into());
-        };
+        let schema = ctx.require_registry_schema()?;
 
         // Extract item type from schema
         let item_type = schema.get_type(SchemaField::Items);

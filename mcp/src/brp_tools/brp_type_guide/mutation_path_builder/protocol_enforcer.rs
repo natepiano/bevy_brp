@@ -156,7 +156,9 @@ impl ProtocolEnforcer {
         );
 
         // Get child's schema and create its builder
-        let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
+        let child_schema = child_ctx
+            .require_registry_schema()
+            .unwrap_or_else(|_| &json!(null));
         tracing::debug!(
             "Child '{}' schema found: {}",
             descriptor.deref(),
@@ -249,7 +251,7 @@ impl ProtocolEnforcer {
 
     /// Check if type is in registry and return `NotMutable` path if not found
     fn check_registry(ctx: &RecursionContext) -> Option<Result<Vec<MutationPathInternal>>> {
-        if ctx.require_registry_schema().is_none() {
+        if ctx.require_registry_schema().is_err() {
             Some(Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
