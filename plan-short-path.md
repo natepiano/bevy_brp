@@ -24,12 +24,20 @@ The system already has 90% of the infrastructure needed! There's sophisticated e
 ```rust
 // mcp/src/brp_tools/brp_client/short_path_resolver.rs
 struct ShortPathResolver {
-    registry_cache: Option<Value>, // Cache registry for session
+    registry: HashMap<String, Value>, // NO CACHING - fetched fresh per error
 }
 
 impl ShortPathResolver {
-    async fn resolve_short_paths(&mut self, types: Vec<String>) -> Result<ShortPathResolution>
-    fn build_ambiguity_error(&self, ambiguous: HashMap<String, Vec<String>>) -> Error
+    /// Create fresh instance per error - reuse TypeGuideEngine's registry fetching
+    pub async fn new(port: Port) -> Result<Self> {
+        // Reuse existing registry fetching mechanism from TypeGuideEngine
+        // Make TypeGuideEngine::fetch_registry() public or extract to common helper
+        let registry = TypeGuideEngine::fetch_registry(port).await?;
+        Ok(Self { registry })
+    }
+
+    pub fn resolve_short_paths(&self, types: Vec<String>) -> ShortPathResolution
+    pub fn build_ambiguity_error(&self, ambiguous: HashMap<String, Vec<String>>) -> Error
 }
 
 enum ShortPathResolution {
@@ -41,7 +49,7 @@ enum ShortPathResolution {
 ### 2. Refactor BrpClient Error Handler Pipeline
 Update `BrpClient::execute()` with efficient sequential error handling:
 
-**Extract type names ONCE** at beginning of error pipeline using `extract_type_names_by_method()`
+**Extract type names ONCE** at beginning of error pipeline using `method.extract_type_names(params)`
 
 1. **FIRST**: ShortPath resolution handler (for "Unknown component type" errors only)
    - Use pre-extracted type names
@@ -62,64 +70,78 @@ Update `BrpClient::execute()` with efficient sequential error handling:
 **Note on ADD_TYPE_GUIDE_TO_ERROR flag**: The current boolean flag appropriately represents a binary choice (enhanced vs basic error handling). ShortPath resolution operates independently as a separate error handling step, maintaining clear separation of concerns where enhanced errors focus on format correction for known types, while ShortPath resolution handles unknown type name resolution.
 
 ### 3. Add Method-Specific Type Extraction Logic
-Create dedicated type extraction using existing `BrpMethod` and `ParameterName` enums with `JsonObjectAccess` trait:
+Add type extraction as a method on `BrpMethod` enum to follow proper object-oriented design principles:
 
 ```rust
 use crate::json_object::{JsonObjectAccess, IntoStrings};
 use crate::tool::{BrpMethod, ParameterName};
 
-/// Extract type names from parameters based on the BRP method
-/// Uses type-safe field access via ParameterName enum
-pub fn extract_type_names_from_params(method: &BrpMethod, params: &Value) -> Vec<String> {
-    match method {
-        // Vec<String> in Components field
-        BrpMethod::BevyGet | BrpMethod::BevyRemove => {
-            params.get_field(ParameterName::Components)
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .into_strings())
-                .unwrap_or_default()
-        },
-        // Vec<String> in Types field
-        BrpMethod::BevyGetWatch => {
-            params.get_field(ParameterName::Types)
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .into_strings())
-                .unwrap_or_default()
-        },
-        // String in Component field
-        BrpMethod::BevyMutateComponent => {
-            params.get_field_str(ParameterName::Component)
-                .map(|s| vec![s.to_string()])
-                .unwrap_or_default()
-        },
-        // String in Resource field
-        BrpMethod::BevyGetResource | BrpMethod::BevyInsertResource |
-        BrpMethod::BevyMutateResource | BrpMethod::BevyRemoveResource => {
-            params.get_field_str(ParameterName::Resource)
-                .map(|s| vec![s.to_string()])
-                .unwrap_or_default()
-        },
-        // Object keys in Components field
-        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
-            params.get_field(ParameterName::Components)
-                .and_then(|v| v.as_object())
-                .map(|obj| obj.keys().into_strings())
-                .unwrap_or_default()
-        },
-        _ => Vec::new(),
+impl BrpMethod {
+    /// Extract type names from parameters for this method
+    /// Uses type-safe field access via ParameterName enum
+    pub fn extract_type_names(&self, params: &Value) -> Vec<String> {
+        match self {
+            // Vec<String> in Components field
+            Self::BevyGet | Self::BevyRemove => {
+                params.get_field(ParameterName::Components)
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .into_strings())
+                    .unwrap_or_default()
+            },
+            // Vec<String> in Types field
+            Self::BevyGetWatch => {
+                params.get_field(ParameterName::Types)
+                    .and_then(|v| v.as_array())
+                    .map(|arr| arr.iter()
+                        .filter_map(|v| v.as_str())
+                        .into_strings())
+                    .unwrap_or_default()
+            },
+            // String in Component field
+            Self::BevyMutateComponent => {
+                params.get_field_str(ParameterName::Component)
+                    .map(|s| vec![s.to_string()])
+                    .unwrap_or_default()
+            },
+            // String in Resource field
+            Self::BevyGetResource | Self::BevyInsertResource |
+            Self::BevyMutateResource | Self::BevyRemoveResource => {
+                params.get_field_str(ParameterName::Resource)
+                    .map(|s| vec![s.to_string()])
+                    .unwrap_or_default()
+            },
+            // Object keys in Components field
+            Self::BevySpawn | Self::BevyInsert => {
+                params.get_field(ParameterName::Components)
+                    .and_then(|v| v.as_object())
+                    .map(|obj| obj.keys().into_strings())
+                    .unwrap_or_default()
+            },
+            _ => Vec::new(),
+        }
+    }
+}
+
+// Update Operation to use the new method
+impl Operation {
+    /// Extract type names using the unified BrpMethod extraction
+    pub fn extract_type_names(self, method: &BrpMethod, params: &Value) -> Vec<String> {
+        // Operation enum only cares about the subset it handles for format correction
+        // Delegate to the unified extraction method
+        method.extract_type_names(params)
     }
 }
 ```
 
 **Key improvements**:
+- Single source of truth for type extraction in `BrpMethod::extract_type_names()`
+- Operation enum delegates to the unified method for its subset of operations
 - Uses `ParameterName` enum instead of string literals
 - Uses `JsonObjectAccess::get_field()` for type-safe field access
 - Uses `IntoStrings` trait for cleaner string collection
-- Keep Operation enum focused on format error correction (malformed values)
+- Operation enum remains focused on format error correction (malformed values)
 
 ### 4. Refactor Enhanced Error System
 Simplify the enhanced error system now that unknown types are handled separately:
@@ -163,6 +185,20 @@ Simplify the enhanced error system now that unknown types are handled separately
 - **Reasoning**: This finding misapplies type safety principles. The strings represent dynamic component type paths from Bevy's runtime registry (like 'bevy_transform::components::transform::Transform'), not finite predefined values. These are arbitrary text paths that change based on what components are registered in the Bevy app. Adding newtype wrappers like ShortPath(String) would add boilerplate without providing meaningful compile-time safety, since the actual validation happens at runtime through registry lookups. This is appropriate string usage for arbitrary text processing, not a case where enums would be beneficial.
 - **Decision**: User elected to skip this recommendation
 
+### IMPLEMENTATION-2: Missing comprehensive error handling strategy for registry failures - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Comprehensive Test Requirements
+- **Issue**: Plan mentions registry failure scenarios in test section but doesn't define the error handling strategy in the implementation sections. What happens when registry calls fail, timeout, or return malformed data?
+- **Reasoning**: This finding is based on incorrect analysis. The comprehensive error handling already exists throughout the stack. ShortPath resolution will reuse TypeGuideEngine's registry fetching mechanism, which already has proper error handling. Registry failures should surface as errors and stop execution - this is the correct behavior. The existing error handling infrastructure is sufficient and well-designed.
+- **Decision**: User elected to skip this recommendation
+
+### DESIGN-4: Plan violates atomic migration by creating parallel systems instead of replacing Operation enum - **Verdict**: REJECTED
+- **Status**: SKIPPED
+- **Location**: Section: Refactor Enhanced Error System
+- **Issue**: Plan proposes keeping Operation enum unchanged while creating new extract_type_names_from_params function. This violates atomic migration principle by creating hybrid approach instead of complete replacement
+- **Reasoning**: This finding is based on outdated or incorrect information. The actual implementation does NOT create a parallel system. Instead, the Operation enum was properly enhanced with an `extract_type_names` method (lines 201-229) that handles type extraction based on operation state. There is no separate `extract_type_names_from_params` function as claimed. The design is clean and unified - the Operation enum owns its behavior through proper methods. The implementation correctly supports only the 4 BRP methods that actually need type extraction (spawn, insert, mutate operations), while appropriately excluding read-only operations that don't send type data. The current code follows good object-oriented design principles with proper encapsulation.
+- **Decision**: User elected to skip this recommendation
+
 ## Implementation Steps
 
 ### Phase 1: Core Resolution Logic
@@ -173,7 +209,7 @@ Simplify the enhanced error system now that unknown types are handled separately
 
 ### Phase 2: Integration
 1. **Enhance BrpClient**: Add shortPath resolution as FIRST step in error pipeline (before enhanced errors)
-2. **Registry Caching**: Session-based caching to avoid repeated calls
+2. **No Caching**: Fetch registry fresh per error attempt - no session state
 3. **Keep Enhanced Errors unchanged**: Enhanced errors remain separate for format correction
 
 ### Phase 3: Polish & Validation
@@ -188,7 +224,7 @@ Simplify the enhanced error system now that unknown types are handled separately
 - **Intelligent Errors**: When ambiguous, shows all matches with clear disambiguation
 - **Zero Breaking Changes**: Existing full paths continue to work
 - **Universal Application**: ShortPath resolution applies to ALL BRP calls that contain type names, regardless of enhanced_errors setting
-- **Performance**: Registry caching prevents excessive calls
+- **Simplicity**: No caching complexity - fresh registry fetch per error keeps design simple
 
 ## Example User Experience
 
