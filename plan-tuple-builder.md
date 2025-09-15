@@ -55,10 +55,12 @@ fn is_migrated(&self) -> bool { true }
 - When Handle wrapper detected, return `Err(Error::NotMutable(NotMutableReason::NonMutableHandle { container_type, element_type }))`
 - ProtocolEnforcer will catch this error and create the NotMutable path
 
-### Error Handling Specific to Tuple
-- **Line 87**: `return json!(null);` when no registry schema → should be `Error::SchemaProcessing`
-- **Line 94**: `.map_or(json!(null), ...)` when prefixItems missing → should be `Error::SchemaProcessing`
-- **Line 99**: `.map_or_else(|| json!(null), ...)` when field type extraction fails → should be `Error::SchemaProcessing`
+### Error Handling Pattern for Migrated Builders
+Migrated builders follow a clean separation of concerns:
+- **ProtocolEnforcer** handles all protocol validation (registry, depth, knowledge checks)
+- **Individual builders** handle only data structure processing using `Result<T>` types
+- **Schema errors** use `Error::SchemaProcessing` with structured error details
+- **No direct error path creation** - builders return errors, ProtocolEnforcer creates paths
 
 ### Mutation Status Propagation Removal (CRITICAL)
 - **Remove ENTIRE** `propagate_tuple_mixed_mutability()` function (lines ~341-383)
@@ -100,8 +102,20 @@ impl MutationPathBuilder for TupleMutationBuilder {
     }
 
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        // Extract tuple element schemas and create PathKinds
-        // Convert from existing logic but return PathKind format with type_name/parent_type
+        // Use Result-returning API - ProtocolEnforcer handles missing schema
+        let schema = ctx.require_registry_schema()?;
+
+        let Some(prefix_items) = schema.get_field(SchemaField::PrefixItems) else {
+            return Err(Error::SchemaProcessing {
+                message: format!("Missing prefixItems in tuple schema for: {}", ctx.type_name()),
+                type_name: Some(ctx.type_name().to_string()),
+                operation: Some("extract_prefix_items".to_string()),
+                details: None,
+            }.into());
+        };
+
+        // Extract element types and create PathKind objects
+        // Handle wrapper detection by returning Error::NotMutable for ProtocolEnforcer to process
     }
 
     fn assemble_from_children(&self, ctx: &RecursionContext, children: HashMap<MutationPathDescriptor, Value>) -> Result<Value> {
@@ -121,11 +135,14 @@ fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Result<V
 ```
 
 ### Step 4: Remove Obsolete Code
-- Delete `propagate_tuple_mixed_mutability()` function
-- Delete static methods `build_tuple_example_static()` and `build_tuple_struct_example_static()`
-- Delete override of `build_schema_example()`
-- Remove ExampleBuilder import
-- Remove all recursion/registry/mutation status logic
+- ❌ Delete `propagate_tuple_mixed_mutability()` function
+- ❌ Delete static methods `build_tuple_example_static()` and `build_tuple_struct_example_static()`
+- ❌ **Delete entire `build_schema_example()` method override** - use default trait implementation
+- ❌ Delete all direct `build_not_mutable_path()` calls - ProtocolEnforcer handles these
+- ❌ Delete all `NotMutableReason` handling in individual methods
+- ❌ Delete registry validation creating NotMutable paths
+- ❌ Remove ExampleBuilder import
+- ❌ Remove all recursion/registry/mutation status logic
 
 ### Step 5: Update TypeKind Dispatch
 In `type_kind.rs`:
