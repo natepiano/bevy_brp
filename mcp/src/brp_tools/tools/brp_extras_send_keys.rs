@@ -40,6 +40,10 @@ pub struct SendKeysResult {
     #[to_metadata(result_operation = "extract_duration_ms")]
     pub duration_ms: u32,
 
+    /// Count of keys sent
+    #[to_metadata(result_operation = "count_keys_sent")]
+    pub key_count: usize,
+
     /// Message template for formatting responses
     #[to_message(message_template = "Sent {key_count} keys")]
     pub message_template: String,
