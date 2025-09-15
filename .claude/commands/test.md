@@ -31,12 +31,14 @@ This command runs BRP tests in two modes:
 This file contains an array of test configurations with the following structure:
 - `test_name`: Identifier for the test
 - `test_file`: Test file name in the tests/ directory
-- `port`: Port number for the test (or "N/A")
 - `app_name`: App/example to launch (or "N/A" or "various")
-- `log_file_prefix`: Expected log file prefix for verification (or "N/A")
-- `launch_instruction`: How to launch the app (used by main runner)
-- `shutdown_instruction`: How to shutdown the app (used by main runner)
+- `app_type`: Type of app - "example" or "app" (null for "various" or "N/A")
 - `test_objective`: What the test validates
+
+**Dynamic Port Allocation**:
+- BASE_PORT = 20100
+- Ports are dynamically allocated from pools based on app requirements
+- Each app instance gets a sequential port starting from BASE_PORT
 
 **IMPORTANT**: Count the number of test objects in test_config.json to determine the total number of tests. Do NOT assume it matches PARALLEL_TESTS.
 
@@ -51,17 +53,18 @@ Use this exact count in your final summary. Do NOT manually count or assume any 
 Tests are categorized by app requirements:
 
 ### App-Managed Tests (Main Runner Handles)
-Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_extras_plugin_app"):
-- Each test needs its own app instance on its specified port
-- Main runner launches the app before running the test
-- Main runner shuts down the app after test completion
+Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_app"):
+- Each test needs an app instance on a dynamically assigned port
+- Main runner launches apps using instance_count for efficiency
+- Main runner manages port pools and assignments
 
 **Main runner handles:**
 1. App launch on test-specific port
 2. BRP connectivity verification (using brp_status)
-3. Window title setting
-4. App lifecycle management
-5. Central cleanup
+3. App lifecycle management
+4. Central cleanup
+
+**Note**: Window titles are NOT set by main runner - each test agent sets its own window title
 
 ### Self-Managed Tests
 - **various**: Tests handle their own app launching (path, shutdown tests)
@@ -74,22 +77,30 @@ Tests where `app_name` is a specific app (e.g., "extras_plugin", "test_extras_pl
 <DedicatedAppPrompt>
 
 You are executing BRP test: [TEST_NAME]
-Configuration: Port [PORT], App [APP_NAME]
+Configuration: Port [ASSIGNED_PORT], App [APP_NAME]
 
 **Your Task:**
-A [APP_NAME] app is running on port [PORT] with BRP enabled and window title already set.
+A [APP_NAME] app is running on port [ASSIGNED_PORT] with BRP enabled.
 
-Execute test procedures from file: [TEST_FILE]
+**MANDATORY FIRST ACTION - WINDOW TITLE VERIFICATION:**
+1. **YOU MUST** set the window title as your VERY FIRST action using:
+   mcp__brp__brp_extras_set_window_title(port=[ASSIGNED_PORT], title="[TEST_NAME] test - port [ASSIGNED_PORT]")
+2. **CAPTURE** the response from the window title setting
+3. **VERIFY** it returns status: "success"
+4. **INCLUDE** in your response under a new section "### Window Title Setup"
+5. **IF IT FAILS**: Mark test as FAILED immediately with reason "Window title setup failed"
+
+Only after successful window title setup, execute test procedures from file: [TEST_FILE]
 
 **CRITICAL PORT REQUIREMENT:**
-- **ALL BRP operations MUST use port [PORT]**
+- **ALL BRP operations MUST use port [ASSIGNED_PORT]**
 - **DO NOT launch or shutdown the app** - it's managed externally
-- **DO NOT set window titles** - already handled
 - **Port parameter is MANDATORY** for all BRP tool calls
+- **WINDOW TITLE MUST BE SET AND VERIFIED** before ANY other operations
 
 **Test Context:**
 - Test File: [TEST_FILE]
-- Port: [PORT] (MANDATORY for all BRP operations)
+- Port: [ASSIGNED_PORT] (MANDATORY for all BRP operations)
 - App: [APP_NAME] (already running)
 - Objective: [TEST_OBJECTIVE]
 
@@ -108,9 +119,14 @@ Execute test procedures from file: [TEST_FILE]
 # Test Results: [TEST_NAME]
 
 ## Configuration
-- Port: [PORT]
+- Port: [ASSIGNED_PORT]
 - App: [APP_NAME] (externally managed)
 - Test Status: [Completed/Failed]
+
+## Window Title Setup
+- **Status**: [Success/Failed]
+- **Response**: [Include actual response from brp_extras_set_window_title]
+- **Title Set**: "[TEST_NAME] test - port [ASSIGNED_PORT]"
 
 ## Test Results
 ### ✅ PASSED
@@ -141,17 +157,16 @@ Execute test procedures from file: [TEST_FILE]
 <SelfManagedPrompt>
 
 You are executing BRP test: [TEST_NAME]
-Configuration: Port [PORT], App [APP_NAME]
+Configuration: App [APP_NAME]
 
 **Your Task:**
-1. [LAUNCH_INSTRUCTION]
+1. Manage your own app launches as needed
 2. Execute test procedures from file: [TEST_FILE]
-3. [SHUTDOWN_INSTRUCTION]
+3. Clean up any apps you launched
 
 **Test Context:**
 - Test File: [TEST_FILE]
-- Port: [PORT]
-- App: [APP_NAME]
+- App: [APP_NAME] (self-managed)
 - Objective: [TEST_OBJECTIVE]
 
 **FAILURE HANDLING PROTOCOL:**
@@ -184,11 +199,11 @@ Configuration: Port [PORT], App [APP_NAME]
 ### Single Test Execution
 
 **For tests where app_name is a specific app (not "various" or "N/A"):**
-1. **Launch App**: Use launch_instruction to start the app on the test's specified port
-2. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
-3. **Set Window Title**: Set title to "[TEST_NAME] test - port [PORT]"
-4. **Execute Test**: Use DedicatedAppPrompt template
-5. **Cleanup**: Shutdown app using shutdown_instruction
+1. **Launch App**: Use appropriate launch tool based on app_type ("example" or "app")
+2. **Assign Port**: Allocate a port from BASE_PORT (20100) upward
+3. **Verify Launch**: Use `brp_status` to confirm BRP connectivity on the port
+4. **Execute Test**: Use DedicatedAppPrompt template with assigned port (test will set its own window title)
+6. **Cleanup**: Shutdown app using `mcp__brp__brp_shutdown`
 
 **For self-managed tests (app_name is "various" or "N/A"):**
 1. **Execute Test**: Use SelfManagedPrompt template directly
@@ -209,18 +224,26 @@ Example: /test extras
 
 ### App Launch Phase
 
-**Before running each batch of tests:**
+**Before running tests:**
 
-1. **Read test_config.json** to identify which tests are in the current batch
-2. **For each test in the batch:**
-   - If `app_name` is "various" or "N/A": Skip (test manages its own apps)
-   - Otherwise: Note the app_name and port for launching
-3. **Launch required apps for the batch:**
-   - For each unique app/port combination needed:
-     - Use appropriate launch tool (check if it's an example or app)
-     - Verify BRP connectivity using `brp_status` on the specified port
-     - Set window title to "[TEST_NAME] test - port [PORT]" (using the test name that needs this app)
-4. **Track launched apps** for cleanup after batch completion
+1. **Analyze app requirements** using this command:
+   ```bash
+   jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' .claude/commands/test_config.json
+   ```
+   This will show you exactly how many instances of each app type you need.
+
+2. **Launch apps using instance_count** based on the counts from step 1:
+   - For each app in the jq output, launch with the appropriate tool:
+     - If app_type is "example": use `mcp__brp__brp_launch_bevy_example`
+     - If app_type is "app": use `mcp__brp__brp_launch_bevy_app`
+   - Start at BASE_PORT=20100 and increment by the count for each app group
+
+3. **Track port assignments**:
+   - Keep track of which ports belong to which app for later assignment to tests
+
+4. **Verify all apps**: Use `brp_status` on each port in PARALLEL (single message, multiple tool uses)
+
+5. **Track launched apps** for cleanup
 
 **If any app launch fails, STOP immediately and report failure.**
 
@@ -228,22 +251,49 @@ Example: /test extras
 
 **Execute tests PARALLEL_TESTS at a time with continuous execution:**
 
+**CRITICAL PARALLEL EXECUTION REQUIREMENT:**
+You MUST execute tests in parallel by creating a SINGLE message with multiple Task tool invocations.
+DO NOT execute tests sequentially (one Task, wait for result, then next Task).
+CORRECT: One message containing 12 Task tool uses for 12 tests
+INCORRECT: 12 separate messages each with one Task tool use
+
 1. **Load Configuration**: Read `test_config.json`
-2. **Categorize Tests**:
-   - **Dedicated app tests**: Use DedicatedAppPrompt (no app management)
-   - **Self-managed tests**: Use SelfManagedPrompt (handle own apps)
-3. **Continuous Execution Loop**:
-   - Launch PARALLEL_TESTS tests from queue using appropriate templates
-   - Monitor for failures and stop immediately on first failure
-   - Continue until all tests complete or failure detected
+2. **Initialize Port Pools**: Based on launched apps
+3. **Categorize Tests**:
+   - **Dedicated app tests**: Need port assignment from pool
+   - **Self-managed tests**: Handle their own apps ("various" or "N/A")
+4. **Continuous Execution Loop**:
+   - Build batches of tests to run in parallel:
+     - For each test needing an app: assign port from appropriate pool
+     - For self-managed tests: prepare with SelfManagedPrompt
+   - **CRITICAL PARALLEL EXECUTION**:
+     - Create a SINGLE message with multiple Task tool invocations
+     - Each Task call represents one test to run in parallel
+     - Example structure for parallel execution:
+       ```
+       <single_message>
+       Task(description="Execute test1", prompt=DedicatedAppPrompt_for_test1)
+       Task(description="Execute test2", prompt=DedicatedAppPrompt_for_test2)
+       Task(description="Execute test3", prompt=SelfManagedPrompt_for_test3)
+       ... up to PARALLEL_TESTS tasks in ONE message
+       </single_message>
+       ```
+   - Monitor completed results for failures
+   - Return ports to pool as tests complete
+   - Stop immediately on first failure detected
+   - Continue batching until all tests complete or failure detected
 
 ### Cleanup Phase
 
-**After each batch of tests completes (success or failure):**
-1. **For each app launched in the batch:**
-   - Use `mcp__brp__brp_shutdown` with the app_name and port
-   - Verify shutdown completed
-2. **Clear the tracked apps list** for the next batch
+**After all tests complete (success or failure):**
+1. **For each launched app group:**
+   - Shutdown all instances at once:
+   ```python
+   # For each port in use
+   mcp__brp__brp_shutdown(app_name=app_name, port=port)
+   ```
+2. **Verify all shutdowns completed**
+3. **Clear port pools and tracking data**
 
 ### Error Detection and Immediate Stopping
 

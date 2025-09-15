@@ -2,121 +2,85 @@
   {
     "test_name": "large_response",
     "test_file": ".claude/commands/tests/large_response.md",
-    "port": 20107,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20107",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20107 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test registry_schema file output for large responses"
   },
   {
     "test_name": "type_guide",
     "test_file": ".claude/commands/tests/type_guide.md",
-    "port": 20114,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20114",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20114 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test brp_type_guide discovery, metadata validation, and type_guide embedding in format errors"
   },
   {
     "test_name": "list",
     "test_file": ".claude/commands/tests/list.md",
-    "port": "N/A",
     "app_name": "N/A",
-    "log_file_prefix": "N/A",
-    "launch_instruction": "No app launch required - discovery works from workspace metadata",
-    "shutdown_instruction": "No cleanup required",
+    "app_type": null,
     "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps"
   },
   {
     "test_name": "apps",
     "test_file": ".claude/commands/tests/apps.md",
-    "port": 20111,
     "app_name": "test_app",
-    "log_file_prefix": "bevy_brp_mcp_test_app_port20111",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_app tool with port: 20111 parameter to launch test_app application",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "app",
     "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
   },
   {
     "test_name": "introspection",
     "test_file": ".claude/commands/tests/introspection.md",
-    "port": 20106,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20106",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20106 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test rpc_discover, registry_schema, list operations"
   },
   {
     "test_name": "data_operations",
     "test_file": ".claude/commands/tests/data_operations.md",
-    "port": 20103,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20103",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20103 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test spawn, insert, get, remove, mutate operations"
   },
   {
     "test_name": "watch",
     "test_file": ".claude/commands/tests/watch.md",
-    "port": 20109,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20109",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20109 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
   },
   {
     "test_name": "resource",
     "test_file": ".claude/commands/tests/resource.md",
-    "port": 20112,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20112",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20112 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test insert_resource with/without Serialize/Deserialize traits"
   },
   {
     "test_name": "shutdown",
     "test_file": ".claude/commands/tests/shutdown.md",
-    "port": "various",
     "app_name": "various",
-    "log_file_prefix": "various",
-    "launch_instruction": "Test manages its own app launches",
-    "shutdown_instruction": "Test manages its own app shutdowns",
+    "app_type": null,
     "test_objective": "Test all success and error cases for brp_status and brp_shutdown"
   },
   {
     "test_name": "extras",
     "test_file": ".claude/commands/tests/extras.md",
-    "port": 20102,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20102",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example tool with port: 20102 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown via the brp_extras_shutdown method (part of test)",
+    "app_type": "example",
     "test_objective": "Test screenshot, send_keys"
   },
   {
     "test_name": "path",
     "test_file": ".claude/commands/tests/path.md",
-    "port": 20110,
     "app_name": "various",
-    "log_file_prefix": "bevy_brp_mcp_*_port20110",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example or mcp__brp__brp_launch_bevy_app tools with port: 20110 parameter as instructed (may use multiple apps for testing)",
-    "shutdown_instruction": "Shutdown any launched apps cleanly",
+    "app_type": null,
     "test_objective": "Test path parameter handling for duplicate names"
   },
   {
     "test_name": "get",
     "test_file": ".claude/commands/tests/get.md",
-    "port": 20115,
     "app_name": "extras_plugin",
-    "log_file_prefix": "bevy_brp_mcp_extras_plugin_port20115",
-    "launch_instruction": "Use mcp__brp__brp_launch_bevy_example with port: 20115 parameter to launch extras_plugin example",
-    "shutdown_instruction": "Shutdown app cleanly using mcp__brp__brp_extras_shutdown",
+    "app_type": "example",
     "test_objective": "Test bevy_get strict parameter behavior with valid and invalid components"
   }
 ]
