@@ -8,9 +8,9 @@ The system already has 90% of the infrastructure needed! There's sophisticated e
 
 ### Perfect Choke Point Identified
 `BrpClient::execute()` in `client.rs:96-113` already:
-- Detects format errors via `is_format_error()`
+- Detects format errors via `has_format_error_code()`
 - Extracts type names from parameters and error messages
-- Has `ENHANCED_ERRORS` flag to control behavior
+- Has `ADD_TYPE_GUIDE_TO_ERROR` flag to control behavior
 - Can be extended with retry logic
 
 ### Tools That Take Type Names
@@ -51,25 +51,81 @@ Update `BrpClient::execute()` with efficient sequential error handling:
    - **If resolution fails, return original error immediately (do NOT pass through)**
 
 2. **SECOND**: Enhanced format error handler (for KNOWN types with format errors)
-   - Only when `enhanced_errors = true`
-   - Pass pre-extracted type names to `create_enhanced_format_error()`
-   - Refactor `create_enhanced_format_error()` to accept type names parameter
+   - Only when `ADD_TYPE_GUIDE_TO_ERROR = true`
+   - Pass pre-extracted type names to `add_type_guide_to_error()`
+   - Refactor `add_type_guide_to_error()` to accept type names parameter
    - Remove all type extraction logic from this function (types already known)
-   - Always call `create_full_type_error()` since types are guaranteed valid
+   - Always call `add_type_guide_to_error()` since types are guaranteed valid
 
 3. **THIRD**: Regular error handling (fallback)
 
+**Note on ADD_TYPE_GUIDE_TO_ERROR flag**: The current boolean flag appropriately represents a binary choice (enhanced vs basic error handling). ShortPath resolution operates independently as a separate error handling step, maintaining clear separation of concerns where enhanced errors focus on format correction for known types, while ShortPath resolution handles unknown type name resolution.
+
 ### 3. Add Method-Specific Type Extraction Logic
-Create dedicated type extraction that doesn't rely on Operation enum:
-- `extract_type_names_by_method()` - handles different parameter patterns per BrpMethod
-- `rewrite_params_with_resolved_types()` - substitutes resolved fullPaths back into parameters
+Create dedicated type extraction using existing `BrpMethod` and `ParameterName` enums with `JsonObjectAccess` trait:
+
+```rust
+use crate::json_object::{JsonObjectAccess, IntoStrings};
+use crate::tool::{BrpMethod, ParameterName};
+
+/// Extract type names from parameters based on the BRP method
+/// Uses type-safe field access via ParameterName enum
+pub fn extract_type_names_from_params(method: &BrpMethod, params: &Value) -> Vec<String> {
+    match method {
+        // Vec<String> in Components field
+        BrpMethod::BevyGet | BrpMethod::BevyRemove => {
+            params.get_field(ParameterName::Components)
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .into_strings())
+                .unwrap_or_default()
+        },
+        // Vec<String> in Types field
+        BrpMethod::BevyGetWatch => {
+            params.get_field(ParameterName::Types)
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .into_strings())
+                .unwrap_or_default()
+        },
+        // String in Component field
+        BrpMethod::BevyMutateComponent => {
+            params.get_field_str(ParameterName::Component)
+                .map(|s| vec![s.to_string()])
+                .unwrap_or_default()
+        },
+        // String in Resource field
+        BrpMethod::BevyGetResource | BrpMethod::BevyInsertResource |
+        BrpMethod::BevyMutateResource | BrpMethod::BevyRemoveResource => {
+            params.get_field_str(ParameterName::Resource)
+                .map(|s| vec![s.to_string()])
+                .unwrap_or_default()
+        },
+        // Object keys in Components field
+        BrpMethod::BevySpawn | BrpMethod::BevyInsert => {
+            params.get_field(ParameterName::Components)
+                .and_then(|v| v.as_object())
+                .map(|obj| obj.keys().into_strings())
+                .unwrap_or_default()
+        },
+        _ => Vec::new(),
+    }
+}
+```
+
+**Key improvements**:
+- Uses `ParameterName` enum instead of string literals
+- Uses `JsonObjectAccess::get_field()` for type-safe field access
+- Uses `IntoStrings` trait for cleaner string collection
 - Keep Operation enum focused on format error correction (malformed values)
 
 ### 4. Refactor Enhanced Error System
 Simplify the enhanced error system now that unknown types are handled separately:
-- Update `create_enhanced_format_error()` signature to accept pre-extracted type names
-- Remove `extract_types_from_error_message()` and Operation enum extraction logic
-- Remove `create_minimal_type_error()` conditional - always use `create_full_type_error()`
+- Update `add_type_guide_to_error()` signature to accept pre-extracted type names
+- Remove `extract_types_from_error_message()` and Operation enum extraction logic from `try_add_type_guide_to_error()`
+- Remove `create_minimal_type_error()` conditional - always use `add_type_guide_to_error()`
 - Keep enhanced error configurations unchanged (no need to add to Vec<String> tools)
 
 ## Design Review Skip Notes
@@ -93,8 +149,8 @@ Simplify the enhanced error system now that unknown types are handled separately
 ### DESIGN-2: Plan doesn't leverage existing enhanced error infrastructure consistently - **Verdict**: REDUNDANT
 - **Status**: REDUNDANT - Already addressed in plan
 - **Location**: Section: Enhance BrpClient Error Handling
-- **Issue**: Plan adds shortPath resolution to create_enhanced_format_error but this is only called when tools have enhanced_errors=true, which most Vec<String> tools don't have
-- **Reasoning**: With the corrected error handling architecture, this concern is obsolete. ShortPath resolution now happens in its own dedicated error handler before enhanced errors, making it independent of `enhanced_errors = true` configuration. Enhanced error system remains focused on format errors for spawn/insert/mutate operations. Vec<String> tools don't need enhanced errors enabled for shortPath functionality.
+- **Issue**: Plan adds shortPath resolution to add_type_guide_to_error but this is only called when tools have ADD_TYPE_GUIDE_TO_ERROR=true, which most Vec<String> tools don't have
+- **Reasoning**: With the corrected error handling architecture, this concern is obsolete. ShortPath resolution now happens in its own dedicated error handler before enhanced errors, making it independent of `ADD_TYPE_GUIDE_TO_ERROR = true` configuration. Enhanced error system remains focused on format errors for spawn/insert/mutate operations. Vec<String> tools don't need enhanced errors enabled for shortPath functionality.
 - **Existing Implementation**: ShortPath resolution operates independently in the error pipeline and doesn't depend on enhanced error configurations
 - **Critical Note**: The original finding was based on the flawed Operation enum approach that has been corrected
 
@@ -103,16 +159,16 @@ Simplify the enhanced error system now that unknown types are handled separately
 ### Phase 1: Core Resolution Logic
 1. **ShortPathResolver**: Registry caching, resolution logic, duplicate detection
 2. **Error Types**: `ShortPathResolution` enum and ambiguity error formatting
-3. **Parameter Rewriting**: `Operation::rewrite_params()` method
+3. **Parameter Rewriting**: `rewrite_params_with_resolved_types()` function (separate from Operation enum)
 4. **Tests**: Comprehensive test coverage for resolution edge cases
 
 ### Phase 2: Integration
-1. **Enhance BrpClient**: Add retry logic to `create_enhanced_format_error()`
+1. **Enhance BrpClient**: Add shortPath resolution as FIRST step in error pipeline (before enhanced errors)
 2. **Registry Caching**: Session-based caching to avoid repeated calls
-3. **Enable Enhanced Errors**: Update more result structs to use enhanced error handling
+3. **Keep Enhanced Errors unchanged**: Enhanced errors remain separate for format correction
 
 ### Phase 3: Polish & Validation
-1. **No Special Cases**: All tools use uniform shortPath resolution through `BrpClient::execute()`
+1. **Universal Coverage**: All tools that handle type names get shortPath resolution through `BrpClient::execute()`, independent of enhanced_errors setting
 2. **Error Messages**: User-friendly disambiguation prompts
 3. **Documentation**: Update help text to mention shortPath support
 4. **Comprehensive Test Suite**: Create `.claude/commands/tests/shortpath_resolution.md`
@@ -122,7 +178,7 @@ Simplify the enhanced error system now that unknown types are handled separately
 - **Seamless UX**: Users can use `Transform` instead of `bevy_transform::components::transform::Transform`
 - **Intelligent Errors**: When ambiguous, shows all matches with clear disambiguation
 - **Zero Breaking Changes**: Existing full paths continue to work
-- **Selective Rollout**: Only tools with `enhanced_errors = true` get the feature
+- **Universal Application**: ShortPath resolution applies to ALL BRP calls that contain type names, regardless of enhanced_errors setting
 - **Performance**: Registry caching prevents excessive calls
 
 ## Example User Experience
