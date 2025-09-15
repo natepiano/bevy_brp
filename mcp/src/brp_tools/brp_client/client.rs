@@ -24,7 +24,7 @@ use crate::tool::{BrpMethod, ParameterName};
 /// Client for executing a BRP operation
 pub struct BrpClient {
     method: BrpMethod,
-    port:   Port,
+    port: Port,
     params: Option<Value>,
 }
 
@@ -224,7 +224,7 @@ impl BrpClient {
             .collect()
     }
 
-    /// Enhanced format error creation with type schema embedding
+    /// Enhanced format error creation with type guide embedding
     async fn create_enhanced_format_error(&self, error: &BrpClientError) -> Result<ResponseStatus> {
         // Step 1: Try parameter-based extraction using Operation enum
         let mut extracted_types = Vec::new();
@@ -261,7 +261,7 @@ impl BrpClient {
         .into())
     }
 
-    /// Create full error with type schema embedded for extracted types
+    /// Create full error with type guide embedded for extracted types
     async fn create_full_type_error(
         &self,
         error: &BrpClientError,
@@ -302,9 +302,9 @@ impl BrpClient {
             };
 
             ResponseStatus::Error(BrpClientError {
-                code:    error.code,
+                code: error.code,
                 message: enhanced_message,
-                data:    error.data,
+                data: error.data,
             })
         } else {
             ResponseStatus::Success(brp_response_json.result)
