@@ -138,7 +138,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 ### BATCH PROCESSING SUBSTEPS
 
 <GetBatchAssignments>
-    **Retrieve batch assignments (type names only) for current batch:**
+    **Retrieve batch assignments (assignment indices only) for current batch:**
 
     ```bash
     python3 ./.claude/commands/scripts/mutation_test_get_batch_assignments.py [BATCH_NUMBER]
@@ -146,7 +146,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 
     Returns JSON with:
     - batch_number
-    - assignments: Array with subagent, port, and types (just names, no mutation paths)
+    - assignments: Array with subagent, port, and assignment_index (NO type names to prevent substitution)
 
     **Store this output in a variable for systematic processing.**
 </GetBatchAssignments>
@@ -158,7 +158,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     1. Get the assignments from GetBatchAssignments
     2. For each assignment:
        - Port = assignment.port
-       - Title = last segment of assignment.types[0] after `::`
+       - Title = f"Subagent {assignment.subagent} (Index {assignment.assignment_index})"
 
     Send all window title updates in parallel.
 </SetWindowTitles>
@@ -172,19 +172,21 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     3. For each assignment:
        - Subagent number = assignment.subagent
        - Port = assignment.port
-       - Types = assignment.types (array of type names only)
+       - Batch number = batch_number (from assignments JSON)
+       - Assignment index = assignment.assignment_index
 
     **Example for a batch with 3 assignments**:
     ```
-    Assignment 1: subagent 1, port 30001, types: ["TypeA"]
-    Assignment 2: subagent 2, port 30002, types: ["TypeB"]
-    Assignment 3: subagent 3, port 30003, types: ["TypeC"]
+    Assignment 1: subagent 1, port 30001, batch 5, assignment_index 0
+    Assignment 2: subagent 2, port 30002, batch 5, assignment_index 1
+    Assignment 3: subagent 3, port 30003, batch 5, assignment_index 2
     ```
 
     **VALIDATION BEFORE LAUNCHING**:
     - Verify assignments.length <= 10 (max subagents available)
-    - Each Task prompt must include ONLY the type names, NOT mutation paths
-    - Subagents will fetch their own mutation paths
+    - Each Task prompt must include ONLY batch number and assignment index
+    - NO TYPE NAMES in prompts to prevent agent substitution
+    - Subagents will fetch their exact assigned types using the index
 
     Send ALL Tasks in ONE message for parallel execution.
 </LaunchSubagents>
@@ -267,29 +269,37 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 You are subagent [Y] assigned to port [30000+Y].
 
 **YOUR ASSIGNED PORT**: [30000+Y]
+**YOUR BATCH**: [BATCH_NUMBER]
+**YOUR ASSIGNMENT INDEX**: [ASSIGNMENT_INDEX]
 
 **DO NOT**:
 - Launch any apps (use EXISTING app on your port)
 - Update JSON files
 - Provide explanations or commentary
-- Test any type other than the one provided
+- Test any type other than those returned by the index script
 - Make up or substitute different types
-- Use your Bevy knowledge to "fix" or "improve" the type name
+- Use your Bevy knowledge to "fix" or "improve" type names
 - Test related types (like bundles when given components)
 
-**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided. Do not attempt any other type, even if you think it's related or "should exist". If the provided type fails, report the failure - do not try alternatives.
+**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types returned by the index script. NEVER substitute type names even if you think they are wrong. The test system controls type names completely.
 
-**Types to test**: [ARRAY_OF_TYPE_NAMES]
-
-**First Step - Get Mutation Paths**:
+**First Step - Get Your Assigned Types**:
 ```bash
-echo '[ARRAY_OF_TYPE_NAMES]' | python3 ./.claude/commands/scripts/mutation_test_get_type_guides.py
+python3 ./.claude/commands/scripts/mutation_test_get_types_by_index.py [BATCH_NUMBER] [ASSIGNMENT_INDEX]
+```
+This returns the exact type names you must test. Use these EXACTLY as returned.
+
+**Second Step - Get Mutation Paths for Your Types**:
+Take the type array from step 1 and get mutation paths:
+```bash
+echo '[TYPE_ARRAY_FROM_STEP_1]' | python3 ./.claude/commands/scripts/mutation_test_get_type_guides.py
 ```
 This returns complete type guides with mutation paths for your assigned types.
 
 **Testing Protocol**:
-1. Call the script above to get your type guides with mutation paths
-2. For each type in the returned guides:
+1. Call step 1 script to get your assigned type names
+2. Call step 2 script to get mutation paths for those types
+3. For each type in the returned guides:
    a. Skip spawn/insert if spawn_format is null
    b. Test spawn/insert if spawn_format exists
    c. Query for entities with component using EXACT syntax:
@@ -301,8 +311,8 @@ This returns complete type guides with mutation paths for your assigned types.
    ```
    CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
    d. Test ALL mutable mutation paths
-3. Return ONLY JSON result array for ALL tested types
-4. NEVER test types not explicitly provided
+4. Return ONLY JSON result array for ALL tested types
+5. NEVER test types not returned by the index script
 
 **JSON Number Rules**:
 - ALL primitives (u8, u16, u32, f32, etc.) MUST be JSON numbers

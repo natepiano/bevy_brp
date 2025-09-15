@@ -51,13 +51,13 @@ if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
     sys.exit(0)
 
-# Create assignments - one type per subagent
+# Create assignments - one assignment index per subagent
 assignments = []
-for i, type_name in enumerate(batch_types):
+for i in range(len(batch_types)):
     assignments.append({
         'subagent': i + 1,
         'port': 30001 + i,
-        'types': [type_name]  # Array to support multiple types per subagent in future
+        'assignment_index': i  # Index used to retrieve types from batch
     })
 
 # Output the assignments as JSON
