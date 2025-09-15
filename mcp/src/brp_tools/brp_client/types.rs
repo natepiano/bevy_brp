@@ -14,7 +14,7 @@ use crate::tool::{BrpMethod, ParameterName};
 /// Configuration trait for BRP tools to control enhanced error handling
 pub trait BrpToolConfig {
     /// Whether this tool should use enhanced error handling with `type_guide` embedding
-    const ENHANCED_ERRORS: bool = false;
+    const ADD_TYPE_GUIDE_TO_ERROR: bool = false;
 }
 
 /// Extension trait for `ResultStruct` types that handle BRP responses
@@ -51,7 +51,7 @@ impl BrpClientError {
     /// Resources so the first section is probably correct.
     /// the second section I think is less correct but it will take some time to validate that
     /// moving to an "error codes only" approach doesn't have other issues
-    pub const fn is_format_error(&self) -> bool {
+    pub const fn has_format_error_code(&self) -> bool {
         // Common format error codes that indicate type issues
         matches!(
             self.code,
@@ -480,20 +480,20 @@ mod tests {
             message: "Invalid params".to_string(),
             data:    None,
         };
-        assert!(format_error.is_format_error());
+        assert!(format_error.has_format_error_code());
 
         let unknown_component_error = BrpClientError {
             code:    BRP_ERROR_CODE_UNKNOWN_COMPONENT_TYPE,
             message: "Unknown component type".to_string(),
             data:    None,
         };
-        assert!(unknown_component_error.is_format_error());
+        assert!(unknown_component_error.has_format_error_code());
 
         let non_format_error = BrpClientError {
             code:    -32601, // Method not found
             message: "Method not found".to_string(),
             data:    None,
         };
-        assert!(!non_format_error.is_format_error());
+        assert!(!non_format_error.has_format_error_code());
     }
 }

@@ -24,7 +24,7 @@ use crate::tool::{BrpMethod, ParameterName};
 /// Client for executing a BRP operation
 pub struct BrpClient {
     method: BrpMethod,
-    port: Port,
+    port:   Port,
     params: Option<Value>,
 }
 
@@ -66,9 +66,9 @@ impl BrpClient {
     /// 3. On format errors, attempts format discovery if the result type supports it
     /// 4. Retries with corrected format if discovery succeeds
     ///
-    /// Enhanced error handling is only attempted for result types with
-    /// `BrpToolConfig::ENHANCED_ERRORS = true`. Result types with `ENHANCED_ERRORS = false`
-    /// will return errors immediately without enhanced error information.
+    /// Appending the type guide to an error is only attempted for result types with
+    /// `BrpToolConfig::ADD_TYPE_GUIDE_TO_ERROR = true`. Result types with `ADD_TYPE_GUIDE_TO_ERROR
+    /// = false` will return errors immediately without added `TypeGuide` .
     pub async fn execute<R>(&self) -> Result<R>
     where
         R: ResultStructBrpExt<
@@ -94,15 +94,17 @@ impl BrpClient {
                 ))
             }
             ResponseStatus::Error(err) => {
-                // Check if this result type supports enhanced errors
-                if R::ENHANCED_ERRORS && err.is_format_error() {
-                    // Enhanced error handling - embed type_guide information
-                    match self.create_enhanced_format_error(&err).await {
-                        Ok(_) => unreachable!("Enhanced format error should always return Err"),
+                // Check if this result type supports adding the `TypeGuide`
+                if R::ADD_TYPE_GUIDE_TO_ERROR && err.has_format_error_code() {
+                    // embed type_guide information
+                    match self.try_add_type_guide_to_error(&err).await {
+                        Ok(_) => {
+                            unreachable!("ADD_TYPE_GUIDE_TO_ERROR error should always return Err")
+                        }
                         Err(error_report) => Err(error_report),
                     }
                 } else {
-                    // Regular error - no enhanced error handling
+                    // Regular error
                     Err(Error::tool_call_failed(format!(
                         "{} (error {})",
                         err.get_message(),
@@ -225,7 +227,7 @@ impl BrpClient {
     }
 
     /// Enhanced format error creation with type guide embedding
-    async fn create_enhanced_format_error(&self, error: &BrpClientError) -> Result<ResponseStatus> {
+    async fn try_add_type_guide_to_error(&self, error: &BrpClientError) -> Result<ResponseStatus> {
         // Step 1: Try parameter-based extraction using Operation enum
         let mut extracted_types = Vec::new();
         if let Ok(operation) = Operation::try_from(self.method) {
@@ -242,7 +244,7 @@ impl BrpClient {
         if extracted_types.is_empty() {
             Self::create_minimal_type_error(error)
         } else {
-            self.create_full_type_error(error, extracted_types).await
+            self.add_type_guide_to_error(error, extracted_types).await
         }
     }
 
@@ -262,7 +264,7 @@ impl BrpClient {
     }
 
     /// Create full error with type guide embedded for extracted types
-    async fn create_full_type_error(
+    async fn add_type_guide_to_error(
         &self,
         error: &BrpClientError,
         extracted_types: Vec<String>,
@@ -302,9 +304,9 @@ impl BrpClient {
             };
 
             ResponseStatus::Error(BrpClientError {
-                code: error.code,
+                code:    error.code,
                 message: enhanced_message,
-                data: error.data,
+                data:    error.data,
             })
         } else {
             ResponseStatus::Success(brp_response_json.result)

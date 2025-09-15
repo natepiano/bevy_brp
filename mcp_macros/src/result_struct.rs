@@ -145,7 +145,7 @@ pub fn derive_result_struct_impl(input: TokenStream) -> TokenStream {
         let enhanced_errors = attrs.enhanced_errors;
         quote! {
             impl crate::brp_tools::BrpToolConfig for #struct_name {
-                const ENHANCED_ERRORS: bool = #enhanced_errors;
+                const ADD_TYPE_GUIDE_TO_ERROR: bool = #enhanced_errors;
             }
         }
     } else {
