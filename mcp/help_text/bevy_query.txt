@@ -1,7 +1,7 @@
 Queries entities via bevy/query BRP method. Searches entities by components, applies filters, returns data.
 
 ### notes on data parameter
-Specifies what components to retrieve from matching entities.
+**REQUIRED** - Specifies what components to retrieve from matching entities.
 ```json
 {
   "components": ["bevy_transform::components::transform::Transform"],
@@ -10,7 +10,9 @@ Specifies what components to retrieve from matching entities.
 }
 ```
 
-Fields:
+**Special case**: Use `"data": {}` to get only entity IDs without any component data.
+
+Fields (all optional within the data object):
 - `components`: Array of components to always retrieve (query fails if not present)
 - `option`: Array of components to retrieve if present (optional components)
 - `has`: Array of components to check existence (returns true/false, not the data)
@@ -30,9 +32,10 @@ Fields:
 
 ## Examples
 
-Query all entities with Transform:
+Query entity IDs only for all entities with Transform (no component data):
 ```json
 {
+  "data": {},
   "filter": {
     "with": ["bevy_transform::components::transform::Transform"]
   }
@@ -52,9 +55,10 @@ Get Transform and optional Sprite from all cameras:
 }
 ```
 
-Find entities with Sprite but without UI nodes:
+Find entities with Sprite but without UI nodes (entity IDs only):
 ```json
 {
+  "data": {},
   "filter": {
     "with": ["bevy_sprite::sprite::Sprite"],
     "without": ["bevy_ui::node::Node"]
