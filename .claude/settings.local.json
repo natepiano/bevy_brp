@@ -128,7 +128,8 @@
       "Bash(for file in array_builder enum_builder struct_builder tuple_builder)",
       "Bash(do echo \"=== $file ===\")",
       "Bash(then echo \"File exists\")",
-      "Bash(else echo \"File does not exist\")"
+      "Bash(else echo \"File does not exist\")",
+      "Bash(./.claude/commands/scripts/mutation_test_renumber_batches_dict.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"

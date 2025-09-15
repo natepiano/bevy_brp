@@ -60,7 +60,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     **Clear and reassign batch numbers for untested/failed types:**
 
     ```bash
-    ./.claude/commands/scripts/mutation_test_renumber_batches.sh [BATCH_SIZE]
+    ./.claude/commands/scripts/mutation_test_renumber_batches_dict.sh [BATCH_SIZE]
     ```
 
     This script will:
@@ -126,8 +126,8 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 
     For each batch N (starting from 1):
 
-    1. Execute <GetBatchTypes/> for batch N
-    2. Execute <SetWindowTitles/> based on type assignments
+    1. Execute <GetBatchAssignments/> for batch N
+    2. Execute <SetWindowTitles/> based on assignments
     3. Execute <LaunchSubagents/> with parallel Task invocations
     4. Execute <ProcessBatchResults/> after all subagents complete
     5. Execute <CheckForFailures/> and stop if any failures detected
@@ -137,45 +137,56 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 
 ### BATCH PROCESSING SUBSTEPS
 
-<GetBatchTypes>
-    **Retrieve complete type guides for current batch:**
+<GetBatchAssignments>
+    **Retrieve batch assignments (type names only) for current batch:**
 
     ```bash
-    python3 ./.claude/commands/scripts/mutation_test_get_batch_types.py [BATCH_NUMBER]
+    python3 ./.claude/commands/scripts/mutation_test_get_batch_assignments.py [BATCH_NUMBER]
     ```
 
     Returns JSON with:
     - batch_number
-    - type_count
-    - types: Array of COMPLETE type guides including spawn_format and mutation_paths with examples
-</GetBatchTypes>
+    - assignments: Array with subagent, port, and types (just names, no mutation paths)
+
+    **Store this output in a variable for systematic processing.**
+</GetBatchAssignments>
 
 <SetWindowTitles>
     **Set window titles for visual tracking:**
 
-    After determining type-to-subagent assignments:
-    ```python
-    # For each subagent N with assigned type:
-    mcp__brp__brp_extras_set_window_title(
-        port=30000+N,
-        title="[short_type_name]"
-    )
-    ```
+    **EXACT PROCEDURE**:
+    1. Get the assignments from GetBatchAssignments
+    2. For each assignment:
+       - Port = assignment.port
+       - Title = last segment of assignment.types[0] after `::`
+
+    Send all window title updates in parallel.
 </SetWindowTitles>
 
 <LaunchSubagents>
     **Launch parallel subagents for batch testing:**
 
-    Create Task invocations for ALL subagents in a SINGLE message:
-    ```python
-    Task(
-        description="Test [type_name] (batch [X], subagent [Y]/[MAX])",
-        subagent_type="general-purpose",
-        prompt=<SubagentPrompt/>
-    )
+    **EXACT PROCEDURE**:
+    1. Use the assignments from GetBatchAssignments stored earlier
+    2. Create exactly assignments.length Task invocations
+    3. For each assignment:
+       - Subagent number = assignment.subagent
+       - Port = assignment.port
+       - Types = assignment.types (array of type names only)
+
+    **Example for a batch with 3 assignments**:
+    ```
+    Assignment 1: subagent 1, port 30001, types: ["TypeA"]
+    Assignment 2: subagent 2, port 30002, types: ["TypeB"]
+    Assignment 3: subagent 3, port 30003, types: ["TypeC"]
     ```
 
-    **CRITICAL**: ALL Tasks MUST be sent in ONE message for parallel execution.
+    **VALIDATION BEFORE LAUNCHING**:
+    - Verify assignments.length <= 10 (max subagents available)
+    - Each Task prompt must include ONLY the type names, NOT mutation paths
+    - Subagents will fetch their own mutation paths
+
+    Send ALL Tasks in ONE message for parallel execution.
 </LaunchSubagents>
 
 <ProcessBatchResults>
@@ -259,7 +270,6 @@ You are subagent [Y] assigned to port [30000+Y].
 
 **DO NOT**:
 - Launch any apps (use EXISTING app on your port)
-- Call brp_type_guide (use provided guides)
 - Update JSON files
 - Provide explanations or commentary
 - Test any type other than the one provided
@@ -267,15 +277,22 @@ You are subagent [Y] assigned to port [30000+Y].
 - Use your Bevy knowledge to "fix" or "improve" the type name
 - Test related types (like bundles when given components)
 
-**CRITICAL CONSTRAINT**: You MUST test ONLY the exact type provided. Do not attempt any other type, even if you think it's related or "should exist". If the provided type fails, report the failure - do not try alternatives.
+**CRITICAL CONSTRAINT**: You MUST test ONLY the exact types provided. Do not attempt any other type, even if you think it's related or "should exist". If the provided type fails, report the failure - do not try alternatives.
 
-**Test this type** (complete guide provided):
-[Include FULL type guide from GetBatchTypes output]
+**Types to test**: [ARRAY_OF_TYPE_NAMES]
+
+**First Step - Get Mutation Paths**:
+```bash
+echo '[ARRAY_OF_TYPE_NAMES]' | python3 ./.claude/commands/scripts/mutation_test_get_type_guides.py
+```
+This returns complete type guides with mutation paths for your assigned types.
 
 **Testing Protocol**:
-1. Skip spawn/insert if spawn_format is null
-2. Test spawn/insert if spawn_format exists
-3. Query for entities with component using EXACT syntax:
+1. Call the script above to get your type guides with mutation paths
+2. For each type in the returned guides:
+   a. Skip spawn/insert if spawn_format is null
+   b. Test spawn/insert if spawn_format exists
+   c. Query for entities with component using EXACT syntax:
    ```json
    {
      "filter": {"with": ["EXACT_TYPE_NAME_FROM_GUIDE"]},
@@ -283,9 +300,9 @@ You are subagent [Y] assigned to port [30000+Y].
    }
    ```
    CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
-4. Test ALL mutable mutation paths
-5. Return ONLY JSON result array
-6. NEVER test types not explicitly provided
+   d. Test ALL mutable mutation paths
+3. Return ONLY JSON result array for ALL tested types
+4. NEVER test types not explicitly provided
 
 **JSON Number Rules**:
 - ALL primitives (u8, u16, u32, f32, etc.) MUST be JSON numbers
