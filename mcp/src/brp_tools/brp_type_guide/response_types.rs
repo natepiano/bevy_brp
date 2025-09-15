@@ -72,6 +72,12 @@ impl BrpTypeName {
         self.0.split('<').next()
     }
 
+    /// Check if this type is a Handle wrapper type
+    /// Returns true for types like `bevy_asset::handle::Handle<...>`
+    pub fn is_handle(&self) -> bool {
+        self.0.starts_with("bevy_asset::handle::Handle<")
+    }
+
     /// Get the short name (last segment after ::)
     /// For example: `bevy_transform::components::transform::Transform` returns `Transform`
     /// For generic types: `HashMap<String, i32>` returns `HashMap<String, i32>`

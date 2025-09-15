@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use serde_json::{Value, json};
 
-use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
+use super::mutation_knowledge::MutationKnowledge;
 use super::type_kind::TypeKind;
 use super::types::PathSummary;
 use super::{
@@ -298,10 +298,8 @@ impl ProtocolEnforcer {
             ctx.type_name()
         );
 
-        // Check if we have knowledge for this type
-        if let Some(knowledge) =
-            BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name().to_string()))
-        {
+        // Use unified knowledge lookup that handles all cases
+        if let Some(knowledge) = ctx.find_knowledge() {
             let example = knowledge.example().clone();
             tracing::debug!(
                 "ProtocolEnforcer found knowledge for {}: {:?} with knowledge {:?}",

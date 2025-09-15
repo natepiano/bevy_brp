@@ -171,23 +171,13 @@ impl MutationPathBuilder for TypeKind {
         };
 
         match self {
-            Self::Struct => self.builder().build_paths(ctx, builder_depth),
-            Self::Tuple | Self::TupleStruct => {
-                tracing::debug!(
-                    "TypeKind: Dispatching to unmigrated TupleMutationBuilder for type '{}'",
-                    ctx.type_name()
-                );
-                let result = TupleMutationBuilder.build_paths(ctx, builder_depth);
-                tracing::debug!(
-                    "TypeKind: TupleMutationBuilder for '{}' returned {} paths",
-                    ctx.type_name(),
-                    result.as_ref().map(|paths| paths.len()).unwrap_or(0)
-                );
-                result
-            }
-            Self::Array => self.builder().build_paths(ctx, builder_depth),
-            Self::List => self.builder().build_paths(ctx, builder_depth),
-            Self::Map | Self::Set => self.builder().build_paths(ctx, builder_depth),
+            Self::Struct
+            | Self::Tuple
+            | Self::TupleStruct
+            | Self::Array
+            | Self::List
+            | Self::Map
+            | Self::Set => self.builder().build_paths(ctx, builder_depth),
             Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
             Self::Value => {
                 // Check serialization inline, no recursion needed
