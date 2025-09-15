@@ -19,16 +19,7 @@ use crate::brp_tools::brp_type_guide::constants::{
     TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
     TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
 };
-use crate::brp_tools::brp_type_guide::response_types::{BrpTypeName, MathComponent};
-
-/// Controls how mutation paths are generated for a type
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum KnowledgeGuidance {
-    /// Generate mutation paths normally (default behavior) and allow recursion to inner types
-    TeachAndRecurse,
-    /// Treat as a simple value with only root mutation, using the specified type name
-    TreatAsRootValue { simplified_type: String },
-}
+use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 
 /// Format knowledge key for matching types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -38,18 +29,18 @@ pub enum KnowledgeKey {
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type: String,
+        enum_type:    String,
         /// e.g., "Clear"
         variant_name: String,
         /// e.g., "f32"
-        inner_type: String,
+        inner_type:   String,
     },
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name: String,
+        field_name:  String,
     },
 }
 
@@ -66,9 +57,9 @@ impl KnowledgeKey {
         inner_type: impl Into<String>,
     ) -> Self {
         Self::NewtypeVariant {
-            enum_type: enum_type.into(),
+            enum_type:    enum_type.into(),
             variant_name: variant_name.into(),
-            inner_type: inner_type.into(),
+            inner_type:   inner_type.into(),
         }
     }
 
@@ -76,7 +67,7 @@ impl KnowledgeKey {
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name: field_name.into(),
+            field_name:  field_name.into(),
         }
     }
 
@@ -114,15 +105,10 @@ impl KnowledgeKey {
 #[derive(Debug, Clone)]
 pub enum MutationKnowledge {
     /// Simple value with just an example
-    Simple { example: Value },
-    /// Math type with array example and named components
-    MathType {
-        array_example: Value,
-        components: HashMap<MathComponent, Value>,
-    },
+    TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
-    OpaqueValue {
-        example: Value,
+    TreatAsRootValue {
+        example:         Value,
         simplified_type: String,
     },
 }
@@ -130,23 +116,12 @@ pub enum MutationKnowledge {
 impl MutationKnowledge {
     /// Create a simple knowledge entry with no subfields
     pub const fn simple(example: Value) -> Self {
-        Self::Simple { example }
-    }
-
-    /// Create a knowledge entry with math component subfields
-    pub fn with_components(
-        example_value: Value,
-        components: impl IntoIterator<Item = (MathComponent, Value)>,
-    ) -> Self {
-        Self::MathType {
-            array_example: example_value,
-            components: components.into_iter().collect(),
-        }
+        Self::TeachAndRecurse { example }
     }
 
     /// Create a knowledge entry that should be treated as a simple value
     pub const fn as_value(example: Value, simplified_type: String) -> Self {
-        Self::OpaqueValue {
+        Self::TreatAsRootValue {
             example,
             simplified_type,
         }
@@ -155,28 +130,7 @@ impl MutationKnowledge {
     /// Get the example value for this knowledge
     pub const fn example(&self) -> &Value {
         match self {
-            Self::MathType { array_example, .. } => array_example,
-            Self::Simple { example } | Self::OpaqueValue { example, .. } => example,
-        }
-    }
-
-    /// Get the example for a specific math component
-    pub fn get_component_example(&self, component: MathComponent) -> Option<&Value> {
-        match self {
-            Self::MathType { components, .. } => components.get(&component),
-            _ => None,
-        }
-    }
-
-    /// Get the guidance for this knowledge
-    pub fn guidance(&self) -> KnowledgeGuidance {
-        match self {
-            Self::Simple { .. } | Self::MathType { .. } => KnowledgeGuidance::TeachAndRecurse,
-            Self::OpaqueValue {
-                simplified_type, ..
-            } => KnowledgeGuidance::TreatAsRootValue {
-                simplified_type: simplified_type.clone(),
-            },
+            Self::TeachAndRecurse { example } | Self::TreatAsRootValue { example, .. } => example,
         }
     }
 }
@@ -299,185 +253,77 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // Vec2
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC2),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC2),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0])),
         );
 
         // Vec3
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC3),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0, 3.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                    (MathComponent::Z, json!(3.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0, 3.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC3A),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0, 3.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                    (MathComponent::Z, json!(3.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0, 3.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC3),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0, 3.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                    (MathComponent::Z, json!(3.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0, 3.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC3A),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0, 3.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                    (MathComponent::Z, json!(3.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0, 3.0])),
         );
 
         // Vec4
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_VEC4),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0, 3.0, 4.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                    (MathComponent::Z, json!(3.0)),
-                    (MathComponent::W, json!(4.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0, 3.0, 4.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_VEC4),
-            MutationKnowledge::with_components(
-                json!([1.0, 2.0, 3.0, 4.0]),
-                vec![
-                    (MathComponent::X, json!(1.0)),
-                    (MathComponent::Y, json!(2.0)),
-                    (MathComponent::Z, json!(3.0)),
-                    (MathComponent::W, json!(4.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([1.0, 2.0, 3.0, 4.0])),
         );
 
         // Integer vectors
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC2),
-            MutationKnowledge::with_components(
-                json!([0, 0]),
-                vec![(MathComponent::X, json!(0)), (MathComponent::Y, json!(0))],
-            ),
+            MutationKnowledge::simple(json!([0, 0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC3),
-            MutationKnowledge::with_components(
-                json!([0, 0, 0]),
-                vec![
-                    (MathComponent::X, json!(0)),
-                    (MathComponent::Y, json!(0)),
-                    (MathComponent::Z, json!(0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([0, 0, 0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_IVEC4),
-            MutationKnowledge::with_components(
-                json!([0, 0, 0, 0]),
-                vec![
-                    (MathComponent::X, json!(0)),
-                    (MathComponent::Y, json!(0)),
-                    (MathComponent::Z, json!(0)),
-                    (MathComponent::W, json!(0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([0, 0, 0, 0])),
         );
 
         // Unsigned vectors
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_UVEC2),
-            MutationKnowledge::with_components(
-                json!([0, 0]),
-                vec![(MathComponent::X, json!(0)), (MathComponent::Y, json!(0))],
-            ),
+            MutationKnowledge::simple(json!([0, 0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_UVEC3),
-            MutationKnowledge::with_components(
-                json!([0, 0, 0]),
-                vec![
-                    (MathComponent::X, json!(0)),
-                    (MathComponent::Y, json!(0)),
-                    (MathComponent::Z, json!(0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([0, 0, 0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_UVEC4),
-            MutationKnowledge::with_components(
-                json!([0, 0, 0, 0]),
-                vec![
-                    (MathComponent::X, json!(0)),
-                    (MathComponent::Y, json!(0)),
-                    (MathComponent::Z, json!(0)),
-                    (MathComponent::W, json!(0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([0, 0, 0, 0])),
         );
 
         // Quaternion
         map.insert(
             KnowledgeKey::exact(TYPE_BEVY_QUAT),
-            MutationKnowledge::with_components(
-                json!([0.0, 0.0, 0.0, 1.0]),
-                vec![
-                    (MathComponent::X, json!(0.0)),
-                    (MathComponent::Y, json!(0.0)),
-                    (MathComponent::Z, json!(0.0)),
-                    (MathComponent::W, json!(1.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([0.0, 0.0, 0.0, 1.0])),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_GLAM_QUAT),
-            MutationKnowledge::with_components(
-                json!([0.0, 0.0, 0.0, 1.0]),
-                vec![
-                    (MathComponent::X, json!(0.0)),
-                    (MathComponent::Y, json!(0.0)),
-                    (MathComponent::Z, json!(0.0)),
-                    (MathComponent::W, json!(1.0)),
-                ],
-            ),
+            MutationKnowledge::simple(json!([0.0, 0.0, 0.0, 1.0])),
         );
 
         // Matrices
@@ -602,6 +448,57 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         map.insert(
             KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_height"),
             MutationKnowledge::simple(json!(600)), // Reasonable window height
+        );
+
+        // ===== NonZero types =====
+        // These types guarantee the value is never zero
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroU8"),
+            MutationKnowledge::as_value(json!(1), "NonZeroU8".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroU16"),
+            MutationKnowledge::as_value(json!(1), "NonZeroU16".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroU32"),
+            MutationKnowledge::as_value(json!(1), "NonZeroU32".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroU64"),
+            MutationKnowledge::as_value(json!(1), "NonZeroU64".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroU128"),
+            MutationKnowledge::as_value(json!(1), "NonZeroU128".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroUsize"),
+            MutationKnowledge::as_value(json!(1), "NonZeroUsize".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroI8"),
+            MutationKnowledge::as_value(json!(1), "NonZeroI8".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroI16"),
+            MutationKnowledge::as_value(json!(1), "NonZeroI16".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroI32"),
+            MutationKnowledge::as_value(json!(1), "NonZeroI32".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroI64"),
+            MutationKnowledge::as_value(json!(1), "NonZeroI64".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroI128"),
+            MutationKnowledge::as_value(json!(1), "NonZeroI128".to_string()),
+        );
+        map.insert(
+            KnowledgeKey::exact("core::num::NonZeroIsize"),
+            MutationKnowledge::as_value(json!(1), "NonZeroIsize".to_string()),
         );
 
         map

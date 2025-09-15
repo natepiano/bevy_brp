@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use serde_json::{Value, json};
 
-use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeGuidance, KnowledgeKey};
+use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 use super::type_kind::TypeKind;
 use super::types::PathSummary;
 use super::{
@@ -107,11 +107,11 @@ pub struct ProtocolEnforcer {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by PathAction)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 impl ProtocolEnforcer {
@@ -303,16 +303,15 @@ impl ProtocolEnforcer {
             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name().to_string()))
         {
             let example = knowledge.example().clone();
-            let guidance = knowledge.guidance();
             tracing::debug!(
-                "ProtocolEnforcer found knowledge for {}: {:?} with guidance {:?}",
+                "ProtocolEnforcer found knowledge for {}: {:?} with knowledge {:?}",
                 ctx.type_name(),
                 example,
-                guidance
+                knowledge
             );
 
             // Only return early for TreatAsValue types - they should not recurse
-            if matches!(guidance, KnowledgeGuidance::TreatAsRootValue { .. }) {
+            if matches!(knowledge, MutationKnowledge::TreatAsRootValue { .. }) {
                 tracing::debug!(
                     "ProtocolEnforcer stopping recursion for TreatAsValue type: {}",
                     ctx.type_name()

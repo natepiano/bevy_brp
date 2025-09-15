@@ -171,36 +171,6 @@ pub struct SchemaInfo {
     pub crate_name:  Option<String>,
 }
 
-/// Math type component names
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display, AsRefStr)]
-#[strum(serialize_all = "lowercase")]
-pub enum MathComponent {
-    X,
-    Y,
-    Z,
-    W,
-}
-
-impl From<MathComponent> for String {
-    fn from(component: MathComponent) -> Self {
-        component.as_ref().to_string()
-    }
-}
-
-impl TryFrom<&str> for MathComponent {
-    type Error = ();
-
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s {
-            "x" => Ok(Self::X),
-            "y" => Ok(Self::Y),
-            "z" => Ok(Self::Z),
-            "w" => Ok(Self::W),
-            _ => Err(()),
-        }
-    }
-}
-
 /// Bevy reflection trait names
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, EnumString)]
 pub enum ReflectTrait {
