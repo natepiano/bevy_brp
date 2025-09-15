@@ -42,10 +42,16 @@ type_guide = data['type_guide']
 
 # Get types for the specified batch
 batch_types = []
-# type_guide is a dict keyed by type names
-for type_name, type_data in type_guide.items():
-    if type_data.get('batch_number') == batch_num:
-        batch_types.append(type_name)
+if isinstance(type_guide, list):
+    # New format: type_guide is a list
+    for item in type_guide:
+        if item.get('batch_number') == batch_num:
+            batch_types.append(item['type_name'])
+else:
+    # Old format: type_guide is a dict
+    for type_name, type_data in type_guide.items():
+        if type_data.get('batch_number') == batch_num:
+            batch_types.append(type_name)
 
 if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)
@@ -57,7 +63,8 @@ for i in range(len(batch_types)):
     assignments.append({
         'subagent': i + 1,
         'port': 30001 + i,
-        'assignment_index': i  # Index used to retrieve types from batch
+        'assignment_index': i,  # Index used to retrieve types from batch
+        'type_name': batch_types[i]  # For window titles only - NOT passed to subagent
     })
 
 # Output the assignments as JSON

@@ -146,7 +146,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 
     Returns JSON with:
     - batch_number
-    - assignments: Array with subagent, port, and assignment_index (NO type names to prevent substitution)
+    - assignments: Array with subagent, port, assignment_index, and type_name (type_name for window titles only)
 
     **Store this output in a variable for systematic processing.**
 </GetBatchAssignments>
@@ -158,7 +158,8 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     1. Get the assignments from GetBatchAssignments
     2. For each assignment:
        - Port = assignment.port
-       - Title = f"Subagent {assignment.subagent} (Index {assignment.assignment_index})"
+       - Title = For single type: last segment of assignment.type_name after `::`
+                 For multiple types: comma-separated list of last segments after `::`
 
     Send all window title updates in parallel.
 </SetWindowTitles>
@@ -174,18 +175,28 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
        - Port = assignment.port
        - Batch number = batch_number (from assignments JSON)
        - Assignment index = assignment.assignment_index
+       - Task description = "Test [TYPE_NAMES]" where TYPE_NAMES is:
+         * For single type: last segment after "::" from assignment.type_name
+         * For multiple types: comma-separated list of last segments after "::" from all assignment.type_names
 
-    **Example for a batch with 3 assignments**:
+    **Example for a batch with 3 assignments (single type per subagent)**:
     ```
-    Assignment 1: subagent 1, port 30001, batch 5, assignment_index 0
-    Assignment 2: subagent 2, port 30002, batch 5, assignment_index 1
-    Assignment 3: subagent 3, port 30003, batch 5, assignment_index 2
+    Assignment 1: subagent 1, port 30001, batch 5, assignment_index 0, description "Test Bloom"
+    Assignment 2: subagent 2, port 30002, batch 5, assignment_index 1, description "Test Camera3d"
+    Assignment 3: subagent 3, port 30003, batch 5, assignment_index 2, description "Test Skybox"
+    ```
+
+    **Example for a batch with 3 assignments (2 types per subagent)**:
+    ```
+    Assignment 1: subagent 1, port 30001, batch 5, assignment_index 0, description "Test Bloom, BloomSettings"
+    Assignment 2: subagent 2, port 30002, batch 5, assignment_index 1, description "Test Camera3d, Camera2d"
+    Assignment 3: subagent 3, port 30003, batch 5, assignment_index 2, description "Test Skybox, Tonemapping"
     ```
 
     **VALIDATION BEFORE LAUNCHING**:
     - Verify assignments.length <= 10 (max subagents available)
     - Each Task prompt must include ONLY batch number and assignment index
-    - NO TYPE NAMES in prompts to prevent agent substitution
+    - Task description should include type name for tracking, but NOT in the prompt content
     - Subagents will fetch their exact assigned types using the index
 
     Send ALL Tasks in ONE message for parallel execution.
@@ -283,26 +294,17 @@ You are subagent [Y] assigned to port [30000+Y].
 
 **CRITICAL CONSTRAINT**: You MUST test ONLY the exact types returned by the index script. NEVER substitute type names even if you think they are wrong. The test system controls type names completely.
 
-**First Step - Get Your Assigned Types**:
+**Get Your Complete Assignment Data**:
 ```bash
-python3 ./.claude/commands/scripts/mutation_test_get_types_by_index.py [BATCH_NUMBER] [ASSIGNMENT_INDEX]
+python3 ./.claude/commands/scripts/mutation_test_get_assignment_guide.py [BATCH_NUMBER] [ASSIGNMENT_INDEX]
 ```
-This returns the exact type names you must test. Use these EXACTLY as returned.
-
-**Second Step - Get Mutation Paths for Your Types**:
-Take the type array from step 1 and get mutation paths:
-```bash
-echo '[TYPE_ARRAY_FROM_STEP_1]' | python3 ./.claude/commands/scripts/mutation_test_get_type_guides.py
-```
-This returns complete type guides with mutation paths for your assigned types.
+This returns the exact type names AND complete mutation paths you must test. Use these EXACTLY as returned.
 
 **Testing Protocol**:
-1. Call step 1 script to get your assigned type names
-2. Call step 2 script to get mutation paths for those types
-3. For each type in the returned guides:
-   a. Skip spawn/insert if spawn_format is null
-   b. Test spawn/insert if spawn_format exists
-   c. Query for entities with component using EXACT syntax:
+1. Call the assignment guide script to get your complete type data
+2. For each type in the returned guides:
+   a. **SPAWN/INSERT TESTING**: Skip spawn/insert if spawn_format is null, otherwise test spawn/insert operations
+   b. **ENTITY QUERY**: Query for entities with component using EXACT syntax:
    ```json
    {
      "filter": {"with": ["EXACT_TYPE_NAME_FROM_GUIDE"]},
@@ -310,9 +312,9 @@ This returns complete type guides with mutation paths for your assigned types.
    }
    ```
    CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
-   d. Test ALL mutable mutation paths
-4. Return ONLY JSON result array for ALL tested types
-5. NEVER test types not returned by the index script
+   c. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
+3. Return ONLY JSON result array for ALL tested types
+4. NEVER test types not returned by the assignment guide script
 
 **JSON Number Rules**:
 - ALL primitives (u8, u16, u32, f32, etc.) MUST be JSON numbers
