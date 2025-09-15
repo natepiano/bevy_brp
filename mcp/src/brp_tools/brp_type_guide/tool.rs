@@ -107,26 +107,26 @@ impl TypeGuideEngine {
     pub fn generate_response(&self, requested_types: &[String]) -> Result<TypeGuideResponse> {
         let mut response = TypeGuideResponse {
             discovered_count: 0,
-            requested_types:  requested_types.to_vec(),
-            summary:          TypeGuideSummary {
-                failed_discovery:     0,
-                successful_discovery: 0,
-                total_requested:      requested_types.len(),
+            requested_types: requested_types.to_vec(),
+            summary: TypeGuideSummary {
+                failed_discoveries: 0,
+                successful_discoveries: 0,
+                total_requested: requested_types.len(),
             },
-            type_guide:       HashMap::new(),
+            type_guide: HashMap::new(),
         };
 
         for brp_type_name in requested_types.iter().map(BrpTypeName::from) {
             let type_info = if let Some(registry_schema) = self.registry.get(&brp_type_name) {
                 response.discovered_count += 1;
-                response.summary.successful_discovery += 1;
+                response.summary.successful_discoveries += 1;
                 TypeGuide::from_registry_schema(
                     brp_type_name.clone(),
                     registry_schema,
                     Arc::clone(&self.registry),
                 )?
             } else {
-                response.summary.failed_discovery += 1;
+                response.summary.failed_discoveries += 1;
                 TypeGuide::not_found_in_registry(
                     brp_type_name.clone(),
                     "Type not found in registry".to_string(),
