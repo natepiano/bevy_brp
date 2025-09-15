@@ -64,16 +64,8 @@ fn is_migrated(&self) -> bool {
 #### 3.2: Implement collect_children()
 ```rust
 fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-    // Following the error pattern from migrated builders (array, list, map, set)
-    // Always return errors for missing schemas, never empty vectors
-    let Some(schema) = ctx.require_registry_schema() else {
-        return Err(Error::SchemaProcessing {
-            message:   format!("No schema found for struct type: {}", ctx.type_name()),
-            type_name: Some(ctx.type_name().to_string()),
-            operation: Some("collect_children".to_string()),
-            details:   None,
-        }.into());
-    };
+    // The new require_registry_schema() returns Result with standard error
+    let schema = ctx.require_registry_schema()?;
 
     // Extract properties from schema - use proper schema methods
     let Some(properties) = schema.get_properties() else {
@@ -155,7 +147,7 @@ Self::Struct => self.builder().build_paths(ctx, builder_depth),
 
 ### Step 5: Error Handling Updates
 Follow the error handling patterns from migrated builders:
-- Missing schema → Return `Err(Error::SchemaProcessing)` with descriptive message
+- Missing schema → Handled automatically by `ctx.require_registry_schema()?`
 - Empty struct (no properties) → Return `Ok(vec![])` - this is valid
 - Failed type extraction → Use `SchemaField::extract_field_type` with fallback to field name
 - Never return empty vectors for error cases - always return proper errors

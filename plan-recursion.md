@@ -134,7 +134,7 @@ impl MutationPathBuilder for ProtocolEnforcer {
 
             // Get child's schema and create its builder
             let child_schema = child_ctx.require_registry_schema()
-                .unwrap_or(&json!(null));
+                .unwrap_or_else(|_| &json!(null));
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
             let child_builder = child_kind.builder();
@@ -383,6 +383,8 @@ Each builder migration follows this pattern:
 
 **Key Implementation Details:**
 1. **collect_children()** must return `Result<Vec<PathKind>>` (NOT Vec<(String, RecursionContext)>)
+   - Use `ctx.require_registry_schema()?` which returns Result (migrated builders)
+   - Unmigrated builders still use `ctx.require_registry_schema_legacy()` which returns Option
 2. **PathKind structure** uses:
    - `type_name` (NOT field_type)
    - `parent_type` (NOT optional)
@@ -396,7 +398,7 @@ Each builder migration follows this pattern:
 
 **🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
 - ❌ ALL lines with `depth.exceeds_limit()`
-- ❌ ALL `ctx.require_registry_schema() else` blocks creating NotMutable paths
+- ❌ ALL `ctx.require_registry_schema_legacy() else` blocks creating NotMutable paths (unmigrated builders only)
 - ❌ ENTIRE `build_not_mutable_path` method
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
@@ -454,6 +456,8 @@ Each builder migration follows this pattern:
 
 **Key Implementation Details:**
 1. **collect_children()** must return `Result<Vec<PathKind>>` (NOT Vec<(String, RecursionContext)>)
+   - Use `ctx.require_registry_schema()?` which returns Result (migrated builders)
+   - Unmigrated builders still use `ctx.require_registry_schema_legacy()` which returns Option
 2. **PathKind structure** uses:
    - `type_name` (NOT field_type)
    - `parent_type` (NOT optional)
@@ -467,7 +471,7 @@ Each builder migration follows this pattern:
 
 **🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
 - ❌ ALL lines with `depth.exceeds_limit()`
-- ❌ ALL `ctx.require_registry_schema() else` blocks creating NotMutable paths
+- ❌ ALL `ctx.require_registry_schema_legacy() else` blocks creating NotMutable paths (unmigrated builders only)
 - ❌ ENTIRE `build_not_mutable_path` method
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
@@ -533,6 +537,8 @@ Each builder migration follows this pattern:
 
 **Key Implementation Details:**
 1. **collect_children()** must return `Result<Vec<PathKind>>` (NOT Vec<(String, RecursionContext)>)
+   - Use `ctx.require_registry_schema()?` which returns Result (migrated builders)
+   - Unmigrated builders still use `ctx.require_registry_schema_legacy()` which returns Option
 2. **PathKind structure** uses:
    - `type_name` (NOT field_type)
    - `parent_type` (NOT optional)
@@ -546,7 +552,7 @@ Each builder migration follows this pattern:
 
 **🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
 - ❌ ALL lines with `depth.exceeds_limit()`
-- ❌ ALL `ctx.require_registry_schema() else` blocks creating NotMutable paths
+- ❌ ALL `ctx.require_registry_schema_legacy() else` blocks creating NotMutable paths (unmigrated builders only)
 - ❌ **SPECIFIC TO STRUCT**: BOTH NotMutable path creation methods:
   - ❌ `build_not_mutable_path_from_support()` (lines ~287-299)
   - ❌ `build_not_mutatable_field_from_support()` (lines ~302-313) - note the typo "mutatable"
@@ -614,6 +620,8 @@ Each builder migration follows this pattern:
 
 **Key Implementation Details:**
 1. **collect_children()** must return `Result<Vec<PathKind>>` (NOT Vec<(String, RecursionContext)>)
+   - Use `ctx.require_registry_schema()?` which returns Result (migrated builders)
+   - Unmigrated builders still use `ctx.require_registry_schema_legacy()` which returns Option
 2. **PathKind structure** uses:
    - `type_name` (NOT field_type)
    - `parent_type` (NOT optional)
@@ -627,7 +635,7 @@ Each builder migration follows this pattern:
 
 **🗑️ CODE TO REMOVE (ProtocolEnforcer handles these):**
 - ❌ ALL lines with `depth.exceeds_limit()`
-- ❌ ALL `ctx.require_registry_schema() else` blocks creating NotMutable paths
+- ❌ ALL `ctx.require_registry_schema_legacy() else` blocks creating NotMutable paths (unmigrated builders only)
 - ❌ ENTIRE `build_not_mutable_path` method
 - ❌ ALL `mutation_status` and `mutation_status_reason` field assignments
 - ❌ ALL `NotMutableReason` imports and usage
@@ -843,7 +851,7 @@ impl<T: PathBuilder> MutationPathBuilder for T {
             let child_ctx = ctx.create_recursion_context(path_kind.clone(), PathAction::Create);
             let child_descriptor = path_kind.to_mutation_path_descriptor();
 
-            let child_schema = child_ctx.require_registry_schema().unwrap_or(&json!(null));
+            let child_schema = child_ctx.require_registry_schema().unwrap_or_else(|_| &json!(null));
             let child_type = child_ctx.type_name();
             let child_kind = TypeKind::from_schema(child_schema, child_type);
             let child_builder = child_kind.builder();
