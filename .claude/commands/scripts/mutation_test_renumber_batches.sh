@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Mutation Test - Batch Renumbering Script for FULL SCHEMA format
+# Mutation Test - Batch Renumbering Script
 # Clears and reassigns batch numbers for untested/failed types
 
 set -e
@@ -21,17 +21,10 @@ if [ ! -f "$JSON_FILE" ]; then
     exit 1
 fi
 
-# Helper function to process types regardless of structure
-process_types() {
-    local operation="$1"
-    
-    jq "$operation" "$JSON_FILE"
-}
-
 echo "Resetting failed tests to untested..."
 # Reset all failed tests to untested and clear fail_reason
-# Expect type_guide at root
-process_types '
+# type_guide is an array of type objects
+jq '
     .type_guide |= map(
         if .test_status == "failed" then
             .test_status = "untested" |
@@ -40,46 +33,50 @@ process_types '
             .
         end
     )
-' > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
+' "$JSON_FILE" > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Clearing existing batch numbers..."
 # Clear all batch numbers
-process_types '
+jq '
     .type_guide |= map(.batch_number = null)
-' > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
+' "$JSON_FILE" > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Assigning batch numbers to untested types..."
-# Assign batch numbers to untested types only (divide by BATCH_SIZE)
+# Assign batch numbers to untested types only
+# First, collect untested types and assign batch numbers, then merge back
 jq --argjson batch_size "$BATCH_SIZE" '
-    # Process type_guide at root
-    ([.type_guide[] | select(.test_status == "untested")] | to_entries |
-     map({key: (.value.type_name // ("index_" + (.key | tostring))),
-          value: ((.key / $batch_size) | floor + 1)}) | from_entries) as $batch_map |
-    .type_guide |= map(
+    # Separate untested and other types
+    (.type_guide | map(select(.test_status == "untested"))) as $untested |
+    (.type_guide | map(select(.test_status != "untested"))) as $others |
+
+    # Assign batch numbers to untested types
+    ($untested | to_entries | map(
+        .value + {batch_number: ((.key / $batch_size) | floor + 1)}
+    )) as $numbered_untested |
+
+    # Merge back in original order
+    .type_guide = (.type_guide | map(
+        . as $orig |
         if .test_status == "untested" then
-            .batch_number = $batch_map[(.type_name // "unknown")]
+            ($numbered_untested | map(select(.type_name == $orig.type_name)) | first)
         else
-            .batch_number = null
+            . + {batch_number: null}
         end
-    )
+    ))
 ' "$JSON_FILE" > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 # Count statistics
-TOTAL=$(process_types '.type_guide | length')
-
-UNTESTED=$(process_types '[.type_guide[] | select(.test_status == "untested")] | length')
-
-FAILED=$(process_types '[.type_guide[] | select(.test_status == "failed")] | length')
-
-PASSED=$(process_types '[.type_guide[] | select(.test_status == "passed")] | length')
-
-MAX_BATCH=$(process_types '[.type_guide[] | select(.batch_number != null) | .batch_number] | max // 0')
+TOTAL=$(jq '.type_guide | length' "$JSON_FILE")
+UNTESTED=$(jq '[.type_guide[] | select(.test_status == "untested")] | length' "$JSON_FILE")
+FAILED=$(jq '[.type_guide[] | select(.test_status == "failed")] | length' "$JSON_FILE")
+PASSED=$(jq '[.type_guide[] | select(.test_status == "passed")] | length' "$JSON_FILE")
+MAX_BATCH=$(jq '[.type_guide[] | select(.batch_number != null) | .batch_number] | max // 0' "$JSON_FILE")
 
 echo "✓ Batch renumbering complete!"
 echo ""
 echo "Statistics:"
 echo "  Total types: $TOTAL"
 echo "  Passed: $PASSED"
-echo "  Failed: $FAILED"  
+echo "  Failed: $FAILED"
 echo "  Untested: $UNTESTED"
 echo "  Batches to process: $MAX_BATCH"

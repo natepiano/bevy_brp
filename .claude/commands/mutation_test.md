@@ -60,7 +60,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     **Clear and reassign batch numbers for untested/failed types:**
 
     ```bash
-    ./.claude/commands/scripts/mutation_test_renumber_batches_dict.sh [BATCH_SIZE]
+    ./.claude/commands/scripts/mutation_test_renumber_batches.sh [BATCH_SIZE]
     ```
 
     This script will:
