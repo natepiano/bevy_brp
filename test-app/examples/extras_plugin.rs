@@ -368,16 +368,16 @@ struct TestPartiallyMutableNested {
 #[derive(Default, Reflect)]
 struct TestDeeplyNested {
     /// Mutable field at deep level
-    pub deep_value: i32,
+    pub integer_value: i32,
 
     /// Mutable Vec at deep level
-    pub deep_list: Vec<f32>,
+    pub vec_f32_list: Vec<f32>,
 
     /// Not mutable - Arc at deep level
-    pub deep_arc: std::sync::Arc<String>,
+    pub arc_string: std::sync::Arc<String>,
 
     /// Mutable HashMap at deep level
-    pub deep_map: HashMap<String, f32>,
+    pub map_string_f32: HashMap<String, f32>,
 }
 
 impl Default for TestComplexTuple {
@@ -977,10 +977,10 @@ fn spawn_test_component_entities(commands: &mut Commands) {
             nested_mutable_name:    format!("nested_name_{suffix}"),
             nested_not_mutable_arc: Arc::new(vec![1, 2, 3, 4, 5]),
             deeply_nested:          TestDeeplyNested {
-                deep_value: 999,
-                deep_list:  vec![1.0, 2.0, 3.0],
-                deep_arc:   Arc::new(format!("deep_string_{suffix}")),
-                deep_map:   {
+                integer_value:  999,
+                vec_f32_list:   vec![1.0, 2.0, 3.0],
+                arc_string:     Arc::new(format!("deep_string_{suffix}")),
+                map_string_f32: {
                     let mut map = HashMap::new();
                     map.insert("key1".to_string(), 10.5);
                     map.insert("key2".to_string(), 20.5);
