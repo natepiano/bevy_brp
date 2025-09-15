@@ -7,7 +7,7 @@
 //! mutated as atomic values.
 use std::collections::HashMap;
 
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
