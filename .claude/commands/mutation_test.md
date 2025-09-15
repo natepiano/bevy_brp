@@ -86,7 +86,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 ## STEP 4: APPLICATION LAUNCH
 
 <ApplicationLaunch>
-    **Launch 10 parallel extras_plugin instances on dedicated ports:**
+    **Launch 10 extras_plugin instances on sequential ports starting at 30001:**
 
     1. **Shutdown any existing apps** (clean slate):
     ```python
@@ -94,13 +94,16 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
     ```
 
-    2. **Launch all 10 apps** (execute in parallel):
+    2. **Launch all 10 apps with a single command**:
     ```python
-    # Execute in parallel for ports 30001-30010:
-    mcp__brp__brp_launch_bevy_example(example_name="extras_plugin", port=PORT)
+    mcp__brp__brp_launch_bevy_example(
+        example_name="extras_plugin",
+        port=30001,
+        instance_count=10
+    )
     ```
 
-    **CRITICAL**: Use a single message with multiple tool invocations for parallel execution.
+    This will launch 10 instances on ports 30001-30010 automatically.
 </ApplicationLaunch>
 
 ## STEP 5: APPLICATION VERIFICATION
