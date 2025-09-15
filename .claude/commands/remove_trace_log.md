@@ -1,6 +1,9 @@
+# remove the trace log
 <InstallWarning>
 ## IMPORTANT NOTE ##
-If you have recently made changes and haven't intalled it, remember you need to ask the user to install it. If you haven't made changes in this session without installing, then you can ignore this and continue to the rest of the instructions without commenting on this
+If you have recently made changes and haven't intalled it, then you need to install it according to the instructions in ./~claude/commands/build_and_install.md
+
+You can ignore this if no changes have been made.
 </InstallWarning>
 
 do this command:
