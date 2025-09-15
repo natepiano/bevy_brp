@@ -156,19 +156,19 @@ impl From<&BrpTypeName> for Value {
 pub struct SchemaInfo {
     /// Category of the type (Struct, Enum, etc.) from registry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub type_kind: Option<TypeKind>,
+    pub type_kind:   Option<TypeKind>,
     /// Field definitions from the registry schema
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties: Option<Value>,
+    pub properties:  Option<Value>,
     /// Required fields list
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub required: Option<Vec<String>>,
+    pub required:    Option<Vec<String>>,
     /// Module path of the type
     #[serde(skip_serializing_if = "Option::is_none")]
     pub module_path: Option<String>,
     /// Crate name of the type
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub crate_name: Option<String>,
+    pub crate_name:  Option<String>,
 }
 
 /// Math type component names
@@ -216,20 +216,20 @@ pub struct TypeGuideResponse {
     /// Number of types successfully discovered
     pub discovered_count: usize,
     /// List of type names that were requested
-    pub requested_types: Vec<String>,
+    pub requested_types:  Vec<String>,
     /// Summary statistics for the discovery operation
-    pub summary: TypeGuideSummary,
+    pub summary:          TypeGuideSummary,
     /// Detailed information for each type, keyed by type name
-    pub type_guide: HashMap<BrpTypeName, TypeGuide>,
+    pub type_guide:       HashMap<BrpTypeName, TypeGuide>,
 }
 
 /// Summary statistics for the discovery operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeGuideSummary {
     /// Number of types that failed discovery
-    pub failed_discoveries: usize,
+    pub failed_discoveries:     usize,
     /// Number of types successfully discovered
     pub successful_discoveries: usize,
     /// Total number of types requested
-    pub total_requested: usize,
+    pub total_requested:        usize,
 }
