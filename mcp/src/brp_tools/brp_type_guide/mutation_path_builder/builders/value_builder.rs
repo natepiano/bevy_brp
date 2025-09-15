@@ -55,8 +55,14 @@ impl MutationPathBuilder for ValueMutationBuilder {
             .into());
         }
 
-        // For leaf types with no children that have serialization, just return null
-        // Knowledge check already handled by ProtocolEnforcer
-        Ok(json!(null))
+        // For leaf types with no children that have serialization, return NoExampleAvailable error
+        // This should only be reached by types that don't have knowledge entries
+        // Types with knowledge entries and TreatAsValue guidance stop recursion before getting here
+        Err(
+            Error::NotMutable(super::super::NotMutableReason::NoExampleAvailable(
+                ctx.type_name().clone(),
+            ))
+            .into(),
+        )
     }
 }

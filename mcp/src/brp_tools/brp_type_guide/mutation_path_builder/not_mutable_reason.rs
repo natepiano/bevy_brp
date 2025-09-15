@@ -40,6 +40,8 @@ pub enum NotMutableReason {
     ComplexCollectionKey(BrpTypeName),
     /// All child paths are `NotMutable`
     NoMutableChildren { parent_type: BrpTypeName },
+    /// Type has serialization support but no example value available
+    NoExampleAvailable(BrpTypeName),
     /// Some children are mutable, others are not (results in `PartiallyMutable`)
     PartialChildMutability {
         parent_type:             BrpTypeName,
@@ -56,7 +58,8 @@ impl NotMutableReason {
             Self::MissingSerializationTraits(type_name)
             | Self::NotInRegistry(type_name)
             | Self::RecursionLimitExceeded(type_name)
-            | Self::ComplexCollectionKey(type_name) => type_name.clone(),
+            | Self::ComplexCollectionKey(type_name)
+            | Self::NoExampleAvailable(type_name) => type_name.clone(),
             Self::NonMutableHandle { element_type, .. } => element_type.clone(),
             Self::NoMutableChildren { parent_type }
             | Self::PartialChildMutability { parent_type, .. } => parent_type.clone(),
@@ -144,6 +147,10 @@ impl Display for NotMutableReason {
                 f,
                 "Type {parent_type} has no mutable child paths - all children lack required traits"
             ),
+            Self::NoExampleAvailable(type_name) => write!(
+                f,
+                "Type {type_name} has serialization support but no example value is available for mutations"
+            ),
             Self::PartialChildMutability { parent_type, .. } => write!(
                 f,
                 "Type {parent_type} has partial child mutability - some children can be mutated, others cannot"
@@ -174,6 +181,9 @@ impl From<&NotMutableReason> for Option<Value> {
             }
             NotMutableReason::NoMutableChildren { .. } => {
                 Some(Value::String(format!("no_mutable_children: {reason}")))
+            }
+            NotMutableReason::NoExampleAvailable(_) => {
+                Some(Value::String(format!("no_example_available: {reason}")))
             }
             // PartialChildMutability returns structured JSON
             NotMutableReason::PartialChildMutability {

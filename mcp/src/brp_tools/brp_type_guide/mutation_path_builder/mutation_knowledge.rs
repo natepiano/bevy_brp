@@ -24,10 +24,10 @@ use crate::brp_tools::brp_type_guide::response_types::{BrpTypeName, MathComponen
 /// Controls how mutation paths are generated for a type
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KnowledgeGuidance {
-    /// Generate mutation paths normally (default behavior)
-    Teach,
+    /// Generate mutation paths normally (default behavior) and allow recursion to inner types
+    TeachAndRecurse,
     /// Treat as a simple value with only root mutation, using the specified type name
-    TreatAsValue { simplified_type: String },
+    TreatAsRootValue { simplified_type: String },
 }
 
 /// Format knowledge key for matching types
@@ -38,18 +38,18 @@ pub enum KnowledgeKey {
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type:    String,
+        enum_type: String,
         /// e.g., "Clear"
         variant_name: String,
         /// e.g., "f32"
-        inner_type:   String,
+        inner_type: String,
     },
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
 }
 
@@ -66,9 +66,9 @@ impl KnowledgeKey {
         inner_type: impl Into<String>,
     ) -> Self {
         Self::NewtypeVariant {
-            enum_type:    enum_type.into(),
+            enum_type: enum_type.into(),
             variant_name: variant_name.into(),
-            inner_type:   inner_type.into(),
+            inner_type: inner_type.into(),
         }
     }
 
@@ -76,7 +76,7 @@ impl KnowledgeKey {
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
     }
 
@@ -118,11 +118,11 @@ pub enum MutationKnowledge {
     /// Math type with array example and named components
     MathType {
         array_example: Value,
-        components:    HashMap<MathComponent, Value>,
+        components: HashMap<MathComponent, Value>,
     },
     /// Value that should be treated as opaque (no mutation paths)
     OpaqueValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }
@@ -140,7 +140,7 @@ impl MutationKnowledge {
     ) -> Self {
         Self::MathType {
             array_example: example_value,
-            components:    components.into_iter().collect(),
+            components: components.into_iter().collect(),
         }
     }
 
@@ -171,10 +171,10 @@ impl MutationKnowledge {
     /// Get the guidance for this knowledge
     pub fn guidance(&self) -> KnowledgeGuidance {
         match self {
-            Self::Simple { .. } | Self::MathType { .. } => KnowledgeGuidance::Teach,
+            Self::Simple { .. } | Self::MathType { .. } => KnowledgeGuidance::TeachAndRecurse,
             Self::OpaqueValue {
                 simplified_type, ..
-            } => KnowledgeGuidance::TreatAsValue {
+            } => KnowledgeGuidance::TreatAsRootValue {
                 simplified_type: simplified_type.clone(),
             },
         }
@@ -190,93 +190,109 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // ===== Numeric types =====
         map.insert(
             KnowledgeKey::exact(TYPE_I8),
-            MutationKnowledge::simple(json!(42)),
+            MutationKnowledge::as_value(json!(42), "i8".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I16),
-            MutationKnowledge::simple(json!(1000)),
+            MutationKnowledge::as_value(json!(1000), "i16".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I32),
-            MutationKnowledge::simple(json!(100_000)),
+            MutationKnowledge::as_value(json!(100_000), "i32".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I64),
-            MutationKnowledge::simple(json!(1_000_000_000_i64)),
+            MutationKnowledge::as_value(json!(1_000_000_000_i64), "i64".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_I128),
-            MutationKnowledge::simple(json!("123456789012345678901234567890")),
+            MutationKnowledge::as_value(
+                json!("123456789012345678901234567890"),
+                "i128".to_string(),
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U8),
-            MutationKnowledge::simple(json!(128)),
+            MutationKnowledge::as_value(json!(128), "u8".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U16),
-            MutationKnowledge::simple(json!(5000)),
+            MutationKnowledge::as_value(json!(5000), "u16".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U32),
-            MutationKnowledge::simple(json!(1_000_000_u32)),
+            MutationKnowledge::as_value(json!(1_000_000_u32), "u32".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U64),
-            MutationKnowledge::simple(json!(10_000_000_000_u64)),
+            MutationKnowledge::as_value(json!(10_000_000_000_u64), "u64".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_U128),
-            MutationKnowledge::simple(json!("987654321098765432109876543210")),
+            MutationKnowledge::as_value(
+                json!("987654321098765432109876543210"),
+                "u128".to_string(),
+            ),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F32),
-            MutationKnowledge::simple(json!(std::f32::consts::PI)),
+            MutationKnowledge::as_value(json!(std::f32::consts::PI), "f32".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_F64),
-            MutationKnowledge::simple(json!(std::f64::consts::PI)),
+            MutationKnowledge::as_value(json!(std::f64::consts::PI), "f64".to_string()),
         );
 
         // ===== Size types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ISIZE),
-            MutationKnowledge::simple(json!(1_000_000_i64)),
+            MutationKnowledge::as_value(json!(1_000_000_i64), "isize".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_USIZE),
-            MutationKnowledge::simple(json!(2_000_000_u64)),
+            MutationKnowledge::as_value(json!(2_000_000_u64), "usize".to_string()),
         );
 
         // ===== Text types =====
         map.insert(
             KnowledgeKey::exact(TYPE_ALLOC_STRING),
-            MutationKnowledge::simple(json!("Hello, World!")),
+            MutationKnowledge::as_value(json!("Hello, World!"), "String".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STD_STRING),
-            MutationKnowledge::simple(json!("Hello, World!")),
+            MutationKnowledge::as_value(json!("Hello, World!"), "String".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STRING),
-            MutationKnowledge::simple(json!("Hello, World!")),
+            MutationKnowledge::as_value(json!("Hello, World!"), "String".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR_REF),
-            MutationKnowledge::simple(json!("static string")),
+            MutationKnowledge::as_value(json!("static string"), "str".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_STR),
-            MutationKnowledge::simple(json!("static string")),
+            MutationKnowledge::as_value(json!("static string"), "str".to_string()),
         );
         map.insert(
             KnowledgeKey::exact(TYPE_CHAR),
-            MutationKnowledge::simple(json!('A')),
+            MutationKnowledge::as_value(json!('A'), "char".to_string()),
         );
 
         // ===== Boolean =====
         map.insert(
             KnowledgeKey::exact(TYPE_BOOL),
-            MutationKnowledge::simple(json!(true)),
+            MutationKnowledge::as_value(json!(true), "bool".to_string()),
+        );
+
+        // ===== UUID =====
+        // Standard UUID v4 format string
+        map.insert(
+            KnowledgeKey::exact("uuid::Uuid"),
+            MutationKnowledge::as_value(
+                json!("550e8400-e29b-41d4-a716-446655440000"),
+                "Uuid".to_string(),
+            ),
         );
 
         // ===== Bevy math types (these serialize as arrays, not objects!) =====
