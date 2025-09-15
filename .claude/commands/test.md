@@ -83,20 +83,32 @@ Configuration: Port [ASSIGNED_PORT], App [APP_NAME]
 A [APP_NAME] app is running on port [ASSIGNED_PORT] with BRP enabled.
 
 **MANDATORY FIRST ACTION - WINDOW TITLE VERIFICATION:**
-1. **YOU MUST** set the window title as your VERY FIRST action using:
+**ABSOLUTELY NO EXCEPTIONS - THIS MUST BE THE VERY FIRST TOOL CALL**
+
+1. **BEFORE ANY OTHER BRP OPERATION** - set the window title using:
    mcp__brp__brp_extras_set_window_title(port=[ASSIGNED_PORT], title="[TEST_NAME] test - port [ASSIGNED_PORT]")
-2. **CAPTURE** the response from the window title setting
+2. **CAPTURE** the complete response from the window title setting
 3. **VERIFY** it returns status: "success"
 4. **INCLUDE** in your response under a new section "### Window Title Setup"
-5. **IF IT FAILS**: Mark test as FAILED immediately with reason "Window title setup failed"
+5. **IF IT FAILS**: IMMEDIATELY mark test as FAILED with reason "Window title setup failed"
 
-Only after successful window title setup, execute test procedures from file: [TEST_FILE]
+**CRITICAL ENFORCEMENT RULES:**
+- **NO BRP OPERATIONS** are permitted before window title is successfully set
+- **NO TEST PROCEDURES** from [TEST_FILE] until window title verification is complete
+- **ANY ATTEMPT** to skip or defer window title setting is a CRITICAL FAILURE
+- **WINDOW TITLE MUST BE SET AND VERIFIED SUCCESSFUL** before reading [TEST_FILE]
+
+Only after successful window title setup and verification, proceed to execute test procedures from file: [TEST_FILE]
 
 **CRITICAL PORT REQUIREMENT:**
 - **ALL BRP operations MUST use port [ASSIGNED_PORT]**
 - **DO NOT launch or shutdown the app** - it's managed externally
 - **Port parameter is MANDATORY** for all BRP tool calls
-- **WINDOW TITLE MUST BE SET AND VERIFIED** before ANY other operations
+
+**WINDOW TITLE ENFORCEMENT:**
+- **FIRST TOOL CALL** must be mcp__brp__brp_extras_set_window_title
+- **NO EXCEPTIONS** - any other BRP operation first is immediate test failure
+- **MUST VERIFY SUCCESS** before proceeding to any test procedures
 
 **Test Context:**
 - Test File: [TEST_FILE]
@@ -108,11 +120,13 @@ Only after successful window title setup, execute test procedures from file: [TE
 - **STOP ON FIRST FAILURE**: When ANY test step fails, IMMEDIATELY stop all testing
 - **CAPTURE EVERYTHING**: Include complete tool responses for all failed operations
 - **NO CONTINUATION**: Do not attempt further test steps after first failure
+- **SKIPPING WINDOW TITLE**: Immediate test failure - no exceptions
 
 **CRITICAL: NO ISSUE IS MINOR - EVERY ISSUE IS A FAILURE**
 - Error message quality issues are FAILURES, not minor issues
 - Any deviation from expected behavior is a FAILURE
 - Do NOT categorize any issue as "minor" - mark it as FAILED
+- **SKIPPING MANDATORY WINDOW TITLE SETUP** is an immediate CRITICAL FAILURE
 
 **Required Response Format:**
 
