@@ -45,9 +45,8 @@ fn is_migrated(&self) -> bool { true }
 ## TupleMutationBuilder Specific Details
 
 ### Current Issues to Fix
-- **Line 390**: ExampleBuilder usage in `build_schema_example()`
-- **Line 285**: ExampleBuilder usage in static method `build_tuple_example_static()`
-- **Line 317**: ExampleBuilder usage in static method `build_tuple_struct_example_static()`
+- **Line 398**: Usage of `build_schema_example()` in `handle_complex_element()` method
+- All these usages will be removed when the helper methods are deleted
 
 ### Special Handle Detection Logic
 - **ADD** an `is_handle()` method to `BrpTypeName` in `response_types.rs`:
@@ -97,12 +96,13 @@ The migrated pattern handles knowledge through ProtocolEnforcer's recursive proc
 - ❌ ALL registry validation creating NotMutable paths
 - ❌ ALL mutation status assignment logic
 - ❌ The entire `propagate_tuple_mixed_mutability()` function and its call
-- ❌ Static methods: `build_tuple_example_static()`, `build_tuple_struct_example_static()`
-- ❌ Override of `build_schema_example()`
+- ❌ Override of `build_schema_example()` method
 - ❌ Helper method `handle_missing_element()` - part of old build_paths flow
 - ❌ Helper method `handle_value_element()` - part of old build_paths flow
 - ❌ Helper method `handle_complex_element()` - part of old build_paths flow
 - ❌ Helper method `build_element_paths()` - part of old build_paths flow
+- ❌ Helper method `build_root_example()` - part of old build_paths flow
+- ❌ Helper method `is_handle_only_wrapper()` - will be replaced by BrpTypeName.is_handle()
 
 ### Path Exposure
 - **Note**: No need to override `child_path_action()` - Tuples expose indexed element paths like `[0].field`
@@ -169,7 +169,6 @@ fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Result<V
 
 ### Step 4: Remove Obsolete Code
 - ❌ Delete `propagate_tuple_mixed_mutability()` function
-- ❌ Delete static methods `build_tuple_example_static()` and `build_tuple_struct_example_static()`
 - ❌ **Delete entire `build_schema_example()` method override** - use default trait implementation
   - The default trait method delegates to ExampleBuilder which maintains backward compatibility
   - ProtocolEnforcer handles all knowledge lookups through its recursive child processing
@@ -178,6 +177,8 @@ fn build_paths(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Result<V
   - `handle_value_element()` - processes value type elements
   - `handle_complex_element()` - recurses into complex types
   - `build_element_paths()` - orchestrates element processing
+  - `build_root_example()` - assembles tuple example
+  - `is_handle_only_wrapper()` - checks for Handle wrappers
   - These are ALL replaced by the simpler `collect_children()` pattern
 - ❌ Delete all direct `build_not_mutable_path()` calls - ProtocolEnforcer handles these
 - ❌ Delete all `NotMutableReason` handling in individual methods
