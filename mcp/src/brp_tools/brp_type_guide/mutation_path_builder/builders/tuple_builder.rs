@@ -29,7 +29,17 @@ impl MutationPathBuilder for TupleMutationBuilder {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
+        tracing::debug!(
+            "TupleMutationBuilder::build_paths: Called for type '{}' at path '{}'",
+            ctx.type_name(),
+            ctx.mutation_path
+        );
+
         let Some(schema) = ctx.require_registry_schema_legacy() else {
+            tracing::debug!(
+                "TupleMutationBuilder::build_paths: Type '{}' not in registry",
+                ctx.type_name()
+            );
             return Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NotInRegistry(ctx.type_name().clone()),
@@ -38,9 +48,19 @@ impl MutationPathBuilder for TupleMutationBuilder {
 
         let mut paths = Vec::new();
         let elements = RecursionContext::extract_tuple_element_types(schema).unwrap_or_default();
+        tracing::debug!(
+            "TupleMutationBuilder::build_paths: Type '{}' has {} elements: {:?}",
+            ctx.type_name(),
+            elements.len(),
+            elements
+        );
 
         // Check if this is a single-element TupleStruct containing only a Handle type
         if Self::is_handle_only_wrapper(&elements) {
+            tracing::debug!(
+                "TupleMutationBuilder::build_paths: Type '{}' is handle-only wrapper, returning NotMutable",
+                ctx.type_name()
+            );
             return Ok(vec![Self::build_not_mutable_path(
                 ctx,
                 NotMutableReason::NonMutableHandle {
@@ -50,20 +70,28 @@ impl MutationPathBuilder for TupleMutationBuilder {
             )]);
         }
 
-        // Check if parent knowledge indicates this should be treated as opaque
-        let should_stop_recursion = Self::should_treat_as_opaque(ctx);
+        // Always process elements to provide proper mutation paths
+        // Parent knowledge will be used for root example if available
 
         let mut tuple_examples = Vec::new();
 
-        // Build paths for each element and collect examples
-        if should_stop_recursion {
-            Self::collect_parent_knowledge_examples(ctx, &mut tuple_examples);
-        } else {
-            Self::build_element_paths(ctx, &elements, depth, &mut paths, &mut tuple_examples)?;
-        }
+        // Always build element paths to provide proper mutation paths
+        tracing::debug!(
+            "TupleMutationBuilder::build_paths: Type '{}' building element paths",
+            ctx.type_name()
+        );
+        Self::build_element_paths(ctx, &elements, depth, &mut paths, &mut tuple_examples)?;
 
-        // Build root tuple path with accumulated examples
-        let root_example = Self::build_root_example(tuple_examples);
+        // Build root tuple path - use parent knowledge example if available, otherwise assembled
+        let root_example = if let Some(knowledge) = ctx.parent_knowledge {
+            tracing::debug!(
+                "TupleMutationBuilder::build_paths: Type '{}' using parent knowledge example instead of assembled",
+                ctx.type_name()
+            );
+            knowledge.example().clone()
+        } else {
+            Self::build_root_example(tuple_examples)
+        };
 
         paths.insert(
             0,
@@ -96,16 +124,33 @@ impl MutationPathBuilder for TupleMutationBuilder {
                     .iter()
                     .map(|item| {
                         SchemaField::extract_field_type(item).map_or_else(
-                            || json!(null),
+                            || {
+                                tracing::debug!("TupleMutationBuilder: Failed to extract field type from schema item: {}",
+                                    serde_json::to_string(item).unwrap_or_else(|_| "<invalid json>".to_string()));
+                                json!(null)
+                            },
                             |element_type| {
+                                tracing::debug!("TupleMutationBuilder: Processing element type: '{}'", element_type);
+
                                 // First check for hardcoded knowledge
-                                BRP_MUTATION_KNOWLEDGE
-                                    .get(&KnowledgeKey::exact(&element_type))
-                                    .map_or_else(
+                                let knowledge_key = KnowledgeKey::exact(&element_type);
+                                tracing::debug!("TupleMutationBuilder: Looking up knowledge for key: {:?}", knowledge_key);
+
+                                let knowledge_result = BRP_MUTATION_KNOWLEDGE.get(&knowledge_key);
+                                tracing::debug!("TupleMutationBuilder: Knowledge lookup result: {}",
+                                    if knowledge_result.is_some() { "FOUND" } else { "NOT_FOUND" });
+
+                                knowledge_result.map_or_else(
                                         || {
+                                            tracing::debug!("TupleMutationBuilder: No knowledge found for '{}', falling back to schema building", element_type);
                                             // Get the element type schema and use trait
                                             // dispatch
-                                            ctx.get_registry_schema(&element_type).map_or(
+                                            let schema_result = ctx.get_registry_schema(&element_type);
+                                            tracing::debug!("TupleMutationBuilder: Registry schema lookup for '{}': {}",
+                                                element_type,
+                                                if schema_result.is_some() { "FOUND" } else { "NOT_FOUND" });
+
+                                            schema_result.map_or(
                                                 json!(null),
                                                 |element_schema| {
                                                     let element_kind = TypeKind::from_schema(
@@ -132,22 +177,34 @@ impl MutationPathBuilder for TupleMutationBuilder {
                                                 },
                                             )
                                         },
-                                        |k| k.example().clone(),
+                                        |k| {
+                                            let example = k.example().clone();
+                                            tracing::debug!("TupleMutationBuilder: Found knowledge for '{}', returning example: {}",
+                                                element_type, example);
+                                            example
+                                        },
                                     )
                             },
                         )
                     })
                     .collect();
 
+                tracing::debug!("TupleMutationBuilder: Collected {} tuple examples: {:?}", tuple_examples.len(), tuple_examples);
+
                 if tuple_examples.is_empty() {
+                    tracing::debug!("TupleMutationBuilder: No examples collected, returning null");
                     json!(null)
                 } else {
                     // Special case: single-field tuple structs are unwrapped by BRP
                     // Return the inner value directly, not as an array
                     if tuple_examples.len() == 1 {
-                        tuple_examples.into_iter().next().unwrap_or(json!(null))
+                        let result = tuple_examples.into_iter().next().unwrap_or(json!(null));
+                        tracing::debug!("TupleMutationBuilder: Single-field tuple, returning unwrapped result: {}", result);
+                        result
                     } else {
-                        json!(tuple_examples)
+                        let result = json!(tuple_examples);
+                        tracing::debug!("TupleMutationBuilder: Multi-field tuple, returning array: {}", result);
+                        result
                     }
                 }
             })
@@ -161,26 +218,6 @@ impl TupleMutationBuilder {
             && elements[0]
                 .as_str()
                 .starts_with("bevy_asset::handle::Handle<")
-    }
-
-    /// Check if parent knowledge indicates this should be treated as opaque
-    fn should_treat_as_opaque(ctx: &RecursionContext) -> bool {
-        ctx.parent_knowledge.is_some_and(|knowledge| {
-            matches!(
-                knowledge.guidance(),
-                super::super::mutation_knowledge::KnowledgeGuidance::TreatAsValue { .. }
-            )
-        })
-    }
-
-    /// Collect examples from parent knowledge
-    fn collect_parent_knowledge_examples(ctx: &RecursionContext, tuple_examples: &mut Vec<Value>) {
-        if let Some(knowledge) = ctx.parent_knowledge {
-            let example = knowledge.example();
-            if let Some(arr) = example.as_array() {
-                tuple_examples.clone_from(arr);
-            }
-        }
     }
 
     /// Build paths for all tuple elements
@@ -268,10 +305,49 @@ impl TupleMutationBuilder {
         paths: &mut Vec<MutationPathInternal>,
         tuple_examples: &mut Vec<Value>,
     ) {
+        tracing::debug!(
+            "TupleMutationBuilder::handle_value_element: Processing value element type: '{}'",
+            element_type
+        );
+
         if ctx.value_type_has_serialization(element_type) {
-            let element_example = element_kind
-                .builder()
-                .build_schema_example(element_ctx, depth.increment());
+            tracing::debug!(
+                "TupleMutationBuilder::handle_value_element: Element '{}' has serialization, checking for knowledge first",
+                element_type
+            );
+
+            // Check for hardcoded knowledge BEFORE calling into ValueMutationBuilder
+            let knowledge_key = KnowledgeKey::exact(element_type);
+            tracing::debug!(
+                "TupleMutationBuilder::handle_value_element: Looking up knowledge for key: {:?}",
+                knowledge_key
+            );
+
+            let element_example = if let Some(knowledge) =
+                BRP_MUTATION_KNOWLEDGE.get(&knowledge_key)
+            {
+                let example = knowledge.example().clone();
+                tracing::debug!(
+                    "TupleMutationBuilder::handle_value_element: Found knowledge for '{}', using example: {}",
+                    element_type,
+                    example
+                );
+                example
+            } else {
+                tracing::debug!(
+                    "TupleMutationBuilder::handle_value_element: No knowledge found for '{}', falling back to ValueMutationBuilder",
+                    element_type
+                );
+                element_kind
+                    .builder()
+                    .build_schema_example(element_ctx, depth.increment())
+            };
+
+            tracing::debug!(
+                "TupleMutationBuilder::handle_value_element: Final example for '{}': {}",
+                element_type,
+                element_example
+            );
             tuple_examples.push(element_example.clone());
             paths.push(MutationPathInternal {
                 path:                   element_ctx.mutation_path.clone(),
@@ -282,6 +358,10 @@ impl TupleMutationBuilder {
                 mutation_status_reason: None,
             });
         } else {
+            tracing::debug!(
+                "TupleMutationBuilder::handle_value_element: Element '{}' lacks serialization traits",
+                element_type
+            );
             tuple_examples.push(json!(null));
             paths.push(MutationPathInternal {
                 path:                   element_ctx.mutation_path.clone(),

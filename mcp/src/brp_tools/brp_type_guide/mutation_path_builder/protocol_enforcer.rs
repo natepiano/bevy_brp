@@ -107,11 +107,11 @@ pub struct ProtocolEnforcer {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by PathAction)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 impl ProtocolEnforcer {
@@ -193,12 +193,27 @@ impl ProtocolEnforcer {
         //  2. If child is unmigrated: child_builder is the raw unmigrated builder
         //  - So it calls the unmigrated builder's build_paths() directly
         let child_builder = child_kind.builder();
+        tracing::debug!(
+            "ProtocolEnforcer: Got child_builder for '{}', is_migrated: {}",
+            child_ctx.type_name(),
+            child_builder.is_migrated()
+        );
 
         // Child handles its OWN depth increment and protocol
         // If child is migrated -> wrapped with ProtocolEnforcer and calls back through
         // If not migrated -> uses old implementation
         // THIS is the recursion point - after this everything pops back up to build examples
+        tracing::debug!(
+            "ProtocolEnforcer: Calling build_paths on child '{}' of type '{}'",
+            descriptor.deref(),
+            child_ctx.type_name()
+        );
         let child_paths = child_builder.build_paths(child_ctx, depth.increment())?;
+        tracing::debug!(
+            "ProtocolEnforcer: Child '{}' returned {} paths",
+            descriptor.deref(),
+            child_paths.len()
+        );
 
         // Extract child's example from its root path
         let child_example = child_paths
@@ -297,7 +312,7 @@ impl ProtocolEnforcer {
             );
 
             // Only return early for TreatAsValue types - they should not recurse
-            if matches!(guidance, KnowledgeGuidance::TreatAsValue { .. }) {
+            if matches!(guidance, KnowledgeGuidance::TreatAsRootValue { .. }) {
                 tracing::debug!(
                     "ProtocolEnforcer stopping recursion for TreatAsValue type: {}",
                     ctx.type_name()

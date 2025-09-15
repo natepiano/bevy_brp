@@ -89,7 +89,7 @@ impl TypeKind {
     fn build_treat_as_value_path(ctx: &RecursionContext) -> Option<MutationPathInternal> {
         if let Some(knowledge) =
             BRP_MUTATION_KNOWLEDGE.get(&KnowledgeKey::exact(ctx.type_name().to_string()))
-            && let KnowledgeGuidance::TreatAsValue { simplified_type } = knowledge.guidance()
+            && let KnowledgeGuidance::TreatAsRootValue { simplified_type } = knowledge.guidance()
         {
             // Build a single root mutation path for types that should be treated as values
             let example = knowledge.example().clone();
@@ -116,14 +116,14 @@ impl TypeKind {
         directive_suffix: &str,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:                   ctx.mutation_path.clone(),
-            example:                json!({
+            path: ctx.mutation_path.clone(),
+            example: json!({
                 "NotMutable": format!("{support}"),
                 "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
             }),
-            type_name:              ctx.type_name().clone(),
-            path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutable,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutable,
             mutation_status_reason: Option::<Value>::from(support),
         }
     }
@@ -170,7 +170,19 @@ impl MutationPathBuilder for TypeKind {
 
         match self {
             Self::Struct => self.builder().build_paths(ctx, builder_depth),
-            Self::Tuple | Self::TupleStruct => TupleMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Tuple | Self::TupleStruct => {
+                tracing::debug!(
+                    "TypeKind: Dispatching to unmigrated TupleMutationBuilder for type '{}'",
+                    ctx.type_name()
+                );
+                let result = TupleMutationBuilder.build_paths(ctx, builder_depth);
+                tracing::debug!(
+                    "TypeKind: TupleMutationBuilder for '{}' returned {} paths",
+                    ctx.type_name(),
+                    result.as_ref().map(|paths| paths.len()).unwrap_or(0)
+                );
+                result
+            }
             Self::Array => self.builder().build_paths(ctx, builder_depth),
             Self::List => self.builder().build_paths(ctx, builder_depth),
             Self::Map | Self::Set => self.builder().build_paths(ctx, builder_depth),
