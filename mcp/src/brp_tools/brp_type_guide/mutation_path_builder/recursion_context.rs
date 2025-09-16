@@ -21,14 +21,14 @@ use crate::json_schema::SchemaField;
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind: PathKind,
+    pub path_kind:     PathKind,
     /// Reference to the type registry
-    pub registry: Arc<HashMap<BrpTypeName, Value>>,
+    pub registry:      Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
     pub mutation_path: String,
     /// Action to take regarding path creation (set by `ProtocolEnforcer`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action: PathAction,
+    pub path_action:   PathAction,
 }
 
 impl RecursionContext {
@@ -62,10 +62,10 @@ impl RecursionContext {
     pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
             crate::error::Error::SchemaProcessing {
-                message: format!("No schema found for type: {}", self.type_name()),
+                message:   format!("No schema found for type: {}", self.type_name()),
                 type_name: Some(self.type_name().to_string()),
                 operation: Some("require_registry_schema".to_string()),
-                details: None,
+                details:   None,
             }
             .into()
         })

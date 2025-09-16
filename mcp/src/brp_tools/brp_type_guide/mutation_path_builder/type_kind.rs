@@ -114,14 +114,14 @@ impl TypeKind {
         directive_suffix: &str,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example: json!({
+            path:                   ctx.mutation_path.clone(),
+            example:                json!({
                 "NotMutable": format!("{support}"),
                 "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
             }),
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::NotMutable,
+            type_name:              ctx.type_name().clone(),
+            path_kind:              ctx.path_kind.clone(),
+            mutation_status:        MutationStatus::NotMutable,
             mutation_status_reason: Option::<Value>::from(support),
         }
     }

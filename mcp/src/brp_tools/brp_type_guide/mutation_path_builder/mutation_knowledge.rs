@@ -28,18 +28,18 @@ pub enum KnowledgeKey {
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type: String,
+        enum_type:    String,
         /// e.g., "Clear"
         variant_name: String,
         /// e.g., "f32"
-        inner_type: String,
+        inner_type:   String,
     },
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name: String,
+        field_name:  String,
     },
 }
 
@@ -56,9 +56,9 @@ impl KnowledgeKey {
         inner_type: impl Into<String>,
     ) -> Self {
         Self::NewtypeVariant {
-            enum_type: enum_type.into(),
+            enum_type:    enum_type.into(),
             variant_name: variant_name.into(),
-            inner_type: inner_type.into(),
+            inner_type:   inner_type.into(),
         }
     }
 
@@ -66,7 +66,7 @@ impl KnowledgeKey {
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name: field_name.into(),
+            field_name:  field_name.into(),
         }
     }
 }
@@ -78,7 +78,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example: Value,
+        example:         Value,
         simplified_type: String,
     },
 }

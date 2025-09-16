@@ -52,7 +52,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -277,8 +277,8 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
                             field.type_name
                         );
                         children.push(PathKind::StructField {
-                            field_name: field.field_name.clone(),
-                            type_name: field.type_name.clone(),
+                            field_name:  field.field_name.clone(),
+                            type_name:   field.type_name.clone(),
                             parent_type: ctx.type_name().clone(),
                         });
                     }

@@ -38,8 +38,8 @@ impl MutationPathBuilder for SetMutationBuilder {
 
         // Create PathKind for items (ProtocolEnforcer will create context)
         Ok(vec![PathKind::StructField {
-            field_name: SchemaField::Items.to_string(),
-            type_name: item_t,
+            field_name:  SchemaField::Items.to_string(),
+            type_name:   item_t,
             parent_type: ctx.type_name().clone(),
         }])
     }

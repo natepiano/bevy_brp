@@ -64,13 +64,13 @@ impl MutationPathBuilder for MapMutationBuilder {
         // Create PathKinds for key and value (ProtocolEnforcer will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name: SchemaField::Key.to_string(),
-                type_name: key_t,
+                field_name:  SchemaField::Key.to_string(),
+                type_name:   key_t,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
-                field_name: SchemaField::Value.to_string(),
-                type_name: val_t,
+                field_name:  SchemaField::Value.to_string(),
+                type_name:   val_t,
                 parent_type: ctx.type_name().clone(),
             },
         ])
