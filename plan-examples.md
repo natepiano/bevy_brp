@@ -41,6 +41,9 @@ For each step in the implementation sequence:
 
 ## INTERACTIVE IMPLEMENTATION SEQUENCE
 
+### Step 0: Disconnect Old Enum Builder ⏳ PENDING
+→ **See detailed section 0 below**
+
 ### Step 1: Foundation Types Setup ⏳ PENDING
 → **See detailed section 1 below**
 
@@ -155,6 +158,29 @@ The current system has multiple issues:
    - Embedded in struct: Should be single concrete value, but currently broken (shows array)
 
 ## Proposed Solution
+
+### 0. Disconnect Old Enum Builder ✅ COMPLETED
+
+**Objective:** Remove old enum builder from compilation to avoid conflicts with new implementation
+
+**Files modified:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_kind.rs`
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/mod.rs`
+
+**Build:** `cargo build && cargo +nightly fmt`
+
+#### Changes Made
+
+**Remove USE_NEW_ENUM_BUILDER flag from type_kind.rs:**
+- Removed `USE_NEW_ENUM_BUILDER` constant and conditional logic
+- Updated `builder()` method to always use `NewEnumMutationBuilder` for enum types
+- Simplified enum handling in `build_paths()` method
+
+**Disconnect old enum_builder from mod.rs:**
+- Removed `mod enum_builder;` declaration
+- Removed `pub use enum_builder::{EnumMutationBuilder, EnumVariantInfo};` export
+
+**Note:** The old `enum_builder.rs` file remains for reference during implementation but is no longer compiled.
 
 ### 1. Foundation Types Setup ⏳ PENDING
 
@@ -678,51 +704,25 @@ impl MutationPath {
 
 ### 7. Integration and Cleanup ⏳ PENDING
 
-**Objective:** Remove old enum builder, flags, and deprecated fields
+**Objective:** Final cleanup - remove old enum builder file and deprecated fields
 
 **Files to modify:**
-- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_kind.rs`
-- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/mod.rs`
 - `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs` (delete)
 
 **Build:** `cargo build && cargo +nightly fmt`
 **Dependencies:** Requires Steps 1-6
 
-#### Clean migration with explicit data flow:
+#### Final Cleanup Tasks:
 
-**Phase 1: Update data structures**
-1. Add `enum_root_examples: Option<Vec<ExampleGroup>>` to `MutationPathInternal` in types.rs
-2. Move `VariantSignature` from new_enum_builder.rs to types.rs (needed for public API)
-3. Update `ExampleGroup` to use typed `VariantSignature` instead of string in types.rs
-4. Add `EnumContext` to recursion_context.rs
-5. Remove `variants` field from `MutationPath` (deprecated)
-6. Remove obsolete `enum_info` field from `TypeGuide` struct (redundant with examples array)
+1. **Delete old enum_builder.rs file** - No longer needed after successful migration
+2. **Remove deprecated fields** (if any remain):
+   - Remove `variants` field from `MutationPath` (deprecated)
+   - Remove obsolete `enum_info` field from `TypeGuide` struct (redundant with examples array)
+3. **Remove obsolete methods**:
+   - Remove `TypeGuide::extract_enum_info()` method and related code
+4. **Test with existing test suite** to ensure compatibility
 
-**Phase 2: Update enum builder**
-1. Add internal `MutationExample` enum to new_enum_builder.rs (not exported)
-2. Update `NewEnumMutationBuilder::assemble_from_children` to:
-   - Build internal `MutationExample` for organization
-   - Return structured data for ProtocolEnforcer to process
-3. Keep all other builders unchanged
-
-**Phase 3: Update ProtocolEnforcer**
-1. Add `create_mutation_path_internal` method to handle:
-   - Extracting enum root examples from structured output
-   - Wrapping enum children with applicable_variants
-   - Passing through regular values unchanged
-2. Set `enum_root_examples` field when processing enum roots
-
-**Phase 4: Update conversion logic**
-1. Simplify `from_mutation_path_internal` in types.rs to:
-   - Direct field transfer from `MutationPathInternal` to `MutationPath`
-   - No JSON parsing or magic markers
-   - Remove `variants` field from output
-
-**Phase 5: Clean up and activate**
-1. Remove `USE_NEW_ENUM_BUILDER` flag from type_kind.rs
-2. Remove old `enum_builder` from builders/mod.rs
-3. Remove `TypeGuide::extract_enum_info()` method and related code
-4. Test with existing test suite to ensure compatibility
+**Note:** The major integration work (moving types, updating builders, protocol enforcer changes) is handled in Steps 1-6. This step only handles final cleanup after successful implementation.
 
 ### 8. Complete Validation ⏳ PENDING
 
