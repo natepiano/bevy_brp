@@ -22,3 +22,4 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
     1. do a `cargo install --path mcp`
     2. stop and ask the user to reload the MCP server by having them issue the slash command `/mcp reconnect brp`
 </McpEditProcedure>
+- you always need to use launch example with examples_plugin if you want to test something
