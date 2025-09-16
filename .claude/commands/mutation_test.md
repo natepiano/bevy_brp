@@ -246,19 +246,31 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     When COMPONENT_NOT_FOUND errors are detected, display:
     ```
     **Missing Components Details:**
-    - [type_name]: [fail_reason]
-      - Query Filter: [filter]
-      - Query Data: [data]
+    - [type_name]:
+      - Query Filter: [query_details.filter]
+      - Query Data: [query_details.data]
+      - Entities Found: [query_details.entities_found]
+      - Error: [failure_details.error_message]
     ```
 
     When FAIL errors are detected, display:
     ```
     **Failed Types Details:**
-    - [type_name]: [fail_reason]
-      - Failed Mutation Path: [failed_mutation_path]
+    - [type_name]:
+      - Failed Operation: [failure_details.failed_operation]
+      - Operations Completed:
+        - Spawn/Insert: [operations_completed.spawn_insert]
+        - Entity Query: [operations_completed.entity_query]
+        - Mutations Passed: [operations_completed.mutations_passed]
+        - Total Mutations Attempted: [operations_completed.total_mutations_attempted]
+      - Failure Information:
+        - Failed Path: [failure_details.failed_mutation_path]
+        - Error Message: [failure_details.error_message]
+        - Request Sent: [failure_details.request_sent]
+        - Response Received: [failure_details.response_received]
     ```
 
-    Extract this information from the batch results JSON before cleanup.
+    Extract this detailed information from the batch results JSON before cleanup.
 </CheckForFailures>
 
 ## STEP 7: FINAL CLEANUP
@@ -313,8 +325,9 @@ This returns the exact type names AND complete mutation paths you must test. Use
    ```
    CRITICAL: Use the exact `type_name` field from the guide - NEVER modify or abbreviate it
    c. **MUTATION TESTING**: Test ALL mutable mutation paths from the mutation_paths object
-3. Return ONLY JSON result array for ALL tested types
-4. NEVER test types not returned by the assignment guide script
+3. **CAPTURE ALL ERROR DETAILS**: When ANY operation fails, record the COMPLETE request and response
+4. Return ONLY JSON result array for ALL tested types
+5. NEVER test types not returned by the assignment guide script
 
 **JSON Number Rules**:
 - ALL primitives (u8, u16, u32, f32, etc.) MUST be JSON numbers
@@ -326,11 +339,40 @@ This returns the exact type names AND complete mutation paths you must test. Use
 [{
   "type": "[full::qualified::type::name]",
   "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
-  "fail_reason": "[error or empty]",
-  "failed_mutation_path": "[mutation path that failed, only for FAIL status]",
-  "query_parameters": {
-    "filter": "[query filter used, only for COMPONENT_NOT_FOUND status]",
-    "data": "[query data requested, only for COMPONENT_NOT_FOUND status]"
+  "entity_id": 123,  // Entity ID if created, null otherwise
+  "operations_completed": {
+    "spawn_insert": true|false,  // Did spawn/insert succeed?
+    "entity_query": true|false,   // Did query find entity?
+    "mutations_passed": [".path1", ".path2"],  // Which mutations succeeded
+    "total_mutations_attempted": 5  // How many mutation paths were tested
+  },
+  "failure_details": {
+    // ONLY PRESENT IF status is FAIL or COMPONENT_NOT_FOUND
+    "failed_operation": "spawn|insert|query|mutation",
+    "failed_mutation_path": ".specific.path.that.failed",
+    "error_message": "Complete error message from BRP",
+    "request_sent": {
+      // EXACT parameters sent that caused the failure
+      "method": "bevy/mutate_component",
+      "params": {
+        "entity": 123,
+        "component": "full::type::name",
+        "path": ".failed.path",
+        "value": {"the": "actual", "value": "attempted"}
+      }
+    },
+    "response_received": {
+      // COMPLETE response from BRP including error details
+      "error": "Full error response",
+      "code": -32000,
+      "data": "any additional error data"
+    }
+  },
+  "query_details": {
+    // ONLY PRESENT IF status is COMPONENT_NOT_FOUND
+    "filter": {"with": ["exact::type::used"]},
+    "data": {"components": []},
+    "entities_found": 0
   }
 }]
 ```
@@ -386,11 +428,24 @@ This returns the exact type names AND complete mutation paths you must test. Use
 {
   "type": "string (full type name)",
   "status": "PASS|FAIL|COMPONENT_NOT_FOUND",
-  "fail_reason": "string (error message or empty)",
-  "failed_mutation_path": "string (mutation path that failed, only for FAIL status)",
-  "query_parameters": {
-    "filter": "string (query filter used, only for COMPONENT_NOT_FOUND status)",
-    "data": "string (query data requested, only for COMPONENT_NOT_FOUND status)"
+  "entity_id": "number|null (entity ID if created)",
+  "operations_completed": {
+    "spawn_insert": "boolean",
+    "entity_query": "boolean",
+    "mutations_passed": "array of mutation paths that succeeded",
+    "total_mutations_attempted": "number"
+  },
+  "failure_details": {
+    "failed_operation": "spawn|insert|query|mutation",
+    "failed_mutation_path": "string (specific path that failed)",
+    "error_message": "string (complete error from BRP)",
+    "request_sent": "object (exact parameters that caused failure)",
+    "response_received": "object (complete error response)"
+  },
+  "query_details": {
+    "filter": "object (query filter used)",
+    "data": "object (query data requested)",
+    "entities_found": "number"
   }
 }
 ```
@@ -410,6 +465,45 @@ This returns the exact type names AND complete mutation paths you must test. Use
 ```
 </ResultFormat>
 
+## ERROR DIAGNOSTICS
+
+<ErrorDiagnostics>
+**Detailed Failure Logging**:
+When failures occur, the system automatically:
+1. Saves complete failure details to `$TMPDIR/all_types_failures_[timestamp].json`
+2. Preserves the exact request/response that caused each failure
+3. Records which operations succeeded before failure
+
+**Interpreting Failure Details**:
+- `failed_operation`: Identifies where in the test sequence the failure occurred
+  - "spawn": Entity creation failed
+  - "insert": Component insertion failed
+  - "query": Entity query failed
+  - "mutation": Mutation operation failed
+
+- `operations_completed`: Shows test progress before failure
+  - `spawn_insert`: Whether entity was successfully created
+  - `entity_query`: Whether entity was found after creation
+  - `mutations_passed`: List of mutation paths that worked
+  - `total_mutations_attempted`: How many mutations were tested
+
+- `failure_details`: Complete diagnostic information
+  - `request_sent`: Exact BRP parameters that triggered the error
+  - `response_received`: Full error response from BRP
+  - Can be used to reproduce the exact failure
+
+**Common Failure Patterns**:
+1. "Framework error: Unable to extract parameters" - Usually indicates a type mismatch or serialization issue
+2. "The enum accessed doesn't have an X field" - Mutation path doesn't match the actual type structure
+3. "Component not found" - Type isn't registered or query syntax is incorrect
+
+**Debugging Steps**:
+1. Check the failure log file for complete details
+2. Look at `request_sent` to see exact parameters
+3. Review `mutations_passed` to identify working paths
+4. Use `response_received` error message for specific issue
+</ErrorDiagnostics>
+
 ## COMPLETION CRITERIA
 
 <CompletionCriteria>
@@ -419,7 +513,14 @@ This returns the exact type names AND complete mutation paths you must test. Use
 
 **REQUIRED FAILURE REPORTING**:
 - Show counts: PASS, FAIL, COMPONENT_NOT_FOUND
-- List each missing component with query parameters used
-- List each failed type with the specific mutation path that failed and the reason/error that it failed with
-- Include filter and data parameters for debugging query issues
+- For each failed type, display:
+  - Which operations succeeded before failure
+  - Exact mutation path that failed
+  - Complete request parameters that caused the failure
+  - Full error response from BRP
+  - Number of mutations that passed vs. failed
+- For missing components:
+  - Exact query filter and data used
+  - Number of entities found (should be 0)
+- Provide enough detail that the exact failure can be reproduced
 </CompletionCriteria>

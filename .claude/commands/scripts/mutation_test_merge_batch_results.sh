@@ -75,7 +75,14 @@ echo "  Missing Components: $MISSING"
 if [ "$FAILED" -gt 0 ]; then
     echo ""
     echo "⚠️  FAILURES DETECTED:"
-    jq -r '.[] | select(.status == "FAIL") | "  - \(.type): \(.fail_reason)"' "$RESULTS_FILE"
+    # Save detailed failure information to a separate file
+    FAILURE_LOG="${MUTATION_TEST_FILE%.json}_failures_$(date +%Y%m%d_%H%M%S).json"
+    jq '[.[] | select(.status == "FAIL" or .status == "COMPONENT_NOT_FOUND")]' "$RESULTS_FILE" > "$FAILURE_LOG"
+    echo "  Detailed failure information saved to: $FAILURE_LOG"
+    echo ""
+
+    # Display summary of failures
+    jq -r '.[] | select(.status == "FAIL") | "  - \(.type): \(.failure_details.error_message // .fail_reason)"' "$RESULTS_FILE"
     exit 2  # Special exit code for failures
 fi
 
@@ -83,6 +90,6 @@ fi
 if [ "$MISSING" -gt 0 ]; then
     echo ""
     echo "⚠️  MISSING COMPONENTS DETECTED:"
-    jq -r '.[] | select(.status == "COMPONENT_NOT_FOUND") | "  - \(.type): \(.fail_reason)"' "$RESULTS_FILE"
+    jq -r '.[] | select(.status == "COMPONENT_NOT_FOUND") | "  - \(.type): \(.failure_details.error_message // .fail_reason)"' "$RESULTS_FILE"
     exit 2  # Special exit code for missing components
 fi
