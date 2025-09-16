@@ -13,11 +13,29 @@ use serde_json::{Value, json};
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::VariantSignature;
+use super::super::types::{ExampleGroup, VariantSignature};
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
+
+/// Internal example data for enum mutation paths - used only within enum builder
+/// Other builders continue using Value directly
+#[derive(Debug, Clone)]
+enum MutationExample {
+    /// Simple example value (for non-enum types and embedded enum values)
+    Simple(Value),
+
+    /// Multiple examples with signatures (for enum root paths)
+    /// Each group has applicable_variants, signature, and example
+    EnumRoot(Vec<ExampleGroup>),
+
+    /// Example with variant context (for enum child paths like .0, .1, .enabled)
+    EnumChild {
+        example:             Value,
+        applicable_variants: Vec<String>,
+    },
+}
 
 /// Builder for enum mutation paths using the new protocol
 pub struct NewEnumMutationBuilder;
