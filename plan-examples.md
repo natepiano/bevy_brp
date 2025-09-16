@@ -41,8 +41,6 @@ For each step in the implementation sequence:
 
 ## INTERACTIVE IMPLEMENTATION SEQUENCE
 
-*Each step below corresponds to a detailed implementation section that follows. Complete steps sequentially.*
-
 ### Step 1: Foundation Types Setup ⏳ PENDING
 → **See detailed section 1 below**
 
@@ -292,346 +290,26 @@ enum MutationExample {
         applicable_variants: Vec<String>,
     },
 }
-
-/// Example group for enum variants (should be called VariantExampleGroup but keeping for compatibility)
-#[derive(Debug, Clone)]
-pub struct ExampleGroup {
-    /// List of variants that share this signature
-    pub applicable_variants: Vec<String>,
-
-    /// The variant signature type (stored as enum for type safety)
-    pub signature: VariantSignature,
-
-    /// Example value for this group
-    pub example: Value,
-}
-
-/// Variant signature types for enum variants
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum VariantSignature {
-    /// Unit variant (no data)
-    Unit,
-    /// Tuple variant with ordered types
-    Tuple(Vec<BrpTypeName>),
-    /// Struct variant with named fields
-    Struct(Vec<(String, BrpTypeName)>),
-}
-
-impl fmt::Display for VariantSignature {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VariantSignature::Unit => write!(f, "unit"),
-            VariantSignature::Tuple(types) => {
-                let type_names: Vec<String> = types
-                    .iter()
-                    .map(|t| shorten_type_name(t.as_str()))
-                    .collect();
-                write!(f, "tuple({})", type_names.join(", "))
-            }
-            VariantSignature::Struct(fields) => {
-                let field_strs: Vec<String> = fields
-                    .iter()
-                    .map(|(name, type_name)| {
-                        format!("{}: {}", name, shorten_type_name(type_name.as_str()))
-                    })
-                    .collect();
-                write!(f, "struct{{{}}}", field_strs.join(", "))
-            }
-        }
-    }
-}
 ```
 
-The `MutationExample` enum belongs in `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/new_enum_builder.rs` as an internal implementation detail. The `ExampleGroup` and `VariantSignature` structs need to be in `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs` since they're used in the public API.
-
-#### EnumContext Addition
-
-Add to `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`:
-
-```rust
-/// Tracks enum-specific context during recursion
-#[derive(Debug, Clone)]
-pub enum EnumContext {
-    /// This enum is establishing the root context
-    Root,
-
-    /// Building under enum variant(s)
-    Child {
-        /// Chain of variant constraints from parent to child
-        /// e.g., [(TestEnumWithSerDe, ["Nested"]), (NestedConfigEnum, ["Conditional"])]
-        variant_chain: Vec<(BrpTypeName, Vec<String>)>,
-    },
-}
-
-pub struct RecursionContext {
-    // ... existing fields ...
-    /// Track enum context - None for non-enum types
-    pub enum_context: Option<EnumContext>,
-}
-```
+The `MutationExample` enum belongs in `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/new_enum_builder.rs` as an internal implementation detail.
 
 The enum builder determines what to return based on context:
 - **Return `Simple`**: When `ctx.enum_context` is `None` (non-enum parent needs concrete value)
 - **Return `EnumRoot`**: When `ctx.enum_context` is `Some(EnumContext::Root)` (building the enum's root path)
 - **Return `EnumChild`**: When `ctx.enum_context` is `Some(EnumContext::Child { ... })` (building under enum variant)
 
-#### RecursionContext Creation Changes
+### 3. Data Structure Extensions ⏳ PENDING
 
-Need to update these methods to handle `enum_context`:
-- `RecursionContext::root()` - starts with `enum_context: None`
-- `RecursionContext::create_child_context()` - propagates parent's `enum_context` by default
-- ProtocolEnforcer - sets `Some(EnumContext::Root)` when processing an enum type
-- Enum builder's child creation - sets `Some(EnumContext::Child { ... })` for its children
+**Objective:** Add enum_root_examples field to MutationPathInternal for direct data transfer
 
-### Example Enum Structures
+**Files to modify:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
 
-*These examples are used throughout the case analysis:*
+**Build:** `cargo build && cargo +nightly fmt`
+**Dependencies:** Requires Step 1
 
-```rust
-// Main enum with multiple variants including nested enum
-enum TestEnumWithSerDe {
-    Active,
-    Inactive,
-    Special(String, u32),
-    AlsoSpecial(String, u32),  // Second variant with same signature
-    Custom {
-        enabled: bool,
-        name: String,
-        value: f32,
-    },
-    Nested {
-        nested_config: NestedConfigEnum,
-        other_field: String,
-    }
-}
-
-// Nested enum used in the Nested variant
-enum NestedConfigEnum {
-    Always,
-    Never,
-    Conditional(u32),
-}
-```
-
-This structure demonstrates:
-- Unit variants (Active, Inactive)
-- Multiple tuple variants with same signature (Special, AlsoSpecial)
-- Struct variant (Custom)
-- Nested enum (Nested contains NestedConfigEnum)
-
-### Case Analysis for Enum Handling
-
-*This section to be included in the module documentation for new_enum_builder.rs*
-
-#### Case 1: Enum at root (e.g., TestEnumWithSerDe itself)
-
-**Context:**
-- Building mutation paths for an enum as the top-level type
-- Path: `""`
-- PathKind: `RootValue`
-- Type: `TestEnumWithSerDe` (TypeKind::Enum)
-- EnumContext: `Some(EnumContext::Root)` (set by ProtocolEnforcer when it sees TypeKind::Enum)
-
-**Key Insight:** The enum builder knows it's TypeKind::Enum, which determines its behavior.
-
-**Flow:**
-1. `collect_children()` returns `Vec<PathKind>` with:
-   ```rust
-   PathKind::EnumVariant {
-       signature: VariantSignature::Unit,
-       parent_type: TestEnumWithSerDe,
-       applicable_variants: vec!["Active", "Inactive"],
-   },
-   PathKind::EnumVariant {
-       signature: VariantSignature::Tuple(vec![String, u32]),
-       parent_type: TestEnumWithSerDe,
-       applicable_variants: vec!["Special"],
-   },
-   PathKind::EnumVariant {
-       signature: VariantSignature::Struct(vec![
-           ("enabled", bool),
-           ("name", String),
-           ("value", f32),
-       ]),
-       parent_type: TestEnumWithSerDe,
-       applicable_variants: vec!["Custom"],
-   },
-   ```
-
-2. ProtocolEnforcer processes these `PathKind::EnumVariant` entries:
-   - For Unit: No child paths created
-   - For Tuple: Creates `.0`, `.1` paths with `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Special", "AlsoSpecial"])] })`
-   - For Struct: Creates `.enabled`, `.name`, `.value` paths with `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Custom"])] })`
-   - **This is where EnumContext changes from `Some(EnumContext::Root)` to `Some(EnumContext::Child { ... })`**
-
-3. `assemble_from_children()` receives the built child examples and:
-   - Checks: `EnumContext == Some(EnumContext::Root)`
-   - Returns `MutationExample::EnumRoot(Vec<ExampleGroup>)`
-   - Transforms child examples into the proper examples array structure
-
-**Result:**
-- Root path `""` gets `examples` array with all variant groups
-- Child paths `.0`, `.1`, `.enabled`, etc. have `applicable_variants` from their EnumContext
-
-#### Case 2: Enum as a field (e.g., .mode in TestComplexComponent)
-
-**Context:**
-- Building paths for TestComplexComponent's enum field
-- Path: `.mode`
-- PathKind: `StructField { field_name: "mode", type_name: TestEnumWithSerDe, parent_type: TestComplexComponent }`
-- Type: `TestEnumWithSerDe` (TypeKind::Enum)
-- EnumContext: `Some(EnumContext::Root)` (set by ProtocolEnforcer when it sees TypeKind::Enum)
-
-**Key Rule:** Any enum type with `EnumContext == Some(EnumContext::Root)` returns `MutationExample::EnumRoot`.
-
-**Flow:**
-1. Struct builder delegates to enum builder for the `mode` field
-2. ProtocolEnforcer sets `Some(EnumContext::Root)` for this enum field
-3. Enum's `collect_children()` returns `PathKind::EnumVariant` entries
-4. ProtocolEnforcer creates `.mode.0`, `.mode.1`, `.mode.enabled` with `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Special", "AlsoSpecial"])] })` or `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Custom"])] })`
-5. Enum's `assemble_from_children()`:
-   - Sees `EnumContext == Some(EnumContext::Root)`
-   - Returns `MutationExample::EnumRoot(Vec<ExampleGroup>)`
-
-**Result:** `.mode` gets full `examples` array just like a root enum.
-
-#### Case 3: Enum child paths (e.g., .mode.0, .mode.enabled)
-
-**Context:**
-- Building paths for fields within enum variants
-- Paths: `.mode.0`, `.mode.1` (tuple variant) or `.mode.enabled`, `.mode.name` (struct variant)
-- PathKind: Created from `PathKind::EnumVariant` expansion (specific types TBD based on ProtocolEnforcer logic)
-- Types: `String`, `u32`, `bool`, etc. (the field types)
-- EnumContext: `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, [...])] })`
-
-**Key Points:**
-- These are NOT enum types - they're fields inside enum variants
-- The `Some(EnumContext::Child { ... })` stays constant throughout this recursion branch because all paths under a variant apply to the same set of variants
-
-**Flow:**
-1. These paths were created by ProtocolEnforcer when it processed `PathKind::EnumVariant`
-2. The appropriate builder for the field type is called (string, bool, etc.)
-3. These builders see `Some(EnumContext::Child { ... })` and preserve it (it stays the same for the entire branch)
-4. When assembling:
-   - The `example` value changes as we recurse back up (field examples get assembled into parent structures)
-   - But `applicable_variants` stays constant for this branch
-   - Non-enum builders return `MutationExample::Simple(value)`
-   - If the field itself was an enum, it would return `MutationExample::EnumChild { example, applicable_variants }`
-
-**Result:**
-- `.mode.0` gets example `"Hello, World!"` with `variants: ["Special"]`
-- `.mode.enabled` gets example `true` with `variants: ["Custom"]`
-- The `applicable_variants` information comes from the EnumContext, not the example
-
-#### Case 4: Nested enum under another enum
-
-**Context:**
-- An enum field inside an enum variant (the `nested_config` field in the `Nested` variant)
-- Path: `.mode.nested_config`
-- PathKind: Created from parent enum's variant processing
-- Type: `NestedConfigEnum` (TypeKind::Enum)
-- EnumContext: `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Nested"])] })`
-
-**Key Insight:** Nested enums track the full chain of variant constraints using dot notation in output.
-
-**Flow:**
-1. `.mode.nested_config` is processed:
-   - ProtocolEnforcer sees TypeKind::Enum
-   - Context has parent constraint in variant_chain
-   - Sets `Some(EnumContext::Root)` for the nested enum itself (to get examples array)
-   - But preserves parent constraints for its children
-
-2. Nested enum's `collect_children()` returns its own `PathKind::EnumVariant` entries
-
-3. For `.mode.nested_config.0` (the u32 in Conditional):
-   - Context becomes `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Nested"]), (NestedConfigEnum, ["Conditional"])] })`
-
-**Result:**
-- `.mode.nested_config` gets its own `examples` array with `applicable_variants: ["Nested"]`
-- `.mode.nested_config.0` gets `applicable_variants: ["Nested.Conditional"]` (flattened with dot notation)
-- The conversion flattens the chain: `["Nested", "Conditional"]` → `"Nested.Conditional"`
-
-#### Case 5: Providing value for parent assembly
-
-**Context:**
-- A parent struct/array/tuple needs a concrete enum value for its root path assembly
-- Example: TestComplexComponent needs a value for its `mode` field when building root `""`
-- EnumContext: `None` (no enum context established)
-
-**Key Insight:** When enum's `assemble_from_children` sees `enum_context: None`, it knows a non-enum parent needs a concrete value.
-
-**Flow:**
-1. TestComplexComponent's struct builder assembles its root path
-2. It calls enum's `assemble_from_children` for the `mode` field with `enum_context: None`
-3. Enum's `assemble_from_children` logic:
-   ```rust
-   match ctx.enum_context {
-       None => MutationExample::Simple(pick_concrete_value()),  // Parent needs a value
-       Some(EnumContext::Root) => MutationExample::EnumRoot(examples),
-       Some(EnumContext::Child { .. }) => MutationExample::EnumChild { .. },
-   }
-   ```
-
-**Result:**
-- TestComplexComponent's root gets `mode: "Active"` (concrete value)
-- Clean separation: `None` means "give me something concrete to embed"
-- The `.mode` path itself still gets its full `examples` array when processed as a field
-
-
-### 2. Update types.rs with shared types
-
-```rust
-// In types.rs - move VariantSignature here for public API use
-/// Variant signature types for enum variants - used for grouping similar structures
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum VariantSignature {
-    /// Unit variant (no data)
-    Unit,
-    /// Tuple variant with ordered types
-    Tuple(Vec<BrpTypeName>),
-    /// Struct variant with named fields and types
-    Struct(Vec<(String, BrpTypeName)>),
-}
-
-impl std::fmt::Display for VariantSignature {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unit => write!(f, "unit"),
-            Self::Tuple(types) => {
-                let type_names: Vec<String> = types.iter().map(|t| shorten_type_name(t.as_str())).collect();
-                write!(f, "tuple({})", type_names.join(", "))
-            }
-            Self::Struct(fields) => {
-                let field_strs: Vec<String> = fields.iter()
-                    .map(|(name, type_name)| format!("{}: {}", name, shorten_type_name(type_name.as_str())))
-                    .collect();
-                write!(f, "struct{{{}}}", field_strs.join(", "))
-            }
-        }
-    }
-}
-
-/// Example group for enum variants
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExampleGroup {
-    /// List of variants that share this signature
-    pub applicable_variants: Vec<String>,
-
-    /// The variant signature type (serialized as string using Display)
-    #[serde(serialize_with = "serialize_signature")]
-    pub signature: VariantSignature,
-
-    /// Example value for this group
-    pub example: Value,
-}
-
-fn serialize_signature<S>(sig: &VariantSignature, s: S) -> Result<S::Ok, S::Error>
-where S: Serializer {
-    s.serialize_str(&sig.to_string())
-}
-```
-
-### 3. Update MutationPathInternal
+#### Update MutationPathInternal
 
 ```rust
 pub struct MutationPathInternal {
@@ -648,22 +326,15 @@ pub struct MutationPathInternal {
 
 This explicit field eliminates JSON parsing in conversion - data transfers directly to `MutationPath`.
 
+### 4. Enum Builder Core Implementation ⏳ PENDING
 
+**Objective:** Implement new assemble_from_children logic with EnumContext handling
 
-### 4. Builder Changes
+**Files to modify:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/new_enum_builder.rs`
 
-#### Keep Original assemble_from_children Signature
-
-All builders EXCEPT enum builder keep their current signature:
-```rust
-fn assemble_from_children(
-    &self,
-    ctx: &RecursionContext,
-    children: HashMap<MutationPathDescriptor, Value>,  // Stays as Value
-) -> Result<Value>  // Stays as Result<Value>
-```
-
-Only the enum builder needs special handling internally.
+**Build:** `cargo build && cargo +nightly fmt`
+**Dependencies:** Requires Steps 1, 2, 3
 
 #### new_enum_builder.rs Implementation
 
@@ -743,30 +414,6 @@ impl NewEnumMutationBuilder {
             return vec![];
         }
 
-        // Collect all the variant names from each level
-        let mut result = Vec::new();
-        for (_, variants) in variant_chain {
-            for variant in variants {
-                // Build the full path by collecting all parent variants
-                let mut path_parts = Vec::new();
-                for (parent_idx, (_, parent_variants)) in variant_chain.iter().enumerate() {
-                    if parent_idx < variant_chain.len() - 1 {
-                        // Add the first variant from each parent level
-                        if let Some(parent_variant) = parent_variants.first() {
-                            path_parts.push(parent_variant.clone());
-                        }
-                    } else {
-                        // At the current level, add the actual variant
-                        path_parts.push(variant.clone());
-                    }
-                }
-
-                if !path_parts.is_empty() {
-                    result.push(path_parts.join(VARIANT_PATH_SEPARATOR));
-                }
-            }
-        }
-
         // Only return the variants from the last level in the chain
         if let Some((_, last_variants)) = variant_chain.last() {
             let prefix_parts: Vec<String> = variant_chain.iter()
@@ -786,7 +433,7 @@ impl NewEnumMutationBuilder {
                     .collect()
             }
         } else {
-            result
+            vec![]
         }
     }
 
@@ -877,6 +524,52 @@ impl NewEnumMutationBuilder {
 }
 ```
 
+#### Keep Original assemble_from_children Signature
+
+All builders EXCEPT enum builder keep their current signature:
+```rust
+fn assemble_from_children(
+    &self,
+    ctx: &RecursionContext,
+    children: HashMap<MutationPathDescriptor, Value>,  // Stays as Value
+) -> Result<Value>  // Stays as Result<Value>
+```
+
+Only the enum builder needs special handling internally.
+
+#### Internal MutationExample Helper Method (within new_enum_builder.rs only)
+
+```rust
+// This is INTERNAL to new_enum_builder.rs, not exposed outside
+impl MutationExample {
+    /// Extract a concrete value suitable for embedding in a parent
+    fn concrete_value(&self) -> Value {
+        match self {
+            MutationExample::Simple(val) => val.clone(),
+            MutationExample::EnumRoot(groups) => {
+                // Type-safe: Pick first unit variant, or first example
+                groups.iter()
+                    .find(|g| matches!(g.signature, VariantSignature::Unit))
+                    .or_else(|| groups.first())
+                    .map(|g| g.example.clone())
+                    .unwrap_or(json!(null))
+            }
+            MutationExample::EnumChild { example, .. } => example.clone(),
+        }
+    }
+}
+```
+
+### 5. Protocol Enforcer Updates ⏳ PENDING
+
+**Objective:** Add EnumContext handling and create_mutation_path_internal method
+
+**Files to modify:**
+- ProtocolEnforcer implementation files (locate during implementation)
+
+**Build:** `cargo build && cargo +nightly fmt`
+**Dependencies:** Requires Steps 1, 3, 4
+
 #### ProtocolEnforcer Processing
 
 The ProtocolEnforcer creates `MutationPathInternal` instances based on builder output and `EnumContext`:
@@ -929,82 +622,17 @@ impl ProtocolEnforcer {
 }
 ```
 
-#### Other builders - No Changes Needed
+### 6. Conversion Logic Simplification ⏳ PENDING
 
-All non-enum builders continue using their current signatures and implementations. They don't need to know about `MutationExample` at all:
+**Objective:** Update from_mutation_path_internal, remove JSON parsing
 
-##### 1. StructBuilder
+**Files to modify:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
 
-```rust
-fn assemble_from_children(
-    &self,
-    ctx: &RecursionContext,
-    children: HashMap<MutationPathDescriptor, Value>,  // Already uses Value
-) -> Result<Value> {  // Already returns Value
-    // Current implementation stays exactly the same
-    if children.is_empty() {
-        return Ok(json!({}));
-    }
-    let mut result = serde_json::Map::new();
-    for (field_name, value) in children {
-        result.insert(field_name.into(), value);
-    }
-    Ok(json!(result))
-}
-```
+**Build:** `cargo build && cargo +nightly fmt`
+**Dependencies:** Requires Steps 1, 3, 5
 
-##### 2. TupleBuilder, ArrayBuilder, ListBuilder, MapBuilder, OptionBuilder, PrimitiveBuilder, UnitBuilder
-
-All these builders keep their existing implementations unchanged. They continue to:
-- Take `HashMap<MutationPathDescriptor, Value>` as input
-- Return `Result<Value>` as output
-- Work directly with `Value` objects without needing to know about `MutationExample`
-
-Example (TupleBuilder):
-```rust
-fn assemble_from_children(
-    &self,
-    ctx: &RecursionContext,
-    children: HashMap<MutationPathDescriptor, Value>,
-) -> Result<Value> {
-    // Existing implementation unchanged
-    let mut tuple_values = Vec::new();
-    for index in 0..self.tuple_types.len() {
-        let descriptor = MutationPathDescriptor::from(index.to_string());
-        let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-        tuple_values.push(value);
-    }
-    Ok(json!(tuple_values))
-}
-```
-
-The same pattern applies to all other non-enum builders. They don't need any changes.
-
-#### Internal MutationExample Helper Method (within new_enum_builder.rs only)
-
-```rust
-// This is INTERNAL to new_enum_builder.rs, not exposed outside
-impl MutationExample {
-    /// Extract a concrete value suitable for embedding in a parent
-    fn concrete_value(&self) -> Value {
-        match self {
-            MutationExample::Simple(val) => val.clone(),
-            MutationExample::EnumRoot(groups) => {
-                // Type-safe: Pick first unit variant, or first example
-                groups.iter()
-                    .find(|g| matches!(g.signature, VariantSignature::Unit))
-                    .or_else(|| groups.first())
-                    .map(|g| g.example.clone())
-                    .unwrap_or(json!(null))
-            }
-            MutationExample::EnumChild { example, .. } => example.clone(),
-        }
-    }
-}
-
-
-
-### 5. Simplified Conversion Logic
+#### Simplified Conversion Logic
 
 The conversion from `MutationPathInternal` to `MutationPath` is now trivial - just direct field transfer:
 
@@ -1048,13 +676,19 @@ impl MutationPath {
 - `variants` field removed entirely - information is in `examples` or embedded in `example`
 - Clean separation of concerns
 
-### 6. Migration Strategy
+### 7. Integration and Cleanup ⏳ PENDING
 
-**Migration Strategy: Phased**
+**Objective:** Remove old enum builder, flags, and deprecated fields
 
-This collaborative plan uses phased implementation by design. The Collaborative Execution Protocol above defines the phase boundaries with validation checkpoints between each step.
+**Files to modify:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_kind.rs`
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/mod.rs`
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs` (delete)
 
-Clean migration with explicit data flow:
+**Build:** `cargo build && cargo +nightly fmt`
+**Dependencies:** Requires Steps 1-6
+
+#### Clean migration with explicit data flow:
 
 **Phase 1: Update data structures**
 1. Add `enum_root_examples: Option<Vec<ExampleGroup>>` to `MutationPathInternal` in types.rs
@@ -1090,8 +724,14 @@ Clean migration with explicit data flow:
 3. Remove `TypeGuide::extract_enum_info()` method and related code
 4. Test with existing test suite to ensure compatibility
 
+### 8. Complete Validation ⏳ PENDING
 
-### 7. Testing Strategy
+**Objective:** Run comprehensive test suite and verify no regressions
+
+**Build:** Full test suite execution
+**Dependencies:** Requires Steps 1-7
+
+#### Testing Strategy
 
 - Use @get_guide.md to fetch baseline outputs for all test types
 - Compare new output structure to ensure:
@@ -1100,6 +740,212 @@ Clean migration with explicit data flow:
   - Embedded enums show single concrete value (fix the bug)
 - Run mutation tests to verify BRP operations still work
 
+**Expected Results:**
+- Confirm enum root paths have proper `examples` array
+- Verify child paths have `applicable_variants` in example
+- Ensure embedded enums show single concrete value (bug fix validation)
+- All existing tests pass
+- No regressions in BRP functionality
+
+## Migration Strategy
+
+**Migration Strategy: Phased**
+
+This collaborative plan uses phased implementation by design. The Collaborative Execution Protocol above defines the phase boundaries with validation checkpoints between each step.
+
+## Example Enum Structures
+
+*These examples are used throughout the case analysis:*
+
+```rust
+// Main enum with multiple variants including nested enum
+enum TestEnumWithSerDe {
+    Active,
+    Inactive,
+    Special(String, u32),
+    AlsoSpecial(String, u32),  // Second variant with same signature
+    Custom {
+        enabled: bool,
+        name: String,
+        value: f32,
+    },
+    Nested {
+        nested_config: NestedConfigEnum,
+        other_field: String,
+    }
+}
+
+// Nested enum used in the Nested variant
+enum NestedConfigEnum {
+    Always,
+    Never,
+    Conditional(u32),
+}
+```
+
+This structure demonstrates:
+- Unit variants (Active, Inactive)
+- Multiple tuple variants with same signature (Special, AlsoSpecial)
+- Struct variant (Custom)
+- Nested enum (Nested contains NestedConfigEnum)
+
+## Case Analysis for Enum Handling
+
+*This section to be included in the module documentation for new_enum_builder.rs*
+
+### Case 1: Enum at root (e.g., TestEnumWithSerDe itself)
+
+**Context:**
+- Building mutation paths for an enum as the top-level type
+- Path: `""`
+- PathKind: `RootValue`
+- Type: `TestEnumWithSerDe` (TypeKind::Enum)
+- EnumContext: `Some(EnumContext::Root)` (set by ProtocolEnforcer when it sees TypeKind::Enum)
+
+**Key Insight:** The enum builder knows it's TypeKind::Enum, which determines its behavior.
+
+**Flow:**
+1. `collect_children()` returns `Vec<PathKind>` with:
+   ```rust
+   PathKind::EnumVariant {
+       signature: VariantSignature::Unit,
+       parent_type: TestEnumWithSerDe,
+       applicable_variants: vec!["Active", "Inactive"],
+   },
+   PathKind::EnumVariant {
+       signature: VariantSignature::Tuple(vec![String, u32]),
+       parent_type: TestEnumWithSerDe,
+       applicable_variants: vec!["Special"],
+   },
+   PathKind::EnumVariant {
+       signature: VariantSignature::Struct(vec![
+           ("enabled", bool),
+           ("name", String),
+           ("value", f32),
+       ]),
+       parent_type: TestEnumWithSerDe,
+       applicable_variants: vec!["Custom"],
+   },
+   ```
+
+2. ProtocolEnforcer processes these `PathKind::EnumVariant` entries:
+   - For Unit: No child paths created
+   - For Tuple: Creates `.0`, `.1` paths with `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Special", "AlsoSpecial"])] })`
+   - For Struct: Creates `.enabled`, `.name`, `.value` paths with `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Custom"])] })`
+   - **This is where EnumContext changes from `Some(EnumContext::Root)` to `Some(EnumContext::Child { ... })`**
+
+3. `assemble_from_children()` receives the built child examples and:
+   - Checks: `EnumContext == Some(EnumContext::Root)`
+   - Returns `MutationExample::EnumRoot(Vec<ExampleGroup>)`
+   - Transforms child examples into the proper examples array structure
+
+**Result:**
+- Root path `""` gets `examples` array with all variant groups
+- Child paths `.0`, `.1`, `.enabled`, etc. have `applicable_variants` from their EnumContext
+
+### Case 2: Enum as a field (e.g., .mode in TestComplexComponent)
+
+**Context:**
+- Building paths for TestComplexComponent's enum field
+- Path: `.mode`
+- PathKind: `StructField { field_name: "mode", type_name: TestEnumWithSerDe, parent_type: TestComplexComponent }`
+- Type: `TestEnumWithSerDe` (TypeKind::Enum)
+- EnumContext: `Some(EnumContext::Root)` (set by ProtocolEnforcer when it sees TypeKind::Enum)
+
+**Key Rule:** Any enum type with `EnumContext == Some(EnumContext::Root)` returns `MutationExample::EnumRoot`.
+
+**Flow:**
+1. Struct builder delegates to enum builder for the `mode` field
+2. ProtocolEnforcer sets `Some(EnumContext::Root)` for this enum field
+3. Enum's `collect_children()` returns `PathKind::EnumVariant` entries
+4. ProtocolEnforcer creates `.mode.0`, `.mode.1`, `.mode.enabled` with `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Special", "AlsoSpecial"])] })` or `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Custom"])] })`
+5. Enum's `assemble_from_children()`:
+   - Sees `EnumContext == Some(EnumContext::Root)`
+   - Returns `MutationExample::EnumRoot(Vec<ExampleGroup>)`
+
+**Result:** `.mode` gets full `examples` array just like a root enum.
+
+### Case 3: Enum child paths (e.g., .mode.0, .mode.enabled)
+
+**Context:**
+- Building paths for fields within enum variants
+- Paths: `.mode.0`, `.mode.1` (tuple variant) or `.mode.enabled`, `.mode.name` (struct variant)
+- PathKind: Created from `PathKind::EnumVariant` expansion (specific types TBD based on ProtocolEnforcer logic)
+- Types: `String`, `u32`, `bool`, etc. (the field types)
+- EnumContext: `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, [...])] })`
+
+**Key Points:**
+- These are NOT enum types - they're fields inside enum variants
+- The `Some(EnumContext::Child { ... })` stays constant throughout this recursion branch because all paths under a variant apply to the same set of variants
+
+**Flow:**
+1. These paths were created by ProtocolEnforcer when it processed `PathKind::EnumVariant`
+2. The appropriate builder for the field type is called (string, bool, etc.)
+3. These builders see `Some(EnumContext::Child { ... })` and preserve it (it stays the same for the entire branch)
+4. When assembling:
+   - The `example` value changes as we recurse back up (field examples get assembled into parent structures)
+   - But `applicable_variants` stays constant for this branch
+   - Non-enum builders return `MutationExample::Simple(value)`
+   - If the field itself was an enum, it would return `MutationExample::EnumChild { example, applicable_variants }`
+
+**Result:**
+- `.mode.0` gets example `"Hello, World!"` with `variants: ["Special"]`
+- `.mode.enabled` gets example `true` with `variants: ["Custom"]`
+- The `applicable_variants` information comes from the EnumContext, not the example
+
+### Case 4: Nested enum under another enum
+
+**Context:**
+- An enum field inside an enum variant (the `nested_config` field in the `Nested` variant)
+- Path: `.mode.nested_config`
+- PathKind: Created from parent enum's variant processing
+- Type: `NestedConfigEnum` (TypeKind::Enum)
+- EnumContext: `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Nested"])] })`
+
+**Key Insight:** Nested enums track the full chain of variant constraints using dot notation in output.
+
+**Flow:**
+1. `.mode.nested_config` is processed:
+   - ProtocolEnforcer sees TypeKind::Enum
+   - Context has parent constraint in variant_chain
+   - Sets `Some(EnumContext::Root)` for the nested enum itself (to get examples array)
+   - But preserves parent constraints for its children
+
+2. Nested enum's `collect_children()` returns its own `PathKind::EnumVariant` entries
+
+3. For `.mode.nested_config.0` (the u32 in Conditional):
+   - Context becomes `Some(EnumContext::Child { variant_chain: [(TestEnumWithSerDe, ["Nested"]), (NestedConfigEnum, ["Conditional"])] })`
+
+**Result:**
+- `.mode.nested_config` gets its own `examples` array with `applicable_variants: ["Nested"]`
+- `.mode.nested_config.0` gets `applicable_variants: ["Nested.Conditional"]` (flattened with dot notation)
+- The conversion flattens the chain: `["Nested", "Conditional"]` → `"Nested.Conditional"`
+
+### Case 5: Providing value for parent assembly
+
+**Context:**
+- A parent struct/array/tuple needs a concrete enum value for its root path assembly
+- Example: TestComplexComponent needs a value for its `mode` field when building root `""`
+- EnumContext: `None` (no enum context established)
+
+**Key Insight:** When enum's `assemble_from_children` sees `enum_context: None`, it knows a non-enum parent needs a concrete value.
+
+**Flow:**
+1. TestComplexComponent's struct builder assembles its root path
+2. It calls enum's `assemble_from_children` for the `mode` field with `enum_context: None`
+3. Enum's `assemble_from_children` logic:
+   ```rust
+   match ctx.enum_context {
+       None => MutationExample::Simple(pick_concrete_value()),  // Parent needs a value
+       Some(EnumContext::Root) => MutationExample::EnumRoot(examples),
+       Some(EnumContext::Child { .. }) => MutationExample::EnumChild { .. },
+   }
+   ```
+
+**Result:**
+- TestComplexComponent's root gets `mode: "Active"` (concrete value)
+- Clean separation: `None` means "give me something concrete to embed"
+- The `.mode` path itself still gets its full `examples` array when processed as a field
 
 ## Risks and Mitigations
 
