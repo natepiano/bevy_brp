@@ -7,13 +7,12 @@
 use std::collections::{HashMap, HashSet};
 
 use error_stack::Report;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -34,17 +33,26 @@ enum VariantSignature {
     Struct(Vec<(String, BrpTypeName)>),
 }
 
-/// Type-safe enum variant information
-enum EnumVariantInfo {
+/// Type-safe enum variant information - replaces `EnumVariantInfoOld`
+/// This enum makes invalid states impossible to construct
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EnumVariantInfo {
+    /// Unit variant - just the variant name
     Unit(String),
+    /// Tuple variant - name and guaranteed tuple types
     Tuple(String, Vec<BrpTypeName>),
+    /// Struct variant - name and guaranteed struct fields
     Struct(String, Vec<EnumFieldInfo>),
 }
 
 /// Information about a field in an enum struct variant
-struct EnumFieldInfo {
-    field_name: String,
-    type_name:  BrpTypeName,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnumFieldInfo {
+    /// Field name
+    pub field_name: String,
+    /// Field type
+    #[serde(rename = "type")]
+    pub type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -69,7 +77,7 @@ impl EnumVariantInfo {
     }
 
     /// Extract variant information from a schema variant
-    fn from_schema_variant(
+    pub fn from_schema_variant(
         v: &Value,
         registry: &HashMap<BrpTypeName, Value>,
     ) -> Option<EnumVariantInfo> {
@@ -219,25 +227,6 @@ fn format_signature(sig: &VariantSignature) -> String {
 // ============================================================================
 
 impl MutationPathBuilder for NewEnumMutationBuilder {
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        // This should never be called when is_migrated() returns true
-        // because ProtocolEnforcer intercepts the call
-        Err(Error::InvalidState(format!(
-            "NewEnumMutationBuilder::build_paths() called directly! \
-             This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        ))
-        .into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true // This builder uses the new protocol
-    }
-
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let schema = ctx.require_registry_schema()?;
 
@@ -288,8 +277,8 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
                             field.type_name
                         );
                         children.push(PathKind::StructField {
-                            field_name:  field.field_name.clone(),
-                            type_name:   field.type_name.clone(),
+                            field_name: field.field_name.clone(),
+                            type_name: field.type_name.clone(),
                             parent_type: ctx.type_name().clone(),
                         });
                     }

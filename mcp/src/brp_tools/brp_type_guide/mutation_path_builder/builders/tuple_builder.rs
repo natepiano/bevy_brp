@@ -14,42 +14,26 @@ use serde_json::{Value, json};
 use super::super::not_mutable_reason::NotMutableReason;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
 use super::super::{MutationPathBuilder, MutationPathDescriptor};
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
 use crate::json_schema::SchemaField;
 
 pub struct TupleMutationBuilder;
 
 impl MutationPathBuilder for TupleMutationBuilder {
-    fn build_paths(
-        &self,
-        _ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(
-            "TupleMutationBuilder::build_paths() called directly - should use ProtocolEnforcer wrapper".to_string()
-        ).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true
-    }
-
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         // Use Result-returning API - ProtocolEnforcer handles missing schema
         let schema = ctx.require_registry_schema()?;
 
         let Some(prefix_items) = schema.get("prefixItems") else {
             return Err(Error::SchemaProcessing {
-                message:   format!(
+                message: format!(
                     "Missing prefixItems in tuple schema for: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("extract_prefix_items".to_string()),
-                details:   None,
+                details: None,
             }
             .into());
         };
@@ -57,10 +41,10 @@ impl MutationPathBuilder for TupleMutationBuilder {
         // Extract array of element schemas
         let Some(items_array) = prefix_items.as_array() else {
             return Err(Error::SchemaProcessing {
-                message:   format!("prefixItems is not an array for tuple: {}", ctx.type_name()),
+                message: format!("prefixItems is not an array for tuple: {}", ctx.type_name()),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("parse_prefix_items".to_string()),
-                details:   None,
+                details: None,
             }
             .into());
         };
@@ -71,14 +55,14 @@ impl MutationPathBuilder for TupleMutationBuilder {
             // Extract element type from schema
             let Some(element_type) = SchemaField::extract_field_type(element_schema) else {
                 return Err(Error::SchemaProcessing {
-                    message:   format!(
+                    message: format!(
                         "Failed to extract type for tuple element {} in '{}'",
                         index,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_element_type".to_string()),
-                    details:   Some(format!("Element index: {}", index)),
+                    details: Some(format!("Element index: {}", index)),
                 }
                 .into());
             };
@@ -107,7 +91,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
         if elements.len() == 1 && elements[0].is_handle() {
             return Err(Error::NotMutable(NotMutableReason::NonMutableHandle {
                 container_type: ctx.type_name().clone(),
-                element_type:   elements[0].clone(),
+                element_type: elements[0].clone(),
             })
             .into());
         }

@@ -14,8 +14,6 @@ use serde_json::{Value, json};
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::PathAction;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -24,21 +22,6 @@ use crate::json_schema::SchemaField;
 pub struct SetMutationBuilder;
 
 impl MutationPathBuilder for SetMutationBuilder {
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(format!(
-            "SetMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        )).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true // MIGRATED!
-    }
-
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let schema = ctx.require_registry_schema()?;
 
@@ -55,8 +38,8 @@ impl MutationPathBuilder for SetMutationBuilder {
 
         // Create PathKind for items (ProtocolEnforcer will create context)
         Ok(vec![PathKind::StructField {
-            field_name:  SchemaField::Items.to_string(),
-            type_name:   item_t,
+            field_name: SchemaField::Items.to_string(),
+            type_name: item_t,
             parent_type: ctx.type_name().clone(),
         }])
     }

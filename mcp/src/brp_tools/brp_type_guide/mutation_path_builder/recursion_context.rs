@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::Value;
-use tracing::warn;
 
 use super::super::response_types::{BrpTypeName, ReflectTrait};
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
@@ -22,14 +21,14 @@ use crate::json_schema::SchemaField;
 #[derive(Debug)]
 pub struct RecursionContext {
     /// The building context (root or field)
-    pub path_kind:     PathKind,
+    pub path_kind: PathKind,
     /// Reference to the type registry
-    pub registry:      Arc<HashMap<BrpTypeName, Value>>,
+    pub registry: Arc<HashMap<BrpTypeName, Value>>,
     /// the accumulated mutation path as we recurse through the type
     pub mutation_path: String,
     /// Action to take regarding path creation (set by `ProtocolEnforcer`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
-    pub path_action:   PathAction,
+    pub path_action: PathAction,
 }
 
 impl RecursionContext {
@@ -58,31 +57,15 @@ impl RecursionContext {
         }
     }
 
-    /// Legacy method for unmigrated builders - returns Option and logs warning
-    /// Will be removed once all builders are migrated to protocol-driven pattern
-    #[deprecated(
-        since = "0.1.0",
-        note = "Use require_registry_schema instead. This method is only for unmigrated builders."
-    )]
-    pub fn require_registry_schema_legacy(&self) -> Option<&Value> {
-        self.registry.get(self.type_name()).or_else(|| {
-            warn!(
-                type_name = %self.type_name(),
-                "Schema missing for type - mutation paths may be incomplete"
-            );
-            None
-        })
-    }
-
     /// Require the schema to be present, returning an error if missing
     /// This is the preferred method for migrated builders
     pub fn require_registry_schema(&self) -> crate::error::Result<&Value> {
         self.registry.get(self.type_name()).ok_or_else(|| {
             crate::error::Error::SchemaProcessing {
-                message:   format!("No schema found for type: {}", self.type_name()),
+                message: format!("No schema found for type: {}", self.type_name()),
                 type_name: Some(self.type_name().to_string()),
                 operation: Some("require_registry_schema".to_string()),
-                details:   None,
+                details: None,
             }
             .into()
         })
@@ -91,26 +74,6 @@ impl RecursionContext {
     /// Look up a type in the registry
     pub fn get_registry_schema(&self, type_name: &BrpTypeName) -> Option<&Value> {
         self.registry.get(type_name)
-    }
-
-    /// Create a new context for a child element (field, array element, tuple element)
-    #[deprecated(
-        since = "0.1.0",
-        note = "Use create_recursion_context instead. This method is only for unmigrated builders and will be removed once all builders are migrated to the protocol-driven pattern."
-    )]
-    pub fn create_unmigrated_recursion_context(&self, path_kind: PathKind) -> Self {
-        let new_path_prefix = format!(
-            "{}{}",
-            self.mutation_path,
-            Self::path_kind_to_segment(&path_kind)
-        );
-
-        Self {
-            path_kind,
-            registry: Arc::clone(&self.registry),
-            mutation_path: new_path_prefix,
-            path_action: self.path_action, // Preserve parent's setting
-        }
     }
 
     /// Create a new context for protocol-driven recursion

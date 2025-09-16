@@ -19,7 +19,6 @@ use crate::brp_tools::brp_type_guide::constants::{
     TYPE_I128, TYPE_ISIZE, TYPE_STD_STRING, TYPE_STR, TYPE_STR_REF, TYPE_STRING, TYPE_U8, TYPE_U16,
     TYPE_U32, TYPE_U64, TYPE_U128, TYPE_USIZE,
 };
-use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 
 /// Format knowledge key for matching types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -29,18 +28,18 @@ pub enum KnowledgeKey {
     /// Newtype tuple variant that unwraps to inner type for mutations
     NewtypeVariant {
         /// e.g., "`bevy_core_pipeline::core_3d::camera_3d::Camera3dDepthLoadOp`"
-        enum_type:    String,
+        enum_type: String,
         /// e.g., "Clear"
         variant_name: String,
         /// e.g., "f32"
-        inner_type:   String,
+        inner_type: String,
     },
     /// Struct field-specific match for providing appropriate field values
     StructField {
         /// e.g., `bevy_window::window::WindowResolution`
         struct_type: String,
         /// e.g., `physical_width`
-        field_name:  String,
+        field_name: String,
     },
 }
 
@@ -57,9 +56,9 @@ impl KnowledgeKey {
         inner_type: impl Into<String>,
     ) -> Self {
         Self::NewtypeVariant {
-            enum_type:    enum_type.into(),
+            enum_type: enum_type.into(),
             variant_name: variant_name.into(),
-            inner_type:   inner_type.into(),
+            inner_type: inner_type.into(),
         }
     }
 
@@ -67,43 +66,8 @@ impl KnowledgeKey {
     pub fn struct_field(struct_type: impl Into<String>, field_name: impl Into<String>) -> Self {
         Self::StructField {
             struct_type: struct_type.into(),
-            field_name:  field_name.into(),
+            field_name: field_name.into(),
         }
-    }
-
-    /// Resolve example value using enum dispatch instead of external conditionals
-    /// Legacy method for unmigrated builders -
-    /// Will be removed once all builders are migrated to protocol-driven pattern
-    #[deprecated(since = "0.1.0", note = "This method is only for unmigrated builders.")]
-    pub fn resolve_example(&self, type_name: &BrpTypeName) -> Option<Value> {
-        match self {
-            Self::Exact(exact_type) if exact_type == type_name.type_string() => {
-                BRP_MUTATION_KNOWLEDGE
-                    .get(self)
-                    .map(|k| k.example().clone())
-            }
-            Self::Exact(_) => None, // Exact type doesn't match
-
-            Self::NewtypeVariant { .. } => {
-                // Newtype variant matching logic
-                BRP_MUTATION_KNOWLEDGE
-                    .get(self)
-                    .map(|k| k.example().clone())
-            }
-            Self::StructField { .. } => {
-                // Struct field matching is handled separately in find_example_value_for_field
-                None
-            }
-        }
-    }
-
-    /// Try to resolve example value for a specific type
-    /// Legacy method for unmigrated builders -
-    /// Will be removed once all builders are migrated to protocol-driven pattern
-    #[deprecated(since = "0.1.0", note = "This method is only for unmigrated builders.")]
-    pub fn find_example_for_type(type_name: &BrpTypeName) -> Option<Value> {
-        // Simply check for an exact match since we no longer support generic matching
-        Self::exact(type_name.type_string()).resolve_example(type_name)
     }
 }
 
@@ -114,7 +78,7 @@ pub enum MutationKnowledge {
     TeachAndRecurse { example: Value },
     /// Value that should be treated as opaque (no mutation paths)
     TreatAsRootValue {
-        example:         Value,
+        example: Value,
         simplified_type: String,
     },
 }

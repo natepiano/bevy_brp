@@ -256,7 +256,7 @@ impl TypeGuide {
 
         let variants: Vec<EnumVariantInfo> = one_of
             .iter()
-            .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, 0))
+            .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry))
             .collect();
 
         Some(variants)

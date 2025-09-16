@@ -41,7 +41,7 @@ For each step in the implementation sequence:
 
 ## INTERACTIVE IMPLEMENTATION SEQUENCE
 
-### Step 0: Disconnect Old Enum Builder ⏳ PENDING
+### Step 0: Disconnect Old Enum Builder ✅ COMPLETED
 → **See detailed section 0 below**
 
 ### Step 1: Foundation Types Setup ⏳ PENDING
@@ -67,69 +67,6 @@ For each step in the implementation sequence:
 
 ### Step 8: Complete Validation ⏳ PENDING
 → **See detailed section 8 below**
-
-## Design Review Skip Notes
-
-### DESIGN-1: Plan-introduced duplication in assemble_from_children implementations - **Verdict**: REJECTED
-- **Status**: SKIPPED
-- **Location**: Section: Builder Changes - Concrete Implementations
-- **Issue**: The plan creates 8 nearly identical assemble_from_children implementations across different builders, all following the same pattern: iterate children, call concrete_value(), build JSON structure. This violates DRY principle and creates maintenance burden.
-- **Reasoning**: Investigation found this is appropriate architectural consistency, not problematic duplication. Each builder has genuinely different requirements (Structs build objects from named fields, Tuples handle ordered elements with special unwrapping, Maps convert keys and check complexity, etc.). The structural similarity reflects good trait design where each type implements a common interface while handling its specific requirements.
-- **Decision**: User elected to skip this recommendation
-
-### DESIGN-2: Complex state management with EnumContext tracking through recursion - **Verdict**: REJECTED
-- **Status**: SKIPPED
-- **Location**: Section: EnumContext Addition
-- **Issue**: The EnumContext tracking with variant_chain becomes complex to manage through deep recursion. The nested enum with Root/Child variants and variant_chain Vec adds cognitive overhead and potential for state inconsistencies.
-- **Reasoning**: While adding EnumContext to RecursionContext does add complexity, this is ESSENTIAL complexity required for correct enum handling. The EnumContext is necessary to: (1) Signal when to return examples array vs concrete value, (2) Track which variants apply to child paths (e.g., .mode.0 only for "Special" variant), (3) Handle nested enum chains properly (e.g., "Nested.Conditional"). Without this state tracking, the enum builder cannot determine the correct output format. The investigation incorrectly claimed this doesn't exist when it's a core part of the plan.
-- **Critical Note**: This complexity is unavoidable - the Case Analysis demonstrates that EnumContext must exist for the system to work correctly
-- **Decision**: User confirmed this is essential complexity that must exist
-
-### DESIGN-3: Inconsistent API where builders return MutationExample but immediately need conversion - **Verdict**: CONFIRMED - REDUNDANT
-- **Status**: REDUNDANT - Already addressed in plan
-- **Location**: Section: Keep Original assemble_from_children Signature
-- **Issue**: The API design requires builders to return MutationExample but then immediately call concrete_value() in most cases. This suggests the abstraction might be at the wrong level - builders could return the appropriate type directly.
-- **Existing Implementation**: The plan has already been rewritten to address this issue. MutationExample is now an internal implementation detail of the enum builder only. All other builders continue using their existing Value signatures (see "Section: Keep Original assemble_from_children Signature").
-- **Plan Section**: Section 3. Builder Changes clearly states "All builders EXCEPT enum builder keep their current signature"
-- **Critical Note**: This functionality/design already exists in the plan - future reviewers should check for existing coverage before suggesting
-
-### TYPE-SYSTEM-1: Magic string field names violate type safety - **Verdict**: MODIFIED
-- **Status**: SKIPPED
-- **Location**: Section: new_enum_builder.rs Implementation
-- **Issue**: Plan uses magic strings 'enum_root_data', 'examples', 'default' for JSON communication between enum builder and ProtocolEnforcer, violating 'No Magic Values' principle.
-- **Reasoning**: While the finding identified a valid type safety concern, the magic strings only appear in 2 places total in the plan, creating a simple internal protocol between tightly coupled components. Adding typed structures would introduce more complexity than the problem warrants. This is pragmatic internal communication, not a public API.
-- **Decision**: User elected to skip this recommendation
-
-### TYPE-SYSTEM-2: String-based conditional logic instead of pattern matching - **Verdict**: REJECTED
-- **Status**: SKIPPED
-- **Location**: Section: ProtocolEnforcer Processing
-- **Issue**: Plan uses string field checks like builder_output.get('enum_root_data') instead of type-safe pattern matching. This creates fragile conditional chains that should use enums and pattern matching.
-- **Reasoning**: This was a false positive. The plan IS consistent with using pattern matching on EnumContext throughout (lines 377, 559, 647). The string fields are only used for temporary data serialization between properly typed pattern-matching components. The plan correctly eliminates __variant_context magic fields and replaces them with structured EnumContext enum pattern matching.
-- **Decision**: User confirmed the plan is already consistent with type-safe design
-
-### DESIGN-5: Plan-introduced duplication of VariantSignature definition - **Verdict**: CONFIRMED - REDUNDANT
-- **Status**: REDUNDANT - Already addressed in plan
-- **Location**: Section: Internal MutationExample Enum for Enum Builder Only
-- **Issue**: VariantSignature enum is defined identically in multiple files, creating duplication that violates DRY principle and creates maintenance burden.
-- **Existing Implementation**: The plan already addresses this by moving VariantSignature to the shared types.rs module (see "Section: Update types.rs with shared types"). The old enum_builder.rs file will be completely deleted as part of the migration, eliminating the duplication automatically.
-- **Plan Section**: Phase 1 step 2: "Move VariantSignature from new_enum_builder.rs to types.rs (needed for public API)"
-- **Critical Note**: This functionality/design already exists in the plan - future reviewers should check for existing coverage before suggesting
-
-### DESIGN-6: JSON-based communication protocol creates fragile coupling between components - **Verdict**: CONFIRMED - REDUNDANT
-- **Status**: REDUNDANT - Already addressed in plan
-- **Location**: Section: ProtocolEnforcer Processing
-- **Issue**: Plan creates JSON-based protocol between enum builder and ProtocolEnforcer using magic field markers. This is fragile, type-unsafe, and requires string parsing at runtime.
-- **Existing Implementation**: The plan already eliminates magic JSON fields and replaces them with proper typed communication via EnumContext enum and pattern matching (see "Section: EnumContext Addition" and pattern matching usage throughout lines 377, 559, 647). The plan explicitly calls out eliminating "__variant_context" magic fields as a core problem to solve.
-- **Plan Section**: Section: Problem Statement lists "JSON encoding hacks: Using __variant_context and magic field names in JSON" as an issue being fixed
-- **Critical Note**: This functionality/design already exists in the plan - future reviewers should check for existing coverage before suggesting
-
-### QUALITY-1: Unnecessary complexity in ExampleGroup serialization - **Verdict**: CONFIRMED - REDUNDANT
-- **Status**: REDUNDANT - Already addressed in plan
-- **Location**: Section: Internal MutationExample Enum for Enum Builder Only
-- **Issue**: Plan removes derive(Serialize, Deserialize) from ExampleGroup and implements custom serialization just to call Display on VariantSignature. This adds unnecessary complexity for minimal benefit.
-- **Existing Implementation**: The plan already uses the cleaner serialize_with approach in "Section: Update types.rs with shared types". The obsolete custom Serialize implementation in "Section: Internal MutationExample Enum for Enum Builder Only" has been removed to eliminate duplication.
-- **Plan Section**: Section: Update types.rs with shared types shows the proper serialize_with implementation
-- **Critical Note**: This functionality/design already exists in the plan - future reviewers should check for existing coverage before suggesting
 
 ## Problem Statement
 
@@ -161,26 +98,16 @@ The current system has multiple issues:
 
 ### 0. Disconnect Old Enum Builder ✅ COMPLETED
 
-**Objective:** Remove old enum builder from compilation to avoid conflicts with new implementation
+**Objective:** Fully migrate to new enum builder and disconnect old implementation
 
-**Files modified:**
-- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/type_kind.rs`
-- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/mod.rs`
+**Key Changes:**
+1. **Type visibility swap**: Made `EnumVariantInfo` and `EnumFieldInfo` public in `new_enum_builder.rs` with proper serde derives
+2. **Old builder isolation**: Converted old builder types to private `EnumVariantInfoOld`/`EnumFieldInfoOld`
+3. **Module exports**: Commented out old enum_builder in mod.rs, now only exports from new_enum_builder
+4. **Type system**: Removed `USE_NEW_ENUM_BUILDER` flag, now always uses `NewEnumMutationBuilder` with ProtocolEnforcer wrapper
+5. **Full migration**: All builders now use ProtocolEnforcer wrapper (line 86 in type_kind.rs)
 
-**Build:** `cargo build && cargo +nightly fmt`
-
-#### Changes Made
-
-**Remove USE_NEW_ENUM_BUILDER flag from type_kind.rs:**
-- Removed `USE_NEW_ENUM_BUILDER` constant and conditional logic
-- Updated `builder()` method to always use `NewEnumMutationBuilder` for enum types
-- Simplified enum handling in `build_paths()` method
-
-**Disconnect old enum_builder from mod.rs:**
-- Removed `mod enum_builder;` declaration
-- Removed `pub use enum_builder::{EnumMutationBuilder, EnumVariantInfo};` export
-
-**Note:** The old `enum_builder.rs` file remains for reference during implementation but is no longer compiled.
+**Result:** Old enum_builder.rs is completely disconnected but kept for reference. System fully uses new implementation.
 
 ### 1. Foundation Types Setup ⏳ PENDING
 

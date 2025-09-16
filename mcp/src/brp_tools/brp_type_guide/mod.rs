@@ -6,7 +6,6 @@
 
 mod all_types_tool;
 mod constants;
-mod example_builder;
 mod mutation_path_builder;
 mod response_types;
 mod tool;

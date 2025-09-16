@@ -13,9 +13,7 @@ use serde_json::{Value, json};
 
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
 use super::super::{MutationPathBuilder, MutationPathDescriptor};
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -23,21 +21,6 @@ use crate::json_schema::SchemaField;
 pub struct StructMutationBuilder;
 
 impl MutationPathBuilder for StructMutationBuilder {
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(format!(
-            "StructMutationBuilder.build_paths() called directly for type '{}' - should be wrapped by ProtocolEnforcer",
-            ctx.type_name()
-        )).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true
-    }
-
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         // The new require_registry_schema() returns Result with standard error
         let schema = ctx.require_registry_schema()?;
@@ -61,22 +44,22 @@ impl MutationPathBuilder for StructMutationBuilder {
             // Note: SchemaField::extract_field_type handles complex schemas with $ref
             let Some(field_type) = SchemaField::extract_field_type(field_schema) else {
                 return Err(Error::SchemaProcessing {
-                    message:   format!(
+                    message: format!(
                         "Failed to extract type for field '{}' in struct '{}'",
                         field_name,
                         ctx.type_name()
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
-                    details:   Some(format!("Field: {}", field_name)),
+                    details: Some(format!("Field: {}", field_name)),
                 }
                 .into());
             };
 
             // Create PathKind for this field
             let path_kind = PathKind::StructField {
-                field_name:  field_name.clone(),
-                type_name:   field_type,
+                field_name: field_name.clone(),
+                type_name: field_type,
                 parent_type: ctx.type_name().clone(),
             };
 

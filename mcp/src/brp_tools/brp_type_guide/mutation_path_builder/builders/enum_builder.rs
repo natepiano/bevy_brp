@@ -10,7 +10,6 @@
 //! - Unit variants have no fields to recurse into
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
@@ -26,26 +25,24 @@ use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
-/// Type-safe enum variant information - replaces `EnumVariantInfoOld`
-/// This enum makes invalid states impossible to construct
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum EnumVariantInfo {
+/// Type-safe enum variant information - private version for old builder
+#[derive(Clone)]
+enum EnumVariantInfoOld {
     /// Unit variant - just the variant name
     Unit(String),
     /// Tuple variant - name and guaranteed tuple types
     Tuple(String, Vec<BrpTypeName>),
     /// Struct variant - name and guaranteed struct fields
-    Struct(String, Vec<EnumFieldInfo>),
+    Struct(String, Vec<EnumFieldInfoOld>),
 }
 
-/// Information about a field in an enum struct variant
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EnumFieldInfo {
+/// Information about a field in an enum struct variant - private version for old builder
+#[derive(Clone)]
+struct EnumFieldInfoOld {
     /// Field name
-    pub field_name: String,
+    field_name: String,
     /// Field type
-    #[serde(rename = "type")]
-    pub type_name:  BrpTypeName,
+    type_name:  BrpTypeName,
 }
 
 /// Variant signatures for deduplication - same signature means same inner structure
@@ -108,7 +105,7 @@ fn shorten_type_name(type_name: &str) -> String {
     }
 }
 
-impl EnumVariantInfo {
+impl EnumVariantInfoOld {
     /// Constructor that infers variant type from JSON structure
     /// instead of relying on separate enum classification
     pub fn from_schema_variant(
@@ -227,8 +224,8 @@ fn create_fallback_type() -> BrpTypeName {
 }
 
 /// Create a fallback field for struct variants when depth is exceeded
-fn create_fallback_field() -> EnumFieldInfo {
-    EnumFieldInfo {
+fn create_fallback_field() -> EnumFieldInfoOld {
+    EnumFieldInfoOld {
         field_name: "value".to_string(),
         type_name:  create_fallback_type(),
     }
@@ -257,7 +254,7 @@ fn extract_struct_fields(
     properties: &serde_json::Map<String, Value>,
     _registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
-) -> Vec<EnumFieldInfo> {
+) -> Vec<EnumFieldInfoOld> {
     if check_depth_exceeded(depth) {
         return vec![create_fallback_field()];
     }
@@ -265,7 +262,7 @@ fn extract_struct_fields(
     properties
         .iter()
         .filter_map(|(field_name, field_schema)| {
-            SchemaField::extract_field_type(field_schema).map(|type_name| EnumFieldInfo {
+            SchemaField::extract_field_type(field_schema).map(|type_name| EnumFieldInfoOld {
                 field_name: field_name.clone(),
                 type_name,
             })
@@ -276,9 +273,9 @@ fn extract_struct_fields(
 /// Group variants by their signature, keeping ALL variants in each group
 /// Returns a mapping from signature to all variants that share that signature
 fn group_variants_by_signature(
-    variants: Vec<EnumVariantInfo>,
-) -> Vec<(VariantSignature, Vec<EnumVariantInfo>)> {
-    let mut signature_groups: HashMap<VariantSignature, Vec<EnumVariantInfo>> = HashMap::new();
+    variants: Vec<EnumVariantInfoOld>,
+) -> Vec<(VariantSignature, Vec<EnumVariantInfoOld>)> {
+    let mut signature_groups: HashMap<VariantSignature, Vec<EnumVariantInfoOld>> = HashMap::new();
 
     for variant in variants {
         let signature = variant.signature();
@@ -286,7 +283,7 @@ fn group_variants_by_signature(
     }
 
     // Convert to sorted Vec for deterministic ordering
-    let mut groups: Vec<(VariantSignature, Vec<EnumVariantInfo>)> =
+    let mut groups: Vec<(VariantSignature, Vec<EnumVariantInfoOld>)> =
         signature_groups.into_iter().collect();
     groups.sort_by_key(|(signature, _)| signature.clone());
     groups
@@ -294,7 +291,7 @@ fn group_variants_by_signature(
 
 /// Deduplicate variants by signature, returning first variant of each unique signature
 /// This prevents redundant processing when multiple variants have the same type structure
-fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVariantInfo> {
+fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfoOld>) -> Vec<EnumVariantInfoOld> {
     use std::collections::HashSet;
 
     let mut seen_signatures = HashSet::new();
@@ -315,14 +312,16 @@ fn extract_enum_variants(
     registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
     depth: usize,
-) -> Vec<EnumVariantInfo> {
+) -> Vec<EnumVariantInfoOld> {
     registry_schema
         .get_field(SchemaField::OneOf)
         .and_then(Value::as_array)
         .map(|variants| {
             variants
                 .iter()
-                .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, depth).or(None))
+                .filter_map(|v| {
+                    EnumVariantInfoOld::from_schema_variant(v, registry, depth).or(None)
+                })
                 .collect()
         })
         .unwrap_or_default()
@@ -361,11 +360,11 @@ impl MutationPathBuilder for EnumMutationBuilder {
 
         for variant in &unique_variants {
             match variant {
-                EnumVariantInfo::Unit(name) => {
+                EnumVariantInfoOld::Unit(name) => {
                     // Unit variants have no fields to accumulate
                     variant_examples_map.insert(name.clone(), json!(name));
                 }
-                EnumVariantInfo::Tuple(variant_name, types) => {
+                EnumVariantInfoOld::Tuple(variant_name, types) => {
                     Self::process_tuple_variant(
                         ctx,
                         variant_name,
@@ -375,7 +374,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
                         &mut variant_examples_map,
                     )?;
                 }
-                EnumVariantInfo::Struct(variant_name, fields) => {
+                EnumVariantInfoOld::Struct(variant_name, fields) => {
                     Self::process_struct_variant(
                         ctx,
                         variant_name,
@@ -429,7 +428,7 @@ impl MutationPathBuilder for EnumMutationBuilder {
 impl EnumMutationBuilder {
     /// Build enum example from accumulated variant examples
     fn build_enum_example_from_accumulated(
-        variants: &[EnumVariantInfo],
+        variants: &[EnumVariantInfoOld],
         variant_examples_map: &HashMap<String, Value>,
         enum_type: &BrpTypeName,
         _ctx: &RecursionContext,
@@ -452,9 +451,9 @@ impl EnumMutationBuilder {
             // Use the first variant in the group as the representative
             if let Some(representative_variant) = variants_in_group.first() {
                 let variant_name = match representative_variant {
-                    EnumVariantInfo::Unit(name)
-                    | EnumVariantInfo::Tuple(name, _)
-                    | EnumVariantInfo::Struct(name, _) => name,
+                    EnumVariantInfoOld::Unit(name)
+                    | EnumVariantInfoOld::Tuple(name, _)
+                    | EnumVariantInfoOld::Struct(name, _) => name,
                 };
 
                 // Get the accumulated example for this variant
@@ -472,9 +471,9 @@ impl EnumMutationBuilder {
                 let variant_names: Vec<String> = variants_in_group
                     .iter()
                     .map(|v| match v {
-                        EnumVariantInfo::Unit(name)
-                        | EnumVariantInfo::Tuple(name, _)
-                        | EnumVariantInfo::Struct(name, _) => name.clone(),
+                        EnumVariantInfoOld::Unit(name)
+                        | EnumVariantInfoOld::Tuple(name, _)
+                        | EnumVariantInfoOld::Struct(name, _) => name.clone(),
                     })
                     .collect();
 
@@ -535,16 +534,16 @@ impl EnumMutationBuilder {
     /// Apply Option<T> transformation if needed
     fn apply_option_transformation(
         example: Value,
-        variant: &EnumVariantInfo,
+        variant: &EnumVariantInfoOld,
         enum_type: Option<&BrpTypeName>,
     ) -> Value {
         if let Some(enum_type) = enum_type
             && Self::is_option_type(enum_type)
         {
             let variant_name = match variant {
-                EnumVariantInfo::Unit(name)
-                | EnumVariantInfo::Tuple(name, _)
-                | EnumVariantInfo::Struct(name, _) => name,
+                EnumVariantInfoOld::Unit(name)
+                | EnumVariantInfoOld::Tuple(name, _)
+                | EnumVariantInfoOld::Struct(name, _) => name,
             };
             return Self::transform_option_example(example, variant_name);
         }
@@ -600,7 +599,7 @@ impl EnumMutationBuilder {
     fn process_struct_variant(
         ctx: &RecursionContext,
         variant_name: &str,
-        fields: &[EnumFieldInfo],
+        fields: &[EnumFieldInfoOld],
         depth: RecursionDepth,
         paths: &mut Vec<MutationPathInternal>,
         variant_examples_map: &mut HashMap<String, Value>,

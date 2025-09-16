@@ -13,8 +13,6 @@ use serde_json::{Value, json};
 
 use super::super::MutationPathBuilder;
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::brp_tools::brp_type_guide::mutation_path_builder::{
     MutationPathDescriptor, PathAction, PathKind,
 };
@@ -25,22 +23,6 @@ use crate::json_schema::SchemaField;
 pub struct MapMutationBuilder;
 
 impl MutationPathBuilder for MapMutationBuilder {
-    #[allow(clippy::panic)]
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(format!(
-            "MapMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        )).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true
-    }
-
     fn child_path_action(&self) -> PathAction {
         // Maps DON'T include child paths in the result
         //
@@ -82,13 +64,13 @@ impl MutationPathBuilder for MapMutationBuilder {
         // Create PathKinds for key and value (ProtocolEnforcer will create contexts)
         Ok(vec![
             PathKind::StructField {
-                field_name:  SchemaField::Key.to_string(),
-                type_name:   key_t,
+                field_name: SchemaField::Key.to_string(),
+                type_name: key_t,
                 parent_type: ctx.type_name().clone(),
             },
             PathKind::StructField {
-                field_name:  SchemaField::Value.to_string(),
-                type_name:   val_t,
+                field_name: SchemaField::Value.to_string(),
+                type_name: val_t,
                 parent_type: ctx.type_name().clone(),
             },
         ])

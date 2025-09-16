@@ -49,21 +49,21 @@ pub enum PathKind {
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name:  String,
-        type_name:   BrpTypeName,
+        field_name: String,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
 }
@@ -72,19 +72,6 @@ impl PathKind {
     /// Create a new `RootValue`
     pub const fn new_root_value(type_name: BrpTypeName) -> Self {
         Self::RootValue { type_name }
-    }
-
-    /// Create a new `StructField`
-    pub const fn new_struct_field(
-        field_name: String,
-        type_name: BrpTypeName,
-        parent_type: BrpTypeName,
-    ) -> Self {
-        Self::StructField {
-            field_name,
-            type_name,
-            parent_type,
-        }
     }
 
     /// Create a new `IndexedElement`

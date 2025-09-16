@@ -21,11 +21,6 @@ impl RecursionDepth {
     pub const fn exceeds_limit(self) -> bool {
         self.0 > MAX_TYPE_RECURSION_DEPTH
     }
-
-    /// Create a new `RecursionDepth` from a usize value
-    pub const fn from_usize(depth: usize) -> Self {
-        Self(depth)
-    }
 }
 
 // Allow direct comparison with integers

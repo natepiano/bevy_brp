@@ -107,11 +107,11 @@ pub struct ProtocolEnforcer {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by PathAction)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 impl ProtocolEnforcer {
@@ -193,11 +193,6 @@ impl ProtocolEnforcer {
         //  2. If child is unmigrated: child_builder is the raw unmigrated builder
         //  - So it calls the unmigrated builder's build_paths() directly
         let child_builder = child_kind.builder();
-        tracing::debug!(
-            "ProtocolEnforcer: Got child_builder for '{}', is_migrated: {}",
-            child_ctx.type_name(),
-            child_builder.is_migrated()
-        );
 
         // Child handles its OWN depth increment and protocol
         // If child is migrated -> wrapped with ProtocolEnforcer and calls back through

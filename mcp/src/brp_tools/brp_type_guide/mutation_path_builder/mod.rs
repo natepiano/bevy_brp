@@ -10,7 +10,6 @@ mod types;
 use std::collections::HashMap;
 
 pub use builders::EnumVariantInfo;
-pub use mutation_knowledge::KnowledgeKey;
 pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
 pub use recursion_context::RecursionContext;
@@ -18,8 +17,7 @@ use serde_json::{Value, json};
 pub use type_kind::TypeKind;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction};
 
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
-use crate::error::Result;
+use crate::{brp_tools::brp_type_guide::constants::RecursionDepth, error::Result};
 
 /// Trait for building mutation paths for different type kinds
 ///
@@ -37,9 +35,12 @@ pub trait MutationPathBuilder {
     /// all possible mutation paths, or an error if path building failed.
     fn build_paths(
         &self,
-        ctx: &RecursionContext,
-        depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>>;
+        _ctx: &RecursionContext,
+        _depth: RecursionDepth,
+    ) -> Result<Vec<MutationPathInternal>> {
+        // Implementation details here
+        Ok(vec![])
+    }
 
     /// Build example using depth-first traversal - ensures children complete before parent
     /// Default implementation handles knowledge lookup and enforces traversal ordering
@@ -59,32 +60,6 @@ pub trait MutationPathBuilder {
     /// - If this is `.address`, the example is the complete address object {"street": "123 Main
     ///   St", "city": "Portland"}
     /// - If this is root level, the example becomes the spawn format
-    // fn build_example_with_knowledge(&self, ctx: &RecursionContext, depth: RecursionDepth) ->
-    // Value {     // First check BRP_MUTATION_KNOWLEDGE for hardcoded examples
-    //     if let Some(example) = KnowledgeKey::find_example_for_type(ctx.type_name()) {
-    //         return example;
-    //     }
-    //     self.build_schema_example(ctx, depth)
-    // }
-    ///   Build example from schema - implemented by each builder for their specific type.
-    ///
-    /// Each builder focuses ONLY on type-specific assembly logic.
-    /// The trait's `build_example_with_knowledge()` handles all common patterns:
-    /// - Knowledge lookup (`BRP_MUTATION_KNOWLEDGE`)
-    /// - Depth checking and recursion
-    /// - Type dispatch to child builders
-    fn build_schema_example(&self, ctx: &RecursionContext, depth: RecursionDepth) -> Value {
-        // Default: delegate to ExampleBuilder for now
-        use super::example_builder::ExampleBuilder;
-        ExampleBuilder::build_example(ctx.type_name(), &ctx.registry, depth)
-    }
-
-    // NEW METHODS FOR PROTOCOL MIGRATION
-
-    /// Indicates if this builder has been migrated to the new protocol
-    fn is_migrated(&self) -> bool {
-        false // Default: not migrated
-    }
 
     /// Check if child paths should be included in the final mutation paths result
     ///

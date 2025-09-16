@@ -12,28 +12,11 @@ use serde_json::Value;
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
 
 pub struct ValueMutationBuilder;
 
 impl MutationPathBuilder for ValueMutationBuilder {
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(format!(
-            "ValueMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        )).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true // MIGRATED!
-    }
-
     fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         Ok(vec![]) // Leaf type - no children
     }

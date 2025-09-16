@@ -9,9 +9,8 @@ use strum::{AsRefStr, Display, EnumString};
 
 use super::MutationPathBuilder;
 use super::builders::{
-    ArrayMutationBuilder, EnumMutationBuilder, ListMutationBuilder, MapMutationBuilder,
-    NewEnumMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
-    ValueMutationBuilder,
+    ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, NewEnumMutationBuilder,
+    SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 use super::not_mutable_reason::NotMutableReason;
@@ -23,11 +22,6 @@ use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
-
-/// Feature flag to control which enum builder implementation to use
-/// Set to `true` to use the new migrated implementation
-/// Set to `false` to use the original implementation
-const USE_NEW_ENUM_BUILDER: bool = false;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
 #[serde(rename_all = "PascalCase")]
@@ -78,22 +72,12 @@ impl TypeKind {
             Self::List => Box::new(ListMutationBuilder),
             Self::Map => Box::new(MapMutationBuilder),
             Self::Set => Box::new(SetMutationBuilder),
-            Self::Enum => {
-                if USE_NEW_ENUM_BUILDER {
-                    Box::new(NewEnumMutationBuilder)
-                } else {
-                    Box::new(EnumMutationBuilder)
-                }
-            }
+            Self::Enum => Box::new(NewEnumMutationBuilder),
             Self::Value => Box::new(ValueMutationBuilder),
         };
 
-        // Wrap with protocol enforcer if migrated
-        if base_builder.is_migrated() {
-            Box::new(ProtocolEnforcer::new(base_builder))
-        } else {
-            base_builder
-        }
+        // Wrap with protocol enforcer - everything is migrated now
+        Box::new(ProtocolEnforcer::new(base_builder))
     }
 
     /// Build a mutation path for types with `TreatAsValue` knowledge
@@ -130,14 +114,14 @@ impl TypeKind {
         directive_suffix: &str,
     ) -> MutationPathInternal {
         MutationPathInternal {
-            path:                   ctx.mutation_path.clone(),
-            example:                json!({
+            path: ctx.mutation_path.clone(),
+            example: json!({
                 "NotMutable": format!("{support}"),
                 "agent_directive": format!("This type cannot be mutated{directive_suffix} - see error message for details")
             }),
-            type_name:              ctx.type_name().clone(),
-            path_kind:              ctx.path_kind.clone(),
-            mutation_status:        MutationStatus::NotMutable,
+            type_name: ctx.type_name().clone(),
+            path_kind: ctx.path_kind.clone(),
+            mutation_status: MutationStatus::NotMutable,
             mutation_status_reason: Option::<Value>::from(support),
         }
     }
@@ -191,13 +175,8 @@ impl MutationPathBuilder for TypeKind {
             | Self::Map
             | Self::Set => self.builder().build_paths(ctx, builder_depth),
             Self::Enum => {
-                if USE_NEW_ENUM_BUILDER {
-                    // Use trait dispatch for new builder (gets ProtocolEnforcer wrapper)
-                    self.builder().build_paths(ctx, builder_depth)
-                } else {
-                    // Use direct call for old builder (no wrapper)
-                    EnumMutationBuilder.build_paths(ctx, builder_depth)
-                }
+                // Use trait dispatch for new builder (gets ProtocolEnforcer wrapper)
+                self.builder().build_paths(ctx, builder_depth)
             }
             Self::Value => {
                 // Check serialization inline, no recursion needed

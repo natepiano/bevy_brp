@@ -15,8 +15,6 @@ use serde_json::{Value, json};
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
-use super::super::types::MutationPathInternal;
-use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -24,34 +22,19 @@ use crate::json_schema::SchemaField;
 pub struct ListMutationBuilder;
 
 impl MutationPathBuilder for ListMutationBuilder {
-    fn build_paths(
-        &self,
-        ctx: &RecursionContext,
-        _depth: RecursionDepth,
-    ) -> Result<Vec<MutationPathInternal>> {
-        Err(Error::InvalidState(format!(
-            "ListMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
-            ctx.type_name()
-        )).into())
-    }
-
-    fn is_migrated(&self) -> bool {
-        true // MIGRATED!
-    }
-
     fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
         let schema = ctx.require_registry_schema()?;
 
         // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(Error::SchemaProcessing {
-                message:   format!(
+                message: format!(
                     "Failed to extract element type from schema for list: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("extract_items_type".to_string()),
-                details:   None,
+                details: None,
             }
             .into());
         };
@@ -59,8 +42,8 @@ impl MutationPathBuilder for ListMutationBuilder {
         // Lists use indexed PathKind for the element at [0]
         // We only recurse into one element for efficiency
         Ok(vec![PathKind::ArrayElement {
-            index:       0,
-            type_name:   element_type,
+            index: 0,
+            type_name: element_type,
             parent_type: ctx.type_name().clone(),
         }])
     }
