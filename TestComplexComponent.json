@@ -6,36 +6,11 @@
     "": {
       "description": "Replace the entire TestComplexComponent struct",
       "example": {
-        "mode": [
-          {
-            "example": "Active",
-            "signature": "unit",
-            "variants": ["Active", "Inactive"]
-          },
-          {
-            "example": {"Special": ["Hello, World!", 1000000]},
-            "signature": "tuple(String, u32)",
-            "variants": ["Special"]
-          },
-          {
-            "example": {"Custom": {"enabled": true, "name": "Hello, World!", "value": 3.1415927410125732}},
-            "signature": "struct{enabled: bool, name: String, value: f32}",
-            "variants": ["Custom"]
-          }
+        "mode": "Active",
+        "points": [
+          [1.0, 2.0, 3.0],
+          [1.0, 2.0, 3.0]
         ],
-        "optional_value": [
-          {
-            "example": null,
-            "signature": "unit",
-            "variants": ["None"]
-          },
-          {
-            "example": 3.1415927410125732,
-            "signature": "tuple(f32)",
-            "variants": ["Some"]
-          }
-        ],
-        "points": [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
         "range": [3.1415927410125732, 3.1415927410125732],
         "transform": {
           "rotation": [0.0, 0.0, 0.0, 1.0],
@@ -60,12 +35,18 @@
         },
         {
           "applicable_variants": ["Special"],
-          "example": {"Special": ["Hello, World!", 1000000]},
+          "example": { "Special": ["Hello, World!", 1000000] },
           "signature": "tuple(String, u32)"
         },
         {
           "applicable_variants": ["Custom"],
-          "example": {"Custom": {"enabled": true, "name": "Hello, World!", "value": 3.1415927410125732}},
+          "example": {
+            "Custom": {
+              "enabled": true,
+              "name": "Hello, World!",
+              "value": 3.1415927410125732
+            }
+          },
           "signature": "struct{enabled: bool, name: String, value: f32}"
         }
       ],
@@ -167,7 +148,10 @@
     },
     ".points": {
       "description": "Mutate the points field of TestComplexComponent array",
-      "example": [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
+      "example": [
+        [1.0, 2.0, 3.0],
+        [1.0, 2.0, 3.0]
+      ],
       "path_info": {
         "mutation_status": "mutable",
         "path_kind": "StructField",
@@ -424,36 +408,12 @@
     "type_kind": "Struct"
   },
   "spawn_format": {
-    "mode": [
-      {
-        "example": "Active",
-        "signature": "unit",
-        "variants": ["Active", "Inactive"]
-      },
-      {
-        "example": {"Special": ["Hello, World!", 1000000]},
-        "signature": "tuple(String, u32)",
-        "variants": ["Special"]
-      },
-      {
-        "example": {"Custom": {"enabled": true, "name": "Hello, World!", "value": 3.1415927410125732}},
-        "signature": "struct{enabled: bool, name: String, value: f32}",
-        "variants": ["Custom"]
-      }
+    "mode": "Active",
+    "optional_value": null,
+    "points": [
+      [1.0, 2.0, 3.0],
+      [1.0, 2.0, 3.0]
     ],
-    "optional_value": [
-      {
-        "example": null,
-        "signature": "unit",
-        "variants": ["None"]
-      },
-      {
-        "example": 3.1415927410125732,
-        "signature": "tuple(f32)",
-        "variants": ["Some"]
-      }
-    ],
-    "points": [[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]],
     "range": [3.1415927410125732, 3.1415927410125732],
     "transform": {
       "rotation": [0.0, 0.0, 0.0, 1.0],

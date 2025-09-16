@@ -1,14 +1,4 @@
 {
-  "enum_info": [
-    {"Unit": "Active"},
-    {"Unit": "Inactive"},
-    {"Tuple": ["Special", ["alloc::string::String", "u32"]]},
-    {"Struct": ["Custom", [
-      {"field_name": "enabled", "type": "bool"},
-      {"field_name": "name", "type": "alloc::string::String"},
-      {"field_name": "value", "type": "f32"}
-    ]]}
-  ],
   "has_deserialize": true,
   "has_serialize": true,
   "in_registry": true,
@@ -23,12 +13,18 @@
         },
         {
           "applicable_variants": ["Special"],
-          "example": {"Special": ["Hello, World!", 1000000]},
+          "example": { "Special": ["Hello, World!", 1000000] },
           "signature": "tuple(String, u32)"
         },
         {
           "applicable_variants": ["Custom"],
-          "example": {"Custom": {"enabled": true, "name": "Hello, World!", "value": 3.1415927410125732}},
+          "example": {
+            "Custom": {
+              "enabled": true,
+              "name": "Hello, World!",
+              "value": 3.1415927410125732
+            }
+          },
           "signature": "struct{enabled: bool, name: String, value: f32}"
         }
       ],
