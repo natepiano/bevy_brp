@@ -132,7 +132,8 @@
       "Bash(./.claude/commands/scripts/mutation_test_renumber_batches_dict.sh:*)",
       "Bash(for script in compare_mutation_path.sh compare_mutations_check_type.py compare_mutations_summarize.sh create_mutation_test_json_augment_response.sh create_mutation_test_json_deep_comparison.py create_mutation_test_json_promote_baseline.sh create_mutation_test_json_structured_comparison.sh get_type_guide.sh get_type_kind.sh mutation_test_get_assignment_guide.py mutation_test_get_batch_assignments.py mutation_test_get_batch_types.py mutation_test_get_type_guides.py mutation_test_get_types_by_index.py mutation_test_merge_batch_results.sh mutation_test_renumber_batches.sh)",
       "Bash(do echo \"=== $script ===\")",
-      "Bash(for script in mutation_test_get_batch_types.py mutation_test_get_type_guides.py mutation_test_get_types_by_index.py)"
+      "Bash(for script in mutation_test_get_batch_types.py mutation_test_get_type_guides.py mutation_test_get_types_by_index.py)",
+      "WebFetch(domain:docs.claude.com)"
     ],
     "deny": [
       "Bash(sed:*)"
