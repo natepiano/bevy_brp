@@ -48,8 +48,8 @@ pub trait MutationPathBuilder {
 
     /// Assemble parent example from child examples (post-order assembly)
     fn assemble_from_children(&self, ctx: &RecursionContext, children: HashMap<MutationPathDescriptor, Value>) -> Result<Value> {
-        // Default: fallback to old build_schema_example for unmigrated builders
-        Ok(self.build_schema_example(ctx, RecursionDepth::ZERO))
+        // Default: return null for unmigrated builders
+        Ok(json!(null))
     }
 
     /// Controls path creation action for child elements
@@ -164,6 +164,14 @@ let field_kind = TypeKind::from_schema(field_schema, &field_type);
 let field_example = field_kind.builder().build_example_with_knowledge(&field_ctx, depth);
 ```
 
+#### **CRITICAL: Error Handling Pattern**
+```rust
+// For unmutable conditions in assemble_from_children():
+return Err(Error::NotMutable(NotMutableReason::SomeReason(ctx.type_name().clone())).into());
+
+// ProtocolEnforcer catches these and creates proper NotMutable paths
+```
+
 #### For static methods:
 ```rust
 // OLD (in static method):
@@ -189,6 +197,21 @@ registry.get(&item_type_name)
 2. **Default trait implementation in mod.rs**:
    - Must be fixed LAST after all builders are converted
    - Currently falls back to ExampleBuilder for types not yet migrated
+
+3. **Registry Schema Access Pattern**:
+   ```rust
+   // NEW: ctx.require_registry_schema() returns Result<&Value>
+   let schema = ctx.require_registry_schema()?;
+
+   // OLD: Legacy pattern expecting Option
+   let Some(schema) = ctx.require_registry_schema_legacy() else { ... };
+   ```
+
+4. **Collection Element Complexity Check**:
+   ```rust
+   // Available in trait for Map/Set builders:
+   self.check_collection_element_complexity(key_example, ctx)?;
+   ```
 
 ## Phase 5b: Migrate Each Builder Individually
 
@@ -251,32 +274,292 @@ Each builder migration follows this pattern:
 
 ## Next: EnumMutationBuilder Migration
 
-8. **EnumMutationBuilder** - Most complex variant-based type
-   - Fix lines 170, 193, implement protocol methods
-   - **COMPLEX VARIANT HANDLING - REQUIRES SPECIAL ATTENTION**:
-     - **PRESERVE**: Core variant processing logic needs careful adaptation, NOT simple removal:
-       - `extract_enum_variants()` - Extracts variant info from schema
-       - `deduplicate_variant_signatures()` - Critical for avoiding duplicate work (only process unique signatures)
-       - `process_tuple_variant()` - Handles tuple variants
-       - `process_struct_variant()` - Handles struct variants
-       - `build_enum_example_from_accumulated()` - Builds final consolidated example
-     - **collect_children()**: Must return ONLY unique variant signatures to avoid redundant recursion
-     - **assemble_from_children()**: Must handle different output formats:
-       - Root path needs consolidated enum example format
-       - Mutation paths have different format than root
-     - **INVESTIGATION NEEDED**: Some responsibilities may need to move to ProtocolEnforcer
-     - This is the most complex migration - may require additional design work when reached
-   - **STATIC HELPER METHOD**:
-     - `build_enum_spawn_example()` (line ~685) is a large static helper that will need removal/conversion
-     - Contains BRP_MUTATION_KNOWLEDGE check at line ~694 that should be removed
-   - **RECURSION CHECK REMOVAL**:
-     - **SPECIFIC TO ENUM**: Has TWO depth.exceeds_limit() checks to remove:
-       - Line 346 in `build_paths()` - returns NotMutable path
-       - Line 420 in `build_schema_example()` - returns "..."
-     - REMOVE both recursion limit checks - ProtocolEnforcer now handles all recursion limiting
-     - Note: `build_schema_example()` and its helper `build_enum_spawn_example()` will be deleted entirely after migration
-   - **Note**: No need to override `child_path_action()` - Enums expose variant field paths
-   - **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
+8. **EnumMutationBuilder** - Most complex variant-based type using existing PathKind variants
+
+### **PRESERVE: Core Variant Processing Logic**
+
+Keep these helper functions and types (adapt for new patterns):
+
+```rust
+// KEEP: Variant signature types and EnumVariantInfo
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum VariantSignature {
+    Unit,
+    Tuple(Vec<BrpTypeName>),
+    Struct(Vec<(String, BrpTypeName)>),
+}
+
+pub enum EnumVariantInfo {
+    Unit(String),
+    Tuple(String, Vec<BrpTypeName>),
+    Struct(String, Vec<EnumFieldInfo>),
+}
+
+impl EnumVariantInfo {
+    fn name(&self) -> &str {
+        match self {
+            Self::Unit(name) | Self::Tuple(name, _) | Self::Struct(name, _) => name,
+        }
+    }
+
+    fn signature(&self) -> VariantSignature {
+        match self {
+            Self::Unit(_) => VariantSignature::Unit,
+            Self::Tuple(_, types) => VariantSignature::Tuple(types.clone()),
+            Self::Struct(_, fields) => {
+                let field_sig = fields
+                    .iter()
+                    .map(|f| (f.field_name.clone(), f.type_name.clone()))
+                    .collect();
+                VariantSignature::Struct(field_sig)
+            }
+        }
+    }
+}
+
+// KEEP: Core variant extraction and deduplication
+fn extract_enum_variants(
+    registry_schema: &Value,
+    registry: &HashMap<BrpTypeName, Value>,
+    depth: usize,
+) -> Vec<EnumVariantInfo> {
+    registry_schema
+        .get_field(SchemaField::OneOf)
+        .and_then(Value::as_array)
+        .map(|variants| {
+            variants
+                .iter()
+                .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry, depth))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVariantInfo> {
+    use std::collections::HashSet;
+    let mut seen_signatures = HashSet::new();
+    let mut unique_variants = Vec::new();
+    for variant in variants {
+        let signature = variant.signature();
+        if seen_signatures.insert(signature) {
+            unique_variants.push(variant);
+        }
+    }
+    unique_variants
+}
+
+// KEEP: Critical grouping function for assembly
+fn group_variants_by_signature(
+    variants: Vec<EnumVariantInfo>
+) -> HashMap<VariantSignature, Vec<EnumVariantInfo>> {
+    let mut groups = HashMap::new();
+    for variant in variants {
+        let signature = variant.signature();
+        groups.entry(signature).or_insert_with(Vec::new).push(variant);
+    }
+    groups
+}
+
+// KEEP: Helper functions for variant processing
+fn extract_variant_name(v: &Value) -> Option<String>
+fn extract_tuple_types(prefix_items: &[Value], registry: &HashMap<BrpTypeName, Value>, depth: usize) -> Vec<BrpTypeName>
+fn extract_struct_fields(properties: &serde_json::Map<String, Value>, registry: &HashMap<BrpTypeName, Value>, depth: usize) -> Vec<EnumFieldInfo>
+fn shorten_type_name(type_name: &str) -> String
+```
+
+### **NEW: Standard Migration Implementation**
+
+```rust
+impl MutationPathBuilder for EnumMutationBuilder {
+    fn build_paths(&self, ctx: &RecursionContext, _depth: RecursionDepth) -> Result<Vec<MutationPathInternal>> {
+        Err(Error::InvalidState(format!(
+            "EnumMutationBuilder::build_paths() called directly! This should never happen when is_migrated() = true. Type: {}",
+            ctx.type_name()
+        )).into())
+    }
+
+    fn is_migrated(&self) -> bool {
+        true
+    }
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+        let schema = ctx.require_registry_schema()?;
+
+        // Use existing variant processing logic
+        let variants = extract_enum_variants(schema, &ctx.registry, 0);
+        let unique_variants = deduplicate_variant_signatures(variants);
+
+        let mut children = Vec::new();
+
+        for variant in unique_variants {
+            match variant {
+                EnumVariantInfo::Unit(_) => {
+                    // Unit variants have no children
+                }
+                EnumVariantInfo::Tuple(_, types) => {
+                    // Create standard IndexedElement for each tuple element
+                    // Results in paths like ".0", ".1" (flat, no variant prefix)
+                    for (index, type_name) in types.iter().enumerate() {
+                        children.push(PathKind::IndexedElement {
+                            index,
+                            type_name: type_name.clone(),
+                            parent_type: ctx.type_name().clone(),
+                        });
+                    }
+                }
+                EnumVariantInfo::Struct(_, fields) => {
+                    // Create standard StructField for each struct field
+                    // Results in paths like ".enabled", ".name" (flat, no variant prefix)
+                    for field in fields {
+                        children.push(PathKind::StructField {
+                            field_name: field.field_name.clone(),
+                            type_name: field.type_name.clone(),
+                            parent_type: ctx.type_name().clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(children)
+    }
+
+    fn assemble_from_children(
+        &self,
+        ctx: &RecursionContext,
+        children: HashMap<MutationPathDescriptor, Value>,
+    ) -> Result<Value> {
+        let schema = ctx.require_registry_schema()?;
+        let all_variants = extract_enum_variants(schema, &ctx.registry, 0);
+
+        // Group all variants by their signature
+        let variant_groups = group_variants_by_signature(all_variants);
+
+        // Build one example per signature group
+        let mut examples = Vec::new();
+
+        for (signature, variants_in_group) in variant_groups {
+            // Use first variant in group as representative for the example
+            let representative = variants_in_group.first()
+                .ok_or_else(|| Error::InvalidState("Empty variant group".to_string()))?;
+
+            let example = match &signature {
+                VariantSignature::Unit => {
+                    // Unit variants: just use the variant name
+                    json!(representative.name())
+                }
+                VariantSignature::Tuple(types) => {
+                    // Tuple variants: assemble from indexed children
+                    let mut tuple_values = Vec::new();
+                    for index in 0..types.len() {
+                        let descriptor = MutationPathDescriptor::from(index.to_string());
+                        let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                        tuple_values.push(value);
+                    }
+                    // Format: {"VariantName": [val1, val2]}
+                    json!({ representative.name(): tuple_values })
+                }
+                VariantSignature::Struct(field_types) => {
+                    // Struct variants: assemble from field children
+                    let mut field_values = serde_json::Map::new();
+                    for (field_name, _) in field_types {
+                        let descriptor = MutationPathDescriptor::from(field_name.clone());
+                        let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                        field_values.insert(field_name.clone(), value);
+                    }
+                    // Format: {"VariantName": {field1: val1, field2: val2}}
+                    json!({ representative.name(): field_values })
+                }
+            };
+
+            // Collect all variant names that share this signature
+            let applicable_variants: Vec<String> = variants_in_group
+                .iter()
+                .map(|v| v.name().to_string())
+                .collect();
+
+            // Create the signature example with all applicable variants
+            examples.push(json!({
+                "applicable_variants": applicable_variants,
+                "example": example,
+                "signature": format_signature(&signature),
+            }));
+        }
+
+        // Return root enum example structure
+        Ok(json!({
+            "examples": examples
+        }))
+    }
+}
+
+// Helper to format signature for output
+fn format_signature(sig: &VariantSignature) -> String {
+    match sig {
+        VariantSignature::Unit => "unit".to_string(),
+        VariantSignature::Tuple(types) => {
+            let type_names: Vec<String> = types.iter()
+                .map(|t| shorten_type_name(t.as_str()))
+                .collect();
+            format!("tuple({})", type_names.join(", "))
+        }
+        VariantSignature::Struct(fields) => {
+            let field_strs: Vec<String> = fields.iter()
+                .map(|(name, typ)| format!("{}: {}", name, shorten_type_name(typ.as_str())))
+                .collect();
+            format!("struct{{{}}}", field_strs.join(", "))
+        }
+    }
+}
+```
+
+### **REMOVE: Duplicate Protocol Handling**
+
+Delete all this duplicated functionality that ProtocolEnforcer now handles:
+
+- **Registry validation** (lines 338-343): `ctx.require_registry_schema_legacy()` checks
+- **Depth limit checking** (lines 346-351, 420): `depth.exceeds_limit()` checks
+- **Knowledge lookup** (lines 438-442, 694): `BRP_MUTATION_KNOWLEDGE.get()` calls
+- **NotMutable path creation** (lines 339, 347, 498+): `build_not_mutable_path()` method
+- **MutationStatus computation** (line 406): Manual `MutationStatus::Mutable` assignment
+- **build_schema_example method** (lines 414-426): Entire method and its recursion logic
+- **build_enum_spawn_example static method** (line ~685): Large static helper method
+- **process_tuple_variant() and process_struct_variant()**: Manual path building logic that ProtocolEnforcer now handles
+
+### **TypeKind Update**
+- **TypeKind**: Update `Self::Enum => self.builder().build_paths(ctx, builder_depth)`
+
+### **Key Implementation Details**
+
+**Enum Mutation Paths are Flat:**
+- Paths are `.0`, `.1` for tuple elements, `.enabled`, `.name` for struct fields
+- NO variant prefixes in paths (not `Special.0` or `Custom.enabled`)
+- Variant context tracked separately in the output's `variants` field
+
+**Uses Existing PathKind Variants:**
+- `IndexedElement` for tuple variant elements
+- `StructField` for struct variant fields
+- No new PathKind variants needed!
+
+**Example for `TestEnumWithSerDe`:**
+```rust
+// Tuple variant Special(String, u32) generates:
+PathKind::IndexedElement { index: 0, type_name: "String", ... }  // → descriptor "0"
+PathKind::IndexedElement { index: 1, type_name: "u32", ... }     // → descriptor "1"
+
+// Struct variant Custom { enabled, name, value } generates:
+PathKind::StructField { field_name: "enabled", type_name: "bool", ... }  // → descriptor "enabled"
+PathKind::StructField { field_name: "name", type_name: "String", ... }   // → descriptor "name"
+PathKind::StructField { field_name: "value", type_name: "f32", ... }     // → descriptor "value"
+```
+
+### **Benefits Achieved**
+- ✅ **Standard ProtocolEnforcer benefits**: Registry validation, depth checking, knowledge lookup, error handling
+- ✅ **Preserves enum sophistication**: Variant deduplication, signature grouping, complex variant handling
+- ✅ **Clean separation**: EnumMutationBuilder focuses ONLY on variant processing, not protocol concerns
+- ✅ **No new types needed**: Uses existing PathKind variants, maintains simplicity
+- ✅ **Mutation status computation**: ProtocolEnforcer computes from children with detailed breakdowns
+
    - **STOP and ask user to validate and discuss**
    - **CODE REVIEW**: After validation, stop and ask user to review the EnumMutationBuilder implementation before proceeding to next builder
 
@@ -310,6 +593,8 @@ impl MutationPathBuilder for SomeBuilder {
 
     fn assemble_from_children(&self, ctx: &RecursionContext, children: HashMap<MutationPathDescriptor, Value>) -> Result<Value> {
         // Assemble parent from children
+        // Return Error::NotMutable(reason) for unmutable conditions
+        // ProtocolEnforcer will catch errors and create NotMutable paths
     }
 
     // Optional: for containers that don't expose child paths
