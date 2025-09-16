@@ -32,6 +32,65 @@ pub enum MutationStatus {
     PartiallyMutable,
 }
 
+/// Variant signature types for enum variants - used for grouping similar structures
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum VariantSignature {
+    /// Unit variant (no data)
+    Unit,
+    /// Tuple variant with ordered types
+    Tuple(Vec<BrpTypeName>),
+    /// Struct variant with named fields and types
+    Struct(Vec<(String, BrpTypeName)>),
+}
+
+impl std::fmt::Display for VariantSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unit => write!(f, "unit"),
+            Self::Tuple(types) => {
+                let type_names: Vec<String> = types
+                    .iter()
+                    .map(|t| shorten_type_name(t.as_str()))
+                    .collect();
+                write!(f, "tuple({})", type_names.join(", "))
+            }
+            Self::Struct(fields) => {
+                let field_strs: Vec<String> = fields
+                    .iter()
+                    .map(|(name, type_name)| {
+                        format!("{}: {}", name, shorten_type_name(type_name.as_str()))
+                    })
+                    .collect();
+                write!(f, "struct{{{}}}", field_strs.join(", "))
+            }
+        }
+    }
+}
+
+/// Convert a fully-qualified type name to a short readable name
+fn shorten_type_name(type_name: &str) -> String {
+    match type_name {
+        "alloc::string::String" => "String".to_string(),
+        "core::option::Option" => "Option".to_string(),
+        name if name.starts_with("alloc::string::String") => "String".to_string(),
+        name if name.starts_with("core::option::Option<") => name
+            .strip_prefix("core::option::Option<")
+            .and_then(|s| s.strip_suffix('>'))
+            .map_or_else(
+                || "Option".to_string(),
+                |inner| format!("Option<{}>", shorten_type_name(inner)),
+            ),
+        _ => {
+            // For other types, just take the last segment after ::
+            type_name
+                .split("::")
+                .last()
+                .unwrap_or(type_name)
+                .to_string()
+        }
+    }
+}
+
 /// Mutation path information (internal representation)
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
@@ -87,17 +146,25 @@ pub struct PathInfo {
     pub mutation_status_reason: Option<Value>,
 }
 
-/// Example group for the unified examples array
+/// Example group for enum variants
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExampleGroup {
-    /// List of variants that share this signature (only for enum types)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub applicable_variants: Option<Vec<String>>,
-    /// Human-readable signature description (only for enum types)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub signature:           Option<String>,
+    /// List of variants that share this signature
+    pub applicable_variants: Vec<String>,
+
+    /// The variant signature type (serialized as string using Display)
+    #[serde(serialize_with = "serialize_signature")]
+    pub signature: VariantSignature,
+
     /// Example value for this group
-    pub example:             Value,
+    pub example: Value,
+}
+
+fn serialize_signature<S>(sig: &VariantSignature, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str(&sig.to_string())
 }
 
 /// Information about a mutation path that we serialize to our response
@@ -159,12 +226,8 @@ impl MutationPath {
             // New format: direct array of signature groups from consolidated enum builder
             Self::convert_signature_groups_array(signature_groups)
         } else {
-            // Single value: create simple example group
-            vec![ExampleGroup {
-                applicable_variants: None,
-                signature:           None,
-                example:             clean_example.clone(),
-            }]
+            // Single value: create simple example group (temporary - will be fixed in Step 6)
+            vec![]
         };
 
         // Extract variants - check both signature groups and variant context
@@ -216,11 +279,9 @@ impl MutationPath {
         } else if matches!(type_kind, TypeKind::Enum) && !examples.is_empty() {
             // Enum type with variants - use examples array
             (examples, None)
-        } else if examples.len() == 1
-            && examples[0].applicable_variants.is_none()
-            && examples[0].signature.is_none()
-        {
-            // Single example without enum context - use simple example field
+        } else if examples.len() == 1 && examples[0].applicable_variants.is_empty() {
+            // Single example without enum context - use simple example field (temporary check -
+            // will be fixed in Step 6)
             (vec![], Some(examples[0].example.clone()))
         } else if examples.is_empty() && !clean_example.is_null() {
             // Direct example without going through examples array (for TupleStruct, Array, etc.)
@@ -262,9 +323,21 @@ impl MutationPath {
                     .collect::<Vec<String>>();
                 let example = group.get("example")?.clone();
 
+                // Temporary conversion - will be properly fixed in Step 6
+                // For now, parse the signature string to create a VariantSignature
+                let variant_sig = if signature == "unit" {
+                    VariantSignature::Unit
+                } else if signature.starts_with("tuple(") {
+                    // For now, just use an empty tuple signature - will be fixed properly in Step 6
+                    VariantSignature::Tuple(vec![])
+                } else {
+                    // For struct, use empty struct signature - will be fixed properly in Step 6
+                    VariantSignature::Struct(vec![])
+                };
+
                 Some(ExampleGroup {
-                    applicable_variants: Some(variants),
-                    signature: Some(signature),
+                    applicable_variants: variants,
+                    signature: variant_sig,
                     example,
                 })
             })

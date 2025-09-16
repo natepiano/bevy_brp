@@ -14,6 +14,20 @@ use super::types::PathAction;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
+/// Tracks enum-specific context during recursion
+#[derive(Debug, Clone)]
+pub enum EnumContext {
+    /// This enum is establishing the root context
+    Root,
+
+    /// Building under enum variant(s)
+    Child {
+        /// Chain of variant constraints from parent to child
+        /// e.g., [(TestEnumWithSerDe, ["Nested"]), (NestedConfigEnum, ["Conditional"])]
+        variant_chain: Vec<(BrpTypeName, Vec<String>)>,
+    },
+}
+
 /// Context for mutation path building operations
 ///
 /// This struct provides all the necessary context for building mutation paths,
@@ -29,16 +43,19 @@ pub struct RecursionContext {
     /// Action to take regarding path creation (set by `ProtocolEnforcer`)
     /// Design Review: Using enum instead of boolean for clarity and type safety
     pub path_action:   PathAction,
+    /// Track enum context - None for non-enum types
+    pub enum_context:  Option<EnumContext>,
 }
 
 impl RecursionContext {
     /// Create a new mutation path context
-    pub const fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
+    pub fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
         Self {
             path_kind,
             registry,
             mutation_path: String::new(),
             path_action: PathAction::Create, // Default to creating paths
+            enum_context: None,              // Start with no enum context
         }
     }
 
@@ -82,6 +99,7 @@ impl RecursionContext {
     /// - Takes a PathAction parameter to control child path creation
     /// - Ensures Skip mode propagates to all descendants (once Skip, always Skip)
     /// - Self-contained implementation (doesn't call create_field_context)
+    /// - Propagates parent's enum_context to children by default
     pub fn create_recursion_context(
         &self,
         path_kind: PathKind,
@@ -107,6 +125,7 @@ impl RecursionContext {
             registry: Arc::clone(&self.registry),
             mutation_path: new_path_prefix,
             path_action,
+            enum_context: self.enum_context.clone(), // Propagate parent's enum_context
         }
     }
 

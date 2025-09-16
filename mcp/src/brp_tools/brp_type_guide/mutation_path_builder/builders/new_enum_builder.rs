@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
+use super::super::types::VariantSignature;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -24,14 +25,6 @@ pub struct NewEnumMutationBuilder;
 // ============================================================================
 // Helper Types and Functions (preserved from original)
 // ============================================================================
-
-/// Variant signatures for deduplication - same signature means same inner structure
-#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum VariantSignature {
-    Unit,
-    Tuple(Vec<BrpTypeName>),
-    Struct(Vec<(String, BrpTypeName)>),
-}
 
 /// Type-safe enum variant information - replaces `EnumVariantInfoOld`
 /// This enum makes invalid states impossible to construct
@@ -137,29 +130,6 @@ fn extract_struct_fields(
         .collect()
 }
 
-fn shorten_type_name(type_name: &str) -> String {
-    match type_name {
-        "alloc::string::String" => "String".to_string(),
-        "core::option::Option" => "Option".to_string(),
-        name if name.starts_with("alloc::string::String") => "String".to_string(),
-        name if name.starts_with("core::option::Option<") => name
-            .strip_prefix("core::option::Option<")
-            .and_then(|s| s.strip_suffix('>'))
-            .map_or_else(
-                || "Option".to_string(),
-                |inner| format!("Option<{}>", shorten_type_name(inner)),
-            ),
-        _ => {
-            // For other types, take the last segment after `::`
-            type_name
-                .split("::")
-                .last()
-                .unwrap_or(type_name)
-                .to_string()
-        }
-    }
-}
-
 fn extract_enum_variants(
     registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
@@ -200,26 +170,6 @@ fn group_variants_by_signature(
             .push(variant);
     }
     groups
-}
-
-fn format_signature(sig: &VariantSignature) -> String {
-    match sig {
-        VariantSignature::Unit => "unit".to_string(),
-        VariantSignature::Tuple(types) => {
-            let type_names: Vec<String> = types
-                .iter()
-                .map(|t| shorten_type_name(t.as_str()))
-                .collect();
-            format!("tuple({})", type_names.join(", "))
-        }
-        VariantSignature::Struct(fields) => {
-            let field_strs: Vec<String> = fields
-                .iter()
-                .map(|(name, typ)| format!("{}: {}", name, shorten_type_name(typ.as_str())))
-                .collect();
-            format!("struct{{{}}}", field_strs.join(", "))
-        }
-    }
 }
 
 // ============================================================================
@@ -353,7 +303,7 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
             examples.push(json!({
                 "applicable_variants": applicable_variants,
                 "example": example,
-                "signature": format_signature(&signature),
+                "signature": signature.to_string(),
             }));
         }
 
