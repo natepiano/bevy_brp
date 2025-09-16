@@ -1,5 +1,72 @@
 # Plan: Fix Enum Examples Structure
 
+## EXECUTION PROTOCOL
+
+<Instructions>
+For each step in the implementation sequence:
+
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
+
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build && cargo +nightly fmt
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+    Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+    For the current step:
+    1. Follow the <Instructions/> above for executing the step
+    2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+    3. Continue to next PENDING step
+
+    If all steps are COMPLETED:
+        Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+*Each step below corresponds to a detailed implementation section that follows. Complete steps sequentially.*
+
+### Step 1: Foundation Types Setup ⏳ PENDING
+→ **See detailed section 1 below**
+
+### Step 2: Internal Enum Builder Structure ⏳ PENDING
+→ **See detailed section 2 below**
+
+### Step 3: Data Structure Extensions ⏳ PENDING
+→ **See detailed section 3 below**
+
+### Step 4: Enum Builder Core Implementation ⏳ PENDING
+→ **See detailed section 4 below**
+
+### Step 5: Protocol Enforcer Updates ⏳ PENDING
+→ **See detailed section 5 below**
+
+### Step 6: Conversion Logic Simplification ⏳ PENDING
+→ **See detailed section 6 below**
+
+### Step 7: Integration and Cleanup ⏳ PENDING
+→ **See detailed section 7 below**
+
+### Step 8: Complete Validation ⏳ PENDING
+→ **See detailed section 8 below**
+
 ## Design Review Skip Notes
 
 ### DESIGN-1: Plan-introduced duplication in assemble_from_children implementations - **Verdict**: REJECTED
@@ -91,7 +158,114 @@ The current system has multiple issues:
 
 ## Proposed Solution
 
-### 1. Internal MutationExample Enum for Enum Builder Only
+### 1. Foundation Types Setup ⏳ PENDING
+
+**Objective:** Add shared types and EnumContext to core modules for enum handling foundation
+
+**Files to modify:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`
+
+**Build:** `cargo build && cargo +nightly fmt`
+
+#### Update types.rs with shared types
+
+```rust
+// In types.rs - move VariantSignature here for public API use
+/// Variant signature types for enum variants - used for grouping similar structures
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum VariantSignature {
+    /// Unit variant (no data)
+    Unit,
+    /// Tuple variant with ordered types
+    Tuple(Vec<BrpTypeName>),
+    /// Struct variant with named fields and types
+    Struct(Vec<(String, BrpTypeName)>),
+}
+
+impl std::fmt::Display for VariantSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unit => write!(f, "unit"),
+            Self::Tuple(types) => {
+                let type_names: Vec<String> = types.iter().map(|t| shorten_type_name(t.as_str())).collect();
+                write!(f, "tuple({})", type_names.join(", "))
+            }
+            Self::Struct(fields) => {
+                let field_strs: Vec<String> = fields.iter()
+                    .map(|(name, type_name)| format!("{}: {}", name, shorten_type_name(type_name.as_str())))
+                    .collect();
+                write!(f, "struct{{{}}}", field_strs.join(", "))
+            }
+        }
+    }
+}
+
+/// Example group for enum variants
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExampleGroup {
+    /// List of variants that share this signature
+    pub applicable_variants: Vec<String>,
+
+    /// The variant signature type (serialized as string using Display)
+    #[serde(serialize_with = "serialize_signature")]
+    pub signature: VariantSignature,
+
+    /// Example value for this group
+    pub example: Value,
+}
+
+fn serialize_signature<S>(sig: &VariantSignature, s: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+    s.serialize_str(&sig.to_string())
+}
+```
+
+#### EnumContext Addition
+
+Add to `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/recursion_context.rs`:
+
+```rust
+/// Tracks enum-specific context during recursion
+#[derive(Debug, Clone)]
+pub enum EnumContext {
+    /// This enum is establishing the root context
+    Root,
+
+    /// Building under enum variant(s)
+    Child {
+        /// Chain of variant constraints from parent to child
+        /// e.g., [(TestEnumWithSerDe, ["Nested"]), (NestedConfigEnum, ["Conditional"])]
+        variant_chain: Vec<(BrpTypeName, Vec<String>)>,
+    },
+}
+
+pub struct RecursionContext {
+    // ... existing fields ...
+    /// Track enum context - None for non-enum types
+    pub enum_context: Option<EnumContext>,
+}
+```
+
+#### RecursionContext Creation Changes
+
+Need to update these methods to handle `enum_context`:
+- `RecursionContext::root()` - starts with `enum_context: None`
+- `RecursionContext::create_child_context()` - propagates parent's `enum_context` by default
+- ProtocolEnforcer - sets `Some(EnumContext::Root)` when processing an enum type
+- Enum builder's child creation - sets `Some(EnumContext::Child { ... })` for its children
+
+### 2. Internal Enum Builder Structure ⏳ PENDING
+
+**Objective:** Add internal MutationExample enum and helper methods to enum builder
+
+**Files to modify:**
+- `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/new_enum_builder.rs`
+
+**Build:** `cargo build && cargo +nightly fmt`
+**Dependencies:** Requires Step 1
+
+#### Internal MutationExample Enum for Enum Builder Only
 
 Keep the `example: Value` field in `MutationPathInternal` unchanged. Instead, use `MutationExample` as an internal implementation detail within the enum builder only:
 
@@ -875,6 +1049,10 @@ impl MutationPath {
 - Clean separation of concerns
 
 ### 6. Migration Strategy
+
+**Migration Strategy: Phased**
+
+This collaborative plan uses phased implementation by design. The Collaborative Execution Protocol above defines the phase boundaries with validation checkpoints between each step.
 
 Clean migration with explicit data flow:
 
