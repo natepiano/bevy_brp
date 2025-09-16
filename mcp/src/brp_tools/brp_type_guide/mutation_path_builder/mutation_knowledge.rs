@@ -449,11 +449,13 @@ pub static BRP_MUTATION_KNOWLEDGE: LazyLock<HashMap<KnowledgeKey, MutationKnowle
         // Provide reasonable window dimension values to prevent GPU texture size errors
         map.insert(
             KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_width"),
-            MutationKnowledge::as_root_value(json!(800), "u32".to_string()), // Reasonable window width
+            MutationKnowledge::as_root_value(json!(800), "u32".to_string()), /* Reasonable
+                                                                              * window width */
         );
         map.insert(
             KnowledgeKey::struct_field("bevy_window::window::WindowResolution", "physical_height"),
-            MutationKnowledge::as_root_value(json!(600), "u32".to_string()), // Reasonable window height
+            MutationKnowledge::as_root_value(json!(600), "u32".to_string()), /* Reasonable
+                                                                              * window height */
         );
 
         // ===== NonZero types =====

@@ -10,7 +10,8 @@ use strum::{AsRefStr, Display, EnumString};
 use super::MutationPathBuilder;
 use super::builders::{
     ArrayMutationBuilder, EnumMutationBuilder, ListMutationBuilder, MapMutationBuilder,
-    SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
+    NewEnumMutationBuilder, SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder,
+    ValueMutationBuilder,
 };
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey, MutationKnowledge};
 use super::not_mutable_reason::NotMutableReason;
@@ -22,6 +23,11 @@ use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
+
+/// Feature flag to control which enum builder implementation to use
+/// Set to `true` to use the new migrated implementation
+/// Set to `false` to use the original implementation
+const USE_NEW_ENUM_BUILDER: bool = false;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display, AsRefStr, EnumString)]
 #[serde(rename_all = "PascalCase")]
@@ -72,7 +78,13 @@ impl TypeKind {
             Self::List => Box::new(ListMutationBuilder),
             Self::Map => Box::new(MapMutationBuilder),
             Self::Set => Box::new(SetMutationBuilder),
-            Self::Enum => Box::new(EnumMutationBuilder),
+            Self::Enum => {
+                if USE_NEW_ENUM_BUILDER {
+                    Box::new(NewEnumMutationBuilder)
+                } else {
+                    Box::new(EnumMutationBuilder)
+                }
+            }
             Self::Value => Box::new(ValueMutationBuilder),
         };
 
@@ -178,7 +190,15 @@ impl MutationPathBuilder for TypeKind {
             | Self::List
             | Self::Map
             | Self::Set => self.builder().build_paths(ctx, builder_depth),
-            Self::Enum => EnumMutationBuilder.build_paths(ctx, builder_depth),
+            Self::Enum => {
+                if USE_NEW_ENUM_BUILDER {
+                    // Use trait dispatch for new builder (gets ProtocolEnforcer wrapper)
+                    self.builder().build_paths(ctx, builder_depth)
+                } else {
+                    // Use direct call for old builder (no wrapper)
+                    EnumMutationBuilder.build_paths(ctx, builder_depth)
+                }
+            }
             Self::Value => {
                 // Check serialization inline, no recursion needed
                 if ctx.value_type_has_serialization(ctx.type_name()) {
