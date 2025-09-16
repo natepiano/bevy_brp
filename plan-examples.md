@@ -884,6 +884,7 @@ Clean migration with explicit data flow:
 3. Update `ExampleGroup` to use typed `VariantSignature` instead of string in types.rs
 4. Add `EnumContext` to recursion_context.rs
 5. Remove `variants` field from `MutationPath` (deprecated)
+6. Remove obsolete `enum_info` field from `TypeGuide` struct (redundant with examples array)
 
 **Phase 2: Update enum builder**
 1. Add internal `MutationExample` enum to new_enum_builder.rs (not exported)
@@ -908,7 +909,8 @@ Clean migration with explicit data flow:
 **Phase 5: Clean up and activate**
 1. Remove `USE_NEW_ENUM_BUILDER` flag from type_kind.rs
 2. Remove old `enum_builder` from builders/mod.rs
-3. Test with existing test suite to ensure compatibility
+3. Remove `TypeGuide::extract_enum_info()` method and related code
+4. Test with existing test suite to ensure compatibility
 
 
 ### 7. Testing Strategy
@@ -920,27 +922,6 @@ Clean migration with explicit data flow:
   - Embedded enums show single concrete value (fix the bug)
 - Run mutation tests to verify BRP operations still work
 
-## Benefits
-
-1. **Localized complexity**: Enum handling complexity is contained within the enum builder only
-   - Other builders remain unchanged and simple
-   - No API disruption for non-enum types
-   - `MutationExample` is an internal implementation detail
-2. **Type safety within enum builder**: Internal use of proper types instead of JSON hacks
-   - `VariantSignature` enum for variant type classification
-   - `ExampleGroup` for organizing variant examples
-   - Clear separation of concerns
-3. **Minimal migration risk**: Changes are isolated to enum-related code
-   - No changes to other builders
-   - Simple marker-based communication with conversion layer
-   - Existing tests continue to work
-4. **Correctness**: Fixes both bugs while maintaining simplicity
-   - Embedded enum arrays fixed
-   - Missing examples structure fixed
-   - No over-engineering of the solution
-5. **Maintainability**: Future enum enhancements stay within enum builder
-   - Adding new enum features doesn't affect other builders
-   - Clear boundary between enum and non-enum handling
 
 ## Risks and Mitigations
 
