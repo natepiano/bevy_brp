@@ -57,7 +57,7 @@ For each step in the implementation sequence:
 ### Step 4: Enum Builder Core Implementation ✅ COMPLETED
 → **See detailed section 4 below**
 
-### Step 5: Protocol Enforcer Updates ⏳ PENDING
+### Step 5: Protocol Enforcer Updates ✅ COMPLETED
 → **See detailed section 5 below**
 
 ### Step 6: Conversion Logic Simplification ⏳ PENDING
@@ -526,67 +526,611 @@ impl MutationExample {
 }
 ```
 
-### 5. Protocol Enforcer Updates ⏳ PENDING
+### 5. Protocol Enforcer Updates ⚠️ PARTIALLY COMPLETED
 
 **Objective:** Add EnumContext handling and create_mutation_path_internal method
 
-**Files to modify:**
-- ProtocolEnforcer implementation files (locate during implementation)
+**Files modified:**
+- `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
 
 **Build:** `cargo build && cargo +nightly fmt`
 **Dependencies:** Requires Steps 1, 3, 4
 
-#### ProtocolEnforcer Processing
+#### What WAS Actually Implemented:
 
-The ProtocolEnforcer creates `MutationPathInternal` instances based on builder output and `EnumContext`:
+1. **EnumContext::Root extraction logic** (in `ProtocolEnforcer::build_paths`):
+   - Checks for `EnumContext::Root` in current context
+   - Extracts "enum_root_data" marker from assembled example
+   - Deserializes examples array into `Vec<ExampleGroup>`
+   - Separates default example and enum_root_examples
+
+2. **Child enum detection** (in `ProtocolEnforcer::process_all_children`):
+   - Detects when a child type is an enum
+   - Sets `EnumContext::Root` on child context for enum children
+   - Allows enum children to process their own variants
+
+3. **Helper method for enum examples**:
+   - Added `build_mutation_path_internal_with_enum_examples()`
+   - Properly passes `enum_root_examples` field to `MutationPathInternal`
+   - Wraps existing `build_mutation_path_internal()` method
+
+### 5a. Documentation: What Was NOT Done & Critical Missing Pieces
+
+#### What Was NOT Implemented from Original Step 5:
+
+1. **EnumContext::Child handling** (from original Step 5 specification):
+   - Should wrap examples with applicable_variants
+   - Should use variant chain flattening
+   - Currently this case is completely ignored in the code
+   - The `final_example` doesn't get wrapped with variant context
+
+2. **The unified create_mutation_path_internal method**:
+   - Plan showed a single method handling all three cases (Root/Child/None)
+   - Current implementation spreads logic across build_paths without clean separation
+   - Missing the variant chain flattening for EnumContext::Child
+
+3. **PathKind::EnumVariant expansion logic**:
+   - No code to detect and expand `PathKind::EnumVariant`
+   - Should expand grouped variants into individual child paths
+   - Should set EnumContext::Child with variant information
+
+#### CRITICAL MISSING INFRASTRUCTURE:
+
+**The audit found these CRITICAL MISSING PIECES:**
+
+1. **`PathKind::EnumVariant` doesn't exist at all** - See "Case Analysis for Enum Handling" section
+2. **Enum builder returns WRONG types** - Currently returns flat `IndexedElement`/`StructField` instead of `PathKind::EnumVariant`
+3. **ProtocolEnforcer has NO variant handling** - Missing expansion logic for EnumVariant → child paths
+4. **EnumContext::Child is NEVER set** - Variant chains are never created
+5. **Step 6 not started** - `enum_root_examples` field is populated but IGNORED by conversion logic
+
+#### EXACT CODE FLOW AND METHOD USAGE
+
+**WHERE `type_name()` IS ACTUALLY USED:**
+```rust
+// In ProtocolEnforcer::process_child:
+let child_type = child_ctx.type_name();  // <-- CALLED HERE
+let child_kind = TypeKind::from_schema(child_schema, child_type);
+```
+For `PathKind::EnumVariant`, this needs to return the enum type so TypeKind can identify it as an enum.
+
+**WHERE `to_mutation_path_descriptor()` IS ACTUALLY USED:**
+```rust
+// In ProtocolEnforcer::process_all_children:
+let child_key = path_kind.to_mutation_path_descriptor();  // <-- CALLED HERE
+let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
+child_examples.insert(child_key, child_example);
+```
+**PROBLEM:** EnumVariant represents MULTIPLE paths, not one. ProtocolEnforcer must detect EnumVariant BEFORE this line and expand it.
+
+**WHERE `description()` IS ACTUALLY USED:**
+```rust
+// In MutationPath::from_mutation_path_internal:
+let description = path.path_kind.description(&type_kind);  // <-- CALLED HERE
+```
+Used for generating human-readable descriptions in the final output.
+
+#### IMPLEMENTATION REQUIREMENTS
+
+**PathKind::EnumVariant must have:**
+```rust
+EnumVariant {
+    signature: VariantSignature,       // Determines what children to create
+    applicable_variants: Vec<String>,  // Goes into variant_chain
+    parent_type: BrpTypeName,         // The enum type
+}
+```
+
+**ProtocolEnforcer must change `process_all_children()` to:**
+```rust
+for path_kind in child_path_kinds {
+    // NEW: Check if this is EnumVariant BEFORE normal processing
+    if let PathKind::EnumVariant { signature, applicable_variants, parent_type } = &path_kind {
+        // EXPAND EnumVariant into multiple child paths
+        match signature {
+            VariantSignature::Unit => {
+                // No children, but still need to track for examples
+            }
+            VariantSignature::Tuple(types) => {
+                for (index, type_name) in types.iter().enumerate() {
+                    // Create IndexedElement with EnumContext::Child
+                    let expanded_path = PathKind::IndexedElement { index, type_name, parent_type };
+                    let mut child_ctx = ctx.create_recursion_context(expanded_path, ...);
+                    child_ctx.enum_context = Some(EnumContext::Child {
+                        variant_chain: vec![(parent_type.clone(), applicable_variants.clone())]
+                    });
+                    // Process this child...
+                }
+            }
+            VariantSignature::Struct(fields) => {
+                for (field_name, type_name) in fields {
+                    // Create StructField with EnumContext::Child
+                    let expanded_path = PathKind::StructField { field_name, type_name, parent_type };
+                    let mut child_ctx = ctx.create_recursion_context(expanded_path, ...);
+                    child_ctx.enum_context = Some(EnumContext::Child {
+                        variant_chain: vec![(parent_type.clone(), applicable_variants.clone())]
+                    });
+                    // Process this child...
+                }
+            }
+        }
+    } else {
+        // Normal path processing
+    }
+}
+```
+
+#### ENUM BUILDER CHANGES NEEDED
+
+**Current WRONG implementation in `NewEnumMutationBuilder::collect_children`:**
+```rust
+// WRONG - creates flat paths
+children.push(PathKind::IndexedElement { index, type_name, parent_type });
+children.push(PathKind::StructField { field_name, type_name, parent_type });
+```
+
+**CORRECT implementation needed:**
+```rust
+// Group variants by signature
+let grouped = group_variants_by_signature(variants);
+for (signature, variants_in_group) in grouped {
+    let applicable_variants = variants_in_group.iter().map(|v| v.name()).collect();
+    children.push(PathKind::EnumVariant {
+        signature,
+        applicable_variants,
+        parent_type: ctx.type_name().clone(),
+    });
+}
+```
+
+#### VARIANT CHAIN FOR NESTED ENUMS
+
+**When already in EnumContext::Child and encountering another enum:**
+```rust
+// Current context: Some(EnumContext::Child { variant_chain: [(TestEnum, ["Nested"])] })
+// Child is NestedConfigEnum (another enum)
+
+// Must EXTEND the chain, not replace:
+child_ctx.enum_context = Some(EnumContext::Child {
+    variant_chain: existing_chain.clone().extend_with((NestedConfigEnum, ["Conditional"]))
+});
+// Results in: [(TestEnum, ["Nested"]), (NestedConfigEnum, ["Conditional"])]
+```
+
+#### DOT NOTATION FLATTENING
+
+**The function exists in `NewEnumMutationBuilder::flatten_variant_chain` but needs to be called:**
+- In `assemble_from_children()` when processing `EnumContext::Child`
+- Converts `[(TestEnum, ["Nested"]), (NestedConfigEnum, ["Conditional"])]` → `["Nested.Conditional"]`
+
+#### CRITICAL FILES TO MODIFY
+
+1. `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_kind.rs`
+   - Add `EnumVariant` variant to enum
+   - Implement required methods
+
+2. `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/new_enum_builder.rs`
+   - Fix `collect_children()` to return `PathKind::EnumVariant`
+   - Ensure `flatten_variant_chain()` is called properly
+
+3. `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
+   - Modify `process_all_children()` to detect and expand `PathKind::EnumVariant`
+   - Set `EnumContext::Child` with proper `variant_chain`
+
+#### THE KEY INSIGHT
+
+`PathKind::EnumVariant` is a **grouped representation** that carries variant information. ProtocolEnforcer **expands** it into regular PathKinds (IndexedElement/StructField) while setting the proper `EnumContext::Child` with `variant_chain`. This allows all children of a variant to know which variant(s) they belong to, enabling proper `applicable_variants` tracking through the entire recursion tree.
+
+**WITHOUT THIS**: The system cannot track which paths belong to which variants, making the entire enum example system broken.
+
+### 5b. Implementation Plan: Completing Step 5
+
+This section outlines the specific code changes needed to properly complete Step 5.
+
+#### 1. Add PathKind::EnumVariant variant
+
+**File:** `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_kind.rs`
+
+Add the new variant to the `PathKind` enum:
+```rust
+pub enum PathKind {
+    // ... existing variants ...
+
+    /// Represents a group of enum variants with the same signature
+    EnumVariant {
+        /// The signature shared by these variants (Unit/Tuple/Struct)
+        signature: VariantSignature,
+        /// The names of all variants that share this signature
+        applicable_variants: Vec<String>,
+        /// The enum type these variants belong to
+        parent_type: BrpTypeName,
+    },
+}
+```
+
+#### 2. Fix NewEnumMutationBuilder::collect_children
+
+**File:** `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/new_enum_builder.rs`
+
+Replace the current implementation that creates flat paths with one that returns PathKind::EnumVariant:
+
+```rust
+impl MutationPathBuilder for NewEnumMutationBuilder {
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+        let schema = ctx.require_registry_schema()?;
+
+        // Extract all variants from schema
+        let variants = extract_enum_variants(schema, &ctx.registry);
+
+        // Group variants by their signature (already handles deduplication)
+        let variant_groups = group_variants_by_signature(variants);
+
+        let mut children = Vec::new();
+
+        // Create ONE PathKind::EnumVariant per signature group
+        for (signature, variants_in_group) in variant_groups {
+            let applicable_variants: Vec<String> = variants_in_group
+                .iter()
+                .map(|v| v.name().to_string())
+                .collect();
+
+            children.push(PathKind::EnumVariant {
+                signature,
+                applicable_variants,
+                parent_type: ctx.type_name().clone(),
+            });
+        }
+
+        Ok(children)
+    }
+}
+```
+
+**Key changes:**
+- No more `deduplicate_variant_signatures` needed - grouping handles it
+- Returns `PathKind::EnumVariant` instead of `IndexedElement`/`StructField`
+- Preserves ALL variant names in `applicable_variants`
+- ProtocolEnforcer will expand these into actual paths
+
+#### 3. Add PathKind::EnumVariant expansion in ProtocolEnforcer
+
+**File:** `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
+
+Modify `process_all_children` to detect and expand `PathKind::EnumVariant`:
+
+```rust
+fn process_all_children(
+    &self,
+    ctx: &RecursionContext,
+    depth: RecursionDepth,
+) -> Result<ChildProcessingResult> {
+    let child_path_kinds = self.inner.collect_children(ctx)?;
+    let mut all_paths = vec![];
+    let mut paths_to_expose = vec![];
+    let mut child_examples = HashMap::<MutationPathDescriptor, Value>::new();
+
+    for path_kind in child_path_kinds {
+        // Check if this is EnumVariant and expand it
+        if let PathKind::EnumVariant { signature, applicable_variants, parent_type } = path_kind {
+            // Expand EnumVariant into actual child paths
+            let expanded_paths = Self::expand_enum_variant(&signature, &parent_type);
+
+            // Process each expanded path with EnumContext::Child
+            for expanded_path in expanded_paths {
+                let mut child_ctx = ctx.create_recursion_context(
+                    expanded_path.clone(),
+                    self.inner.child_path_action()
+                );
+
+                // Set EnumContext::Child with variant information
+                child_ctx.enum_context = Some(EnumContext::Child {
+                    variant_chain: vec![(parent_type.clone(), applicable_variants.clone())]
+                });
+
+                // Process using common logic
+                Self::process_and_collect_child(
+                    &expanded_path,
+                    &child_ctx,
+                    depth,
+                    &mut child_examples,
+                    &mut all_paths,
+                    &mut paths_to_expose
+                )?;
+            }
+        } else {
+            // Normal path processing (existing code stays the same)
+            // ...
+        }
+    }
+
+    Ok(ChildProcessingResult {
+        all_paths,
+        paths_to_expose,
+        child_examples,
+    })
+}
+```
+
+Add helper methods:
+
+```rust
+/// Helper to expand EnumVariant into concrete PathKinds
+fn expand_enum_variant(signature: &VariantSignature, parent_type: &BrpTypeName) -> Vec<PathKind> {
+    match signature {
+        VariantSignature::Unit => {
+            // Unit variants have no fields to expand
+            vec![]
+        }
+        VariantSignature::Tuple(types) => {
+            types.iter()
+                .enumerate()
+                .map(|(index, type_name)| PathKind::IndexedElement {
+                    index,
+                    type_name: type_name.clone(),
+                    parent_type: parent_type.clone(),
+                })
+                .collect()
+        }
+        VariantSignature::Struct(fields) => {
+            fields.iter()
+                .map(|(field_name, type_name)| PathKind::StructField {
+                    field_name: field_name.clone(),
+                    type_name: type_name.clone(),
+                    parent_type: parent_type.clone(),
+                })
+                .collect()
+        }
+    }
+}
+
+/// Helper to process a child and collect its results
+fn process_and_collect_child(
+    path_kind: &PathKind,
+    child_ctx: &RecursionContext,
+    depth: RecursionDepth,
+    child_examples: &mut HashMap<MutationPathDescriptor, Value>,
+    all_paths: &mut Vec<MutationPathInternal>,
+    paths_to_expose: &mut Vec<MutationPathInternal>,
+) -> Result<()> {
+    let child_key = path_kind.to_mutation_path_descriptor();
+    let (child_paths, child_example) = Self::process_child(&child_key, child_ctx, depth)?;
+
+    child_examples.insert(child_key, child_example);
+    all_paths.extend(child_paths.clone());
+
+    if matches!(child_ctx.path_action, PathAction::Create) {
+        paths_to_expose.extend(child_paths);
+    }
+
+    Ok(())
+}
+```
+
+**Key changes:**
+- Detects `PathKind::EnumVariant` before normal processing
+- Expands it into `IndexedElement`/`StructField` based on signature
+- Sets `EnumContext::Child` with variant_chain for expanded paths
+- Uses helper methods to avoid code duplication
+
+#### 4. Handle EnumContext::Child in ProtocolEnforcer::build_paths
+
+**File:** `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
+
+Fix the EnumContext::Child case that is currently ignored:
+
+```rust
+// In build_paths method, replace the example processing section:
+let (parent_example, enum_root_examples) = match &ctx.enum_context {
+    Some(EnumContext::Root) => {
+        // Check if the assembled_example contains enum_root_data marker
+        if let Some(enum_data) = assembled_example.get("enum_root_data") {
+            let default_example = enum_data.get("default").cloned().unwrap_or(json!(null));
+            let examples_json = enum_data.get("examples").cloned().unwrap_or(json!([]));
+            let examples: Vec<ExampleGroup> =
+                serde_json::from_value(examples_json).unwrap_or_default();
+            (default_example, Some(examples))
+        } else {
+            // Fallback if structure is unexpected
+            (assembled_example, None)
+        }
+    }
+    Some(EnumContext::Child { variant_chain }) => {
+        // ProtocolEnforcer handles ALL flattening
+        let applicable_variants = Self::flatten_variant_chain(variant_chain);
+
+        let wrapped = json!({
+            "value": assembled_example,
+            "applicable_variants": applicable_variants
+        });
+        (wrapped, None)
+    }
+    None => {
+        // Regular non-enum types pass through unchanged
+        (assembled_example, None)
+    }
+};
+```
+
+Add the flatten helper method to ProtocolEnforcer:
 
 ```rust
 impl ProtocolEnforcer {
-    fn create_mutation_path_internal(
-        &self,
-        ctx: &RecursionContext,
-        builder_output: Value,
-    ) -> MutationPathInternal {
-        let (example, enum_root_examples) = match ctx.enum_context {
-            Some(EnumContext::Root) => {
-                // For enum roots, extract both fields from structured output
-                if let Some(enum_data) = builder_output.get("enum_root_data") {
-                    let default_example = enum_data.get("default").cloned().unwrap_or(json!(null));
-                    let examples_json = enum_data.get("examples").cloned().unwrap_or(json!([]));
-                    let examples: Vec<ExampleGroup> = serde_json::from_value(examples_json).unwrap_or_default();
-                    (default_example, Some(examples))
-                } else {
-                    // Fallback if structure is unexpected
-                    (builder_output, None)
-                }
-            }
-            Some(EnumContext::Child { ref variant_chain }) => {
-                // For enum children, wrap the output with applicable_variants
-                let applicable_variants = flatten_variant_chain(variant_chain);
-                let wrapped = json!({
-                    "example": builder_output,
-                    "applicable_variants": applicable_variants
-                });
-                (wrapped, None)
-            }
-            None => {
-                // Regular values pass through unchanged
-                (builder_output, None)
-            }
-        };
+    /// Flatten variant chain into dot notation for nested enums
+    fn flatten_variant_chain(variant_chain: &[(BrpTypeName, Vec<String>)]) -> Vec<String> {
+        if variant_chain.is_empty() {
+            return vec![];
+        }
 
-        MutationPathInternal {
-            path: ctx.mutation_path.clone(),
-            example,
-            enum_root_examples,
-            type_name: ctx.type_name().clone(),
-            path_kind: ctx.path_kind.clone(),
-            mutation_status: MutationStatus::Mutable,
-            mutation_status_reason: None,
+        // Only return the variants from the last level in the chain
+        if let Some((_, last_variants)) = variant_chain.last() {
+            let prefix_parts: Vec<String> = variant_chain
+                .iter()
+                .take(variant_chain.len() - 1)
+                .filter_map(|(_, v)| v.first().cloned())
+                .collect();
+
+            if prefix_parts.is_empty() {
+                last_variants.clone()
+            } else {
+                last_variants
+                    .iter()
+                    .map(|v| {
+                        let mut full_path = prefix_parts.clone();
+                        full_path.push(v.clone());
+                        full_path.join(".")
+                    })
+                    .collect()
+            }
+        } else {
+            vec![]
         }
     }
 }
 ```
+
+**Note:** The `flatten_variant_chain` method should be REMOVED from `NewEnumMutationBuilder` since ProtocolEnforcer now owns all path flattening logic.
+
+**Key changes:**
+- Handles `EnumContext::Child` case properly
+- Wraps example with `applicable_variants`
+- Moves `flatten_variant_chain` to ProtocolEnforcer where it belongs
+- ProtocolEnforcer owns ALL path handling logic
+
+#### 5. Add variant chain extension for nested enums
+
+**File:** `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/protocol_enforcer.rs`
+
+Modify the EnumVariant expansion to extend variant chains for nested enums:
+
+```rust
+// In process_all_children, when processing expanded paths from EnumVariant:
+for expanded_path in expanded_paths {
+    let mut child_ctx = ctx.create_recursion_context(
+        expanded_path.clone(),
+        self.inner.child_path_action()
+    );
+
+    // Build variant chain - either new or extended
+    let variant_chain = match &ctx.enum_context {
+        Some(EnumContext::Child { variant_chain: parent_chain }) => {
+            // We're already in a variant - extend the chain
+            let mut extended = parent_chain.clone();
+            extended.push((parent_type.clone(), applicable_variants.clone()));
+            extended
+        }
+        _ => {
+            // Start a new chain
+            vec![(parent_type.clone(), applicable_variants.clone())]
+        }
+    };
+
+    child_ctx.enum_context = Some(EnumContext::Child { variant_chain });
+
+    // Process using common logic
+    Self::process_and_collect_child(
+        &expanded_path,
+        &child_ctx,
+        depth,
+        &mut child_examples,
+        &mut all_paths,
+        &mut paths_to_expose
+    )?;
+}
+```
+
+Also update the normal path processing to preserve chains:
+
+```rust
+// In the else branch for normal path processing:
+if matches!(child_type_kind, TypeKind::Enum) {
+    // This child is an enum
+    match &ctx.enum_context {
+        Some(EnumContext::Child { .. }) => {
+            // We're in a variant and found a nested enum
+            // The nested enum gets Root context (to generate examples)
+            // The chain will be extended when this enum's variants are expanded
+            child_ctx.enum_context = Some(EnumContext::Root);
+        }
+        _ => {
+            // Normal enum as field - gets Root context
+            child_ctx.enum_context = Some(EnumContext::Root);
+        }
+    }
+}
+```
+
+**Key changes:**
+- Extends variant chains when expanding EnumVariant inside another enum's variant
+- Preserves parent context when encountering nested enums
+- Results in proper chains like `[(TestEnum, ["Nested"]), (NestedConfigEnum, ["Conditional"])]`
+- Flattening to dot notation happens later in `flatten_variant_chain`
+
+#### 6. Add PathKind::EnumVariant match arms
+
+**File:** `/Users/natemccoy/rust/bevy_brp/mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_kind.rs`
+
+Add match arms for EnumVariant in all existing methods:
+
+```rust
+impl PathKind {
+    /// Get the type name being processed
+    pub const fn type_name(&self) -> &BrpTypeName {
+        match self {
+            Self::RootValue { type_name }
+            | Self::StructField { type_name, .. }
+            | Self::IndexedElement { type_name, .. }
+            | Self::ArrayElement { type_name, .. } => type_name,
+            Self::EnumVariant { parent_type, .. } => parent_type,
+        }
+    }
+
+    /// Extract a descriptor suitable for HashMap
+    pub fn to_mutation_path_descriptor(&self) -> MutationPathDescriptor {
+        match self {
+            Self::StructField { field_name, .. } => {
+                MutationPathDescriptor::from(field_name.clone())
+            }
+            Self::IndexedElement { index, .. } | Self::ArrayElement { index, .. } => {
+                MutationPathDescriptor::from(index.to_string())
+            }
+            Self::RootValue { .. } => MutationPathDescriptor::from(String::new()),
+            Self::EnumVariant { .. } => {
+                // Should never be called - EnumVariant is expanded before processing
+                unreachable!("EnumVariant should be expanded before descriptor is needed")
+            }
+        }
+    }
+
+    /// Generate a human-readable description
+    pub fn description(&self, type_kind: &TypeKind) -> String {
+        // ... existing logic ...
+        match self {
+            // ... existing cases ...
+            Self::EnumVariant { .. } => {
+                // Should never be called - EnumVariant is expanded before processing
+                unreachable!("EnumVariant should be expanded before description is needed")
+            }
+        }
+    }
+
+    /// Get just the variant name for serialization
+    pub const fn variant_name(&self) -> &'static str {
+        match self {
+            Self::RootValue { .. } => "RootValue",
+            Self::StructField { .. } => "StructField",
+            Self::IndexedElement { .. } => "IndexedElement",
+            Self::ArrayElement { .. } => "ArrayElement",
+            Self::EnumVariant { .. } => "EnumVariant",
+        }
+    }
+}
+```
+
+**Notes:**
+- `type_name()`: Returns `parent_type` since that's the enum type
+- `to_mutation_path_descriptor()`: Uses `unreachable!()` since expansion happens first
+- `description()`: Uses `unreachable!()` since expansion happens first
+- `variant_name()`: Returns "EnumVariant" for consistency
 
 ### 6. Conversion Logic Simplification ⏳ PENDING
 
