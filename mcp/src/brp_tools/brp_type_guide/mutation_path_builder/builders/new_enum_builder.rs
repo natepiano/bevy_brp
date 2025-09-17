@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
-use super::super::recursion_context::RecursionContext;
+use super::super::recursion_context::{EnumContext, RecursionContext};
 use super::super::types::{ExampleGroup, VariantSignature};
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::{Error, Result};
@@ -191,6 +191,106 @@ fn group_variants_by_signature(
 }
 
 // ============================================================================
+// NewEnumMutationBuilder Helper Methods
+// ============================================================================
+
+impl NewEnumMutationBuilder {
+    /// Build a complete example for a variant with all its fields
+    fn build_variant_example(
+        &self,
+        signature: &VariantSignature,
+        variant_name: &str,
+        children: &HashMap<MutationPathDescriptor, Value>,
+    ) -> Value {
+        match signature {
+            VariantSignature::Unit => {
+                json!(variant_name)
+            }
+            VariantSignature::Tuple(types) => {
+                let mut tuple_values = Vec::new();
+                for index in 0..types.len() {
+                    let descriptor = MutationPathDescriptor::from(index.to_string());
+                    let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                    tuple_values.push(value);
+                }
+                json!({ variant_name: tuple_values })
+            }
+            VariantSignature::Struct(field_types) => {
+                let mut field_values = serde_json::Map::new();
+                for (field_name, _) in field_types {
+                    let descriptor = MutationPathDescriptor::from(field_name.clone());
+                    let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
+                    field_values.insert(field_name.clone(), value);
+                }
+                json!({ variant_name: field_values })
+            }
+        }
+    }
+
+    /// Create a concrete example value for embedding in a parent structure
+    fn concrete_example(
+        &self,
+        variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
+        children: &HashMap<MutationPathDescriptor, Value>,
+    ) -> Value {
+        // Pick first unit variant if available, otherwise first example
+        let unit_variant = variant_groups
+            .iter()
+            .find(|(sig, _)| matches!(sig, VariantSignature::Unit))
+            .and_then(|(_, variants)| variants.first());
+
+        if let Some(variant) = unit_variant {
+            return json!(variant.name());
+        }
+
+        // Fall back to first available example with full structure
+        variant_groups
+            .iter()
+            .next()
+            .map(|(sig, variants)| {
+                let representative = variants.first().unwrap();
+                self.build_variant_example(sig, representative.name(), children)
+            })
+            .unwrap_or(json!(null))
+    }
+
+    /// Separator used for flattening nested enum variant chains into dot notation
+    const VARIANT_PATH_SEPARATOR: &str = ".";
+
+    /// Flatten variant chain into dot notation for nested enums
+    fn flatten_variant_chain(variant_chain: &[(BrpTypeName, Vec<String>)]) -> Vec<String> {
+        // e.g., [(TestEnum, ["Nested"]), (NestedEnum, ["Conditional"])] → ["Nested.Conditional"]
+        if variant_chain.is_empty() {
+            return vec![];
+        }
+
+        // Only return the variants from the last level in the chain
+        if let Some((_, last_variants)) = variant_chain.last() {
+            let prefix_parts: Vec<String> = variant_chain
+                .iter()
+                .take(variant_chain.len() - 1)
+                .filter_map(|(_, v)| v.first().cloned())
+                .collect();
+
+            if prefix_parts.is_empty() {
+                last_variants.clone()
+            } else {
+                last_variants
+                    .iter()
+                    .map(|v| {
+                        let mut full_path = prefix_parts.clone();
+                        full_path.push(v.clone());
+                        full_path.join(Self::VARIANT_PATH_SEPARATOR)
+                    })
+                    .collect()
+            }
+        } else {
+            vec![]
+        }
+    }
+}
+
+// ============================================================================
 // MutationPathBuilder Implementation
 // ============================================================================
 
@@ -269,84 +369,83 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
     ) -> Result<Value> {
         let schema = ctx.require_registry_schema()?;
         let all_variants = extract_enum_variants(schema, &ctx.registry);
-
-        // Group all variants by their signature
         let variant_groups = group_variants_by_signature(all_variants);
 
-        // Build one example per signature group
-        let mut examples = Vec::new();
+        // Build internal MutationExample to organize the enum logic
+        let mutation_example = match &ctx.enum_context {
+            Some(EnumContext::Root) => {
+                // Build examples array for enum root path
+                let mut examples = Vec::new();
 
-        for (signature, variants_in_group) in variant_groups {
-            // Use first variant in group as representative for the example
-            let representative = variants_in_group.first().ok_or_else(|| {
-                Report::new(Error::InvalidState("Empty variant group".to_string()))
-            })?;
+                for (signature, variants_in_group) in &variant_groups {
+                    let representative = variants_in_group.first().ok_or_else(|| {
+                        Report::new(Error::InvalidState("Empty variant group".to_string()))
+                    })?;
 
-            let example = match &signature {
-                VariantSignature::Unit => {
-                    // Unit variants: just use the variant name
-                    json!(representative.name())
+                    let example =
+                        self.build_variant_example(signature, representative.name(), &children);
+
+                    let applicable_variants: Vec<String> = variants_in_group
+                        .iter()
+                        .map(|v| v.name().to_string())
+                        .collect();
+
+                    examples.push(ExampleGroup {
+                        applicable_variants,
+                        signature: signature.clone(),
+                        example,
+                    });
                 }
-                VariantSignature::Tuple(types) => {
-                    // Tuple variants: assemble from indexed children
-                    let mut tuple_values = Vec::new();
-                    for index in 0..types.len() {
-                        let descriptor = MutationPathDescriptor::from(index.to_string());
-                        let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                        tuple_values.push(value);
+
+                MutationExample::EnumRoot(examples)
+            }
+
+            Some(EnumContext::Child { variant_chain }) => {
+                // Building under another enum - return EnumChild
+                let example = self.concrete_example(&variant_groups, &children);
+                let applicable_variants = Self::flatten_variant_chain(variant_chain);
+
+                MutationExample::EnumChild {
+                    example,
+                    applicable_variants,
+                }
+            }
+
+            None => {
+                // Parent is not an enum - return a concrete example
+                let example = self.concrete_example(&variant_groups, &children);
+                MutationExample::Simple(example)
+            }
+        };
+
+        // Convert MutationExample to Value for ProtocolEnforcer to process
+        match mutation_example {
+            MutationExample::Simple(val) => Ok(val),
+            MutationExample::EnumRoot(examples) => {
+                // For enum roots, return both examples array and a default concrete value
+                // ProtocolEnforcer will extract these to populate MutationPathInternal fields
+                let default_example = examples
+                    .first()
+                    .map(|g| g.example.clone())
+                    .unwrap_or(json!(null));
+
+                Ok(json!({
+                    "enum_root_data": {
+                        "examples": examples,
+                        "default": default_example
                     }
-                    // Format: {"VariantName": [val1, val2]}
-                    json!({ representative.name(): tuple_values })
-                }
-                VariantSignature::Struct(field_types) => {
-                    // Struct variants: assemble from field children
-                    let mut field_values = serde_json::Map::new();
-                    for (field_name, _) in field_types {
-                        let descriptor = MutationPathDescriptor::from(field_name.clone());
-                        let value = children.get(&descriptor).cloned().unwrap_or(json!(null));
-                        field_values.insert(field_name.clone(), value);
-                    }
-                    // Format: {"VariantName": {field1: val1, field2: val2}}
-                    json!({ representative.name(): field_values })
-                }
-            };
-
-            // Collect all variant names that share this signature
-            let applicable_variants: Vec<String> = variants_in_group
-                .iter()
-                .map(|v| v.name().to_string())
-                .collect();
-
-            // Create the signature example with all applicable variants
-            examples.push(json!({
-                "applicable_variants": applicable_variants,
-                "example": example,
-                "signature": signature.to_string(),
-            }));
-        }
-
-        // Return root enum example structure
-        // Note: When used as the root path, we'll just return the first example's value
-        // The "examples" array structure is for the mutation_paths output format
-        if examples.len() == 1 && examples[0].get("applicable_variants").is_some() {
-            // For single-signature enums, return just the example value
-            Ok(examples[0].get("example").cloned().unwrap_or(json!(null)))
-        } else {
-            // For multi-signature enums, pick the first unit variant if available,
-            // otherwise the first example
-            let unit_example = examples
-                .iter()
-                .find(|e| {
-                    e.get("signature")
-                        .and_then(|s| s.as_str())
-                        .map_or(false, |s| s == "unit")
-                })
-                .or_else(|| examples.first());
-
-            Ok(unit_example
-                .and_then(|e| e.get("example"))
-                .cloned()
-                .unwrap_or(json!(null)))
+                }))
+            }
+            MutationExample::EnumChild {
+                example,
+                applicable_variants,
+            } => {
+                // For enum children, wrap with applicable_variants info
+                Ok(json!({
+                    "value": example,
+                    "applicable_variants": applicable_variants
+                }))
+            }
         }
     }
 }
