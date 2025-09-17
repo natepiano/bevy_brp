@@ -233,6 +233,7 @@ impl ProtocolEnforcer {
         MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
+            enum_root_examples: None, // Will be set properly in Step 5
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,

@@ -96,6 +96,9 @@ fn shorten_type_name(type_name: &str) -> String {
 pub struct MutationPathInternal {
     /// Example value for this path
     pub example:                Value,
+    /// For enum roots only: the examples array with all variant groups
+    /// None for all other paths (including enum children and regular types)
+    pub enum_root_examples:     Option<Vec<ExampleGroup>>,
     /// Path for mutation, e.g., ".translation.x"
     pub path:                   String,
     /// Type information for this path
