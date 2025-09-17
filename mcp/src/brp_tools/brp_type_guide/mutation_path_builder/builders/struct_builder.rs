@@ -21,7 +21,13 @@ use crate::json_schema::SchemaField;
 pub struct StructMutationBuilder;
 
 impl MutationPathBuilder for StructMutationBuilder {
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+    type Item = PathKind;
+    type Iter<'a>
+        = std::vec::IntoIter<PathKind>
+    where
+        Self: 'a;
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         // The new require_registry_schema() returns Result with standard error
         let schema = ctx.require_registry_schema()?;
 
@@ -29,12 +35,12 @@ impl MutationPathBuilder for StructMutationBuilder {
         // Note: Missing properties field is valid for empty structs (e.g., Camera2d)
         let Some(properties) = schema.get_properties() else {
             // No properties field means empty struct (marker struct)
-            return Ok(vec![]);
+            return Ok(vec![].into_iter());
         };
 
         // Empty properties map is also valid (empty struct/marker struct)
         if properties.is_empty() {
-            return Ok(vec![]); // Valid marker struct
+            return Ok(vec![].into_iter()); // Valid marker struct
         }
 
         // Convert each field into a PathKind
@@ -66,7 +72,7 @@ impl MutationPathBuilder for StructMutationBuilder {
             children.push(path_kind);
         }
 
-        Ok(children)
+        Ok(children.into_iter())
     }
 
     fn assemble_from_children(

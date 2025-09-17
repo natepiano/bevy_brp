@@ -21,7 +21,13 @@ use crate::json_schema::SchemaField;
 pub struct TupleMutationBuilder;
 
 impl MutationPathBuilder for TupleMutationBuilder {
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+    type Item = PathKind;
+    type Iter<'a>
+        = std::vec::IntoIter<PathKind>
+    where
+        Self: 'a;
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         // Use Result-returning API - ProtocolEnforcer handles missing schema
         let schema = ctx.require_registry_schema()?;
 
@@ -75,7 +81,7 @@ impl MutationPathBuilder for TupleMutationBuilder {
             ));
         }
 
-        Ok(children)
+        Ok(children.into_iter())
     }
 
     fn assemble_from_children(

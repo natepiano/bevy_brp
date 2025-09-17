@@ -23,6 +23,12 @@ use crate::json_schema::SchemaField;
 pub struct MapMutationBuilder;
 
 impl MutationPathBuilder for MapMutationBuilder {
+    type Item = PathKind;
+    type Iter<'a>
+        = std::vec::IntoIter<PathKind>
+    where
+        Self: 'a;
+
     fn child_path_action(&self) -> PathAction {
         // Maps DON'T include child paths in the result
         //
@@ -38,7 +44,7 @@ impl MutationPathBuilder for MapMutationBuilder {
         PathAction::Skip
     }
 
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         let schema = ctx.require_registry_schema()?;
 
         // Extract key and value types from schema
@@ -73,7 +79,8 @@ impl MutationPathBuilder for MapMutationBuilder {
                 type_name:   val_t,
                 parent_type: ctx.type_name().clone(),
             },
-        ])
+        ]
+        .into_iter())
     }
 
     fn assemble_from_children(

@@ -172,3 +172,13 @@ impl Serialize for PathKind {
         serializer.serialize_str(&self.to_string())
     }
 }
+
+impl super::MaybeVariants for PathKind {
+    fn applicable_variants(&self) -> Option<&[String]> {
+        None // Regular paths have no variant information
+    }
+
+    fn into_path_kind(self) -> Option<PathKind> {
+        Some(self)
+    }
+}

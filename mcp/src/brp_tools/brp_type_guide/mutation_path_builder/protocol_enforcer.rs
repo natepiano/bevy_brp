@@ -3,17 +3,34 @@ use std::ops::Deref;
 
 use serde_json::{Value, json};
 
+use super::super::response_types::BrpTypeName;
+use super::builders::{
+    ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, NewEnumMutationBuilder,
+    SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
+};
 use super::mutation_knowledge::MutationKnowledge;
 use super::type_kind::TypeKind;
 use super::types::PathSummary;
 use super::{
-    MutationPathBuilder, MutationPathDescriptor, MutationPathInternal, MutationStatus,
-    NotMutableReason, PathAction, RecursionContext,
+    MaybeVariants, MutationPathBuilder, MutationPathDescriptor, MutationPathInternal,
+    MutationStatus, NotMutableReason, PathAction, PathKind, RecursionContext,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
-impl MutationPathBuilder for ProtocolEnforcer {
+impl<B: MutationPathBuilder> MutationPathBuilder for ProtocolEnforcer<B> {
+    type Item = B::Item;
+    type Iter<'a>
+        = B::Iter<'a>
+    where
+        Self: 'a,
+        B: 'a;
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
+        // Delegate to the inner builder
+        self.inner.collect_children(ctx)
+    }
+
     fn build_paths(
         &self,
         ctx: &RecursionContext,
@@ -53,15 +70,48 @@ impl MutationPathBuilder for ProtocolEnforcer {
             }
         };
 
-        // Use knowledge example if available (for Teach types), otherwise use assembled
-        let parent_example = if let Some(knowledge_example) = knowledge_example {
+        // Process the assembled example based on EnumContext
+        // Extract enum_root_examples if this is an enum root
+        let (parent_example, enum_root_examples) = match &ctx.enum_context {
+            Some(super::recursion_context::EnumContext::Root) => {
+                // Check if the assembled_example contains enum_root_data marker
+                if let Some(enum_data) = assembled_example.get("enum_root_data") {
+                    let default_example = enum_data.get("default").cloned().unwrap_or(json!(null));
+                    let examples_json = enum_data.get("examples").cloned().unwrap_or(json!([]));
+                    // Deserialize the examples array into Vec<ExampleGroup>
+                    let examples: Vec<super::types::ExampleGroup> =
+                        serde_json::from_value(examples_json).unwrap_or_default();
+                    (default_example, Some(examples))
+                } else {
+                    // Fallback if structure is unexpected
+                    (assembled_example, None)
+                }
+            }
+            Some(super::recursion_context::EnumContext::Child { variant_chain }) => {
+                // ProtocolEnforcer handles ALL flattening
+                let applicable_variants = Self::flatten_variant_chain(variant_chain);
+
+                let wrapped = json!({
+                    "value": assembled_example,
+                    "applicable_variants": applicable_variants
+                });
+                (wrapped, None)
+            }
+            None => {
+                // Regular non-enum types pass through unchanged
+                (assembled_example, None)
+            }
+        };
+
+        // Use knowledge example if available (for Teach types), otherwise use processed example
+        let final_example = if let Some(knowledge_example) = knowledge_example {
             tracing::debug!(
                 "Using knowledge example for {} instead of assembled value",
                 ctx.type_name()
             );
             knowledge_example
         } else {
-            assembled_example
+            parent_example
         };
 
         // Compute parent's mutation status from children's statuses
@@ -76,9 +126,10 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 // Normal mode: Add root path and return only paths marked for exposure
                 paths_to_expose.insert(
                     0,
-                    Self::build_mutation_path_internal(
+                    Self::build_mutation_path_internal_with_enum_examples(
                         ctx,
-                        parent_example,
+                        final_example,
+                        enum_root_examples,
                         parent_status,
                         mutation_status_reason,
                     ),
@@ -89,9 +140,10 @@ impl MutationPathBuilder for ProtocolEnforcer {
                 // Skip mode: Return ONLY a root path with the example
                 // This ensures the example is available for parent assembly
                 // but child paths aren't exposed in the final result
-                Ok(vec![Self::build_mutation_path_internal(
+                Ok(vec![Self::build_mutation_path_internal_with_enum_examples(
                     ctx,
-                    parent_example,
+                    final_example,
+                    enum_root_examples,
                     parent_status,
                     mutation_status_reason,
                 )])
@@ -100,8 +152,8 @@ impl MutationPathBuilder for ProtocolEnforcer {
     }
 }
 
-pub struct ProtocolEnforcer {
-    inner: Box<dyn MutationPathBuilder>,
+pub struct ProtocolEnforcer<B: MutationPathBuilder> {
+    inner: B,
 }
 
 /// Result of processing all children during mutation path building
@@ -114,7 +166,30 @@ struct ChildProcessingResult {
     child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
-impl ProtocolEnforcer {
+/// Single dispatch point for creating builders - used for both entry and recursion
+/// This is the ONLY place where we match on TypeKind to create builders
+pub fn recurse_mutation_paths(
+    type_kind: TypeKind,
+    ctx: &RecursionContext,
+    depth: RecursionDepth,
+) -> Result<Vec<MutationPathInternal>> {
+    use super::MutationPathBuilder;
+
+    match type_kind {
+        TypeKind::Struct => ProtocolEnforcer::new(StructMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Tuple | TypeKind::TupleStruct => {
+            ProtocolEnforcer::new(TupleMutationBuilder).build_paths(ctx, depth)
+        }
+        TypeKind::Array => ProtocolEnforcer::new(ArrayMutationBuilder).build_paths(ctx, depth),
+        TypeKind::List => ProtocolEnforcer::new(ListMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Map => ProtocolEnforcer::new(MapMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Set => ProtocolEnforcer::new(SetMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Enum => ProtocolEnforcer::new(NewEnumMutationBuilder).build_paths(ctx, depth),
+        TypeKind::Value => ProtocolEnforcer::new(ValueMutationBuilder).build_paths(ctx, depth),
+    }
+}
+
+impl<B: MutationPathBuilder> ProtocolEnforcer<B> {
     /// Process all children and collect their paths and examples
     fn process_all_children(
         &self,
@@ -122,30 +197,84 @@ impl ProtocolEnforcer {
         depth: RecursionDepth,
     ) -> Result<ChildProcessingResult> {
         // Collect children for depth-first traversal
-        let child_path_kinds = self.inner.collect_children(ctx)?;
+        let child_items = self.inner.collect_children(ctx)?;
         let mut all_paths = vec![];
         let mut paths_to_expose = vec![]; // Paths that should be included in final result
         let mut child_examples = HashMap::<MutationPathDescriptor, Value>::new();
 
         // Recurse to each child (they handle their own protocol)
-        for path_kind in child_path_kinds {
-            // ProtocolEnforcer creates the context with proper path_action handling
-            let child_ctx =
-                ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
+        for item in child_items {
+            // Check if we have variant information (from enum builder)
+            let variant_info = item.applicable_variants().map(|v| v.to_vec());
 
-            // Extract descriptor from PathKind for HashMap
-            let child_key = path_kind.to_mutation_path_descriptor();
+            // Always try to extract the PathKind first (may be None for unit variants)
+            if let Some(path_kind) = item.into_path_kind() {
+                let mut child_ctx =
+                    ctx.create_recursion_context(path_kind.clone(), self.inner.child_path_action());
 
-            let (child_paths, child_example) = Self::process_child(&child_key, &child_ctx, depth)?;
-            child_examples.insert(child_key, child_example);
+                // Check if we need special variant handling
+                if let Some(variants) = variant_info {
+                    // Special handling for enum items: Set up variant chain
+                    let variant_chain = match &ctx.enum_context {
+                        Some(super::recursion_context::EnumContext::Child {
+                            variant_chain: parent_chain,
+                        }) => {
+                            // We're already in a variant - extend the chain
+                            let mut extended = parent_chain.clone();
+                            extended.push((ctx.type_name().clone(), variants.to_vec()));
+                            extended
+                        }
+                        _ => {
+                            // Start a new chain
+                            vec![(ctx.type_name().clone(), variants.to_vec())]
+                        }
+                    };
 
-            // Always collect all paths for analysis
-            all_paths.extend(child_paths.clone());
+                    child_ctx.enum_context =
+                        Some(super::recursion_context::EnumContext::Child { variant_chain });
+                } else {
+                    // Check if this child is an enum and set EnumContext appropriately
+                    if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name())
+                    {
+                        let child_type_kind =
+                            TypeKind::from_schema(child_schema, child_ctx.type_name());
+                        if matches!(child_type_kind, TypeKind::Enum) {
+                            // This child is an enum
+                            match &ctx.enum_context {
+                                Some(super::recursion_context::EnumContext::Child { .. }) => {
+                                    // We're in a variant and found a nested enum
+                                    // The nested enum gets Root context (to generate examples)
+                                    // The chain will be extended when this enum's variants are
+                                    // expanded
+                                    child_ctx.enum_context =
+                                        Some(super::recursion_context::EnumContext::Root);
+                                }
+                                _ => {
+                                    // Normal enum as field - gets Root context
+                                    child_ctx.enum_context =
+                                        Some(super::recursion_context::EnumContext::Root);
+                                }
+                            }
+                        }
+                    }
+                }
 
-            // Only add to paths_to_expose if this child should be created
-            if matches!(child_ctx.path_action, PathAction::Create) {
-                paths_to_expose.extend(child_paths);
+                // Extract descriptor from PathKind for HashMap
+                let child_key = path_kind.to_mutation_path_descriptor();
+
+                let (child_paths, child_example) =
+                    Self::process_child(&child_key, &child_ctx, depth)?;
+                child_examples.insert(child_key, child_example);
+
+                // Always collect all paths for analysis
+                all_paths.extend(child_paths.clone());
+
+                // Only add to paths_to_expose if this child should be created
+                if matches!(child_ctx.path_action, PathAction::Create) {
+                    paths_to_expose.extend(child_paths);
+                }
             }
+            // If into_path_kind() returns None, skip this item (e.g., for filtering)
         }
 
         Ok(ChildProcessingResult {
@@ -181,29 +310,15 @@ impl ProtocolEnforcer {
         let child_kind = TypeKind::from_schema(child_schema, child_type);
         tracing::debug!("Child '{}' TypeKind: {:?}", descriptor.deref(), child_kind);
 
-        // we need builder() so that unmigrated children return to their normal unmigrated path
-        // as builder() in `TypeKind` will check the `is_migrated()` method
-        //
-        //  1. If child is migrated: child_builder becomes ANOTHER ProtocolEnforcer wrapping the
-        //     migrated child
-        //  - So it calls _ProtocolEnforcer.build_paths()_ (this again), NOT the migrated builder's
-        //    build_paths()
-        //    - The migrated builder's build_paths() that returns Error::InvalidState is NEVER
-        //      called
-        //  2. If child is unmigrated: child_builder is the raw unmigrated builder
-        //  - So it calls the unmigrated builder's build_paths() directly
-        let child_builder = child_kind.builder();
-
-        // Child handles its OWN depth increment and protocol
-        // If child is migrated -> wrapped with ProtocolEnforcer and calls back through
-        // If not migrated -> uses old implementation
+        // Use the single dispatch point for recursion
         // THIS is the recursion point - after this everything pops back up to build examples
         tracing::debug!(
             "ProtocolEnforcer: Calling build_paths on child '{}' of type '{}'",
             descriptor.deref(),
             child_ctx.type_name()
         );
-        let child_paths = child_builder.build_paths(child_ctx, depth.increment())?;
+
+        let child_paths = recurse_mutation_paths(child_kind, child_ctx, depth.increment())?;
         tracing::debug!(
             "ProtocolEnforcer: Child '{}' returned {} paths",
             descriptor.deref(),
@@ -219,7 +334,7 @@ impl ProtocolEnforcer {
         Ok((child_paths, child_example))
     }
 
-    pub fn new(inner: Box<dyn MutationPathBuilder>) -> Self {
+    pub fn new(inner: B) -> Self {
         Self { inner }
     }
 
@@ -230,10 +345,27 @@ impl ProtocolEnforcer {
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> MutationPathInternal {
+        Self::build_mutation_path_internal_with_enum_examples(
+            ctx,
+            example,
+            None,
+            status,
+            mutation_status_reason,
+        )
+    }
+
+    /// Build a `MutationPathInternal` with enum examples support
+    fn build_mutation_path_internal_with_enum_examples(
+        ctx: &RecursionContext,
+        example: Value,
+        enum_root_examples: Option<Vec<super::types::ExampleGroup>>,
+        status: MutationStatus,
+        mutation_status_reason: Option<Value>,
+    ) -> MutationPathInternal {
         MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
-            enum_root_examples: None, // Will be set properly in Step 5
+            enum_root_examples,
             type_name: ctx.type_name().clone(),
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
@@ -396,5 +528,58 @@ impl ProtocolEnforcer {
         };
 
         (status, reason)
+    }
+
+    /// Flatten variant chain into dot notation for nested enums
+    fn flatten_variant_chain(variant_chain: &[(BrpTypeName, Vec<String>)]) -> Vec<String> {
+        if variant_chain.is_empty() {
+            return vec![];
+        }
+
+        // Only return the variants from the last level in the chain
+        if let Some((_, last_variants)) = variant_chain.last() {
+            let prefix_parts: Vec<String> = variant_chain
+                .iter()
+                .take(variant_chain.len() - 1)
+                .filter_map(|(_, v)| v.first().cloned())
+                .collect();
+
+            if prefix_parts.is_empty() {
+                last_variants.clone()
+            } else {
+                last_variants
+                    .iter()
+                    .map(|v| {
+                        let mut full_path = prefix_parts.clone();
+                        full_path.push(v.clone());
+                        full_path.join(".")
+                    })
+                    .collect()
+            }
+        } else {
+            vec![]
+        }
+    }
+
+    /// Helper to process a child and collect its results
+    fn process_and_collect_child(
+        path_kind: &PathKind,
+        child_ctx: &RecursionContext,
+        depth: RecursionDepth,
+        child_examples: &mut HashMap<MutationPathDescriptor, Value>,
+        all_paths: &mut Vec<MutationPathInternal>,
+        paths_to_expose: &mut Vec<MutationPathInternal>,
+    ) -> Result<()> {
+        let child_key = path_kind.to_mutation_path_descriptor();
+        let (child_paths, child_example) = Self::process_child(&child_key, child_ctx, depth)?;
+
+        child_examples.insert(child_key, child_example);
+        all_paths.extend(child_paths.clone());
+
+        if matches!(child_ctx.path_action, PathAction::Create) {
+            paths_to_expose.extend(child_paths);
+        }
+
+        Ok(())
     }
 }

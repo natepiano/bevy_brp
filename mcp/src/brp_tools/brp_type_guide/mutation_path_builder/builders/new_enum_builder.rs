@@ -4,7 +4,7 @@
 //! protocol-driven pattern with ProtocolEnforcer handling all the common
 //! protocol concerns while this builder focuses only on enum-specific logic.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use error_stack::Report;
 use serde::{Deserialize, Serialize};
@@ -35,6 +35,26 @@ enum MutationExample {
         example:             Value,
         applicable_variants: Vec<String>,
     },
+}
+
+/// Represents a path with associated variant information
+/// Used by the enum builder to track which variants a path applies to
+#[derive(Debug, Clone)]
+pub struct PathKindWithVariants {
+    /// The path kind (None for unit variants)
+    pub path:                Option<PathKind>,
+    /// Variants this path applies to
+    pub applicable_variants: Vec<String>,
+}
+
+impl super::super::MaybeVariants for PathKindWithVariants {
+    fn applicable_variants(&self) -> Option<&[String]> {
+        Some(&self.applicable_variants)
+    }
+
+    fn into_path_kind(self) -> Option<PathKind> {
+        self.path
+    }
 }
 
 /// Builder for enum mutation paths using the new protocol
@@ -164,18 +184,6 @@ fn extract_enum_variants(
         .unwrap_or_default()
 }
 
-fn deduplicate_variant_signatures(variants: Vec<EnumVariantInfo>) -> Vec<EnumVariantInfo> {
-    let mut seen_signatures = HashSet::new();
-    let mut unique_variants = Vec::new();
-    for variant in variants {
-        let signature = variant.signature();
-        if seen_signatures.insert(signature) {
-            unique_variants.push(variant);
-        }
-    }
-    unique_variants
-}
-
 fn group_variants_by_signature(
     variants: Vec<EnumVariantInfo>,
 ) -> HashMap<VariantSignature, Vec<EnumVariantInfo>> {
@@ -295,71 +303,68 @@ impl NewEnumMutationBuilder {
 // ============================================================================
 
 impl MutationPathBuilder for NewEnumMutationBuilder {
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+    type Item = PathKindWithVariants;
+    type Iter<'a>
+        = std::vec::IntoIter<PathKindWithVariants>
+    where
+        Self: 'a;
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         let schema = ctx.require_registry_schema()?;
 
-        // Use existing variant processing logic
+        // Extract all variants from schema
         let variants = extract_enum_variants(schema, &ctx.registry);
-        tracing::debug!(
-            "Found {} total variants for {}",
-            variants.len(),
-            ctx.type_name()
-        );
 
-        let unique_variants = deduplicate_variant_signatures(variants);
-        tracing::debug!(
-            "After deduplication: {} unique signatures for {}",
-            unique_variants.len(),
-            ctx.type_name()
-        );
+        // Group variants by their signature (already handles deduplication)
+        let variant_groups = group_variants_by_signature(variants);
 
         let mut children = Vec::new();
 
-        for variant in unique_variants {
-            match variant {
-                EnumVariantInfo::Unit(name) => {
-                    tracing::debug!("Unit variant: {}", name);
-                    // Unit variants have no children
+        // Create PathKindWithVariants for each signature group
+        for (signature, variants_in_group) in variant_groups {
+            let applicable_variants: Vec<String> = variants_in_group
+                .iter()
+                .map(|v| v.name().to_string())
+                .collect();
+
+            match signature {
+                VariantSignature::Unit => {
+                    // Unit variants have no path (no fields to mutate)
+                    children.push(PathKindWithVariants {
+                        path: None,
+                        applicable_variants,
+                    });
                 }
-                EnumVariantInfo::Tuple(name, types) => {
-                    tracing::debug!("Tuple variant: {} with {} types", name, types.len());
-                    // Create standard IndexedElement for each tuple element
-                    // Results in paths like ".0", ".1" (flat, no variant prefix)
+                VariantSignature::Tuple(types) => {
+                    // Create PathKindWithVariants for each tuple element
                     for (index, type_name) in types.iter().enumerate() {
-                        tracing::debug!("Adding IndexedElement .{} for type {}", index, type_name);
-                        children.push(PathKind::IndexedElement {
-                            index,
-                            type_name: type_name.clone(),
-                            parent_type: ctx.type_name().clone(),
+                        children.push(PathKindWithVariants {
+                            path:                Some(PathKind::IndexedElement {
+                                index,
+                                type_name: type_name.clone(),
+                                parent_type: ctx.type_name().clone(),
+                            }),
+                            applicable_variants: applicable_variants.clone(),
                         });
                     }
                 }
-                EnumVariantInfo::Struct(name, fields) => {
-                    tracing::debug!("Struct variant: {} with {} fields", name, fields.len());
-                    // Create standard StructField for each struct field
-                    // Results in paths like ".enabled", ".name" (flat, no variant prefix)
-                    for field in fields {
-                        tracing::debug!(
-                            "Adding StructField .{} for type {}",
-                            field.field_name,
-                            field.type_name
-                        );
-                        children.push(PathKind::StructField {
-                            field_name:  field.field_name.clone(),
-                            type_name:   field.type_name.clone(),
-                            parent_type: ctx.type_name().clone(),
+                VariantSignature::Struct(fields) => {
+                    // Create PathKindWithVariants for each struct field
+                    for (field_name, type_name) in fields {
+                        children.push(PathKindWithVariants {
+                            path:                Some(PathKind::StructField {
+                                field_name:  field_name.clone(),
+                                type_name:   type_name.clone(),
+                                parent_type: ctx.type_name().clone(),
+                            }),
+                            applicable_variants: applicable_variants.clone(),
                         });
                     }
                 }
             }
         }
 
-        tracing::debug!(
-            "collect_children returning {} total children for {}",
-            children.len(),
-            ctx.type_name()
-        );
-        Ok(children)
+        Ok(children.into_iter())
     }
 
     fn assemble_from_children(

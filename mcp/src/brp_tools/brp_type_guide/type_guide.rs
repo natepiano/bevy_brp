@@ -7,11 +7,7 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::constants::RecursionDepth;
-use super::mutation_path_builder::{
-    EnumVariantInfo, MutationPath, MutationPathBuilder, MutationPathInternal, PathKind,
-    RecursionContext, TypeKind,
-};
+use super::mutation_path_builder::{EnumVariantInfo, MutationPath, MutationPathInternal, TypeKind};
 use super::response_types::{BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaInfo};
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
@@ -203,13 +199,16 @@ impl TypeGuide {
         let type_kind = TypeKind::from_schema(registry_schema, brp_type_name);
         tracing::debug!("DEBUG: TypeKind for {} is {:?}", brp_type_name, type_kind);
 
-        // Create root context for the new trait system
+        // Create root context for this type
+        use super::constants::RecursionDepth;
+        use super::mutation_path_builder::protocol_enforcer::recurse_mutation_paths;
+        use super::mutation_path_builder::{PathKind, RecursionContext};
+
         let path_kind = PathKind::new_root_value(brp_type_name.clone());
         let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
-        tracing::debug!("DEBUG: Created RecursionContext for {}", brp_type_name);
 
-        // Use the new trait dispatch system
-        let result = type_kind.build_paths(&ctx, RecursionDepth::ZERO)?;
+        // Use the single dispatch point
+        let result = recurse_mutation_paths(type_kind, &ctx, RecursionDepth::ZERO)?;
         tracing::debug!(
             "DEBUG: build_paths returned {} paths for {}",
             result.len(),

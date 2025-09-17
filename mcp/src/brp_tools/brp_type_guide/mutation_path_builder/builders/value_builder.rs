@@ -17,8 +17,14 @@ use crate::error::{Error, Result};
 pub struct ValueMutationBuilder;
 
 impl MutationPathBuilder for ValueMutationBuilder {
-    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        Ok(vec![]) // Leaf type - no children
+    type Item = PathKind;
+    type Iter<'a>
+        = std::vec::IntoIter<PathKind>
+    where
+        Self: 'a;
+
+    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
+        Ok(vec![].into_iter()) // Leaf type - no children
     }
 
     fn assemble_from_children(

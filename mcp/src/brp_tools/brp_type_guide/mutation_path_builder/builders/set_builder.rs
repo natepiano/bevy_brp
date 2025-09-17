@@ -22,7 +22,13 @@ use crate::json_schema::SchemaField;
 pub struct SetMutationBuilder;
 
 impl MutationPathBuilder for SetMutationBuilder {
-    fn collect_children(&self, ctx: &RecursionContext) -> Result<Vec<PathKind>> {
+    type Item = PathKind;
+    type Iter<'a>
+        = std::vec::IntoIter<PathKind>
+    where
+        Self: 'a;
+
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>> {
         let schema = ctx.require_registry_schema()?;
 
         // Extract item type from schema
@@ -41,7 +47,8 @@ impl MutationPathBuilder for SetMutationBuilder {
             field_name:  SchemaField::Items.to_string(),
             type_name:   item_t,
             parent_type: ctx.type_name().clone(),
-        }])
+        }]
+        .into_iter())
     }
 
     fn assemble_from_children(

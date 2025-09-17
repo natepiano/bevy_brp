@@ -204,95 +204,26 @@ impl MutationPath {
         // Generate description using the context
         let description = path.path_kind.description(&type_kind);
 
-        // Handle examples array creation - clean up variant context wrapping
-        let clean_example = path.example.get("__variant_context").map_or_else(
-            || path.example.clone(),
-            |_variant_context| {
-                path.example.get("value").map_or_else(
-                    || {
-                        // Remove the variant context and keep the rest
-                        let mut clean = path.example.clone();
-                        if let Some(obj) = clean.as_object_mut() {
-                            obj.remove("__variant_context");
-                        }
-                        clean
-                    },
-                    std::clone::Clone::clone,
-                )
-            },
-        );
-
-        // Handle examples array creation - new clean logic
-        let examples = if clean_example.is_null() {
-            vec![]
-        } else if let Some(signature_groups) = clean_example.as_array() {
-            // New format: direct array of signature groups from consolidated enum builder
-            Self::convert_signature_groups_array(signature_groups)
+        // Direct transfer - no JSON parsing needed!
+        let (examples, example) = if let Some(ref enum_examples) = path.enum_root_examples {
+            // Enum root: use the examples array
+            (enum_examples.clone(), None)
         } else {
-            // Single value: create simple example group (temporary - will be fixed in Step 6)
-            vec![]
+            // Everything else: use the example value
+            // This includes enum children (with embedded applicable_variants) and regular values
+            (vec![], Some(path.example.clone()))
         };
 
-        // Extract variants - check both signature groups and variant context
-        let variants = path.example.as_array().map_or_else(
-            || {
-                path.example
-                    .get("__variant_context")
-                    .and_then(Value::as_array)
-                    .and_then(|variant_context| {
-                        // Extract variants from variant context (for enum sub-paths)
-                        let mut variants = Vec::new();
-                        for variant in variant_context {
-                            if let Some(variant_name) = variant.as_str() {
-                                variants.push(variant_name.to_string());
-                            }
-                        }
-                        if variants.is_empty() {
-                            None
-                        } else {
-                            Some(variants)
-                        }
-                    })
-            },
-            |signature_groups| {
-                // Extract all variants from signature groups array (for enum root paths)
-                let mut all_variants = Vec::new();
-                for group in signature_groups {
-                    if let Some(group_variants) = group.get("variants").and_then(Value::as_array) {
-                        for variant in group_variants {
-                            if let Some(variant_name) = variant.as_str() {
-                                all_variants.push(variant_name.to_string());
-                            }
-                        }
-                    }
-                }
-                all_variants.sort();
-                if all_variants.is_empty() {
-                    None
-                } else {
-                    Some(all_variants)
-                }
-            },
-        );
-
-        // Only process examples if the path is mutable
-        let (final_examples, final_example) = if path.mutation_status != MutationStatus::Mutable {
-            // Not mutable - no examples to show
-            (vec![], None)
-        } else if matches!(type_kind, TypeKind::Enum) && !examples.is_empty() {
-            // Enum type with variants - use examples array
-            (examples, None)
-        } else if examples.len() == 1 && examples[0].applicable_variants.is_empty() {
-            // Single example without enum context - use simple example field (temporary check -
-            // will be fixed in Step 6)
-            (vec![], Some(examples[0].example.clone()))
-        } else if examples.is_empty() && !clean_example.is_null() {
-            // Direct example without going through examples array (for TupleStruct, Array, etc.)
-            (vec![], Some(clean_example))
-        } else {
-            // Multiple examples or enum context - keep examples array
-            (examples, None)
-        };
+        // Extract variants from the example if it has applicable_variants
+        let variants = example
+            .as_ref()
+            .and_then(|ex| ex.get("applicable_variants"))
+            .and_then(Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            });
 
         Self {
             description,
@@ -304,46 +235,9 @@ impl MutationPath {
                 mutation_status_reason: path.mutation_status_reason.clone(),
             },
             variants,
-            examples: final_examples,
-            example: final_example,
+            examples,
+            example,
             note: None,
         }
-    }
-
-    /// Convert clean signature groups array from consolidated enum builder
-    /// This handles the new direct array format: [{"example": ..., "signature": ..., "variants":
-    /// [...]}]
-    fn convert_signature_groups_array(signature_groups: &[Value]) -> Vec<ExampleGroup> {
-        signature_groups
-            .iter()
-            .filter_map(|group| {
-                let signature = group.get("signature")?.as_str()?.to_string();
-                let variants = group
-                    .get("variants")?
-                    .as_array()?
-                    .iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect::<Vec<String>>();
-                let example = group.get("example")?.clone();
-
-                // Temporary conversion - will be properly fixed in Step 6
-                // For now, parse the signature string to create a VariantSignature
-                let variant_sig = if signature == "unit" {
-                    VariantSignature::Unit
-                } else if signature.starts_with("tuple(") {
-                    // For now, just use an empty tuple signature - will be fixed properly in Step 6
-                    VariantSignature::Tuple(vec![])
-                } else {
-                    // For struct, use empty struct signature - will be fixed properly in Step 6
-                    VariantSignature::Struct(vec![])
-                };
-
-                Some(ExampleGroup {
-                    applicable_variants: variants,
-                    signature: variant_sig,
-                    example,
-                })
-            })
-            .collect()
     }
 }

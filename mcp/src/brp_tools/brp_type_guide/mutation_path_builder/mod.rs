@@ -2,7 +2,7 @@ mod builders;
 mod mutation_knowledge;
 mod not_mutable_reason;
 mod path_kind;
-mod protocol_enforcer;
+pub mod protocol_enforcer;
 mod recursion_context;
 mod type_kind;
 mod types;
@@ -20,12 +20,33 @@ pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction};
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
+/// Trait for items that might carry variant information
+pub trait MaybeVariants {
+    /// Returns applicable variants if this is from an enum builder
+    fn applicable_variants(&self) -> Option<&[String]> {
+        None
+    }
+
+    /// Extract the PathKind if there is one (None for unit variants)
+    fn into_path_kind(self) -> Option<PathKind>;
+}
+
 /// Trait for building mutation paths for different type kinds
 ///
 /// This trait provides type-directed dispatch for mutation path building,
 /// replacing the large conditional match statement with clean separation of concerns.
 /// Each type kind gets its own implementation that handles the specific logic needed.
 pub trait MutationPathBuilder {
+    /// The item type returned by collect_children - allows for
+    /// enum_builder to return PathKind with applicable_variants where
+    ///  all the other builders just return PathKind
+    type Item: MaybeVariants;
+
+    /// Iterator type for children
+    type Iter<'a>: Iterator<Item = Self::Item>
+    where
+        Self: 'a;
+
     /// Build mutation paths with depth tracking for recursion safety
     ///
     /// This method takes a `MutationPathContext` which provides all necessary information
@@ -79,9 +100,7 @@ pub trait MutationPathBuilder {
     /// Migrated builders should return `PathKind` without creating contexts.
     /// `PathKind` contain the necessary information (field names, indices) for child
     /// identification.
-    fn collect_children(&self, _ctx: &RecursionContext) -> Result<Vec<PathKind>> {
-        Ok(vec![]) // Default: no children (leaf types)
-    }
+    fn collect_children(&self, ctx: &RecursionContext) -> Result<Self::Iter<'_>>;
 
     /// Assemble a parent value from child examples
     ///
