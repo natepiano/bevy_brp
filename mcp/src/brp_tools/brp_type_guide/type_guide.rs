@@ -2,12 +2,16 @@
 //! to the caller
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::Arc; // unused import for testing // another unused import for testing
 
 use serde::Serialize;
 use serde_json::Value;
 
-use super::mutation_path_builder::{EnumVariantInfo, MutationPath, MutationPathInternal, TypeKind};
+use super::constants::RecursionDepth;
+use super::mutation_path_builder::protocol_enforcer::recurse_mutation_paths;
+use super::mutation_path_builder::{
+    MutationPath, MutationPathInternal, PathKind, RecursionContext, TypeKind,
+};
 use super::response_types::{BrpSupportedOperation, BrpTypeName, ReflectTrait, SchemaInfo};
 use crate::error::Result;
 use crate::json_object::JsonObjectAccess;
@@ -37,9 +41,6 @@ pub struct TypeGuide {
     /// Example format for spawn/insert operations when supported
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spawn_format:         Option<Value>,
-    /// Information about enum variants if this is an enum
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub enum_info:            Option<Vec<EnumVariantInfo>>,
     /// Schema information from the registry
     #[serde(skip_serializing_if = "Option::is_none")]
     pub schema_info:          Option<SchemaInfo>,
@@ -56,9 +57,6 @@ impl TypeGuide {
         registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Self> {
-        // Extract type kind
-        let type_kind = TypeKind::from_schema(registry_schema, &brp_type_name);
-
         // Extract reflection traits
         let reflect_types = Self::extract_reflect_types(registry_schema);
 
@@ -72,31 +70,17 @@ impl TypeGuide {
         // Build mutation paths to determine actual mutation capability
         let mutation_paths_vec =
             Self::build_mutation_paths(&brp_type_name, registry_schema, Arc::clone(&registry))?;
-        tracing::error!(
-            "AFTER build_mutation_paths: {} returned {} paths",
-            brp_type_name,
-            mutation_paths_vec.len()
-        );
 
         let mutation_paths = Self::convert_mutation_paths(&mutation_paths_vec, &registry);
-        tracing::error!(
-            "AFTER convert_mutation_paths: {} converted {} paths",
-            brp_type_name,
-            mutation_paths.len()
-        );
 
         // Add Mutate operation if any paths are actually mutable
         let mut supported_operations = supported_operations;
-        tracing::error!("BEFORE has_mutable_paths check: {}", brp_type_name);
-
         if Self::has_mutable_paths(&mutation_paths) {
             supported_operations.push(BrpSupportedOperation::Mutate);
         }
-        tracing::error!("AFTER has_mutable_paths check: {}", brp_type_name);
 
         // Build spawn format from root path mutation example - ONLY for types that support
         // spawn/insert
-        tracing::error!("BEFORE extract_spawn_format_from_paths: {}", brp_type_name);
         let spawn_format = if supported_operations.contains(&BrpSupportedOperation::Spawn)
             || supported_operations.contains(&BrpSupportedOperation::Insert)
         {
@@ -104,21 +88,9 @@ impl TypeGuide {
         } else {
             None
         };
-        tracing::error!("AFTER extract_spawn_format_from_paths: {}", brp_type_name);
-
-        // Build enum info if it's an enum
-        tracing::error!("BEFORE extract_enum_info: {}", brp_type_name);
-        let enum_info = if type_kind == TypeKind::Enum {
-            Self::extract_enum_info(registry_schema, &registry)
-        } else {
-            None
-        };
-        tracing::error!("AFTER extract_enum_info: {}", brp_type_name);
 
         // Extract schema info from registry
-        tracing::error!("BEFORE extract_schema_info: {}", brp_type_name);
         let schema_info = Self::extract_schema_info(registry_schema);
-        tracing::error!("AFTER extract_schema_info: {}", brp_type_name);
 
         Ok(Self {
             type_name: brp_type_name,
@@ -129,7 +101,6 @@ impl TypeGuide {
             mutation_paths,
             example_values: HashMap::new(), // V1 always has this empty
             spawn_format,
-            enum_info,
             schema_info,
             error: None,
         })
@@ -146,7 +117,6 @@ impl TypeGuide {
             mutation_paths: HashMap::new(),
             example_values: HashMap::new(),
             spawn_format: None,
-            enum_info: None,
             schema_info: None,
             error: Some(error_msg),
         }
@@ -193,33 +163,28 @@ impl TypeGuide {
         registry_schema: &Value,
         registry: Arc<HashMap<BrpTypeName, Value>>,
     ) -> Result<Vec<MutationPathInternal>> {
-        tracing::error!(">>> TOP LEVEL TYPE START: {}", brp_type_name);
-        tracing::debug!("DEBUG: Processing type {} with TypeKind", brp_type_name);
-
         let type_kind = TypeKind::from_schema(registry_schema, brp_type_name);
-        tracing::debug!("DEBUG: TypeKind for {} is {:?}", brp_type_name, type_kind);
+
+        tracing::debug!(
+            "build_mutation_paths: {} determined as TypeKind::{:?}",
+            brp_type_name,
+            type_kind
+        );
 
         // Create root context for this type
-        use super::constants::RecursionDepth;
-        use super::mutation_path_builder::protocol_enforcer::recurse_mutation_paths;
-        use super::mutation_path_builder::{PathKind, RecursionContext};
-
         let path_kind = PathKind::new_root_value(brp_type_name.clone());
-        let ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
+        let mut ctx = RecursionContext::new(path_kind, Arc::clone(&registry));
+
+        // If this is an enum at the root level, set the enum context to Root
+        if matches!(type_kind, TypeKind::Enum) {
+            use super::mutation_path_builder::EnumContext;
+            ctx.enum_context = Some(EnumContext::Root);
+            tracing::debug!("Setting EnumContext::Root for root enum {}", brp_type_name);
+        }
 
         // Use the single dispatch point
         let result = recurse_mutation_paths(type_kind, &ctx, RecursionDepth::ZERO)?;
-        tracing::debug!(
-            "DEBUG: build_paths returned {} paths for {}",
-            result.len(),
-            brp_type_name
-        );
 
-        tracing::error!(
-            "<<< TOP LEVEL TYPE COMPLETE: {} (returned {} paths)",
-            brp_type_name,
-            result.len()
-        );
         Ok(result)
     }
 
@@ -231,8 +196,28 @@ impl TypeGuide {
         let mut result = HashMap::new();
 
         for path in paths {
+            // Debug logging for enum root examples
+            if path.path.is_empty() && path.enum_root_examples.is_some() {
+                tracing::debug!(
+                    "Converting root path for {} with {} enum examples",
+                    path.type_name,
+                    path.enum_root_examples
+                        .as_ref()
+                        .map(|e| e.len())
+                        .unwrap_or(0)
+                );
+            }
+
             // Create MutationPathInfo from MutationPath
             let path_info = MutationPath::from_mutation_path_internal(path, registry);
+
+            // Debug log the result
+            if path.path.is_empty() && !path_info.examples.is_empty() {
+                tracing::debug!(
+                    "After conversion: root path has {} examples in MutationPath",
+                    path_info.examples.len()
+                );
+            }
 
             // Keep empty path as empty for root mutations
             // BRP expects empty string for root replacements, not "."
@@ -245,22 +230,6 @@ impl TypeGuide {
     }
 
     /// Extract enum information from schema
-    fn extract_enum_info(
-        registry_schema: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> Option<Vec<EnumVariantInfo>> {
-        let one_of = registry_schema
-            .get_field(SchemaField::OneOf)
-            .and_then(Value::as_array)?;
-
-        let variants: Vec<EnumVariantInfo> = one_of
-            .iter()
-            .filter_map(|v| EnumVariantInfo::from_schema_variant(v, registry))
-            .collect();
-
-        Some(variants)
-    }
-
     /// Extract reflect types from a registry schema
     fn extract_reflect_types(registry_schema: &Value) -> Vec<ReflectTrait> {
         registry_schema

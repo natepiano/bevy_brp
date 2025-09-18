@@ -1,5 +1,5 @@
 mod builders;
-mod mutation_knowledge;
+pub mod mutation_knowledge;
 mod not_mutable_reason;
 mod path_kind;
 pub mod protocol_enforcer;
@@ -9,10 +9,9 @@ mod types;
 
 use std::collections::HashMap;
 
-pub use builders::EnumVariantInfo;
 pub use not_mutable_reason::NotMutableReason;
 pub use path_kind::{MutationPathDescriptor, PathKind};
-pub use recursion_context::RecursionContext;
+pub use recursion_context::{EnumContext, RecursionContext};
 use serde_json::{Value, json};
 pub use type_kind::TypeKind;
 pub use types::{MutationPath, MutationPathInternal, MutationStatus, PathAction};
@@ -38,8 +37,8 @@ pub trait MaybeVariants {
 /// Each type kind gets its own implementation that handles the specific logic needed.
 pub trait MutationPathBuilder {
     /// The item type returned by collect_children - allows for
-    /// enum_builder to return PathKind with applicable_variants where
-    ///  all the other builders just return PathKind
+    /// enum_builder to return `PathKind` with applicable_variants where
+    ///  all the other builders just return `PathKind`
     type Item: MaybeVariants;
 
     /// Iterator type for children
@@ -82,7 +81,7 @@ pub trait MutationPathBuilder {
     /// - If this is `.address`, the example is the complete address object {"street": "123 Main
     ///   St", "city": "Portland"}
     /// - If this is root level, the example becomes the spawn format
-
+    ///
     /// Check if child paths should be included in the final mutation paths result
     ///
     /// Most types return true (default) because their child paths are valid mutation targets.

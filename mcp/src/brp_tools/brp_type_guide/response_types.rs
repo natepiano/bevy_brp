@@ -11,6 +11,7 @@ use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
 use super::mutation_path_builder::TypeKind;
+use super::mutation_path_builder::mutation_knowledge::MutationKnowledge;
 use super::type_guide::TypeGuide;
 
 /// Enum for BRP supported operations
@@ -106,6 +107,11 @@ impl BrpTypeName {
         // Find the last :: and take everything after it
         // If no :: found, return the whole name (handles primitives and generics)
         self.0.rsplit("::").next().unwrap_or(&self.0).to_string()
+    }
+
+    /// Get the display name for this type, using simplified name from knowledge if available
+    pub fn display_name(&self) -> Self {
+        MutationKnowledge::get_simplified_name(self).unwrap_or_else(|| self.clone())
     }
 }
 

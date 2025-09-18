@@ -12,7 +12,7 @@ pub use array_builder::ArrayMutationBuilder;
 //pub use enum_builder::EnumMutationBuilder;
 pub use list_builder::ListMutationBuilder;
 pub use map_builder::MapMutationBuilder;
-pub use new_enum_builder::{EnumVariantInfo, NewEnumMutationBuilder};
+pub use new_enum_builder::NewEnumMutationBuilder;
 pub use set_builder::SetMutationBuilder;
 pub use struct_builder::StructMutationBuilder;
 pub use tuple_builder::TupleMutationBuilder;

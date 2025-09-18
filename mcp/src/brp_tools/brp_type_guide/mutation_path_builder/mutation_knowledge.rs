@@ -9,6 +9,7 @@ use std::sync::LazyLock;
 
 use serde_json::{Value, json};
 
+use crate::brp_tools::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::{
     TYPE_ALLOC_STRING, TYPE_BEVY_COLOR, TYPE_BEVY_IMAGE_HANDLE, TYPE_BEVY_MAT2, TYPE_BEVY_MAT3,
     TYPE_BEVY_MAT4, TYPE_BEVY_NAME, TYPE_BEVY_QUAT, TYPE_BEVY_RECT, TYPE_BEVY_VEC2, TYPE_BEVY_VEC3,
@@ -101,6 +102,19 @@ impl MutationKnowledge {
     pub const fn example(&self) -> &Value {
         match self {
             Self::TeachAndRecurse { example } | Self::TreatAsRootValue { example, .. } => example,
+        }
+    }
+
+    /// Get simplified name for a type if it has TreatAsRootValue knowledge
+    pub fn get_simplified_name(type_name: &BrpTypeName) -> Option<BrpTypeName> {
+        let knowledge_key = KnowledgeKey::exact(type_name.as_str());
+        if let Some(MutationKnowledge::TreatAsRootValue {
+            simplified_type, ..
+        }) = BRP_MUTATION_KNOWLEDGE.get(&knowledge_key)
+        {
+            Some(BrpTypeName::from(simplified_type.clone()))
+        } else {
+            None
         }
     }
 }

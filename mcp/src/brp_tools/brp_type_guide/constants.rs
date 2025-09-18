@@ -92,3 +92,11 @@ pub const TYPE_GLAM_MAT4: &str = "glam::Mat4";
 pub const TYPE_BEVY_COLOR: &str = "bevy_color::color::Color";
 pub const TYPE_BEVY_NAME: &str = "bevy_ecs::name::Name";
 pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image::image::Image>";
+
+// ============================================================================
+// PATH PROCESSING CONSTANTS
+// ============================================================================
+
+/// Separator used for flattening nested enum variant chains into dot notation
+/// Example: [(TestEnum, ["Nested"]), (NestedEnum, ["Conditional"])] → ["Nested.Conditional"]
+pub const VARIANT_PATH_SEPARATOR: &str = ".";

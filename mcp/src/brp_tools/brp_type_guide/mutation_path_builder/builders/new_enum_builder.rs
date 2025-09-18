@@ -14,6 +14,7 @@ use super::super::MutationPathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::{EnumContext, RecursionContext};
 use super::super::types::{ExampleGroup, VariantSignature};
+use crate::brp_tools::brp_type_guide::constants::VARIANT_PATH_SEPARATOR;
 use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -262,9 +263,6 @@ impl NewEnumMutationBuilder {
             .unwrap_or(json!(null))
     }
 
-    /// Separator used for flattening nested enum variant chains into dot notation
-    const VARIANT_PATH_SEPARATOR: &str = ".";
-
     /// Flatten variant chain into dot notation for nested enums
     fn flatten_variant_chain(variant_chain: &[(BrpTypeName, Vec<String>)]) -> Vec<String> {
         // e.g., [(TestEnum, ["Nested"]), (NestedEnum, ["Conditional"])] → ["Nested.Conditional"]
@@ -288,7 +286,7 @@ impl NewEnumMutationBuilder {
                     .map(|v| {
                         let mut full_path = prefix_parts.clone();
                         full_path.push(v.clone());
-                        full_path.join(Self::VARIANT_PATH_SEPARATOR)
+                        full_path.join(VARIANT_PATH_SEPARATOR)
                     })
                     .collect()
             }
@@ -377,6 +375,11 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
         let variant_groups = group_variants_by_signature(all_variants);
 
         // Build internal MutationExample to organize the enum logic
+        tracing::debug!(
+            "NewEnumBuilder for {} with enum_context: {:?}",
+            ctx.type_name(),
+            ctx.enum_context
+        );
         let mutation_example = match &ctx.enum_context {
             Some(EnumContext::Root) => {
                 // Build examples array for enum root path
@@ -397,7 +400,7 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
 
                     examples.push(ExampleGroup {
                         applicable_variants,
-                        signature: signature.clone(),
+                        signature: signature.to_string(),
                         example,
                     });
                 }
@@ -419,13 +422,25 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
             None => {
                 // Parent is not an enum - return a concrete example
                 let example = self.concrete_example(&variant_groups, &children);
+                tracing::debug!(
+                    "NewEnumBuilder {} with None context returning Simple: {}",
+                    ctx.type_name(),
+                    example
+                );
                 MutationExample::Simple(example)
             }
         };
 
         // Convert MutationExample to Value for ProtocolEnforcer to process
         match mutation_example {
-            MutationExample::Simple(val) => Ok(val),
+            MutationExample::Simple(val) => {
+                tracing::debug!(
+                    "NewEnumBuilder {} returning Simple value: {}",
+                    ctx.type_name(),
+                    val
+                );
+                Ok(val)
+            }
             MutationExample::EnumRoot(examples) => {
                 // For enum roots, return both examples array and a default concrete value
                 // ProtocolEnforcer will extract these to populate MutationPathInternal fields
@@ -434,12 +449,20 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
                     .map(|g| g.example.clone())
                     .unwrap_or(json!(null));
 
-                Ok(json!({
+                let result = json!({
                     "enum_root_data": {
                         "examples": examples,
                         "default": default_example
                     }
-                }))
+                });
+
+                tracing::debug!(
+                    "NewEnumBuilder returning EnumRoot with {} examples: {}",
+                    examples.len(),
+                    result
+                );
+
+                Ok(result)
             }
             MutationExample::EnumChild {
                 example,

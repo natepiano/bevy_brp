@@ -284,11 +284,11 @@ struct TestComplexTuple {
     pub nested_tuple:  (Vec2, (f32, String)),
 }
 
-/// Core type with mixed mutability for mutation_status_reason testing
+/// Core type with mixed mutability for `mutation_status_reason` testing
 /// This type demonstrates all three mutation states:
 /// - fully mutable fields (with Serialize/Deserialize)
-/// - not_mutable fields (without serialization traits)
-/// - partially_mutable fields (nested types with mixed traits)
+/// - `not_mutable` fields (without serialization traits)
+/// - `partially_mutable` fields (nested types with mixed traits)
 #[derive(Default, Reflect)]
 struct TestMixedMutabilityCore {
     /// Fully mutable field - has Serialize/Deserialize
@@ -311,7 +311,7 @@ struct TestMixedMutabilityCore {
 }
 
 /// Vec parent containing mixed mutability items
-/// List builder has been migrated to ProtocolEnforcer
+/// List builder has been migrated to `ProtocolEnforcer`
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct TestMixedMutabilityVec {
@@ -321,25 +321,14 @@ struct TestMixedMutabilityVec {
 
 /// Array parent containing mixed mutability items
 /// For testing when Array builder is migrated
-#[derive(Component, Reflect)]
+#[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 struct TestMixedMutabilityArray {
     /// Fixed-size array of mixed mutability items
     pub items: [TestMixedMutabilityCore; 2],
 }
 
-impl Default for TestMixedMutabilityArray {
-    fn default() -> Self {
-        Self {
-            items: [
-                TestMixedMutabilityCore::default(),
-                TestMixedMutabilityCore::default(),
-            ],
-        }
-    }
-}
-
-/// TupleStruct parent containing mixed mutability item
+/// `TupleStruct` parent containing mixed mutability item
 /// For testing when Tuple builder is migrated
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
@@ -391,7 +380,7 @@ struct TestDeeplyNested {
     /// Not mutable - Arc at deep level
     pub arc_string: std::sync::Arc<String>,
 
-    /// Mutable HashMap at deep level
+    /// Mutable `HashMap` at deep level
     pub map_string_f32: HashMap<String, f32>,
 }
 

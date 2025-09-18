@@ -4,7 +4,7 @@
 //! including mutation path structures and status types.
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::super::response_types::BrpTypeName;
@@ -48,45 +48,17 @@ impl std::fmt::Display for VariantSignature {
         match self {
             Self::Unit => write!(f, "unit"),
             Self::Tuple(types) => {
-                let type_names: Vec<String> = types
-                    .iter()
-                    .map(|t| shorten_type_name(t.as_str()))
-                    .collect();
+                let type_names: Vec<String> =
+                    types.iter().map(|t| t.display_name().to_string()).collect();
                 write!(f, "tuple({})", type_names.join(", "))
             }
             Self::Struct(fields) => {
                 let field_strs: Vec<String> = fields
                     .iter()
-                    .map(|(name, type_name)| {
-                        format!("{}: {}", name, shorten_type_name(type_name.as_str()))
-                    })
+                    .map(|(name, type_name)| format!("{}: {}", name, type_name.display_name()))
                     .collect();
                 write!(f, "struct{{{}}}", field_strs.join(", "))
             }
-        }
-    }
-}
-
-/// Convert a fully-qualified type name to a short readable name
-fn shorten_type_name(type_name: &str) -> String {
-    match type_name {
-        "alloc::string::String" => "String".to_string(),
-        "core::option::Option" => "Option".to_string(),
-        name if name.starts_with("alloc::string::String") => "String".to_string(),
-        name if name.starts_with("core::option::Option<") => name
-            .strip_prefix("core::option::Option<")
-            .and_then(|s| s.strip_suffix('>'))
-            .map_or_else(
-                || "Option".to_string(),
-                |inner| format!("Option<{}>", shorten_type_name(inner)),
-            ),
-        _ => {
-            // For other types, just take the last segment after ::
-            type_name
-                .split("::")
-                .last()
-                .unwrap_or(type_name)
-                .to_string()
         }
     }
 }
@@ -155,19 +127,11 @@ pub struct ExampleGroup {
     /// List of variants that share this signature
     pub applicable_variants: Vec<String>,
 
-    /// The variant signature type (serialized as string using Display)
-    #[serde(serialize_with = "serialize_signature")]
-    pub signature: VariantSignature,
+    /// The variant signature as a string
+    pub signature: String,
 
     /// Example value for this group
     pub example: Value,
-}
-
-fn serialize_signature<S>(sig: &VariantSignature, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    s.serialize_str(&sig.to_string())
 }
 
 /// Information about a mutation path that we serialize to our response
@@ -177,9 +141,6 @@ pub struct MutationPath {
     pub description: String,
     /// Combined path navigation and type metadata
     pub path_info:   PathInfo,
-    /// List of applicable variants (for enum types only)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub variants:    Option<Vec<String>>,
     /// Array of example groups with variants, signatures, and examples (for enums)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub examples:    Vec<ExampleGroup>,
@@ -214,17 +175,6 @@ impl MutationPath {
             (vec![], Some(path.example.clone()))
         };
 
-        // Extract variants from the example if it has applicable_variants
-        let variants = example
-            .as_ref()
-            .and_then(|ex| ex.get("applicable_variants"))
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            });
-
         Self {
             description,
             path_info: PathInfo {
@@ -234,7 +184,6 @@ impl MutationPath {
                 mutation_status: path.mutation_status,
                 mutation_status_reason: path.mutation_status_reason.clone(),
             },
-            variants,
             examples,
             example,
             note: None,

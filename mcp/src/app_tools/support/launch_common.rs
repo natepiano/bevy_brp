@@ -33,7 +33,7 @@ pub struct LaunchConfig<T> {
 
 impl<T> LaunchConfig<T> {
     /// Create a new launch configuration
-    pub fn new(
+    pub const fn new(
         target_name: String,
         profile: String,
         path: Option<String>,
@@ -470,14 +470,15 @@ fn build_launch_result<T: LaunchConfigTrait>(
     let instance_count = all_ports.len();
     let target_name_str = config.target_name();
     let message = format!(
-        "Successfully launched {} instance(s) of {} on ports {}",
-        instance_count, target_name_str, port_range
+        "Successfully launched {instance_count} instance(s) of {target_name_str} on ports {port_range}"
     );
 
     LaunchResult {
         target_name: Some(config.target_name().to_string()),
         instances,
-        working_directory: Some(std::env::current_dir().unwrap().display().to_string()),
+        working_directory: std::env::current_dir()
+            .ok()
+            .map(|dir| dir.display().to_string()),
         profile: Some(config.profile().to_string()),
         launch_duration_ms: Some(launch_duration.as_millis() as u64),
         launch_timestamp: Some(chrono::Utc::now().to_rfc3339()),
