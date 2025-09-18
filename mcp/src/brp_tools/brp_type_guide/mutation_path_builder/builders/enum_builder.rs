@@ -10,7 +10,7 @@ use error_stack::Report;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::super::MutationPathBuilder;
+use super::super::path_builder::{MaybeVariants, PathBuilder};
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::{EnumContext, RecursionContext};
 use super::super::types::{ExampleGroup, VariantSignature};
@@ -48,7 +48,7 @@ pub struct PathKindWithVariants {
     pub applicable_variants: Vec<String>,
 }
 
-impl super::super::MaybeVariants for PathKindWithVariants {
+impl MaybeVariants for PathKindWithVariants {
     fn applicable_variants(&self) -> Option<&[String]> {
         Some(&self.applicable_variants)
     }
@@ -300,7 +300,7 @@ impl EnumMutationBuilder {
 // MutationPathBuilder Implementation
 // ============================================================================
 
-impl MutationPathBuilder for EnumMutationBuilder {
+impl PathBuilder for EnumMutationBuilder {
     type Item = PathKindWithVariants;
     type Iter<'a>
         = std::vec::IntoIter<PathKindWithVariants>

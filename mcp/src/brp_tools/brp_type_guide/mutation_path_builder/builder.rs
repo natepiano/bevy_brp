@@ -1,3 +1,5 @@
+//! This is the main MutationPathBuilder implementation which
+//! recursively uses the PathBuilder trait to build mutation paths for a given type.
 use std::collections::HashMap;
 use std::ops::Deref;
 
@@ -8,16 +10,21 @@ use super::builders::{
     SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
 use super::mutation_knowledge::MutationKnowledge;
+use super::path_builder::{MaybeVariants, PathBuilder};
 use super::type_kind::TypeKind;
 use super::types::PathSummary;
 use super::{
-    MaybeVariants, MutationPathBuilder, MutationPathDescriptor, MutationPathInternal,
-    MutationStatus, NotMutableReason, PathAction, RecursionContext,
+    MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
+    RecursionContext,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
 
-impl<B: MutationPathBuilder> MutationPathBuilder for ProtocolEnforcer<B> {
+pub struct MutationPathBuilder<B: PathBuilder> {
+    inner: B,
+}
+
+impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
     type Item = B::Item;
     type Iter<'a>
         = B::Iter<'a>
@@ -159,10 +166,6 @@ impl<B: MutationPathBuilder> MutationPathBuilder for ProtocolEnforcer<B> {
     }
 }
 
-pub struct ProtocolEnforcer<B: MutationPathBuilder> {
-    inner: B,
-}
-
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
@@ -180,7 +183,7 @@ pub fn recurse_mutation_paths(
     ctx: &RecursionContext,
     depth: RecursionDepth,
 ) -> Result<Vec<MutationPathInternal>> {
-    use super::MutationPathBuilder;
+    use PathBuilder;
 
     tracing::debug!(
         "recurse_mutation_paths: Dispatching {} as TypeKind::{:?}",
@@ -191,40 +194,40 @@ pub fn recurse_mutation_paths(
     match type_kind {
         TypeKind::Struct => {
             tracing::debug!("Using StructMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(StructMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(StructMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Tuple | TypeKind::TupleStruct => {
             tracing::debug!("Using TupleMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(TupleMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(TupleMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Array => {
             tracing::debug!("Using ArrayMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(ArrayMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(ArrayMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::List => {
             tracing::debug!("Using ListMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(ListMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(ListMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Map => {
             tracing::debug!("Using MapMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(MapMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(MapMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Set => {
             tracing::debug!("Using SetMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(SetMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(SetMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Enum => {
             tracing::debug!("Using NewEnumMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(EnumMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(EnumMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Value => {
             tracing::debug!("Using ValueMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(ValueMutationBuilder).build_paths(ctx, depth)
+            MutationPathBuilder::new(ValueMutationBuilder).build_paths(ctx, depth)
         }
     }
 }
 
-impl<B: MutationPathBuilder> ProtocolEnforcer<B> {
+impl<B: PathBuilder> MutationPathBuilder<B> {
     /// Process all children and collect their paths and examples
     fn process_all_children(
         &self,

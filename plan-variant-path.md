@@ -125,11 +125,7 @@ This shows the complete path through nested enums required for the mutation to b
 
 ## Implementation Plan
 
-### Minimal Changes Approach
-
-The key insight is that we can reuse existing recursive example building machinery with minimal new types.
-
-### 1. Type Changes (Minimal)
+### 1. Type Changes
 
 **NEW types to add to `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`:**
 ```rust
@@ -155,92 +151,143 @@ pub struct PathInfo {
 }
 ```
 
-**Note:** `PathRequirement` does not need a separate `path` field since the `variant_path` array already contains path information for each variant requirement, and the `example` always shows what to set the root to.
+### 2. ExampleGroup applicable_variants
+**Implementation in `enum_builder.rs`:**
+```rust
+// Instead of:
+let applicable_variants = vec![variant.name().to_string()];
 
-### 2. ExampleGroup applicable_variants (Simple Fix)
-- Change from short names (`"Nested"`) to full names (`"TestEnumWithSerDe::Nested"`)
-- This is just a string formatting change in enum builders
-- Keep as array format (no structural changes)
+// Use:
+let short_type_name = ctx.type_name().short_name(); // "TestEnumWithSerDe"
+let applicable_variants = vec![format!("{}::{}", short_type_name, variant.name())];
+// Result: ["TestEnumWithSerDe::Nested"]
+```
 
-### 3. Variant Chain Tracking (Already Partially Exists)
-- We already have `EnumContext` with variant chains in `RecursionContext`
-- Enhance variant chain accumulation during recursion
-- Track both the path and variant at each level: `Vec<(String, String)>`
+### 3. Variant Chain Tracking
 
-### 4. Constrained Example Building (Reuse Existing Machinery)
-The `path_requirement` example is a **constrained version** of our normal recursive example building:
-- Normal building: Choose default/first variants at each enum level
-- Constrained building: Choose specific variants based on variant chain
-
-**Key insight:** The `path_requirement.example` ALWAYS shows what to mutate the **root path** with, even for deeply nested paths. The variant_path documents the complete chain, but the example shows the complete root structure needed.
-
-**Examples:**
-```json
-// For .nested_config path:
-"path_requirement": {
-  "description": "To use this mutation path, the root must be set to TestEnumWithSerDe::Nested",
-  "example": {
-    "Nested": {
-      "nested_config": "Always",        // ← default for nested_config
-      "other_field": "Hello, World!"    // ← default for other_field
+**New method needed on BrpTypeName in `response_types.rs`**:
+```rust
+impl BrpTypeName {
+    /// Create a full variant name using the short type name
+    /// e.g., "extras_plugin::TestEnumWithSerDe" + "Nested" → "TestEnumWithSerDe::Nested"
+    pub fn variant_name(&self, variant: &str) -> String {
+        format!("{}::{}", self.short_name(), variant)
     }
-  },
-  "variant_path": [
-    {"path": "", "variant": "TestEnumWithSerDe::Nested"}
-  ]
-}
-
-// For .nested_config.0 path (deeply nested):
-"path_requirement": {
-  "description": "Root must be Nested AND nested_config must be Conditional",
-  "example": {
-    "Nested": {
-      "nested_config": {"Conditional": 1000000},  // ← specific variant required
-      "other_field": "Hello, World!"              // ← still need other fields
-    }
-  },
-  "variant_path": [
-    {"path": "", "variant": "TestEnumWithSerDe::Nested"},
-    {"path": ".nested_config", "variant": "NestedConfigEnum::Conditional"}
-  ]
 }
 ```
 
-**Implementation approach:**
-1. Add optional `VariantConstraints` parameter to example building functions
-2. When `VariantConstraints` is provided, choose specified variants instead of defaults
-3. Reuse all existing example assembly logic
-4. Always build from root, even for nested paths
+**Implementation in builder.rs**:
+```rust
+// Current: extended.push((ctx.type_name().clone(), variants.to_vec()));
+// Enhanced:
+for variant in variants {
+    let full_variant = ctx.type_name().variant_name(variant);
+    enhanced_chain.push(VariantPathEntry {
+        path: ctx.mutation_path.clone(),
+        variant: full_variant,
+    });
+}
+```
 
-### 5. MutationPath Assembly Enhancement
-In `from_mutation_path_internal()`:
-1. If variant chain exists, build `path_requirement`:
-   - Extract variant chain: `[("", "TestEnumWithSerDe::Nested"), (".nested_config", "NestedConfigEnum::Conditional")]`
-   - Build constrained root example using variant chain as constraints
-   - Generate human-readable description from variant chain
-   - Create `variant_path` array directly from variant chain
+### 4. Path Requirement Example Building
 
-### 6. Example Building Logic (No Structural Changes)
-Current recursive building already produces correct examples. We just need:
-- **Constraint context**: When building with constraints, choose specified variants
-- **Root example building**: Use constraints to build prerequisite examples
-- **Reuse existing assembly**: All the complex recursive logic stays the same
+**CHANGE 1 - Add field to `MutationPathInternal` (types.rs:68-84):**
+```rust
+pub struct MutationPathInternal {
+    pub example: Value,
+    pub enum_root_examples: Option<Vec<ExampleGroup>>,
+    pub path: String,
+    pub type_name: BrpTypeName,
+    pub path_kind: PathKind,
+    pub mutation_status: MutationStatus,
+    pub mutation_status_reason: Option<Value>,
+    pub path_requirement: Option<PathRequirement>,  // ← ADD THIS FIELD
+}
+```
+
+**CHANGE 2 - Build and populate path_requirement in builder.rs (lines 409-417):**
+```rust
+// builder.rs - CHANGE TO:
+fn build_mutation_path_internal_with_enum_examples(
+    ctx: &RecursionContext,
+    example: Value,
+    enum_root_examples: Option<Vec<super::types::ExampleGroup>>,
+    status: MutationStatus,
+    mutation_status_reason: Option<Value>,
+) -> MutationPathInternal {
+    // NEW: Build complete path_requirement if variant chain exists
+    let path_requirement = match &ctx.enum_context {
+        Some(EnumContext::Child { variant_chain }) if !variant_chain.is_empty() => {
+            Some(PathRequirement {
+                description: generate_variant_description(variant_chain),
+                example: example.clone(),  // Use the example we already built!
+                variant_path: variant_chain.clone(),  // Already Vec<VariantPathEntry> from Step 3
+            })
+        }
+        _ => None,
+    };
+
+    MutationPathInternal {
+        path: ctx.mutation_path.clone(),
+        example,
+        enum_root_examples,
+        type_name: ctx.type_name().display_name(),
+        path_kind: ctx.path_kind.clone(),
+        mutation_status: status,
+        mutation_status_reason,
+        path_requirement,  // ← ADD THIS
+    }
+}
+
+// NEW HELPER FUNCTION to add in builder.rs:
+fn generate_variant_description(variant_chain: &[VariantPathEntry]) -> String {
+    if variant_chain.len() == 1 {
+        format!("To use this mutation path, the root must be set to {}",
+                variant_chain[0].variant)
+    } else {
+        let requirements: Vec<String> = variant_chain.iter()
+            .map(|entry| {
+                if entry.path.is_empty() {
+                    format!("root must be set to {}", entry.variant)
+                } else {
+                    format!("{} must be set to {}", entry.path, entry.variant)
+                }
+            })
+            .collect();
+        format!("To use this mutation path, {}", requirements.join(" and "))
+    }
+}
+```
+
+**CHANGE 3 - Copy field in `from_mutation_path_internal()` (types.rs:156-191):**
+```rust
+pub fn from_mutation_path_internal(
+    path: &MutationPathInternal,
+    registry: &HashMap<BrpTypeName, Value>,
+) -> Self {
+    // ... existing code for type_kind, description, etc. ...
+
+    Self {
+        description,
+        path_info: PathInfo {
+            path_kind: path.path_kind.clone(),
+            type_name: path.type_name.clone(),
+            type_kind,
+            mutation_status: path.mutation_status,
+            mutation_status_reason: path.mutation_status_reason.clone(),
+            path_requirement: path.path_requirement.clone(),  // ← ADD THIS
+        },
+        examples: /*...*/,
+        example: /*...*/,
+        note: None,
+    }
+}
+```
 
 ### Implementation Steps
-1. **File: `types.rs`** - Add `PathRequirement` and `VariantPathEntry` structs, modify `PathInfo` struct
-2. **File: `new_enum_builder.rs`** - Update enum builders to use full enum names in `applicable_variants`
-3. **File: `recursion_context.rs`** - Enhance variant chain tracking in `RecursionContext`
-4. **File: `types.rs`** - Add constraint parameter to example building methods
-5. **File: `types.rs`** - Update `from_mutation_path_internal` to generate `path_requirement` when variant chain exists
-
-### Key Benefits
-- **Minimal complexity**: Reuse 95% of existing recursive building
-- **No new types**: Just add one field to existing struct
-- **Leverages existing work**: Variant chain tracking already partially implemented
-- **Clean separation**: Normal examples vs constrained examples use same machinery
-
-## Key Insight
-
-The `path_requirement` represents **prerequisite state building**: "To enable this mutation path, configure the root with this exact structure." This is fundamentally different from `applicable_variants` which represents **choice within an enum**: "This example works for any of these variants of the current enum."
-
-The path_requirement example is just a constrained version of our existing recursive example building where we specify variant choices instead of using defaults.
+1. **File: `types.rs`** - Add `PathRequirement` and `VariantPathEntry` structs, modify `PathInfo` struct, add `path_requirement` field to `MutationPathInternal`
+2. **File: `response_types.rs`** - Add `variant_name()` method to `BrpTypeName`
+3. **File: `enum_builder.rs`** - Update enum builders to use full enum names in `applicable_variants` (use `BrpTypeName::short_name()` and format)
+4. **File: `recursion_context.rs`** - Change `EnumContext::Child.variant_chain` from `Vec<(BrpTypeName, Vec<String>)>` to `Vec<VariantPathEntry>`
+5. **File: `builder.rs`** - Modify variant chain extension to push `VariantPathEntry` structs, add `generate_variant_description()` helper, build complete `PathRequirement` in `build_mutation_path_internal_with_enum_examples()`
+6. **File: `types.rs`** - Update `from_mutation_path_internal()` to copy `path_requirement` field from `MutationPathInternal` to `PathInfo`

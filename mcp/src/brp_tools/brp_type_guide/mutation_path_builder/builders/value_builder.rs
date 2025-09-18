@@ -9,14 +9,14 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 
-use super::super::MutationPathBuilder;
+use super::super::path_builder::PathBuilder;
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::RecursionContext;
 use crate::error::{Error, Result};
 
 pub struct ValueMutationBuilder;
 
-impl MutationPathBuilder for ValueMutationBuilder {
+impl PathBuilder for ValueMutationBuilder {
     type Item = PathKind;
     type Iter<'a>
         = std::vec::IntoIter<PathKind>
