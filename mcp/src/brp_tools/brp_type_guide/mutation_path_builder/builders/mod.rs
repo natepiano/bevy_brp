@@ -1,8 +1,8 @@
 mod array_builder;
 //mod enum_builder;
+mod enum_builder;
 mod list_builder;
 mod map_builder;
-mod new_enum_builder;
 mod set_builder;
 mod struct_builder;
 mod tuple_builder;
@@ -10,9 +10,9 @@ mod value_builder;
 
 pub use array_builder::ArrayMutationBuilder;
 //pub use enum_builder::EnumMutationBuilder;
+pub use enum_builder::NewEnumMutationBuilder;
 pub use list_builder::ListMutationBuilder;
 pub use map_builder::MapMutationBuilder;
-pub use new_enum_builder::NewEnumMutationBuilder;
 pub use set_builder::SetMutationBuilder;
 pub use struct_builder::StructMutationBuilder;
 pub use tuple_builder::TupleMutationBuilder;
