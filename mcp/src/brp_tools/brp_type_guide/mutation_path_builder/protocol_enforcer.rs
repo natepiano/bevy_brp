@@ -4,7 +4,7 @@ use std::ops::Deref;
 use serde_json::{Value, json};
 
 use super::builders::{
-    ArrayMutationBuilder, ListMutationBuilder, MapMutationBuilder, NewEnumMutationBuilder,
+    ArrayMutationBuilder, EnumMutationBuilder, ListMutationBuilder, MapMutationBuilder,
     SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
 };
 use super::mutation_knowledge::MutationKnowledge;
@@ -166,11 +166,11 @@ pub struct ProtocolEnforcer<B: MutationPathBuilder> {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by PathAction)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 /// Single dispatch point for creating builders - used for both entry and recursion
@@ -215,7 +215,7 @@ pub fn recurse_mutation_paths(
         }
         TypeKind::Enum => {
             tracing::debug!("Using NewEnumMutationBuilder for {}", ctx.type_name());
-            ProtocolEnforcer::new(NewEnumMutationBuilder).build_paths(ctx, depth)
+            ProtocolEnforcer::new(EnumMutationBuilder).build_paths(ctx, depth)
         }
         TypeKind::Value => {
             tracing::debug!("Using ValueMutationBuilder for {}", ctx.type_name());

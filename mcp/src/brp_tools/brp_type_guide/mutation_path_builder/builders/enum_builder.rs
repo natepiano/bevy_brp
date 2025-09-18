@@ -33,7 +33,7 @@ enum MutationExample {
 
     /// Example with variant context (for enum child paths like .0, .1, .enabled)
     EnumChild {
-        example:             Value,
+        example: Value,
         applicable_variants: Vec<String>,
     },
 }
@@ -43,7 +43,7 @@ enum MutationExample {
 #[derive(Debug, Clone)]
 pub struct PathKindWithVariants {
     /// The path kind (None for unit variants)
-    pub path:                Option<PathKind>,
+    pub path: Option<PathKind>,
     /// Variants this path applies to
     pub applicable_variants: Vec<String>,
 }
@@ -59,7 +59,7 @@ impl super::super::MaybeVariants for PathKindWithVariants {
 }
 
 /// Builder for enum mutation paths using the new protocol
-pub struct NewEnumMutationBuilder;
+pub struct EnumMutationBuilder;
 
 // ============================================================================
 // Helper Types and Functions (preserved from original)
@@ -84,7 +84,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name:  BrpTypeName,
+    pub type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -203,7 +203,7 @@ fn group_variants_by_signature(
 // NewEnumMutationBuilder Helper Methods
 // ============================================================================
 
-impl NewEnumMutationBuilder {
+impl EnumMutationBuilder {
     /// Build a complete example for a variant with all its fields
     fn build_variant_example(
         &self,
@@ -300,7 +300,7 @@ impl NewEnumMutationBuilder {
 // MutationPathBuilder Implementation
 // ============================================================================
 
-impl MutationPathBuilder for NewEnumMutationBuilder {
+impl MutationPathBuilder for EnumMutationBuilder {
     type Item = PathKindWithVariants;
     type Iter<'a>
         = std::vec::IntoIter<PathKindWithVariants>
@@ -337,7 +337,7 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
                     // Create PathKindWithVariants for each tuple element
                     for (index, type_name) in types.iter().enumerate() {
                         children.push(PathKindWithVariants {
-                            path:                Some(PathKind::IndexedElement {
+                            path: Some(PathKind::IndexedElement {
                                 index,
                                 type_name: type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
@@ -350,9 +350,9 @@ impl MutationPathBuilder for NewEnumMutationBuilder {
                     // Create PathKindWithVariants for each struct field
                     for (field_name, type_name) in fields {
                         children.push(PathKindWithVariants {
-                            path:                Some(PathKind::StructField {
-                                field_name:  field_name.clone(),
-                                type_name:   type_name.clone(),
+                            path: Some(PathKind::StructField {
+                                field_name: field_name.clone(),
+                                type_name: type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
                             }),
                             applicable_variants: applicable_variants.clone(),
