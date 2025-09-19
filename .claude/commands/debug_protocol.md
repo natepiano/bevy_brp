@@ -2,13 +2,6 @@
 
 Protocol for debugging BRP tool issues by examining trace logs.
 
-<InstallWarning>
-## IMPORTANT NOTE ##
-If you have recently made changes and haven't intalled it, then you need to install it according to the instructions in ./~claude/commands/build_and_install.md
-
-You can ignore this if no changes have been made.
-</InstallWarning>
-
 ## Steps
 
 ### Step 1: Install Tool (if needed)
