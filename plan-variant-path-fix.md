@@ -80,13 +80,21 @@ The PathRequirement.example is wrapped in an incorrect structure with `applicabl
 ```
 
 ### Current Code
-Location: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
-Function: `generate_path_internal()` method
-Approximate lines: ~530-540 where `PathRequirement` struct is constructed with description, example, and variant_path fields
-Note: Line numbers are approximate and may shift during implementation of other fixes
+Location: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
+Lines: 395-404 and 451-460
+
+### Root Cause
+`MutationExample::EnumChild` is wrapping the example with `applicable_variants` metadata. This metadata is already passed through the `MaybeVariants` trait during `collect_children`, so the wrapper is redundant and pollutes the JSON output.
 
 ### Proposed Fix
-The example should show the complete setup value for the parent path, not wrapped in metadata.
+Remove `MutationExample::EnumChild` entirely and use `MutationExample::Simple` instead:
+
+1. **Remove the `EnumChild` variant** from `MutationExample` enum (lines ~34-37)
+2. **Change `EnumContext::Child` case** (lines 395-404) to return `MutationExample::Simple(example)` instead of `EnumChild`
+3. **Remove the `EnumChild` match arm** (lines 451-460) in the JSON conversion
+4. **Remove `flatten_variant_chain` function** (lines 268-280) as it's only used by `EnumChild`
+
+The `applicable_variants` information flows through `MaybeVariants` for use in building both `ExampleGroup` objects and `variant_path` entries, so `EnumChild` is unnecessary.
 
 ## Issue 3: PathRequirement.description Path Reference
 
@@ -177,49 +185,24 @@ Enum paths like `.color_lut.0` should have an `examples` array showing all varia
 
 ### Current Code
 Location: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
-Function: Logic that sets `enum_context` for child contexts
-Approximate lines: 380-385 (same location as Issue 7) - need to verify IndexedElement handling
-Note: Line numbers are approximate and may shift during implementation of other fixes
+Lines: 380-385
+
+### Root Cause
+This is a consequence of Issue 2. The wrapped example from `MutationExample::EnumChild` prevents proper enum handling. Once Issue 2 is fixed, this should resolve automatically.
 
 ### Proposed Fix
-When an IndexedElement's type is an enum, it should get `EnumContext::Root` to generate proper examples array.
+After fixing Issue 2, verify that IndexedElement paths pointing to enums get `EnumContext::Root` set correctly (already happens at lines 380-385 for StructField).
 
 ## Issue 5: Example Wrapper in Mutation Path
 
 ### Problem
-The mutation path's own example is being wrapped with `applicable_variants` which should not be there.
+Same as Issue 2 - the mutation path's example is being wrapped with `applicable_variants` metadata.
 
-### Current Output
-```json
-"example": {
-  "applicable_variants": ["..."],
-  "value": {...}
-}
-```
-
-### Expected Output
-```json
-"example": {...}
-```
-Or for enum types:
-```json
-"examples": [
-  {
-    "applicable_variants": ["..."],
-    "example": {...},
-    "signature": "..."
-  }
-]
-```
-
-### Current Code
-Location: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/types.rs`
-Function: `from_mutation_path_internal()` method
-Approximate lines: 194-205 where `examples` and `example` fields are determined from `enum_root_examples`
-Note: Line numbers are approximate and may shift during implementation of other fixes
+### Root Cause
+This is the same issue as Issue 2. `MutationExample::EnumChild` creates the wrapper.
 
 ### Proposed Fix
-Ensure the example extraction doesn't wrap non-enum examples in metadata structures.
+Fixed by Issue 2's solution - removing `MutationExample::EnumChild`.
 
 ## Issue 7: IndexedElement Enum Handling
 
