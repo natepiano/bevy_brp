@@ -2,13 +2,6 @@
 
 Compares a specific mutation path between the baseline and current running app to identify changes.
 
-<InstallWarning>
-## IMPORTANT NOTE ##
-If you have recently made changes and haven't intalled it, then you need to install it according to the instructions in ./~claude/commands/build_and_install.md
-
-You can ignore this if no changes have been made.
-</InstallWarning>
-
 ## Command Execution
 
 When comparing a mutation path, I will:

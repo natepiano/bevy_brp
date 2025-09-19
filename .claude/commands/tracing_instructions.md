@@ -1,1 +1,0 @@
- we don't have access to the stderr - you can't use eprintln! you have to use tracing!debug - and then we will use the @.claude/commands/debug_protocol.md  to clear out a trace log so you can debug the code

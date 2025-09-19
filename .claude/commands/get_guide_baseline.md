@@ -2,13 +2,6 @@
 
 Gets the baseline type guide for a specified type from the baseline file. Optionally filters to a specific mutation path.
 
-<InstallWarning>
-## IMPORTANT NOTE ##
-If you have recently made changes and haven't installed it, then you need to install it according to the instructions in ./~claude/commands/build_and_install.md
-
-You can ignore this if no changes have been made.
-</InstallWarning>
-
 ## Command Execution
 
 When you request a type guide, I will:

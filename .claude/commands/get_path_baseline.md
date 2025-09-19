@@ -2,13 +2,6 @@
 
 Retrieves mutation paths from the baseline file for a given type. Shows all paths as a formatted list when only type is provided, or specific path details when both type and path are given.
 
-<InstallWarning>
-## IMPORTANT NOTE ##
-If you have recently made changes and haven't installed it, then you need to install it according to the instructions in ./~claude/commands/build_and_install.md
-
-You can ignore this if no changes have been made.
-</InstallWarning>
-
 ## Command Execution
 
 When you request mutation paths, I will:
