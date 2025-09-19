@@ -2,6 +2,7 @@
 
 ## Configuration
 **PARALLEL_TESTS**: 12 # Number of tests to run concurrently
+**TEST_CONFIG_FILE**: `.claude/tests/test_config.json` # Test configuration file location
 
 ## Overview
 
@@ -18,11 +19,11 @@ This command runs BRP tests in two modes:
 
 ## Test Configuration
 
-**Configuration Source**: `.claude/commands/test_config.json`
+**Configuration Source**: TEST_CONFIG_FILE (see above)
 
 This file contains an array of test configurations with the following structure:
 - `test_name`: Identifier for the test
-- `test_file`: Test file name in the tests/ directory
+- `test_file`: Test file path (relative to project root)
 - `app_name`: App/example to launch (or "N/A" or "various")
 - `app_type`: Type of app - "example" or "app" (null for "various" or "N/A")
 - `test_objective`: What the test validates
@@ -36,8 +37,9 @@ This file contains an array of test configurations with the following structure:
 
 **CRITICAL COUNTING INSTRUCTION**: You MUST use the following command to count tests accurately:
 ```bash
-jq '. | length' .claude/commands/test_config.json
+jq '. | length' TEST_CONFIG_FILE
 ```
+Note: Replace TEST_CONFIG_FILE with the actual path from the configuration section above.
 Use this exact count in your final summary. Do NOT manually count or assume any number.
 
 ## App Management Strategy
@@ -170,7 +172,7 @@ Configuration: App [APP_NAME]
 
 ### Execution Instructions
 
-1. **Load Configuration**: Read `test_config.json` from `.claude/commands/test_config.json`
+1. **Load Configuration**: Read test configuration from TEST_CONFIG_FILE
 2. **Find Test**: Search for test configuration where `test_name` matches `$ARGUMENTS`
 3. **Validate**: If test not found, report error and list available test names
 4. **Execute Test**: If found, run the single test using appropriate strategy
@@ -193,7 +195,7 @@ If no test configuration matches `$ARGUMENTS`:
 ```
 # Error: Test Not Found
 
-The test "$ARGUMENTS" was not found in .claude/commands/test_config.json.
+The test "$ARGUMENTS" was not found in TEST_CONFIG_FILE.
 
 Usage: /test <test_name>
 Example: /test extras
@@ -207,8 +209,9 @@ Example: /test extras
 
 1. **Analyze app requirements** using this command:
    ```bash
-   jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' .claude/commands/test_config.json
+   jq '[.[] | select(.app_name == "extras_plugin" or .app_name == "test_app")] | group_by(.app_name) | map({app_name: .[0].app_name, app_type: .[0].app_type, count: length})' TEST_CONFIG_FILE
    ```
+   Note: Replace TEST_CONFIG_FILE with the actual path from the configuration section.
    This will show you exactly how many instances of each app type you need.
 
 2. **Launch apps using instance_count** based on the counts from step 1:
@@ -237,7 +240,7 @@ DO NOT execute tests sequentially (one Task, wait for result, then next Task).
 CORRECT: One message containing 12 Task tool uses for 12 tests
 INCORRECT: 12 separate messages each with one Task tool use
 
-1. **Load Configuration**: Read `test_config.json`
+1. **Load Configuration**: Read TEST_CONFIG_FILE
 2. **Initialize Port Pools**: Based on launched apps
 3. **Categorize Tests**:
    - **Dedicated app tests**: Need port assignment from pool
@@ -296,7 +299,7 @@ INCORRECT: 12 separate messages each with one Task tool use
 # BRP Test Suite - Consolidated Results
 
 ## Overall Statistics
-- **Total Tests**: [Count from test_config.json]
+- **Total Tests**: [Count from TEST_CONFIG_FILE]
 - **Executed**: X
 - **Passed**: X
 - **Failed**: 0 (execution stops on first failure)

@@ -1,84 +1,84 @@
 [
   {
     "test_name": "large_response",
-    "test_file": ".claude/commands/tests/large_response.md",
+    "test_file": ".claude/tests/large_response.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test registry_schema file output for large responses"
   },
   {
     "test_name": "type_guide",
-    "test_file": ".claude/commands/tests/type_guide.md",
+    "test_file": ".claude/tests/type_guide.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test brp_type_guide discovery, metadata validation, and type_guide embedding in format errors"
   },
   {
     "test_name": "list",
-    "test_file": ".claude/commands/tests/list.md",
+    "test_file": ".claude/tests/list.md",
     "app_name": "N/A",
     "app_type": null,
     "test_objective": "Test brp_list_bevy_apps, brp_list_bevy_examples, brp_list_brp_apps"
   },
   {
     "test_name": "apps",
-    "test_file": ".claude/commands/tests/apps.md",
+    "test_file": ".claude/tests/apps.md",
     "app_name": "test_app",
     "app_type": "app",
     "test_objective": "Test app launch with extras plugin using brp_launch_bevy_app"
   },
   {
     "test_name": "introspection",
-    "test_file": ".claude/commands/tests/introspection.md",
+    "test_file": ".claude/tests/introspection.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test rpc_discover, registry_schema, list operations"
   },
   {
     "test_name": "data_operations",
-    "test_file": ".claude/commands/tests/data_operations.md",
+    "test_file": ".claude/tests/data_operations.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test spawn, insert, get, remove, mutate operations"
   },
   {
     "test_name": "watch",
-    "test_file": ".claude/commands/tests/watch.md",
+    "test_file": ".claude/tests/watch.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test get_watch, list_watch, active_watches, stop_watch"
   },
   {
     "test_name": "resource",
-    "test_file": ".claude/commands/tests/resource.md",
+    "test_file": ".claude/tests/resource.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test insert_resource with/without Serialize/Deserialize traits"
   },
   {
     "test_name": "shutdown",
-    "test_file": ".claude/commands/tests/shutdown.md",
+    "test_file": ".claude/tests/shutdown.md",
     "app_name": "various",
     "app_type": null,
     "test_objective": "Test all success and error cases for brp_status and brp_shutdown"
   },
   {
     "test_name": "extras",
-    "test_file": ".claude/commands/tests/extras.md",
+    "test_file": ".claude/tests/extras.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test screenshot, send_keys"
   },
   {
     "test_name": "path",
-    "test_file": ".claude/commands/tests/path.md",
+    "test_file": ".claude/tests/path.md",
     "app_name": "various",
     "app_type": null,
     "test_objective": "Test path parameter handling for duplicate names"
   },
   {
     "test_name": "get",
-    "test_file": ".claude/commands/tests/get.md",
+    "test_file": ".claude/tests/get.md",
     "app_name": "extras_plugin",
     "app_type": "example",
     "test_objective": "Test bevy_get strict parameter behavior with valid and invalid components"
