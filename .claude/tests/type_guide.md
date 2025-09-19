@@ -35,85 +35,104 @@ Store the response as `schema_response`.
 
 ### 3. Validate Response Structure
 
+**Note**: If response is saved to file due to size, use the extraction script:
+`.claude/scripts/type_guide_test_extract.sh <file_path> <operation> [type_name] [field_path]`
+
 #### 3a. Check Top-Level Fields
-Verify the response contains:
-- `status` === "success"
-- `result` object exists
-- `result."type_guide"` object exists
-- `result.discovered_count` === 8
-- `result.summary` object with:
-  - `successful_discoveries` === 8
-  - `failed_discoveries` === 0
-  - `total_requested` === 8
+Use extraction script to verify:
+```bash
+# Check discovered count
+.claude/scripts/type_guide_test_extract.sh <file_path> discovered_count
+# Expected: 8
+
+# Check summary
+.claude/scripts/type_guide_test_extract.sh <file_path> summary
+# Expected: {"successful_discoveries": 8, "failed_discoveries": 0, "total_requested": 8}
+```
 
 ### 4. Validate Sprite Component (No Serialize Trait)
 
 #### 4a. Validate Type Info
-Verify `result."type_guide"["bevy_sprite::sprite::Sprite"]` contains:
-- `type_name` === "bevy_sprite::sprite::Sprite"
-- `in_registry` === true
-- `has_serialize` === false
-- `has_deserialize` === false
-- `supported_operations` array contains ["query", "get", "mutate"]
+```bash
+# Get Sprite type info
+.claude/scripts/type_guide_test_extract.sh <file_path> type_info "bevy_sprite::sprite::Sprite"
+# Expected: type_name: "bevy_sprite::sprite::Sprite", in_registry: true, has_serialize: false, has_deserialize: false, supported_operations: ["query", "get", "mutate"]
+```
 
 #### 4b. Verify Mutation Paths Exist Despite No Serialize
-- Verify `mutation_paths` field EXISTS (components without Serialize can still be mutated)
-- Should contain paths for fields like `.color`, `.flip_x`, `.flip_y`, `.custom_size`, etc.
+```bash
+# Get Sprite mutation paths
+.claude/scripts/type_guide_test_extract.sh <file_path> mutation_paths "bevy_sprite::sprite::Sprite"
+# Should contain paths for fields like .color, .flip_x, .flip_y, .custom_size, etc.
+```
 
 #### 4c. Verify Spawn Format Is Absent
-- Verify `spawn_format` field does NOT exist (cannot spawn without Serialize)
+```bash
+# Check spawn format (should be null/absent)
+.claude/scripts/type_guide_test_extract.sh <file_path> spawn_format "bevy_sprite::sprite::Sprite"
+# Expected: null (cannot spawn without Serialize)
+```
 
 #### 4d. Validate Schema Info
-Verify `schema_info` exists and contains:
-- `type_kind` === "Struct"
-- `properties` with fields: anchor, color, custom_size, flip_x, flip_y, image, image_mode, rect, texture_atlas
-- `required` array with: image, color, flip_x, flip_y, anchor, image_mode
-- `module_path` === "bevy_sprite::sprite"
-- `crate_name` === "bevy_sprite"
+```bash
+# Get Sprite schema info
+.claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_sprite::sprite::Sprite"
+# Expected: type_kind: "Struct", properties with anchor/color/flip_x/etc, module_path: "bevy_sprite::sprite", crate_name: "bevy_sprite"
+```
 
 ### 5. Validate Transform Component (Standard Nested)
 
-Verify `result."type_guide"["bevy_transform::components::transform::Transform"]`:
-- Has `mutation_paths` for translation/rotation/scale with all subfields
-- Has `spawn_format` with example values
-- Has `schema_info` with properties and required fields
-- StructField context for `.translation`, `.rotation`, `.scale`
-- NestedPath context for `.translation.x`, `.translation.y`, etc.
+```bash
+# Get Transform mutation paths
+.claude/scripts/type_guide_test_extract.sh <file_path> mutation_paths "bevy_transform::components::transform::Transform"
+# Should have translation/rotation/scale with all subfields
+
+# Get Transform spawn format
+.claude/scripts/type_guide_test_extract.sh <file_path> spawn_format "bevy_transform::components::transform::Transform"
+# Should have example values
+
+# Get Transform schema info
+.claude/scripts/type_guide_test_extract.sh <file_path> schema_info "bevy_transform::components::transform::Transform"
+# Should have properties and required fields
+
+# Validate specific paths exist
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "bevy_transform::components::transform::Transform" ".translation.x"
+```
 
 ### 6. Validate Test Components with Mutation Contexts
 
-#### 6a. TestArrayField - extras_plugin::TestArrayField
-Validate `mutation_paths` contains:
-- `.vertices` - entire array field with StructField context
-- `.vertices[0]`, `.vertices[1]`, `.vertices[2]` - array elements with ArrayElement context
-- `.values` - entire array field
-- `.values[0]`, `.values[1]`, `.values[2]`, `.values[3]` - array elements
+#### 6a. TestArrayField - Array Element Access
+```bash
+# Check array field paths
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".vertices[0]"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestArrayField" ".values[0]"
+```
 
-#### 6b. TestTupleField - extras_plugin::TestTupleField
-Validate `mutation_paths` contains:
-- `.coords` - entire tuple field with StructField context
-- `.coords.0`, `.coords.1` - tuple elements with TupleElement context
-- `.color_rgb` - entire tuple field
-- `.color_rgb.0`, `.color_rgb.1`, `.color_rgb.2` - tuple elements
+#### 6b. TestTupleField - Tuple Element Access
+```bash
+# Check tuple field paths
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".coords.0"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleField" ".color_rgb.2"
+```
 
-#### 6c. TestTupleStruct - extras_plugin::TestTupleStruct
-Validate `mutation_paths` contains:
-- Root path `""` with context RootValue
-- `.0` - first element (f32) with TupleElement context
-- `.1` - second element (String) with TupleElement context
-- `.2` - third element (bool) with TupleElement context
+#### 6c. TestTupleStruct - Root Value Access
+```bash
+# Check tuple struct paths
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ""
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".0"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestTupleStruct" ".1"
+```
 
-#### 6d. TestComplexComponent - extras_plugin::TestComplexComponent
-Validate `mutation_paths` contains:
-- **StructField context**: `.transform`, `.mode`, `.points`, `.range`, `.optional_value`
-- **NestedPath context**: `.transform.translation.x`, `.transform.rotation.x`, etc.
-- **ArrayElement context**: `.points[0]`, `.points[1]`
-- **TupleElement context**: `.range.0`, `.range.1`
-
-#### 6e. MipBias (Standard TupleStruct) - bevy_render::camera::camera::MipBias
-Validate:
-- Root path with RootValue context
-- `.0` with TupleElement context
+#### 6d. TestComplexComponent - Nested Paths
+```bash
+# Check complex nested paths
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestComplexComponent" ".transform.translation.y"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestComplexComponent" ".points[0]"
+.claude/scripts/type_guide_test_extract.sh <file_path> validate_field "extras_plugin::TestComplexComponent" ".range.0"
+```
 
 ### 7. Validate Name Component
 Verify `result."type_guide"["bevy_ecs::name::Name"]`:
@@ -131,7 +150,7 @@ Spawn entities with components that have Serialize trait:
 #### 8b. Execute and Verify Mutations
 For each mutation context type, perform ONE representative mutation and verify:
 
-**ArrayElement**: Mutate `.values[1]` on TestArrayField → Verify with `bevy_get`
+**ArrayElement**: Mutate `.values[1]` on TestArrayField (even though only `.values[0]` is in type_guide) → Verify with `bevy_get`
 
 **TupleElement**: Mutate `.color_rgb.2` on TestTupleField → Verify with `bevy_get`
 

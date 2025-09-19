@@ -2,6 +2,14 @@
 
 **CRITICAL** before doing anything else, read the tagged sections below and use them where referenced.
 
+**DIRECTORY VALIDATION**: Ensure you are in the correct working directory before starting:
+```bash
+if [[ ! -f ".claude/commands/create_mutation_test_json.md" ]]; then
+    echo "❌ Not in bevy_brp root directory. Please cd to the project root."
+    exit 1
+fi
+```
+
 <ExecutionSteps/>
 
 <CreateContext>
@@ -16,6 +24,7 @@
     - **promote**: Mark this version as the new good baseline
     - **skip**: Keep existing baseline, don't promote this version
     - **investigate**: Launch deeper investigation of the differences
+    - **comparison_review** - Review unexpected changes with detailed grouping and analysis
     - **check_type**: Check mutation paths for a specific type across all versions
     - **summarize**: Summarize test results from a JSON file
 </CreateKeywords>
@@ -29,6 +38,7 @@
     ```
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
+    **comparison_review**: Create detailed todos for unexpected changes and analyze them one by one with user interaction
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
     python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
@@ -44,12 +54,12 @@
 <ExecutionSteps>
     **EXECUTE THESE STEPS IN ORDER:**
 
-    **STEP 1:** Execute the <AppLaunch/>
-    **STEP 2:** Execute the <TypeDiscovery/>
-    **STEP 3:** Execute the <FileTransformation/>
-    **STEP 4:** Execute the <AppCleanup/>
-    **STEP 5:** Execute the <ComparisonValidation/>
-    **STEP 6:** Execute the <UserValidation/>
+    **STEP 1:** Execute the <AppLaunch/> → **STOP** and verify success before proceeding
+    **STEP 2:** Execute the <TypeDiscovery/> → **STOP** and verify success before proceeding
+    **STEP 3:** Execute the <FileTransformation/> → **STOP** and verify success before proceeding
+    **STEP 4:** Execute the <AppCleanup/> → **STOP** and verify success before proceeding
+    **STEP 5:** Execute the <ComparisonValidation/> → **STOP** and verify success before proceeding
+    **STEP 6:** Execute the <UserValidation/> → **STOP** and present final summary
 </ExecutionSteps>
 
 ## STEP 1: APP LAUNCH
@@ -73,7 +83,9 @@
     )
     ```
 
-    Wait for confirmation that BRP is responding before proceeding to Step 2.
+    **VALIDATION**: Confirm both launch and BRP status are successful before proceeding to Step 2.
+
+    **STOP** - Do not proceed until both confirmations are received.
 </AppLaunch>
 
 ## STEP 2: TYPE DISCOVERY
@@ -88,7 +100,11 @@
 
     This automatically discovers all registered types and returns their type guides. The tool will save its result to a file and return the filepath (e.g., `/var/folders/.../mcp_response_brp_all_type_guides_12345.json`).
 
+    **VALIDATION**: Confirm the tool returned a valid filepath and type count.
+
     **CRITICAL**: Note the returned filepath for use in Step 3.
+
+    **STOP** - Do not proceed until filepath is confirmed.
 </TypeDiscovery>
 
 ## STEP 3: FILE TRANSFORMATION
@@ -117,7 +133,11 @@
     - All test metadata fields added (test_status, batch_number, fail_reason)
     - Full preservation of schema_info, supported_operations, reflection traits
 
+    **VALIDATION**: Confirm the script completed successfully and target file was created.
+
     **CRITICAL**: This maintains complete fidelity with BRP responses, storing actual examples for reproducible testing
+
+    **STOP** - Do not proceed until file creation is confirmed.
 </FileTransformation>
 
 ## STEP 4: APP CLEANUP
@@ -132,7 +152,9 @@
     )
     ```
 
-    Confirm the app has been cleanly shutdown before proceeding.
+    **VALIDATION**: Confirm the app has been cleanly shutdown before proceeding.
+
+    **STOP** - Do not proceed until shutdown is confirmed.
 </AppCleanup>
 
 ## STEP 5: COMPARISON AND VALIDATION
@@ -163,20 +185,60 @@
       - Identifies unknown patterns that need investigation
       - Shows specific paths and examples of what changed
     - Clear recommendations based on the type of changes found
+
+    **VALIDATION**: Confirm the comparison script completed and generated output.
+
+    **STOP** - Do not proceed until comparison output is available.
 </ComparisonValidation>
 
 ## STEP 6: USER VALIDATION
 
 <UserValidation>
-    **Present Comparison Results to User for Baseline Decision**
+    **STEP 6A: CATEGORIZE CHANGES**
 
-    **Parse the comparison output and format the final presentation:**
+    **IMPORTANT**: Before presenting results, systematically categorize ALL changes:
 
-    **IMPORTANT**: Before presenting results, check for expected changes:
-    1. Read the EXPECTED_CHANGES.md file from the project root
-    2. Match detected changes against the <HowToIdentify> patterns for each expected change
-    3. Group matched changes under an "Expected Changes" section
-    4. Present remaining changes as "Unexpected Changes" that need review
+    1. **Read Expected Changes**: Read the .claude/EXPECTED_CHANGES.md file to understand all expected patterns
+
+    2. **Map Comparison Output to Expected Changes**: For each pattern in the comparison output, determine if it matches an expected change:
+       - **FIELD REMOVED with 'variants' field**: Maps to Expected Change #1 (variants removal)
+       - **FIELD REMOVED with 'enum_info' field**: Maps to Expected Change #2 (enum_info removal)
+       - **VALUE CHANGE with path_requirement additions**: Maps to Expected Change #3 (path_requirement addition)
+       - **New Types with extras_plugin::NestedConfigEnum**: Maps to Expected Change #4 (test type addition)
+       - **VALUE CHANGE with enum example simplification**: Maps to Expected Change #5 (enum example format)
+
+    3. **Identify Unexpected Patterns**: ANY pattern or change not covered by the above mapping is UNEXPECTED:
+       - **TYPE CHANGE patterns** (unless covered by expected changes)
+       - **FIELD ADDED patterns** (unless covered by expected changes)
+       - **VALUE CHANGE patterns** that don't match expected change descriptions
+       - **New/Removed types** not listed in expected changes
+
+    4. **Count and Summarize**:
+       - Count total changes for each expected change category
+       - Count total changes for unexpected patterns
+       - Prepare summaries for both categories
+
+    **STEP 6B: ANALYZE COMPARISON OUTPUT**
+
+    **MANDATORY**: Before using the template, explicitly analyze each pattern from the comparison output:
+
+    1. **List ALL patterns detected**: Write out every "IDENTIFIED PATTERN" from the comparison output
+    2. **Map each pattern**: For each pattern, state which expected change it maps to OR mark as "UNEXPECTED"
+    3. **Calculate totals**: Sum up changes for expected vs unexpected categories
+    4. **Verify completeness**: Ensure every single pattern has been categorized
+
+    **Example Analysis Structure**:
+    ```
+    PATTERN: FIELD REMOVED (variants field, 872 removals) → Expected Change #1 ✓
+    PATTERN: FIELD REMOVED (enum_info field, 18 removals) → Expected Change #2 ✓
+    PATTERN: VALUE CHANGE (1149 changes) → Expected Change #3 & #5 ✓
+    PATTERN: TYPE CHANGE (18 types, 22 changes) → UNEXPECTED ❌
+    PATTERN: FIELD ADDED (39 types, 122 changes) → UNEXPECTED ❌
+    ```
+
+    **STEP 6C: PRESENT SUMMARY**
+
+    Present the final summary using the exact template below:
 
     The comparison script now provides all statistics including excluded types. Extract and present them in this format:
 
@@ -194,60 +256,27 @@
  - If metadata only differs: Count differences
  - If structural changes exist: Full deep analysis output with two sections:]
 
-   #### Expected Changes (from EXPECTED_CHANGES.md):
+   #### Expected Changes (from .claude/EXPECTED_CHANGES.md):
    [For each matched expected change pattern, list:
     - Expected Change #N: [Name from EXPECTED_CHANGES.md]
     - Summary of what matched this pattern
     - Count of changes matching this pattern]
 
    #### Unexpected Changes (need review):
+   **CRITICAL**: MUST analyze ALL patterns not mapped to expected changes above:
 
-   **IF UNEXPECTED CHANGES EXIST:**
+   [FOR EACH UNEXPECTED PATTERN found in Step 6A:
+    - Pattern Name: [e.g., "TYPE CHANGE", "FIELD ADDED", etc.]
+    - Types Affected: [count]
+    - Total Changes: [count]
+    - Brief Summary: [what kind of changes these are]
+    - Example: [show 1-2 specific examples of the change]]
 
-   1. **Group unexpected changes by category:**
-      - Field Removals (group by type and field name pattern)
-      - Field Additions (group by type and field name pattern)
-      - Value Changes (group by change type)
-      - Structure Changes (group by structural pattern)
-      - Unknown patterns
+   [IF TRULY NO UNEXPECTED CHANGES: State "None - all detected patterns map to expected changes"]
 
-   2. **Create todo list with grouped issues:**
-      ```
-      Use TodoWrite to create todos for each group of unexpected changes.
-      Mark the first todo as "in_progress" and all others as "pending".
-      ```
+   **WARNING**: If TYPE CHANGE or FIELD ADDED patterns exist and are not explicitly covered by expected changes, they MUST be listed here as unexpected.
 
-   3. **Present the FIRST issue only with detailed comparison:**
-
-      ### Issue 1: [Description from first todo]
-
-      **Type**: `[TYPE_NAME]`
-      **Mutation Path**: `[MUTATION_PATH]`
-
-      **Get baseline version:**
-      Execute: `.claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"`
-
-      **Get current version:**
-      Execute: `.claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" "$TMPDIR/all_types.json"`
-
-      **Side-by-side comparison:**
-      Execute the <FormatComparison/> tagged section with the baseline and current data
-
-      **Analysis for `[TYPE_NAME]` at path `[MUTATION_PATH]`:**
-      [Describe what specifically changed between baseline and current]
-
-      **STOP HERE** - Discuss this issue with the user before proceeding.
-
-   4. **After user discussion:**
-      When the user is ready, ask: "Shall I proceed to the next unexpected change?"
-      - If YES: Mark current todo as completed, mark next as in_progress, present next issue
-      - If NO: Keep current todo in_progress for continued discussion
-
-   5. **After all issues reviewed:**
-      Once all todos are completed, ask for baseline promotion decision.
-
-   **IF NO UNEXPECTED CHANGES:**
-   Continue directly to baseline promotion decision.
+    **STEP 6C: PRESENT DECISION PROMPT**
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?
@@ -256,12 +285,11 @@ Based on the comparison results above, should I mark this version as the new goo
 - **promote** - Mark this version as the new good baseline
 - **skip** - Keep existing baseline, don't promote this version
 - **investigate** - Launch deeper investigation of the differences
-- **add_expected** - Add newly discovered pattern to EXPECTED_CHANGES.md for future runs
-- **continue** - (Only when reviewing issues) Continue to next unexpected change
+- **comparison_review** - Review unexpected changes with detailed grouping and analysis
 
-    **CRITICAL**: STOP and wait for user's response before proceeding.
+    **CRITICAL**: STOP and wait for user's keyword response before proceeding.
 
-    **Note**: As we discover new expected changes through testing and refactoring, they will be added to EXPECTED_CHANGES.md to improve future comparisons.
+    **Note**: Use the keyword from Available Actions - do not continue with detailed analysis unless user specifically requests **comparison_review** or **investigate**.
 </UserValidation>
 
 ## SHARED DEFINITIONS

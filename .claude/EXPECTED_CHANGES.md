@@ -261,6 +261,70 @@ To identify this change pattern in the comparison output:
 This is an EXPECTED addition for testing the variant path structure implementation and nested enum handling.
 </HowToIdentify>
 
+## Expected Change #5: Simplification of Enum Example Format in Mutation Paths
+
+### Description
+The example format for enum fields in mutation paths has been simplified from complex metadata arrays to direct enum values. Previously, enum examples were represented as arrays containing objects with `example`, `signature`, and `variants` fields. This has been corrected to show the actual enum value directly.
+
+### Structural Change
+**Changed**: Enum field examples from metadata arrays to direct values
+
+### When Comparison Output Says:
+```
+📌 IDENTIFIED PATTERN: VALUE CHANGE
+Types affected: 78
+Total changes: 1135
+```
+
+**This is talking about**: The simplification of enum example format from metadata arrays to direct values, which is EXPECTED.
+
+### Example: bevy_core_pipeline::bloom::settings::Bloom
+
+#### BASELINE (buggy format)
+```json
+{
+  "example": {
+    "composite_mode": [
+      {
+        "example": "EnergyConserving",
+        "signature": "unit",
+        "variants": [
+          "EnergyConserving",
+          "Additive"
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### CURRENT (correct format)
+```json
+{
+  "example": {
+    "composite_mode": "EnergyConserving"
+  }
+}
+```
+
+<HowToIdentify>
+To identify this change pattern in the comparison output:
+
+1. Look for VALUE CHANGE pattern with:
+   - Large number of changes (1000+) affecting many types (70+)
+   - Changes in mutation example format from arrays to simple values
+
+2. Key characteristics:
+   - Enum fields change from array[object] format to simple string values
+   - Objects in arrays had `example`, `signature`, and `variants` fields
+   - New format shows direct enum variant names as strings
+   - The actual enum values match what's used in real entities
+
+3. Validation: The new format can be successfully used in BRP mutations and matches actual entity data
+
+This is an EXPECTED change that fixes the example format to match the actual data structure used in Bevy, making the type guides more accurate and usable.
+</HowToIdentify>
+
 ---
 
 *Note: Additional expected changes will be documented here as they are discovered during testing and refactoring.*
