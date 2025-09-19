@@ -170,9 +170,6 @@ pub struct MutationPath {
     /// Single example value (for non-enum types)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub example:     Option<Value>,
-    /// Additional note about how to use this mutation path
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub note:        Option<String>,
 }
 
 impl MutationPath {
@@ -188,7 +185,6 @@ impl MutationPath {
         // Generate description using the context
         let description = path.path_kind.description(&type_kind);
 
-        // Direct transfer - no JSON parsing needed!
         let (examples, example) = path.enum_root_examples.as_ref().map_or_else(
             || {
                 // Everything else: use the example value
@@ -214,7 +210,6 @@ impl MutationPath {
             },
             examples,
             example,
-            note: None,
         }
     }
 }
