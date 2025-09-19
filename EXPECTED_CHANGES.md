@@ -213,6 +213,54 @@ To identify this change pattern in the comparison output:
 This is an EXPECTED change from the variant path structure implementation that provides better tracking of enum variant dependencies for mutation paths.
 </HowToIdentify>
 
+## Expected Change #4: Addition of extras_plugin::NestedConfigEnum Test Type
+
+### Description
+A new test enum type `extras_plugin::NestedConfigEnum` was added to the extras_plugin test app to validate nested enum handling in the variant path structure implementation.
+
+### Structural Change
+**Added**: New type `extras_plugin::NestedConfigEnum` in the type registry
+
+### When Comparison Output Says:
+```
+🔍 TYPE-LEVEL CHANGES
+   ├─ New Types: 1
+   │  ├─ extras_plugin::NestedConfigEnum
+```
+
+**This is talking about**: The addition of the NestedConfigEnum test type, which is EXPECTED.
+
+### Type Characteristics
+```json
+{
+  "spawn_format": {
+    "Conditional": [1000000]
+  },
+  "supported_operations": ["query", "get", "spawn", "insert", "mutate"],
+  "mutation_path_count": 2
+}
+```
+
+<HowToIdentify>
+To identify this change pattern in the comparison output:
+
+1. Look for TYPE-LEVEL CHANGES with:
+   - New Types: 1
+   - Specifically mentions `extras_plugin::NestedConfigEnum`
+
+2. This is the EXACT line to match:
+   ```
+   ├─ extras_plugin::NestedConfigEnum
+   ```
+
+3. Key characteristics:
+   - It's a test type in the extras_plugin
+   - Used for validating nested enum configurations
+   - Has a tuple variant "Conditional" with a u32 parameter
+
+This is an EXPECTED addition for testing the variant path structure implementation and nested enum handling.
+</HowToIdentify>
+
 ---
 
 *Note: Additional expected changes will be documented here as they are discovered during testing and refactoring.*
