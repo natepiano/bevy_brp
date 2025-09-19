@@ -177,11 +177,11 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths: Vec<MutationPathInternal>,
+    all_paths:       Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples: HashMap<MutationPathDescriptor, Value>,
+    child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 /// Single dispatch point for creating builders - used for both entry and recursion
@@ -269,7 +269,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             let mut extended = parent_chain.clone();
                             if let Some(representative_variant) = variants.first() {
                                 extended.push(super::types::VariantPathEntry {
-                                    path: ctx.mutation_path.clone(),
+                                    path:    ctx.mutation_path.clone(),
                                     variant: representative_variant.clone(),
                                 });
                             }
@@ -280,7 +280,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             variants
                                 .first()
                                 .map(|variant| super::types::VariantPathEntry {
-                                    path: ctx.mutation_path.clone(),
+                                    path:    ctx.mutation_path.clone(),
                                     variant: variant.clone(),
                                 })
                                 .into_iter()
@@ -458,10 +458,10 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 if !variant_chain.is_empty() =>
             {
                 Some(super::types::PathRequirement {
-                    description: Self::generate_variant_description(variant_chain),
-                    example: example.clone(), // Use the example we already built!
+                    description:  Self::generate_variant_description(variant_chain),
+                    example:      example.clone(), // Use the example we already built!
                     variant_path: variant_chain.clone(), /* Already Vec<VariantPathEntry> from
-                                               * Step 2 */
+                                                    * Step 2 */
                 })
             }
             _ => None,
