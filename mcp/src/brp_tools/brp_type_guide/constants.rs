@@ -96,7 +96,3 @@ pub const TYPE_BEVY_IMAGE_HANDLE: &str = "bevy_asset::handle::Handle<bevy_image:
 // ============================================================================
 // PATH PROCESSING CONSTANTS
 // ============================================================================
-
-/// Separator used for flattening nested enum variant chains into dot notation
-/// Example: [(TestEnum, ["Nested"]), (NestedEnum, ["Conditional"])] → ["Nested.Conditional"]
-pub const VARIANT_PATH_SEPARATOR: &str = ".";

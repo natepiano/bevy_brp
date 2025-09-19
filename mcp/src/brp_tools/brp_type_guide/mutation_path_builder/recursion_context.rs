@@ -11,7 +11,7 @@ use super::super::brp_type_name::BrpTypeName;
 use super::super::response_types::ReflectTrait;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
-use super::types::PathAction;
+use super::types::{PathAction, VariantPathEntry};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 
@@ -23,9 +23,11 @@ pub enum EnumContext {
 
     /// Building under enum variant(s)
     Child {
-        /// Chain of variant constraints from parent to child
-        /// e.g., [(TestEnumWithSerDe, ["Nested"]), (NestedConfigEnum, ["Conditional"])]
-        variant_chain: Vec<(BrpTypeName, Vec<String>)>,
+        /// Chain of variant constraints from parent to child with their paths
+        /// e.g., `[VariantPathEntry { path: "", variant: "TestEnumWithSerDe::Nested" },`
+        ///        `VariantPathEntry { path: ".nested_config", variant:`
+        /// `"NestedConfigEnum::Conditional" }]`
+        variant_chain: Vec<VariantPathEntry>,
     },
 }
 
@@ -50,7 +52,7 @@ pub struct RecursionContext {
 
 impl RecursionContext {
     /// Create a new mutation path context
-    pub fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
+    pub const fn new(path_kind: PathKind, registry: Arc<HashMap<BrpTypeName, Value>>) -> Self {
         Self {
             path_kind,
             registry,
@@ -96,11 +98,11 @@ impl RecursionContext {
 
     /// Create a new context for protocol-driven recursion
     ///
-    /// Key differences from create_field_context (which unmigrated builders use):
-    /// - Takes a PathAction parameter to control child path creation
-    /// - Ensures Skip mode propagates to all descendants (once Skip, always Skip)
-    /// - Self-contained implementation (doesn't call create_field_context)
-    /// - Propagates parent's enum_context to children by default
+    /// Key differences from `create_field_context` (which unmigrated builders use):
+    /// - Takes a `PathAction` parameter to control child path creation
+    /// - Ensures `Skip` mode propagates to all descendants (once `Skip`, always `Skip`)
+    /// - Self-contained implementation (doesn't call `create_field_context`)
+    /// - Propagates parent's `enum_context` to children by default
     pub fn create_recursion_context(
         &self,
         path_kind: PathKind,
@@ -168,7 +170,7 @@ impl RecursionContext {
     /// It checks context-specific matches first, then falls back to exact type matches.
     ///
     /// Lookup order:
-    /// 1. Struct field match (for field-specific values like Camera3d.depth_texture_usages) -
+    /// 1. Struct field match (for field-specific values like `Camera3d.depth_texture_usages`) -
     ///    highest priority
     /// 2. Exact type match (handles most primitive and simple types) - fallback
     /// 3. Future: Enum signature match (for newtype variants - see plan-enum-variant-knowledge.md)
@@ -222,16 +224,19 @@ impl RecursionContext {
         // Try exact type match as fallback - this handles most cases
         let exact_key = KnowledgeKey::exact(self.type_name().type_string());
         tracing::debug!("Trying exact type match with key: {:?}", exact_key);
-        if let Some(knowledge) = BRP_MUTATION_KNOWLEDGE.get(&exact_key) {
-            tracing::debug!(
-                "Found exact type match for {}: {:?}",
-                self.type_name(),
-                knowledge.example()
-            );
-            Some(knowledge)
-        } else {
-            tracing::debug!("No exact type match found for {}", self.type_name());
-            None
-        }
+        BRP_MUTATION_KNOWLEDGE.get(&exact_key).map_or_else(
+            || {
+                tracing::debug!("No exact type match found for {}", self.type_name());
+                None
+            },
+            |knowledge| {
+                tracing::debug!(
+                    "Found exact type match for {}: {:?}",
+                    self.type_name(),
+                    knowledge.example()
+                );
+                Some(knowledge)
+            },
+        )
     }
 }

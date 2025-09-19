@@ -105,10 +105,10 @@ impl MutationKnowledge {
         }
     }
 
-    /// Get simplified name for a type if it has TreatAsRootValue knowledge
+    /// Get simplified name for a type if it has `TreatAsRootValue` knowledge
     pub fn get_simplified_name(type_name: &BrpTypeName) -> Option<BrpTypeName> {
         let knowledge_key = KnowledgeKey::exact(type_name.as_str());
-        if let Some(MutationKnowledge::TreatAsRootValue {
+        if let Some(Self::TreatAsRootValue {
             simplified_type, ..
         }) = BRP_MUTATION_KNOWLEDGE.get(&knowledge_key)
         {

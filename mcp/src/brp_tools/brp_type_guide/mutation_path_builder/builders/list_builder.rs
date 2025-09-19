@@ -8,7 +8,6 @@
 //! Elements are addressable by index, though indices may change as list mutates.
 
 use std::collections::HashMap;
-use std::ops::Deref;
 
 use serde_json::{Value, json};
 
@@ -66,7 +65,7 @@ impl PathBuilder for ListMutationBuilder {
             Error::InvalidState(format!(
                 "Protocol violation: List {} missing element at index 0. Available keys: {:?}",
                 ctx.type_name(),
-                children.keys().map(|k| k.deref()).collect::<Vec<_>>()
+                children.keys().map(|k| &**k).collect::<Vec<_>>()
             ))
         })?;
 

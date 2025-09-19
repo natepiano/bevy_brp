@@ -16,7 +16,7 @@ pub trait MaybeVariants {
         None
     }
 
-    /// Extract the PathKind if there is one (None for unit variants)
+    /// Extract the `PathKind` if there is one (`None` for unit variants)
     fn into_path_kind(self) -> Option<PathKind>;
 }
 
@@ -26,8 +26,8 @@ pub trait MaybeVariants {
 /// replacing the large conditional match statement with clean separation of concerns.
 /// Each type kind gets its own implementation that handles the specific logic needed.
 pub trait PathBuilder {
-    /// The item type returned by collect_children - allows for
-    /// enum_builder to return `PathKind` with applicable_variants where
+    /// The item type returned by `collect_children` - allows for
+    /// `enum_builder` to return `PathKind` with `applicable_variants` where
     ///  all the other builders just return `PathKind`
     type Item: MaybeVariants;
 

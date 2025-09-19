@@ -58,7 +58,7 @@ impl PathBuilder for StructMutationBuilder {
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_field_type".to_string()),
-                    details:   Some(format!("Field: {}", field_name)),
+                    details:   Some(format!("Field: {field_name}")),
                 }
                 .into());
             };

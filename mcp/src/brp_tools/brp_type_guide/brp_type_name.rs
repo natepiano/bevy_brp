@@ -1,7 +1,7 @@
 //! A newtype wrapper for BRP type names used throughout the system
 //!
 //! This module provides the `BrpTypeName` type which represents fully-qualified
-//! Rust type names (e.g., "bevy_transform::components::transform::Transform")
+//! Rust type names (e.g., `"bevy_transform::components::transform::Transform"`)
 //! with various utility methods for working with these names.
 
 use serde::{Deserialize, Serialize};
@@ -83,6 +83,58 @@ impl BrpTypeName {
     /// Get the display name for this type, using simplified name from knowledge if available
     pub fn display_name(&self) -> Self {
         MutationKnowledge::get_simplified_name(self).unwrap_or_else(|| self.clone())
+    }
+
+    /// Shorten an enum type name while preserving generic parameters
+    /// e.g., `"core::option::Option<alloc::string::String>"` → `"Option<String>"`
+    /// e.g., `"extras_plugin::TestEnumWithSerDe"` → `"TestEnumWithSerDe"`
+    pub fn short_enum_type_name(&self) -> String {
+        let type_str = &self.0;
+
+        // Find generic bracket if present
+        type_str.find('<').map_or_else(
+            || {
+                // No generics, just shorten the type name
+                type_str.rsplit("::").next().unwrap_or(type_str).to_string()
+            },
+            |angle_pos| {
+                // Split into base type and generic params
+                let base_type = &type_str[..angle_pos];
+                let generic_part = &type_str[angle_pos..];
+
+                // Shorten the base type
+                let short_base = base_type.rsplit("::").next().unwrap_or(base_type);
+
+                // Process generic parameters recursively
+                let mut result = String::from(short_base);
+                result.push('<');
+
+                // Simple approach: shorten each :: separated segment within generics
+                let inner = &generic_part[1..generic_part.len() - 1]; // Remove < >
+                let parts: Vec<String> = inner
+                    .split(',')
+                    .map(|part| {
+                        let trimmed = part.trim();
+                        // For each type in the generic params, take the last component
+                        if trimmed.contains("::") {
+                            trimmed.rsplit("::").next().unwrap_or(trimmed).to_string()
+                        } else {
+                            trimmed.to_string()
+                        }
+                    })
+                    .collect();
+
+                result.push_str(&parts.join(", "));
+                result.push('>');
+                result
+            },
+        )
+    }
+
+    /// Create a full variant name using the shortened enum type name
+    /// e.g., `"core::option::Option<String>"` + `"Some"` → `"Option<String>::Some"`
+    pub fn variant_name(&self, variant: &str) -> String {
+        format!("{}::{}", self.short_enum_type_name(), variant)
     }
 }
 

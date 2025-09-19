@@ -69,7 +69,7 @@ impl PathBuilder for TupleMutationBuilder {
                     ),
                     type_name: Some(ctx.type_name().to_string()),
                     operation: Some("extract_element_type".to_string()),
-                    details:   Some(format!("Element index: {}", index)),
+                    details:   Some(format!("Element index: {index}")),
                 }
                 .into());
             };

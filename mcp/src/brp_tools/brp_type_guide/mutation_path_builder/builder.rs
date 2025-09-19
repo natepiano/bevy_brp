@@ -1,7 +1,6 @@
-//! This is the main MutationPathBuilder implementation which
-//! recursively uses the PathBuilder trait to build mutation paths for a given type.
+//! This is the main `MutationPathBuilder` implementation which
+//! recursively uses the `PathBuilder` trait to build mutation paths for a given type.
 use std::collections::HashMap;
-use std::ops::Deref;
 
 use serde_json::{Value, json};
 
@@ -15,7 +14,7 @@ use super::type_kind::TypeKind;
 use super::types::PathSummary;
 use super::{
     MutationPathDescriptor, MutationPathInternal, MutationStatus, NotMutableReason, PathAction,
-    RecursionContext,
+    PathKind, RecursionContext,
 };
 use crate::brp_tools::brp_type_guide::constants::RecursionDepth;
 use crate::error::Result;
@@ -81,30 +80,38 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         let (parent_example, enum_root_examples) = match &ctx.enum_context {
             Some(super::recursion_context::EnumContext::Root) => {
                 // Check if the assembled_example contains enum_root_data marker
-                if let Some(enum_data) = assembled_example.get("enum_root_data") {
-                    let default_example = enum_data.get("default").cloned().unwrap_or(json!(null));
-                    let examples_json = enum_data.get("examples").cloned().unwrap_or(json!([]));
-                    // Deserialize the examples array into Vec<ExampleGroup>
-                    let examples: Vec<super::types::ExampleGroup> =
-                        serde_json::from_value(examples_json.clone()).unwrap_or_default();
+                assembled_example
+                    .get("enum_root_data")
+                    .cloned()
+                    .map_or_else(
+                        || {
+                            // Fallback if structure is unexpected
+                            tracing::debug!(
+                                "EnumRoot for {} has no enum_root_data in assembled_example: {}",
+                                ctx.type_name(),
+                                assembled_example
+                            );
+                            (assembled_example, None)
+                        },
+                        |enum_data| {
+                            let default_example =
+                                enum_data.get("default").cloned().unwrap_or(json!(null));
+                            let examples_json =
+                                enum_data.get("examples").cloned().unwrap_or(json!([]));
+                            // Deserialize the examples array into Vec<ExampleGroup>
+                            let examples: Vec<super::types::ExampleGroup> =
+                                serde_json::from_value(examples_json.clone()).unwrap_or_default();
 
-                    tracing::debug!(
-                        "EnumRoot extraction for {}: found {} examples from JSON: {}",
-                        ctx.type_name(),
-                        examples.len(),
-                        examples_json
-                    );
+                            tracing::debug!(
+                                "EnumRoot extraction for {}: found {} examples from JSON: {}",
+                                ctx.type_name(),
+                                examples.len(),
+                                examples_json
+                            );
 
-                    (default_example, Some(examples))
-                } else {
-                    // Fallback if structure is unexpected
-                    tracing::debug!(
-                        "EnumRoot for {} has no enum_root_data in assembled_example: {}",
-                        ctx.type_name(),
-                        assembled_example
-                    );
-                    (assembled_example, None)
-                }
+                            (default_example, Some(examples))
+                        },
+                    )
             }
             Some(super::recursion_context::EnumContext::Child { .. }) => {
                 // Trust the enum builder's result - it already computed applicable_variants
@@ -132,7 +139,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         let (parent_status, reason_enum) = Self::determine_parent_mutation_status(ctx, &all_paths);
 
         // Convert NotMutableReason to Value if present
-        let mutation_status_reason = reason_enum.as_ref().and_then(|r| Option::<Value>::from(r));
+        let mutation_status_reason = reason_enum.as_ref().and_then(Option::<Value>::from);
 
         // Decide what to return based on PathAction
         match ctx.path_action {
@@ -170,14 +177,14 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
     all_paths:       Vec<MutationPathInternal>,
-    /// Only paths that should be exposed (filtered by PathAction)
+    /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
     child_examples:  HashMap<MutationPathDescriptor, Value>,
 }
 
 /// Single dispatch point for creating builders - used for both entry and recursion
-/// This is the ONLY place where we match on TypeKind to create builders
+/// This is the ONLY place where we match on `TypeKind` to create builders
 pub fn recurse_mutation_paths(
     type_kind: TypeKind,
     ctx: &RecursionContext,
@@ -243,7 +250,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         // Recurse to each child (they handle their own protocol)
         for item in child_items {
             // Check if we have variant information (from enum builder)
-            let variant_info = item.applicable_variants().map(|v| v.to_vec());
+            let variant_info = item.applicable_variants().map(<[String]>::to_vec);
 
             // Always try to extract the PathKind first (may be None for unit variants)
             if let Some(path_kind) = item.into_path_kind() {
@@ -259,12 +266,23 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         }) => {
                             // We're already in a variant - extend the chain
                             let mut extended = parent_chain.clone();
-                            extended.push((ctx.type_name().clone(), variants.to_vec()));
+                            for variant in variants {
+                                extended.push(super::types::VariantPathEntry {
+                                    path:    ctx.mutation_path.clone(),
+                                    variant: ctx.type_name().variant_name(&variant),
+                                });
+                            }
                             extended
                         }
                         _ => {
                             // Start a new chain
-                            vec![(ctx.type_name().clone(), variants.to_vec())]
+                            variants
+                                .iter()
+                                .map(|variant| super::types::VariantPathEntry {
+                                    path:    ctx.mutation_path.clone(),
+                                    variant: ctx.type_name().variant_name(variant),
+                                })
+                                .collect()
                         }
                     };
 
@@ -310,7 +328,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 let child_key = path_kind.to_mutation_path_descriptor();
 
                 let (child_paths, child_example) =
-                    Self::process_child(&child_key, &child_ctx, depth)?;
+                    Self::process_child(&child_key, &mut child_ctx, depth)?;
                 child_examples.insert(child_key, child_example);
 
                 // Always collect all paths for analysis
@@ -334,12 +352,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     /// Process a single child and return its paths and example value
     fn process_child(
         descriptor: &MutationPathDescriptor,
-        child_ctx: &RecursionContext,
+        child_ctx: &mut RecursionContext,
         depth: RecursionDepth,
     ) -> Result<(Vec<MutationPathInternal>, Value)> {
         tracing::debug!(
             "ProtocolEnforcer recursing to child '{}' of type '{}'",
-            descriptor.deref(),
+            &**descriptor,
             child_ctx.type_name()
         );
 
@@ -349,39 +367,56 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             .unwrap_or_else(|_| &json!(null));
         tracing::debug!(
             "Child '{}' schema found: {}",
-            descriptor.deref(),
+            &**descriptor,
             child_schema != &json!(null)
         );
 
-        let child_type = child_ctx.type_name();
-        let child_kind = TypeKind::from_schema(child_schema, child_type);
-        tracing::debug!("Child '{}' TypeKind: {:?}", descriptor.deref(), child_kind);
+        let child_type = child_ctx.type_name().clone();
+        let child_kind = TypeKind::from_schema(child_schema, &child_type);
+        tracing::debug!("Child '{}' TypeKind: {:?}", &**descriptor, child_kind);
+
+        // If child is an enum and we're building a non-root path for it, set EnumContext::Root
+        // This ensures the enum generates proper examples for its mutation path
+        if matches!(child_kind, TypeKind::Enum)
+            && child_ctx.enum_context.is_none()
+            && matches!(child_ctx.path_kind, PathKind::StructField { .. })
+        {
+            child_ctx.enum_context = Some(super::recursion_context::EnumContext::Root);
+        }
 
         // Use the single dispatch point for recursion
         // THIS is the recursion point - after this everything pops back up to build examples
         tracing::debug!(
             "ProtocolEnforcer: Calling build_paths on child '{}' of type '{}'",
-            descriptor.deref(),
+            &**descriptor,
             child_ctx.type_name()
         );
 
-        let child_paths = recurse_mutation_paths(child_kind, child_ctx, depth.increment())?;
+        let child_paths = recurse_mutation_paths(child_kind, &child_ctx, depth.increment())?;
         tracing::debug!(
             "ProtocolEnforcer: Child '{}' returned {} paths",
-            descriptor.deref(),
+            &**descriptor,
             child_paths.len()
         );
 
-        // Extract child's example from its root path
-        let child_example = child_paths
-            .first()
-            .map(|p| p.example.clone())
-            .unwrap_or(json!(null));
+        // Extract child's example - handle both simple and enum root cases
+        let child_example = child_paths.first().map_or(json!(null), |p| {
+            if let Some(enum_examples) = &p.enum_root_examples {
+                // This child is an enum root - extract the default example
+                enum_examples
+                    .first()
+                    .map(|g| g.example.clone())
+                    .unwrap_or(json!(null))
+            } else {
+                // Simple case - just use the example
+                p.example.clone()
+            }
+        });
 
         Ok((child_paths, child_example))
     }
 
-    pub fn new(inner: B) -> Self {
+    pub const fn new(inner: B) -> Self {
         Self { inner }
     }
 
@@ -409,6 +444,21 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         status: MutationStatus,
         mutation_status_reason: Option<Value>,
     ) -> MutationPathInternal {
+        // Build complete path_requirement if variant chain exists
+        let path_requirement = match &ctx.enum_context {
+            Some(super::recursion_context::EnumContext::Child { variant_chain })
+                if !variant_chain.is_empty() =>
+            {
+                Some(super::types::PathRequirement {
+                    description:  Self::generate_variant_description(variant_chain),
+                    example:      example.clone(), // Use the example we already built!
+                    variant_path: variant_chain.clone(), /* Already Vec<VariantPathEntry> from
+                                                    * Step 2 */
+                })
+            }
+            _ => None,
+        };
+
         MutationPathInternal {
             path: ctx.mutation_path.clone(),
             example,
@@ -417,6 +467,29 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             path_kind: ctx.path_kind.clone(),
             mutation_status: status,
             mutation_status_reason,
+            path_requirement, // Now populated based on enum context
+        }
+    }
+
+    /// Generate a human-readable description of variant requirements
+    fn generate_variant_description(variant_chain: &[super::types::VariantPathEntry]) -> String {
+        if variant_chain.len() == 1 {
+            format!(
+                "To use this mutation path, the root must be set to {}",
+                variant_chain[0].variant
+            )
+        } else {
+            let requirements: Vec<String> = variant_chain
+                .iter()
+                .map(|entry| {
+                    if entry.path.is_empty() {
+                        format!("root must be set to {}", entry.variant)
+                    } else {
+                        format!("{} must be set to {}", entry.path, entry.variant)
+                    }
+                })
+                .collect();
+            format!("To use this mutation path, {}", requirements.join(" and "))
         }
     }
 
@@ -464,7 +537,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     }
 
     /// Check knowledge base and handle based on guidance type
-    /// Returns (should_stop_recursion, Option<knowledge_example>)
+    /// Returns `(should_stop_recursion, Option<knowledge_example>)`
     fn check_knowledge(
         ctx: &RecursionContext,
     ) -> (Option<Result<Vec<MutationPathInternal>>>, Option<Value>) {
@@ -560,8 +633,10 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         // Build detailed reason if not fully mutable
         let reason = match status {
             MutationStatus::PartiallyMutable => {
-                let summaries: Vec<PathSummary> =
-                    child_paths.iter().map(|p| p.to_path_summary()).collect();
+                let summaries: Vec<PathSummary> = child_paths
+                    .iter()
+                    .map(MutationPathInternal::to_path_summary)
+                    .collect();
                 Some(NotMutableReason::from_partial_mutability(
                     ctx.type_name().clone(),
                     summaries,

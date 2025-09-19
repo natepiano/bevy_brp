@@ -12,7 +12,7 @@ use super::type_kind::TypeKind;
 /// A semantic identifier for mutation paths in the builder system
 ///
 /// This newtype wraps the path descriptor strings used as keys in the
-/// HashMap passed to `assemble_from_children`. The descriptor varies by `PathKind`:
+/// `HashMap` passed to `assemble_from_children`. The descriptor varies by `PathKind`:
 /// - `StructField`: field name (e.g., "translation", "rotation")
 /// - `IndexedElement`/`ArrayElement`: index as string (e.g., "0", "1")
 /// - `RootValue`: empty string ""
@@ -99,7 +99,7 @@ impl PathKind {
     }
 
     /// Extract a descriptor suitable for `HashMap<MutationPathDescriptor, Value>` from this
-    /// `PathKind` Used by `ProtocolEnforcer` to build `child_examples` HashMap
+    /// `PathKind` Used by `ProtocolEnforcer` to build `child_examples` `HashMap`
     pub fn to_mutation_path_descriptor(&self) -> MutationPathDescriptor {
         match self {
             Self::StructField { field_name, .. } => {

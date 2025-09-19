@@ -80,7 +80,7 @@ pub struct LaunchResult {
     binary_path:        Option<String>,
     /// Launch duration in milliseconds
     #[to_metadata(skip_if_none)]
-    launch_duration_ms: Option<u64>,
+    launch_duration_ms: Option<u128>,
     /// Launch timestamp
     #[to_metadata(skip_if_none)]
     launch_timestamp:   Option<String>,
@@ -480,7 +480,7 @@ fn build_launch_result<T: LaunchConfigTrait>(
             .ok()
             .map(|dir| dir.display().to_string()),
         profile: Some(config.profile().to_string()),
-        launch_duration_ms: Some(launch_duration.as_millis() as u64),
+        launch_duration_ms: Some(launch_duration.as_millis()),
         launch_timestamp: Some(chrono::Utc::now().to_rfc3339()),
         workspace,
         package_name: if T::TARGET_TYPE == TargetType::Example {
@@ -644,12 +644,21 @@ fn find_and_validate_target<T: LaunchConfigTrait>(
 fn validate_port_range(base_port: u16, instance_count: usize) -> Result<()> {
     use crate::brp_tools::MAX_VALID_PORT;
 
+    // Convert instance_count to u16, failing if it's too large
+    let count_u16 = u16::try_from(instance_count).map_err(|_| {
+        Error::tool_call_failed(format!(
+            "Instance count {} is too large (maximum is {})",
+            instance_count,
+            u16::MAX
+        ))
+    })?;
+
     // MAX_VALID_PORT is imported from brp_tools::constants (65534)
-    if base_port.saturating_add(instance_count as u16 - 1) > MAX_VALID_PORT {
+    if base_port.saturating_add(count_u16.saturating_sub(1)) > MAX_VALID_PORT {
         return Err(Error::tool_call_failed(format!(
             "Port range {} to {} exceeds maximum valid port {}",
             base_port,
-            base_port.saturating_add(instance_count as u16 - 1),
+            base_port.saturating_add(count_u16.saturating_sub(1)),
             MAX_VALID_PORT
         ))
         .into());
@@ -669,7 +678,9 @@ fn launch_instances<T: LaunchConfigTrait>(
     let mut all_ports = Vec::new();
 
     for i in 0..instance_count {
-        let port = Port(base_port + i as u16); // Safe after validation
+        // Use saturating conversion - validated in validate_port_range that this won't overflow
+        let i_u16 = u16::try_from(i).unwrap_or(u16::MAX);
+        let port = Port(base_port.saturating_add(i_u16));
 
         // Create a modified config with the updated port for this instance
         let mut instance_config = config.clone();

@@ -192,7 +192,7 @@
 [Present the comparison results including:
  - If files are identical: Simple confirmation
  - If metadata only differs: Count differences
- - If structural changes exist: Full deep analysis output with two sections:
+ - If structural changes exist: Full deep analysis output with two sections:]
 
    #### Expected Changes (from EXPECTED_CHANGES.md):
    [For each matched expected change pattern, list:
@@ -201,14 +201,50 @@
     - Count of changes matching this pattern]
 
    #### Unexpected Changes (need review):
-   [For changes that don't match any expected pattern:
-    * **Field Removals**: List ALL removed fields individually with format: Removed field "{{field}}" from {{type_name}} at mutation path "{{mutation_path}}"
-    * **Field Additions**: List ALL added fields individually with format: Added field "{{field}}" to {{type_name}} at mutation path "{{mutation_path}}"
-    * **Value Changes**: Significant value changes while structure remains the same
-    * Unknown patterns requiring investigation
-    * Specific examples of what changed]
 
- CRITICAL: Always explicitly list ALL unexpected field removals and additions individually - never summarize or group them. Parse the JSON path format (e.g., "mutation_paths..glyphs.example") to extract the actual mutation path (the part between the double dots, e.g., ".glyphs"). Each line should show: field name, full type name, and mutation path. If the same field appears in multiple paths, list each occurrence separately]
+   **IF UNEXPECTED CHANGES EXIST:**
+
+   1. **Group unexpected changes by category:**
+      - Field Removals (group by type and field name pattern)
+      - Field Additions (group by type and field name pattern)
+      - Value Changes (group by change type)
+      - Structure Changes (group by structural pattern)
+      - Unknown patterns
+
+   2. **Create todo list with grouped issues:**
+      ```
+      Use TodoWrite to create todos for each group of unexpected changes.
+      Mark the first todo as "in_progress" and all others as "pending".
+      ```
+
+   3. **Present the FIRST issue only with detailed comparison:**
+
+      ### Issue 1: [Description from first todo]
+
+      **Get baseline version:**
+      Execute: `.claude/commands/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"`
+
+      **Get current version:**
+      Execute: `.claude/commands/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" "$TMPDIR/all_types.json"`
+
+      **Side-by-side comparison:**
+      Execute the <FormatComparison/> tagged section with the baseline and current data
+
+      **Analysis:**
+      [Describe what specifically changed between baseline and current]
+
+      **STOP HERE** - Discuss this issue with the user before proceeding.
+
+   4. **After user discussion:**
+      When the user is ready, ask: "Shall I proceed to the next unexpected change?"
+      - If YES: Mark current todo as completed, mark next as in_progress, present next issue
+      - If NO: Keep current todo in_progress for continued discussion
+
+   5. **After all issues reviewed:**
+      Once all todos are completed, ask for baseline promotion decision.
+
+   **IF NO UNEXPECTED CHANGES:**
+   Continue directly to baseline promotion decision.
 
 ### Baseline Promotion Decision
 Based on the comparison results above, should I mark this version as the new good baseline?
@@ -216,15 +252,49 @@ Based on the comparison results above, should I mark this version as the new goo
 ## Available Actions
 - **promote** - Mark this version as the new good baseline
 - **skip** - Keep existing baseline, don't promote this version
-- **investigate** - Launch deeper investigation of the differences (especially for unknown patterns)
+- **investigate** - Launch deeper investigation of the differences
 - **add_expected** - Add newly discovered pattern to EXPECTED_CHANGES.md for future runs
+- **continue** - (Only when reviewing issues) Continue to next unexpected change
 
-    **CRITICAL**: STOP and wait for user's keyword response before proceeding.
+    **CRITICAL**: STOP and wait for user's response before proceeding.
 
     **Note**: As we discover new expected changes through testing and refactoring, they will be added to EXPECTED_CHANGES.md to improve future comparisons.
 </UserValidation>
 
 ## SHARED DEFINITIONS
+
+<FormatComparison>
+**Format the side-by-side JSON comparison with proper syntax highlighting:**
+
+When presenting JSON comparisons, use this exact format with proper markdown JSON code blocks:
+
+```json
+// BASELINE
+{
+  "field_name": "value",
+  "nested": {
+    "data": [...]
+  }
+}
+```
+
+```json
+// CURRENT
+{
+  "field_name": "new_value",
+  "nested": {
+    "data": [...]
+  }
+}
+```
+
+**CRITICAL**:
+- Use separate ```json code blocks for BASELINE and CURRENT
+- Include // BASELINE and // CURRENT comments inside the code blocks
+- Use proper JSON formatting with correct indentation
+- Use [...] or {...} to abbreviate unchanged nested content
+- Add inline comments with // <-- to highlight key differences
+</FormatComparison>
 
 <NoIntermediateFiles>
 **NO intermediate files** - Do NOT create Python scripts, temp files, or any other files beyond the target file

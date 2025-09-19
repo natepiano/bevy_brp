@@ -1,27 +1,46 @@
 #!/bin/bash
 
-# Extract a specific mutation path from the baseline file
-# Usage: ./get_mutation_path.sh TYPE_NAME MUTATION_PATH
-# Example: ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ".0[0].color"
-
-BASELINE_FILE="${TMPDIR}/all_types_baseline.json"
-
-if [ ! -f "$BASELINE_FILE" ]; then
-    echo "❌ Baseline file not found: $BASELINE_FILE"
-    exit 1
-fi
+# Extract a specific mutation path from a type guide JSON file
+# Usage: ./get_mutation_path.sh TYPE_NAME [MUTATION_PATH] [FILE]
+# Examples:
+#   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow"                 # List all paths from baseline
+#   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ""              # Get root path from baseline
+#   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ".0[0].color"   # Get specific path from baseline
+#   ./get_mutation_path.sh "bevy_ui::ui_node::BoxShadow" ".0[0].color" "$TMPDIR/all_types.json"  # From specific file
 
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 TYPE_NAME [MUTATION_PATH]"
+    echo "Usage: $0 TYPE_NAME [MUTATION_PATH] [FILE]"
     echo ""
     echo "Examples:"
-    echo "  $0 \"bevy_ui::ui_node::BoxShadow\"              # List all mutation paths"
-    echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \".0[0].color\" # Get specific path"
+    echo "  $0 \"bevy_ui::ui_node::BoxShadow\"                  # List all mutation paths from baseline"
+    echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \"\"               # Get root path from baseline"
+    echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \".0[0].color\"    # Get specific path from baseline"
+    echo "  $0 \"bevy_ui::ui_node::BoxShadow\" \"\" \"\$TMPDIR/all_types.json\"  # Get root from specific file"
     exit 1
 fi
 
 TYPE_NAME="$1"
-MUTATION_PATH="${2:-}"
+
+# Handle mutation path - distinguish between "not provided" and "empty string"
+if [ $# -ge 2 ]; then
+    MUTATION_PATH="$2"
+    HAS_MUTATION_PATH="true"
+else
+    MUTATION_PATH=""
+    HAS_MUTATION_PATH="false"
+fi
+
+# Check if third parameter is a file path
+if [ $# -eq 3 ]; then
+    FILE_PATH="$3"
+else
+    FILE_PATH="${TMPDIR}/all_types_baseline.json"
+fi
+
+if [ ! -f "$FILE_PATH" ]; then
+    echo "❌ File not found: $FILE_PATH"
+    exit 1
+fi
 
 # Python script to extract the mutation path
 python3 <<EOF
@@ -30,9 +49,10 @@ import sys
 
 type_name = """$TYPE_NAME"""
 mutation_path = """$MUTATION_PATH"""
+has_mutation_path = "$HAS_MUTATION_PATH" == "true"
 
 try:
-    with open("$BASELINE_FILE", 'r') as f:
+    with open("$FILE_PATH", 'r') as f:
         data = json.load(f)
 
     # Extract type guide
@@ -91,7 +111,7 @@ try:
 
     mutation_paths = type_data['mutation_paths']
 
-    if not mutation_path:
+    if not has_mutation_path:
         # List all available mutation paths
         print(f"Available mutation paths for {type_name}:")
         print(f"Total paths: {len(mutation_paths)}")
@@ -135,10 +155,10 @@ try:
         print(json.dumps(output, indent=2))
 
 except FileNotFoundError:
-    print(f"❌ Could not read baseline file: $BASELINE_FILE")
+    print(f"❌ Could not read file: $FILE_PATH")
     sys.exit(1)
 except json.JSONDecodeError as e:
-    print(f"❌ Invalid JSON in baseline file: {e}")
+    print(f"❌ Invalid JSON in file: {e}")
     sys.exit(1)
 except Exception as e:
     print(f"❌ Error: {e}")

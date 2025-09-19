@@ -1,7 +1,7 @@
 //! Migrated Builder for Enum types using the new protocol
 //!
-//! This is the migrated version of EnumMutationBuilder that uses the new
-//! protocol-driven pattern with ProtocolEnforcer handling all the common
+//! This is the migrated version of `EnumMutationBuilder` that uses the new
+//! protocol-driven pattern with `ProtocolEnforcer` handling all the common
 //! protocol concerns while this builder focuses only on enum-specific logic.
 
 use std::collections::HashMap;
@@ -13,9 +13,8 @@ use serde_json::{Value, json};
 use super::super::path_builder::{MaybeVariants, PathBuilder};
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::{EnumContext, RecursionContext};
-use super::super::types::{ExampleGroup, VariantSignature};
+use super::super::types::{ExampleGroup, VariantPathEntry, VariantSignature};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
-use crate::brp_tools::brp_type_guide::constants::VARIANT_PATH_SEPARATOR;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -28,7 +27,7 @@ enum MutationExample {
     Simple(Value),
 
     /// Multiple examples with signatures (for enum root paths)
-    /// Each group has applicable_variants, signature, and example
+    /// Each group has `applicable_variants`, `signature`, and `example`
     EnumRoot(Vec<ExampleGroup>),
 
     /// Example with variant context (for enum child paths like .0, .1, .enabled)
@@ -109,10 +108,12 @@ impl EnumVariantInfo {
     }
 
     /// Extract variant information from a schema variant
-    pub fn from_schema_variant(
-        v: &Value,
-        registry: &HashMap<BrpTypeName, Value>,
-    ) -> Option<EnumVariantInfo> {
+    pub fn from_schema_variant(v: &Value, registry: &HashMap<BrpTypeName, Value>) -> Option<Self> {
+        // Handle Unit variants which show up as simple strings
+        if let Some(variant_str) = v.as_str() {
+            return Some(Self::Unit(variant_str.to_string()));
+        }
+
         let variant_name = extract_variant_name(v)?;
 
         // Check what type of variant this is
@@ -120,20 +121,20 @@ impl EnumVariantInfo {
             // Tuple variant
             if let Some(prefix_array) = prefix_items.as_array() {
                 let tuple_types = extract_tuple_types(prefix_array, registry);
-                return Some(EnumVariantInfo::Tuple(variant_name, tuple_types));
+                return Some(Self::Tuple(variant_name, tuple_types));
             }
         } else if let Some(properties) = v.get_field(SchemaField::Properties) {
             // Struct variant
             if let Some(props_map) = properties.as_object() {
                 let struct_fields = extract_struct_fields(props_map, registry);
                 if !struct_fields.is_empty() {
-                    return Some(EnumVariantInfo::Struct(variant_name, struct_fields));
+                    return Some(Self::Struct(variant_name, struct_fields));
                 }
             }
         }
 
         // Unit variant (no fields)
-        Some(EnumVariantInfo::Unit(variant_name))
+        Some(Self::Unit(variant_name))
     }
 }
 
@@ -173,8 +174,9 @@ fn extract_enum_variants(
     registry_schema: &Value,
     registry: &HashMap<BrpTypeName, Value>,
 ) -> Vec<EnumVariantInfo> {
-    registry_schema
-        .get_field(SchemaField::OneOf)
+    let one_of_field = registry_schema.get_field(SchemaField::OneOf);
+
+    one_of_field
         .and_then(Value::as_array)
         .map(|variants| {
             variants
@@ -264,35 +266,17 @@ impl EnumMutationBuilder {
     }
 
     /// Flatten variant chain into dot notation for nested enums
-    fn flatten_variant_chain(variant_chain: &[(BrpTypeName, Vec<String>)]) -> Vec<String> {
-        // e.g., [(TestEnum, ["Nested"]), (NestedEnum, ["Conditional"])] → ["Nested.Conditional"]
-        if variant_chain.is_empty() {
-            return vec![];
-        }
-
-        // Only return the variants from the last level in the chain
-        if let Some((_, last_variants)) = variant_chain.last() {
-            let prefix_parts: Vec<String> = variant_chain
-                .iter()
-                .take(variant_chain.len() - 1)
-                .filter_map(|(_, v)| v.first().cloned())
-                .collect();
-
-            if prefix_parts.is_empty() {
-                last_variants.clone()
-            } else {
-                last_variants
-                    .iter()
-                    .map(|v| {
-                        let mut full_path = prefix_parts.clone();
-                        full_path.push(v.clone());
-                        full_path.join(VARIANT_PATH_SEPARATOR)
-                    })
-                    .collect()
-            }
-        } else {
-            vec![]
-        }
+    /// Extract variant names for `ExampleGroup` `applicable_variants` field
+    /// NOTE: This is ONLY for `ExampleGroup` objects, NOT for `PathRequirement.variant_path`
+    /// `PathRequirement` uses `VariantPathEntry` structures directly
+    fn flatten_variant_chain(variant_chain: &[VariantPathEntry]) -> Vec<String> {
+        // With the new structure, variant names are already properly formatted
+        // via variant_name() when VariantPathEntry objects are created
+        // Just extract them - no dot-notation joining needed anymore
+        variant_chain
+            .iter()
+            .map(|entry| entry.variant.clone())
+            .collect()
     }
 }
 
@@ -322,7 +306,7 @@ impl PathBuilder for EnumMutationBuilder {
         for (signature, variants_in_group) in variant_groups {
             let applicable_variants: Vec<String> = variants_in_group
                 .iter()
-                .map(|v| v.name().to_string())
+                .map(|v| ctx.type_name().variant_name(v.name()))
                 .collect();
 
             match signature {
@@ -395,7 +379,7 @@ impl PathBuilder for EnumMutationBuilder {
 
                     let applicable_variants: Vec<String> = variants_in_group
                         .iter()
-                        .map(|v| v.name().to_string())
+                        .map(|v| ctx.type_name().variant_name(v.name()))
                         .collect();
 
                     examples.push(ExampleGroup {

@@ -66,7 +66,7 @@ impl NotMutableReason {
         }
     }
 
-    /// Construct PartialChildMutability from path summaries
+    /// Construct `PartialChildMutability` from path summaries
     pub fn from_partial_mutability(parent_type: BrpTypeName, summaries: Vec<PathSummary>) -> Self {
         let mut mutable_paths = Vec::new();
         let mut not_mutable_paths = Vec::new();
