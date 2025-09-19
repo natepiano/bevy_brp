@@ -1,10 +1,11 @@
 Mutates component fields via bevy/mutate_component BRP method. Updates specific fields without replacing entire component.
 
 Path syntax:
+- Root replacement: "" (empty string to replace entire component)
 - Nested: ".transform.translation.x"
 - Arrays: ".points[2]"
 - Tuples: ".0", ".1"
-- Leading dot required
+- Leading dot required for field paths
 
 Example:
 ```json

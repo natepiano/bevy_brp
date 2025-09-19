@@ -1,11 +1,12 @@
 Mutates resource fields via bevy/mutate_resource BRP method. Updates specific fields without replacing entire resource.
 
 Path syntax:
+- Root replacement: "" (empty string to replace entire resource)
 - Nested: ".config.graphics.resolution"
 - Arrays: ".items[0]"
 - Maps: ".scores['player1']"
 - Tuples: ".0", ".1"
-- Leading dot required
+- Leading dot required for field paths
 
 Example:
 ```json
