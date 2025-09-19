@@ -4,7 +4,7 @@
 
 The current mutation knowledge system has a regression where newtype enum variants (like `Camera3dDepthLoadOp::Clear(f32)`) cannot properly provide specialized example values. The current exact-match lookup system fails because:
 
-1. `ProtocolEnforcer` only does exact type matches
+1. `MutationPathBuilder` only does exact type matches
 2. Newtype variant knowledge requires both enum type + variant name + inner type
 3. Variant names are not available in the `RecursionContext` during field processing
 
@@ -101,10 +101,10 @@ impl RecursionContext {
 
 ### 4. Architecture After Migration
 
-Once `enum_builder` is migrated, it will be wrapped by `ProtocolEnforcer` like all other builders. This means:
+Once `enum_builder` is migrated, it will be wrapped by `MutationPathBuilder` like all other builders. This means:
 
 1. **No direct integration needed**: `enum_builder` won't call knowledge lookup directly
-2. **ProtocolEnforcer handles everything**: All knowledge lookups happen via `ctx.find_knowledge()`
+2. **MutationPathBuilder handles everything**: All knowledge lookups happen via `ctx.find_knowledge()`
 3. **Automatic enum signature matching**: When processing `PathKind::IndexedElement` with enum parent, `ctx.find_knowledge()` automatically checks for signature knowledge
 
 ## Benefits
@@ -120,7 +120,7 @@ Once `enum_builder` is migrated, it will be wrapped by `ProtocolEnforcer` like a
 1. ✅ **Phase 1**: Implement unified lookup for exact + struct field (DONE)
 2. **Phase 2**: Add `EnumSignature` key type and update knowledge entries
 3. **Phase 3**: Extend `ctx.find_knowledge()` to handle enum signatures
-4. **Phase 4**: Migrate `enum_builder` to be wrapped by `ProtocolEnforcer`
+4. **Phase 4**: Migrate `enum_builder` to be wrapped by `MutationPathBuilder`
 5. **Phase 5**: Deprecate old `NewtypeVariant` key type and legacy lookup methods
 
 ## Test Cases
@@ -134,5 +134,5 @@ Once `enum_builder` is migrated, it will be wrapped by `ProtocolEnforcer` like a
 
 1. `mutation_knowledge.rs` - Add `EnumSignature` key type and update knowledge entries
 2. `recursion_context.rs` - Extend `find_knowledge()` with enum signature matching
-3. `enum_builder.rs` - Migrate to be wrapped by `ProtocolEnforcer` (Phase 4)
+3. `enum_builder.rs` - Migrate to be wrapped by `MutationPathBuilder` (Phase 4)
 4. Update knowledge entries from `NewtypeVariant` to `EnumSignature` format
