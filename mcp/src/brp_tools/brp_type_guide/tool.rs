@@ -12,7 +12,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::response_types::{BrpTypeName, TypeGuideResponse, TypeGuideSummary};
+use super::brp_type_name::BrpTypeName;
+use super::response_types::{TypeGuideResponse, TypeGuideSummary};
 use super::type_guide::TypeGuide;
 use crate::brp_tools::{BrpClient, Port, ResponseStatus};
 use crate::error::{Error, Result};

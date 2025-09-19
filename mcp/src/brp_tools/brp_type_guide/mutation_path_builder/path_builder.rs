@@ -1,5 +1,6 @@
-use serde_json::{Value, json};
 use std::collections::HashMap;
+
+use serde_json::{Value, json};
 
 use super::{
     MutationPathDescriptor, MutationPathInternal, NotMutableReason, PathAction, PathKind,

@@ -7,7 +7,8 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use super::super::response_types::{BrpTypeName, ReflectTrait};
+use super::super::brp_type_name::BrpTypeName;
+use super::super::response_types::ReflectTrait;
 use super::mutation_knowledge::{BRP_MUTATION_KNOWLEDGE, KnowledgeKey};
 use super::path_kind::PathKind;
 use super::types::PathAction;
