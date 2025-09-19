@@ -134,6 +134,85 @@ To identify this change pattern in the comparison output:
 This is an EXPECTED change from refactoring how enum variant information is stored and should not be flagged as an error.
 </HowToIdentify>
 
+## Expected Change #3: Addition of "path_requirement" to Variant-Dependent Mutation Paths
+
+### Description
+The variant path structure implementation (commit 1cad13c) added "path_requirement" information to mutation paths that depend on specific enum variants being active. This provides explicit tracking of variant dependencies for each mutation path.
+
+### Structural Change
+**Added**: "path_requirement" field within "path_info" for variant-dependent paths
+
+### When Comparison Output Says:
+```
+📌 IDENTIFIED PATTERN: VALUE CHANGE
+Types affected: 78
+Total changes: 1100+
+```
+
+**This is talking about**: The addition of path_requirement structures to path_info, which is EXPECTED.
+
+### Example: extras_plugin::TestEnumWithSerDe
+
+#### BASELINE
+```json
+".1": {
+  "description": "Mutate element 1 of TestEnumWithSerDe",
+  "example": 1000000,
+  "path_info": {
+    "mutation_status": "mutable",
+    "path_kind": "IndexedElement",
+    "type": "u32",
+    "type_kind": "Value"
+  },
+  "variants": ["Special"]
+}
+```
+
+#### CURRENT
+```json
+".1": {
+  "description": "Mutate element 1 of TestEnumWithSerDe",
+  "example": 1000000,
+  "path_info": {
+    "mutation_status": "mutable",
+    "path_kind": "IndexedElement",
+    "path_requirement": {  // <-- NEW FIELD
+      "description": "To use this mutation path, root must be set to TestEnumWithSerDe::TestEnumWithSerDe::Special",
+      "example": 1000000,
+      "variant_path": [
+        {
+          "path": "",
+          "variant": "TestEnumWithSerDe::TestEnumWithSerDe::Special"
+        }
+      ]
+    },
+    "type": "u32",
+    "type_kind": "Value"
+  }
+  // NO "variants" field (removed as per Expected Change #1)
+}
+```
+
+<HowToIdentify>
+To identify this change pattern in the comparison output:
+
+1. Look for VALUE CHANGE pattern with:
+   - Large number of changes (1000+) in path_info fields
+   - References to "path_requirement" in the change descriptions
+
+2. Key characteristics:
+   - path_info objects gain a new "path_requirement" field
+   - The path_requirement contains:
+     - "description": explaining variant requirements
+     - "example": the example value for this path
+     - "variant_path": array of path/variant pairs showing dependencies
+   - This replaces the simpler "variants" array approach
+
+3. This change often appears alongside Expected Change #1 (removal of "variants" arrays)
+
+This is an EXPECTED change from the variant path structure implementation that provides better tracking of enum variant dependencies for mutation paths.
+</HowToIdentify>
+
 ---
 
 *Note: Additional expected changes will be documented here as they are discovered during testing and refactoring.*
