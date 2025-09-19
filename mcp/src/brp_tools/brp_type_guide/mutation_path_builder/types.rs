@@ -67,22 +67,25 @@ impl std::fmt::Display for VariantSignature {
 #[derive(Debug, Clone)]
 pub struct MutationPathInternal {
     /// Example value for this path
-    pub example:                Value,
+    pub example:                      Value,
     /// For enum roots only: the examples array with all variant groups
     /// None for all other paths (including enum children and regular types)
-    pub enum_root_examples:     Option<Vec<ExampleGroup>>,
+    pub enum_root_examples:           Option<Vec<ExampleGroup>>,
+    /// For enum roots only: simple example for parent assembly
+    /// None for all other paths (including enum children and regular types)
+    pub enum_root_example_for_parent: Option<Value>,
     /// Path for mutation, e.g., ".translation.x"
-    pub path:                   String,
+    pub path:                         String,
     /// Type information for this path
-    pub type_name:              BrpTypeName,
+    pub type_name:                    BrpTypeName,
     /// Context describing what kind of mutation this is
-    pub path_kind:              PathKind,
+    pub path_kind:                    PathKind,
     /// Status of whether this path can be mutated
-    pub mutation_status:        MutationStatus,
+    pub mutation_status:              MutationStatus,
     /// Reason if mutation is not possible
-    pub mutation_status_reason: Option<Value>,
+    pub mutation_status_reason:       Option<Value>,
     /// Requirement information for paths needing specific enum variants
-    pub path_requirement:       Option<PathRequirement>,
+    pub path_requirement:             Option<PathRequirement>,
 }
 
 impl MutationPathInternal {

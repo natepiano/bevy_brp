@@ -405,8 +405,8 @@ impl PathBuilder for EnumMutationBuilder {
 
                 let result = json!({
                     "enum_root_data": {
-                        "examples": examples,
-                        "default": default_example
+                        "enum_root_examples": examples,
+                        "enum_root_example_for_parent": default_example
                     }
                 });
 
