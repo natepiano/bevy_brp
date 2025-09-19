@@ -16,10 +16,5 @@ Tools follow a consistent naming pattern where `ToolName` enum variants (e.g., `
 ## MCP Tool Execution Constraints
 **CRITICAL**: After modifying MCP tool code, you cannot test it until the user reloads the MCP server because MCP tools run as subprocesses. The tool in use is always the OLD version until reloaded. You need to follow <McpEditProcedure/>.
 
-<McpEditProcedure>
-    **Important** only apply this procedure after you have made changes that need to be tested and you have a successful build.
-
-    1. do a `cargo install --path mcp`
-    2. stop and ask the user to reload the MCP server by having them issue the slash command `/mcp reconnect brp`
-</McpEditProcedure>
+## getting an example to test with
 - you always need to use launch example with examples_plugin if you want to test something
