@@ -221,6 +221,9 @@
 
       ### Issue 1: [Description from first todo]
 
+      **Type**: `[TYPE_NAME]`
+      **Mutation Path**: `[MUTATION_PATH]`
+
       **Get baseline version:**
       Execute: `.claude/commands/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"`
 
@@ -230,7 +233,7 @@
       **Side-by-side comparison:**
       Execute the <FormatComparison/> tagged section with the baseline and current data
 
-      **Analysis:**
+      **Analysis for `[TYPE_NAME]` at path `[MUTATION_PATH]`:**
       [Describe what specifically changed between baseline and current]
 
       **STOP HERE** - Discuss this issue with the user before proceeding.
