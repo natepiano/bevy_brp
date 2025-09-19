@@ -67,6 +67,73 @@ To identify this change pattern in the comparison output:
 This is an EXPECTED change from the enum variant optimization refactoring and should not be flagged as an error.
 </HowToIdentify>
 
+## Expected Change #2: Removal of "enum_info" Field from Enum Types
+
+### Description
+The "enum_info" field has been removed from the root level of enum types. This field previously contained variant information that has been restructured in the current implementation.
+
+### Structural Change
+**Removed**: "enum_info" field from root level of enum types
+
+### When Comparison Output Says:
+```
+📌 IDENTIFIED PATTERN: FIELD REMOVED
+Fields removed breakdown:
+  • 'enum_info' field: 18 removal(s) across 18 type(s)
+```
+
+**This is talking about**: The removal of "enum_info" field from enum types, which is EXPECTED.
+
+### Example: bevy_sprite::sprite::Anchor
+
+#### BASELINE
+```json
+{
+  "type_name": "bevy_sprite::sprite::Anchor",
+  "enum_info": [
+    {
+      "variant_name": "Center",
+      "fields": []
+    },
+    {
+      "variant_name": "BottomLeft",
+      "fields": []
+    }
+    // ... more variants
+  ],
+  "mutation_paths": {
+    // ... mutation paths
+  }
+}
+```
+
+#### CURRENT
+```json
+{
+  "type_name": "bevy_sprite::sprite::Anchor",
+  // NO "enum_info" field
+  "mutation_paths": {
+    // ... mutation paths
+  }
+}
+```
+
+<HowToIdentify>
+To identify this change pattern in the comparison output:
+
+1. Look for FIELD REMOVED pattern with:
+   - 'enum_info' field: removals from type root paths
+
+2. This is the EXACT line to match:
+   ```
+   • 'enum_info' field: [NUMBER] removal(s) across [NUMBER] type(s)
+   ```
+
+3. The path for these removals will be at the root level (empty path or just the type name)
+
+This is an EXPECTED change from refactoring how enum variant information is stored and should not be flagged as an error.
+</HowToIdentify>
+
 ---
 
 *Note: Additional expected changes will be documented here as they are discovered during testing and refactoring.*
