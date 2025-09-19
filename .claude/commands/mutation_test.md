@@ -53,7 +53,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     **Clear and reassign batch numbers for untested/failed types:**
 
     ```bash
-    ./.claude/commands/scripts/mutation_test_renumber_batches.sh [BATCH_SIZE]
+    ./.claude/scripts/mutation_test_renumber_batches.sh [BATCH_SIZE]
     ```
 
     This script will:
@@ -134,7 +134,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     **Retrieve batch assignments (assignment indices only) for current batch:**
 
     ```bash
-    python3 ./.claude/commands/scripts/mutation_test_get_batch_assignments.py [BATCH_NUMBER]
+    python3 ./.claude/scripts/mutation_test_get_batch_assignments.py [BATCH_NUMBER]
     ```
 
     Returns JSON with:
@@ -210,7 +210,7 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
 
     3. **Execute merge script**:
     ```bash
-    ./.claude/commands/scripts/mutation_test_merge_batch_results.sh \
+    ./.claude/scripts/mutation_test_merge_batch_results.sh \
         [TEMP_DIR]/batch_results_[BATCH_NUMBER].json \
         [TEMP_DIR]/all_types.json
     ```
@@ -301,7 +301,7 @@ You are subagent [Y] assigned to port [30000+Y].
 
 **Get Your Complete Assignment Data**:
 ```bash
-python3 ./.claude/commands/scripts/mutation_test_get_assignment_guide.py [BATCH_NUMBER] [ASSIGNMENT_INDEX]
+python3 ./.claude/scripts/mutation_test_get_assignment_guide.py [BATCH_NUMBER] [ASSIGNMENT_INDEX]
 ```
 This returns the exact type names AND complete mutation paths you must test. Use these EXACTLY as returned.
 

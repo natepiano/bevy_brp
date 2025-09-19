@@ -60,7 +60,7 @@ mcp__brp__brp_type_guide(
 
 5. **Get Baseline Type Guide**:
 ```bash
-.claude/commands/scripts/get_type_guide.sh TYPE_NAME
+.claude/scripts/get_type_guide.sh TYPE_NAME
 ```
 
 6. **Compare and Present Results**:
@@ -108,12 +108,12 @@ The comparison will show:
 
 ✅ **CORRECT**: Run scripts directly and use their output immediately:
 ```bash
-.claude/commands/scripts/create_mutation_test_json_get_excluded_types.sh
+.claude/scripts/create_mutation_test_json_get_excluded_types.sh
 ```
 
 ❌ **WRONG**: Do NOT store script outputs in environment variables:
 ```bash
-EXCLUDED_TYPES=$(.claude/commands/scripts/create_mutation_test_json_get_excluded_types.sh)
+EXCLUDED_TYPES=$(.claude/scripts/create_mutation_test_json_get_excluded_types.sh)
 ```
 
 The user must approve environment variable assignments, which interrupts the workflow.

@@ -92,10 +92,10 @@ Displays only the requested mutation path:
 
 ```bash
 # For getting full type guide:
-.claude/commands/scripts/get_type_guide.sh
+.claude/scripts/get_type_guide.sh
 
 # For getting specific mutation path:
-.claude/commands/scripts/get_mutation_path.sh
+.claude/scripts/get_mutation_path.sh
 ```
 
 ## Examples

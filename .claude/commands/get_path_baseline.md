@@ -94,10 +94,10 @@ The JSON will be properly formatted with:
 
 ```bash
 # For listing all paths:
-.claude/commands/scripts/get_mutation_path_list.sh
+.claude/scripts/get_mutation_path_list.sh
 
 # For getting specific path:
-.claude/commands/scripts/get_mutation_path.sh
+.claude/scripts/get_mutation_path.sh
 ```
 
 ## Prerequisites

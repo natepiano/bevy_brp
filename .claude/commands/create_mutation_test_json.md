@@ -25,17 +25,17 @@
 
     **promote**: Mark version as baseline:
     ```bash
-    .claude/commands/scripts/create_mutation_test_json_promote_baseline.sh
+    .claude/scripts/create_mutation_test_json_promote_baseline.sh
     ```
     **skip**: Keep existing baseline, document decision, continue
     **investigate**: Ask user "What specific aspect would you like me to investigate?", then launch Task tool with their focus
     **check_type**: Ask user "Which type would you like me to check?", then execute:
     ```bash
-    python3 .claude/commands/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
+    python3 .claude/scripts/compare_mutations_check_type.py "[TYPE_NAME]"
     ```
     **summarize**: Ask user "Which JSON file would you like me to summarize?", then execute:
     ```bash
-    .claude/commands/scripts/compare_mutations_summarize.sh [JSON_FILE]
+    .claude/scripts/compare_mutations_summarize.sh [JSON_FILE]
     ```
 </KeywordExecution>
 
@@ -98,7 +98,7 @@
 
     Execute the augmentation script:
     ```bash
-    .claude/commands/scripts/create_mutation_test_json_augment_response.sh [FILEPATH] [TARGET_FILE]
+    .claude/scripts/create_mutation_test_json_augment_response.sh [FILEPATH] [TARGET_FILE]
     ```
 
     Replace `[FILEPATH]` with the actual path from Step 2 and `[TARGET_FILE]` with the target location from <CreateContext/>.
@@ -151,7 +151,7 @@
 
     2. **Run structured comparison**:
     ```bash
-    .claude/commands/scripts/create_mutation_test_json_structured_comparison.sh $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
+    .claude/scripts/create_mutation_test_json_structured_comparison.sh $TMPDIR/all_types_baseline.json $TMPDIR/all_types.json
     ```
 
     This comprehensive comparison provides:
@@ -225,10 +225,10 @@
       **Mutation Path**: `[MUTATION_PATH]`
 
       **Get baseline version:**
-      Execute: `.claude/commands/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"`
+      Execute: `.claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]"`
 
       **Get current version:**
-      Execute: `.claude/commands/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" "$TMPDIR/all_types.json"`
+      Execute: `.claude/scripts/get_mutation_path.sh "[TYPE_NAME]" "[MUTATION_PATH]" "$TMPDIR/all_types.json"`
 
       **Side-by-side comparison:**
       Execute the <FormatComparison/> tagged section with the baseline and current data

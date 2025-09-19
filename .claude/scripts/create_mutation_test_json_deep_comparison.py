@@ -256,7 +256,7 @@ def calculate_metadata(type_guide: List[Dict]) -> Dict[str, int]:
 
 def get_excluded_types() -> List[str]:
     """Get list of excluded types from the exclusion file"""
-    exclusion_file = "/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.json"
+    exclusion_file = ".claude/scripts/mutation_test_excluded_types.json"
     excluded = []
 
     try:
@@ -266,7 +266,7 @@ def get_excluded_types() -> List[str]:
             excluded = [item['type_name'] for item in data.get('excluded_types', [])]
     except (FileNotFoundError, json.JSONDecodeError):
         # Fall back to old text file format if JSON doesn't exist or is invalid
-        old_file = "/Users/natemccoy/rust/bevy_brp/.claude/commands/scripts/mutation_test_excluded_types.txt"
+        old_file = ".claude/scripts/mutation_test_excluded_types.txt"
         try:
             with open(old_file, 'r') as f:
                 for line in f:

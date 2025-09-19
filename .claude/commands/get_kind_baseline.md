@@ -7,7 +7,7 @@ Analyzes type_kind values in mutation paths from the baseline file.
 Shows a count of how many top-level types contain at least one mutation path of each type_kind:
 
 ```bash
-.claude/commands/scripts/get_type_kind.sh
+.claude/scripts/get_type_kind.sh
 ```
 
 Example output:
@@ -29,7 +29,7 @@ Value: 98
 Shows all top-level type names that contain at least one mutation path with the specified type_kind:
 
 ```bash
-.claude/commands/scripts/get_type_kind.sh List
+.claude/scripts/get_type_kind.sh List
 ```
 
 Example output:
