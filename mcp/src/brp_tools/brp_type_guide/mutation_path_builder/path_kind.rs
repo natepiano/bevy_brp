@@ -50,21 +50,21 @@ pub enum PathKind {
     RootValue { type_name: BrpTypeName },
     /// Mutate a field in a struct
     StructField {
-        field_name:  String,
-        type_name:   BrpTypeName,
+        field_name: String,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in a tuple by index
     /// Applies to tuple elements, enums variants, including generics such as Option<T>
     IndexedElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
     /// Mutate an element in an array
     ArrayElement {
-        index:       usize,
-        type_name:   BrpTypeName,
+        index: usize,
+        type_name: BrpTypeName,
         parent_type: BrpTypeName,
     },
 }
@@ -99,7 +99,7 @@ impl PathKind {
     }
 
     /// Extract a descriptor suitable for `HashMap<MutationPathDescriptor, Value>` from this
-    /// `PathKind` Used by `ProtocolEnforcer` to build `child_examples` `HashMap`
+    /// `PathKind` Used by `MutationPathBuilder` to build `child_examples` `HashMap`
     pub fn to_mutation_path_descriptor(&self) -> MutationPathDescriptor {
         match self {
             Self::StructField { field_name, .. } => {

@@ -93,12 +93,12 @@ pub trait PathBuilder {
 
     /// Assemble a parent value from child examples
     ///
-    /// Receives `HashMap` where keys are extracted from `PathKinds` by `ProtocolEnforcer`:
+    /// Receives `HashMap` where keys are extracted from `PathKinds` by `MutationPathBuilder`:
     /// - `StructField`: uses `field_name` as key
     /// - `IndexedElement`/`ArrayElement`: uses `index.to_string()` as key
     /// - `RootValue`: uses empty string as key
     ///
-    /// Builders ONLY assemble examples - mutation status is determined by `ProtocolEnforcer`.
+    /// Builders ONLY assemble examples - mutation status is determined by `MutationPathBuilder`.
     ///
     /// Examples:
     /// - `MapMutationBuilder`: receives {"key": `key_example`, "value": `value_example`}

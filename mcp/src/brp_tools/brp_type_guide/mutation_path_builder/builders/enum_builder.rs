@@ -1,7 +1,7 @@
 //! Migrated Builder for Enum types using the new protocol
 //!
 //! This is the migrated version of `EnumMutationBuilder` that uses the new
-//! protocol-driven pattern with `ProtocolEnforcer` handling all the common
+//! protocol-driven pattern with `MutationPathBuilder` handling all the common
 //! protocol concerns while this builder focuses only on enum-specific logic.
 
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ use serde_json::{Value, json};
 use super::super::path_builder::{MaybeVariants, PathBuilder};
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::{EnumContext, RecursionContext};
-use super::super::types::{ExampleGroup, VariantPathEntry, VariantSignature};
+use super::super::types::{ExampleGroup, VariantSignature};
 use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
@@ -29,12 +29,6 @@ enum MutationExample {
     /// Multiple examples with signatures (for enum root paths)
     /// Each group has `applicable_variants`, `signature`, and `example`
     EnumRoot(Vec<ExampleGroup>),
-
-    /// Example with variant context (for enum child paths like .0, .1, .enabled)
-    EnumChild {
-        example:             Value,
-        applicable_variants: Vec<String>,
-    },
 }
 
 /// Represents a path with associated variant information
@@ -42,7 +36,7 @@ enum MutationExample {
 #[derive(Debug, Clone)]
 pub struct PathKindWithVariants {
     /// The path kind (None for unit variants)
-    pub path:                Option<PathKind>,
+    pub path: Option<PathKind>,
     /// Variants this path applies to
     pub applicable_variants: Vec<String>,
 }
@@ -83,7 +77,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name:  BrpTypeName,
+    pub type_name: BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -264,20 +258,6 @@ impl EnumMutationBuilder {
             })
             .unwrap_or(json!(null))
     }
-
-    /// Flatten variant chain into dot notation for nested enums
-    /// Extract variant names for `ExampleGroup` `applicable_variants` field
-    /// NOTE: This is ONLY for `ExampleGroup` objects, NOT for `PathRequirement.variant_path`
-    /// `PathRequirement` uses `VariantPathEntry` structures directly
-    fn flatten_variant_chain(variant_chain: &[VariantPathEntry]) -> Vec<String> {
-        // With the new structure, variant names are already properly formatted
-        // via variant_name() when VariantPathEntry objects are created
-        // Just extract them - no dot-notation joining needed anymore
-        variant_chain
-            .iter()
-            .map(|entry| entry.variant.clone())
-            .collect()
-    }
 }
 
 // ============================================================================
@@ -321,7 +301,7 @@ impl PathBuilder for EnumMutationBuilder {
                     // Create PathKindWithVariants for each tuple element
                     for (index, type_name) in types.iter().enumerate() {
                         children.push(PathKindWithVariants {
-                            path:                Some(PathKind::IndexedElement {
+                            path: Some(PathKind::IndexedElement {
                                 index,
                                 type_name: type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
@@ -334,9 +314,9 @@ impl PathBuilder for EnumMutationBuilder {
                     // Create PathKindWithVariants for each struct field
                     for (field_name, type_name) in fields {
                         children.push(PathKindWithVariants {
-                            path:                Some(PathKind::StructField {
-                                field_name:  field_name.clone(),
-                                type_name:   type_name.clone(),
+                            path: Some(PathKind::StructField {
+                                field_name: field_name.clone(),
+                                type_name: type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
                             }),
                             applicable_variants: applicable_variants.clone(),
@@ -392,30 +372,20 @@ impl PathBuilder for EnumMutationBuilder {
                 MutationExample::EnumRoot(examples)
             }
 
-            Some(EnumContext::Child { variant_chain }) => {
-                // Building under another enum - return EnumChild
+            Some(EnumContext::Child { .. }) => {
+                // Building under another enum - return Simple example
                 let example = self.concrete_example(&variant_groups, &children);
-                let applicable_variants = Self::flatten_variant_chain(variant_chain);
-
-                MutationExample::EnumChild {
-                    example,
-                    applicable_variants,
-                }
+                MutationExample::Simple(example)
             }
 
             None => {
                 // Parent is not an enum - return a concrete example
                 let example = self.concrete_example(&variant_groups, &children);
-                tracing::debug!(
-                    "NewEnumBuilder {} with None context returning Simple: {}",
-                    ctx.type_name(),
-                    example
-                );
                 MutationExample::Simple(example)
             }
         };
 
-        // Convert MutationExample to Value for ProtocolEnforcer to process
+        // Convert MutationExample to Value for MutationPathBuilder to process
         match mutation_example {
             MutationExample::Simple(val) => {
                 tracing::debug!(
@@ -427,7 +397,7 @@ impl PathBuilder for EnumMutationBuilder {
             }
             MutationExample::EnumRoot(examples) => {
                 // For enum roots, return both examples array and a default concrete value
-                // ProtocolEnforcer will extract these to populate MutationPathInternal fields
+                // MutationPathBuilder will extract these to populate MutationPathInternal fields
                 let default_example = examples
                     .first()
                     .map(|g| g.example.clone())
@@ -447,16 +417,6 @@ impl PathBuilder for EnumMutationBuilder {
                 );
 
                 Ok(result)
-            }
-            MutationExample::EnumChild {
-                example,
-                applicable_variants,
-            } => {
-                // For enum children, wrap with applicable_variants info
-                Ok(json!({
-                    "value": example,
-                    "applicable_variants": applicable_variants
-                }))
             }
         }
     }

@@ -37,7 +37,7 @@ impl PathBuilder for ValueMutationBuilder {
         // in TypeKind::build_paths but that path is never reached for migrated builders
         if !ctx.value_type_has_serialization(ctx.type_name()) {
             // Return NotMutable error for types without serialization
-            // ProtocolEnforcer will catch this and create the appropriate NotMutable path
+            // MutationPathBuilder will catch this and create the appropriate NotMutable path
             return Err(Error::NotMutable(
                 super::super::NotMutableReason::MissingSerializationTraits(ctx.type_name().clone()),
             )

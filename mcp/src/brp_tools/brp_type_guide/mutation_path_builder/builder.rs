@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 
+use super::super::mutation_path_builder::EnumContext;
 use super::builders::{
     ArrayMutationBuilder, EnumMutationBuilder, ListMutationBuilder, MapMutationBuilder,
     SetMutationBuilder, StructMutationBuilder, TupleMutationBuilder, ValueMutationBuilder,
@@ -41,7 +42,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         ctx: &RecursionContext,
         depth: RecursionDepth,
     ) -> Result<Vec<MutationPathInternal>> {
-        tracing::debug!("ProtocolEnforcer processing type: {}", ctx.type_name());
+        tracing::debug!("MutationPathBuilder processing type: {}", ctx.type_name());
 
         // Check depth limit for THIS level
         if let Some(result) = Self::check_depth_limit(ctx, depth) {
@@ -78,7 +79,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
         // Process the assembled example based on EnumContext
         // Extract enum_root_examples if this is an enum root
         let (parent_example, enum_root_examples) = match &ctx.enum_context {
-            Some(super::recursion_context::EnumContext::Root) => {
+            Some(EnumContext::Root) => {
                 // Check if the assembled_example contains enum_root_data marker
                 assembled_example
                     .get("enum_root_data")
@@ -113,7 +114,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
                         },
                     )
             }
-            Some(super::recursion_context::EnumContext::Child { .. }) => {
+            Some(EnumContext::Child { .. }) => {
                 // Trust the enum builder's result - it already computed applicable_variants
                 // EnumChild returns: {"value": example, "applicable_variants": [...]}
                 (assembled_example, None)
@@ -176,11 +177,11 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
 /// Result of processing all children during mutation path building
 struct ChildProcessingResult {
     /// All child paths (used for mutation status determination)
-    all_paths:       Vec<MutationPathInternal>,
+    all_paths: Vec<MutationPathInternal>,
     /// Only paths that should be exposed (filtered by `PathAction`)
     paths_to_expose: Vec<MutationPathInternal>,
     /// Examples for each child path
-    child_examples:  HashMap<MutationPathDescriptor, Value>,
+    child_examples: HashMap<MutationPathDescriptor, Value>,
 }
 
 /// Single dispatch point for creating builders - used for both entry and recursion
@@ -266,10 +267,10 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         }) => {
                             // We're already in a variant - extend the chain
                             let mut extended = parent_chain.clone();
-                            for variant in variants {
+                            if let Some(representative_variant) = variants.first() {
                                 extended.push(super::types::VariantPathEntry {
-                                    path:    ctx.mutation_path.clone(),
-                                    variant: ctx.type_name().variant_name(&variant),
+                                    path: ctx.mutation_path.clone(),
+                                    variant: representative_variant.clone(),
                                 });
                             }
                             extended
@@ -277,11 +278,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         _ => {
                             // Start a new chain
                             variants
-                                .iter()
+                                .first()
                                 .map(|variant| super::types::VariantPathEntry {
-                                    path:    ctx.mutation_path.clone(),
-                                    variant: ctx.type_name().variant_name(variant),
+                                    path: ctx.mutation_path.clone(),
+                                    variant: variant.clone(),
                                 })
+                                .into_iter()
                                 .collect()
                         }
                     };
@@ -356,7 +358,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         depth: RecursionDepth,
     ) -> Result<(Vec<MutationPathInternal>, Value)> {
         tracing::debug!(
-            "ProtocolEnforcer recursing to child '{}' of type '{}'",
+            "MutationPathBuilder recursing to child '{}' of type '{}'",
             &**descriptor,
             child_ctx.type_name()
         );
@@ -377,24 +379,30 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
 
         // If child is an enum and we're building a non-root path for it, set EnumContext::Root
         // This ensures the enum generates proper examples for its mutation path
-        if matches!(child_kind, TypeKind::Enum)
-            && child_ctx.enum_context.is_none()
-            && matches!(child_ctx.path_kind, PathKind::StructField { .. })
-        {
-            child_ctx.enum_context = Some(super::recursion_context::EnumContext::Root);
+        if matches!(child_kind, TypeKind::Enum) && child_ctx.enum_context.is_none() {
+            match child_ctx.path_kind {
+                PathKind::StructField { .. }
+                | PathKind::IndexedElement { .. }
+                | PathKind::ArrayElement { .. } => {
+                    child_ctx.enum_context = Some(super::recursion_context::EnumContext::Root);
+                }
+                PathKind::RootValue { .. } => {
+                    // RootValue paths don't need EnumContext::Root
+                }
+            }
         }
 
         // Use the single dispatch point for recursion
         // THIS is the recursion point - after this everything pops back up to build examples
         tracing::debug!(
-            "ProtocolEnforcer: Calling build_paths on child '{}' of type '{}'",
+            "MutationPathBuilder: Calling build_paths on child '{}' of type '{}'",
             &**descriptor,
             child_ctx.type_name()
         );
 
         let child_paths = recurse_mutation_paths(child_kind, &child_ctx, depth.increment())?;
         tracing::debug!(
-            "ProtocolEnforcer: Child '{}' returned {} paths",
+            "MutationPathBuilder: Child '{}' returned {} paths",
             &**descriptor,
             child_paths.len()
         );
@@ -450,10 +458,10 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 if !variant_chain.is_empty() =>
             {
                 Some(super::types::PathRequirement {
-                    description:  Self::generate_variant_description(variant_chain),
-                    example:      example.clone(), // Use the example we already built!
+                    description: Self::generate_variant_description(variant_chain),
+                    example: example.clone(), // Use the example we already built!
                     variant_path: variant_chain.clone(), /* Already Vec<VariantPathEntry> from
-                                                    * Step 2 */
+                                               * Step 2 */
                 })
             }
             _ => None,
@@ -474,10 +482,18 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     /// Generate a human-readable description of variant requirements
     fn generate_variant_description(variant_chain: &[super::types::VariantPathEntry]) -> String {
         if variant_chain.len() == 1 {
-            format!(
-                "To use this mutation path, the root must be set to {}",
-                variant_chain[0].variant
-            )
+            let entry = &variant_chain[0];
+            if entry.path.is_empty() {
+                format!(
+                    "To use this mutation path, the root must be set to {}",
+                    entry.variant
+                )
+            } else {
+                format!(
+                    "To use this mutation path, {} must be set to {}",
+                    entry.path, entry.variant
+                )
+            }
         } else {
             let requirements: Vec<String> = variant_chain
                 .iter()
@@ -493,9 +509,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         }
     }
 
-    /// Build a `NotMutatable` path with consistent formatting (private to `ProtocolEnforcer`)
+    /// Build a `NotMutatable` path with consistent formatting (private to `MutationPathBuilder`)
     ///
-    /// This centralizes `NotMutable` path creation, ensuring only `ProtocolEnforcer`
+    /// This centralizes `NotMutable` path creation, ensuring only `MutationPathBuilder`
     /// can create these paths while builders simply return `Error::NotMutable`.
     fn build_not_mutable_path(
         ctx: &RecursionContext,
@@ -542,7 +558,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         ctx: &RecursionContext,
     ) -> (Option<Result<Vec<MutationPathInternal>>>, Option<Value>) {
         tracing::debug!(
-            "ProtocolEnforcer checking knowledge for type: {}",
+            "MutationPathBuilder checking knowledge for type: {}",
             ctx.type_name()
         );
 
@@ -550,7 +566,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         if let Some(knowledge) = ctx.find_knowledge() {
             let example = knowledge.example().clone();
             tracing::debug!(
-                "ProtocolEnforcer found knowledge for {}: {:?} with knowledge {:?}",
+                "MutationPathBuilder found knowledge for {}: {:?} with knowledge {:?}",
                 ctx.type_name(),
                 example,
                 knowledge
@@ -559,7 +575,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             // Only return early for TreatAsValue types - they should not recurse
             if matches!(knowledge, MutationKnowledge::TreatAsRootValue { .. }) {
                 tracing::debug!(
-                    "ProtocolEnforcer stopping recursion for TreatAsValue type: {}",
+                    "MutationPathBuilder stopping recursion for TreatAsValue type: {}",
                     ctx.type_name()
                 );
                 return (
@@ -575,13 +591,13 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
 
             // For Teach guidance, we continue with normal recursion but save the knowledge example
             tracing::debug!(
-                "ProtocolEnforcer continuing recursion for Teach type: {}, will use knowledge example",
+                "MutationPathBuilder continuing recursion for Teach type: {}, will use knowledge example",
                 ctx.type_name()
             );
             return (None, Some(example));
         }
         tracing::debug!(
-            "ProtocolEnforcer NO knowledge found for: {}",
+            "MutationPathBuilder NO knowledge found for: {}",
             ctx.type_name()
         );
 
