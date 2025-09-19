@@ -134,7 +134,9 @@
       "Bash(do echo \"=== $script ===\")",
       "Bash(for script in mutation_test_get_batch_types.py mutation_test_get_type_guides.py mutation_test_get_types_by_index.py)",
       "WebFetch(domain:docs.claude.com)",
-      "Bash(~/.claude/commands/bash/post-tool-use-random-ack.sh)"
+      "Bash(~/.claude/commands/bash/post-tool-use-random-ack.sh)",
+      "Bash(.claude/commands/scripts/get_mutation_path.sh:*)",
+      "Bash(.claude/commands/scripts/get_mutation_path_list.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
