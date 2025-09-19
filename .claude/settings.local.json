@@ -105,7 +105,8 @@
       "Bash(exit 1)",
       "Bash(else)",
       "Bash(then echo \"❌ Not in bevy_brp root directory. Please cd to the project root.\")",
-      "Bash(else echo \"✅ In correct directory\")"
+      "Bash(else echo \"✅ In correct directory\")",
+      "Bash(.claude/scripts/type_guide_test_extract.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
