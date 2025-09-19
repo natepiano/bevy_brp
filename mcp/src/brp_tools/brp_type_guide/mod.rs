@@ -5,6 +5,7 @@
 //! serialization knowledge to provide accurate format discovery for BRP operations.
 
 mod all_types_tool;
+mod brp_type_name;
 mod constants;
 mod mutation_path_builder;
 mod response_types;
@@ -14,6 +15,6 @@ mod type_guide;
 // Re-export public API
 // Internal use for format discovery
 pub use all_types_tool::{AllTypeGuidesParams, BrpAllTypeGuides};
+pub use brp_type_name::BrpTypeName;
 pub use mutation_path_builder::NotMutableReason;
-pub use response_types::BrpTypeName;
 pub use tool::{BrpTypeGuide, TypeGuideEngine, TypeGuideParams};

@@ -15,7 +15,7 @@ use super::super::MutationPathDescriptor;
 use super::super::path_builder::PathBuilder;
 use super::super::path_kind::PathKind;
 use super::super::recursion_context::RecursionContext;
-use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -35,13 +35,13 @@ impl PathBuilder for ArrayMutationBuilder {
         // Extract element type from schema
         let Some(element_type) = schema.get_type(SchemaField::Items) else {
             return Err(Error::SchemaProcessing {
-                message: format!(
+                message:   format!(
                     "Failed to extract element type from schema for array: {}",
                     ctx.type_name()
                 ),
                 type_name: Some(ctx.type_name().to_string()),
                 operation: Some("extract_items_type".to_string()),
-                details: None,
+                details:   None,
             }
             .into());
         };
@@ -49,8 +49,8 @@ impl PathBuilder for ArrayMutationBuilder {
         // Arrays use indexed PathKind for the element at [0]
         // We only recurse into one element for efficiency
         Ok(vec![PathKind::ArrayElement {
-            index: 0,
-            type_name: element_type,
+            index:       0,
+            type_name:   element_type,
             parent_type: ctx.type_name().clone(),
         }]
         .into_iter())

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::super::response_types::BrpTypeName;
+use super::super::brp_type_name::BrpTypeName;
 use super::TypeKind;
 use super::path_kind::PathKind;
 

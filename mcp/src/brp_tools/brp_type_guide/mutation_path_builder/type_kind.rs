@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{AsRefStr, Display, EnumString};
 
-use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
 

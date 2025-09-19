@@ -14,8 +14,8 @@ use super::super::path_builder::{MaybeVariants, PathBuilder};
 use super::super::path_kind::{MutationPathDescriptor, PathKind};
 use super::super::recursion_context::{EnumContext, RecursionContext};
 use super::super::types::{ExampleGroup, VariantSignature};
+use crate::brp_tools::brp_type_guide::brp_type_name::BrpTypeName;
 use crate::brp_tools::brp_type_guide::constants::VARIANT_PATH_SEPARATOR;
-use crate::brp_tools::brp_type_guide::response_types::BrpTypeName;
 use crate::error::{Error, Result};
 use crate::json_object::JsonObjectAccess;
 use crate::json_schema::SchemaField;
@@ -33,7 +33,7 @@ enum MutationExample {
 
     /// Example with variant context (for enum child paths like .0, .1, .enabled)
     EnumChild {
-        example: Value,
+        example:             Value,
         applicable_variants: Vec<String>,
     },
 }
@@ -43,7 +43,7 @@ enum MutationExample {
 #[derive(Debug, Clone)]
 pub struct PathKindWithVariants {
     /// The path kind (None for unit variants)
-    pub path: Option<PathKind>,
+    pub path:                Option<PathKind>,
     /// Variants this path applies to
     pub applicable_variants: Vec<String>,
 }
@@ -84,7 +84,7 @@ pub struct EnumFieldInfo {
     pub field_name: String,
     /// Field type
     #[serde(rename = "type")]
-    pub type_name: BrpTypeName,
+    pub type_name:  BrpTypeName,
 }
 
 impl EnumVariantInfo {
@@ -337,7 +337,7 @@ impl PathBuilder for EnumMutationBuilder {
                     // Create PathKindWithVariants for each tuple element
                     for (index, type_name) in types.iter().enumerate() {
                         children.push(PathKindWithVariants {
-                            path: Some(PathKind::IndexedElement {
+                            path:                Some(PathKind::IndexedElement {
                                 index,
                                 type_name: type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
@@ -350,9 +350,9 @@ impl PathBuilder for EnumMutationBuilder {
                     // Create PathKindWithVariants for each struct field
                     for (field_name, type_name) in fields {
                         children.push(PathKindWithVariants {
-                            path: Some(PathKind::StructField {
-                                field_name: field_name.clone(),
-                                type_name: type_name.clone(),
+                            path:                Some(PathKind::StructField {
+                                field_name:  field_name.clone(),
+                                type_name:   type_name.clone(),
                                 parent_type: ctx.type_name().clone(),
                             }),
                             applicable_variants: applicable_variants.clone(),
