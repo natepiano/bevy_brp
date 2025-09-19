@@ -101,12 +101,20 @@ def find_differences(
 ) -> List[Difference]:
     """Find all differences in a single type"""
     differences = []
-    
+
+    # Define which fields at each level should have their contents compared as values, not structure
+    VALUE_FIELDS = {'example', 'examples', 'spawn_format', 'path_info', 'schema_info'}
+
+    def should_compare_as_value(path: str, key: str) -> bool:
+        """Check if this key's value should be compared as a whole value rather than recursively"""
+        # These fields contain data values, not structural schema
+        return key in VALUE_FIELDS
+
     def recurse(b_val: Any, c_val: Any, path: str):
         # CRITICAL FIX: Don't flag identical values as changes
         if b_val == c_val:
             return
-            
+
         if type(b_val) != type(c_val):
             # Structural difference
             pattern = detect_pattern(b_val, c_val, path)
@@ -124,6 +132,7 @@ def find_differences(
             all_keys = set(b_val.keys()) | set(c_val.keys())
             for key in all_keys:
                 new_path = f"{path}.{key}" if path else key
+
                 if key not in b_val:
                     differences.append(Difference(
                         type_name=type_name,
@@ -145,7 +154,23 @@ def find_differences(
                         after_sample=None
                     ))
                 else:
-                    recurse(b_val[key], c_val[key], new_path)
+                    # Check if this field should be compared as a whole value
+                    if should_compare_as_value(path, key):
+                        # Compare the entire value, don't recurse into it
+                        if b_val[key] != c_val[key]:
+                            pattern = detect_pattern(b_val[key], c_val[key], new_path)
+                            differences.append(Difference(
+                                type_name=type_name,
+                                path=new_path,
+                                pattern=pattern,
+                                before_structure=describe_structure(b_val[key]),
+                                after_structure=describe_structure(c_val[key]),
+                                before_sample=b_val[key],
+                                after_sample=c_val[key]
+                            ))
+                    else:
+                        # Recurse into structural fields
+                        recurse(b_val[key], c_val[key], new_path)
         elif isinstance(b_val, list):
             for i in range(min(len(b_val), len(c_val))):
                 recurse(b_val[i], c_val[i], f"{path}[{i}]")
