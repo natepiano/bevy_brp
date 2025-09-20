@@ -107,7 +107,9 @@
       "Bash(then echo \"❌ Not in bevy_brp root directory. Please cd to the project root.\")",
       "Bash(else echo \"✅ In correct directory\")",
       "Bash(.claude/scripts/type_guide_test_extract.sh:*)",
-      "Bash(./.claude/scripts/mutation_test_renumber_batches.sh:*)"
+      "Bash(./.claude/scripts/mutation_test_renumber_batches.sh:*)",
+      "Bash(./.claude/scripts/mutation_test_merge_batch_results.sh:*)",
+      "Bash(./.claude/scripts/get_mutation_path.sh:*)"
     ],
     "deny": [
       "Bash(sed:*)"
