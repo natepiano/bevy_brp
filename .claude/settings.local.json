@@ -112,7 +112,8 @@
       "Bash(./.claude/scripts/get_mutation_path.sh:*)",
       "Bash(git tag:*)",
       "Bash(./.claude/commands/mutation_test.sh:*)",
-      "Bash(./.claude/scripts/mutation_test_single_type.sh:*)"
+      "Bash(./.claude/scripts/mutation_test_single_type.sh:*)",
+      "Bash(else echo \"No previous version found\")"
     ],
     "deny": [
       "Bash(sed:*)"
