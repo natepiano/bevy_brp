@@ -1,5 +1,79 @@
 # Fix PathRequirement Context Examples
 
+## EXECUTION PROTOCOL
+
+<Instructions>
+For each step in the implementation sequence:
+
+1. **DESCRIBE**: Present the changes with:
+   - Summary of what will change and why
+   - Code examples showing before/after
+   - List of files to be modified
+   - Expected impact on the system
+
+2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
+
+3. **IMPLEMENT**: Make the changes and stop
+
+4. **BUILD & VALIDATE**: Execute the build process:
+   ```bash
+   cargo build && cargo +nightly fmt
+   ```
+
+5. **CONFIRM**: Wait for user to confirm the build succeeded
+
+6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
+
+7. **PROCEED**: Move to next step only after confirmation
+</Instructions>
+
+<ExecuteImplementation>
+    Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
+
+    For the current step:
+    1. Follow the <Instructions/> above for executing the step
+    2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
+    3. Continue to next PENDING step
+
+    If all steps are COMPLETED:
+        Display: "✅ Implementation complete! All steps have been executed."
+</ExecuteImplementation>
+
+## INTERACTIVE IMPLEMENTATION SEQUENCE
+
+### Step 1: Extend MaybeVariants Trait ✅ COMPLETED
+**Objective**: Add variant_signature() method with default implementation to support variant signature access
+**Files**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
+**Change Type**: Additive
+**Build Command**: `cargo build && cargo +nightly fmt`
+
+### Step 2: Enhance PathKindWithVariants Structure ✅ COMPLETED
+**Objective**: Add variant_signature field and implement trait method for enum variant signature tracking
+**Files**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
+**Change Type**: Additive
+**Dependencies**: Requires Step 1
+**Build Command**: `cargo build && cargo +nightly fmt`
+
+### Step 3: Add Helper Methods ⏳ PENDING
+**Objective**: Implement update_variant_description and wrap_path_requirement_with_parent_info methods
+**Files**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+**Change Type**: Additive
+**Dependencies**: Requires Steps 1-2
+**Build Command**: `cargo build && cargo +nightly fmt`
+
+### Step 4: Update PathRequirement Processing Logic ⏳ PENDING
+**Objective**: Modify process_all_children method to wrap PathRequirement examples with parent context
+**Files**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+**Change Type**: Breaking (ATOMIC GROUP - must be done together to avoid breakage)
+**Dependencies**: Requires Steps 1-3
+**Build Command**: `cargo build && cargo +nightly fmt`
+
+### Step 5: Complete Validation ⏳ PENDING
+**Objective**: Run all tests and verify integration
+**Change Type**: Validation
+**Dependencies**: Requires Steps 1-4
+**Build Command**: `cargo build && cargo +nightly fmt && cargo nextest run`
+
 ## Problem Statement
 
 Comparing actual output to the reference `TestEnumWithSerde_mutation_paths.json`:
@@ -63,84 +137,31 @@ Build PathRequirement examples recursively as we pop back up the stack. Each par
 
 ## Implementation
 
-### Key Insight
+### Step 1: Extend MaybeVariants Trait
 
-In `process_child` (line 377 of `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`), after recursion returns:
-- We get back `Vec<MutationPathInternal>` containing all descendant paths
-- These paths have PathRequirements with `variant_chain` but wrong examples
-- The parent can wrap these examples with its context
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
 
-### Code Location
-
-**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
-
-In the `process_all_children` method, after line 355 where we get `(child_paths, child_example)`:
+Add a method to access variant signature with a default implementation:
 
 ```rust
-// In mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs
-// In process_all_children, we need to iterate through items and track their PathKind
-// Note: This is simplified - actual implementation needs to handle the loop properly
+pub trait MaybeVariants {
+    /// Returns the applicable variants for this path (if any)
+    fn applicable_variants(&self) -> Option<&[String]> {
+        None
+    }
 
-for item in child_items {
-    // Extract variant information and PathKind from the item
-    let variant_names = item.applicable_variants().map(<[String]>::to_vec);
-    let variant_signature = item.variant_signature().cloned();
+    /// Consumes self and returns the PathKind (if any)
+    fn into_path_kind(self) -> Option<PathKind>;
 
-    // Extract the PathKind before consuming the item
-    if let Some(path_kind) = item.into_path_kind() {
-        // Create child_key from the path_kind for process_child
-        let child_key = MutationPathDescriptor::from_path_kind(&path_kind);
-        let mut child_ctx = ctx.create_recursion_context(path_kind.clone(), PathAction::Create);
-
-        let (mut child_paths, child_example) =
-            Self::process_child(&child_key, &mut child_ctx, depth)?;
-
-        // Store the child example for later sibling field population
-        child_examples.insert(child_key.clone(), child_example);
-
-        // NEW: PathRequirement wrapping logic insertion point
-        // If this parent is part of an enum that requires specific variants,
-        // update all child PathRequirements with parent's context
-        if let (Some(variants), Some(signature)) = (variant_names, variant_signature) {
-            let variant_name = variants.first()
-                .ok_or_else(|| Error::InvalidState("No variants available".to_string()))?
-                .clone();
-
-            // Create parent's variant entry
-            let parent_variant_entry = VariantPathEntry {
-                path: ctx.mutation_path.clone(),  // Parent's path
-                variant: variant_name.clone(),
-            };
-
-            for path in &mut child_paths {
-                if let Some(ref mut path_req) = path.path_requirement {
-                    // Prepend parent's variant requirement to the chain
-                    path_req.variant_path.insert(0, parent_variant_entry.clone());
-
-                    // Update the description to include parent requirement
-                    path_req.description = self.update_variant_description(
-                        &path_req.description,
-                        &parent_variant_entry
-                    );
-
-                    // Wrap PathRequirement with parent variant context
-                    // Pass the PathKind directly - no string parsing needed!
-                    path_req.example = self.wrap_path_requirement_with_parent_info(
-                        &path_req.example,
-                        &variant_name,
-                        &signature,
-                        &path_kind  // Pass PathKind instead of MutationPathDescriptor
-                    )?;
-                }
-            }
-        }
-
-        all_paths.extend(child_paths);
+    /// Returns the variant signature (if this is from an enum)
+    /// Default implementation returns None for non-enum types
+    fn variant_signature(&self) -> Option<&VariantSignature> {
+        None
     }
 }
 ```
 
-### Enhanced PathKindWithVariants
+### Step 2: Enhance PathKindWithVariants Structure
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
 
@@ -201,32 +222,7 @@ match signature {
         }
     }
 }
-
-### Extend MaybeVariants Trait
-
-**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/path_builder.rs`
-
-Add a method to access variant signature with a default implementation:
-
-```rust
-pub trait MaybeVariants {
-    /// Returns the applicable variants for this path (if any)
-    fn applicable_variants(&self) -> Option<&[String]> {
-        None
-    }
-
-    /// Consumes self and returns the PathKind (if any)
-    fn into_path_kind(self) -> Option<PathKind>;
-
-    /// Returns the variant signature (if this is from an enum)
-    /// Default implementation returns None for non-enum types
-    fn variant_signature(&self) -> Option<&VariantSignature> {
-        None
-    }
-}
 ```
-
-**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builders/enum_builder.rs`
 
 Implement the new method for `PathKindWithVariants`:
 
@@ -247,7 +243,7 @@ impl MaybeVariants for PathKindWithVariants {
 }
 ```
 
-### Helper Methods
+### Step 3: Add Helper Methods
 
 **File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
 
@@ -359,6 +355,82 @@ fn wrap_path_requirement_with_parent_info(
 
 }
 ```
+
+### Step 4: Update PathRequirement Processing Logic
+
+**File**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
+
+In the `process_all_children` method, after line 355 where we get `(child_paths, child_example)`:
+
+```rust
+// In mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs
+// In process_all_children, we need to iterate through items and track their PathKind
+// Note: This is simplified - actual implementation needs to handle the loop properly
+
+for item in child_items {
+    // Extract variant information and PathKind from the item
+    let variant_names = item.applicable_variants().map(<[String]>::to_vec);
+    let variant_signature = item.variant_signature().cloned();
+
+    // Extract the PathKind before consuming the item
+    if let Some(path_kind) = item.into_path_kind() {
+        // Create child_key from the path_kind for process_child
+        let child_key = MutationPathDescriptor::from_path_kind(&path_kind);
+        let mut child_ctx = ctx.create_recursion_context(path_kind.clone(), PathAction::Create);
+
+        let (mut child_paths, child_example) =
+            Self::process_child(&child_key, &mut child_ctx, depth)?;
+
+        // Store the child example for later sibling field population
+        child_examples.insert(child_key.clone(), child_example);
+
+        // NEW: PathRequirement wrapping logic insertion point
+        // If this parent is part of an enum that requires specific variants,
+        // update all child PathRequirements with parent's context
+        if let (Some(variants), Some(signature)) = (variant_names, variant_signature) {
+            let variant_name = variants.first()
+                .ok_or_else(|| Error::InvalidState("No variants available".to_string()))?
+                .clone();
+
+            // Create parent's variant entry
+            let parent_variant_entry = VariantPathEntry {
+                path: ctx.mutation_path.clone(),  // Parent's path
+                variant: variant_name.clone(),
+            };
+
+            for path in &mut child_paths {
+                if let Some(ref mut path_req) = path.path_requirement {
+                    // Prepend parent's variant requirement to the chain
+                    path_req.variant_path.insert(0, parent_variant_entry.clone());
+
+                    // Update the description to include parent requirement
+                    path_req.description = self.update_variant_description(
+                        &path_req.description,
+                        &parent_variant_entry
+                    );
+
+                    // Wrap PathRequirement with parent variant context
+                    // Pass the PathKind directly - no string parsing needed!
+                    path_req.example = self.wrap_path_requirement_with_parent_info(
+                        &path_req.example,
+                        &variant_name,
+                        &signature,
+                        &path_kind  // Pass PathKind instead of MutationPathDescriptor
+                    )?;
+                }
+            }
+        }
+
+        all_paths.extend(child_paths);
+    }
+}
+```
+
+## Migration Strategy
+
+**Migration Strategy: Phased**
+
+This collaborative plan uses phased implementation by design. The Collaborative Execution Protocol above defines the phase boundaries with validation checkpoints between each step.
 
 ## Design Review Skip Notes
 
