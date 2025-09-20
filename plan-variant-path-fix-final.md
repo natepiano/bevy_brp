@@ -1,73 +1,21 @@
 # Fix PathRequirement Context Examples
 
-## EXECUTION PROTOCOL
-
-<Instructions>
-For each step in the implementation sequence:
-
-1. **DESCRIBE**: Present the changes with:
-   - Summary of what will change and why
-   - Code examples showing before/after
-   - List of files to be modified
-   - Expected impact on the system
-
-2. **AWAIT APPROVAL**: Stop and wait for user confirmation ("go ahead" or similar)
-
-3. **IMPLEMENT**: Make the changes and stop
-
-4. **BUILD & VALIDATE**: Execute the build process:
-   ```bash
-   cargo build && cargo +nightly fmt
-   ```
-
-5. **CONFIRM**: Wait for user to confirm the build succeeded
-
-6. **MARK COMPLETE**: Update this document to mark the step as ✅ COMPLETED
-
-7. **PROCEED**: Move to next step only after confirmation
-</Instructions>
-
-<ExecuteImplementation>
-    Find the next ⏳ PENDING step in the INTERACTIVE IMPLEMENTATION SEQUENCE below.
-
-    For the current step:
-    1. Follow the <Instructions/> above for executing the step
-    2. When step is complete, use Edit tool to mark it as ✅ COMPLETED
-    3. Continue to next PENDING step
-
-    If all steps are COMPLETED:
-        Display: "✅ Implementation complete! All steps have been executed."
-</ExecuteImplementation>
-
-## INTERACTIVE IMPLEMENTATION SEQUENCE
 
 **PREREQUISITE**: `plan-variant-chain-infrastructure.md` has been completed successfully. The variant_chain infrastructure provides `ctx.variant_chain` and has already solved 2/3 of the PathRequirement issues:
 - ✅ **Complete variant_path chains**: Working correctly
 - ✅ **Correct descriptions**: Generated properly from variant chains
 - ❌ **Complete example structure**: Still shows local values instead of nested structure
 
-### Step 1: Add Complete Example Construction Helper ⏳ PENDING
-**Objective**: Build complete nested PathRequirement examples from variant_chain + schemas
+### Step 1: Implement Parent Wrapping Algorithm
+**Objective**: Add parent wrapping logic to build complete PathRequirement examples
 **Files**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
 **Change Type**: Additive
 **Build Command**: `cargo build && cargo +nightly fmt`
 
 **Key Changes:**
-- Add helper method to construct complete examples from `ctx.variant_chain`
-- Replace `example.clone()` in PathRequirement construction (line 500)
-- Handle path parsing, variant signature lookup, and structure navigation
-
-### Step 2: Add Parent Wrapping Coordination ⏳ PENDING
-**Objective**: Coordinate PathRequirement example wrapping during recursive pop-back
-**Files**: `mcp/src/brp_tools/brp_type_guide/mutation_path_builder/builder.rs`
-**Change Type**: Additive
-**Dependencies**: Requires Step 1
-**Build Command**: `cargo build && cargo +nightly fmt && cargo nextest run`
-
-**Key Changes:**
-- Add wrapping logic after `assemble_from_children` in `build_paths` method
-- Coordinate multi-level wrapping across recursion levels
-- Handle timing and error cases properly
+- Add `wrap_children_path_requirements` method after `assemble_from_children`
+- Add `wrap_descendant` and `substitute_at_relative_path` helper methods
+- Update PathRequirement examples to show complete nested structures
 
 ## Problem Statement
 
@@ -125,14 +73,9 @@ example: example.clone(), // Just uses local value (1000000)
 **What we need:**
 The complete nested structure showing how to reach the mutation path through all required enum variants.
 
-## Solution: Complete Example Construction from variant_chain
+## Solution: Parent Wrapping Algorithm
 
-**Approach**: Use the available `ctx.variant_chain` + registry schemas to build complete nested examples during PathRequirement construction. This can be done either:
-
-1. **Direct construction**: Build complete example from variant_chain when creating PathRequirement
-2. **Parent wrapping**: During recursive pop-back, parents wrap children's PathRequirement examples
-
-We'll use the parent wrapping approach as it leverages the already-assembled complete parent examples.
+**Approach**: Use parent wrapping during recursive pop-back to build complete nested examples. This leverages the already-assembled complete parent examples.
 
 ## Implementation
 
@@ -185,7 +128,7 @@ This approach leverages already-assembled parent examples instead of trying to c
 
 **Step 1**: Add parent wrapping logic in the `build_paths` method. The insertion point is after `assembled_example` is created but BEFORE it gets processed for enum contexts.
 
-**Insertion Location**: After the assembled_example is created (currently around line 77) and before the enum context processing starts (line 79-87).
+**Insertion Location**: After the assembled_example is created and before the enum context processing starts.
 
 Look for this code pattern:
 ```rust
@@ -544,7 +487,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
 
 ### Implementation Summary
 
-The implementation adds a single insertion point in `build_paths` after line 77 where `assembled_example` is available, and provides helper methods to:
+The implementation adds a single insertion point in `build_paths` after `assembled_example` is available, and provides helper methods to:
 
 1. **Identify children with PathRequirements** (iterate through `all_paths`)
 2. **Parse mutation paths** (e.g., ".nested_config.0" → field + index)
