@@ -180,18 +180,18 @@ if !example_to_use.is_null() {
 }
 ```
 
-**Step 2**: Add a simple helper method to perform path substitution:
+**Step 2**: Add a helper method to perform path substitution:
 
 ```rust
 impl<B: PathBuilder> MutationPathBuilder<B> {
     /// Substitute a value at a relative path within a JSON structure
-    /// This is a simplified version that handles common cases
+    /// CRITICAL: Must use proper error types from the codebase
     fn substitute_at_path(
         target: &mut Value,
         relative_path: &str,
         substitute_value: &Value,
-    ) -> Result<(), String> {
-        // Parse path segments
+    ) -> Result<()> {  // This is Result<(), error_stack::Report<Error>>
+        // Parse path segments (handling both . and [] notation)
         let segments: Vec<&str> = relative_path
             .split(|c| c == '.' || c == '[' || c == ']')
             .filter(|s| !s.is_empty())
@@ -202,12 +202,135 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             return Ok(());
         }
 
-        // Navigate to the target location and substitute
-        // This would follow similar logic to existing path navigation in the codebase
-        // Details omitted for brevity - implementation should handle:
-        // - Object field navigation
-        // - Array/tuple indexing
-        // - Enum variant navigation
+        // Navigate through the structure
+        let mut current = target;
+        let mut segments_iter = segments.iter().peekable();
+
+        while let Some(segment) = segments_iter.next() {
+            let is_last = segments_iter.peek().is_none();
+
+            if let Ok(index) = segment.parse::<usize>() {
+                // Numeric segment - index into array or tuple
+                match current {
+                    Value::Array(ref mut arr) => {
+                        if index >= arr.len() {
+                            return Err(Report::new(Error::SchemaProcessing {
+                                message: "Index out of bounds".to_string(),
+                                type_name: None,
+                                operation: Some("path substitution".to_string()),
+                                details: Some(format!("Index {} exceeds array length", index)),
+                            }));
+                        }
+                        if is_last {
+                            arr[index] = substitute_value.clone();
+                            return Ok(());
+                        }
+                        current = &mut arr[index];
+                    }
+                    Value::Object(ref mut obj) if obj.len() == 1 => {
+                        // Enum variant with tuple - navigate into it
+                        let variant_value = obj.values_mut().next().unwrap();
+
+                        // Handle single-element tuple (value stored directly)
+                        if index == 0 && !variant_value.is_array() {
+                            if is_last {
+                                *variant_value = substitute_value.clone();
+                                return Ok(());
+                            }
+                            current = variant_value;
+                        } else if let Value::Array(ref mut arr) = variant_value {
+                            if index >= arr.len() {
+                                return Err(Report::new(Error::SchemaProcessing {
+                                    message: "Index out of bounds".to_string(),
+                                    type_name: None,
+                                    operation: Some("path substitution".to_string()),
+                                    details: Some(format!("Tuple index {} exceeds length", index)),
+                                }));
+                            }
+                            if is_last {
+                                arr[index] = substitute_value.clone();
+                                return Ok(());
+                            }
+                            current = &mut arr[index];
+                        } else {
+                            return Err(Report::new(Error::SchemaProcessing {
+                                message: "Type mismatch for path operation".to_string(),
+                                type_name: None,
+                                operation: Some("path substitution".to_string()),
+                                details: Some("Cannot index into non-array variant value".to_string()),
+                            }));
+                        }
+                    }
+                    _ => return Err(Report::new(Error::SchemaProcessing {
+                        message: "Type mismatch for path operation".to_string(),
+                        type_name: None,
+                        operation: Some("path substitution".to_string()),
+                        details: Some("Cannot index into non-array value".to_string()),
+                    }))
+                }
+            } else {
+                // String segment - field name
+                match current {
+                    Value::Object(ref mut obj) => {
+                        // Check if this is an enum variant (single-key object where key isn't the field we're looking for)
+                        if obj.len() == 1 && !obj.contains_key(*segment) {
+                            // Navigate into the enum variant first
+                            let variant_value = obj.values_mut().next().unwrap();
+                            if variant_value.is_object() {
+                                current = variant_value;
+                                // Now we're inside the variant, continue to the field
+                                if let Value::Object(ref mut inner_obj) = current {
+                                    if is_last {
+                                        inner_obj.insert(segment.to_string(), substitute_value.clone());
+                                        return Ok(());
+                                    }
+                                    current = inner_obj.get_mut(*segment)
+                                        .ok_or_else(|| Report::new(Error::SchemaProcessing {
+                                            message: "Field not found in object".to_string(),
+                                            type_name: None,
+                                            operation: Some("path navigation".to_string()),
+                                            details: Some(format!("Field '{}' does not exist", segment)),
+                                        }))?;
+                                } else {
+                                    return Err(Report::new(Error::SchemaProcessing {
+                                        message: "Unexpected variant structure".to_string(),
+                                        type_name: None,
+                                        operation: Some("path navigation".to_string()),
+                                        details: Some("Expected object inside variant".to_string()),
+                                    }));
+                                }
+                            } else {
+                                return Err(Report::new(Error::SchemaProcessing {
+                                    message: "Type mismatch for field navigation".to_string(),
+                                    type_name: None,
+                                    operation: Some("path navigation".to_string()),
+                                    details: Some(format!("Cannot navigate field '{}' in non-object variant", segment)),
+                                }));
+                            }
+                        } else {
+                            // Regular object field navigation
+                            if is_last {
+                                obj.insert(segment.to_string(), substitute_value.clone());
+                                return Ok(());
+                            }
+                            current = obj.get_mut(*segment)
+                                .ok_or_else(|| Report::new(Error::SchemaProcessing {
+                                    message: "Field not found in object".to_string(),
+                                    type_name: None,
+                                    operation: Some("path navigation".to_string()),
+                                    details: Some(format!("Field '{}' does not exist", segment)),
+                                }))?;
+                        }
+                    }
+                    _ => return Err(Report::new(Error::SchemaProcessing {
+                        message: "Type mismatch for field access".to_string(),
+                        type_name: None,
+                        operation: Some("path navigation".to_string()),
+                        details: Some(format!("Cannot access field '{}' in non-object", segment)),
+                    }))
+                }
+            }
+        }
 
         Ok(())
     }
@@ -220,12 +343,43 @@ The key insight from analyzing the code:
 - The parent wrapping MUST happen AFTER `example_to_use` is determined (line 102)
 - It should operate on `paths_to_expose` (not `all_paths`)
 - Modifications must be in-place to avoid Result type conversion issues
+- `paths_to_expose` must be made mutable in the destructuring
 
 The corrected approach:
 1. **Insert wrapping logic after line 102** - when we have the final validated example
-2. **Iterate through `paths_to_expose`** - these are the paths being returned
-3. **For each descendant with PathRequirement** - wrap its example with parent context
-4. **Use simple path substitution** - navigate and replace values in the parent structure
+2. **Make `paths_to_expose` mutable** - add `mut` in the destructuring at line 66
+3. **Iterate through `paths_to_expose`** - these are the paths being returned
+4. **For each descendant with PathRequirement** - wrap its example with parent context
+5. **Use simple path substitution** - navigate and replace values in the parent structure
+
+### Critical Implementation Details Learned
+
+**Error Handling Requirements:**
+- MUST use `Error::SchemaProcessing` for all errors in this context, NOT `Error::General`
+- All errors MUST be wrapped with `error_stack::Report::new()`
+- The Result type is `Result<(), error_stack::Report<Error>>` not `Result<(), String>`
+- Must import `error_stack::Report` and `crate::error::{Error, Result}`
+
+**Example of correct error construction:**
+```rust
+return Err(Report::new(Error::SchemaProcessing {
+    message: "Index out of bounds".to_string(),
+    type_name: None,
+    operation: Some("path substitution".to_string()),
+    details: Some(format!("Index {} exceeds array length", index)),
+}));
+```
+
+**Error propagation with `?` operator:**
+```rust
+current = obj.get_mut(*segment)
+    .ok_or_else(|| Report::new(Error::SchemaProcessing {
+        message: "Field not found".to_string(),
+        type_name: None,
+        operation: Some("path navigation".to_string()),
+        details: Some(format!("Field '{}' does not exist", segment)),
+    }))?;
+```
 
 This avoids the compilation errors from the original plan and correctly places the wrapping at the point where all necessary data is available.
 
