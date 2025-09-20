@@ -221,10 +221,10 @@ impl EnumMutationBuilder {
             "None" => json!(null),
             "Some" => {
                 // Extract the inner value from {"Some": value}
-                if let Some(obj) = example.as_object() {
-                    if let Some(value) = obj.get("Some") {
-                        return value.clone();
-                    }
+                if let Some(obj) = example.as_object()
+                    && let Some(value) = obj.get("Some")
+                {
+                    return value.clone();
                 }
                 example
             }
@@ -234,7 +234,6 @@ impl EnumMutationBuilder {
 
     /// Build a complete example for a variant with all its fields
     fn build_variant_example(
-        &self,
         signature: &VariantSignature,
         variant_name: &str,
         children: &HashMap<MutationPathDescriptor, Value>,
@@ -277,7 +276,6 @@ impl EnumMutationBuilder {
 
     /// Create a concrete example value for embedding in a parent structure
     fn concrete_example(
-        &self,
         variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
         children: &HashMap<MutationPathDescriptor, Value>,
         enum_type: &BrpTypeName,
@@ -297,8 +295,9 @@ impl EnumMutationBuilder {
             .iter()
             .next()
             .map(|(sig, variants)| {
-                let representative = variants.first().unwrap();
-                self.build_variant_example(sig, representative.name(), children, enum_type)
+                variants.first().map_or(json!(null), |representative| {
+                    Self::build_variant_example(sig, representative.name(), children, enum_type)
+                })
             })
             .unwrap_or(json!(null))
     }
@@ -398,7 +397,7 @@ impl PathBuilder for EnumMutationBuilder {
                         Report::new(Error::InvalidState("Empty variant group".to_string()))
                     })?;
 
-                    let example = self.build_variant_example(
+                    let example = Self::build_variant_example(
                         signature,
                         representative.name(),
                         &children,
@@ -422,13 +421,13 @@ impl PathBuilder for EnumMutationBuilder {
 
             Some(EnumContext::Child) => {
                 // Building under another enum - return Simple example
-                let example = self.concrete_example(&variant_groups, &children, ctx.type_name());
+                let example = Self::concrete_example(&variant_groups, &children, ctx.type_name());
                 MutationExample::Simple(example)
             }
 
             None => {
                 // Parent is not an enum - return a concrete example
-                let example = self.concrete_example(&variant_groups, &children, ctx.type_name());
+                let example = Self::concrete_example(&variant_groups, &children, ctx.type_name());
                 MutationExample::Simple(example)
             }
         };
