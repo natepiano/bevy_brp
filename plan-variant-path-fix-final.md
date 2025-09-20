@@ -130,7 +130,7 @@ This approach leverages already-assembled parent examples instead of trying to c
 
 **Insertion Location**: After the assembled_example is created and before the enum context processing starts.
 
-Look for this code pattern:
+Look for this exact location in the `build_paths` method (approximately line 500-520):
 ```rust
 // Assemble THIS level from children (post-order)
 let assembled_example = match self.inner.assemble_from_children(ctx, child_examples) {
@@ -141,7 +141,7 @@ let assembled_example = match self.inner.assemble_from_children(ctx, child_examp
     }
 };
 
-// INSERT PARENT WRAPPING LOGIC HERE - BEFORE ENUM CONTEXT PROCESSING
+// INSERT HERE - After assembled_example is created, before any enum processing
 
 // Process the assembled example based on EnumContext
 // Extract enum_root_examples if this is an enum root
@@ -155,7 +155,7 @@ The new code to insert:
 ```rust
 // NEW: PathRequirement parent wrapping logic
 // Wrap children's PathRequirement examples with parent context
-Self::wrap_children_path_requirements(&mut all_paths, &assembled_example, ctx, &child_examples)?;
+Self::wrap_children_path_requirements(&mut all_paths, &assembled_example, ctx)?;
 ```
 
 **Step 2**: Add the helper method to perform parent wrapping:
@@ -169,7 +169,6 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         all_paths: &mut Vec<MutationPathInternal>,
         assembled_example: &Value,
         ctx: &RecursionContext,
-        child_examples: &HashMap<MutationPathDescriptor, Value>,
     ) -> Result<()> {
         tracing::debug!(
             "wrap_children_path_requirements: parent at '{}', parent PathKind={:?}, processing {} paths",
@@ -201,9 +200,9 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 );
 
                 // Check if this path is a descendant that should be wrapped
-                let should_wrap = Self::should_wrap_descendant(&path.path, &ctx.mutation_path);
+                let is_descendant = Self::is_descendant_of(&path.path, &ctx.mutation_path);
 
-                if !should_wrap {
+                if !is_descendant {
                     tracing::debug!(
                         "Path '{}' is not a descendant of '{}' - skipping",
                         path.path,
@@ -256,7 +255,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
     }
 
     /// Check if a path is a descendant of the parent path
-    fn should_wrap_descendant(descendant_path: &str, parent_path: &str) -> bool {
+    fn is_descendant_of(descendant_path: &str, parent_path: &str) -> bool {
         // Root (empty path) wraps everything
         if parent_path.is_empty() {
             return !descendant_path.is_empty();
@@ -303,8 +302,14 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
 
         // Navigate to the descendant's position and substitute its example
         if relative_path.is_empty() {
-            // Same level - replace entire structure
-            result = descendant_example.clone();
+            // This shouldn't happen - is_descendant_of should prevent this
+            return Err(Error::InvalidState {
+                message: "Attempted to wrap a path with itself".to_string(),
+                context: format!(
+                    "descendant_path='{}', parent_path='{}', relative_path='{}'",
+                    descendant_path, parent_path, relative_path
+                ),
+            }.into());
         } else {
             // Parse the relative path and navigate to substitution point
             Self::substitute_at_relative_path(&mut result, relative_path, descendant_example)?;
@@ -461,7 +466,12 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                                 return Ok(());
                             }
                             current = obj.get_mut(segment)
-                                .ok_or_else(|| anyhow!("Field '{}' not found", segment))?;
+                                .ok_or_else(|| Error::SchemaProcessing {
+                                    message: "Field not found in object".to_string(),
+                                    type_name: None,
+                                    operation: Some("path navigation".to_string()),
+                                    details: Some(format!("Field '{segment}' does not exist")),
+                                })?;
                         }
                     }
                     _ => return Err(Error::SchemaProcessing {
