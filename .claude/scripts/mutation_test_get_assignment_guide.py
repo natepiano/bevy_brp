@@ -41,16 +41,14 @@ if not isinstance(data, dict) or 'type_guide' not in data:
 
 type_guide = data['type_guide']
 
-# Get types for the specified batch
+# Get types for the specified batch - type_guide is a dict
 batch_types = []
-if isinstance(type_guide, list):
-    # New format: type_guide is a list
-    for item in type_guide:
-        if item.get('batch_number') == batch_num:
-            batch_types.append(item)
-else:
-    print(f"Error: Expected type_guide to be a list", file=sys.stderr)
-    sys.exit(1)
+for type_name, type_data in type_guide.items():
+    if type_data.get('batch_number') == batch_num:
+        # Add type_name to the dict for consistency
+        type_item = dict(type_data)
+        type_item['type_name'] = type_name
+        batch_types.append(type_item)
 
 if not batch_types:
     print(f"No types found for batch {batch_num}", file=sys.stderr)

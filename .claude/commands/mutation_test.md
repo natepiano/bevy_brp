@@ -30,7 +30,8 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     **STEP 4:** Execute the <ApplicationLaunch/>
     **STEP 5:** Execute the <ApplicationVerification/>
     **STEP 6:** Execute the <BatchProcessingLoop/>
-    **STEP 7:** Execute the <FinalCleanup/>
+    **STEP 7:** Execute the <FinalCleanup/> (SILENTLY if failures detected)
+    **STEP 8:** Execute the <InteractiveFailureReview/> (ONLY if failures detected)
 </ExecutionFlow>
 
 ## STEP 1: INITIAL SETUP
@@ -229,53 +230,141 @@ PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
     - COMPONENT_NOT_FOUND status: **STOP IMMEDIATELY**
 
     **FAILURE PROTOCOL**:
-    1. Save progress for passed types
-    2. **Display detailed failure/missing component information**
-    3. Report failure details to user
-    4. Execute <FinalCleanup/>
+    1. **Store failure details** in a variable from batch results JSON
+    2. Save progress for passed types (merge script handles this)
+    3. Execute <FinalCleanup/> SILENTLY - no output during cleanup
+    4. Execute <InteractiveFailureReview/> to present failures one by one
     5. **DO NOT CONTINUE** to next batch
 
-    **REQUIRED: Display Failure Details**
-    When COMPONENT_NOT_FOUND errors are detected, display:
-    ```
-    **Missing Components Details:**
-    - [type_name]:
-      - Query Filter: [query_details.filter]
-      - Query Data: [query_details.data]
-      - Entities Found: [query_details.entities_found]
-      - Error: [failure_details.error_message]
-    ```
-
-    When FAIL errors are detected, display:
-    ```
-    **Failed Types Details:**
-    - [type_name]:
-      - Failed Operation: [failure_details.failed_operation]
-      - Operations Completed:
-        - Spawn/Insert: [operations_completed.spawn_insert]
-        - Entity Query: [operations_completed.entity_query]
-        - Mutations Passed: [operations_completed.mutations_passed]
-        - Total Mutations Attempted: [operations_completed.total_mutations_attempted]
-      - Failure Information:
-        - Failed Path: [failure_details.failed_mutation_path]
-        - Error Message: [failure_details.error_message]
-        - Request Sent: [failure_details.request_sent]
-        - Response Received: [failure_details.response_received]
-    ```
-
-    Extract this detailed information from the batch results JSON before cleanup.
+    **CRITICAL**: Do NOT display failure details during this step. Store them for the interactive review after cleanup.
 </CheckForFailures>
 
 ## STEP 7: FINAL CLEANUP
 
 <FinalCleanup>
-    **Shutdown all applications:**
+    **Shutdown all applications SILENTLY (no output):**
 
     ```python
     # Execute in parallel for ports 30001-30010:
     mcp__brp__brp_shutdown(app_name="extras_plugin", port=PORT)
     ```
+
+    **CRITICAL**: Do NOT display shutdown status messages. Execute silently.
 </FinalCleanup>
+
+## STEP 8: INTERACTIVE FAILURE REVIEW (Only if failures detected)
+
+<InteractiveFailureReview>
+    **After cleanup is complete, present failures interactively:**
+
+    1. **Display Summary First**:
+    ```
+    ## MUTATION TEST EXECUTION COMPLETE
+
+    **Status**: STOPPED DUE TO FAILURES
+    **Progress**: Batch [N] of [TOTAL] processed
+    **Results**: [PASS_COUNT] PASSED, [FAIL_COUNT] FAILED, [MISSING_COUNT] MISSING COMPONENTS
+
+    **Detailed failure log saved to**: [PATH]
+    ```
+
+    2. **Present Each Failure One by One**:
+
+    For each failure, present it with this format:
+
+    ```
+    ## FAILURE [X] of [TOTAL]: `[type_name]`
+
+    ### Overview
+    - **Entity ID**: [entity_id] (successfully created and queried)
+    - **Total Mutations**: [total] attempted
+    - **Mutations Passed**: [count] succeeded
+    - **Failed At**: [operation type or mutation path]
+
+    ### What Succeeded Before Failure
+    [List each successful operation with ✅]
+
+    ### The Failure
+
+    **Failed [Operation/Path]**: [specific failure point]
+
+    **What We Sent**:
+    ```json
+    [formatted request]
+    ```
+
+    **Error Response**:
+    ```json
+    [formatted response]
+    ```
+
+    ### Analysis
+    [Brief analysis of what the error means]
+
+    ---
+
+    **Would you like to**:
+    - **Investigate** this specific failure in detail
+    - **Known Issue** - mark as known and continue to next
+    - **Skip** this failure and continue to the next
+    - **Stop** reviewing failures and exit
+
+    What would you prefer?
+    ```
+
+    3. **Wait for User Response** after each failure presentation
+
+    4. **Handle User Choice**:
+    - **Investigate**: Launch Task tool with specific investigation prompt
+    - **Known Issue**: Add to `.claude/mutation_test_known_issues.json` with full details and continue
+    - **Skip**: Continue to next failure without marking as known
+    - **Stop**: Exit failure review
+
+    **CRITICAL**: Present failures ONE AT A TIME and wait for user input between each one.
+</InteractiveFailureReview>
+
+## KEYWORD HANDLING
+
+<KeywordHandling>
+**User Response Processing**:
+
+When presenting failures, ALWAYS use this exact format for the options:
+
+```
+**Would you like to**:
+- **Investigate** this specific failure in detail
+- **Known Issue** - mark as known and continue to next
+- **Skip** this failure and continue to the next
+- **Stop** reviewing failures and exit
+
+What would you prefer?
+```
+
+**Keyword Actions**:
+- **Investigate**: Launch detailed investigation Task for the current failure
+- **Known Issue**:
+  1. Add type/mutation path pair to `.claude/mutation_test_known_issues.json`
+  2. Include the failure reason and error details
+  3. Continue to the next failure
+- **Skip**: Continue to the next failure without recording (temporary skip)
+- **Stop**: Exit the failure review process immediately
+
+**Known Issues Tracking**:
+When user selects **Known Issue**, add to `.claude/mutation_test_known_issues.json`:
+```json
+{
+  "type": "fully::qualified::type::name",
+  "path": ".mutation.path",
+  "issue": "Brief description of the problem"
+}
+```
+
+**Future Test Behavior**:
+- Check `.claude/mutation_test_known_issues.json` before presenting failures
+- Automatically skip known issues without presenting them
+- Summary should note: "X known issues skipped (see `.claude/mutation_test_known_issues.json`)"
+- Known issues are persistent across test runs
+</KeywordHandling>
 
 ## SUBAGENT PROMPT TEMPLATE
 

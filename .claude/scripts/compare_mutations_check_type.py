@@ -32,11 +32,11 @@ def check_type(type_name):
             with open(filepath, 'r') as f:
                 data = json.load(f)
             
-            # Handle new JSON structure with type_guide array
-            type_guide = data.get('type_guide', data if isinstance(data, list) else [])
-            
-            # Find the type
-            type_data = next((t for t in type_guide if t.get('type_name') == type_name), None)
+            # Handle JSON structure with type_guide dict
+            type_guide = data.get('type_guide', {})
+
+            # Find the type in dict format
+            type_data = type_guide.get(type_name)
             
             if type_data:
                 found_any = True
@@ -73,8 +73,8 @@ def check_type(type_name):
         try:
             with open(files[-1], 'r') as f:
                 data = json.load(f)
-            type_guide = data.get('type_guide', data if isinstance(data, list) else [])
-            all_type_names = sorted([t.get('type_name', 'unknown') for t in type_guide])
+            type_guide = data.get('type_guide', {})
+            all_type_names = sorted(type_guide.keys())
             # Show types that partially match
             matches = [t for t in all_type_names if type_name.lower() in t.lower()]
             if matches:

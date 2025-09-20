@@ -23,12 +23,12 @@ fi
 
 echo "Resetting failed tests to untested..."
 # Reset all failed tests to untested and clear fail_reason
-# type_guide is an array of type objects
+# type_guide is a dict with type names as keys
 jq '
-    .type_guide |= map(
-        if .test_status == "failed" then
-            .test_status = "untested" |
-            .fail_reason = ""
+    .type_guide |= with_entries(
+        if .value.test_status == "failed" then
+            .value.test_status = "untested" |
+            .value.fail_reason = ""
         else
             .
         end
@@ -38,39 +38,33 @@ jq '
 echo "Clearing existing batch numbers..."
 # Clear all batch numbers
 jq '
-    .type_guide |= map(.batch_number = null)
+    .type_guide |= with_entries(.value.batch_number = null)
 ' "$JSON_FILE" > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 echo "Assigning batch numbers to untested types..."
 # Assign batch numbers to untested types only
-# First, collect untested types and assign batch numbers, then merge back
 jq --argjson batch_size "$BATCH_SIZE" '
-    # Separate untested and other types
-    (.type_guide | map(select(.test_status == "untested"))) as $untested |
-    (.type_guide | map(select(.test_status != "untested"))) as $others |
+    # Get untested types as array for batch assignment
+    [.type_guide | to_entries[] | select(.value.test_status == "untested")] as $untested |
 
-    # Assign batch numbers to untested types
-    ($untested | to_entries | map(
-        .value + {batch_number: ((.key / $batch_size) | floor + 1)}
-    )) as $numbered_untested |
+    # Create batch assignments
+    ($untested | to_entries | map({
+        type_name: .value.key,
+        batch_number: ((.key / $batch_size) | floor + 1)
+    })) as $batch_assignments |
 
-    # Merge back in original order
-    .type_guide = (.type_guide | map(
-        . as $orig |
-        if .test_status == "untested" then
-            ($numbered_untested | map(select(.type_name == $orig.type_name)) | first)
-        else
-            . + {batch_number: null}
-        end
-    ))
+    # Apply batch numbers back to the dict
+    reduce $batch_assignments[] as $item (.;
+        .type_guide[$item.type_name].batch_number = $item.batch_number
+    )
 ' "$JSON_FILE" > "${JSON_FILE}.tmp" && mv "${JSON_FILE}.tmp" "$JSON_FILE"
 
 # Count statistics
 TOTAL=$(jq '.type_guide | length' "$JSON_FILE")
-UNTESTED=$(jq '[.type_guide[] | select(.test_status == "untested")] | length' "$JSON_FILE")
-FAILED=$(jq '[.type_guide[] | select(.test_status == "failed")] | length' "$JSON_FILE")
-PASSED=$(jq '[.type_guide[] | select(.test_status == "passed")] | length' "$JSON_FILE")
-MAX_BATCH=$(jq '[.type_guide[] | select(.batch_number != null) | .batch_number] | max // 0' "$JSON_FILE")
+UNTESTED=$(jq '[.type_guide | to_entries[] | select(.value.test_status == "untested")] | length' "$JSON_FILE")
+FAILED=$(jq '[.type_guide | to_entries[] | select(.value.test_status == "failed")] | length' "$JSON_FILE")
+PASSED=$(jq '[.type_guide | to_entries[] | select(.value.test_status == "passed")] | length' "$JSON_FILE")
+MAX_BATCH=$(jq '[.type_guide | to_entries[] | select(.value.batch_number != null) | .value.batch_number] | max // 0' "$JSON_FILE")
 
 echo "✓ Batch renumbering complete!"
 echo ""

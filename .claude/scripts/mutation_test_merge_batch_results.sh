@@ -33,26 +33,25 @@ if [ ! -f "$MUTATION_TEST_FILE" ]; then
     exit 1
 fi
 
-# Merge results into mutation test file (expect type_guide at root)
+# Merge results into mutation test file (expect type_guide as dict at root)
 jq --slurpfile results "$RESULTS_FILE" '
   . as $mutation_test |
   $results[0] as $batch_results |
   # Create a lookup map from batch results for efficient access
   ($batch_results | map({key: .type, value: .}) | from_entries) as $result_map |
 
-  # Update type_guide array
-  .type_guide |= map(
-    . as $entry |
-    # Use type_name field
-    $entry.type_name as $type_key |
+  # Update type_guide dict
+  .type_guide |= with_entries(
+    .key as $type_key |
     if $result_map[$type_key] then
       # Update entry with test result
-      $entry |
-      .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
-      .fail_reason = $result_map[$type_key].fail_reason
+      .value |= (
+        .test_status = (if $result_map[$type_key].status == "PASS" then "passed" else "failed" end) |
+        .fail_reason = $result_map[$type_key].fail_reason
+      )
     else
       # Keep entry unchanged if no result for this type
-      $entry
+      .
     end
   )
 ' "$MUTATION_TEST_FILE" > "${MUTATION_TEST_FILE}.tmp"

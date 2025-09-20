@@ -1,0 +1,12 @@
+[
+  {
+    "type": "bevy_input::gamepad::Gamepad",
+    "path": ".product_id",
+    "issue": "Option values incorrectly serialized as objects instead of direct values"
+  },
+  {
+    "type": "bevy_input::gamepad::Gamepad",
+    "path": ".vendor_id",
+    "issue": "Option values incorrectly serialized as objects instead of direct values"
+  }
+]
