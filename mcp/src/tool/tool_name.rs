@@ -546,10 +546,7 @@ impl ToolName {
             | Self::BrpListActiveWatches => None,
 
             // and thest of these app and watch tools do have parameters
-            Self::BrpLaunchBevyApp => {
-                Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>)
-            }
-            Self::BrpLaunchBevyExample => {
+            Self::BrpLaunchBevyApp | Self::BrpLaunchBevyExample => {
                 Some(parameters::build_parameters_from::<LaunchBevyBinaryParams>)
             }
             Self::BrpStopWatch => Some(parameters::build_parameters_from::<StopWatchParams>),
