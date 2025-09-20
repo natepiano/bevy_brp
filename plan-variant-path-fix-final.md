@@ -369,6 +369,14 @@ fn wrap_path_requirement_with_parent_info(
 - **Reasoning**: The plan already contains clear insertion point specification in lines 77-141 of the Implementation section, showing the exact sequence: extract variant info → extract PathKind → process child → store example → add PathRequirement wrapping logic → extend collections
 - **Decision**: User elected to skip this recommendation
 
+### IMPLEMENTATION-GAP-1: Plan doesn't address how child_examples HashMap is maintained across recursion - **Verdict**: CONFIRMED → RESOLVED
+- **Status**: APPROVED - Implemented
+- **Location**: Section: Key Insight
+- **Issue**: Plan mentions using 'sibling_examples' and 'child_examples' but doesn't explain how these are populated and passed through the recursive call stack
+- **Reasoning**: The finding was initially correct - the plan described a flawed approach using sibling_examples. After investigation, we clarified that the correct approach is parent wrapping during recursion pop-back, not sibling collection. Updated the plan to remove sibling_examples parameter and use default values for non-target fields.
+- **Resolution**: Renamed function to wrap_path_requirement_with_parent_info, removed sibling_examples parameter, added detailed walkthrough comment showing the step-by-step example transformation from 1000000 → {"Conditional": 1000000} → complete nested structure
+- **Decision**: Plan updated with correct approach
+
 ## How It Works
 
 Starting with `.nested_config.0`:
