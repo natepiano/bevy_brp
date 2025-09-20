@@ -19,12 +19,6 @@ pub trait MaybeVariants {
 
     /// Extract the `PathKind` if there is one (`None` for unit variants)
     fn into_path_kind(self) -> Option<PathKind>;
-
-    /// Returns the variant signature (if this is from an enum)
-    /// Default implementation returns None for non-enum types
-    fn variant_signature(&self) -> Option<&VariantSignature> {
-        None
-    }
 }
 
 /// Trait for building mutation paths for different type kinds

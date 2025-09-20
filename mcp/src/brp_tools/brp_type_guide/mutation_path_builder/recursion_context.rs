@@ -22,13 +22,7 @@ pub enum EnumContext {
     Root,
 
     /// Building under enum variant(s)
-    Child {
-        /// Chain of variant constraints from parent to child with their paths
-        /// e.g., `[VariantPathEntry { path: "", variant: "TestEnumWithSerDe::Nested" },`
-        ///        `VariantPathEntry { path: ".nested_config", variant:`
-        /// `"NestedConfigEnum::Conditional" }]`
-        variant_chain: Vec<VariantPathEntry>,
-    },
+    Child,
 }
 
 /// Context for mutation path building operations
@@ -48,6 +42,9 @@ pub struct RecursionContext {
     pub path_action:   PathAction,
     /// Track enum context - None for non-enum types
     pub enum_context:  Option<EnumContext>,
+    /// Chain of variant constraints from root to current position
+    /// Independent of enum_context - tracks ancestry for PathRequirement construction
+    pub variant_chain: Vec<VariantPathEntry>,
 }
 
 impl RecursionContext {
@@ -59,6 +56,7 @@ impl RecursionContext {
             mutation_path: String::new(),
             path_action: PathAction::Create, // Default to creating paths
             enum_context: None,              // Start with no enum context
+            variant_chain: Vec::new(),       // Start with empty variant chain
         }
     }
 
@@ -129,6 +127,7 @@ impl RecursionContext {
             mutation_path: new_path_prefix,
             path_action,
             enum_context: self.enum_context.clone(), // Propagate parent's enum_context
+            variant_chain: self.variant_chain.clone(), // Inherit parent's variant chain
         }
     }
 

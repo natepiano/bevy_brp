@@ -134,7 +134,7 @@ impl<B: PathBuilder> PathBuilder for MutationPathBuilder<B> {
                         },
                     )
             }
-            Some(EnumContext::Child { .. }) => {
+            Some(EnumContext::Child) => {
                 // Trust the enum builder's result - it already computed applicable_variants
                 // EnumChild returns: {"value": example, "applicable_variants": [...]}
                 (assembled_example, None, None)
@@ -283,35 +283,17 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                 // Check if we need special variant handling
                 if let Some(variants) = variant_info {
                     // Special handling for enum items: Set up variant chain
-                    let variant_chain = match &ctx.enum_context {
-                        Some(super::recursion_context::EnumContext::Child {
-                            variant_chain: parent_chain,
-                        }) => {
-                            // We're already in a variant - extend the chain
-                            let mut extended = parent_chain.clone();
-                            if let Some(representative_variant) = variants.first() {
-                                extended.push(super::types::VariantPathEntry {
-                                    path:    ctx.mutation_path.clone(),
-                                    variant: representative_variant.clone(),
-                                });
-                            }
-                            extended
-                        }
-                        _ => {
-                            // Start a new chain
-                            variants
-                                .first()
-                                .map(|variant| super::types::VariantPathEntry {
-                                    path:    ctx.mutation_path.clone(),
-                                    variant: variant.clone(),
-                                })
-                                .into_iter()
-                                .collect()
-                        }
-                    };
+                    if let Some(representative_variant) = variants.first() {
+                        // Extend the inherited variant chain with this enum's variant
+                        child_ctx
+                            .variant_chain
+                            .push(super::types::VariantPathEntry {
+                                path:    ctx.mutation_path.clone(),
+                                variant: representative_variant.clone(),
+                            });
+                    }
 
-                    child_ctx.enum_context =
-                        Some(super::recursion_context::EnumContext::Child { variant_chain });
+                    child_ctx.enum_context = Some(super::recursion_context::EnumContext::Child);
                 } else {
                     // Check if this child is an enum and set EnumContext appropriately
                     if let Some(child_schema) = child_ctx.get_registry_schema(child_ctx.type_name())
@@ -321,7 +303,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         if matches!(child_type_kind, TypeKind::Enum) {
                             // This child is an enum
                             match &ctx.enum_context {
-                                Some(super::recursion_context::EnumContext::Child { .. }) => {
+                                Some(super::recursion_context::EnumContext::Child) => {
                                     // We're in a variant and found a nested enum
                                     // The nested enum gets Root context (to generate examples)
                                     // The chain will be extended when this enum's variants are
@@ -388,7 +370,14 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         // Get child's schema and create its builder
         let child_schema = child_ctx
             .require_registry_schema()
-            .unwrap_or_else(|_| &json!(null));
+            .unwrap_or_else(|err| {
+                tracing::warn!(
+                    "🔥 CHOKE POINT: Type '{}' not found in registry - swallowing NotInRegistry error! Error: {:?}",
+                    child_ctx.type_name(),
+                    err
+                );
+                &json!(null)
+            });
         tracing::debug!(
             "Child '{}' schema found: {}",
             &**descriptor,
@@ -407,7 +396,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             && (child_ctx.enum_context.is_none()
                 || matches!(
                     &child_ctx.enum_context,
-                    Some(super::recursion_context::EnumContext::Child { .. })
+                    Some(super::recursion_context::EnumContext::Child)
                 ));
 
         if should_set_enum_root {
@@ -498,18 +487,15 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
         mutation_status_reason: Option<Value>,
     ) -> MutationPathInternal {
         // Build complete path_requirement if variant chain exists
-        let path_requirement = match &ctx.enum_context {
-            Some(super::recursion_context::EnumContext::Child { variant_chain })
-                if !variant_chain.is_empty() =>
-            {
-                Some(super::types::PathRequirement {
-                    description:  Self::generate_variant_description(variant_chain),
-                    example:      example.clone(), // Use the example we already built!
-                    variant_path: variant_chain.clone(), /* Already Vec<VariantPathEntry> from
-                                                    * Step 2 */
-                })
-            }
-            _ => None,
+        let path_requirement = if !ctx.variant_chain.is_empty() {
+            Some(super::types::PathRequirement {
+                description:  Self::generate_variant_description(&ctx.variant_chain),
+                example:      example.clone(), // Use the example we already built!
+                variant_path: ctx.variant_chain.clone(), /* Already Vec<VariantPathEntry> from
+                                                * Step 2 */
+            })
+        } else {
+            None
         };
 
         let result = MutationPathInternal {

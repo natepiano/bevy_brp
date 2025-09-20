@@ -420,7 +420,7 @@ impl PathBuilder for EnumMutationBuilder {
                 MutationExample::EnumRoot(examples)
             }
 
-            Some(EnumContext::Child { .. }) => {
+            Some(EnumContext::Child) => {
                 // Building under another enum - return Simple example
                 let example = self.concrete_example(&variant_groups, &children, ctx.type_name());
                 MutationExample::Simple(example)
