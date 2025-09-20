@@ -159,7 +159,7 @@ The new code to insert:
 // Only wrap if we have a valid example to provide context
 if !example_to_use.is_null() {
     for path in paths_to_expose.iter_mut() {
-        if let Some(ref mut path_req) = path.path_requirement {
+        if let Some(path_req) = path.path_requirement {
             // Check if this path is a descendant (not same level)
             if !path.path.is_empty() && path.path != ctx.mutation_path {
                 // Calculate relative path from parent to child
@@ -212,7 +212,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             if let Ok(index) = segment.parse::<usize>() {
                 // Numeric segment - index into array or tuple
                 match current {
-                    Value::Array(ref mut arr) => {
+                    Value::Array(arr) => {
                         if index >= arr.len() {
                             return Err(Report::new(Error::SchemaProcessing {
                                 message: "Index out of bounds".to_string(),
@@ -227,7 +227,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                         }
                         current = &mut arr[index];
                     }
-                    Value::Object(ref mut obj) if obj.len() == 1 => {
+                    Value::Object(obj) if obj.len() == 1 => {
                         // Enum variant with tuple - navigate into it
                         let variant_value = obj.values_mut().next().unwrap();
 
@@ -238,7 +238,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                                 return Ok(());
                             }
                             current = variant_value;
-                        } else if let Value::Array(ref mut arr) = variant_value {
+                        } else if let Value::Array( arr) = variant_value {
                             if index >= arr.len() {
                                 return Err(Report::new(Error::SchemaProcessing {
                                     message: "Index out of bounds".to_string(),
@@ -271,7 +271,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
             } else {
                 // String segment - field name
                 match current {
-                    Value::Object(ref mut obj) => {
+                    Value::Object( obj) => {
                         // Check if this is an enum variant (single-key object where key isn't the field we're looking for)
                         if obj.len() == 1 && !obj.contains_key(*segment) {
                             // Navigate into the enum variant first
@@ -279,7 +279,7 @@ impl<B: PathBuilder> MutationPathBuilder<B> {
                             if variant_value.is_object() {
                                 current = variant_value;
                                 // Now we're inside the variant, continue to the field
-                                if let Value::Object(ref mut inner_obj) = current {
+                                if let Value::Object( inner_obj) = current {
                                     if is_last {
                                         inner_obj.insert(segment.to_string(), substitute_value.clone());
                                         return Ok(());
