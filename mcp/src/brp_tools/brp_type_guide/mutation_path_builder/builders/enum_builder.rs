@@ -200,14 +200,47 @@ fn group_variants_by_signature(
 // ============================================================================
 
 impl EnumMutationBuilder {
+    /// Check if a type is Option<T>
+    fn is_option_type(type_name: &BrpTypeName) -> bool {
+        type_name.as_str().starts_with("core::option::Option<")
+    }
+
+    /// Apply Option<T> transformation if needed: {"Some": value} → value, "None" → null
+    fn apply_option_transformation(
+        example: Value,
+        variant_name: &str,
+        enum_type: &BrpTypeName,
+    ) -> Value {
+        // Only transform if this is actually core::option::Option<T>
+        if !Self::is_option_type(enum_type) {
+            return example;
+        }
+
+        // Transform Option variants for BRP mutations
+        match variant_name {
+            "None" => json!(null),
+            "Some" => {
+                // Extract the inner value from {"Some": value}
+                if let Some(obj) = example.as_object() {
+                    if let Some(value) = obj.get("Some") {
+                        return value.clone();
+                    }
+                }
+                example
+            }
+            _ => example,
+        }
+    }
+
     /// Build a complete example for a variant with all its fields
     fn build_variant_example(
         &self,
         signature: &VariantSignature,
         variant_name: &str,
         children: &HashMap<MutationPathDescriptor, Value>,
+        enum_type: &BrpTypeName,
     ) -> Value {
-        match signature {
+        let example = match signature {
             VariantSignature::Unit => {
                 json!(variant_name)
             }
@@ -236,7 +269,10 @@ impl EnumMutationBuilder {
                 }
                 json!({ variant_name: field_values })
             }
-        }
+        };
+
+        // Apply Option<T> transformation only for actual Option types
+        Self::apply_option_transformation(example, variant_name, enum_type)
     }
 
     /// Create a concrete example value for embedding in a parent structure
@@ -244,6 +280,7 @@ impl EnumMutationBuilder {
         &self,
         variant_groups: &HashMap<VariantSignature, Vec<EnumVariantInfo>>,
         children: &HashMap<MutationPathDescriptor, Value>,
+        enum_type: &BrpTypeName,
     ) -> Value {
         // Pick first unit variant if available, otherwise first example
         let unit_variant = variant_groups
@@ -261,7 +298,7 @@ impl EnumMutationBuilder {
             .next()
             .map(|(sig, variants)| {
                 let representative = variants.first().unwrap();
-                self.build_variant_example(sig, representative.name(), children)
+                self.build_variant_example(sig, representative.name(), children, enum_type)
             })
             .unwrap_or(json!(null))
     }
@@ -361,8 +398,12 @@ impl PathBuilder for EnumMutationBuilder {
                         Report::new(Error::InvalidState("Empty variant group".to_string()))
                     })?;
 
-                    let example =
-                        self.build_variant_example(signature, representative.name(), &children);
+                    let example = self.build_variant_example(
+                        signature,
+                        representative.name(),
+                        &children,
+                        ctx.type_name(),
+                    );
 
                     let applicable_variants: Vec<String> = variants_in_group
                         .iter()
@@ -381,13 +422,13 @@ impl PathBuilder for EnumMutationBuilder {
 
             Some(EnumContext::Child { .. }) => {
                 // Building under another enum - return Simple example
-                let example = self.concrete_example(&variant_groups, &children);
+                let example = self.concrete_example(&variant_groups, &children, ctx.type_name());
                 MutationExample::Simple(example)
             }
 
             None => {
                 // Parent is not an enum - return a concrete example
-                let example = self.concrete_example(&variant_groups, &children);
+                let example = self.concrete_example(&variant_groups, &children, ctx.type_name());
                 MutationExample::Simple(example)
             }
         };
