@@ -12,11 +12,11 @@
 </TestContext>
 
 <TestConfiguration>
-TYPES_PER_SUBAGENT = 1                    # Types each subagent tests
-MAX_SUBAGENTS = 10                        # Parallel subagents per batch
-BATCH_SIZE = 10                           # Types per batch (MAX_SUBAGENTS * TYPES_PER_SUBAGENT)
-BASE_PORT = 30001                         # Starting port for subagents
-PORT_RANGE = 30001-30010                  # Each subagent gets dedicated port
+TYPES_PER_SUBAGENT = 2                                  # Types each subagent tests
+MAX_SUBAGENTS = 10                                      # Parallel subagents per batch
+BATCH_SIZE = [TYPES_PER_SUBAGENT] * [MAX_SUBAGENTS]     # Types per batch (MAX_SUBAGENTS * TYPES_PER_SUBAGENT)
+BASE_PORT = 30001                                       # Starting port for subagents
+PORT_RANGE = 30001-30010                                # Each subagent gets dedicated port
 </TestConfiguration>
 
 ## MAIN WORKFLOW
